@@ -1,0 +1,8 @@
+{
+  "name": "mockimagemaker",
+  "private": true,
+  "description": "画面モックアプリ（仮称）の検証用。アプリ本体は 1 つの HTML ファイルで、ビルドはしない。",
+  "devDependencies": {
+    "puppeteer": "^25.0.4"
+  }
+}
