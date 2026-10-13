@@ -107,6 +107,75 @@ async function shootEditor(browser) {
   await page.close();
 }
 
+// 部品の入った画面（仕上がりイメージ.png の新規登録の画面に近づけたもの）
+const part = (id, type, x, y, w, h, no, label, extra = {}) => ({
+  id, type, x, y, w, h, no, label, labelPos: 'top', sample: '', placeholder: '', required: false, memo: '', props: {}, ...extra,
+});
+const PARTS_SAMPLE = {
+  schemaVersion: 1,
+  settings: { customTargets: [] },
+  designs: [design('d1', '顧客管理', 'kintone', '2026-10-13T05:20:00.000Z', {
+    ...screen('s1', '新規登録'),
+    parts: [
+      part('p1', 'text1', 24, 64, 472, 64, 1, '顧客名', { required: true, props: { maxLen: '50', initial: '' } }),
+      part('p2', 'text1', 528, 64, 472, 64, null, '顧客コード', { placeholder: '自動採番' }),
+      part('p3', 'dropdown', 24, 152, 472, 64, 2, '担当者', { props: { options: ['営業部の社員'], initial: '' } }),
+      part('p4', 'date', 528, 152, 472, 64, null, '契約日', { sample: '2026-10-08' }),
+      part('p5', 'radio', 24, 240, 472, 64, 3, '区分', { props: { options: ['法人', '個人'], initial: '法人', dir: 'h' } }),
+      part('p6', 'text2', 24, 328, 976, 120, null, '備考'),
+      part('p7', 'button', 744, 480, 120, 40, null, 'キャンセル', { props: { style: 'normal', action: '' } }),
+      part('p8', 'button', 880, 480, 120, 40, 4, '保存', { props: { style: 'primary', action: '登録して、一覧の画面へ戻る' } }),
+    ],
+  })],
+};
+
+async function center(page, sel) {
+  const b = await (await page.$(sel)).boundingBox();
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+}
+
+async function dragMouse(page, from, to) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 10 });
+  await page.mouse.up();
+}
+
+async function shootParts(browser) {
+  const page = await openApp(browser, PARTS_SAMPLE);
+  await page.click('.card-open[data-id="d1"]');
+  for (let i = 0; i < 6; i++) await page.click('[data-action="zoom-out"]');
+  await shot(page, '13_部品_仕上がりイメージの画面と一覧表_40%');
+  for (let i = 0; i < 3; i++) await page.click('[data-action="zoom-in"]');
+  // 部品の箱から「数値」をドラッグして画面に置く
+  const scr = await (await page.$('#stage .screen')).boundingBox();
+  await dragMouse(page, await center(page, '.pal-btn[data-type="number"]'), { x: scr.x + scr.width * 0.83, y: scr.y + scr.height * 0.12 });
+  await shot(page, '14_部品_箱からドラッグして置いた後');
+  // 置いた部品を動かし、右下のつまみで大きくする
+  const placed = await center(page, '#stage .part.sel');
+  await dragMouse(page, placed, { x: placed.x, y: placed.y + 120 });
+  const grip = await center(page, '#stage .part.sel .g-se');
+  await dragMouse(page, grip, { x: grip.x + 60, y: grip.y });
+  await shot(page, '15_部品_動かして大きくした後');
+  // 顧客名を選んで、右下の設定の欄を見る
+  await page.click('#stage .part[data-part-id="p1"]');
+  await shot(page, '16_部品_顧客名を選んだところ');
+  await page.click('#stage .part[data-part-id="p5"]');
+  await shot(page, '17_部品_ラジオボタンを選んだところ');
+  // 選ぶのをやめて、一覧表を下に置く
+  await page.keyboard.press('Escape');
+  // 機器の種類などと同じく、選択のボタンは見えている文字（span）を押す（input は隠してある）
+  await page.click('[data-field="table-pos"][value="bottom"] + span');
+  await page.click('[data-action="zoom-out"]');
+  await shot(page, '18_部品_一覧表を画面の下に置いた_60%');
+  // 部品の箱の「基本」を閉じる
+  await page.click('.pal-head[data-id="basic"]');
+  await shot(page, '19_部品_部品の箱の基本を閉じた');
+  await page.click('[data-action="home"]');
+  await shot(page, '20_一覧_部品の入った縮小画像');
+  await page.close();
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await puppeteer.launch({
@@ -118,6 +187,7 @@ async function shootEditor(browser) {
   try {
     await shootHome(browser);
     await shootEditor(browser);
+    await shootParts(browser);
   } finally {
     await browser.close();
   }

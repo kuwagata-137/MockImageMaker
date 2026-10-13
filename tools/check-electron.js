@@ -1,12 +1,12 @@
 // 使い方: node tools/check-electron.js
 // Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、次の 4 つを確かめる。
-//  1. 画面設計を作って名前を変え、窓を閉じたあと <userData>/data/designs.json に残っている
+//  1. 画面設計を作って名前を変え、部品の箱から部品を 1 つ置き、窓を閉じたあと <userData>/data/designs.json に残っている
 //  2. 1 つ目が動いている間に 2 つ目を起動すると、2 つ目はすぐに終わる
 //  3. 右の欄の文字の欄に文字を打ち、欄を離れない（change が起きていない）まま閉じても、その文字が designs.json に残る。閉じ方は 3 つ。
 //      - 窓の ×（BrowserWindow.close()。× を押したときと同じ流れ）: 「説明」と「名前」の欄で確かめる
 //      - ファイル > 終了（app.quit()。メニューの「終了」〔role: quit〕と同じ呼び出し）: 「説明」の欄で確かめる
 //      - ページの window.close(): 「説明」の欄で確かめる
-//  4. 起動し直すと、作った画面設計が一覧に出て、3 で打った文字も右の欄に出る
+//  4. 起動し直すと、作った画面設計が一覧に出て、3 で打った文字も右の欄に出る。1 で置いた部品も画面に出る
 // 窓の × と終了は、メインプロセスを --inspect で起動し、Node の inspector から呼んで再現する。
 // 保存先は作業フォルダの .devdata/check-userData（毎回消してから始める。npm start のデータとは別）。
 'use strict';
@@ -113,6 +113,7 @@ async function firstRun() {
     input.value = '顧客管理';
     input.dispatchEvent(new Event('change', { bubbles: true }));
   });
+  await page.click('.pal-btn[data-type="text1"]');
   const title = await page.$eval('#ed-title', (e) => e.textContent);
 
   const second = launch();
@@ -156,10 +157,11 @@ async function secondRun() {
   await openFirstDesign(page);
   const name = await page.$eval('[data-field="design-name"]', (e) => e.value);
   const desc = await page.$eval('[data-field="design-desc"]', (e) => e.value);
+  const parts = await page.$$eval('#stage .part', (els) => els.length);
   await page.evaluate(() => window.close());
   browser.disconnect();
   await withTimeout(child.exited, 15000, '起動し直したアプリが閉じない');
-  return { names, name, desc };
+  return { names, name, desc, parts };
 }
 
 async function checkTypingCases() {
@@ -181,15 +183,15 @@ async function checkTypingCases() {
   console.log('2 つ目の起動: 終了コード', r.secondCode, '／ そのとき 1 つ目は動いていたか:', r.firstAlive);
   console.log('1 つ目を閉じたときの終了コード:', r.code);
   const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-  console.log('designs.json の画面設計:', saved.designs.map((d) => `${d.name}（${d.target}・画面 ${d.screens.length} つ）`).join('、'));
-  const firstOk = r.firstAlive && saved.designs.length === 1 && saved.designs[0].name === '顧客管理';
+  console.log('designs.json の画面設計:', saved.designs.map((d) => `${d.name}（${d.target}・画面 ${d.screens.length} つ・部品 ${d.screens[0].parts.length} つ）`).join('、'));
+  const firstOk = r.firstAlive && saved.designs.length === 1 && saved.designs[0].name === '顧客管理' && saved.designs[0].screens[0].parts.length === 1;
   const typedOk = await checkTypingCases();
   const again = await secondRun();
   console.log('起動し直したときの一覧:', again.names.join('、'));
-  console.log(`起動し直したときの右の欄: 名前「${again.name}」／ 説明「${again.desc}」`);
+  console.log(`起動し直したときの右の欄: 名前「${again.name}」／ 説明「${again.desc}」 ／ 画面の部品: ${again.parts} つ`);
   const want = { name: '顧客管理', description: '' };
   TYPING_CASES.forEach((c) => { want[c.key] += c.text; });
-  const againOk = again.names.join() === want.name && again.name === want.name && again.desc === want.description;
+  const againOk = again.names.join() === want.name && again.name === want.name && again.desc === want.description && again.parts === 1;
   const ok = firstOk && typedOk && againOk;
   console.log(ok ? 'OK' : 'NG');
   process.exit(ok ? 0 : 1);
