@@ -922,3 +922,31 @@ test('ページ送り: 全部の件数が 0 のときは「0 件」とだけ出�
   api.actions.updatePart(api.ui.designId, screen().id, pg.id, { props: { total: '0' } });
   assert.equal(partEl(pg.id).querySelector('em').textContent, '0 件');
 });
+
+// ── 見直し用のエージェントが見つけた不具合（まとめて操作）──
+
+test('まとめて動かす: 範囲の外に出ている吹き出し（読み込んだデータなど）があっても、押した向きと逆へ跳ばない', async (t) => {
+  const { app, api, ids, at, screen } = await bootThree(t);
+  const cid = api.actions.addCallout(api.ui.designId, screen().id, { x: 0, y: 900 }, null);
+  api.store.commit((s) => { s.designs[0].screens[0].callouts[0].y = 1304; }); // 範囲（下の端 1040）の外
+  api.runCommand('selectAll');
+  assert.equal(api.ui.sel.length, 4);
+  const before = ids.map((id) => [at(id).x, at(id).y]);
+  key(app, app.document.body, { key: 'ArrowRight' });
+  assert.deepEqual(plain(ids.map((id) => [at(id).x, at(id).y])), plain(before.map(([x, y]) => [x + 8, y])), '右へ 8 だけ動き、上下には動かない');
+  assert.ok(cid);
+});
+
+test('いくつか選んでいるときに、そのうちの 1 つを（Ctrl なしで）押しただけなら、その 1 つだけを選ぶ（Microsoft Office と同じ）', async (t) => {
+  const { app, api, ids, partEl } = await bootThree(t);
+  api.runCommand('selectAll');
+  mouse(app, partEl(ids[1]), 'mousedown', { clientX: 10, clientY: 10 });
+  mouse(app, app.document, 'mouseup', { clientX: 11, clientY: 10 });
+  assert.deepEqual(plain(api.ui.sel.map((x) => x.id)), [ids[1]]);
+  // ドラッグしたときは、選んだまま全部を動かす
+  api.runCommand('selectAll');
+  mouse(app, partEl(ids[1]), 'mousedown', { clientX: 10, clientY: 10 });
+  mouse(app, app.document, 'mousemove', { clientX: 50, clientY: 10 });
+  mouse(app, app.document, 'mouseup', { clientX: 50, clientY: 10 });
+  assert.equal(api.ui.sel.length, 3);
+});

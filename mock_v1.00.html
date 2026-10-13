@@ -1373,7 +1373,7 @@ function mapModel(state, focusId = null) {
 }
 // 自動で並べる位置。矢印の元を左、引く側を右の列にする（列＝元から何段目か）。
 // つながりのない箱は、つながった箱の下に、名前の順に横に並べる（右の端の列に置くと、図が横に長くなるため。Claude が決めた）
-function mapLayout(model) {
+function mapLayout(model, hOf = () => MAP_H) {
   const forward = mapForwardEdges(model);
   const rank = mapRanks(model, forward);
   const linked = new Set(model.edges.flatMap((e) => [e.from, e.to]));
@@ -1386,9 +1386,15 @@ function mapLayout(model) {
   });
   mapOrderRows(cols, forward);
   const pos = {};
-  cols.forEach((list, c) => list.forEach((n, i) => { pos[n.key] = { x: 40 + c * MAP_COL, y: 40 + i * MAP_ROW }; }));
-  const rows = Math.max(0, ...[...cols.values()].map((list) => list.length));
-  const top = 40 + rows * MAP_ROW + (rows ? 32 : 0);
+  cols.forEach((list, c) => {
+    let y = 40;
+    list.forEach((n) => {
+      pos[n.key] = { x: 40 + c * MAP_COL, y };
+      y += hOf(n.key) + MAP_ROW - MAP_H; // 箱の間は 48
+    });
+  });
+  const bottom = Math.max(0, ...Object.entries(pos).map(([k, p]) => p.y + hOf(k)));
+  const top = bottom ? bottom + MAP_ROW - MAP_H + 32 : 40;
   const perRow = Math.max(4, Math.floor((cols.size * MAP_COL - (MAP_COL - MAP_W)) / (MAP_W + 40)));
   byName.filter((n) => !linked.has(n.key)).forEach((n, i) => {
     pos[n.key] = { x: 40 + (i % perRow) * (MAP_W + 40), y: top + Math.floor(i / perRow) * MAP_ROW };
@@ -2257,6 +2263,9 @@ function clampGroupMove(sc, rects, dx, dy) {
     lo = Math.max(lo, x0 - r.x); hi = Math.min(hi, x1 - r.x - r.w);
     lo2 = Math.max(lo2, y0 - r.y); hi2 = Math.min(hi2, y1 - r.y - r.h);
   });
+  // 範囲の外に出ているもの（読み込んだデータなど）があると、下限が上限より大きくなるので、0 を含む幅に広げる（逆向きに跳ばないように）
+  [lo, lo2] = [Math.min(lo, 0), Math.min(lo2, 0)];
+  [hi, hi2] = [Math.max(hi, 0), Math.max(hi2, 0)];
   return [Math.min(Math.max(dx, lo), hi), Math.min(Math.max(dy, lo2), hi2)].map((v) => (Number.isFinite(v) ? v : 0));
 }
 
@@ -2702,6 +2711,7 @@ const isSelected = (k, id) => ui.sel.some((x) => x.k === k && x.id === id);
 const appEl = () => $('#app');
 
 function renderHome() {
+  const keep = keepScroll(['.home-scroll', '#home-map']);
   appEl().innerHTML = `
     <header class="brandbar">
       <span class="brand">モックイメージメーカー</span><span class="brand-ver">v${APP_VERSION}</span>
@@ -2728,14 +2738,24 @@ function renderHome() {
         <div class="trash" id="home-trash">${renderTrash()}</div>`}
       </section>
     </main>`;
+  keep();
+}
+// 描き直す前のスクロールの位置を控え、描き直した後に戻す関数を返す（同じ id・クラスの要素が描き直した後もあるときだけ戻す）
+function keepScroll(selectors) {
+  const saved = selectors.map((sel) => {
+    const el = $(sel);
+    return el ? [sel, el.scrollLeft, el.scrollTop] : null;
+  }).filter(Boolean);
+  return () => saved.forEach(([sel, left, top]) => {
+    const el = $(sel);
+    if (el) Object.assign(el, { scrollLeft: left, scrollTop: top });
+  });
 }
 
 // つながりの図の HTML。focusId（編集の画面の画面設計）があればその画面設計の図。saved は覚えた箱の位置
 function mapHtml(state, focusId, saved) {
   const model = mapModel(state, focusId);
   if (!model.nodes.length) return '<p class="map-empty">まだ画面設計がありません。</p>';
-  const auto = mapLayout(model);
-  const pos = Object.fromEntries(model.nodes.map((n) => [n.key, { ...(saved[n.key] || auto[n.key]) }]));
   const roles = (k) => {
     if (!focusId || k === 'd:' + focusId) return '';
     const f = 'd:' + focusId;
@@ -2744,25 +2764,45 @@ function mapHtml(state, focusId, saved) {
       : { lookup: 'この画面設計から引いている', related: 'この画面設計のレコードを並べている', link: 'この画面設計から取り込んでいる' }[e.kind]));
     return [...new Set(r)].join('・');
   };
+  const roleOf = Object.fromEntries(model.nodes.map((n) => [n.key, roles(n.key)]));
+  const hOf = (k) => MAP_H + Math.ceil(roleOf[k].length / 16) * 16; // 役目の行は 1 行に 16 字ほど。行の数だけ箱を高くする
+  const pos = mapPlace(model, saved, mapLayout(model, hOf), hOf);
   const nodes = model.nodes.map((n) => {
     const p = pos[n.key];
     const cur = focusId && n.key === 'd:' + focusId;
     const meta = n.design
       ? `${cur ? '' : targetChip(n.design.target)}<span>項目 ${n.design.items.length} 個・画面 ${n.design.screens.length}</span>`
       : '<span>一覧にないデータベース</span>';
-    const role = roles(n.key);
-    p.h = MAP_H + (role ? (role.length > 16 ? 32 : 16) : 0); // 役目の行は 1 行に 16 字ほど
+    const role = roleOf[n.key];
     return `<div class="mnode${n.design ? '' : ' ext'}${cur ? ' cur' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${p.h}px"
       title="${n.design && !cur ? `ドラッグで動かせます。押すと「${esc(n.name)}」を開きます` : 'ドラッグで動かせます'}"><b>${esc(n.name)}${cur ? '（この画面設計）' : ''}</b><div class="mt">${meta}</div>${role ? `<div class="mt role">${esc(role)}</div>` : ''}</div>`;
   }).join('');
   const w = Math.max(860, ...Object.values(pos).map((p) => p.x + MAP_W + 40));
-  const h = Math.max(420, ...Object.values(pos).map((p) => p.y + MAP_H + 60));
+  const h = Math.max(420, ...Object.values(pos).map((p) => p.y + p.h + 60));
   return `<div class="map-inner" id="map-inner" style="width:${w}px;height:${h}px" data-focus="${esc(focusId || '')}">${mapEdgesSvg(model, pos, w, h)}${nodes}</div>`;
+}
+// 箱の位置。覚えた位置の箱はそこに置き、自動で並べる箱が覚えた箱と重なるときは、重ならない所まで 1 段ずつ下へずらす
+// （覚えた箱を数に入れずに並べると、後から足した画面設計の箱が、動かした箱とぴったり重なることがあるため）
+function mapPlace(model, saved, auto, hOf) {
+  const pos = {};
+  const placed = [];
+  const hits = (p) => placed.some((q) => p.x < q.x + MAP_W + 16 && q.x < p.x + MAP_W + 16 && p.y < q.y + q.h + 16 && q.y < p.y + p.h + 16);
+  model.nodes.filter((n) => saved[n.key]).forEach((n) => {
+    pos[n.key] = { x: saved[n.key].x, y: saved[n.key].y, h: hOf(n.key) };
+    placed.push(pos[n.key]);
+  });
+  model.nodes.filter((n) => !saved[n.key]).sort((a, b) => auto[a.key].y - auto[b.key].y || auto[a.key].x - auto[b.key].x).forEach((n) => {
+    const p = { ...auto[n.key], h: hOf(n.key) };
+    while (hits(p)) p.y += MAP_ROW;
+    pos[n.key] = p;
+    placed.push(p);
+  });
+  return pos;
 }
 // 矢印の線。箱の左右（重なって並ぶときは上下）の縁から、相手の箱へ曲線で引き、真ん中に文字を書く。
 // 同じ縁に何本も付くときは、縁に沿ってずらす（mapPorts）。同じ 2 つの箱の間の矢印（行きと帰りなど）は、文字を線の外側に書く
 function mapEdgesSvg(model, pos, w, h) {
-  const box = (k) => ({ ...pos[k], w: MAP_W, h: MAP_H });
+  const box = (k) => ({ ...pos[k], w: MAP_W, h: pos[k].h || MAP_H });
   const pairOf = (e) => [e.from, e.to].sort().join('|');
   const pairs = new Map();
   model.edges.forEach((e) => pairs.set(pairOf(e), [...(pairs.get(pairOf(e)) || []), e]));
@@ -2822,8 +2862,9 @@ function mapEdgeGeometry(a, b, port, others) {
   const [sa] = mapSides(a, b);
   const horiz = sa === 'l' || sa === 'r';
   let [x1, y1, x2, y2] = [0, 0, 0, 0];
-  if (sa === 'r') [x1, y1, x2, y2] = [a.x + a.w, a.y + a.h / 2 + port.from, b.x, b.y + b.h / 2 + port.to];
-  else if (sa === 'l') [x1, y1, x2, y2] = [a.x, a.y + a.h / 2 + port.from, b.x + b.w, b.y + b.h / 2 + port.to];
+  // 左右の縁は、箱の高さによらず上から 32（役目の行のない箱の真ん中）に付ける（同じ段の箱の線をそろえるため）
+  if (sa === 'r') [x1, y1, x2, y2] = [a.x + a.w, a.y + MAP_H / 2 + port.from, b.x, b.y + MAP_H / 2 + port.to];
+  else if (sa === 'l') [x1, y1, x2, y2] = [a.x, a.y + MAP_H / 2 + port.from, b.x + b.w, b.y + MAP_H / 2 + port.to];
   else if (sa === 'b') [x1, y1, x2, y2] = [a.x + a.w / 2 + port.from, a.y + a.h, b.x + b.w / 2 + port.to, b.y];
   else [x1, y1, x2, y2] = [a.x + a.w / 2 + port.from, a.y, b.x + b.w / 2 + port.to, b.y + b.h];
   const off = Math.max(40, Math.abs(horiz ? x2 - x1 : y2 - y1) / 2);
@@ -3212,10 +3253,12 @@ function renderStage() {
 // 編集の画面のつながりの図（この画面設計と、直接つながる画面設計だけ）
 function renderMapView(d) {
   const el = $('#db-view');
+  const keep = $('#design-map') ? keepScroll(['#db-view', '#design-map']) : () => {};
   el.innerHTML = `<div class="itable"><div class="itable-head"><h3>つながりの図（${esc(d.name)}）</h3></div>
     <p class="map-note">「${esc(d.name)}」と、直接つながる画面設計を描きます。箱をドラッグで動かすと、その位置を覚えます。
       ほかの画面設計の箱を押すと、その画面設計を開きます。全部の画面設計の図は、最初の画面の「つながりの図」で見られます。</p>${mapLegendHtml()}
     <div class="map-canvas" id="design-map">${mapHtml(store.state, d.id, d.mapPos || {})}</div></div>`;
+  keep();
 }
 
 // ── データベースの項目の一覧表（真ん中。画像 q19 の案A）──
@@ -4299,7 +4342,7 @@ function onSelectModeMouseDown(ev) {
   const hit = coEl ? { k: 'c', id: coEl.dataset.calloutId } : partEl ? { k: 'p', id: partEl.dataset.partId } : null;
   if (hit) {
     if (additive) { startAdditive(ev, hit); return; }
-    if (ui.sel.length > 1 && isSelected(hit.k, hit.id)) { startGroupDrag(ev, false); return; }
+    if (ui.sel.length > 1 && isSelected(hit.k, hit.id)) { startGroupDrag(ev, false, hit); return; }
     if (hit.k === 'c') startCalloutDrag(ev, hit.id, grip ? grip.dataset.grip : null);
     else startPartDrag(ev, hit.id, grip ? grip.dataset.grip : null);
     return;
@@ -4338,12 +4381,12 @@ function dragAdditive(ev) {
   dragGroup(ev);
 }
 
-function startGroupDrag(ev, copy) {
+function startGroupDrag(ev, copy, hit = null) {
   ev.preventDefault();
   flushSideField();
   blurSidePanel();
   const s = currentScreen();
-  drag = { kind: 'group', copy, sx: ev.clientX, sy: ev.clientY, rects: selRects(s, ui.sel), dx: 0, dy: 0, ghosts: null };
+  drag = { kind: 'group', copy, hit, sx: ev.clientX, sy: ev.clientY, rects: selRects(s, ui.sel), dx: 0, dy: 0, ghosts: null, moved: false };
   document.body.classList.add(copy ? 'copying' : 'moving');
 }
 function selElement(x) {
@@ -4352,6 +4395,7 @@ function selElement(x) {
 // まとめて動かしている間は、要素だけを動かす（保存は放したとき）。複製のときは、写しの影を動かす
 function dragGroup(ev) {
   const s = currentScreen();
+  if (Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) >= 4) drag.moved = true;
   const [dx, dy] = clampGroupMove(s, drag.rects, snapGrid((ev.clientX - drag.sx) / ui.zoom), snapGrid((ev.clientY - drag.sy) / ui.zoom));
   drag.dx = dx;
   drag.dy = dy;
@@ -4380,7 +4424,11 @@ function dragGroup(ev) {
   }
 }
 function endGroupDrag(done) {
-  if (!done.dx && !done.dy) { renderStage(); return; }
+  if (!done.dx && !done.dy) {
+    if (done.hit && !done.copy && !done.moved) { setSelection([done.hit]); return; }
+    renderStage();
+    return;
+  }
   if (done.copy) {
     const out = actions.insertCopies(ui.designId, currentScreen().id, selectionEntries(), done.dx, done.dy);
     if (out.length) { ui.sel = out; updateEditor(); } else renderStage();
@@ -4822,7 +4870,7 @@ function dragMap(ev) {
 }
 function endMapDrag(done) {
   document.body.classList.remove('map-dragging');
-  if (done.moved) { actions.setMapPos(done.focus, done.key, { x: done.x, y: done.y }); return; }
+  if (done.moved && (done.x !== done.x0 || done.y !== done.y0)) { actions.setMapPos(done.focus, done.key, { x: done.x, y: done.y }); return; }
   if (!done.key.startsWith('d:') || done.key === 'd:' + done.focus) return;
   openDesign(done.key.slice(2));
 }

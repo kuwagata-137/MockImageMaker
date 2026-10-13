@@ -889,3 +889,34 @@ test('項目の一覧表で表の項目を選んだとき、右の欄の「設�
   assert.notEqual($(app, '#pf-out').textContent, '（まだありません）');
   assert.ok(row.textContent.replace(/\s+/g, '').includes($(app, '#pf-out').textContent.replace(/\s+/g, '')));
 });
+
+// ── 見直し用のエージェントが見つけた不具合（つながりの図）──
+
+test('つながりの図: 箱を押すときに手が少しぶれても（吸い付けた位置が元と同じなら）、押しただけとして開き、履歴にも積まない', async (t) => {
+  const { app, api, masterId, node } = await bootMap(t);
+  api.goHome();
+  click($(app, '[data-action="home-map"]'));
+  const n = api.store.undoStack.length;
+  dragNode(app, node('d:' + masterId), 3, 1);
+  assert.equal(api.ui.view, 'editor');
+  assert.equal(api.ui.designId, masterId);
+  assert.deepEqual(plain(api.store.state.settings.mapPos), {}, '位置は覚えない');
+  assert.ok(api.store.undoStack.length <= n);
+});
+
+test('つながりの図: 後から足した画面設計の箱は、ドラッグして覚えた箱と重ならない所に置く', async (t) => {
+  const app = bootApp();
+  const api = await app.api();
+  t.after(() => app.close());
+  ['顧客管理', '受注管理', '日報'].forEach((name) => api.actions.createDesign(name, 'kintone'));
+  click($(app, '[data-action="home-map"]'));
+  const first = $$(app, '#home-map .mnode')[0];
+  api.actions.setMapPos(null, first.dataset.node, { x: 760, y: 40 }); // 4 つ目の箱が自動で置かれる所
+  api.actions.createDesign('予定表', 'kintone');
+  const rects = $$(app, '#home-map .mnode').map((e) => [parseFloat(e.style.left), parseFloat(e.style.top), parseFloat(e.style.height)]);
+  assert.equal(rects.length, 4);
+  rects.forEach((a, i) => rects.slice(i + 1).forEach((b) => {
+    const apart = a[0] + 200 <= b[0] || b[0] + 200 <= a[0] || a[1] + a[2] <= b[1] || b[1] + b[2] <= a[1];
+    assert.ok(apart, `重ならない: ${JSON.stringify([a, b])}`);
+  }));
+});
