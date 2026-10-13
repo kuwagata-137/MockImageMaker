@@ -61,8 +61,40 @@ function buildAppMenu() {
         commandItem('部品を貼り付け', 'pastePart'),
         commandItem('部品を複製', 'duplicatePart', 'CmdOrCtrl+D'),
         commandItem('部品を削除', 'deletePart', 'Delete'),
+        // Ctrl+A は上の「すべて選択」と同じキーで、ページが入力欄の外のときだけ部品と吹き出しに使う
+        commandItem('部品と吹き出しをすべて選ぶ', 'selectAll'),
         { type: 'separator' },
         commandItem('番号を振り直す', 'renumber'),
+      ],
+    },
+    {
+      // いくつか選んだ部品と吹き出しを、最初に選んだものに合わせて揃える（メニューバーの「揃える」の組と同じ）
+      label: '揃える',
+      submenu: [
+        commandItem('左に揃える', 'alignLeft'),
+        commandItem('左右の中央に揃える', 'alignHCenter'),
+        commandItem('右に揃える', 'alignRight'),
+        { type: 'separator' },
+        commandItem('上に揃える', 'alignTop'),
+        commandItem('上下の中央に揃える', 'alignVCenter'),
+        commandItem('下に揃える', 'alignBottom'),
+        { type: 'separator' },
+        commandItem('横に等間隔に並べる', 'distributeH'),
+        commandItem('縦に等間隔に並べる', 'distributeV'),
+        { type: 'separator' },
+        commandItem('同じ幅にする', 'sameWidth'),
+        commandItem('同じ高さにする', 'sameHeight'),
+      ],
+    },
+    {
+      // データベースの項目（メニューバーの「項目」の組と、左の一覧のいちばん上と同じ）
+      label: '項目',
+      submenu: [
+        commandItem('データベースの項目を開く', 'openItems'),
+        commandItem('つながりの図を開く', 'openMap'),
+        { type: 'separator' },
+        commandItem('項目を足す', 'addItemMenu'),
+        commandItem('ほかのモックから取り込む', 'importItems'),
       ],
     },
     {

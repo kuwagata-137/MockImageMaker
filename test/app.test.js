@@ -393,3 +393,42 @@ test('右の欄で打ちかけの文字は、高さのドラッグ・一覧へ�
   api.runCommand('goHome');
   assert.equal(d().screens[0].name, '新規登録');
 });
+
+test('アプリのメニュー（main.js）の命令は、どれもアプリの画面の runCommand で受ける名前', () => {
+  const root = path.join(__dirname, '..');
+  const main = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
+  const html = fs.readFileSync(path.join(root, JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).build.files.find((f) => f.endsWith('.html'))), 'utf8');
+  const cmds = [...main.matchAll(/commandItem\('[^']+', '([A-Za-z]+)'/g)].map((m) => m[1]);
+  ['selectAll', 'alignLeft', 'sameHeight', 'openItems', 'openMap', 'addItemMenu', 'importItems'].forEach((c) => assert.ok(cmds.includes(c), `メニューに ${c}`));
+  const body = html.slice(html.indexOf('function runCommand('), html.indexOf('const ALIGN_COMMANDS = {'));
+  const alignNames = html.match(/const ALIGN_COMMANDS = \{([\s\S]*?)\};/)[1].split(',').map((s) => s.split(':')[0].trim());
+  cmds.forEach((c) => assert.ok(body.includes(`case '${c}'`) || alignNames.includes(c), `runCommand が ${c} を受ける`));
+});
+
+test('アプリのメニューから: 部品をすべて選んで揃える・項目の一覧表とつながりの図を開く・取り込む窓を開く', async (t) => {
+  const st = createMainStorage();
+  t.after(() => st.cleanup());
+  const { app, api } = await boot({ storage: st });
+  t.after(() => app.close());
+  const did = api.actions.createDesign('顧客管理', 'kintone');
+  api.openDesign(did);
+  const sid = api.currentScreen().id;
+  [[160, 48], [40, 160]].forEach(([x, y]) => api.actions.addPart(did, sid, 'text1', { x, y }));
+  app.menuCommand('selectAll');
+  assert.equal(api.ui.sel.length, 2);
+  app.menuCommand('alignLeft');
+  assert.deepEqual([...api.currentScreen().parts].map((p) => p.x), [160, 160], '最初に選んだもの（上から下の順の最初）に合わせる');
+  app.menuCommand('openItems');
+  assert.equal(api.ui.panel, 'items');
+  app.menuCommand('addItemMenu');
+  assert.ok($(app, '#db-view .pop-menu'), '項目を足す種類のメニュー');
+  app.menuCommand('openMap');
+  assert.equal(api.ui.panel, 'map');
+  app.menuCommand('importItems');
+  assert.ok($(app, '.modal.wide'), 'ほかのモックから取り込む窓');
+  click($(app, '.modal [data-dlg="cancel"]'));
+  await new Promise((r) => setTimeout(r, 0));
+  // 保存が済むのを待ってから閉じる（閉じた後に保存の処理が画面を触らないように）
+  await api.store.adapter.pending;
+  await st.whenIdle();
+});
