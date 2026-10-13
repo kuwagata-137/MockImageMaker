@@ -732,3 +732,103 @@ test('読み込み: 吹き出しの足りない値を補い、知らない色・
   assert.equal(c.length, 1);
   assert.deepEqual(plain([c[0].x, c[0].w, c[0].h, c[0].color, c[0].tip, c[0].target, c[0].extra]), [-16, 200, 80, 'yellow', 'dot', null, 1]);
 });
+
+// ── まとめて選ぶ・動かす・揃える（画像 q28）──
+
+// 3 つの部品（x がばらばら）を置く
+async function bootThree(t) {
+  const ctx = await bootEditor(t);
+  const { api, screen } = ctx;
+  const did = api.ui.designId;
+  const ids = [[160, 48, 320], [40, 160, 240], [96, 272, 400]].map(([x, y, w]) => {
+    const id = api.actions.addPart(did, screen().id, 'text1', { x, y });
+    const p = screen().parts.find((q) => q.id === id);
+    api.actions.movePart(did, screen().id, id, { ...p, x, y, w });
+    return id;
+  });
+  api.selectPart(null);
+  return { ...ctx, did, ids, at: (id) => screen().parts.find((p) => p.id === id) };
+}
+const ctrlClick = (app, el) => {
+  mouse(app, el, 'mousedown', { clientX: 10, clientY: 10, ctrlKey: true });
+  mouse(app, app.document, 'mouseup', { clientX: 10, clientY: 10, ctrlKey: true });
+};
+
+test('まとめて選ぶ: Ctrl を押しながら押すと足す・もう一度押すと外す。右の欄に「揃える」を出し、最初に選んだものに「基準」の札', async (t) => {
+  const { app, api, ids, partEl } = await bootThree(t);
+  ctrlClick(app, partEl(ids[1]));
+  ctrlClick(app, partEl(ids[0]));
+  assert.deepEqual(plain(api.ui.sel.map((x) => x.id)), plain([ids[1], ids[0]]));
+  assert.equal(api.ui.partId, null, '2 つ選んでいるときは partId は空');
+  assert.match($(app, '#side-settings .panel-title').textContent, /2 個を選んでいます ?（部品 2・吹き出し 0）/);
+  assert.ok(partEl(ids[1]).classList.contains('sel-ref'), '最初に選んだものが基準');
+  assert.ok($(app, '#stage .sel-box'), '全体を点線で囲む');
+  assert.equal($$(app, '#stage .grip').length, 0, '縁のつまみは出さない');
+  assert.equal($(app, '#toolbar [data-action="align-left"]').disabled, false);
+  assert.equal($(app, '#toolbar [data-action="distribute-h"]').disabled, true, '等間隔は 3 つから');
+  assert.equal($$(app, '.ptable tr.sel').length, 2, '一覧表の行も 2 つ選んだ印');
+  ctrlClick(app, partEl(ids[1]));
+  assert.equal(api.ui.partId, ids[0], 'もう一度押すと外す');
+  key(app, app.document.body, { key: 'a', ctrlKey: true });
+  assert.equal(api.ui.sel.length, 3, 'Ctrl+A で全部');
+});
+
+test('揃える: 基準（最初に選んだもの）に合わせる。等間隔・同じ幅。元に戻すで 1 回で戻る', async (t) => {
+  const { app, api, ids, at } = await bootThree(t);
+  api.ui.sel = [{ k: 'p', id: ids[0] }, { k: 'p', id: ids[1] }, { k: 'p', id: ids[2] }];
+  api.runCommand('alignLeft');
+  assert.deepEqual(plain(ids.map((id) => at(id).x)), [160, 160, 160], 'いちばん左（40）ではなく、基準の 160 に合わせる');
+  assert.ok(app, 'メニューバーのボタンは 1 つ目のテストで確かめた');
+  api.store.undo();
+  assert.deepEqual(plain(ids.map((id) => at(id).x)), [160, 40, 96]);
+  api.runCommand('alignRight');
+  assert.deepEqual(plain(ids.map((id) => at(id).x + at(id).w)), [480, 480, 480]);
+  api.runCommand('sameWidth');
+  assert.deepEqual(plain(ids.map((id) => at(id).w)), [320, 320, 320]);
+  api.actions.movePart(api.ui.designId, api.currentScreen().id, ids[1], { ...at(ids[1]), y: 120 });
+  api.runCommand('distributeV');
+  const ys = ids.map((id) => at(id).y);
+  assert.equal(ys[1] - (ys[0] + 64), ys[2] - (ys[1] + 64), '縦の間が等しい');
+  assert.deepEqual([ys[0], ys[2]], [48, 272], '両端は動かさない');
+});
+
+test('まとめて動かす・消す・番号: 矢印のキーは全部を動かし、端に当たったところで止める', async (t) => {
+  const { app, api, ids, at, screen } = await bootThree(t);
+  const cid = api.actions.addCallout(api.ui.designId, screen().id, { x: -232, y: 48 }, ids[0]);
+  api.runCommand('selectAll');
+  assert.equal(api.ui.sel.length, 4, '部品 3 と吹き出し 1');
+  key(app, app.document.body, { key: 'ArrowLeft' });
+  assert.deepEqual(plain([at(ids[1]).x, screen().callouts[0].x]), [32, -240], 'まとめて 8 ドット');
+  key(app, app.document.body, { key: 'ArrowLeft' });
+  assert.equal(screen().callouts[0].x, -240, '吹き出しが範囲の端に当たったので、全部止める');
+  assert.equal(at(ids[1]).x, 32);
+  api.ui.sel = ids.map((id) => ({ k: 'p', id }));
+  api.runCommand('numberOff');
+  assert.deepEqual(plain(ids.map((id) => at(id).no)), [null, null, null]);
+  api.runCommand('numberOn');
+  assert.deepEqual(plain(ids.map((id) => at(id).no)), [1, 2, 3], '上から下の順に付ける');
+  api.ui.sel = [{ k: 'p', id: ids[0] }, { k: 'c', id: cid }];
+  key(app, app.document.body, { key: 'Delete' });
+  assert.equal(screen().parts.length, 2);
+  assert.equal(screen().callouts.length, 0);
+  api.store.undo();
+  assert.equal(screen().callouts[0].target, ids[0], '元に戻すで、つながりも戻る');
+});
+
+test('まとめてコピー・貼り付け: 一緒にコピーした部品につないだ吹き出しは、貼り付けた部品につなぐ', async (t) => {
+  const { api, ids, screen } = await bootThree(t);
+  api.actions.addCallout(api.ui.designId, screen().id, { x: -232, y: 48 }, ids[0]);
+  const cid = screen().callouts[0].id;
+  api.ui.sel = [{ k: 'p', id: ids[0] }, { k: 'c', id: cid }];
+  api.runCommand('copyPart');
+  api.runCommand('pastePart');
+  assert.equal(screen().parts.length, 4);
+  assert.equal(screen().callouts.length, 2);
+  const newPart = screen().parts[3];
+  assert.equal(screen().callouts[1].target, newPart.id, '貼り付けた部品へつなぐ');
+  assert.deepEqual(plain(api.ui.sel.map((x) => x.k)), ['p', 'c'], '貼り付けたものを選ぶ');
+  assert.notEqual(newPart.itemId, screen().parts[0].itemId, '同じ画面なので項目も写す');
+  api.ui.sel = [{ k: 'c', id: cid }];
+  api.runCommand('duplicatePart');
+  assert.equal(screen().callouts[2].target, ids[0], '吹き出しだけを複製すると、元の部品につないだまま');
+});

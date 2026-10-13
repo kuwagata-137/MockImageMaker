@@ -294,6 +294,22 @@ body.placing,body.placing *{cursor:copy!important}
 body.linking .co-handle{pointer-events:none}
 body.linking,body.linking *{cursor:crosshair!important}
 .co-swatch{display:inline-block;width:12px;height:12px;border-radius:3px;border:1.5px solid;vertical-align:-1px;margin-right:3px}
+/* まとめて選んだとき（画像 q28）: それぞれに青い枠、全体に点線の枠、基準（最初に選んだもの）に「基準」の札 */
+.sel-box{position:absolute;border:1.5px dashed #2563eb;pointer-events:none;z-index:2}
+.part.sel-ref,.callout.sel-ref{outline:3px solid #1d4ed8}
+.part.sel-ref::before,.callout.sel-ref::before{content:'基準';position:absolute;left:-3px;top:-24px;background:#1d4ed8;color:#fff;font-size:11px;font-weight:700;line-height:1.5;padding:0 6px;border-radius:4px;z-index:5;white-space:nowrap}
+.band{position:absolute;border:1.5px dashed #2563eb;background:rgba(37,99,235,.08);pointer-events:none;z-index:6}
+.ghost-copy{opacity:.55;pointer-events:none}
+body.copying,body.copying *{cursor:copy!important}
+.ms-list{font-size:12px;line-height:1.8;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;background:#f8fafc;margin-bottom:10px;max-height:120px;overflow:auto}
+.ms-list span{display:inline-flex;align-items:center;gap:4px;margin-right:10px;white-space:nowrap}
+.ms-list b{font-size:10px;color:#fff;background:#1d4ed8;border-radius:3px;padding:0 4px}
+.ms-sub{font-size:11.5px;font-weight:700;color:#475569;margin:10px 0 6px}
+.ms-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.ms-btns button{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid #cbd5e1;border-radius:6px;padding:5px 2px;font-size:10.5px;background:#fff;color:#334155;cursor:pointer}
+.ms-btns button:hover{background:#eff6ff;border-color:#93c5fd}
+.ms-btns button:disabled{opacity:.4;cursor:default;background:#fff}
+.ms-btns svg{display:block}
 .ptable{background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px 18px;flex-shrink:0;font-size:14px;color:#1e293b}
 .ptable h3{font-size:16px;color:#0f172a;margin-bottom:10px}
 .ptable table{border-collapse:collapse;width:100%}
@@ -658,6 +674,39 @@ function resizedCallout(r0, grip, dx, dy, screen) {
   if (grip.includes('s')) bt = Math.max(Math.min(b.y1, snapGrid(bt + dy)), t + CALLOUT_MIN);
   return { x: l, y: t, w: r - l, h: bt - t };
 }
+// まとめて揃える（画像 q28）。rects は [{ k, id, x, y, w, h }]（選んだ順）。基準はいちばん初めに選んだもの（ユーザーが選んだ）。
+// how: left・hcenter・right・top・vcenter・bottom（基準の端・真ん中に合わせる）、hdist・vdist（両端を動かさずに間を等しくする。3 つ以上）、
+// width・height（基準と同じ幅・高さにする）。戻り値は動かした後の位置と大きさ（マス目と範囲に収めるのは呼ぶ側）
+function alignedRects(rects, how) {
+  if (rects.length < 2) return rects;
+  const ref = rects[0];
+  const out = rects.map((r) => ({ ...r }));
+  const each = (fn) => out.forEach((r, i) => { if (i) fn(r); });
+  switch (how) {
+    case 'left': each((r) => { r.x = ref.x; }); break;
+    case 'hcenter': each((r) => { r.x = ref.x + ref.w / 2 - r.w / 2; }); break;
+    case 'right': each((r) => { r.x = ref.x + ref.w - r.w; }); break;
+    case 'top': each((r) => { r.y = ref.y; }); break;
+    case 'vcenter': each((r) => { r.y = ref.y + ref.h / 2 - r.h / 2; }); break;
+    case 'bottom': each((r) => { r.y = ref.y + ref.h - r.h; }); break;
+    case 'width': each((r) => { r.w = ref.w; }); break;
+    case 'height': each((r) => { r.h = ref.h; }); break;
+    case 'hdist': case 'vdist': {
+      if (out.length < 3) return out;
+      const [pos, size] = how === 'hdist' ? ['x', 'w'] : ['y', 'h'];
+      const order = [...out].sort((a, b) => a[pos] - b[pos]);
+      const first = order[0];
+      const last = order[order.length - 1];
+      const total = order.reduce((s, r) => s + r[size], 0);
+      const gap = (last[pos] + last[size] - first[pos] - total) / (order.length - 1);
+      let at = first[pos];
+      order.forEach((r) => { r[pos] = at; at += r[size] + gap; });
+      break;
+    }
+  }
+  return out;
+}
+
 // 吹き出しから部品への線の両端（吹き出しの縁の点 → 部品のいちばん近い点）。重なっているときは null
 function calloutLine(c, part) {
   if (!part) return null;
@@ -1643,6 +1692,92 @@ const actions = {
     });
   },
 
+  // ── まとめて操作（画像 q28）。sel は [{ k: 'p'（部品）か 'c'（吹き出し）, id }] ──
+  // rects（[{ k, id, x, y, w, h }]）の位置と大きさにする。部品は画面の中、吹き出しは置ける範囲の中に収める。何も変わらなければ履歴に積まない
+  setRects(designId, screenId, rects) {
+    const sc = findScreen(designId, screenId);
+    if (!sc) return false;
+    const next = rects.map((r) => {
+      const cur = r.k === 'p' ? findPart(sc, r.id) : findCallout(sc, r.id);
+      if (!cur) return null;
+      const fit = r.k === 'p' ? fitRect(r, sc) : fitCallout(r, sc);
+      return fit.x === cur.x && fit.y === cur.y && fit.w === cur.w && fit.h === cur.h ? null : { k: r.k, id: r.id, fit };
+    }).filter(Boolean);
+    if (!next.length) return false;
+    return mutateScreen(designId, screenId, (s) => {
+      next.forEach(({ k, id, fit }) => Object.assign(k === 'p' ? findPart(s, id) : findCallout(s, id), fit));
+    });
+  },
+  // まとめて dx・dy（ドット）動かす。どれかが画面（吹き出しは範囲）の端に当たるときは、そこで止める（並びをくずさないため）
+  moveMany(designId, screenId, sel, dx, dy) {
+    const sc = findScreen(designId, screenId);
+    if (!sc) return false;
+    const rects = selRects(sc, sel);
+    const [ddx, ddy] = clampGroupMove(sc, rects, snapGrid(dx), snapGrid(dy));
+    if (!ddx && !ddy) return false;
+    return this.setRects(designId, screenId, rects.map((r) => ({ ...r, x: r.x + ddx, y: r.y + ddy })));
+  },
+  alignMany(designId, screenId, sel, how) {
+    const sc = findScreen(designId, screenId);
+    if (!sc) return false;
+    return this.setRects(designId, screenId, alignedRects(selRects(sc, sel), how));
+  },
+  // まとめて消す。消した部品につないでいた吹き出しは残し、線だけを外す
+  deleteMany(designId, screenId, sel) {
+    const sc = findScreen(designId, screenId);
+    const parts = new Set(sel.filter((x) => x.k === 'p' && findPart(sc, x.id)).map((x) => x.id));
+    const cos = new Set(sel.filter((x) => x.k === 'c' && findCallout(sc, x.id)).map((x) => x.id));
+    if (!parts.size && !cos.size) return false;
+    return mutateScreen(designId, screenId, (s) => {
+      s.parts = s.parts.filter((p) => !parts.has(p.id));
+      s.callouts = s.callouts.filter((c) => !cos.has(c.id));
+      s.callouts.forEach((c) => { if (parts.has(c.target)) c.target = null; });
+    });
+  },
+  // まとめて番号を付ける（付けるときは、上から下・左から右の順に、その画面の次の番号から）・外す
+  numberMany(designId, screenId, sel, on) {
+    const sc = findScreen(designId, screenId);
+    const ids = sel.filter((x) => x.k === 'p').map((x) => findPart(sc, x.id)).filter((p) => p && (on ? p.no == null : p.no != null))
+      .sort((a, b) => a.y - b.y || a.x - b.x).map((p) => p.id);
+    if (!ids.length) return false;
+    return mutateScreen(designId, screenId, (s) => {
+      ids.forEach((id) => { const p = findPart(s, id); p.no = on ? nextPartNo(s) : null; });
+    });
+  },
+  // コピーした部品と吹き出しを貼り付ける。entries は { parts: [{ part, item }], callouts: [吹き出し] }。dx・dy だけずらして置く。
+  // 戻り値は貼り付けたものの sel。部品の項目の扱いは insertPartCopy と同じ（同じ画面に同じ項目を 2 回は置かない）。
+  // 吹き出しのつなぐ部品は、一緒に貼り付けた部品なら新しい部品へ、この画面にある部品ならそのまま、ほかは外す
+  insertCopies(designId, screenId, entries, dx, dy) {
+    const sc = findScreen(designId, screenId);
+    const d = findDesign(store.state, designId);
+    if (!sc || !isObj(entries)) return [];
+    const work = clone(sc);
+    const newItems = [];
+    const map = {};
+    const out = [];
+    (entries.parts || []).forEach(({ part: src, item: srcItem }) => {
+      const r = preparePartCopy(d, work, newItems, src, { x: src.x + dx, y: src.y + dy }, srcItem);
+      if (!r) return;
+      map[src.id] = r.part.id;
+      work.parts.push(r.part);
+      if (r.item) newItems.push(r.item);
+      out.push({ k: 'p', id: r.part.id });
+    });
+    const newCallouts = (entries.callouts || []).map((c) => {
+      const target = map[c.target] || (findPart(sc, c.target) ? c.target : null);
+      const nc = normalizeCallout({ ...clone(c), id: newId('k'), target, ...fitCallout({ ...c, x: c.x + dx, y: c.y + dy }, sc) });
+      out.push({ k: 'c', id: nc.id });
+      return nc;
+    });
+    if (!out.length) return [];
+    mutateScreen(designId, screenId, (s, dd) => {
+      dd.items.push(...newItems);
+      s.parts.push(...work.parts.filter((p) => !s.parts.some((x) => x.id === p.id)));
+      s.callouts.push(...newCallouts);
+    });
+    return out;
+  },
+
   // ── 吹き出し ──
   // at は吹き出しの左上（画面の左上から）。target はつなぐ部品の id。戻り値は新しい吹き出しの id
   addCallout(designId, screenId, at, target = null) {
@@ -1682,28 +1817,9 @@ const actions = {
   // この画面にもうあれば、項目も写して新しい項目にする（同じ項目を 1 つの画面に 2 回は置かないため）。
   // srcItem はコピーしたときの項目の写し。ほかの画面設計へ貼り付けて、その項目がないときに、同じ id で足す
   insertPartCopy(designId, screenId, src, at, srcItem = null) {
-    const sc = findScreen(designId, screenId);
-    const d = findDesign(store.state, designId);
-    if (!sc || !isObj(src)) return null;
-    const p = { ...clone(src), id: newId('p'), ...fitRect({ ...src, ...freeSpot(sc, fitRect({ ...src, ...at }, sc)) }, sc) };
-    p.no = src.no != null ? nextPartNo(sc) : null;
-    let newItem = null;
-    if (p.itemId && isItemPart(p)) {
-      // 取り込んだ項目の部品を、取り込んだ元の画面設計へ貼り付けるときは、元の項目を指す
-      const home = isObj(srcItem) && srcItem.link && srcItem.link.designId === designId ? findItem(d, srcItem.link.itemId) : null;
-      if (home && !findItem(d, p.itemId)) p.itemId = home.id;
-      const item = findItem(d, p.itemId);
-      if (!item && isObj(srcItem) && srcItem.id === p.itemId) newItem = clone(srcItem);
-      else if (item && oncePerScreen(item.type) && itemOnScreen(sc, item.id)) {
-        newItem = { ...clone(item), id: newId('i') };
-        p.itemId = newItem.id;
-      }
-    }
-    mutateScreen(designId, screenId, (s, dd) => {
-      if (newItem) dd.items.push(newItem);
-      s.parts.push(p);
-    });
-    return p.id;
+    if (!isObj(src)) return null;
+    const out = this.insertCopies(designId, screenId, { parts: [{ part: { ...src, x: at.x, y: at.y }, item: srcItem }] }, 0, 0);
+    return out.length ? out[0].id : null;
   },
   renumberParts(designId, screenId) {
     return mutateScreen(designId, screenId, (sc) => { sc.parts = renumberedParts(sc.parts); });
@@ -1849,6 +1965,49 @@ function mutatePart(designId, screenId, partId, fn) {
   return mutateScreen(designId, screenId, (sc, d) => fn(findPart(sc, partId), sc, d));
 }
 
+// 貼り付ける部品 1 つの下ごしらえ（commit はしない）。sc は貼り付ける先の画面（ここまでに貼り付けた部品を足した写し）、
+// pendingItems はここまでに作った項目。戻り値 { part, item（新しく足す項目。なければ null）}
+function preparePartCopy(d, sc, pendingItems, src, at, srcItem) {
+  if (!isObj(src)) return null;
+  const p = { ...clone(src), id: newId('p'), ...fitRect({ ...src, ...freeSpot(sc, fitRect({ ...src, ...at }, sc)) }, sc) };
+  p.no = src.no != null ? nextPartNo(sc) : null;
+  let newItem = null;
+  const find = (id) => findItem(d, id) || pendingItems.find((it) => it.id === id) || null;
+  if (p.itemId && isItemPart(p)) {
+    // 取り込んだ項目の部品を、取り込んだ元の画面設計へ貼り付けるときは、元の項目を指す
+    const home = isObj(srcItem) && srcItem.link && srcItem.link.designId === d.id ? findItem(d, srcItem.link.itemId) : null;
+    if (home && !find(p.itemId)) p.itemId = home.id;
+    const item = find(p.itemId);
+    if (!item && isObj(srcItem) && srcItem.id === p.itemId) newItem = clone(srcItem);
+    else if (item && oncePerScreen(item.type) && itemOnScreen(sc, item.id)) {
+      newItem = { ...clone(item), id: newId('i') };
+      p.itemId = newItem.id;
+    }
+  }
+  return { part: p, item: newItem };
+}
+
+// 選んだものの位置と大きさ（選んだ順）。見つからないものは除く
+function selRects(sc, sel) {
+  return sel.map((x) => {
+    const o = x.k === 'p' ? findPart(sc, x.id) : findCallout(sc, x.id);
+    return o ? { k: x.k, id: x.id, x: o.x, y: o.y, w: o.w, h: o.h } : null;
+  }).filter(Boolean);
+}
+// まとめて動かす幅を、部品は画面の中、吹き出しは範囲の中に収まるところまでにする
+function clampGroupMove(sc, rects, dx, dy) {
+  const maxW = Math.floor(sc.width / GRID) * GRID;
+  const maxH = Math.floor(sc.height / GRID) * GRID;
+  const b = calloutBounds(sc);
+  let [lo, hi, lo2, hi2] = [-Infinity, Infinity, -Infinity, Infinity];
+  rects.forEach((r) => {
+    const [x0, y0, x1, y1] = r.k === 'p' ? [0, 0, maxW, maxH] : [b.x0, b.y0, b.x1, b.y1];
+    lo = Math.max(lo, x0 - r.x); hi = Math.min(hi, x1 - r.x - r.w);
+    lo2 = Math.max(lo2, y0 - r.y); hi2 = Math.min(hi2, y1 - r.y - r.h);
+  });
+  return [Math.min(Math.max(dx, lo), hi), Math.min(Math.max(dy, lo2), hi2)].map((v) => (Number.isFinite(v) ? v : 0));
+}
+
 // 設定の欄の変更を、項目（nameKey は 'name'）か、項目を指さない部品（nameKey は 'label'）に書く
 function applyFieldPatch(target, nameKey, patch) {
   if ('label' in patch) target[nameKey] = patch.label;
@@ -1985,9 +2144,11 @@ function targetChip(target) {
 
 // 画面を、編集の画面と同じ HTML で描く（縮小画像にも使う）。selectedId の部品には、選んだ印と縁のつまみを付ける。
 // marks のとき（編集の画面）は、項目を消した後に残った部品などに小さな札を付ける（書き出しと縮小画像には付けない）
-function screenHtml(design, screen, { grid = false, height = screen.height, selectedId = null, marks = false } = {}) {
+// selected（部品の id の Set）を渡すと、それらに選んだ印を付ける。縁のつまみは gripId の部品だけ（1 つだけ選んだとき）
+function screenHtml(design, screen, { grid = false, height = screen.height, selectedId = null, selected = null, gripId = selectedId, marks = false } = {}) {
   const band = screen.showHeader ? `<div class="screen-band">${esc(design.name)} ／ ${esc(screen.name)}</div>` : '';
-  const parts = screen.parts.map((p) => partHtml(resolvePart(design, p), p.id === selectedId, marks)).join('');
+  const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
+  const parts = screen.parts.map((p) => partHtml(resolvePart(design, p), isSel(p.id), marks, p.id === gripId)).join('');
   return `<div class="screen${grid ? ' grid' : ''}" style="width:${screen.width}px;height:${height}px">${band}${parts}</div>`;
 }
 
@@ -1995,12 +2156,12 @@ function screenHtml(design, screen, { grid = false, height = screen.height, sele
 const GRIPS = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 const partNoHtml = (p, cls = '') => (p.no != null ? `<span class="pno${cls}">${p.no}</span>` : '');
 
-function partHtml(p, selected = false, marks = false) {
+function partHtml(p, selected = false, marks = false, withGrips = selected) {
   const t = partType(p.type);
   const cls = ['part', 'pt-' + (t ? p.type : 'unknown')];
   if (t && t.input && p.labelPos === 'left') cls.push('lab-left');
   if (selected) cls.push('sel');
-  const grips = selected ? GRIPS.map((g) => `<span class="grip g-${g}" data-grip="${g}"></span>`).join('') : '';
+  const grips = selected && withGrips ? GRIPS.map((g) => `<span class="grip g-${g}" data-grip="${g}"></span>`).join('') : '';
   // 読み込んだデータが思わぬ形でも、ほかの部品と画面は描けるように、この部品だけを「描けない部品」の箱にする
   let inner;
   try {
@@ -2229,13 +2390,14 @@ function partFieldHtml(p, t) {
 
 // 部品の設定の一覧表。editor のときは、行を押すとその部品を選べるようにし、番号の付いた部品がなければ案内を出す。
 // 書き出し（editor でないとき）では、番号の付いた部品がなければ表を出さない
-function partTableHtml(design, screen, { editor = false, selectedId = null } = {}) {
+function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null } = {}) {
+  const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
   const rows = tableRows(screen, design, store.state);
   if (!rows.length && !editor) return '';
   const width = screen.tablePos === 'bottom' ? screen.width : TABLE_W;
   const body = rows.length
     ? `<table><thead><tr><th class="c-no">番号</th><th class="c-label">項目名</th><th class="c-kind">部品の種類</th><th>設定</th></tr></thead><tbody>${rows.map((r) => `
-        <tr${editor ? ` data-action="select-part" data-id="${esc(r.id)}"` : ''}${r.id === selectedId || r.branch ? ` class="${[r.id === selectedId ? 'sel' : '', r.branch ? 'br' : ''].join(' ').trim()}"` : ''}>
+        <tr${editor ? ` data-action="select-part" data-id="${esc(r.id)}"` : ''}${isSel(r.id) || r.branch ? ` class="${[isSel(r.id) ? 'sel' : '', r.branch ? 'br' : ''].join(' ').trim()}"` : ''}>
           <td class="c-no">${r.no}</td><td>${esc(r.label)}</td><td>${esc(r.kind)}</td><td class="c-set">${esc(r.setting)}</td></tr>`).join('')}</tbody></table>`
     : '<div class="ptable-empty">番号の付いた部品はまだありません。<br>部品を置くと、ここに番号ごとの設定が並びます。<br>（この案内は書き出しには出ません）</div>';
   return `<div class="ptable" style="width:${width}px"><h3>部品の設定</h3>${body}</div>`;
@@ -2550,7 +2712,10 @@ function toolbarHtml() {
       <div class="stack">
       <button class="tbtn" data-action="duplicate-part" id="tb-dup" title="選んだ部品を複製します（Ctrl+D）">❐ 複製</button>
       <button class="tbtn" data-action="delete-part" id="tb-del" title="選んだ部品を消します（Delete）">✕ 削除</button></div>
+      <div class="stack"><button class="tbtn" data-action="select-all" id="tb-select-all" data-screen-only title="この画面の部品と吹き出しを、すべて選びます（Ctrl+A）">☐ すべて選ぶ</button></div>
       <button class="bigbtn" data-action="renumber" id="tb-renumber" title="赤い番号を、上から下・左から右の順に 1 から付け直します"><span class="ico">①</span>番号を<br>振り直す</button>`),
+    group('揃える', ALIGN_BUTTONS.map(([cmd, action, label, svg]) =>
+      `<button class="bigbtn" data-action="${action}" data-align-cmd="${cmd}" title="選んだものを揃えます（最初に選んだものに合わせる）">${alignSvg(svg)}${label.replace('\n', '<br>')}</button>`).join('')),
     group('項目', `
       <button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="データベースの項目の一覧表に項目を足します"><span class="ico">＋</span>項目を<br>足す</button>
       <button class="bigbtn" data-action="import-items" id="tb-import" title="ほかのモック（画面設計）の項目を、つなげたまま取り込みます"><span class="ico">⇩</span>ほかのモック<br>から取り込む</button>`),
@@ -2592,7 +2757,11 @@ function updateToolbarState() {
   const onScreen = ui.panel === 'screen';
   $('#tb-undo').disabled = !store.canUndo();
   $('#tb-redo').disabled = !store.canRedo();
-  ['#tb-copy', '#tb-dup', '#tb-del'].forEach((sel) => { $(sel).disabled = !onScreen || !ui.partId; });
+  ['#tb-copy', '#tb-dup', '#tb-del'].forEach((sel) => { $(sel).disabled = !onScreen || !ui.sel.length; });
+  // 揃えるのは 2 つ以上、等間隔は 3 つ以上選んだとき
+  document.querySelectorAll('#toolbar [data-align-cmd]').forEach((b) => {
+    b.disabled = !onScreen || ui.sel.length < (b.dataset.alignCmd.startsWith('distribute') ? 3 : 2);
+  });
   $('#tb-paste').disabled = !onScreen || !ui.clipboard;
   $('#tb-renumber').disabled = !onScreen || !s || !s.parts.some((p) => p.no != null);
   $('#tb-mode-select').classList.toggle('on', ui.mode === 'select');
@@ -2617,19 +2786,21 @@ function renderStage() {
   const s = currentScreen();
   const h = ui.previewHeight == null ? s.height : ui.previewHeight;
   const Z = CALLOUT_ZONE;
+  const selPartIds = new Set(ui.sel.filter((x) => x.k === 'p').map((x) => x.id));
   $('#stage').innerHTML = `
     <div class="stage-row ${s.tablePos === 'bottom' ? 'bottom' : 'right'}">
       <div class="co-zone" id="co-zone" style="padding:${Z}px" title="">
         <span class="co-zone-cap">吹き出しを置ける範囲（画面のまわり ${Z} ドット）</span>
         <div class="screen-frame" style="width:${s.width}px">
-          ${screenHtml(d, s, { grid: true, height: h, selectedId: ui.partId, marks: true })}
+          ${screenHtml(d, s, { grid: true, height: h, selected: selPartIds, gripId: ui.partId, marks: true })}
           <div class="screen-resize" data-drag="resize" title="ドラッグで画面の高さを変えます（8 ドットずつ。機器の 1 画面分と、いちばん下の部品より低くはなりません）"><span></span></div>
           <div class="screen-size">${DEVICES[s.device].label}・${s.width} × ${h}</div>
         </div>
         ${calloutsHtml(s)}
       </div>
-      ${partTableHtml(d, s, { editor: true, selectedId: ui.partId })}
+      ${partTableHtml(d, s, { editor: true, selected: selPartIds })}
     </div>`;
+  markMultiSelection(s);
   const hv = $('#side-height');
   if (hv) hv.textContent = `${h} ドット`;
   applyZoom();
@@ -2705,6 +2876,25 @@ function addItemMenuHtml() {
     const t = partType(type);
     return `<button role="menuitem" data-action="add-item" data-type="${type}"><i>${t.icon}</i>${esc(t.name)}</button>`;
   }).join('')}</div>`;
+}
+
+// いくつか選んだときは、全体を囲む点線の枠と、基準（最初に選んだもの）の「基準」の札を付ける
+function markMultiSelection(s) {
+  if (ui.sel.length < 2) return;
+  const rects = selRects(s, ui.sel);
+  if (!rects.length) return;
+  const els = (x) => [...document.querySelectorAll(x.k === 'p' ? '#stage .part' : '#stage .callout')].find((e) => (x.k === 'p' ? e.dataset.partId : e.dataset.calloutId) === x.id);
+  const ref = els(ui.sel[0]);
+  if (ref) ref.classList.add('sel-ref');
+  const zone = $('#co-zone');
+  if (!zone) return;
+  const Z = CALLOUT_ZONE;
+  const [x0, y0] = [Math.min(...rects.map((r) => r.x)), Math.min(...rects.map((r) => r.y))];
+  const [x1, y1] = [Math.max(...rects.map((r) => r.x + r.w)), Math.max(...rects.map((r) => r.y + r.h))];
+  const box = document.createElement('div');
+  box.className = 'sel-box';
+  Object.assign(box.style, { left: Z + x0 - 4 + 'px', top: Z + y0 - 4 + 'px', width: x1 - x0 + 8 + 'px', height: y1 - y0 + 8 + 'px' });
+  zone.appendChild(box);
 }
 
 // 吹き出しと線（画面に重ねた SVG）。overrides（{ id: rect }）を渡すと、ドラッグ中の部品・吹き出しをその位置で描く
@@ -2787,11 +2977,12 @@ function renderPalette(d) {
 // 同じものを描き直すときは、スクロールの位置を保つ
 function renderSettings(d) {
   const el = $('#side-settings');
-  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ui.partId || ui.calloutId || 'screen:' + ui.screenId;
+  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ui.sel.length > 1 ? 'multi' : ui.partId || ui.calloutId || 'screen:' + ui.screenId;
   const top = el.dataset.key === key ? el.scrollTop : 0;
   const p = currentSubject();
   const co = ui.panel === 'screen' ? findCallout(currentScreen(), ui.calloutId) : null;
-  if (ui.panel === 'items') el.innerHTML = p ? itemSettingsHtml(d, p) : itemsHintHtml(d);
+  if (ui.panel === 'screen' && ui.sel.length > 1) el.innerHTML = multiSettingsHtml(d);
+  else if (ui.panel === 'items') el.innerHTML = p ? itemSettingsHtml(d, p) : itemsHintHtml(d);
   else if (p) el.innerHTML = partSettingsHtml(p);
   else if (co) el.innerHTML = calloutSettingsHtml(co);
   else renderScreenSettings(d, el);
@@ -2993,6 +3184,35 @@ function lookupFieldsHtml(d, p) {
     ${pairs}
     <button class="lk-add" data-action="lk-add">＋ 写す項目を足す</button>
   </div>`;
+}
+
+// いくつか選んだときの右の欄（画像 q28）。選んだものの一覧（いちばん初めが基準）・揃える・大きさをそろえる・まとめて番号と消す
+function multiSettingsHtml(d) {
+  const s = currentScreen();
+  const parts = ui.sel.filter((x) => x.k === 'p').length;
+  const cos = ui.sel.length - parts;
+  const names = ui.sel.map((x, i) => {
+    const o = x.k === 'p' ? findPart(s, x.id) : findCallout(s, x.id);
+    if (!o) return '';
+    const p = x.k === 'p' ? resolvePart(d, o) : null;
+    const label = p ? `${p.no != null ? `<span class="pno">${p.no}</span>` : ''}${esc(partTitle(p))}` : `💬 ${esc(String(o.text).split('\n')[0].slice(0, 12) || '吹き出し')}`;
+    return `<span>${i === 0 ? '<b>基準</b>' : ''}${label}</span>`;
+  }).join('');
+  const btn = ([cmd, action, label, svg]) => `<button data-action="${action}"${ui.sel.length < (cmd.startsWith('distribute') ? 3 : 2) ? ' disabled' : ''}>${alignSvg(svg)}<span>${label.replace('\n', '')}</span></button>`;
+  return `
+    <div class="panel-title">${ui.sel.length} 個を選んでいます <small>（部品 ${parts}・吹き出し ${cos}）</small></div>
+    <div class="ms-list">${names}</div>
+    <div class="ms-sub">揃える <small style="font-weight:400;color:#64748b">（基準＝最初に選んだものに合わせる）</small></div>
+    <div class="ms-btns">${ALIGN_BUTTONS.map(btn).join('')}</div>
+    <div class="ms-sub">大きさをそろえる</div>
+    <div class="ms-btns" style="grid-template-columns:1fr 1fr">${SIZE_BUTTONS.map(btn).join('')}</div>
+    <div class="ms-sub">まとめて</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn small" data-action="number-on"${parts ? '' : ' disabled'}>番号を付ける</button>
+      <button class="btn small" data-action="number-off"${parts ? '' : ' disabled'}>番号を外す</button>
+      <button class="btn small danger-text" data-action="delete-many">まとめて消す</button>
+    </div>
+    <p class="hint" style="margin-top:12px">Ctrl を押しながら押すと、選ぶものを足したり外したりできます。何もない所からドラッグして囲むと、枠に全部入ったものを選びます。</p>`;
 }
 
 // 選んだ吹き出しの設定の欄（画像 q27）
@@ -3636,16 +3856,152 @@ function startResize(ev, wrap) {
 }
 
 // 選択のモードで画面の上を押したとき: 部品・縁のつまみならドラッグを始め、何もない所なら選ぶのをやめる
+// Ctrl（Shift でも）を押しながら押すと、選ぶものに足す・外す（Microsoft Office と同じ。ユーザーの指示）。
+// そのままドラッグすると、選んだものを複製する（Office と同じ。Claude が決めた）。
+// 選んだもののどれかをドラッグすると、まとめて動かす。何もない所からドラッグすると、囲んだ枠に全部入ったものを選ぶ
 function onSelectModeMouseDown(ev) {
+  const additive = ev.ctrlKey || ev.metaKey || ev.shiftKey;
   const grip = ev.target.closest('.grip');
   const handle = ev.target.closest('[data-co-handle]');
-  if (handle) { startCalloutLink(ev, handle.dataset.coHandle); return; }
+  if (handle && !additive) { startCalloutLink(ev, handle.dataset.coHandle); return; }
   const coEl = ev.target.closest('#stage .callout');
-  if (coEl) { startCalloutDrag(ev, coEl.dataset.calloutId, grip ? grip.dataset.grip : null); return; }
-  const partEl = ev.target.closest('#stage .screen .part');
-  if (partEl) { startPartDrag(ev, partEl.dataset.partId, grip ? grip.dataset.grip : null); return; }
+  const partEl = coEl ? null : ev.target.closest('#stage .screen .part');
+  const hit = coEl ? { k: 'c', id: coEl.dataset.calloutId } : partEl ? { k: 'p', id: partEl.dataset.partId } : null;
+  if (hit) {
+    if (additive) { startAdditive(ev, hit); return; }
+    if (ui.sel.length > 1 && isSelected(hit.k, hit.id)) { startGroupDrag(ev, false); return; }
+    if (hit.k === 'c') startCalloutDrag(ev, hit.id, grip ? grip.dataset.grip : null);
+    else startPartDrag(ev, hit.id, grip ? grip.dataset.grip : null);
+    return;
+  }
   if (ev.target.closest('.ptable')) return; // 一覧表の行は click で選ぶ
-  if (ui.sel.length) selectPart(null);
+  if (!ev.target.closest('#co-zone')) { if (ui.sel.length && !additive) selectPart(null); return; }
+  startBand(ev, additive);
+}
+
+// 選んでいるもの（ui.sel）を変えて、画面と右の欄を描き直す
+function setSelection(sel) {
+  flushSideField();
+  ui.sel = sel;
+  ui.colId = null;
+  renderStage();
+  renderSettings(currentDesign());
+  updateToolbarState();
+}
+function blurSidePanel() {
+  const active = document.activeElement;
+  if (active && active.closest && active.closest('#side-panel')) active.blur();
+}
+
+function startAdditive(ev, hit) {
+  ev.preventDefault();
+  flushSideField();
+  blurSidePanel();
+  drag = { kind: 'add', hit, sx: ev.clientX, sy: ev.clientY };
+}
+// Ctrl を押したままドラッグし始めたら、押したものも選んで、複製のドラッグにする
+function dragAdditive(ev) {
+  if (Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
+  const { hit, sx, sy } = drag;
+  if (!isSelected(hit.k, hit.id)) setSelection([...ui.sel, hit]);
+  startGroupDrag({ clientX: sx, clientY: sy, preventDefault() {} }, true);
+  dragGroup(ev);
+}
+
+function startGroupDrag(ev, copy) {
+  ev.preventDefault();
+  flushSideField();
+  blurSidePanel();
+  const s = currentScreen();
+  drag = { kind: 'group', copy, sx: ev.clientX, sy: ev.clientY, rects: selRects(s, ui.sel), dx: 0, dy: 0, ghosts: null };
+  document.body.classList.add(copy ? 'copying' : 'moving');
+}
+function selElement(x) {
+  return [...document.querySelectorAll(x.k === 'p' ? '#stage .part' : '#stage .callout')].find((e) => (x.k === 'p' ? e.dataset.partId : e.dataset.calloutId) === x.id);
+}
+// まとめて動かしている間は、要素だけを動かす（保存は放したとき）。複製のときは、写しの影を動かす
+function dragGroup(ev) {
+  const s = currentScreen();
+  const [dx, dy] = clampGroupMove(s, drag.rects, snapGrid((ev.clientX - drag.sx) / ui.zoom), snapGrid((ev.clientY - drag.sy) / ui.zoom));
+  drag.dx = dx;
+  drag.dy = dy;
+  if (drag.copy && !drag.ghosts) {
+    drag.ghosts = drag.rects.map((r) => {
+      const el = selElement(r);
+      if (!el) return null;
+      const g = el.cloneNode(true);
+      g.classList.add('ghost-copy');
+      g.classList.remove('sel-ref');
+      el.parentNode.appendChild(g);
+      return g;
+    });
+  }
+  const overrides = {};
+  drag.rects.forEach((r, i) => {
+    const el = drag.copy ? drag.ghosts[i] : selElement(r);
+    const off = r.k === 'c' ? CALLOUT_ZONE : 0;
+    if (el) Object.assign(el.style, { left: off + r.x + dx + 'px', top: off + r.y + dy + 'px' });
+    overrides[r.k + ':' + r.id] = { ...r, x: r.x + dx, y: r.y + dy };
+  });
+  if (!drag.copy) {
+    redrawCalloutLines(overrides);
+    const box = $('#stage .sel-box');
+    if (box) box.style.display = 'none';
+  }
+}
+function endGroupDrag(done) {
+  if (!done.dx && !done.dy) { renderStage(); return; }
+  if (done.copy) {
+    const out = actions.insertCopies(ui.designId, currentScreen().id, selectionEntries(), done.dx, done.dy);
+    if (out.length) { ui.sel = out; updateEditor(); } else renderStage();
+    return;
+  }
+  if (!actions.moveMany(ui.designId, currentScreen().id, ui.sel, done.dx, done.dy)) renderStage();
+}
+
+// 何もない所からのドラッグで囲む。Ctrl を押していないときは、押した時点で選ぶのをやめる
+function zonePoint(ev) {
+  const zone = $('#co-zone');
+  const r = zone.getBoundingClientRect();
+  return { x: (ev.clientX - r.left) / ui.zoom - CALLOUT_ZONE, y: (ev.clientY - r.top) / ui.zoom - CALLOUT_ZONE };
+}
+function startBand(ev, additive) {
+  ev.preventDefault();
+  if (!additive && ui.sel.length) selectPart(null);
+  else flushSideField();
+  const pt = zonePoint(ev);
+  drag = { kind: 'band', x0: pt.x, y0: pt.y, x: pt.x, y: pt.y, additive, base: [...ui.sel], el: null, sx: ev.clientX, sy: ev.clientY };
+}
+function dragBand(ev) {
+  if (!drag.el && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
+  const pt = zonePoint(ev);
+  drag.x = pt.x;
+  drag.y = pt.y;
+  if (!drag.el) {
+    drag.el = document.createElement('div');
+    drag.el.className = 'band';
+    $('#co-zone').appendChild(drag.el);
+  }
+  const Z = CALLOUT_ZONE;
+  Object.assign(drag.el.style, { left: Z + Math.min(drag.x0, drag.x) + 'px', top: Z + Math.min(drag.y0, drag.y) + 'px', width: Math.abs(drag.x - drag.x0) + 'px', height: Math.abs(drag.y - drag.y0) + 'px' });
+}
+// 枠の中に全部入った部品と吹き出しを選ぶ（ユーザーが選んだ）。並びは上から下・左から右（いちばん初めが基準）
+function endBand(done) {
+  if (!done.el) return;
+  done.el.remove();
+  const s = currentScreen();
+  const [x0, y0, x1, y1] = [Math.min(done.x0, done.x), Math.min(done.y0, done.y), Math.max(done.x0, done.x), Math.max(done.y0, done.y)];
+  const inside = (o) => o.x >= x0 && o.y >= y0 && o.x + o.w <= x1 && o.y + o.h <= y1;
+  const found = [...s.parts.filter(inside).map((p) => ({ k: 'p', id: p.id, o: p })), ...s.callouts.filter(inside).map((c) => ({ k: 'c', id: c.id, o: c }))]
+    .sort((a, b) => a.o.y - b.o.y || a.o.x - b.o.x).map(({ k, id }) => ({ k, id }));
+  const base = done.additive ? done.base : [];
+  setSelection([...base, ...found.filter((f) => !base.some((b) => b.k === f.k && b.id === f.id))]);
+}
+
+function selectAll() {
+  const s = currentScreen();
+  const parts = [...s.parts].sort((a, b) => a.y - b.y || a.x - b.x).map((p) => ({ k: 'p', id: p.id }));
+  setSelection([...parts, ...s.callouts.map((c) => ({ k: 'c', id: c.id }))]);
 }
 
 // 吹き出しを選ぶ（null で選ぶのをやめる）
@@ -4002,6 +4358,9 @@ function dragItemSort(ev) {
 
 function onDragMove(ev) {
   if (!drag) return;
+  if (drag.kind === 'add') { dragAdditive(ev); return; }
+  if (drag.kind === 'group') { dragGroup(ev); return; }
+  if (drag.kind === 'band') { dragBand(ev); return; }
   if (drag.kind === 'item-sort') { dragItemSort(ev); return; }
   if (drag.kind === 'co-move' || drag.kind === 'co-size') { dragCallout(ev); return; }
   if (drag.kind === 'co-link') { dragCalloutLink(ev); return; }
@@ -4027,7 +4386,15 @@ function onDragEnd(ev) {
   if (!drag) return;
   const done = drag;
   drag = null;
-  document.body.classList.remove('resizing', 'moving', 'sorting', 'linking');
+  document.body.classList.remove('resizing', 'moving', 'sorting', 'linking', 'copying');
+  if (done.kind === 'add') {
+    // Ctrl を押して押しただけ（動かしていない）なら、選ぶものに足す・外す
+    const { k, id } = done.hit;
+    setSelection(isSelected(k, id) ? ui.sel.filter((x) => !(x.k === k && x.id === id)) : [...ui.sel, done.hit]);
+    return;
+  }
+  if (done.kind === 'group') { endGroupDrag(done); return; }
+  if (done.kind === 'band') { endBand(done); return; }
   if (done.kind === 'co-move' || done.kind === 'co-size') {
     const r = done.rect;
     if (!r || !actions.moveCallout(ui.designId, currentScreen().id, done.id, r)) renderStage();
@@ -4057,53 +4424,49 @@ function onDragEnd(ev) {
   else renderStage();
 }
 
-// ── 部品のコピー・貼り付け・複製・削除・矢印のキーで動かす ──
-// コピーした部品は { part（部品の写し）, item（指している項目の写し。ほかの画面設計へ貼り付けるときに使う）} で持つ
+// ── コピー・貼り付け・複製・削除・矢印のキーで動かす（選んだものをまとめて）──
+// コピーしたものは { parts: [{ part（部品の写し）, item（指している項目の写し。ほかの画面設計へ貼り付けるときに使う）}], callouts: [吹き出しの写し] }
+function selectionEntries() {
+  const s = currentScreen();
+  const d = currentDesign();
+  const parts = ui.sel.filter((x) => x.k === 'p').map((x) => findPart(s, x.id)).filter(Boolean)
+    .map((p) => { const item = findItem(d, p.itemId); return { part: clone(p), item: item ? clone(item) : null }; });
+  const callouts = ui.sel.filter((x) => x.k === 'c').map((x) => findCallout(s, x.id)).filter(Boolean).map(clone);
+  return { parts, callouts };
+}
 function copyPart() {
-  const p = findPart(currentScreen(), ui.partId);
-  if (!p) return;
-  const item = findItem(currentDesign(), p.itemId);
-  ui.clipboard = { part: clone(p), item: item ? clone(item) : null };
+  const entries = selectionEntries();
+  const n = entries.parts.length + entries.callouts.length;
+  if (!n) return;
+  ui.clipboard = entries;
   updateToolbarState();
-  toast('部品をコピーしました。Ctrl+V で貼り付けます。');
+  toast(`${n === 1 ? (entries.parts.length ? '部品' : '吹き出し') : `${n} 個`}をコピーしました。Ctrl+V で貼り付けます。`);
 }
 
 // 続けて貼り付けると、前に貼り付けた所から右下へずらして置く
 function pastePart() {
   if (!ui.clipboard) return;
-  const { part: src, item } = ui.clipboard;
-  const id = actions.insertPartCopy(ui.designId, currentScreen().id, src, { x: src.x + PART_GAP, y: src.y + PART_GAP }, item);
-  const p = findPart(currentScreen(), id);
-  if (!p) return;
-  ui.clipboard = { ...ui.clipboard, part: { ...src, x: p.x, y: p.y } };
-  selectPart(id);
+  const out = actions.insertCopies(ui.designId, currentScreen().id, ui.clipboard, PART_GAP, PART_GAP);
+  if (!out.length) return;
+  const shift = (o) => ({ ...o, x: o.x + PART_GAP, y: o.y + PART_GAP });
+  ui.clipboard = { parts: ui.clipboard.parts.map((e) => ({ ...e, part: shift(e.part) })), callouts: ui.clipboard.callouts.map(shift) };
+  setSelection(out);
 }
 
 function duplicatePart() {
-  const p = findPart(currentScreen(), ui.partId);
-  if (!p) return;
-  selectPart(actions.insertPartCopy(ui.designId, currentScreen().id, p, { x: p.x + PART_GAP, y: p.y + PART_GAP }));
+  const out = actions.insertCopies(ui.designId, currentScreen().id, selectionEntries(), PART_GAP, PART_GAP);
+  if (out.length) setSelection(out);
 }
 
 function deletePart() {
-  if (ui.calloutId) {
-    const cid = ui.calloutId;
-    ui.sel = [];
-    actions.deleteCallout(ui.designId, currentScreen().id, cid);
-    return;
-  }
-  if (!ui.partId) return;
-  const id = ui.partId;
-  ui.partId = null;
-  actions.deletePart(ui.designId, currentScreen().id, id);
+  if (!ui.sel.length) return;
+  const sel = ui.sel;
+  ui.sel = [];
+  actions.deleteMany(ui.designId, currentScreen().id, sel);
 }
 
 function nudgePart(dx, dy) {
-  const s = currentScreen();
-  const c = findCallout(s, ui.calloutId);
-  if (c) { actions.moveCallout(ui.designId, s.id, c.id, { ...c, x: c.x + dx * GRID, y: c.y + dy * GRID }); return; }
-  const p = findPart(s, ui.partId);
-  if (p) actions.movePart(ui.designId, s.id, p.id, { ...p, x: p.x + dx * GRID, y: p.y + dy * GRID });
+  if (ui.sel.length) actions.moveMany(ui.designId, currentScreen().id, ui.sel, dx * GRID, dy * GRID);
 }
 
 // ── 8. 命令（runCommand）──────────────────────────────────────────────────────
@@ -4140,18 +4503,44 @@ function runCommand(cmd) {
     case 'duplicatePart': duplicatePart(); return true;
     case 'deletePart': deletePart(); return true;
     case 'deselectPart': selectPart(null); return true;
+    case 'selectAll': selectAll(); return true;
+    case 'numberOn': case 'numberOff': actions.numberMany(ui.designId, currentScreen().id, ui.sel, cmd === 'numberOn'); return true;
     case 'renumber': actions.renumberParts(ui.designId, currentScreen().id); return true;
   }
+  if (own(ALIGN_COMMANDS, cmd)) { actions.alignMany(ui.designId, currentScreen().id, ui.sel, ALIGN_COMMANDS[cmd]); return true; }
   const nudge = { moveLeft: [-1, 0], moveRight: [1, 0], moveUp: [0, -1], moveDown: [0, 1] }[cmd];
   if (nudge) { nudgePart(...nudge); return true; }
   return false;
 }
+
+// 揃える命令（メニューバー・右の欄・アプリのメニュー）と、alignedRects の how
+const ALIGN_COMMANDS = {
+  alignLeft: 'left', alignHCenter: 'hcenter', alignRight: 'right', alignTop: 'top', alignVCenter: 'vcenter', alignBottom: 'bottom',
+  distributeH: 'hdist', distributeV: 'vdist', sameWidth: 'width', sameHeight: 'height',
+};
+const ALIGN_BUTTONS = [
+  ['alignLeft', 'align-left', '左', '<line x1="3" y1="2" x2="3" y2="18" stroke="#334155" stroke-width="2"/><rect x="5" y="4" width="11" height="4" fill="#64748b"/><rect x="5" y="11" width="7" height="4" fill="#64748b"/>'],
+  ['alignHCenter', 'align-hcenter', '左右の\n中央', '<line x1="10" y1="2" x2="10" y2="18" stroke="#334155" stroke-width="2"/><rect x="4" y="4" width="12" height="4" fill="#64748b"/><rect x="6" y="11" width="8" height="4" fill="#64748b"/>'],
+  ['alignRight', 'align-right', '右', '<line x1="17" y1="2" x2="17" y2="18" stroke="#334155" stroke-width="2"/><rect x="4" y="4" width="11" height="4" fill="#64748b"/><rect x="8" y="11" width="7" height="4" fill="#64748b"/>'],
+  ['alignTop', 'align-top', '上', '<line x1="2" y1="3" x2="18" y2="3" stroke="#334155" stroke-width="2"/><rect x="4" y="5" width="4" height="11" fill="#64748b"/><rect x="11" y="5" width="4" height="7" fill="#64748b"/>'],
+  ['alignVCenter', 'align-vcenter', '上下の\n中央', '<line x1="2" y1="10" x2="18" y2="10" stroke="#334155" stroke-width="2"/><rect x="4" y="4" width="4" height="12" fill="#64748b"/><rect x="11" y="6" width="4" height="8" fill="#64748b"/>'],
+  ['alignBottom', 'align-bottom', '下', '<line x1="2" y1="17" x2="18" y2="17" stroke="#334155" stroke-width="2"/><rect x="4" y="4" width="4" height="11" fill="#64748b"/><rect x="11" y="8" width="4" height="7" fill="#64748b"/>'],
+  ['distributeH', 'distribute-h', '横に\n等間隔', '<rect x="1" y="6" width="4" height="8" fill="#64748b"/><rect x="8" y="6" width="4" height="8" fill="#64748b"/><rect x="15" y="6" width="4" height="8" fill="#64748b"/>'],
+  ['distributeV', 'distribute-v', '縦に\n等間隔', '<rect x="6" y="1" width="8" height="4" fill="#64748b"/><rect x="6" y="8" width="8" height="4" fill="#64748b"/><rect x="6" y="15" width="8" height="4" fill="#64748b"/>'],
+];
+const SIZE_BUTTONS = [
+  ['sameWidth', 'same-width', '同じ幅にする', '<path d="M2 10h16M2 10l3-3M2 10l3 3M18 10l-3-3M18 10l-3 3" stroke="#334155" stroke-width="1.6" fill="none"/>'],
+  ['sameHeight', 'same-height', '同じ高さにする', '<path d="M10 2v16M10 2l-3 3M10 2l3 3M10 18l-3-3M10 18l3-3" stroke="#334155" stroke-width="1.6" fill="none"/>'],
+];
+const alignSvg = (inner) => `<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">${inner}</svg>`;
 
 const ACTION_COMMANDS = {
   undo: 'undo', redo: 'redo', home: 'goHome', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
   'open-items': 'openItems', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
+  'select-all': 'selectAll', 'number-on': 'numberOn', 'number-off': 'numberOff', 'delete-many': 'deletePart',
+  ...Object.fromEntries([...ALIGN_BUTTONS, ...SIZE_BUTTONS].map(([cmd, action]) => [action, cmd])),
 };
 
 // 編集の画面だけで使う、ボタン以外の押したときの動き
@@ -4235,12 +4624,13 @@ function editorKeyCommand(e) {
   }
   if (e.ctrlKey || e.metaKey) {
     const low = k.toLowerCase();
-    if (low === 'c' && ui.partId) return 'copyPart';
+    if (low === 'a') return 'selectAll';
+    if (low === 'c' && ui.sel.length) return 'copyPart';
     if (low === 'v' && ui.clipboard) return 'pastePart';
-    if (low === 'd' && ui.partId) return 'duplicatePart';
+    if (low === 'd' && ui.sel.length) return 'duplicatePart';
     return null;
   }
-  if (!ui.partId && !ui.calloutId) return null;
+  if (!ui.sel.length) return null;
   if (k === 'Delete' || k === 'Backspace') return 'deletePart';
   if (k === 'Escape') return 'deselectPart';
   return { ArrowLeft: 'moveLeft', ArrowRight: 'moveRight', ArrowUp: 'moveUp', ArrowDown: 'moveDown' }[k] || null;

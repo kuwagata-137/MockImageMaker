@@ -401,6 +401,53 @@ async function shootCallouts(browser) {
   await page.close();
 }
 
+// ── まとめて選ぶ・動かす・揃える（画像 q28）。囲む・まとめてドラッグ・Ctrl のドラッグは、実際にマウスを動かして確かめる ──
+async function shootMulti(browser) {
+  const page = await openApp(browser, PARTS_SAMPLE);
+  await page.click('.card-open[data-id="d1"]');
+  for (let i = 0; i < 5; i++) await page.click('[data-action="zoom-out"]');
+  const info = () => page.evaluate(() => ({
+    sel: window.__test__.ui.sel.map((x) => x.id),
+    pos: Object.fromEntries(window.__test__.currentScreen().parts.map((p) => [p.id, [p.x, p.y]])),
+  }));
+  const scr = await (await page.$('#stage .screen')).boundingBox();
+  const k = scr.width / 1280;
+  const at = (x, y) => ({ x: scr.x + x * k, y: scr.y + y * k });
+  // 何もない所から囲む（顧客名・担当者・区分の 3 つが枠に全部入る。顧客コードは入らない）
+  await dragMouse(page, at(8, 52), at(508, 316));
+  console.log('囲んで選んだもの:', JSON.stringify((await info()).sel));
+  await shot(page, '43_まとめて_囲んで選んだ_50%');
+  // 選んだ 1 つ（担当者）をドラッグすると、3 つまとめて動く
+  const b0 = (await info()).pos;
+  await dragMouse(page, await center(page, '#stage .part[data-part-id="p3"]'), { x: (await center(page, '#stage .part[data-part-id="p3"]')).x + 60, y: (await center(page, '#stage .part[data-part-id="p3"]')).y + 20 });
+  const b1 = (await info()).pos;
+  console.log('まとめて動かした幅（顧客名・担当者・区分）:', JSON.stringify(['p1', 'p3', 'p5'].map((id) => [b1[id][0] - b0[id][0], b1[id][1] - b0[id][1]])));
+  await shot(page, '44_まとめて_まとめてドラッグした_50%');
+  // Ctrl を押しながら顧客コードを押して足し、メニューバーの「左」で揃える（基準は最初に選んだもの）
+  await page.keyboard.down('Control');
+  await page.click('#stage .part[data-part-id="p2"]');
+  await page.keyboard.up('Control');
+  console.log('Ctrl で足した後:', JSON.stringify((await info()).sel));
+  await shot(page, '45_まとめて_Ctrlで足した（右の欄に揃えるボタン）_50%');
+  await page.click('#toolbar [data-action="align-left"]');
+  const b2 = (await info()).pos;
+  console.log('左に揃えた後の x:', JSON.stringify(['p1', 'p3', 'p5', 'p2'].map((id) => b2[id][0])));
+  await shot(page, '46_まとめて_左に揃えた_50%');
+  // Ctrl を押しながらドラッグすると、選んだものを複製する
+  const before = Object.keys(b2).length;
+  const c = await center(page, '#stage .part[data-part-id="p1"]');
+  await page.keyboard.down('Control');
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + 300, c.y + 120, { steps: 10 });
+  await shot(page, '47_まとめて_Ctrlを押しながらドラッグしている途中_50%');
+  await page.mouse.up();
+  await page.keyboard.up('Control');
+  console.log('複製した後の部品の数:', before, '→', Object.keys((await info()).pos).length);
+  await shot(page, '48_まとめて_Ctrlのドラッグで複製した_50%');
+  await page.close();
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await puppeteer.launch({
@@ -416,6 +463,7 @@ async function shootCallouts(browser) {
     if (wants('db')) await shootDatabase(browser);
     if (wants('parts2')) await shootParts2(browser);
     if (wants('callout')) await shootCallouts(browser);
+    if (wants('multi')) await shootMulti(browser);
   } finally {
     await browser.close();
   }
