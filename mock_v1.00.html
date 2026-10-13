@@ -604,11 +604,24 @@ function duplicateDesignData(d, now = nowIso()) {
   copy.createdAt = now;
   copy.updatedAt = now;
   copy.trashedAt = null;
-  // 項目の id は画面設計の中だけで重ならなければよいので、そのまま写す（部品・ルックアップが指す id を付け直さなくて済むため）
+  // 項目の id は画面設計の中だけで重ならなければよいので、そのまま写す（部品・ルックアップが指す id を付け直さなくて済むため）。
+  // 画面と部品の id は付け直し、それを指す吹き出しのつなぐ部品と、リンクの文字の移る先も付け直す
+  const screenIds = new Map();
+  const partIds = new Map();
   copy.screens.forEach((s) => {
-    s.id = newId('s');
-    s.parts.forEach((p) => { p.id = newId('p'); });
+    screenIds.set(s.id, newId('s'));
+    s.id = screenIds.get(s.id);
+    s.parts.forEach((p) => { partIds.set(p.id, newId('p')); p.id = partIds.get(p.id); });
   });
+  copy.screens.forEach((s) => {
+    (s.callouts || []).forEach((c) => { if (c.target) c.target = partIds.get(c.target) || null; });
+    s.parts.forEach((p) => { if (p.type === 'link' && isObj(p.props) && p.props.screenId) p.props.screenId = screenIds.get(p.props.screenId) || ''; });
+  });
+  // 編集の画面のつながりの図で覚えた「この画面設計」の箱の位置は、複製の箱の鍵で覚え直す
+  if (isObj(copy.mapPos) && copy.mapPos['d:' + d.id]) {
+    copy.mapPos['d:' + copy.id] = copy.mapPos['d:' + d.id];
+    delete copy.mapPos['d:' + d.id];
+  }
   return copy;
 }
 
@@ -796,7 +809,7 @@ const tableHeight = (rows) => Math.ceil((TABLE_LABEL_H + TABLE_ROW_H * (rows + 1
 // 項目を指していない部品（ボタン・見出しなど・項目を消した後に残った部品）は、そのまま返す
 // lookupRole は、ルックアップで探す項目なら 'key'、一緒に写される項目なら 'copy'（lookupKeyName は探す項目の名前）
 function resolvePart(design, p) {
-  const item = p && p.itemId ? findItem(design, p.itemId) : null;
+  const item = p && p.itemId && isItemPart(p) ? findItem(design, p.itemId) : null;
   if (!item) return withViewExtras(design, p && p.lookup && isInputType(p.type) ? { ...p, lookupRole: 'key' } : p);
   const copy = item.lookup ? null : lookupCopyOf(design, item);
   return withViewExtras(design, {
@@ -1115,7 +1128,10 @@ function normalizePart(src, items = []) {
     props: itemType && !isInputType(itemType) ? normalizeItemProps(itemType, p.props)
       : base.type === 'table' ? normalizeTablePartProps(p.props) : keepInitialInOptions(base.type, normalizeProps(t, p.props)),
   };
-  if (!itemType) return { ...common, ...fields };
+  if (!itemType) {
+    const { itemId: _drop, ...rest } = common;
+    return { ...rest, ...fields };
+  }
   const itemId = str(p.itemId);
   if (!itemId) {
     // 項目を指していない部品（データの形の版 1 の入力欄の部品など）は、部品の中身から項目を作る。
@@ -1127,7 +1143,7 @@ function normalizePart(src, items = []) {
   }
   // 指している項目があれば、項目名と設定は項目のものを使う。なければ（項目を一覧表から消した後）、部品が持っている中身で描く
   if (items.some((it) => it.id === itemId)) return withoutItemFields({ ...common, itemId });
-  return { ...common, itemId, ...fields };
+  return { ...common, itemId, ...fields, lookup: isInputType(itemType) ? normalizeLookup(p.lookup) : null, link: normalizeLink(p.link) };
 }
 
 function withoutItemFields(p) {
@@ -1297,10 +1313,13 @@ function syncLinkedItems(state) {
 }
 
 // 取り込む窓で、元の項目 it がこの画面設計 d から見てどうなっているか。
-// 'own'＝この画面設計の項目を取り込んだもの、'done'＝取り込み済み、'same'＝同じ名前の項目がある、'' ＝ふつう
+// 'own'＝この画面設計の項目を取り込んだもの、'done'＝取り込み済み、'status'＝ステータスの項目で、この画面設計にもうある
+// （ステータスの並びは画面設計に 1 つだけ）、'same'＝同じ名前の項目がある、'' ＝ふつう。取り込めるのは 'same' と '' だけ
+const IMPORT_BLOCKED = ['own', 'done', 'status'];
 function importState(d, src, it) {
   if (it.link && it.link.designId === d.id) return 'own';
   if (d.items.some((x) => x.link && x.link.designId === src.id && x.link.itemId === it.id)) return 'done';
+  if (it.type === 'status' && d.items.some((x) => x.type === 'status')) return 'status';
   if (d.items.some((x) => x.name === it.name)) return 'same';
   return '';
 }
@@ -1451,6 +1470,15 @@ function normalizeProps(t, src) {
   return props;
 }
 
+// id が重なっていたら、後のほうに新しい id を付ける（画面設計・画面。片方をごみ箱へ移す・消すと、もう片方も動くのを防ぐため）
+function uniqueIds(list, prefix) {
+  const seen = new Set();
+  list.forEach((x) => {
+    if (seen.has(x.id)) x.id = newId(prefix);
+    seen.add(x.id);
+  });
+  return list;
+}
 // 同じ画面設計の中で部品の id が重なっていたら、後のほうに新しい id を付ける（片方を消すと両方消えるのを防ぐため）
 function uniquePartIds(screens) {
   const seen = new Set();
@@ -1512,7 +1540,7 @@ function normalizeDesign(src) {
   const createdAt = str(d.createdAt) || nowIso();
   const items = uniqueItemIds((Array.isArray(d.items) ? d.items : []).filter(isObj).map(normalizeItem));
   const screens = Array.isArray(d.screens) && d.screens.length
-    ? uniquePartIds(d.screens.map((s, i) => normalizeScreen(s, i, items)))
+    ? uniquePartIds(uniqueIds(d.screens.map((s, i) => normalizeScreen(s, i, items)), 's'))
     : [createScreenData(FIRST_SCREEN_NAME)];
   return {
     ...d,
@@ -1545,7 +1573,7 @@ function normalizeState(raw, schemaVersion) {
     schemaVersion,
     // mapPos は最初の画面の「全部の画面設計のつながりの図」の箱の位置
     settings: { ...settings, customTargets: [...new Set(customs.filter((t) => typeof t === 'string' && t.trim()))], mapPos: normalizeMapPos(settings.mapPos) },
-    designs: (Array.isArray(raw.designs) ? raw.designs : []).filter(isObj).map(normalizeDesign),
+    designs: uniqueIds((Array.isArray(raw.designs) ? raw.designs : []).filter(isObj).map(normalizeDesign), 'd'),
   };
   syncLinkedItems(state);
   return state;
@@ -1668,13 +1696,15 @@ class Store {
   notify() {
     this.listeners.forEach((fn) => fn(this.state));
   }
+  // 何も変わらなかったときは、履歴に積まない（打ちかけの欄を保存し直しただけで、元に戻すが 1 回空振りし、やり直すが消えないように）
   commit(mutator, { history = true } = {}) {
-    if (history) {
-      this.undoStack.push(clone(this.state));
+    const before = history ? JSON.stringify(this.state) : null;
+    mutator(this.state);
+    if (history && JSON.stringify(this.state) !== before) {
+      this.undoStack.push(JSON.parse(before));
       if (this.undoStack.length > HISTORY_LIMIT) this.undoStack.shift();
       this.redoStack = [];
     }
-    mutator(this.state);
     this.persist();
     this.notify();
   }
@@ -1712,12 +1742,14 @@ const findDesign = (state, id) => state.designs.find((d) => d.id === id) || null
 // ── 画面設計の操作（store を書き換える）──
 // 画面設計を書き換えた後は、ほかの画面設計が取り込んでいる項目（つなげたまま）も同じ commit の中でそろえる
 // （元に戻すで、元と取り込んだ側が一緒に戻るように）。取り込んだ側の更新日時は変えない
+// 更新日時は、画面設計の中身が変わったときだけ変える（何も変わらない操作を、元に戻すの履歴に積まないため）
 function mutateDesign(id, fn, { touch = true } = {}) {
   if (!findDesign(store.state, id)) return false;
   store.commit((s) => {
     const d = findDesign(s, id);
+    const before = touch ? JSON.stringify(d) : '';
     fn(d, s);
-    if (touch) d.updatedAt = nowIso();
+    if (touch && JSON.stringify(d) !== before) d.updatedAt = nowIso();
     syncLinkedItems(s);
   });
   return true;
@@ -2042,19 +2074,33 @@ const actions = {
     const fields = frozenItemFields(item);
     return mutateDesign(designId, (d) => {
       d.items = d.items.filter((it) => it.id !== itemId);
-      d.screens.forEach((s) => s.parts.forEach((p) => { if (p.itemId === itemId) Object.assign(p, clone(fields)); }));
+      d.screens.forEach((s) => s.parts.forEach((p) => { if (p.itemId === itemId && isItemPart(p)) Object.assign(p, clone(fields)); }));
     });
   },
   // 項目を消した後に残った部品から、消したときの中身で項目を一覧表のいちばん下に戻す。同じ項目を指していたほかの部品もつながり直る
+  // ステータスの項目は、画面設計にもうステータスの項目があれば、残った部品をその項目へつなぎ直す（ステータスの並びは画面設計に 1 つだけ）。
+  // 1 つの画面に同じ項目の部品が 2 つ以上残っていたとき（複製した後など）は、2 つ目からは項目の写しを指す（1 つの画面に同じ項目は 1 回だけ）
   restoreItem(designId, itemId) {
     const d = findDesign(store.state, designId);
     if (!d || findItem(d, itemId)) return false;
     const src = d.screens.flatMap((s) => s.parts).find((p) => p.itemId === itemId && isItemPart(p));
     if (!src) return false;
-    const item = normalizeItem({ id: itemId, name: src.label, type: partItemType(src), required: src.required, memo: src.memo, props: clone(src.props), lookup: src.lookup || null, link: src.link || null });
+    const fromPart = (p, id) => normalizeItem({ id, name: p.label, type: partItemType(p), required: p.required, memo: p.memo, props: clone(p.props), lookup: p.lookup || null, link: p.link || null });
+    const status = partItemType(src) === 'status' ? d.items.find((it) => it.type === 'status') : null;
     return mutateDesign(designId, (dd) => {
-      dd.items.push(item);
-      dd.screens.forEach((s) => { s.parts = s.parts.map((p) => (p.itemId === itemId ? withoutItemFields(p) : p)); });
+      if (!status) dd.items.push(fromPart(src, itemId));
+      dd.screens.forEach((s) => {
+        let seen = 0;
+        s.parts = s.parts.map((p) => {
+          if (p.itemId !== itemId || !isItemPart(p)) return p;
+          if (status) return { ...withoutItemFields(p), itemId: status.id, view: { ...p.view, current: status.props.states.includes((p.view || {}).current) ? p.view.current : status.props.states[1] || status.props.states[0] || '' } };
+          seen += 1;
+          if (seen === 1 || !oncePerScreen(partItemType(p))) return withoutItemFields(p);
+          const copyItem = fromPart(p, newId('i'));
+          dd.items.push(copyItem);
+          return { ...withoutItemFields(p), itemId: copyItem.id };
+        });
+      });
     });
   },
   // 表の部品の中身（テーブル・レコード一覧・関連レコード一覧）を変える。テーブルにすると項目（表）を作って指し、
@@ -2065,6 +2111,8 @@ const actions = {
     if (!p0 || p0.type !== 'table' || !own(TABLE_KINDS, kind) || p0.tableKind === kind) return false;
     const d0 = findDesign(store.state, designId);
     const item = kind === 'subtable' ? createItemData('table') : null;
+    // ほかの画面設計（ごみ箱の中も）がこの表の項目を取り込んでいるときは、項目を残す（取り込んだ側が知らせなしに「元なし」にならないように）
+    const imported = !!p0.itemId && store.state.designs.some((x) => x.id !== designId && x.items.some((it) => it.link && !it.link.lost && it.link.designId === designId && it.link.itemId === p0.itemId));
     return mutatePart(designId, screenId, partId, (p, sc, d) => {
       const old = p.itemId;
       if (item) {
@@ -2080,7 +2128,7 @@ const actions = {
         p.required = false;
         p.memo = '';
         p.props = defaultTablePartProps(d0);
-        if (oldItem && !d.screens.some((s) => s.parts.some((x) => x.itemId === old))) d.items = d.items.filter((it) => it.id !== old);
+        if (oldItem && !imported && !d.screens.some((s) => s.parts.some((x) => x.itemId === old))) d.items = d.items.filter((it) => it.id !== old);
       } else if (p.label === defLabel(p.tableKind)) p.label = defLabel(kind); // 名前が最初のままなら、新しい中身の名前にする
       p.tableKind = kind;
     });
@@ -2091,7 +2139,7 @@ const actions = {
     const d = findDesign(store.state, designId);
     const src = findDesign(store.state, srcDesignId);
     if (!d || !src || d.id === src.id) return 0;
-    const add = itemIds.map((id) => findItem(src, id)).filter((it) => it && importState(d, src, it) !== 'done' && importState(d, src, it) !== 'own')
+    const add = itemIds.map((id) => findItem(src, id)).filter((it) => it && !IMPORT_BLOCKED.includes(importState(d, src, it)))
       .map((it) => ({ ...linkedFields(it, src), id: newId('i'), link: { designId: src.id, itemId: it.id, designName: src.name, lost: false } }));
     if (!add.length) return 0;
     mutateDesign(designId, (dd) => { dd.items.push(...add.map(normalizeItem)); });
@@ -2155,17 +2203,32 @@ function preparePartCopy(d, sc, pendingItems, src, at, srcItem) {
   p.no = src.no != null ? nextPartNo(sc) : null;
   let newItem = null;
   const find = (id) => findItem(d, id) || pendingItems.find((it) => it.id === id) || null;
-  if (p.itemId && isItemPart(p)) {
-    // 取り込んだ項目の部品を、取り込んだ元の画面設計へ貼り付けるときは、元の項目を指す
-    const home = isObj(srcItem) && srcItem.link && srcItem.link.designId === d.id ? findItem(d, srcItem.link.itemId) : null;
-    if (home && !find(p.itemId)) p.itemId = home.id;
-    const item = find(p.itemId);
-    if (!item && isObj(srcItem) && srcItem.id === p.itemId) newItem = clone(srcItem);
-    else if (item && oncePerScreen(item.type) && itemOnScreen(sc, item.id)) {
-      newItem = { ...clone(item), id: newId('i') };
-      p.itemId = newItem.id;
-    }
+  if (!p.itemId || !isItemPart(p)) return { part: p, item: null };
+  // ステータスの印・進み具合の矢印は、貼り付ける先の画面設計にステータスの項目があれば、それを指す（ステータスの並びは画面設計に 1 つだけ）
+  const status = partItemType(p) === 'status' ? d.items.find((it) => it.type === 'status') || pendingItems.find((it) => it.type === 'status') : null;
+  if (status) {
+    withoutItemFieldsInPlace(p).itemId = status.id;
+    if (p.view && !status.props.states.includes(p.view.current)) p.view.current = status.props.states[1] || status.props.states[0] || '';
+    return { part: p, item: null };
   }
+  // 取り込んだ項目の部品を、取り込んだ元の画面設計へ貼り付けるときは、元の項目を指す
+  const home = isObj(srcItem) && srcItem.link && srcItem.link.designId === d.id ? findItem(d, srcItem.link.itemId) : null;
+  if (home && !find(p.itemId)) p.itemId = home.id;
+  const item = find(p.itemId);
+  // 貼る先に、同じ id の項目を一覧表から消した後に残った部品があるときは、項目を写すときに新しい id にする（消した項目が生き返らないように）
+  const orphaned = (id) => d.screens.some((s) => s.parts.some((x) => x.itemId === id)) || sc.parts.some((x) => x.itemId === id);
+  if (!item && isObj(srcItem) && srcItem.id === p.itemId) {
+    newItem = { ...clone(srcItem), id: orphaned(srcItem.id) ? newId('i') : srcItem.id };
+    p.itemId = newItem.id;
+  } else if (item && oncePerScreen(item.type) && itemOnScreen(sc, item.id)) {
+    newItem = { ...clone(item), id: newId('i') };
+    p.itemId = newItem.id;
+  } else if (!item && oncePerScreen(partItemType(p)) && sc.parts.some((x) => x.itemId === p.itemId)) {
+    p.itemId = newId('i'); // 項目を消した後に残った部品を、同じ部品がもうある画面に貼るときは、別の項目として残す
+  }
+  // コピーした後で項目の種類を変えていたときは、部品の種類を項目の今の種類に合わせる
+  const target = newItem || item;
+  if (target && isInputType(target.type) && isInputType(p.type)) p.type = target.type;
   return { part: p, item: newItem };
 }
 
@@ -3292,7 +3355,7 @@ function renderPalette(d) {
   };
   const sc = currentScreen();
   const items = d.items.filter((it) => isItemType(it.type));
-  const placed = (it) => itemOnScreen(sc, it.id);
+  const placed = (it) => oncePerScreen(it.type) && itemOnScreen(sc, it.id);
   const itemBtn = (it) => {
     const t = partType(it.type);
     const name = esc(it.name || '（名前なし）');
@@ -3374,7 +3437,12 @@ const fieldCtx = () => ({ design: currentDesign(), state: store.state });
 // 一覧表の「設定」に出る文の欄。番号を外した部品は、一覧表に出ないことを書く
 function pfOutHtml(p, { forItem = false } = {}) {
   if (!forItem && p.no == null) return '<div class="pf-out"><b>一覧表の「設定」に出る文</b><div>（番号を外しているので、一覧表には出ません）</div></div>';
-  return `<div class="pf-out"><b>一覧表の「設定」に出る文</b><div id="pf-out">${esc(describePart(p, fieldCtx())) || '（まだありません）'}</div></div>`;
+  return `<div class="pf-out"><b>一覧表の「設定」に出る文</b><div id="pf-out">${esc(subjectSettingText(p)) || '（まだありません）'}</div></div>`;
+}
+// 右の欄に出す「設定」の文。データベースの項目の一覧表で選んだ項目は、一覧表と同じ describeItem で作る（表の項目もテーブルとして書くため）
+function subjectSettingText(p) {
+  if (!p) return '';
+  return ui.panel === 'items' && p.item ? describeItem(p.item, fieldCtx()) : describePart(p, fieldCtx());
 }
 
 // 選んだ部品の設定の欄。入力欄の部品は、上に「項目の設定（どの画面でも同じ）」、下に「この画面だけの設定」を出す（画像 q20）。
@@ -3386,7 +3454,7 @@ function partSettingsHtml(p) {
   const del = '<div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を消す</button></div>';
   if (!t) return `<div class="panel-title">選んだ部品</div><p class="hint">${esc(partTypeName(p.type))}です。新しい版のアプリで足した部品のため、この版では設定を変えられません。</p>${del}`;
   const typeFields = partTypeFieldsHtml(p);
-  const setting = describePart(p);
+  const setting = describePart(p, fieldCtx());
   const out = p.no == null
     ? '<div class="pf-out"><b>一覧表の「設定」に出る文</b><div>（番号を外しているので、一覧表には出ません）</div></div>'
     : `<div class="pf-out"><b>一覧表の「設定」に出る文</b><div id="pf-out">${esc(setting) || '（まだありません）'}</div></div>`;
@@ -3840,7 +3908,7 @@ function onPartFieldChange(el) {
   commitKeepSide(apply);
   const now = currentSubject();
   const out = $('#pf-out');
-  if (out) out.textContent = describePart(now, fieldCtx()) || '（まだありません）';
+  if (out) out.textContent = subjectSettingText(now) || '（まだありません）';
   if (key === 'props.options') refreshChoiceInitial(now.props.options);
   // 項目名を変えたときは、項目の一覧表と部品の箱の名前も合わせる（右の欄は描き直さない）
   if (key === 'label' && ui.panel === 'items') renderItemsView(currentDesign());
@@ -3905,7 +3973,7 @@ function commitLookup(d, item, next, create, el) {
   commitKeepSide(apply);
   const out = $('#pf-out');
   const now = currentSubject();
-  if (out && now) out.textContent = describePart(now, fieldCtx()) || '（まだありません）';
+  if (out && now) out.textContent = subjectSettingText(now) || '（まだありません）';
 }
 
 // 吹き出しの設定の欄の変更（data-co）。文字は右の欄を描き直さずに保存する
@@ -4572,7 +4640,8 @@ async function openImportDialog() {
   let srcId = (sources.find((x) => x.items.length) || sources[0] || {}).id || null;
   let query = '';
   const checked = new Set();
-  const stateLabel = { own: '<span class="tag done">このモックの項目</span>', done: '<span class="tag done">取り込み済み</span>', same: '<span class="tag warn">同じ名前の項目があります</span>' };
+  const stateLabel = { own: '<span class="tag done">このモックの項目</span>', done: '<span class="tag done">取り込み済み</span>', same: '<span class="tag warn">同じ名前の項目があります</span>',
+    status: '<span class="tag done">ステータスはこのモックにもうあります</span>' };
   const leftHtml = () => {
     const q = cleanName(query).toLowerCase();
     const list = sources.filter((x) => !q || x.name.toLowerCase().includes(q));
@@ -4589,9 +4658,9 @@ async function openImportDialog() {
     if (!src.items.length) return `<p class="imp-empty">「${esc(src.name)}」には、まだ項目がありません。</p>`;
     return `<table><thead><tr><th></th><th>項目名</th><th>部品の種類</th><th>設定</th></tr></thead><tbody>${src.items.map((it) => {
       const st = importState(d, src, it);
-      const dis = st === 'own' || st === 'done';
+      const dis = IMPORT_BLOCKED.includes(st);
       return `<tr${dis ? ' class="dis"' : ''}><td class="ck"><input type="checkbox" data-imp-item="${esc(it.id)}" aria-label="「${esc(it.name)}」を取り込む"${dis || checked.has(it.id) ? ' checked' : ''}${dis ? ' disabled' : ''}></td>
-        <td>${esc(it.name)} ${stateLabel[st] || ''}</td><td>${esc(partTypeName(it.type))}</td><td class="set">${esc(isItemType(it.type) ? describeItem(it, { design: src, state: store.state }) : '')}</td></tr>`;
+        <td>${esc(it.name)} ${stateLabel[st] || ''}</td><td>${esc(itemTypeName(it.type))}</td><td class="set">${esc(isItemType(it.type) ? describeItem(it, { design: src, state: store.state }) : '')}</td></tr>`;
     }).join('')}</tbody></table>`;
   };
   const footText = () => {
@@ -4623,7 +4692,7 @@ async function openImportDialog() {
         if (b && b.dataset.impSrc !== srcId) { srcId = b.dataset.impSrc; checked.clear(); redraw(); return; }
         if (e.target.closest('[data-imp-all]')) {
           const src = findDesign(store.state, srcId);
-          if (src) src.items.forEach((it) => { if (!['own', 'done'].includes(importState(d, src, it))) checked.add(it.id); });
+          if (src) src.items.forEach((it) => { if (!IMPORT_BLOCKED.includes(importState(d, src, it))) checked.add(it.id); });
           redraw();
         }
       });

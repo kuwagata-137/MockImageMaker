@@ -734,3 +734,158 @@ test('つながりの図の位置: 読み込むときに、形の合わない位
   click($(app, '[data-action="home-map"]'));
   assert.match($(app, '#home-map').textContent, /まだ画面設計がありません/);
 });
+
+// ── 見直し用のエージェントが見つけた不具合（データの形と項目）──
+
+test('何も変わらなかった変更は、元に戻すの履歴に積まない（打ちかけの欄の保存し直しで、元に戻すが空振りしない）', async (t) => {
+  const { api, design, items, add } = await bootEditor(t);
+  add('text1');
+  const id = items()[0].id;
+  api.actions.updateItem(design().id, id, { label: '顧客名' });
+  const n = api.store.undoStack.length;
+  api.actions.updateItem(design().id, id, { label: '顧客名' });
+  assert.equal(api.store.undoStack.length, n, '同じ名前で直しても積まない');
+  api.store.undo();
+  assert.equal(items()[0].name, '項目名', '1 回の元に戻すで、名前を直す前に戻る');
+  assert.equal(api.store.canRedo(), true);
+  api.actions.updateItem(design().id, id, { label: '項目名' });
+  assert.equal(api.store.canRedo(), true, '何も変わらない保存では、やり直すも消えない');
+});
+
+test('貼り付け: コピーした後で項目の種類を変えていたら、貼った部品の種類も項目に合わせる', async (t) => {
+  const { app, api, design, items, add } = await bootEditor(t);
+  const pid = add('text1');
+  api.selectPart(pid);
+  api.runCommand('copyPart');
+  click($(app, '[data-action="open-items"]'));
+  click($(app, `#db-view tr[data-id="${items()[0].id}"]`));
+  setValue($(app, '#side-settings [data-pf="type"]'), 'number');
+  const sid2 = addScreen(api, design().id, '詳細');
+  api.openDesign(design().id);
+  click($(app, `[data-action="select-screen"][data-id="${sid2}"]`));
+  api.runCommand('pastePart');
+  const pasted = api.currentScreen().parts[0];
+  assert.deepEqual(plain([pasted.itemId, pasted.type]), plain([items()[0].id, 'number']), 'ほかの画面へは同じ項目を指し、種類は数値');
+});
+
+test('貼り付け: 一覧表から消した項目の部品をコピーしていても、消した項目は生き返らない', async (t) => {
+  const { api, design, screen, items, add } = await bootEditor(t);
+  const pid = add('text1');
+  const oldId = items()[0].id;
+  api.selectPart(pid);
+  api.runCommand('copyPart');
+  api.actions.deleteItem(design().id, oldId);
+  api.runCommand('pastePart');
+  const [orphan, pasted] = screen().parts;
+  assert.equal(api.findItem(design(), oldId), null, '消した項目は一覧表に戻らない');
+  assert.equal(orphan.label, '項目名', '消した後に残った部品は、固定したまま');
+  assert.notEqual(pasted.itemId, oldId);
+  assert.ok(api.findItem(design(), pasted.itemId), '貼った部品は、新しい id の写しを指す');
+});
+
+test('ステータスの項目は画面設計に 1 つだけ: ほかの画面設計へ貼る・取り込む・一覧表に戻すのどれでも 2 つにならない', async (t) => {
+  const { api, design, add } = await bootEditor(t, { name: '受注管理' });
+  const aId = design().id;
+  api.selectPart(add('status'));
+  api.runCommand('copyPart');
+  const bId = api.actions.createDesign('案件管理', 'kintone');
+  api.openDesign(bId);
+  add('steps');
+  const statusOf = () => design().items.filter((it) => it.type === 'status');
+  const bStatus = statusOf()[0].id;
+  api.runCommand('pastePart');
+  assert.equal(statusOf().length, 1, '貼っても 1 つ');
+  assert.ok(api.currentScreen().parts.every((p) => p.itemId === bStatus), '貼った部品は、案件管理のステータスを指す');
+  // 取り込む: 案件管理にはもうあるので、受注管理のステータスは取り込まない
+  const aStatus = api.store.state.designs.find((d) => d.id === aId).items[0].id;
+  assert.equal(api.actions.importItems(bId, aId, [aStatus]), 0);
+  // 一覧表に戻す: 消した後に新しいステータスができていたら、残った部品はそのステータスへつなぎ直す
+  api.actions.deleteItem(bId, bStatus);
+  add('status');
+  const fresh = statusOf()[0].id;
+  assert.notEqual(fresh, bStatus);
+  api.actions.restoreItem(bId, bStatus);
+  assert.deepEqual(plain(statusOf().map((it) => it.id)), [fresh]);
+  assert.ok(api.currentScreen().parts.every((p) => p.itemId === fresh && p.label === undefined), '3 つとも新しいステータスを指す');
+});
+
+test('項目の一覧表に戻す: 1 つの画面に同じ項目の部品が 2 つ残っていたら、2 つ目は項目の写しを指す', async (t) => {
+  const { api, design, screen, items, add } = await bootEditor(t);
+  add('text1');
+  const id = items()[0].id;
+  api.actions.deleteItem(design().id, id);
+  api.selectPart(screen().parts[0].id);
+  api.runCommand('duplicatePart');
+  assert.equal(screen().parts.length, 2);
+  assert.notEqual(screen().parts[1].itemId, id, '同じ画面に複製すると、別の項目として残す');
+  // 読み込んだデータなどで、同じ項目の部品が 1 つの画面に 2 つ残っているとき
+  api.store.commit((s) => { s.designs[0].screens[0].parts[1].itemId = id; });
+  api.actions.restoreItem(design().id, id);
+  const ids = screen().parts.map((p) => p.itemId);
+  assert.equal(ids[0], id);
+  assert.notEqual(ids[1], id);
+  assert.equal(items().length, 2, '写しの項目が 1 つ増える');
+  assert.deepEqual(plain(items().map((it) => it.name)), ['項目名', '項目名']);
+});
+
+test('画面設計の複製: 吹き出しのつなぐ部品と、リンクの文字の移る先を、複製の中の部品と画面に付け直す', async (t) => {
+  const { api, design, screen, add } = await bootEditor(t);
+  const did = design().id;
+  const sid = screen().id;
+  const pid = add('text1');
+  api.actions.addCallout(did, sid, { x: -232, y: 48 }, pid);
+  const lid = api.actions.addPart(did, sid, 'link', { x: 0, y: 400 });
+  api.actions.updatePart(did, sid, lid, { props: { to: 'screen', screenId: sid } });
+  const copyId = api.actions.duplicateDesign(did);
+  const copy = api.store.state.designs.find((d) => d.id === copyId);
+  const cs = copy.screens[0];
+  assert.notEqual(cs.id, sid);
+  assert.equal(cs.callouts[0].target, cs.parts[0].id, '吹き出しは複製の部品につなぐ');
+  assert.equal(cs.parts.find((p) => p.type === 'link').props.screenId, cs.id, 'リンクの文字は複製の画面へ移る');
+  assert.equal(screen().callouts[0].target, pid, '元はそのまま');
+});
+
+test('壊れた保存データ: 項目を指さない部品の itemId・項目を消した後の部品の壊れたルックアップ・重なった画面設計の id でも落ちない', async (t) => {
+  const { app, api } = await bootEditor(t);
+  const { state } = api.migrate({
+    schemaVersion: 2,
+    designs: [
+      { id: 'd1', name: '顧客管理', items: [{ id: 'i1', name: '明細', type: 'table', props: { columns: [] } }], screens: [{ id: 's1', parts: [
+        { id: 'p1', type: 'table', tableKind: 'records', itemId: 'i1', x: 0, y: 48, label: '一覧', props: {} },
+        { id: 'p2', type: 'text1', itemId: 'gone', x: 0, y: 240, label: '取引先コード', lookup: {}, link: 'x' },
+      ] }] },
+      { id: 'd1', name: '顧客管理（重なった id）', screens: [{ id: 's1', parts: [] }] },
+    ],
+  });
+  const [d1, d2] = state.designs;
+  assert.equal(d1.screens[0].parts[0].itemId, undefined, 'レコード一覧の表は項目を指さない');
+  assert.deepEqual(plain(d1.screens[0].parts[1].lookup.key), { itemId: null, name: '' }, 'ルックアップを直す');
+  assert.equal(d1.screens[0].parts[1].link, null);
+  assert.notEqual(d2.id, d1.id, '重なった画面設計の id は付け直す');
+  api.store.commit((s) => { s.designs = state.designs; });
+  api.openDesign(d1.id);
+  assert.equal($$(app, '#stage .part').length, 2, '開いて描ける');
+});
+
+test('表の中身をテーブルから変えても、ほかの画面設計が取り込んでいる表の項目は消さない', async (t) => {
+  const { api, design, screen, items, add } = await bootEditor(t, { name: '取引先マスタ' });
+  const masterId = design().id;
+  const tid = add('table');
+  const tableItem = items()[0].id;
+  const orderId = api.actions.createDesign('受注管理', 'kintone');
+  api.actions.importItems(orderId, masterId, [tableItem]);
+  api.actions.setTableKind(masterId, screen().id, tid, 'records');
+  assert.ok(api.findItem(design(), tableItem), '取り込まれている表の項目は残す');
+  const order = api.store.state.designs.find((d) => d.id === orderId);
+  assert.equal(order.items[0].link.lost, false, '取り込んだ側は「元なし」にならない');
+});
+
+test('項目の一覧表で表の項目を選んだとき、右の欄の「設定」の文は一覧表の文と同じ', async (t) => {
+  const { app, items, add } = await bootEditor(t);
+  add('table');
+  click($(app, '[data-action="open-items"]'));
+  click($(app, `#db-view tr[data-id="${items()[0].id}"]`));
+  const row = $(app, `#db-view tr[data-id="${items()[0].id}"]`);
+  assert.notEqual($(app, '#pf-out').textContent, '（まだありません）');
+  assert.ok(row.textContent.replace(/\s+/g, '').includes($(app, '#pf-out').textContent.replace(/\s+/g, '')));
+});
