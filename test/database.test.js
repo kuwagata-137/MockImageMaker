@@ -531,3 +531,206 @@ test('ルックアップのある項目を取り込むと、写す先は名前�
   const ctx = { design: order, state: api.store.state };
   assert.match(api.describeItem(order.items[0], ctx), /ルックアップ＝取引先マスタの「取引先名」（取引先コードで引く）/);
 });
+
+// ── データベースどうしのつながりの図（画像 q23）──
+
+function mouseAt(app, target, type, x, y) {
+  target.dispatchEvent(new app.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: x, clientY: y }));
+}
+// 箱を (dx, dy) だけドラッグする。0, 0 なら動かさずに放す（押しただけ）
+function dragNode(app, el, dx, dy) {
+  mouseAt(app, el, 'mousedown', 100, 100);
+  if (dx || dy) mouseAt(app, app.document, 'mousemove', 100 + dx, 100 + dy);
+  mouseAt(app, app.document, 'mouseup', 100 + dx, 100 + dy);
+}
+
+// 取引先マスタ →（ルックアップ）→ 顧客管理 →（項目の取り込み）→ 受注管理 ←（関連レコード一覧）← 会計システム（一覧にない）。
+// つながりのない「日報」と、取引先マスタから取り込んでごみ箱に入れた「古い顧客台帳」も作る
+async function bootMap(t) {
+  const ctx = await bootLookup(t);
+  const { api, masterId, custId, m, c } = ctx;
+  api.actions.updateLookup(custId, c.code, { db: { designId: masterId }, key: { itemId: m.code }, copies: [{ from: { itemId: m.name }, to: { itemId: c.name } }] });
+  const orderId = api.actions.createDesign('受注管理', 'kintone');
+  api.actions.importItems(orderId, custId, [c.name]);
+  const order = () => api.store.state.designs.find((d) => d.id === orderId);
+  const sid = order().screens[0].id;
+  const tid = api.actions.addPart(orderId, sid, 'table', { x: 0, y: 48 });
+  api.actions.setTableKind(orderId, sid, tid, 'related');
+  api.actions.updatePart(orderId, sid, tid, { label: '請求の履歴', props: { db: { designId: null, name: '会計システム', free: true } } });
+  const dailyId = api.actions.createDesign('日報', 'その他');
+  const oldId = api.actions.createDesign('古い顧客台帳', 'kintone');
+  api.actions.importItems(oldId, masterId, [m.addr]);
+  api.actions.trashDesign(oldId);
+  const node = (key) => $(ctx.app, `.mnode[data-node="${key}"]`);
+  return { ...ctx, orderId, dailyId, oldId, order, node };
+}
+
+test('つながりの図の箱と矢印: ルックアップ・関連レコード一覧は元 → 引く側、取り込みは元 → 取り込んだ側。ごみ箱のものは描かない', async (t) => {
+  const { api, masterId, custId, orderId, dailyId } = await bootMap(t);
+  const model = api.mapModel(api.store.state);
+  const keyName = Object.fromEntries(model.nodes.map((n) => [n.key, n.name]));
+  assert.deepEqual(plain(Object.values(keyName).sort()), plain(['取引先マスタ', '顧客管理', '受注管理', '日報', '会計システム'].sort()), '古い顧客台帳（ごみ箱）は描かない');
+  assert.equal(model.nodes.find((n) => n.key === 'x:会計システム').design, null, '一覧にないデータベースは名前だけの箱');
+  // 矢印の並びは画面設計の並び（更新の新しい順）によるので、種類の順にそろえて比べる
+  const kinds = ['lookup', 'link', 'related'];
+  assert.deepEqual(plain(model.edges.map((e) => [e.from, e.to, e.kind, e.labels]).sort((a, b) => kinds.indexOf(a[2]) - kinds.indexOf(b[2]))), plain([
+    ['d:' + masterId, 'd:' + custId, 'lookup', ['取引先コードで引く\n取引先名']],
+    ['d:' + custId, 'd:' + orderId, 'link', ['取引先名']],
+    ['x:会計システム', 'd:' + orderId, 'related', ['請求の履歴']],
+  ]));
+  // 自動で並べる位置: 元を左、引く側を右の列。いちばん元の箱は矢印の先のすぐ左の列へ寄せる。つながりのない箱は、つながった箱の下
+  const pos = api.mapLayout(model);
+  assert.deepEqual(plain(['d:' + masterId, 'x:会計システム', 'd:' + custId, 'd:' + orderId].map((k) => pos[k].x)), [40, 440, 440, 840],
+    '会計システムは受注管理のすぐ左の列（列の幅 400）');
+  assert.deepEqual(plain(pos['d:' + dailyId]), { x: 40, y: 296 }, '日報は、いちばん多い列（2 段）の下に 32 あけて置く');
+  assert.deepEqual(plain([pos['d:' + custId].y, pos['x:会計システム'].y].sort((a, b) => a - b)), [40, 152], '同じ列は上から 112 ずつ');
+  // 編集の画面の図（顧客管理）は、直接つながる箱だけ
+  const focus = api.mapModel(api.store.state, custId);
+  assert.deepEqual(plain(focus.nodes.map((n) => n.name).sort()), plain(['取引先マスタ', '顧客管理', '受注管理'].sort()));
+  assert.deepEqual(plain(focus.edges.map((e) => e.kind).sort()), ['link', 'lookup']);
+});
+
+test('つながりの図: 矢印が輪になっても（ルックアップと関連レコード一覧の行きと帰り）、列は右へ送られ続けず、2 本の線は重ねない', async (t) => {
+  const { app, api, masterId, custId, orderId, dailyId } = await bootMap(t);
+  // 顧客管理に「受注の履歴」（受注管理のレコードを並べる関連レコード一覧）を置く。受注管理 → 顧客管理 の矢印で輪になる
+  const sid = api.store.state.designs.find((d) => d.id === custId).screens[0].id;
+  const tid = api.actions.addPart(custId, sid, 'table', { x: 0, y: 200 });
+  api.actions.setTableKind(custId, sid, tid, 'related');
+  api.actions.updatePart(custId, sid, tid, { label: '受注の履歴', props: { db: { designId: orderId, name: '', free: false } } });
+  const model = api.mapModel(api.store.state);
+  assert.equal(model.edges.length, 4);
+  const pos = api.mapLayout(model);
+  assert.deepEqual(plain(['d:' + masterId, 'd:' + custId, 'd:' + orderId].map((k) => pos[k].x)), [40, 440, 840],
+    '輪を閉じる矢印（受注管理 → 顧客管理）は列の決め方から外す');
+  // 編集の画面の図: 顧客管理と受注管理の間の 2 本は、上下にずらして引く
+  api.openDesign(custId);
+  click($(app, '[data-action="open-map"]'));
+  const starts = $$(app, '#design-map svg > path').map((p) => ({ green: p.getAttribute('stroke') === '#16a34a', m: p.getAttribute('d').match(/^M([\d.]+),([\d.]+)/).slice(1).map(Number) }));
+  assert.equal(starts.length, 3, 'ルックアップ・取り込み・関連レコード一覧');
+  const link = starts.find((s) => s.green); // 顧客管理 → 受注管理（右向き。顧客管理の右の縁から）
+  const back = starts.find((s) => !s.green && s.m[0] === 840); // 受注管理 → 顧客管理（左向き。受注管理の左の縁から）
+  assert.deepEqual(plain([link.m[0], [link.m[1], back.m[1]].sort((a, b) => a - b)]), [640, [64, 80]], '箱の真ん中（72）から上下に 8 ずつずらす');
+  const orderNode = $(app, `#design-map .mnode[data-node="d:${orderId}"]`);
+  assert.match(orderNode.textContent, /関連レコード一覧の元・この画面設計から取り込んでいる/);
+  assert.equal(orderNode.style.height, '96px', '役目の行が長いときは 2 行に折り返し、箱も高くする');
+});
+
+test('つながりの図: 線がほかの箱に重なるときは、その箱の上か下の隙間を通す', async (t) => {
+  const { app, api, masterId, custId, orderId, dailyId } = await bootMap(t);
+  api.goHome();
+  click($(app, '[data-action="home-map"]'));
+  // 取引先マスタ・日報・顧客管理・受注管理を横 1 列に並べる（取引先マスタ → 顧客管理 の線が、日報の箱に重なる）
+  [[masterId, 40], [dailyId, 400], [custId, 760], [orderId, 1120]].forEach(([id, x]) => api.actions.setMapPos(null, 'd:' + id, { x, y: 296 }));
+  api.actions.setMapPos(null, 'x:会計システム', { x: 760, y: 40 });
+  const ds = $$(app, '#home-map svg > path').map((p) => p.getAttribute('d'));
+  const lookup = ds.find((d) => d.startsWith('M240.0,328.0'));
+  assert.equal(lookup, 'M240.0,328.0 C306.0,328.0 306.0,272.0 372.0,272.0 L628.0,272.0 C694.0,272.0 694.0,328.0 760.0,328.0',
+    '日報の箱（400〜600）の手前で上の隙間（箱の上の 24 上）へ曲がり、過ぎてから顧客管理へ下りる');
+  assert.ok(ds.filter((d) => d !== lookup).every((d) => !d.includes(' L')), 'ほかの線は重ならないので、そのまま引く');
+});
+
+test('最初の画面: 「つながりの図」に切り替えると、名前で探す欄・カード・ごみ箱の代わりに図を出す。箱を押すとその画面設計を開く', async (t) => {
+  const { app, api, masterId, node } = await bootMap(t);
+  api.goHome();
+  click($(app, '[data-action="home-map"]'));
+  assert.equal(api.ui.homeMap, true);
+  assert.ok($(app, '[data-action="home-map"]').classList.contains('on'));
+  assert.equal($(app, '#home-search'), null);
+  assert.equal($(app, '#home-cards'), null);
+  assert.equal($(app, '#home-trash'), null);
+  assert.equal($$(app, '#home-map .mnode').length, 5);
+  assert.match(node('x:会計システム').textContent, /会計システム\s*一覧にないデータベース/);
+  assert.ok(node('x:会計システム').classList.contains('ext'), '一覧にないデータベースは点線の箱');
+  assert.match(node('d:' + masterId).textContent, /取引先マスタ.*項目 3 個・画面 1/);
+  assert.equal($$(app, '#home-map svg > path').length, 3, '矢印 3 本');
+  const num = '-?[\\d.]+,-?[\\d.]+';
+  $$(app, '#home-map svg > path').forEach((p) => assert.match(p.getAttribute('d'), new RegExp(`^M${num} C${num} ${num} ${num}$`), '曲線は始まりの点・2 つの曲げる点・終わりの点'));
+  assert.ok($(app, '.home').classList.contains('wide'), '図のときは横の幅を画面いっぱいに使う');
+  const svgText = $(app, '#home-map svg').textContent;
+  ['取引先コードで引く', '取り込み: 取引先名', '関連レコード一覧', '請求の履歴'].forEach((s) => assert.ok(svgText.includes(s), s));
+  // 一覧にないデータベースの箱は、押しても開かない
+  dragNode(app, node('x:会計システム'), 0, 0);
+  assert.equal(api.ui.view, 'home');
+  // 画面設計の箱を押すと開く
+  dragNode(app, node('d:' + masterId), 0, 0);
+  assert.equal(api.ui.view, 'editor');
+  assert.equal(api.ui.designId, masterId);
+  // 最初の画面に戻っても、図のままにしておく。カードに戻せる
+  api.goHome();
+  assert.ok($(app, '#home-map'));
+  click($(app, '[data-action="home-cards"]'));
+  assert.equal(api.ui.homeMap, false);
+  assert.ok($(app, '#home-cards'));
+  assert.ok($(app, '#home-search'));
+});
+
+test('最初の画面の図: 箱をドラッグで動かすと位置を覚え（マス目に吸い付く）、更新日時は変えない。「自動で並べ直す」で戻す', async (t) => {
+  const { app, api, dailyId, node } = await bootMap(t);
+  api.goHome();
+  click($(app, '[data-action="home-map"]'));
+  const before = api.store.state.designs.find((d) => d.id === dailyId).updatedAt;
+  assert.deepEqual([node('d:' + dailyId).style.left, node('d:' + dailyId).style.top], ['40px', '296px']);
+  dragNode(app, node('d:' + dailyId), 50, 30);
+  assert.deepEqual(plain(api.store.state.settings.mapPos), { ['d:' + dailyId]: { x: 88, y: 328 } }, '8 ドットのマス目に吸い付く');
+  assert.equal(api.ui.view, 'home', '動かしたときは開かない');
+  assert.deepEqual([node('d:' + dailyId).style.left, node('d:' + dailyId).style.top], ['88px', '328px'], '描き直しても動かした位置');
+  assert.equal(api.store.state.designs.find((d) => d.id === dailyId).updatedAt, before);
+  click($(app, '[data-action="map-reset"]'));
+  assert.deepEqual(plain(api.store.state.settings.mapPos), {});
+  assert.equal(node('d:' + dailyId).style.left, '40px');
+  api.store.undo();
+  assert.deepEqual(plain(api.store.state.settings.mapPos), { ['d:' + dailyId]: { x: 88, y: 328 } }, '元に戻すで、覚えた位置も戻る');
+  // 左や上へは 0 より外に出さない
+  dragNode(app, node('d:' + dailyId), -5000, -5000);
+  assert.deepEqual(plain(api.store.state.settings.mapPos['d:' + dailyId]), { x: 0, y: 0 });
+});
+
+test('編集の画面: 左の一覧の「つながりの図」で、この画面設計と直接つながる画面設計だけの図を出し、位置は画面設計ごとに覚える', async (t) => {
+  const { app, api, masterId, custId, orderId, node, cust } = await bootMap(t);
+  api.openDesign(custId);
+  assert.match($(app, '[data-action="open-map"]').textContent, /つながりの図\s*2 つとつながっている/);
+  click($(app, '[data-action="open-map"]'));
+  assert.equal(api.ui.panel, 'map');
+  assert.ok($(app, '[data-action="open-map"]').classList.contains('active'));
+  assert.equal($(app, '#db-view').hidden, false);
+  assert.equal($(app, '#canvas-wrap').hidden, true);
+  assert.equal($(app, '#side-panel').hidden, true, '右の欄は隠して、図を広く見せる');
+  assert.match($(app, '#db-view .map-note').textContent, /「顧客管理」と、直接つながる画面設計を描きます/);
+  assert.equal($$(app, '#design-map .mnode').length, 3);
+  assert.ok(node('d:' + custId).classList.contains('cur'));
+  assert.match(node('d:' + custId).textContent, /顧客管理（この画面設計）/);
+  assert.match(node('d:' + masterId).textContent, /ルックアップ元/);
+  assert.match(node('d:' + orderId).textContent, /この画面設計から取り込んでいる/);
+  assert.deepEqual([node('d:' + masterId).style.height, node('d:' + orderId).style.height], ['80px', '80px'], '役目の行の分だけ箱を高くする');
+  // 動かすと、この画面設計に位置を覚える（最初の画面の図とは別。更新日時は変えない）
+  const before = cust().updatedAt;
+  dragNode(app, node('d:' + masterId), 16, 16);
+  assert.deepEqual(plain(cust().mapPos), { ['d:' + masterId]: { x: 56, y: 56 } });
+  assert.deepEqual(plain(api.store.state.settings.mapPos), {});
+  assert.equal(cust().updatedAt, before);
+  assert.equal(api.ui.panel, 'map', '描き直しても図のまま');
+  // この画面設計の箱は押しても開かない。ほかの画面設計の箱を押すと開く
+  dragNode(app, node('d:' + custId), 0, 0);
+  assert.equal(api.ui.designId, custId);
+  click($(app, '#db-view [data-action="map-reset"]'));
+  assert.deepEqual(plain(cust().mapPos), {});
+  dragNode(app, node('d:' + orderId), 0, 0);
+  assert.equal(api.ui.designId, orderId);
+  assert.equal($(app, '#side-panel').hidden, false, '開いた画面設計は画面を出すので、右の欄も出す');
+  assert.match($(app, '[data-action="open-map"]').textContent, /2 つとつながっている/, '受注管理は、顧客管理と会計システムにつながる');
+});
+
+test('つながりの図の位置: 読み込むときに、形の合わない位置は捨てる。画面設計がないときは案内を出す', async (t) => {
+  const app = bootApp();
+  const api = await app.api();
+  t.after(() => app.close());
+  const { state } = api.migrate({
+    schemaVersion: 2,
+    settings: { mapPos: { 'd:a': { x: '16', y: 8 }, 'd:b': { x: 'あ', y: 1 }, 'd:c': 3 } },
+    designs: [{ id: 'd1', name: '顧客管理', screens: [{ id: 's1', parts: [] }], mapPos: { 'x:会計システム': { x: 40, y: 152 }, bad: null } }],
+  });
+  assert.deepEqual(plain(state.settings.mapPos), { 'd:a': { x: 16, y: 8 } });
+  assert.deepEqual(plain(state.designs[0].mapPos), { 'x:会計システム': { x: 40, y: 152 } });
+  click($(app, '[data-action="home-map"]'));
+  assert.match($(app, '#home-map').textContent, /まだ画面設計がありません/);
+});

@@ -448,6 +448,94 @@ async function shootMulti(browser) {
   await page.close();
 }
 
+// ── データベースどうしのつながりの図（画像 q23）。q23 と同じ顔ぶれに、顧客管理の「受注の履歴」（関連レコード一覧。受注管理 → 顧客管理 で輪になる）を足す ──
+const lk = (dbId, dbName, key, copies) => ({ db: { designId: dbId, name: dbName, free: !dbId }, key, copies: copies.map(([from, to]) => ({ from, to })) });
+const ref = (itemId, name) => ({ itemId, name });
+const MAP_SAMPLE = {
+  schemaVersion: 2,
+  settings: { customTargets: [] },
+  designs: [
+    design('d1', '顧客管理', 'kintone', '2026-10-13T05:20:00.000Z', {
+      ...screen('s1', '詳細'),
+      parts: [
+        ipart('p1', 'text1', 24, 64, 472, 64, 1, 'i1'),
+        ipart('p2', 'text1', 528, 64, 472, 64, 2, 'i2'),
+        { id: 'p3', type: 'table', x: 24, y: 160, w: 976, h: 168, no: 3, labelPos: 'top', sample: '', placeholder: '', label: '受注の履歴', required: false, memo: '', tableKind: 'related',
+          props: { columns: [], sort: '受注日の新しい順', perPage: '20', limit: '5', db: { designId: 'd5', name: '', free: false }, cond: { from: ref('e1', '顧客コード'), to: ref('i1', '顧客コード') } },
+          view: { rows: 3, samples: {}, widths: {} } },
+      ],
+    }, {
+      items: [
+        item('i1', '顧客コード', 'text1', {}, { required: true }),
+        item('i2', '顧客名', 'text1', {}, { required: true }),
+        item('i3', '取引先コード', 'text1', {}, { lookup: lk('d3', '取引先マスタ', ref('b1', '取引先コード'), [[ref('b2', '取引先名'), ref('i4', '取引先名')], [ref('b3', '住所'), ref('i7', '住所')]]) }),
+        item('i4', '取引先名', 'text1'),
+        item('i5', '郵便番号', 'text1', {}, { link: { designId: 'd2', itemId: 'a1', designName: '住所の共通項目', lost: false } }),
+        item('i6', '都道府県', 'dropdown', { options: PREFS }, { link: { designId: 'd2', itemId: 'a2', designName: '住所の共通項目', lost: false } }),
+        item('i7', '住所', 'text1'),
+      ],
+    }),
+    design('d2', '住所の共通項目', 'その他', '2026-10-12T05:20:00.000Z', screen('s2', '住所の入力'), {
+      items: [item('a1', '郵便番号', 'text1'), item('a2', '都道府県', 'dropdown', { options: PREFS }), item('a3', '市区町村', 'text1'), item('a4', '番地', 'text1')],
+    }),
+    design('d3', '取引先マスタ', 'kintone', '2026-10-11T05:20:00.000Z', screen('s3', '一覧'), {
+      items: [item('b1', '取引先コード', 'text1'), item('b2', '取引先名', 'text1'), item('b3', '住所', 'text1'),
+        item('b4', '都道府県', 'dropdown', { options: PREFS }, { link: { designId: 'd2', itemId: 'a2', designName: '住所の共通項目', lost: false } })],
+    }),
+    design('d4', '商品マスタ', 'kintone', '2026-10-10T05:20:00.000Z', screen('s4', '一覧'), {
+      items: [item('c1', '商品コード', 'text1'), item('c2', '商品名', 'text1'), item('c3', '単価', 'number')],
+    }),
+    design('d5', '受注管理', 'kintone', '2026-10-09T05:20:00.000Z', screen('s5', '新規登録'), {
+      items: [
+        item('e1', '顧客コード', 'text1', {}, { lookup: lk('d1', '顧客管理', ref('i1', '顧客コード'), [[ref('i2', '顧客名'), ref('e2', '顧客名')]]) }),
+        item('e2', '顧客名', 'text1'),
+        item('e3', '商品コード', 'text1', {}, { lookup: lk('d4', '商品マスタ', ref('c1', '商品コード'), [[ref('c2', '商品名'), ref('e4', '商品名')], [ref('c3', '単価'), ref('e5', '単価')]]) }),
+        item('e4', '商品名', 'text1'),
+        item('e5', '単価', 'number'),
+        item('e6', '勘定科目コード', 'text1', {}, { lookup: lk(null, '会計システム', ref(null, '勘定科目コード'), [[ref(null, '勘定科目名'), ref('e7', '勘定科目名')]]) }),
+        item('e7', '勘定科目名', 'text1'),
+      ],
+    }),
+    design('d6', '社員名簿', 'kintone', '2026-10-08T05:20:00.000Z', screen('s6', '一覧'), {
+      items: [item('f1', '社員番号', 'text1'), item('f2', '氏名', 'text1')],
+    }),
+  ],
+};
+
+// 箱のドラッグ・押して開くは、実際にマウスを動かして確かめる
+async function shootMap(browser) {
+  const page = await openApp(browser, MAP_SAMPLE);
+  await page.setViewport({ width: 1600, height: 900 });
+  await page.click('[data-action="home-map"]');
+  const edges = await page.evaluate(() => window.__test__.mapModel(window.__test__.store.state).edges.map((e) => `${e.kind}: ${e.from} → ${e.to}`));
+  console.log('矢印:', JSON.stringify(edges));
+  await shot(page, '49_図_最初の画面のつながりの図');
+  // 社員名簿（つながりのない箱。つながった箱の下にある）を右下へドラッグする（途中で撮る）
+  const node = '#home-map .mnode[data-node="d:d6"]';
+  const c = await center(page, node);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + 1200, c.y + 120, { steps: 12 });
+  await shot(page, '50_図_箱をドラッグしている途中');
+  await page.mouse.up();
+  console.log('覚えた位置（最初の画面）:', JSON.stringify(await page.evaluate(() => window.__test__.store.state.settings.mapPos)));
+  await shot(page, '51_図_箱を動かした後');
+  // 顧客管理の箱を押す（動かさない）と、編集の画面を開く
+  await page.click('#home-map .mnode[data-node="d:d1"]');
+  console.log('押した後:', JSON.stringify(await page.evaluate(() => [window.__test__.ui.view, window.__test__.currentDesign().name])));
+  await page.setViewport({ width: 1400, height: 860 });
+  await page.click('[data-action="open-map"]');
+  await shot(page, '52_図_編集の画面のつながりの図（顧客管理）');
+  // 編集の画面の図でも動かせる（画面設計ごとに覚える）
+  const n3 = await center(page, '#design-map .mnode[data-node="d:d3"]');
+  await dragMouse(page, n3, { x: n3.x + 40, y: n3.y + 240 });
+  console.log('覚えた位置（顧客管理）:', JSON.stringify(await page.evaluate(() => window.__test__.currentDesign().mapPos)));
+  await shot(page, '53_図_編集の画面で箱を動かした後');
+  await page.click('#design-map .mnode[data-node="d:d5"]');
+  console.log('受注管理の箱を押した後:', JSON.stringify(await page.evaluate(() => [window.__test__.ui.view, window.__test__.currentDesign().name, window.__test__.ui.panel])));
+  await page.close();
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await puppeteer.launch({
@@ -464,6 +552,7 @@ async function shootMulti(browser) {
     if (wants('parts2')) await shootParts2(browser);
     if (wants('callout')) await shootCallouts(browser);
     if (wants('multi')) await shootMulti(browser);
+    if (wants('map')) await shootMap(browser);
   } finally {
     await browser.close();
   }

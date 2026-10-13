@@ -28,6 +28,7 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .btn.danger:hover{background:#b91c1c}
 .btn.small{padding:4px 10px;font-size:12px}
 .btn.small.danger-text{color:#dc2626}
+.btn.on{background:#eff6ff;border-color:#2563eb;color:#1d4ed8;font-weight:700}
 .btn:disabled{opacity:.45;cursor:default}
 
 /* 上の細い帯（アプリ名） */
@@ -45,6 +46,7 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 /* ── 最初の画面（画面設計の一覧）─────────────────────── */
 .home-scroll{flex:1;overflow:auto}
 .home{max-width:1120px;margin:0 auto;padding:22px 24px 40px}
+.home.wide{max-width:none}
 .home-head{display:flex;align-items:center;gap:10px}
 .home-head h1{font-size:22px;font-weight:700;color:#0f172a}
 .search{display:flex;align-items:center;gap:6px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;padding:0 10px;width:240px}
@@ -435,6 +437,26 @@ body.sorting,body.sorting *{cursor:grabbing!important}
 .pf-banner.link{background:#f0fdf4;border:1px solid #86efac;color:#14532d}
 .pf-banner.gone{background:#fff7ed;border:1px solid #fdba74;color:#7c2d12}
 .pf-note{font-size:11px;color:#64748b;text-align:right;margin-top:3px}
+/* データベースどうしのつながりの図（画像 q23） */
+.map-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:12px;color:#475569;margin:6px 0 10px}
+.map-head i{display:inline-block;width:30px;height:0;border-top:2.5px solid #1d3f6e;vertical-align:middle;margin-right:5px}
+.map-head i.d{border-top:2.5px dashed #16a34a}
+.map-head i.x{width:16px;height:12px;border:1.5px dashed #94a3b8;border-radius:3px}
+.map-canvas{position:relative;background:#fff;border:1px solid #cbd5e1;border-radius:8px;overflow:auto}
+.map-inner{position:relative}
+.map-inner svg{position:absolute;left:0;top:0;pointer-events:none}
+.mnode{position:absolute;background:#fff;border:1.5px solid #94a3b8;border-radius:8px;padding:8px 12px;cursor:grab;user-select:none;overflow:hidden}
+.mnode:hover{border-color:#2563eb;box-shadow:0 2px 10px rgba(15,23,42,.12)}
+.mnode b{display:block;font-size:14px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mnode .mt{display:flex;align-items:center;gap:6px;font-size:11px;color:#64748b;margin-top:4px;white-space:nowrap}
+.mnode .mt.role{display:block;white-space:normal;line-height:16px;margin-top:2px}
+.mnode.ext{background:#f8fafc;border-style:dashed}
+.mnode.ext b{color:#475569}
+.mnode.cur{background:#eff6ff;border:2.5px solid #2563eb}
+.mnode.cur b{color:#1d4ed8}
+body.map-dragging,body.map-dragging *{cursor:grabbing!important}
+.map-note{color:#64748b;font-size:12px;line-height:1.7;margin:-4px 0 4px}
+.map-empty{color:#64748b;font-size:13px;padding:18px;line-height:1.7}
 .pf-banner.ref{background:#fffbeb;border:1px solid #fcd34d;color:#78350f}
 .tag.ref{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
 /* ルックアップの設定の欄（探す項目の「項目の設定」の中） */
@@ -516,7 +538,7 @@ function cleanName(s, max = NAME_MAX) {
 }
 
 function createInitialState() {
-  return { schemaVersion: SCHEMA_VERSION, settings: { customTargets: [] }, designs: [] };
+  return { schemaVersion: SCHEMA_VERSION, settings: { customTargets: [], mapPos: {} }, designs: [] };
 }
 
 function createScreenData(name, device = 'pc') {
@@ -527,7 +549,7 @@ function createScreenData(name, device = 'pc') {
 function createDesignData(name, target, now = nowIso()) {
   return {
     id: newId('d'), name, target, description: '', createdAt: now, updatedAt: now,
-    trashedAt: null, revisions: [], items: [], screens: [createScreenData(FIRST_SCREEN_NAME)],
+    trashedAt: null, revisions: [], items: [], screens: [createScreenData(FIRST_SCREEN_NAME)], mapPos: {},
   };
 }
 
@@ -1283,6 +1305,135 @@ function importState(d, src, it) {
   return '';
 }
 
+// ── データベースどうしのつながりの図（画像 q23）──
+// 箱＝画面設計（ごみ箱のものは除く）と、ルックアップ・関連レコード一覧の元に名前だけ書いた「一覧にないデータベース」。
+// 矢印は値が流れる向き（元 → 引く側）: lookup（ルックアップ）・related（関連レコード一覧）は紺、link（項目の取り込み）は緑の点線。
+// focusId を渡すと、その画面設計と、直接つながる箱だけにする（編集の画面のつながりの図）
+const MAP_W = 200;
+const MAP_H = 64;
+const MAP_COL = 400; // 列の幅（箱の幅 200 ＋ 矢印の文字を書く間 200）
+const MAP_ROW = 112; // 段の高さ（箱の高さ 64 ＋ 間 48）
+function mapModel(state, focusId = null) {
+  const designs = visibleDesigns(state);
+  const ids = new Set(designs.map((d) => d.id));
+  const keyOfDb = (db) => (db && db.designId ? (ids.has(db.designId) ? 'd:' + db.designId : null) : db && db.name ? 'x:' + db.name : null);
+  const edges = new Map();
+  const add = (from, to, kind, label) => {
+    if (!from || from === to) return;
+    const k = `${from}|${to}|${kind}`;
+    if (!edges.has(k)) edges.set(k, { from, to, kind, labels: [] });
+    if (label && !edges.get(k).labels.includes(label)) edges.get(k).labels.push(label);
+  };
+  designs.forEach((d) => {
+    const to = 'd:' + d.id;
+    d.items.forEach((it) => {
+      if (it.lookup) {
+        const src = it.lookup.db.designId ? findDesign(state, it.lookup.db.designId) : null;
+        const copies = it.lookup.copies.map((c) => refLabel(src, c.from)).filter((n) => n && !n.startsWith('（')).join('・');
+        add(keyOfDb(it.lookup.db), to, 'lookup', `${refLabel(src, it.lookup.key)}で引く${copies ? `\n${copies}` : ''}`);
+      }
+      if (it.link && !it.link.lost && ids.has(it.link.designId)) add('d:' + it.link.designId, to, 'link', it.name);
+    });
+    d.screens.forEach((s) => s.parts.forEach((p) => {
+      if (p.type === 'table' && p.tableKind === 'related' && p.props && p.props.db) add(keyOfDb(p.props.db), to, 'related', p.label);
+    }));
+  });
+  let list = [...edges.values()];
+  const nodes = new Map(designs.map((d) => ['d:' + d.id, { key: 'd:' + d.id, design: d, name: d.name }]));
+  list.forEach((e) => [e.from, e.to].forEach((k) => { if (!nodes.has(k)) nodes.set(k, { key: k, design: null, name: k.slice(2) }); }));
+  let keys = [...nodes.keys()];
+  if (focusId) {
+    const f = 'd:' + focusId;
+    list = list.filter((e) => e.from === f || e.to === f);
+    const near = new Set([f, ...list.flatMap((e) => [e.from, e.to])]);
+    keys = keys.filter((k) => near.has(k));
+  }
+  return { nodes: keys.map((k) => nodes.get(k)), edges: list };
+}
+// 自動で並べる位置。矢印の元を左、引く側を右の列にする（列＝元から何段目か）。
+// つながりのない箱は、つながった箱の下に、名前の順に横に並べる（右の端の列に置くと、図が横に長くなるため。Claude が決めた）
+function mapLayout(model) {
+  const forward = mapForwardEdges(model);
+  const rank = mapRanks(model, forward);
+  const linked = new Set(model.edges.flatMap((e) => [e.from, e.to]));
+  const byName = [...model.nodes].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  const cols = new Map();
+  byName.filter((n) => linked.has(n.key)).forEach((n) => {
+    const c = rank.get(n.key);
+    if (!cols.has(c)) cols.set(c, []);
+    cols.get(c).push(n);
+  });
+  mapOrderRows(cols, forward);
+  const pos = {};
+  cols.forEach((list, c) => list.forEach((n, i) => { pos[n.key] = { x: 40 + c * MAP_COL, y: 40 + i * MAP_ROW }; }));
+  const rows = Math.max(0, ...[...cols.values()].map((list) => list.length));
+  const top = 40 + rows * MAP_ROW + (rows ? 32 : 0);
+  const perRow = Math.max(4, Math.floor((cols.size * MAP_COL - (MAP_COL - MAP_W)) / (MAP_W + 40)));
+  byName.filter((n) => !linked.has(n.key)).forEach((n, i) => {
+    pos[n.key] = { x: 40 + (i % perRow) * (MAP_W + 40), y: top + Math.floor(i / perRow) * MAP_ROW };
+  });
+  return pos;
+}
+// 箱の列＝矢印の元から何段目か（いちばん長い道のり）。入ってくる矢印のない箱（いちばん元）は、矢印の先のいちばん左の箱の
+// すぐ左の列へ寄せる（例: 受注管理だけに引かれる会計システムを、いちばん左の列に置くと、長い矢印が間の列の箱の後ろを通るため）
+function mapRanks(model, forward) {
+  const rank = new Map(model.nodes.map((n) => [n.key, 0]));
+  for (let i = 0; i < model.nodes.length; i++) {
+    let changed = false;
+    forward.forEach((e) => { if (rank.get(e.to) < rank.get(e.from) + 1) { rank.set(e.to, rank.get(e.from) + 1); changed = true; } });
+    if (!changed) break;
+  }
+  const hasIn = new Set(forward.map((e) => e.to));
+  model.nodes.filter((n) => !hasIn.has(n.key)).forEach((n) => {
+    const outs = forward.filter((e) => e.from === n.key).map((e) => rank.get(e.to));
+    if (outs.length) rank.set(n.key, Math.min(...outs) - 1);
+  });
+  return rank;
+}
+// 列の中の並び。矢印でつながる相手（左の列の元・右の列の先）の段の平均に近い順にする（線の交わりを減らすため）。
+// 左から右・右から左を 2 回ずつ繰り返す。相手がいない箱と、平均が同じ箱は、今の並び（はじめは名前の順）のまま
+function mapOrderRows(cols, forward) {
+  const row = new Map();
+  cols.forEach((list) => list.forEach((n, i) => row.set(n.key, i)));
+  const order = [...cols.keys()].sort((a, b) => a - b);
+  for (let pass = 0; pass < 4; pass++) {
+    const fromLeft = pass % 2 === 0;
+    (fromLeft ? order : [...order].reverse()).forEach((c) => {
+      const list = cols.get(c);
+      const score = new Map(list.map((n, i) => {
+        const near = forward.filter((e) => (fromLeft ? e.to : e.from) === n.key).map((e) => row.get(fromLeft ? e.from : e.to));
+        return [n.key, near.length ? near.reduce((s, x) => s + x, 0) / near.length : i];
+      }));
+      list.sort((a, b) => score.get(a.key) - score.get(b.key));
+      list.forEach((n, i) => row.set(n.key, i));
+    });
+  }
+}
+// 列を決めるときに使う矢印。矢印が輪になっているとき（例: 顧客管理 → 受注管理 のルックアップと、受注管理 → 顧客管理 の関連レコード一覧）は、
+// 輪を閉じる矢印を外す（外さないと、輪の箱が右の列へ送られ続けるため）。ルックアップ・取り込み・関連レコード一覧の順に矢印を足していき、
+// 足すと輪になる矢印だけを外す（関連レコード一覧は、ルックアップと逆向きに置かれることが多いため後にする）
+const MAP_EDGE_ORDER = { lookup: 0, link: 1, related: 2 };
+function mapForwardEdges(model) {
+  const out = new Map(model.nodes.map((n) => [n.key, []]));
+  const reaches = (from, to) => {
+    const seen = new Set([from]);
+    const stack = [from];
+    while (stack.length) {
+      const k = stack.pop();
+      if (k === to) return true;
+      out.get(k).forEach((n) => { if (!seen.has(n)) { seen.add(n); stack.push(n); } });
+    }
+    return false;
+  };
+  const kept = [];
+  [...model.edges].sort((a, b) => MAP_EDGE_ORDER[a.kind] - MAP_EDGE_ORDER[b.kind]).forEach((e) => {
+    if (reaches(e.to, e.from)) return;
+    out.get(e.from).push(e.to);
+    kept.push(e);
+  });
+  return kept;
+}
+
 // その画面設計の項目を取り込んでいる、ほかの画面設計（ごみ箱のものは除く）
 function designsImporting(state, designId) {
   return state.designs.filter((d) => d.id !== designId && !d.trashedAt && d.items.some((it) => it.link && it.link.designId === designId && !it.link.lost));
@@ -1375,7 +1526,15 @@ function normalizeDesign(src) {
     revisions: Array.isArray(d.revisions) ? d.revisions : [],
     items,
     screens,
+    mapPos: normalizeMapPos(d.mapPos), // 編集の画面の「この画面設計のつながりの図」の箱の位置
   };
+}
+
+// つながりの図で、ドラッグして動かした箱の位置 { 箱の鍵: { x, y } }（箱の鍵は画面設計なら 'd:id'、一覧にないデータベースなら 'x:名前'）
+function normalizeMapPos(src) {
+  const out = {};
+  if (isObj(src)) Object.entries(src).forEach(([k, v]) => { if (isObj(v) && Number.isFinite(Number(v.x)) && Number.isFinite(Number(v.y))) out[k] = { x: Number(v.x), y: Number(v.y) }; });
+  return out;
 }
 
 function normalizeState(raw, schemaVersion) {
@@ -1384,7 +1543,8 @@ function normalizeState(raw, schemaVersion) {
   const state = {
     ...raw,
     schemaVersion,
-    settings: { ...settings, customTargets: [...new Set(customs.filter((t) => typeof t === 'string' && t.trim()))] },
+    // mapPos は最初の画面の「全部の画面設計のつながりの図」の箱の位置
+    settings: { ...settings, customTargets: [...new Set(customs.filter((t) => typeof t === 'string' && t.trim()))], mapPos: normalizeMapPos(settings.mapPos) },
     designs: (Array.isArray(raw.designs) ? raw.designs : []).filter(isObj).map(normalizeDesign),
   };
   syncLinkedItems(state);
@@ -1776,6 +1936,28 @@ const actions = {
       s.callouts.push(...newCallouts);
     });
     return out;
+  },
+
+  // ── つながりの図 ──
+  // 動かした箱の位置を覚える。designId が null なら最初の画面の図（設定に持つ）、あれば編集の画面のその画面設計の図（画面設計に持つ。更新日時は変えない）
+  setMapPos(designId, key, pos) {
+    const p = { x: Math.max(0, snapGrid(pos.x)), y: Math.max(0, snapGrid(pos.y)) };
+    if (!designId) {
+      store.commit((s) => { s.settings.mapPos = { ...s.settings.mapPos, [key]: p }; });
+      return true;
+    }
+    return mutateDesign(designId, (d) => { d.mapPos = { ...d.mapPos, [key]: p }; }, { touch: false });
+  },
+  // 覚えた位置を消して、自動で並べ直す
+  resetMapPos(designId) {
+    if (!designId) {
+      if (!Object.keys(store.state.settings.mapPos || {}).length) return false;
+      store.commit((s) => { s.settings.mapPos = {}; });
+      return true;
+    }
+    const d = findDesign(store.state, designId);
+    if (!d || !Object.keys(d.mapPos || {}).length) return false;
+    return mutateDesign(designId, (dd) => { dd.mapPos = {}; }, { touch: false });
   },
 
   // ── 吹き出し ──
@@ -2430,6 +2612,7 @@ const ui = {
   panel: 'screen', // 真ん中に出しているもの: 'screen'（画面）か 'items'（データベースの項目の一覧表）
   itemId: null, // データベースの項目の一覧表で選んでいる項目の id
   addItemMenu: false, // 「＋ 項目を足す」の種類の小さなメニューを開いているか
+  homeMap: false, // 最初の画面で、カードの代わりにつながりの図を出しているか（アプリを閉じるまで覚えておく）
   colId: null, // 表の部品の設定の欄で選んでいる列の id
 };
 // partId・calloutId は、1 つだけ選んでいるときのその部品・吹き出しの id（ほかのときは null）。入れると、それだけを選んだことにする
@@ -2453,18 +2636,157 @@ function renderHome() {
       <button class="tbtn" data-action="redo" ${store.canRedo() ? '' : 'disabled'} title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button>
     </header>
     <main class="home-scroll">
-      <section class="home">
+      <section class="home${ui.homeMap ? ' wide' : ''}">
         <div class="home-head">
           <h1>画面設計</h1>
           <span class="spacer"></span>
-          <label class="search"><span aria-hidden="true">🔍</span><input type="search" id="home-search" placeholder="名前で探す" aria-label="名前で探す" value="${esc(ui.query)}"></label>
+          ${ui.homeMap ? '' : `<label class="search"><span aria-hidden="true">🔍</span><input type="search" id="home-search" placeholder="名前で探す" aria-label="名前で探す" value="${esc(ui.query)}"></label>`}
+          <button class="btn${ui.homeMap ? '' : ' on'}" data-action="home-cards" aria-pressed="${!ui.homeMap}">▦ カードで並べる</button>
+          <button class="btn${ui.homeMap ? ' on' : ''}" data-action="home-map" aria-pressed="${ui.homeMap}">⇄ つながりの図</button>
           <button class="btn primary" data-action="new">＋ 新規作成</button>
         </div>
+        ${ui.homeMap ? `
+        <p class="home-note">画面設計 1 つを、データベース 1 つ（箱）として描きます。箱を押すと、その画面設計を開きます。ドラッグで動かすと、その位置を覚えます。</p>
+        ${mapLegendHtml()}
+        <div class="map-canvas" id="home-map">${mapHtml(store.state, null, store.state.settings.mapPos || {})}</div>` : `
         <p class="home-note">更新の新しい順に並べています。カードを押すと開きます。「…」から名前の変更・複製・削除ができます。</p>
         <div class="cards" id="home-cards">${renderCards()}</div>
-        <div class="trash" id="home-trash">${renderTrash()}</div>
+        <div class="trash" id="home-trash">${renderTrash()}</div>`}
       </section>
     </main>`;
+}
+
+// つながりの図の HTML。focusId（編集の画面の画面設計）があればその画面設計の図。saved は覚えた箱の位置
+function mapHtml(state, focusId, saved) {
+  const model = mapModel(state, focusId);
+  if (!model.nodes.length) return '<p class="map-empty">まだ画面設計がありません。</p>';
+  const auto = mapLayout(model);
+  const pos = Object.fromEntries(model.nodes.map((n) => [n.key, { ...(saved[n.key] || auto[n.key]) }]));
+  const roles = (k) => {
+    if (!focusId || k === 'd:' + focusId) return '';
+    const f = 'd:' + focusId;
+    const r = model.edges.filter((e) => (e.from === k && e.to === f) || (e.from === f && e.to === k)).map((e) => (e.to === f
+      ? { lookup: 'ルックアップ元', related: '関連レコード一覧の元', link: '取り込み元' }[e.kind]
+      : { lookup: 'この画面設計から引いている', related: 'この画面設計のレコードを並べている', link: 'この画面設計から取り込んでいる' }[e.kind]));
+    return [...new Set(r)].join('・');
+  };
+  const nodes = model.nodes.map((n) => {
+    const p = pos[n.key];
+    const cur = focusId && n.key === 'd:' + focusId;
+    const meta = n.design
+      ? `${cur ? '' : targetChip(n.design.target)}<span>項目 ${n.design.items.length} 個・画面 ${n.design.screens.length}</span>`
+      : '<span>一覧にないデータベース</span>';
+    const role = roles(n.key);
+    p.h = MAP_H + (role ? (role.length > 16 ? 32 : 16) : 0); // 役目の行は 1 行に 16 字ほど
+    return `<div class="mnode${n.design ? '' : ' ext'}${cur ? ' cur' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${p.h}px"
+      title="${n.design && !cur ? `ドラッグで動かせます。押すと「${esc(n.name)}」を開きます` : 'ドラッグで動かせます'}"><b>${esc(n.name)}${cur ? '（この画面設計）' : ''}</b><div class="mt">${meta}</div>${role ? `<div class="mt role">${esc(role)}</div>` : ''}</div>`;
+  }).join('');
+  const w = Math.max(860, ...Object.values(pos).map((p) => p.x + MAP_W + 40));
+  const h = Math.max(420, ...Object.values(pos).map((p) => p.y + MAP_H + 60));
+  return `<div class="map-inner" id="map-inner" style="width:${w}px;height:${h}px" data-focus="${esc(focusId || '')}">${mapEdgesSvg(model, pos, w, h)}${nodes}</div>`;
+}
+// 矢印の線。箱の左右（重なって並ぶときは上下）の縁から、相手の箱へ曲線で引き、真ん中に文字を書く。
+// 同じ縁に何本も付くときは、縁に沿ってずらす（mapPorts）。同じ 2 つの箱の間の矢印（行きと帰りなど）は、文字を線の外側に書く
+function mapEdgesSvg(model, pos, w, h) {
+  const box = (k) => ({ ...pos[k], w: MAP_W, h: MAP_H });
+  const pairOf = (e) => [e.from, e.to].sort().join('|');
+  const pairs = new Map();
+  model.edges.forEach((e) => pairs.set(pairOf(e), [...(pairs.get(pairOf(e)) || []), e]));
+  const ports = mapPorts(model, pos);
+  const paths = model.edges.map((e, i) => {
+    const same = pairs.get(pairOf(e));
+    const outside = same.length > 1 ? (same.indexOf(e) < (same.length - 1) / 2 ? -1 : 1) : 0;
+    // ほかの箱は、役目の行（編集の画面の図）の分も含めた高さで避ける
+    const others = model.nodes.filter((n) => n.key !== e.from && n.key !== e.to).map((n) => ({ ...pos[n.key], w: MAP_W, h: pos[n.key].h || MAP_H }));
+    const g = mapEdgeGeometry(box(e.from), box(e.to), ports.get(e), others);
+    const link = e.kind === 'link';
+    const col = link ? '#16a34a' : '#1d3f6e';
+    const label = link ? [`取り込み: ${e.labels.join('・')}`]
+      : e.kind === 'related' ? ['関連レコード一覧', e.labels.join('・')]
+        : e.labels.join('\n').split('\n').slice(0, 3);
+    const lh = 16 + (label.length - 1) * 15;
+    const [mx, my] = [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)];
+    const tw = Math.min(MAP_COL - MAP_W - 8, Math.max(...label.map((s) => s.length)) * 12 + 12);
+    const text = label.map((s, j) => `<text x="${(mx - tw / 2 + 6).toFixed(1)}" y="${(my + 4 + j * 15 - (label.length - 1) * 7.5).toFixed(1)}" font-size="${j ? 11 : 12}" font-weight="${j || link ? 400 : 700}" fill="${j ? '#475569' : col}">${esc(s)}</text>`).join('');
+    return `<path d="${g.d}" fill="none" stroke="${col}" stroke-width="${link ? 2 : 2.5}"${link ? ' stroke-dasharray="6 4"' : ''} marker-end="url(#map-arrow-${link ? 'g' : 'n'})"/>
+      <rect x="${(mx - tw / 2).toFixed(1)}" y="${(my - 9 - (label.length - 1) * 7.5).toFixed(1)}" width="${tw}" height="${16 + (label.length - 1) * 15}" rx="4" fill="#fff" opacity=".92"/>${text}`;
+  }).join('');
+  return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>
+    <marker id="map-arrow-n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d3f6e"/></marker>
+    <marker id="map-arrow-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker>
+    </defs>${paths}</svg>`;
+}
+// 箱のどちらの縁（l・r・t・b）から線を出すか
+function mapSides(a, b) {
+  if (b.x >= a.x + MAP_W) return ['r', 'l'];
+  if (b.x + MAP_W <= a.x) return ['l', 'r'];
+  return b.y >= a.y ? ['b', 't'] : ['t', 'b'];
+}
+// 線の端を縁の真ん中からずらす量 { from, to }。同じ縁に何本も付くときは、相手の箱の位置の順（左右の縁なら上から、上下の縁なら左から）に
+// 16 ずつ（縁に収まらないときは詰めて）ずらす。相手が同じ線（行きと帰りなど）は、両端で同じ順になるので交わらない
+function mapPorts(model, pos) {
+  const sides = new Map();
+  model.edges.forEach((e) => {
+    const [sa, sb] = mapSides(pos[e.from], pos[e.to]);
+    [[e.from, sa, 'from', pos[e.to]], [e.to, sb, 'to', pos[e.from]]].forEach(([k, side, end, other]) => {
+      const key = `${k}|${side}`;
+      sides.set(key, [...(sides.get(key) || []), { e, end, other, lr: side === 'l' || side === 'r' }]);
+    });
+  });
+  const out = new Map(model.edges.map((e) => [e, { from: 0, to: 0 }]));
+  sides.forEach((list) => {
+    const lr = list[0].lr;
+    list.sort((p, q) => (lr ? p.other.y - q.other.y : p.other.x - q.other.x));
+    const step = list.length > 1 ? Math.min(16, ((lr ? MAP_H : MAP_W) - 16) / (list.length - 1)) : 0;
+    list.forEach((p, j) => { out.get(p.e)[p.end] = (j - (list.length - 1) / 2) * step; });
+  });
+  return out;
+}
+// 1 本の矢印の形。d は線の道のり、(mx, my) は文字を書く真ん中。detour は、ほかの箱を避けて隙間を通したか
+function mapEdgeGeometry(a, b, port, others) {
+  const f = (n) => n.toFixed(1);
+  const [sa] = mapSides(a, b);
+  const horiz = sa === 'l' || sa === 'r';
+  let [x1, y1, x2, y2] = [0, 0, 0, 0];
+  if (sa === 'r') [x1, y1, x2, y2] = [a.x + a.w, a.y + a.h / 2 + port.from, b.x, b.y + b.h / 2 + port.to];
+  else if (sa === 'l') [x1, y1, x2, y2] = [a.x, a.y + a.h / 2 + port.from, b.x + b.w, b.y + b.h / 2 + port.to];
+  else if (sa === 'b') [x1, y1, x2, y2] = [a.x + a.w / 2 + port.from, a.y + a.h, b.x + b.w / 2 + port.to, b.y];
+  else [x1, y1, x2, y2] = [a.x + a.w / 2 + port.from, a.y, b.x + b.w / 2 + port.to, b.y + b.h];
+  const off = Math.max(40, Math.abs(horiz ? x2 - x1 : y2 - y1) / 2);
+  const s = Math.sign(horiz ? x2 - x1 : y2 - y1);
+  const c1 = horiz ? [x1 + s * off, y1] : [x1, y1 + s * off];
+  const c2 = horiz ? [x2 - s * off, y2] : [x2, y2 - s * off];
+  const way = horiz ? mapDetour([x1, y1], c1, c2, [x2, y2], others) : null;
+  if (!way) return { detour: false, mx: (x1 + x2) / 2, my: (y1 + y2) / 2, d: `M${f(x1)},${f(y1)} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(x2)},${f(y2)}` };
+  const { xa, xb, yd } = way;
+  const [ma, mb] = [(x1 + xa) / 2, (xb + x2) / 2];
+  return { detour: true, mx: (xa + xb) / 2, my: yd,
+    d: `M${f(x1)},${f(y1)} C${f(ma)},${f(y1)} ${f(ma)},${f(yd)} ${f(xa)},${f(yd)} L${f(xb)},${f(yd)} C${f(mb)},${f(yd)} ${f(mb)},${f(y2)} ${f(x2)},${f(y2)}` };
+}
+// 曲線（p0 → p3。p1・p2 は曲げる点）がほかの箱に重なるときの通り道。重なる箱の手前で、その箱たちの上か下（線の高さに近いほう）の
+// 隙間へ曲がり、横にまっすぐ通って、箱を過ぎてから相手の箱へ曲がる。重ならないとき・隙間がないときは null（そのまま引く）
+function mapDetour(p0, p1, p2, p3, others) {
+  const at = (t) => [0, 1].map((k) => (1 - t) ** 3 * p0[k] + 3 * (1 - t) ** 2 * t * p1[k] + 3 * (1 - t) * t * t * p2[k] + t ** 3 * p3[k]);
+  const hits = new Set();
+  for (let t = 0.02; t < 1; t += 0.02) {
+    const [x, y] = at(t);
+    others.forEach((b) => { if (x > b.x - 8 && x < b.x + b.w + 8 && y > b.y - 8 && y < b.y + b.h + 8) hits.add(b); });
+  }
+  if (!hits.size) return null;
+  const list = [...hits];
+  const s = Math.sign(p3[0] - p0[0]);
+  const [left, right] = [Math.min(...list.map((b) => b.x)) - 28, Math.max(...list.map((b) => b.x + b.w)) + 28];
+  const [xa, xb] = s > 0 ? [left, right] : [right, left];
+  if ((xa - p0[0]) * s < 16 || (p3[0] - xb) * s < 16) return null;
+  const free = (y) => y >= 8 && !others.some((b) => y > b.y - 8 && y < b.y + b.h + 8 && b.x < Math.max(xa, xb) && b.x + b.w > Math.min(xa, xb));
+  const mid = (p0[1] + p3[1]) / 2;
+  const ys = [Math.min(...list.map((b) => b.y)) - 24, Math.max(...list.map((b) => b.y + b.h)) + 24];
+  const yd = ys.sort((m, n) => Math.abs(m - mid) - Math.abs(n - mid)).find(free);
+  return yd == null ? null : { xa, xb, yd };
+}
+function mapLegendHtml() {
+  return `<div class="map-head"><span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>
+    <span class="spacer"></span><button class="btn small" data-action="map-reset" title="ドラッグで動かした箱を、自動で並べた位置に戻します">自動で並べ直す</button></div>`;
 }
 
 function renderCards() {
@@ -2601,6 +2923,8 @@ async function onHomeAction(action, id) {
     }
     case 'open': openDesign(id); return;
     case 'card-menu': ui.menuFor = ui.menuFor === id ? null : id; refreshCards(); return;
+    case 'home-map': case 'home-cards': ui.homeMap = action === 'home-map'; renderHome(); return;
+    case 'map-reset': actions.resetMapPos(null); return;
     case 'toggle-trash': ui.trashOpen = !ui.trashOpen; $('#home-trash').innerHTML = renderTrash(); return;
   }
   if (!d) return;
@@ -2746,7 +3070,9 @@ function updateEditor({ keepSide = false } = {}) {
   $('#zoom-badge').hidden = !onScreen;
   $('#db-view').hidden = onScreen;
   $('#side-box').hidden = !onScreen;
+  $('#side-panel').hidden = ui.panel === 'map';
   if (onScreen) renderStage();
+  else if (ui.panel === 'map') renderMapView(d);
   else renderItemsView(d);
   renderPalette(d);
   if (!keepSide) renderSettings(d);
@@ -2771,8 +3097,11 @@ function updateToolbarState() {
 }
 
 function screenListHtml(d) {
+  const linked = mapModel(store.state, d.id).nodes.length - 1;
   const entry = `<button class="db-entry${ui.panel === 'items' ? ' active' : ''}" data-action="open-items" title="データベースの項目の一覧表を開きます">
-      <span class="ic">▦</span><span><b>データベースの項目</b><small>${d.items.length} 個</small></span></button>`;
+      <span class="ic">▦</span><span><b>データベースの項目</b><small>${d.items.length} 個</small></span></button>
+    <button class="db-entry${ui.panel === 'map' ? ' active' : ''}" data-action="open-map" title="この画面設計と、直接つながる画面設計の図を開きます">
+      <span class="ic">⇄</span><span><b>つながりの図</b><small>${linked > 0 ? `${linked} つとつながっている` : 'つながりなし'}</small></span></button>`;
   return entry + '<div class="sl-sep"></div><div class="panel-title">画面</div>' + d.screens.map((s, i) => `
     <button class="sl-item${ui.panel === 'screen' && s.id === ui.screenId ? ' active' : ''}" data-action="select-screen" data-id="${esc(s.id)}" title="${esc(s.name)}">
       <div class="sl-thumb">${thumbHtml(d, s, 132, 84)}</div>
@@ -2804,6 +3133,15 @@ function renderStage() {
   const hv = $('#side-height');
   if (hv) hv.textContent = `${h} ドット`;
   applyZoom();
+}
+
+// 編集の画面のつながりの図（この画面設計と、直接つながる画面設計だけ）
+function renderMapView(d) {
+  const el = $('#db-view');
+  el.innerHTML = `<div class="itable"><div class="itable-head"><h3>つながりの図（${esc(d.name)}）</h3></div>
+    <p class="map-note">「${esc(d.name)}」と、直接つながる画面設計を描きます。箱をドラッグで動かすと、その位置を覚えます。
+      ほかの画面設計の箱を押すと、その画面設計を開きます。全部の画面設計の図は、最初の画面の「つながりの図」で見られます。</p>${mapLegendHtml()}
+    <div class="map-canvas" id="design-map">${mapHtml(store.state, d.id, d.mapPos || {})}</div></div>`;
 }
 
 // ── データベースの項目の一覧表（真ん中。画像 q19 の案A）──
@@ -2977,11 +3315,12 @@ function renderPalette(d) {
 // 同じものを描き直すときは、スクロールの位置を保つ
 function renderSettings(d) {
   const el = $('#side-settings');
-  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ui.sel.length > 1 ? 'multi' : ui.partId || ui.calloutId || 'screen:' + ui.screenId;
+  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ui.panel === 'map' ? 'map' : ui.sel.length > 1 ? 'multi' : ui.partId || ui.calloutId || 'screen:' + ui.screenId;
   const top = el.dataset.key === key ? el.scrollTop : 0;
   const p = currentSubject();
   const co = ui.panel === 'screen' ? findCallout(currentScreen(), ui.calloutId) : null;
   if (ui.panel === 'screen' && ui.sel.length > 1) el.innerHTML = multiSettingsHtml(d);
+  else if (ui.panel === 'map') el.innerHTML = '';
   else if (ui.panel === 'items') el.innerHTML = p ? itemSettingsHtml(d, p) : itemsHintHtml(d);
   else if (p) el.innerHTML = partSettingsHtml(p);
   else if (co) el.innerHTML = calloutSettingsHtml(co);
@@ -4202,7 +4541,13 @@ function addPartAtCenter(type, itemId = null) {
 function openItemsPanel() {
   flushSideField();
   if (ui.panel === 'items') return;
-  Object.assign(ui, { panel: 'items', partId: null });
+  Object.assign(ui, { panel: 'items', sel: [] });
+  updateEditor();
+}
+function openMapPanel() {
+  flushSideField();
+  if (ui.panel === 'map') return;
+  Object.assign(ui, { panel: 'map', sel: [], addItemMenu: false });
   updateEditor();
 }
 
@@ -4356,8 +4701,43 @@ function dragItemSort(ev) {
   row.classList.add(after ? 'drop-after' : 'drop-before');
 }
 
+// つながりの図の箱のドラッグ。動かさずに放したときは、その画面設計を開く（編集中の画面設計の箱と、一覧にないデータベースは開かない）
+function startMapDrag(ev, el) {
+  ev.preventDefault();
+  flushSideField();
+  const inner = el.closest('.map-inner');
+  drag = { kind: 'map', el, inner, key: el.dataset.node, sx: ev.clientX, sy: ev.clientY, x0: parseFloat(el.style.left) || 0, y0: parseFloat(el.style.top) || 0, moved: false, focus: inner.dataset.focus || null };
+}
+function dragMap(ev) {
+  const dx = ev.clientX - drag.sx;
+  const dy = ev.clientY - drag.sy;
+  if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+  drag.moved = true;
+  document.body.classList.add('map-dragging');
+  drag.x = Math.max(0, snapGrid(drag.x0 + dx));
+  drag.y = Math.max(0, snapGrid(drag.y0 + dy));
+  Object.assign(drag.el.style, { left: drag.x + 'px', top: drag.y + 'px' });
+  // 図の枠の外へ動かしたときは、枠を広げる（放すまで箱が隠れないように）
+  const st = drag.inner.style;
+  st.width = Math.max(parseFloat(st.width), drag.x + MAP_W + 60) + 'px';
+  st.height = Math.max(parseFloat(st.height), drag.y + MAP_H + 76) + 'px';
+  // 線も描き直す（ほかの箱は今の位置のまま）
+  const model = mapModel(store.state, drag.focus);
+  const pos = {};
+  drag.inner.querySelectorAll('.mnode').forEach((n) => { pos[n.dataset.node] = { x: parseFloat(n.style.left) || 0, y: parseFloat(n.style.top) || 0, h: parseFloat(n.style.height) || MAP_H }; });
+  const svg = drag.inner.querySelector('svg');
+  if (svg) svg.outerHTML = mapEdgesSvg(model, pos, parseFloat(drag.inner.style.width), parseFloat(drag.inner.style.height));
+}
+function endMapDrag(done) {
+  document.body.classList.remove('map-dragging');
+  if (done.moved) { actions.setMapPos(done.focus, done.key, { x: done.x, y: done.y }); return; }
+  if (!done.key.startsWith('d:') || done.key === 'd:' + done.focus) return;
+  openDesign(done.key.slice(2));
+}
+
 function onDragMove(ev) {
   if (!drag) return;
+  if (drag.kind === 'map') { dragMap(ev); return; }
   if (drag.kind === 'add') { dragAdditive(ev); return; }
   if (drag.kind === 'group') { dragGroup(ev); return; }
   if (drag.kind === 'band') { dragBand(ev); return; }
@@ -4387,6 +4767,7 @@ function onDragEnd(ev) {
   const done = drag;
   drag = null;
   document.body.classList.remove('resizing', 'moving', 'sorting', 'linking', 'copying');
+  if (done.kind === 'map') { endMapDrag(done); return; }
   if (done.kind === 'add') {
     // Ctrl を押して押しただけ（動かしていない）なら、選ぶものに足す・外す
     const { k, id } = done.hit;
@@ -4484,6 +4865,7 @@ function runCommand(cmd) {
   if (ui.view !== 'editor') return false;
   switch (cmd) {
     case 'openItems': openItemsPanel(); return true;
+    case 'openMap': openMapPanel(); return true;
     case 'addItemMenu':
       if (ui.panel !== 'items') Object.assign(ui, { panel: 'items', partId: null });
       ui.addItemMenu = !ui.addItemMenu;
@@ -4538,7 +4920,7 @@ const ACTION_COMMANDS = {
   undo: 'undo', redo: 'redo', home: 'goHome', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
-  'open-items': 'openItems', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
+  'open-items': 'openItems', 'open-map': 'openMap', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
   'select-all': 'selectAll', 'number-on': 'numberOn', 'number-off': 'numberOff', 'delete-many': 'deletePart',
   ...Object.fromEntries([...ALIGN_BUTTONS, ...SIZE_BUTTONS].map(([cmd, action]) => [action, cmd])),
 };
@@ -4547,6 +4929,8 @@ const ACTION_COMMANDS = {
 function onEditorClick(action, btn) {
   switch (action) {
     case 'open-items': openItemsPanel(); return true;
+    case 'open-map': openMapPanel(); return true;
+    case 'map-reset': actions.resetMapPos(ui.designId); return true;
     case 'select-screen':
       flushSideField();
       if (btn.dataset.id === ui.screenId && ui.panel === 'screen') return true; // mousedown で切り替えた後の click
@@ -4673,6 +5057,8 @@ function bindGlobalEvents() {
     if (e.target.closest('#side-panel') && !e.target.closest('.target-picker')) onSidePanelChange(e);
   });
   app.addEventListener('mousedown', (e) => {
+    const node = e.button === 0 ? e.target.closest('.mnode') : null;
+    if (node) { startMapDrag(e, node); return; }
     if (ui.view !== 'editor' || e.button !== 0) return;
     // 部品の箱のボタンからのドラッグ（押しただけなら click で置く）
     const btn = e.target.closest('.pal-btn');
@@ -4688,7 +5074,7 @@ function bindGlobalEvents() {
     // 一覧表の行と画面の一覧は、押した時点で切り替える。右の欄で打ちかけの文字があると、離れたときの保存で
     // 一覧表と画面の一覧が描き直され、押した行・ボタンが click の前に消えて、1 回目の押しが効かないため
     if (e.target.closest('.del-x')) return;
-    const sel = e.target.closest('[data-action="select-part"], [data-action="select-screen"], [data-action="select-item"], [data-action="open-items"]');
+    const sel = e.target.closest('[data-action="select-part"], [data-action="select-screen"], [data-action="select-item"], [data-action="open-items"], [data-action="open-map"]');
     if (sel) onEditorClick(sel.dataset.action, sel);
   });
   document.addEventListener('keydown', onKeyDown);
@@ -4719,7 +5105,7 @@ function exposeForTest() {
     store, ui, actions, runCommand, openDesign, goHome, migrate, normalizeState, snapHeight, changeDevice,
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, minScreenHeight, selectPart, currentScreen,
-    currentDesign, currentPart, resolvePart, findItem, describeItem,
+    currentDesign, currentPart, resolvePart, findItem, describeItem, mapModel, mapLayout,
     ready: true,
   });
 }
