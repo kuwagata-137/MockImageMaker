@@ -55,6 +55,14 @@ function buildAppMenu() {
         { role: 'copy', label: 'コピー' },
         { role: 'paste', label: '貼り付け' },
         { role: 'selectAll', label: 'すべて選択' },
+        { type: 'separator' },
+        // 部品の操作。Ctrl+C・Ctrl+V は上の文字のコピー・貼り付けと同じキーで、ページが入力欄の外のときだけ部品に使う
+        commandItem('部品をコピー', 'copyPart'),
+        commandItem('部品を貼り付け', 'pastePart'),
+        commandItem('部品を複製', 'duplicatePart', 'CmdOrCtrl+D'),
+        commandItem('部品を削除', 'deletePart', 'Delete'),
+        { type: 'separator' },
+        commandItem('番号を振り直す', 'renumber'),
       ],
     },
     {
