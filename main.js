@@ -134,8 +134,11 @@ if (!app.requestSingleInstanceLock()) {
     if (process.platform !== 'darwin') app.quit();
   });
 
-  // 閉じる直前の変更が保存されないのを防ぐため、並んでいる書き込みが終わってから閉じる
-  app.on('before-quit', (e) => {
+  // 閉じる直前の変更が保存されないのを防ぐため、並んでいる書き込みが終わってから終わる。
+  // 待つのは will-quit（窓が全部閉じたあと）で、before-quit ではない。メニューの「ファイル > 終了」（app.quit()）では、
+  // before-quit の時点でまだ窓が開いていて、右の欄の打ちかけの文字の保存（ページの beforeunload で送る）が届く前に
+  // 待ち終わってしまい、書きかけのまま終わるため。窓の × のときは、窓が閉じてから app.quit() になるので、どちらでも同じ
+  app.on('will-quit', (e) => {
     if (quitReady || !storage) return;
     e.preventDefault();
     storage.whenIdle().finally(() => {

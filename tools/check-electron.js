@@ -2,12 +2,12 @@
 // Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、次の 4 つを確かめる。
 //  1. 画面設計を作って名前を変え、窓を閉じたあと <userData>/data/designs.json に残っている
 //  2. 1 つ目が動いている間に 2 つ目を起動すると、2 つ目はすぐに終わる
-//  3. 右の欄の文字の欄に文字を打ち、欄を離れない（change が起きていない）まま窓を閉じても、その文字が designs.json に残る。
-//     閉じ方は 2 つ確かめる。
-//      - 窓の ×: メインプロセスの BrowserWindow.close()（× を押したときと同じ流れ）。「説明」と「名前」の欄で確かめる
+//  3. 右の欄の文字の欄に文字を打ち、欄を離れない（change が起きていない）まま閉じても、その文字が designs.json に残る。閉じ方は 3 つ。
+//      - 窓の ×（BrowserWindow.close()。× を押したときと同じ流れ）: 「説明」と「名前」の欄で確かめる
+//      - ファイル > 終了（app.quit()。メニューの「終了」〔role: quit〕と同じ呼び出し）: 「説明」の欄で確かめる
 //      - ページの window.close(): 「説明」の欄で確かめる
 //  4. 起動し直すと、作った画面設計が一覧に出て、3 で打った文字も右の欄に出る
-// 窓の × は、メインプロセスを --inspect で起動し、Node の inspector から BrowserWindow.close() を呼んで再現する。
+// 窓の × と終了は、メインプロセスを --inspect で起動し、Node の inspector から呼んで再現する。
 // 保存先は作業フォルダの .devdata/check-userData（毎回消してから始める。npm start のデータとは別）。
 'use strict';
 
@@ -21,15 +21,17 @@ const ROOT = path.resolve(__dirname, '..');
 const USER_DATA = path.join(ROOT, '.devdata', 'check-userData');
 const STATE_FILE = path.join(USER_DATA, 'data', 'designs.json');
 const PORT = 9333; // ページ（renderer）の remote debugging
-const MAIN_PORT = 9334; // メインプロセスの inspector（窓の × に当たる閉じ方で使う）
+const MAIN_PORT = 9334; // メインプロセスの inspector（窓の × と終了で使う）
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// 3 で打つ文字。how: 'x' は窓の ×、'page' はページの window.close()。key は designs.json の項目
+// 3 で打つ文字。how: 'x' は窓の ×、'quit' はファイル > 終了、'page' はページの window.close()。key は designs.json の項目
 const TYPING_CASES = [
   { how: 'x', label: '窓の ×・説明', field: 'design-desc', key: 'description', text: '顧客の連絡先と商談を管理する。' },
   { how: 'x', label: '窓の ×・名前', field: 'design-name', key: 'name', text: 'アプリ' },
+  { how: 'quit', label: 'ファイル > 終了・説明', field: 'design-desc', key: 'description', text: '月末に売上を集計する。' },
   { how: 'page', label: 'window.close()・説明', field: 'design-desc', key: 'description', text: '担当者ごとに一覧で見る。' },
 ];
+const MAIN_CLOSE = { x: 'BrowserWindow.getAllWindows()[0].close()', quit: 'app.quit()' }; // メインプロセスで呼ぶ閉じ方
 
 function launch(extraArgs = []) {
   const env = { ...process.env, MIM_HEADLESS: '1', MIM_USER_DATA: USER_DATA };
@@ -127,7 +129,7 @@ async function firstRun() {
 // 戻り値 { before: 閉じる前の designs.json の値, after: 閉じたあとの値, focused: 閉じる直前もその欄にいたか, code }
 async function typeThenClose({ how, field, key, text }) {
   const args = [`--remote-debugging-port=${PORT}`];
-  if (how === 'x') args.push(`--inspect=${MAIN_PORT}`);
+  if (MAIN_CLOSE[how]) args.push(`--inspect=${MAIN_PORT}`);
   const child = launch(args);
   const browser = await connect();
   const page = await appPage(browser);
@@ -139,7 +141,7 @@ async function typeThenClose({ how, field, key, text }) {
   await sleep(500);
   const before = savedDesign()[key];
   const focused = await page.$eval(sel, (el) => document.activeElement === el);
-  if (how === 'x') await evalInMain("require('electron').BrowserWindow.getAllWindows()[0].close()");
+  if (MAIN_CLOSE[how]) await evalInMain(`require('electron').${MAIN_CLOSE[how]}`);
   else await page.evaluate(() => window.close());
   browser.disconnect();
   const code = await withTimeout(child.exited, 15000, `閉じない（${how}）`);
