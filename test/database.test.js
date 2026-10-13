@@ -273,3 +273,154 @@ test('項目の一覧表: 並べ替え（つまみのドラッグと同じ操作
   await new Promise((r) => setTimeout(r, 0));
   assert.deepEqual(plain(items().map((it) => it.id)), plain([ids[0], ids[2]]), '画面に置いていない項目は、確かめずに消す');
 });
+
+// ── ほかのモックから項目を取り込む（つなげたまま。画像 q21）──
+
+// 「住所の共通項目」（郵便番号・都道府県・電話番号）と「顧客管理」（電話番号）を作り、顧客管理を開いた状態にする
+async function bootTwo(t) {
+  const ctx = await bootEditor(t, { name: '住所の共通項目', target: 'その他' });
+  const { api } = ctx;
+  const srcId = ctx.design().id;
+  const mk = (type, label, props) => {
+    const id = api.actions.addItem(srcId, type);
+    api.actions.updateItem(srcId, id, { label, ...(props ? { props } : {}) });
+    return id;
+  };
+  const zip = mk('text1', '郵便番号', { maxLen: '8' });
+  const pref = mk('dropdown', '都道府県', { options: ['北海道', '青森県'] });
+  const tel = mk('text1', '電話番号');
+  const dstId = api.actions.createDesign('顧客管理', 'kintone');
+  api.openDesign(dstId);
+  const dstTel = api.actions.addItem(dstId, 'text1');
+  api.actions.updateItem(dstId, dstTel, { label: '電話番号' });
+  const src = () => api.store.state.designs.find((d) => d.id === srcId);
+  const dst = () => api.store.state.designs.find((d) => d.id === dstId);
+  return { ...ctx, srcId, dstId, src, dst, ids: { zip, pref, tel } };
+}
+
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+test('取り込む窓: 元のモックを選んで項目に印を付けて取り込むと、一覧表のいちばん下につなげたまま足す', async (t) => {
+  const { app, dst, srcId, ids } = await bootTwo(t);
+  click($(app, '[data-action="open-items"]'));
+  click($(app, '#db-view [data-action="import-items"]'));
+  const m = $(app, '.modal.wide');
+  assert.ok(m, '広い窓');
+  assert.deepEqual(plain($$(app, '.imp-design .nm').map((e) => e.textContent)), ['住所の共通項目'], '自分は出さない');
+  assert.ok($(app, '.imp-design').classList.contains('on'), '項目のあるモックを最初から選ぶ');
+  const rowText = () => $$(app, '.imp-items tbody tr').map((r) => r.children[1].textContent.replace(/\s+/g, ' ').trim());
+  assert.deepEqual(plain(rowText()), ['郵便番号', '都道府県', '電話番号 同じ名前の項目があります']);
+  click($(app, '.modal [data-dlg="ok"]'));
+  assert.match($(app, '.modal-error').textContent, /印を付けて/);
+  check($(app, `[data-imp-item="${ids.zip}"]`), true);
+  check($(app, `[data-imp-item="${ids.pref}"]`), true);
+  assert.match($(app, '[data-imp-foot]').textContent, /新しく 2 個/);
+  click($(app, '.modal [data-dlg="ok"]'));
+  await settle();
+  const items = dst().items;
+  assert.deepEqual(plain(items.map((it) => it.name)), ['電話番号', '郵便番号', '都道府県']);
+  assert.deepEqual(plain([items[2].link.designId, items[2].link.itemId, items[2].link.designName, items[2].link.lost]), [srcId, ids.pref, '住所の共通項目', false]);
+  assert.deepEqual(plain(items[2].props.options), ['北海道', '青森県']);
+  assert.match($$(app, '#db-view tbody tr')[2].textContent, /取り込み\s*住所の共通項目 › 都道府県/);
+  assert.match($(app, '#toast').textContent, /2 個の項目を取り込みました/);
+  // もう一度開くと、取り込み済みは押せない
+  click($(app, '#db-view [data-action="import-items"]'));
+  assert.ok($(app, `[data-imp-item="${ids.pref}"]`).disabled);
+  assert.match($(app, '.imp-items').textContent, /取り込み済み/);
+  click($(app, '.modal [data-dlg="cancel"]'));
+  await settle();
+});
+
+test('つながった項目: 元を直すと取り込んだ側も同じ操作で変わり、取り込んだ側では直せない。元に戻すで両方戻る', async (t) => {
+  const { app, api, dst, srcId, dstId, ids } = await bootTwo(t);
+  api.actions.importItems(dstId, srcId, [ids.pref]);
+  const linked = () => dst().items[1];
+  const pid = api.actions.addItemPart(dstId, dst().screens[0].id, linked().id, { x: 0, y: 48 });
+  assert.equal(api.actions.updateItem(dstId, linked().id, { label: '県' }), false, '取り込んだ側の項目は直せない');
+  api.actions.updatePart(dstId, dst().screens[0].id, pid, { label: '県', labelPos: 'left' });
+  assert.deepEqual(plain([linked().name, dst().screens[0].parts[0].labelPos]), ['都道府県', 'left'], '項目名は変わらず、この画面だけの設定は変わる');
+  const before = dst().updatedAt;
+  api.actions.updateItem(srcId, ids.pref, { label: '都道府県名', props: { options: ['北海道', '青森県', '岩手県'] } });
+  assert.equal(linked().name, '都道府県名');
+  assert.deepEqual(plain(linked().props.options), ['北海道', '青森県', '岩手県']);
+  assert.equal(dst().updatedAt, before, '取り込んだ側の更新日時は変えない');
+  api.actions.updateItem(srcId, ids.pref, { type: 'radio' });
+  assert.equal(dst().screens[0].parts[0].type, 'radio', '種類を変えると、取り込んだ側の部品の種類も変わる');
+  api.store.undo();
+  api.store.undo();
+  assert.deepEqual(plain([linked().name, linked().type]), ['都道府県', 'dropdown'], '元に戻すで両方戻る');
+  // 設定の欄: 灰色で直せず、元のモックを開く・つながりを切るがある
+  api.openDesign(dstId);
+  api.selectPart(pid);
+  assert.match($(app, '#side-settings .pf-banner.link').textContent, /住所の共通項目.*つながっています/);
+  assert.ok($(app, '#side-settings fieldset.pf-sec.locked').disabled);
+  assert.equal($(app, '#stage .part .tag.link').textContent, '取り込み');
+  click($(app, '#side-settings [data-action="open-link-source"]'));
+  assert.equal(api.ui.designId, srcId, '元のモックを開く');
+  assert.deepEqual([api.ui.panel, api.ui.itemId], ['items', ids.pref], '元の項目を選んだ一覧表');
+});
+
+test('つながりを切ると、そのときの中身のこの画面設計だけの項目になり、元を直しても変わらない', async (t) => {
+  const { app, api, dst, srcId, dstId, ids } = await bootTwo(t);
+  api.actions.importItems(dstId, srcId, [ids.zip]);
+  const id = dst().items[1].id;
+  click($(app, '[data-action="open-items"]'));
+  click($(app, `#db-view tr[data-id="${id}"]`));
+  assert.ok($(app, '#side-settings fieldset.pf-sec.locked').disabled);
+  click($(app, '#side-settings [data-action="unlink-item"]'));
+  assert.equal(dst().items[1].link, null);
+  assert.equal($(app, '#side-settings fieldset.pf-sec.locked'), null, '直せるようになる');
+  api.actions.updateItem(srcId, ids.zip, { label: '郵便番号（7 桁）' });
+  assert.equal(dst().items[1].name, '郵便番号', '元を直しても変わらない');
+  assert.equal(api.actions.updateItem(dstId, id, { label: '〒' }), true);
+});
+
+test('元のモックを完全に削除すると、取り込んだ項目はそのときの中身で固定し、印で知らせる。ごみ箱へ移すときは確かめる', async (t) => {
+  const { app, api, dst, src, srcId, dstId, ids } = await bootTwo(t);
+  api.actions.importItems(dstId, srcId, [ids.pref, ids.tel]);
+  api.goHome();
+  click($(app, `.card-more[data-id="${srcId}"]`));
+  click($(app, `[data-action="trash"][data-id="${srcId}"]`));
+  await settle();
+  assert.match($(app, '.modal').textContent, /顧客管理.*取り込んでいます/);
+  click($(app, '.modal [data-dlg="ok"]'));
+  await settle();
+  assert.ok(src().trashedAt);
+  assert.equal(dst().items[1].link.lost, false, 'ごみ箱の中にある間はつながったまま');
+  api.actions.updateItem(srcId, ids.pref, { label: '県名' });
+  assert.equal(dst().items[1].name, '県名');
+  api.actions.deleteDesignForever(srcId);
+  assert.deepEqual(plain(dst().items.slice(1).map((it) => [it.name, it.link.lost])), [['県名', true], ['電話番号', true]]);
+  api.openDesign(dstId);
+  click($(app, '[data-action="open-items"]'));
+  assert.match($$(app, '#db-view tbody tr')[1].textContent, /取り込み・元なし.*もうありません/);
+  click($$(app, '#db-view tbody tr')[1]);
+  assert.match($(app, '#side-settings .pf-banner.gone').textContent, /元のモック（または元の項目）はもうありません/);
+  assert.equal($(app, '#side-settings [data-action="open-link-source"]'), null);
+});
+
+test('元の項目を消したときも固定する。取り込んだ項目をさらに取り込んだ側にも、元の変更が届く', async (t) => {
+  const { api, dst, srcId, dstId, ids } = await bootTwo(t);
+  api.actions.importItems(dstId, srcId, [ids.zip, ids.tel]);
+  const thirdId = api.actions.createDesign('受注管理', 'kintone');
+  api.actions.importItems(thirdId, dstId, [dst().items[1].id]);
+  const third = () => api.store.state.designs.find((d) => d.id === thirdId);
+  assert.equal(third().items[0].link.designId, dstId);
+  api.actions.updateItem(srcId, ids.zip, { label: '〒' });
+  assert.deepEqual(plain([dst().items[1].name, third().items[0].name]), ['〒', '〒'], '2 段先まで届く');
+  api.actions.deleteItem(srcId, ids.tel);
+  assert.equal(dst().items[2].link.lost, true, '元の項目を消すと固定する');
+  assert.equal(dst().items[2].name, '電話番号');
+});
+
+test('取り込んだ項目の部品を、元の画面設計へ貼り付けると、元の項目を指す', async (t) => {
+  const { api, dst, src, srcId, dstId, ids } = await bootTwo(t);
+  api.actions.importItems(dstId, srcId, [ids.zip]);
+  const pid = api.actions.addItemPart(dstId, dst().screens[0].id, dst().items[1].id, { x: 0, y: 48 });
+  api.selectPart(pid);
+  api.runCommand('copyPart');
+  api.openDesign(srcId);
+  api.runCommand('pastePart');
+  assert.equal(src().items.length, 3, '項目は増えない');
+  assert.equal(src().screens[0].parts[0].itemId, ids.zip);
+});

@@ -83,6 +83,34 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 /* ── 小さな窓（名前を聞く・確かめる）────────────────── */
 .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:40}
 .modal{background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(15,23,42,.35);width:min(440px,calc(100vw - 32px));padding:20px 22px 18px}
+.modal.wide{width:min(920px,calc(100vw - 32px))}
+/* ほかのモックから項目を取り込む窓（画像 q21） */
+.imp{display:flex;gap:14px;height:min(380px,calc(100vh - 260px))}
+.imp-left{width:320px;flex-shrink:0;border:1px solid #e2e8f0;border-radius:8px;display:flex;flex-direction:column;min-height:0}
+.imp-right{flex:1;min-width:0;border:1px solid #e2e8f0;border-radius:8px;display:flex;flex-direction:column;min-height:0}
+.imp-head{padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#334155;display:flex;align-items:center;gap:8px;background:#f8fafc;border-radius:8px 8px 0 0}
+.imp-head .spacer{flex:1}
+.imp-search{margin:8px 10px}
+.imp-search input{width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:5px 8px}
+.imp-list{overflow:auto;padding:0 6px 6px;min-height:0}
+.imp-design{display:flex;gap:10px;align-items:center;width:100%;padding:7px 8px;border-radius:7px;border:1px solid transparent;background:none;cursor:pointer;text-align:left;margin-bottom:3px}
+.imp-design:hover{background:#f8fafc}
+.imp-design.on{background:#eff6ff;border-color:#93c5fd}
+.imp-design .nm{font-weight:700;font-size:13px}
+.imp-design .mt{font-size:11px;color:#64748b;display:flex;gap:6px;align-items:center;margin-top:2px;flex-wrap:wrap}
+.imp-items{overflow:auto;min-height:0}
+.imp-items table{border-collapse:collapse;width:100%;font-size:12.5px}
+.imp-items th,.imp-items td{border-bottom:1px solid #e2e8f0;padding:6px 8px;text-align:left;vertical-align:top;line-height:1.5}
+.imp-items th{background:#f8fafc;color:#475569;font-size:11.5px;position:sticky;top:0}
+.imp-items td.ck{width:32px;text-align:center}
+.imp-items tr.dis td{color:#94a3b8}
+.imp-items td.set{white-space:pre-line}
+.imp-items td:nth-child(3){white-space:nowrap}
+.imp-empty{color:#64748b;font-size:12.5px;padding:14px;line-height:1.6}
+.imp-foot{font-size:12.5px;color:#334155;margin-top:12px}
+.tag.warn{background:#fff7ed;color:#9a3412;border:1px solid #fdba74;font-weight:400}
+.tag.done{background:#dcfce7;color:#166534;border:1px solid #86efac;font-weight:400}
+.link-btn{border:none;background:none;color:#2563eb;cursor:pointer;font-size:12px;padding:0}
 .modal h2{font-size:16px;margin-bottom:14px;color:#0f172a}
 .modal p{font-size:13px;line-height:1.6}
 .modal .warn{color:#b91c1c;margin-top:6px}
@@ -765,8 +793,61 @@ function normalizeItem(src) {
     // 知らない種類の項目（新しい版で足した項目）は、設定をそのまま残す
     props: t ? keepInitialInOptions(type, normalizeProps(t, it.props)) : isObj(it.props) ? it.props : {},
     lookup: isObj(it.lookup) ? it.lookup : null,
-    link: isObj(it.link) ? it.link : null,
+    link: normalizeLink(it.link),
   };
+}
+
+// 取り込んだ元 { designId, itemId, designName, lost }。designName は元の画面設計の名前の控え（元がなくなったときに出す）。
+// lost は、元の画面設計を完全に削除したか、元の画面設計でその項目を消したとき true（そのときの中身で固定している）
+function normalizeLink(src) {
+  if (!isObj(src) || !str(src.designId) || !str(src.itemId)) return null;
+  return { ...src, designId: str(src.designId), itemId: str(src.itemId), designName: str(src.designName), lost: !!src.lost };
+}
+
+// 取り込んだ項目に写す、元の項目の中身（取り込んだ側では直せない中身）
+const LINKED_FIELDS = ['name', 'type', 'required', 'memo', 'props', 'lookup'];
+function linkedFields(src) {
+  return { name: src.name, type: src.type, required: src.required, memo: src.memo, props: clone(src.props), lookup: src.lookup ? clone(src.lookup) : null };
+}
+
+// 取り込んだ項目（つなげたまま）を、元の項目の今の中身にそろえる。元を直したときは、同じ操作（commit）の中で呼ぶ。
+// 元が見つからないときは lost にして、今の中身で固定する。元の元（取り込んだ項目をさらに取り込んだもの）にも届くように、変わらなくなるまで繰り返す
+function syncLinkedItems(state) {
+  const designs = new Map(state.designs.map((d) => [d.id, d]));
+  for (let round = 0; round < 8; round++) {
+    let changed = false;
+    state.designs.forEach((d) => d.items.forEach((it) => {
+      if (!it.link) return;
+      const srcDesign = designs.get(it.link.designId);
+      const src = srcDesign ? findItem(srcDesign, it.link.itemId) : null;
+      if (!src || src === it) {
+        if (!it.link.lost) { it.link.lost = true; changed = true; }
+        return;
+      }
+      if (it.link.lost) { it.link.lost = false; changed = true; }
+      if (it.link.designName !== srcDesign.name) { it.link.designName = srcDesign.name; changed = true; }
+      const want = linkedFields(src);
+      if (LINKED_FIELDS.every((k) => JSON.stringify(it[k]) === JSON.stringify(want[k]))) return;
+      if (want.type !== it.type && isItemType(want.type)) changeItemType(d, it, want.type);
+      Object.assign(it, want);
+      changed = true;
+    }));
+    if (!changed) return;
+  }
+}
+
+// 取り込む窓で、元の項目 it がこの画面設計 d から見てどうなっているか。
+// 'own'＝この画面設計の項目を取り込んだもの、'done'＝取り込み済み、'same'＝同じ名前の項目がある、'' ＝ふつう
+function importState(d, src, it) {
+  if (it.link && it.link.designId === d.id) return 'own';
+  if (d.items.some((x) => x.link && x.link.designId === src.id && x.link.itemId === it.id)) return 'done';
+  if (d.items.some((x) => x.name === it.name)) return 'same';
+  return '';
+}
+
+// その画面設計の項目を取り込んでいる、ほかの画面設計（ごみ箱のものは除く）
+function designsImporting(state, designId) {
+  return state.designs.filter((d) => d.id !== designId && !d.trashedAt && d.items.some((it) => it.link && it.link.designId === designId && !it.link.lost));
 }
 
 // 種類ごとの設定を、最初の値と同じ形（文字の配列・真偽・文字）にそろえる。知らない項目は残す
@@ -847,12 +928,14 @@ function normalizeDesign(src) {
 function normalizeState(raw, schemaVersion) {
   const settings = isObj(raw.settings) ? raw.settings : {};
   const customs = Array.isArray(settings.customTargets) ? settings.customTargets : [];
-  return {
+  const state = {
     ...raw,
     schemaVersion,
     settings: { ...settings, customTargets: [...new Set(customs.filter((t) => typeof t === 'string' && t.trim()))] },
     designs: (Array.isArray(raw.designs) ? raw.designs : []).filter(isObj).map(normalizeDesign),
   };
+  syncLinkedItems(state);
+  return state;
 }
 
 // 戻り値 { state, blockReason }。blockReason があるときは、保存を止める（データを消さないため）
@@ -1014,12 +1097,15 @@ let store = null;
 const findDesign = (state, id) => state.designs.find((d) => d.id === id) || null;
 
 // ── 画面設計の操作（store を書き換える）──
+// 画面設計を書き換えた後は、ほかの画面設計が取り込んでいる項目（つなげたまま）も同じ commit の中でそろえる
+// （元に戻すで、元と取り込んだ側が一緒に戻るように）。取り込んだ側の更新日時は変えない
 function mutateDesign(id, fn, { touch = true } = {}) {
   if (!findDesign(store.state, id)) return false;
   store.commit((s) => {
     const d = findDesign(s, id);
     fn(d, s);
     if (touch) d.updatedAt = nowIso();
+    syncLinkedItems(s);
   });
   return true;
 }
@@ -1068,7 +1154,10 @@ const actions = {
   deleteDesignForever(id) {
     if (!findDesign(store.state, id)) return false;
     store.clearHistory();
-    store.commit((s) => { s.designs = s.designs.filter((d) => d.id !== id); }, { history: false });
+    store.commit((s) => {
+      s.designs = s.designs.filter((d) => d.id !== id);
+      syncLinkedItems(s); // この画面設計から取り込んでいた項目は、今の中身で固定する
+    }, { history: false });
     return true;
   },
   // patch は { name, device, height, showHeader, tablePos } のどれか
@@ -1116,7 +1205,7 @@ const actions = {
       ['labelPos', 'sample', 'placeholder'].forEach((k) => { if (k in patch) p[k] = patch[k]; });
       if ('numbered' in patch) p.no = patch.numbered ? (p.no != null ? p.no : nextPartNo(sc)) : null;
       const item = findItem(d, p.itemId);
-      if (item) applyFieldPatch(item, 'name', patch);
+      if (item) { if (!item.link) applyFieldPatch(item, 'name', patch); } // 取り込んだ項目は直せない（元のモックで直す）
       else if (!p.itemId) applyFieldPatch(p, 'label', patch);
     });
   },
@@ -1144,6 +1233,9 @@ const actions = {
     p.no = src.no != null ? nextPartNo(sc) : null;
     let newItem = null;
     if (p.itemId && isItemType(p.type)) {
+      // 取り込んだ項目の部品を、取り込んだ元の画面設計へ貼り付けるときは、元の項目を指す
+      const home = isObj(srcItem) && srcItem.link && srcItem.link.designId === designId ? findItem(d, srcItem.link.itemId) : null;
+      if (home && !findItem(d, p.itemId)) p.itemId = home.id;
       const item = findItem(d, p.itemId);
       if (!item && isObj(srcItem) && srcItem.id === p.itemId) newItem = clone(srcItem);
       else if (item && itemOnScreen(sc, item.id)) {
@@ -1170,7 +1262,8 @@ const actions = {
   },
   // patch は { label（項目名）, required, memo, props, type } のどれか
   updateItem(designId, itemId, patch) {
-    if (!findItem(findDesign(store.state, designId), itemId)) return false;
+    const item = findItem(findDesign(store.state, designId), itemId);
+    if (!item || item.link) return false; // 取り込んだ項目は直せない（元のモックで直す）
     if ('type' in patch && !isItemType(patch.type)) return false;
     return mutateDesign(designId, (d) => {
       const item = findItem(d, itemId);
@@ -1209,6 +1302,24 @@ const actions = {
       dd.items.push(item);
       dd.screens.forEach((s) => { s.parts = s.parts.map((p) => (p.itemId === itemId ? withoutItemFields(p) : p)); });
     });
+  },
+  // ほかの画面設計（srcDesignId）の項目を取り込み、一覧表のいちばん下に足す。取り込んだ項目は元とつなげたままにする。
+  // 戻り値は足した項目の数。この画面設計の項目を取り込んだ項目（元がこの画面設計）と、取り込み済みの項目は足さない
+  importItems(designId, srcDesignId, itemIds) {
+    const d = findDesign(store.state, designId);
+    const src = findDesign(store.state, srcDesignId);
+    if (!d || !src || d.id === src.id) return 0;
+    const add = itemIds.map((id) => findItem(src, id)).filter((it) => it && importState(d, src, it) !== 'done' && importState(d, src, it) !== 'own')
+      .map((it) => ({ ...linkedFields(it), id: newId('i'), link: { designId: src.id, itemId: it.id, designName: src.name, lost: false } }));
+    if (!add.length) return 0;
+    mutateDesign(designId, (dd) => { dd.items.push(...add.map(normalizeItem)); });
+    return add.length;
+  },
+  // 取り込んだ項目のつながりを切り、そのときの中身の、この画面設計だけの項目にする
+  unlinkItem(designId, itemId) {
+    const item = findItem(findDesign(store.state, designId), itemId);
+    if (!item || !item.link) return false;
+    return mutateDesign(designId, (d) => { findItem(d, itemId).link = null; });
   },
   // データベースの項目の一覧表にある項目を、画面に置く。その画面にもう置いてあれば置かない（戻り値 null）
   addItemPart(designId, screenId, itemId, at) {
@@ -1276,13 +1387,13 @@ function toast(message) {
 
 // 小さな窓。OK で collect(窓) の結果（{ error } なら窓に出して閉じない）、キャンセルで null を返す。
 // 窓は 1 つだけ。開いている間は後ろの画面（#app）を inert にして、押せないようにする
-function showDialog({ title, body, okLabel, okClass = 'primary', init, collect }) {
+function showDialog({ title, body, okLabel, okClass = 'primary', init, collect, wide = false }) {
   if (isDialogOpen()) return Promise.resolve(null);
   return new Promise((resolve) => {
     const root = $('#dialog-root');
     root.innerHTML = `
       <div class="modal-overlay">
-        <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <div class="modal${wide ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
           <h2>${esc(title)}</h2>
           <div class="modal-body">${body}</div>
           <p class="modal-error" hidden></p>
@@ -1402,6 +1513,9 @@ function partHtml(p, selected = false, marks = false) {
 // 編集の画面だけで、項目名の後ろに付ける札（項目を一覧表から消した後に残った部品）
 function partMarksHtml(p) {
   if (isItemType(p.type) && p.itemId && !p.item) return ' <span class="tag gone" title="この部品の項目は、データベースの項目の一覧表から消しました">項目なし</span>';
+  const link = p.item && p.item.link;
+  if (link && link.lost) return ` <span class="tag lost" title="取り込んだ元のモック（または元の項目）はもうありません">取り込み・元なし</span>`;
+  if (link) return ` <span class="tag link" title="モック「${esc(link.designName)}」から取り込んだ項目">取り込み</span>`;
   return '';
 }
 
@@ -1608,11 +1722,27 @@ function openRenameDialog(d) {
 }
 
 function openDeleteForeverDialog(d) {
+  const importers = designsImporting(store.state, d.id);
+  const note = importers.length
+    ? `<p class="warn">このモックの項目を、ほかの ${importers.length} つの画面設計（${esc(importers.map((x) => x.name).join('・'))}）が取り込んでいます。完全に削除すると、取り込んだ側の項目は、今の中身で固定されます。</p>`
+    : '';
   return showDialog({
     title: '完全に削除',
     okLabel: '完全に削除する',
     okClass: 'danger',
-    body: `<p>「${esc(d.name)}」を完全に削除します。</p><p class="warn">完全に削除すると、元に戻せません（「元に戻す」でも戻りません）。</p>`,
+    body: `<p>「${esc(d.name)}」を完全に削除します。</p><p class="warn">完全に削除すると、元に戻せません（「元に戻す」でも戻りません）。</p>${note}`,
+  });
+}
+
+// 項目を取り込まれているモックをごみ箱へ移すときの確かめ（画像 q21 の右下）
+function openTrashImportedDialog(d, importers) {
+  return showDialog({
+    title: `「${d.name}」をごみ箱に移しますか？`,
+    okLabel: 'ごみ箱へ移す',
+    okClass: 'danger',
+    body: `<p>ごみ箱からいつでも戻せます。</p>
+      <p class="warn">このモックの項目を、ほかの ${importers.length} つの画面設計（${esc(importers.map((x) => x.name).join('・'))}）が取り込んでいます。
+      ごみ箱の中にある間は、つながったままです。完全に削除すると、取り込んだ側の項目は、そのときの中身で固定されます。</p>`,
   });
 }
 
@@ -1647,10 +1777,13 @@ async function onDesignAction(action, d) {
       actions.duplicateDesign(d.id);
       toast(`「${d.name} のコピー」を作りました。`);
       return;
-    case 'trash':
+    case 'trash': {
+      const importers = designsImporting(store.state, d.id);
+      if (importers.length && !(await openTrashImportedDialog(d, importers))) return;
       actions.trashDesign(d.id);
       toast(`「${d.name}」をごみ箱へ移しました。戻すときは、下の「ごみ箱」か「元に戻す」（Ctrl+Z）を使います。`);
       return;
+    }
     case 'restore':
       actions.restoreDesign(d.id);
       toast(`「${d.name}」を一覧に戻しました。`);
@@ -1736,7 +1869,8 @@ function toolbarHtml() {
       <button class="tbtn" data-action="delete-part" id="tb-del" title="選んだ部品を消します（Delete）">✕ 削除</button></div>
       <button class="bigbtn" data-action="renumber" id="tb-renumber" title="赤い番号を、上から下・左から右の順に 1 から付け直します"><span class="ico">①</span>番号を<br>振り直す</button>`),
     group('項目', `
-      <button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="データベースの項目の一覧表に項目を足します"><span class="ico">＋</span>項目を<br>足す</button>`),
+      <button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="データベースの項目の一覧表に項目を足します"><span class="ico">＋</span>項目を<br>足す</button>
+      <button class="bigbtn" data-action="import-items" id="tb-import" title="ほかのモック（画面設計）の項目を、つなげたまま取り込みます"><span class="ico">⇩</span>ほかのモック<br>から取り込む</button>`),
     group('モード', `
       <button data-screen-only class="bigbtn" data-action="mode-select" id="tb-mode-select" title="部品を選んで動かすモード"><span class="ico">➤</span>選択</button>
       <button data-screen-only class="bigbtn" data-action="mode-hand" id="tb-mode-hand" title="ドラッグで画面を動かすモード（ホイールで拡大縮小）"><span class="ico">✋</span>ハンド</button>`),
@@ -1842,15 +1976,25 @@ function itemTableHtml(d) {
         <span class="hint">行の左のつまみ（⋮⋮）をドラッグすると並べ替えられます。行を押すと、右の欄に設定が出ます。</span>
         <span class="spacer"></span>
         <button class="btn primary small" data-action="add-item-menu" aria-expanded="${ui.addItemMenu}">＋ 項目を足す ▾</button>
+        <button class="btn small" data-action="import-items">⇩ ほかのモックから取り込む</button>
       </div>
       ${ui.addItemMenu ? addItemMenuHtml() : ''}
       ${body}
     </div>`;
 }
 
-// 「ルックアップ元・取り込み元」の列（ルックアップと取り込みは、この後の手順で作る）
+// 「ルックアップ元・取り込み元」の列
 function itemSourceHtml(d, it) {
-  return '<span class="none">－</span>';
+  const parts = [];
+  if (it.link) parts.push(linkSourceHtml(it.link, it.name));
+  return parts.join('<br>') || '<span class="none">－</span>';
+}
+
+// 取り込み元の文。元がなくなったときは、そのときの中身で固定していることを書く
+function linkSourceHtml(link, name) {
+  const where = `${esc(link.designName || '（名前なし）')} › ${esc(name)}`;
+  if (!link.lost) return `<span class="tag link">取り込み</span> ${where}`;
+  return `<span class="tag lost">取り込み・元なし</span> ${where}<br><small style="color:#9a3412">元のモック（または元の項目）はもうありません。今の中身で固定しています</small>`;
 }
 
 function addItemMenuHtml() {
@@ -1983,13 +2127,26 @@ function partCommonFieldsHtml(p) {
   return numbered;
 }
 
+// 取り込んだ項目の知らせ（画像 q20 の 2）。元を直すとここも変わること、ここでは直せないことと、元を開く・つながりを切るボタン
+function linkBannerHtml(item) {
+  const btns = `<div class="btns">${item.link.lost ? '' : `<button class="btn small primary" data-action="open-link-source" data-id="${esc(item.id)}">元のモックを開く</button>`}
+    <button class="btn small" data-action="unlink-item" data-id="${esc(item.id)}">つながりを切る</button></div>`;
+  if (item.link.lost) {
+    return `<div class="pf-banner gone">⚠ この項目は、モック「<b>${esc(item.link.designName)}</b>」から取り込みましたが、元のモック（または元の項目）はもうありません。今の中身で固定しています。
+      直すときは「つながりを切る」で、この画面設計だけの項目にします。${btns}</div>`;
+  }
+  return `<div class="pf-banner link">🔗 この項目は、モック「<b>${esc(item.link.designName)}</b>」の「${esc(item.name)}」とつながっています。元のモックで直すと、ここも変わります。ここでは直せません。
+    つながりを切ると、この画面設計だけの項目になります（元を直しても変わらなくなります）。${btns}</div>`;
+}
+
 function itemPartSettingsHtml(p, t) {
   const d = currentDesign();
   const gone = !p.item;
+  const linked = !!(p.item && p.item.link);
   const banner = gone
     ? `<div class="pf-banner gone">⚠ この部品の項目「${esc(p.label)}」は、データベースの項目の一覧表から消しました。消したときの中身のまま表示しています。ここでは直せません。
         <div class="btns"><button class="btn small primary" data-action="restore-item" data-id="${esc(p.itemId)}">項目の一覧表に戻す</button></div></div>`
-    : '';
+    : linked ? linkBannerHtml(p.item) : '';
   const sample = t.ph
     ? pfText('sample', '見本の値', p.sample, { hint: '（書かないときは薄い字）', placeholder: p.placeholder || t.ph })
       + pfText('placeholder', '薄い字', p.placeholder, { hint: '（見本の値がないときに出す字）', placeholder: t.ph })
@@ -1997,7 +2154,7 @@ function itemPartSettingsHtml(p, t) {
   return `
     <div class="panel-title">選んだ部品の設定（${p.no != null ? `番号 ${p.no}・` : ''}${esc(t.name)}）</div>
     ${banner}
-    ${itemSectionHtml(d, p, { locked: gone, note: gone ? '消したときの中身' : 'どの画面でも同じ' })}
+    ${itemSectionHtml(d, p, { locked: gone || linked, note: gone ? '消したときの中身' : linked ? '元のモックの中身' : 'どの画面でも同じ' })}
     <div class="pf-sec here"><div class="pf-sec-head">この画面だけの設定<small>${esc(currentScreen().name)}の画面</small></div><div class="pf-sec-body">
       ${pfSeg('labelPos', '項目名の位置', p.labelPos, [['top', '上'], ['left', '左']])}
       ${sample}
@@ -2030,9 +2187,11 @@ function itemSectionHtml(d, p, { locked = false, withType = false, note = 'ど�
 
 // データベースの項目の一覧表で項目を選んだときの右の欄（画像 q20 の 4）
 function itemSettingsHtml(d, p) {
+  const linked = !!p.item.link;
   return `
     <div class="panel-title">選んだ項目の設定（${esc(p.label || '名前なし')}）</div>
-    ${itemSectionHtml(d, p, { withType: true })}
+    ${linked ? linkBannerHtml(p.item) : ''}
+    ${itemSectionHtml(d, p, { withType: true, locked: linked, note: linked ? '元のモックの中身' : 'どの画面でも同じ' })}
     <div class="pf-del"><button class="btn small danger-text" data-action="delete-item" data-id="${esc(p.id)}">この項目を消す</button></div>`;
 }
 
@@ -2413,6 +2572,102 @@ function addItemOfType(type) {
   if (id) selectItem(id);
 }
 
+// ほかのモックから項目を取り込む窓（画像 q21）。左で元のモック（ごみ箱にない、ほかの画面設計）を選び、右で項目に印を付ける
+async function openImportDialog() {
+  const d = currentDesign();
+  const sources = visibleDesigns(store.state).filter((x) => x.id !== d.id);
+  let srcId = (sources.find((x) => x.items.length) || sources[0] || {}).id || null;
+  let query = '';
+  const checked = new Set();
+  const stateLabel = { own: '<span class="tag done">このモックの項目</span>', done: '<span class="tag done">取り込み済み</span>', same: '<span class="tag warn">同じ名前の項目があります</span>' };
+  const leftHtml = () => {
+    const q = cleanName(query).toLowerCase();
+    const list = sources.filter((x) => !q || x.name.toLowerCase().includes(q));
+    if (!list.length) return `<p class="imp-empty">${sources.length ? '名前に合う画面設計はありません。' : 'ほかの画面設計がありません。'}</p>`;
+    return list.map((x) => `
+      <button type="button" class="imp-design${x.id === srcId ? ' on' : ''}" data-imp-src="${esc(x.id)}">
+        ${thumbHtml(x, x.screens[0], 62, 40)}
+        <span><span class="nm">${esc(x.name)}</span><span class="mt">${targetChip(x.target)}項目 ${x.items.length} 個・${esc(fmtDateTime(x.updatedAt).slice(5, 10).replace('-', '/'))} 更新</span></span>
+      </button>`).join('');
+  };
+  const rightHtml = () => {
+    const src = findDesign(store.state, srcId);
+    if (!src) return '<p class="imp-empty">左で、取り込む元のモックを選びます。</p>';
+    if (!src.items.length) return `<p class="imp-empty">「${esc(src.name)}」には、まだ項目がありません。</p>`;
+    return `<table><thead><tr><th></th><th>項目名</th><th>部品の種類</th><th>設定</th></tr></thead><tbody>${src.items.map((it) => {
+      const st = importState(d, src, it);
+      const dis = st === 'own' || st === 'done';
+      return `<tr${dis ? ' class="dis"' : ''}><td class="ck"><input type="checkbox" data-imp-item="${esc(it.id)}" aria-label="「${esc(it.name)}」を取り込む"${dis || checked.has(it.id) ? ' checked' : ''}${dis ? ' disabled' : ''}></td>
+        <td>${esc(it.name)} ${stateLabel[st] || ''}</td><td>${esc(partTypeName(it.type))}</td><td class="set">${esc(isItemType(it.type) ? describeItem(it) : '')}</td></tr>`;
+    }).join('')}</tbody></table>`;
+  };
+  const footText = () => {
+    const src = findDesign(store.state, srcId);
+    return src && checked.size ? `「${esc(src.name)}」から、新しく <b>${checked.size} 個</b>の項目を、データベースの項目の一覧表に取り込みます。` : '取り込む項目に印を付けてください。';
+  };
+  return showDialog({
+    title: 'ほかのモックから項目を取り込む',
+    okLabel: '取り込む',
+    wide: true,
+    body: `
+      <p class="hint" style="margin-bottom:10px">取り込んだ項目は、元のモックとつながったままになります。元のモックで項目を直すと、この画面設計の項目も同じように変わります（ここでは直せません）。</p>
+      <div class="imp">
+        <div class="imp-left"><div class="imp-head">1. 取り込む元のモックを選ぶ</div>
+          <label class="imp-search"><input type="search" data-imp-search placeholder="名前で探す" aria-label="名前で探す"></label>
+          <div class="imp-list" data-imp-left>${leftHtml()}</div></div>
+        <div class="imp-right"><div class="imp-head">2. 取り込む項目に印を付ける<span class="spacer"></span><button type="button" class="link-btn" data-imp-all>すべて選ぶ</button></div>
+          <div class="imp-items" data-imp-right>${rightHtml()}</div></div>
+      </div>
+      <p class="imp-foot" data-imp-foot>${footText()}</p>`,
+    init: (m) => {
+      const redraw = () => {
+        $('[data-imp-left]', m).innerHTML = leftHtml();
+        $('[data-imp-right]', m).innerHTML = rightHtml();
+        $('[data-imp-foot]', m).innerHTML = footText();
+      };
+      m.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-imp-src]');
+        if (b && b.dataset.impSrc !== srcId) { srcId = b.dataset.impSrc; checked.clear(); redraw(); return; }
+        if (e.target.closest('[data-imp-all]')) {
+          const src = findDesign(store.state, srcId);
+          if (src) src.items.forEach((it) => { if (!['own', 'done'].includes(importState(d, src, it))) checked.add(it.id); });
+          redraw();
+        }
+      });
+      m.addEventListener('change', (e) => {
+        const c = e.target.closest('[data-imp-item]');
+        if (!c) return;
+        if (c.checked) checked.add(c.dataset.impItem); else checked.delete(c.dataset.impItem);
+        $('[data-imp-foot]', m).innerHTML = footText();
+      });
+      m.addEventListener('input', (e) => {
+        if (!e.target.matches('[data-imp-search]')) return;
+        query = e.target.value;
+        $('[data-imp-left]', m).innerHTML = leftHtml();
+      });
+    },
+    collect: () => (srcId && checked.size ? { srcId, ids: [...checked] } : { error: '取り込む項目に印を付けてください。' }),
+  }).then((r) => {
+    if (!r) return;
+    const src = findDesign(store.state, r.srcId);
+    Object.assign(ui, { panel: 'items', partId: null, addItemMenu: false });
+    const n = actions.importItems(d.id, r.srcId, r.ids);
+    if (n) toast(`「${src.name}」から ${n} 個の項目を取り込みました。`);
+    updateEditor();
+  });
+}
+
+// 取り込んだ項目の元のモックを開き、データベースの項目の一覧表でその項目を選ぶ
+function openLinkSource(itemId) {
+  const it = findItem(currentDesign(), itemId);
+  const src = it && it.link ? findDesign(store.state, it.link.designId) : null;
+  if (!src || src.trashedAt) { toast('元のモックが見つかりません（ごみ箱にあるか、完全に削除されています）。'); return; }
+  flushSideField();
+  openDesign(src.id);
+  Object.assign(ui, { panel: 'items', itemId: findItem(src, it.link.itemId) ? it.link.itemId : null });
+  updateEditor();
+}
+
 // 項目を消す。画面に置いてあるときは、部品が残って固定されることを確かめてから消す
 async function deleteItemWithConfirm(itemId) {
   const d = currentDesign();
@@ -2559,6 +2814,7 @@ function runCommand(cmd) {
       updateEditor();
       return true;
     case 'deleteItem': if (ui.panel === 'items' && ui.itemId) deleteItemWithConfirm(ui.itemId).catch(reportPageError); return true;
+    case 'importItems': openImportDialog().catch(reportPageError); return true;
     case 'deselectItem': if (ui.panel === 'items') selectItem(null); return true;
   }
   if (ui.panel !== 'screen') return false;
@@ -2582,7 +2838,7 @@ const ACTION_COMMANDS = {
   undo: 'undo', redo: 'redo', home: 'goHome', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
-  'open-items': 'openItems', 'add-item-menu': 'addItemMenu',
+  'open-items': 'openItems', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems',
 };
 
 // 編集の画面だけで使う、ボタン以外の押したときの動き
@@ -2606,6 +2862,8 @@ function onEditorClick(action, btn) {
     case 'add-item': addItemOfType(btn.dataset.type); return true;
     case 'delete-item': deleteItemWithConfirm(btn.dataset.id).catch(reportPageError); return true;
     case 'restore-item': actions.restoreItem(ui.designId, btn.dataset.id); return true;
+    case 'unlink-item': actions.unlinkItem(ui.designId, btn.dataset.id); return true;
+    case 'open-link-source': openLinkSource(btn.dataset.id); return true;
     case 'toggle-palette':
       ui.paletteClosed[btn.dataset.id] = !ui.paletteClosed[btn.dataset.id];
       renderPalette(currentDesign());

@@ -207,8 +207,22 @@ const DB_SAMPLE = {
       item('i4', '担当者', 'user', { scope: '営業部の社員', multiple: false, initial: 'me' }, { required: true }),
       item('i5', '取引先コード', 'text1', { maxLen: '', initial: '' }),
       item('i6', '取引先名', 'text1', { maxLen: '', initial: '' }),
-      item('i7', '都道府県', 'dropdown', { options: PREFS, initial: '' }),
+      item('i7', '都道府県', 'dropdown', { options: PREFS, initial: '' }, { link: { designId: 'd2', itemId: 'a2', designName: '住所の共通項目', lost: false } }),
       item('i8', '備考', 'text2', { maxLen: '', initial: '' }),
+    ],
+  }), design('d2', '住所の共通項目', 'その他', '2026-10-12T05:20:00.000Z', screen('s2', '住所の入力'), {
+    items: [
+      item('a1', '郵便番号', 'text1', { maxLen: '8', initial: '' }),
+      item('a2', '都道府県', 'dropdown', { options: PREFS, initial: '' }),
+      item('a3', '市区町村', 'text1', { maxLen: '30', initial: '' }),
+      item('a4', '番地', 'text1', { maxLen: '', initial: '' }),
+      item('a5', '電話番号', 'text1', { maxLen: '13', initial: '' }),
+    ],
+  }), design('d3', '取引先マスタ', 'kintone', '2026-10-11T05:20:00.000Z', screen('s3', '一覧'), {
+    items: [
+      item('b1', '取引先コード', 'text1', { maxLen: '10', initial: '' }, { required: true }),
+      item('b2', '取引先名', 'text1', { maxLen: '50', initial: '' }, { required: true }),
+      item('b3', '住所', 'text1', { maxLen: '', initial: '' }),
     ],
   })],
 };
@@ -234,6 +248,16 @@ async function shootDatabase(browser) {
   await page.click('.sl-item');
   await page.click('#stage .part[data-part-id="p6"]');
   await shot(page, '26_項目_項目を消した後に残った部品');
+  // 取り込んだ項目（都道府県）を選ぶ
+  await page.click('#stage .part[data-part-id="p7"]');
+  await shot(page, '27_取り込み_取り込んだ項目の部品を選んだところ');
+  // ほかのモックから取り込む窓
+  await page.click('[data-action="import-items"]');
+  await page.click('[data-imp-item="a1"]');
+  await page.click('[data-imp-item="a5"]');
+  await shot(page, '28_取り込み_ほかのモックから取り込む窓');
+  await page.click('.modal [data-dlg="ok"]');
+  await shot(page, '29_取り込み_取り込んだ後の一覧表');
   await page.close();
 }
 
