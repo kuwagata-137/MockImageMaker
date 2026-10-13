@@ -33,6 +33,8 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
 - 2026-10-13: 第 3 段階の後半を作った（データの形 v2・データベースの項目の一覧表・ほかのモックからの取り込み・ルックアップ・部品 11 種類と表の枝番・吹き出し・
   まとめて選ぶ・動かす・揃える・つながりの図・アプリのメニューの「揃える」「項目」）。次は第 4 段階（複数の画面）。
 - 2026-10-13: 第 3 段階は PR #3 でマージ済み。第 4 段階（複数の画面）の細かい決めごとをモックで 4 問（q29〜q32）聞いた（下の「複数の画面の細かい決めごと」）。
+- 2026-10-13: 第 4 段階を作った（ひな形 7 つから画面を足す窓・画面の複製・「…」のメニューとドラッグでの並べ替え・画面を消す確かめの窓・
+  メニューバーとアプリのメニューの「画面」・PageUp と PageDown）。クラウドのセッションで作った。次は第 5 段階（書き出しと受け渡し）。
 
 ## 設計方針
 
@@ -58,18 +60,23 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
     `settings.mapPos`（最初の画面）と画面設計の `mapPos`（編集の画面）。v1 のデータは、入力欄の部品 1 つから項目を 1 つ作って直す。
   - ボタン・キー・アプリのメニューからの命令は、すべて `runCommand()` で受ける。
   - 変更はすべて `store.commit()` を通す（元に戻すの履歴に積む）。中身が変わらない変更は履歴に積まず、画面設計の更新日時も中身が変わったときだけ変える。
+  - 画面の並びは画面設計の `screens` の順。ひな形の中身は `screenFromTemplate()`、画面の写しは `copyScreenData()`（画面の複製と画面設計の複製の両方で使う）。
 - `main.js`（窓・メニュー・二重起動の防止・終了前の保存待ち）・`preload.js`（`storageAPI`・`menuAPI`）・`storage.js`（`designs.json` の読み書き）。
 - `test/`: `npm test`（node --test と jsdom）。`test/harness.js` がアプリの HTML を jsdom で起動し、`window.__test__` から中を触る。
-  部品・吹き出し・まとめて操作のテストは `test/parts.test.js`、データの形 v2・項目・取り込み・ルックアップ・つながりの図のテストは `test/database.test.js`。
+  部品・吹き出し・まとめて操作のテストは `test/parts.test.js`、データの形 v2・項目・取り込み・ルックアップ・つながりの図のテストは `test/database.test.js`、
+  複数の画面（ひな形・複製・並べ替え・消す・画面の一覧の「…」・画面を足す窓）のテストは `test/screens.test.js`。
   jsdom では要素の位置（getBoundingClientRect）が取れないので、箱からのドラッグで置く・囲んで選ぶなどの操作は `tools/shoot-app.js` で確かめる。
   jsdom の中で作った配列は、テストの側の配列と deepEqual で比べると違うと判定されるので、`JSON.parse(JSON.stringify(...))` などで写してから比べる。
 - `tools/`: 確かめの道具（どれも窓を出さない）。
   - `node tools/shoot.js <html> <png>`: HTML を headless の Chrome で撮る（モックの撮影）。
+  - 撮影の道具は、環境変数 `MIM_CHROME_PATH` にブラウザの場所を書くと、システムの Chrome の代わりにそれを使う（Chrome のないクラウドのセッションで使う）。
   - `node tools/shoot-app.js`: アプリの場面（一覧・新規作成の窓・編集の画面など）を順に撮り、`screenshots/v<版>_*.png` に置く。
-    `--only=home,editor,parts,db,parts2,callout,multi,map` で一部の場面だけを撮れる。ドラッグの操作は Puppeteer で実際にマウスを動かす。
+    `--only=home,editor,parts,db,parts2,callout,multi,map,screens` で一部の場面だけを撮れる。ドラッグの操作は Puppeteer で実際にマウスを動かす。
   - `node tools/check-electron.js`: Electron を窓を出さずに起動し、保存・二重起動の防止・起動し直しと、右の欄で打ちかけの文字が閉じても保存されるか
-    （窓の ×・ファイル > 終了・window.close()）、項目・吹き出し・つながりの図の箱の位置が残るか、v1 の形の designs.json を v2 に直して読めるかを確かめる
+    （窓の ×・ファイル > 終了・window.close()）、項目・吹き出し・つながりの図の箱の位置と画面の並びが残るか、v1 の形の designs.json を v2 に直して読めるかを確かめる
     （保存先は `.devdata/check-userData` と `.devdata/check-userData-v1`）。
+    クラウドのセッション（Linux・root）では `ELECTRON_DISABLE_SANDBOX=1` を付けて `xvfb-run -a node tools/check-electron.js` で動かす。
+    その環境では「ファイル > 終了」の確かめだけが、変更前の main でも時間切れになる（2026-10-13。社内の Windows PC で確かめる）。
 - 取得物と作業用のファイルは `.devdata/`（Git に入れない）に置く。`npm run dist` は、環境変数 `ELECTRON_BUILDER_CACHE` と `electron_config_cache` を `.devdata/eb-cache`・`.devdata/electron-cache` に向けて動かす。
 
 ### 画面設計（2026-10-13）
