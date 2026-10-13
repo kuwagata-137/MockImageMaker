@@ -150,3 +150,126 @@ function check(el, on) {
   el.checked = on;
   el.dispatchEvent(new el.ownerDocument.defaultView.Event('change', { bubbles: true }));
 }
+
+// ── データベースの項目の一覧表（画像 q19・q20）──
+
+const rowNames = (app) => $$(app, '#db-view tbody tr').map((r) => r.children[1].textContent.trim());
+
+test('項目の一覧表: 左の一覧のいちばん上から開き、項目・種類・設定・置いている画面を並べる', async (t) => {
+  const { app, api, design, items, add } = await bootEditor(t);
+  const pid = add('text1');
+  api.actions.updatePart(design().id, design().screens[0].id, pid, { label: '顧客名', required: true, props: { maxLen: '50' } });
+  api.actions.addItem(design().id, 'number');
+  assert.match($(app, '.db-entry').textContent, /データベースの項目\s*2 個/);
+  click($(app, '[data-action="open-items"]'));
+  assert.equal(api.ui.panel, 'items');
+  assert.ok($(app, '.db-entry').classList.contains('active'));
+  assert.equal($(app, '.sl-item.active'), null, '画面の縮小画像は選んでいない形にする');
+  assert.equal($(app, '#canvas-wrap').hidden, true);
+  assert.equal($(app, '#side-box').hidden, true, '部品の箱は出さない');
+  assert.deepEqual(plain(rowNames(app)), ['顧客名', '項目名']);
+  const cells = $$(app, '#db-view tbody tr')[0].children;
+  assert.deepEqual(plain([...cells].slice(2, 6).map((c) => c.textContent.trim())), ['テキスト（1行）', '必須・最大 50 文字', '－', '画面 1']);
+  assert.match($$(app, '#db-view tbody tr')[1].textContent, /どの画面にもない/);
+  click($(app, '.sl-item'));
+  assert.equal(api.ui.panel, 'screen', '画面の縮小画像を押すと画面に戻る');
+  assert.equal(items().length, 2);
+});
+
+test('項目の一覧表: 「＋ 項目を足す」で種類を選んで足し、右の欄で名前と種類を直すと画面の部品も変わる', async (t) => {
+  const { app, api, design, items, add } = await bootEditor(t);
+  const pid = add('text1');
+  click($(app, '[data-action="open-items"]'));
+  click($(app, '#db-view [data-action="add-item-menu"]'));
+  assert.ok($(app, '#db-view .pop-menu'));
+  assert.equal($$(app, '#db-view .pop-menu button').length, 11, '入力欄の部品の 11 種類');
+  click($(app, '#db-view .pop-menu [data-type="date"]'));
+  assert.equal($(app, '#db-view .pop-menu'), null);
+  assert.equal(items().length, 2);
+  assert.equal(api.ui.itemId, items()[1].id, '足した項目を選ぶ');
+  assert.match($(app, '#side-settings .panel-title').textContent, /選んだ項目の設定/);
+  // 1 つ目の項目（画面に置いてある）を選び、名前と種類を変える
+  click($$(app, '#db-view tbody tr')[0]);
+  setValue($(app, '#side-settings [data-pf="label"]'), '契約日');
+  assert.equal(rowNames(app)[0], '契約日', '表もすぐ変わる');
+  setValue($(app, '#side-settings [data-pf="type"]'), 'date');
+  assert.equal(items()[0].type, 'date');
+  assert.equal(design().screens[0].parts.find((p) => p.id === pid).type, 'date', '画面の部品の種類も変わる');
+  assert.match($(app, '#side-settings .pf-used').textContent, /画面 1/);
+  api.store.undo();
+  assert.equal(items()[0].type, 'text1');
+});
+
+test('部品の箱の「データベースの項目」: 置いていない項目を先に並べ、押すと画面に置く。同じ画面には 2 回置けない', async (t) => {
+  const { app, api, design, add } = await bootEditor(t);
+  add('text1');
+  const iid = api.actions.addItem(design().id, 'dropdown');
+  api.actions.updateItem(design().id, iid, { label: '区分' });
+  const names = () => $$(app, '.pal-item').map((e) => e.querySelector('span').textContent + (e.classList.contains('placed') ? '（置いた）' : ''));
+  assert.deepEqual(plain(names()), ['区分', '項目名（置いた）']);
+  click($(app, `.pal-item[data-item-id="${iid}"]`));
+  const sc = design().screens[0];
+  const placed = sc.parts.find((p) => p.itemId === iid);
+  assert.ok(placed, '区分を置いた');
+  assert.equal(placed.type, 'dropdown');
+  assert.equal(api.ui.partId, placed.id);
+  assert.deepEqual(plain(names()), ['項目名（置いた）', '区分（置いた）']);
+  assert.equal(api.actions.addItemPart(design().id, sc.id, iid, { x: 0, y: 200 }), null, '同じ画面には置けない');
+  assert.equal(design().items.length, 2, '項目は増えない');
+});
+
+test('部品を選んだときの右の欄は「項目の設定」と「この画面だけの設定」に分ける', async (t) => {
+  const { app, api, add } = await bootEditor(t);
+  api.selectPart(add('text1'));
+  const secs = $$(app, '#side-settings .pf-sec');
+  assert.equal(secs.length, 2);
+  assert.ok(secs[0].classList.contains('item'));
+  assert.match(secs[0].textContent, /項目の設定\s*どの画面でも同じ/);
+  assert.ok(secs[0].querySelector('[data-pf="label"]') && secs[0].querySelector('[data-pf="required"]') && secs[0].querySelector('[data-pf="memo"]'));
+  assert.match(secs[1].textContent, /この画面だけの設定\s*画面 1の画面/);
+  assert.ok(secs[1].querySelector('[data-pf="labelPos"]') && secs[1].querySelector('[data-pf="sample"]') && secs[1].querySelector('[data-pf="numbered"]'));
+  assert.match($(app, '#side-settings').textContent, /この画面から部品を消す/);
+  assert.match($(app, '#side-settings').textContent, /項目は、データベースの項目の一覧表に残ります/);
+});
+
+test('項目を消すと、画面の部品は消したときの中身で固定され、「項目の一覧表に戻す」で戻せる', async (t) => {
+  const { app, api, design, items, add } = await bootEditor(t);
+  const pid = add('text1');
+  api.actions.updatePart(design().id, design().screens[0].id, pid, { label: '取引先名', required: true });
+  const iid = items()[0].id;
+  click($(app, '[data-action="open-items"]'));
+  click($(app, `#db-view [data-action="delete-item"][data-id="${iid}"]`));
+  assert.match($(app, '.modal').textContent, /画面 1の画面にある部品は残り/);
+  click($(app, '.modal [data-dlg="ok"]'));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(items().length, 0);
+  const p = design().screens[0].parts[0];
+  assert.deepEqual(plain([p.itemId, p.label, p.required]), [iid, '取引先名', true], '部品に中身を写して残す');
+  click($(app, '.sl-item'));
+  assert.equal($(app, '#stage .part .tag.gone').textContent, '項目なし', '編集の画面では部品に札を付ける');
+  assert.equal($(app, '.sl-thumb .tag'), null, '縮小画像には付けない');
+  api.selectPart(pid);
+  assert.match($(app, '#side-settings .pf-banner.gone').textContent, /取引先名.*消しました/);
+  assert.ok($(app, '#side-settings fieldset.pf-sec.locked').disabled, '項目の設定は直せない');
+  assert.equal($(app, '#side-settings .pf-sec.here [data-pf="labelPos"]').disabled, false, 'この画面だけの設定は直せる');
+  click($(app, '#side-settings [data-action="restore-item"]'));
+  assert.equal(items().length, 1);
+  assert.deepEqual(plain([items()[0].id, items()[0].name, items()[0].required]), [iid, '取引先名', true]);
+  assert.equal(design().screens[0].parts[0].label, undefined, '部品はまた項目を指す');
+  assert.equal($(app, '#side-settings .pf-banner.gone'), null);
+});
+
+test('項目の一覧表: 並べ替え（つまみのドラッグと同じ操作）と、Delete のキーで消す', async (t) => {
+  const { app, api, design, items } = await bootEditor(t);
+  const ids = ['text1', 'number', 'date'].map((type) => api.actions.addItem(design().id, type));
+  assert.equal(api.actions.moveItem(design().id, ids[0], 3), true);
+  assert.deepEqual(plain(items().map((it) => it.id)), plain([ids[1], ids[2], ids[0]]));
+  assert.equal(api.actions.moveItem(design().id, ids[0], 3), false, '同じ位置へは動かさない（履歴に積まない）');
+  assert.equal(api.actions.moveItem(design().id, ids[0], 0), true);
+  assert.deepEqual(plain(items().map((it) => it.id)), plain(ids));
+  click($(app, '[data-action="open-items"]'));
+  click($$(app, '#db-view tbody tr')[1]);
+  app.document.body.dispatchEvent(new app.window.KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(plain(items().map((it) => it.id)), plain([ids[0], ids[2]]), '画面に置いていない項目は、確かめずに消す');
+});

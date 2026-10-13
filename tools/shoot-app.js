@@ -13,7 +13,11 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-const OUT = path.resolve(process.argv[2] || path.join(ROOT, 'screenshots'));
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db をカンマで区切る）]
+const ARGS = process.argv.slice(2);
+const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
+const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
+const wants = (name) => !ONLY.length || ONLY.includes(name);
 
 const screen = (id, name, device = 'pc', height) => {
   const sizes = { pc: [1280, 800], tablet: [768, 1024], phone: [375, 667] };
@@ -176,6 +180,63 @@ async function shootParts(browser) {
   await page.close();
 }
 
+// ── データベースの項目（第 3 段階の後半）。データの形 v2（項目は画面設計の items、部品は itemId で指す）──
+const item = (id, name, type, props = {}, extra = {}) => ({ id, name, type, required: false, memo: '', props, lookup: null, link: null, ...extra });
+const ipart = (id, type, x, y, w, h, no, itemId, extra = {}) => ({ id, type, x, y, w, h, no, labelPos: 'top', sample: '', placeholder: '', itemId, ...extra });
+const PREFS = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県', '茨城県', '栃木県', '群馬県'];
+const DB_SAMPLE = {
+  schemaVersion: 2,
+  settings: { customTargets: [] },
+  designs: [design('d1', '顧客管理', 'kintone', '2026-10-13T05:20:00.000Z', {
+    ...screen('s1', '新規登録'),
+    parts: [
+      ipart('p1', 'text1', 24, 64, 472, 64, 1, 'i1', { placeholder: '自動採番' }),
+      ipart('p2', 'text1', 528, 64, 472, 64, 2, 'i2'),
+      ipart('p3', 'radio', 24, 152, 472, 64, 3, 'i3'),
+      ipart('p4', 'user', 528, 152, 472, 64, 4, 'i4'),
+      ipart('p5', 'text1', 24, 240, 472, 64, 5, 'i5'),
+      ipart('p6', 'text1', 528, 240, 472, 64, 6, 'i6'),
+      ipart('p7', 'dropdown', 24, 328, 472, 64, 7, 'i7', { sample: '栃木県' }),
+      { id: 'p9', type: 'button', x: 880, y: 440, w: 120, h: 40, no: 8, label: '保存', labelPos: 'top', sample: '', placeholder: '', required: false, memo: '', props: { style: 'primary', action: '登録して、一覧の画面へ戻る' } },
+    ],
+  }, {
+    items: [
+      item('i1', '顧客コード', 'text1', { maxLen: '10', initial: '' }, { required: true }),
+      item('i2', '顧客名', 'text1', { maxLen: '50', initial: '' }, { required: true, memo: '会社名か、個人の名前を書く' }),
+      item('i3', '区分', 'radio', { options: ['法人', '個人'], initial: '法人', dir: 'h' }),
+      item('i4', '担当者', 'user', { scope: '営業部の社員', multiple: false, initial: 'me' }, { required: true }),
+      item('i5', '取引先コード', 'text1', { maxLen: '', initial: '' }),
+      item('i6', '取引先名', 'text1', { maxLen: '', initial: '' }),
+      item('i7', '都道府県', 'dropdown', { options: PREFS, initial: '' }),
+      item('i8', '備考', 'text2', { maxLen: '', initial: '' }),
+    ],
+  })],
+};
+
+async function shootDatabase(browser) {
+  const page = await openApp(browser, DB_SAMPLE);
+  await page.click('.card-open[data-id="d1"]');
+  for (let i = 0; i < 3; i++) await page.click('[data-action="zoom-out"]');
+  await shot(page, '21_項目_部品の箱のデータベースの項目の組_70%');
+  await page.click('#stage .part[data-part-id="p2"]');
+  await shot(page, '22_項目_部品を選んだ設定の欄（2 つの枠）');
+  await page.click('[data-action="open-items"]');
+  await page.click('#db-view tr[data-id="i2"]');
+  await shot(page, '23_項目_データベースの項目の一覧表');
+  await page.click('#db-view [data-action="add-item-menu"]');
+  await shot(page, '24_項目_項目を足すメニュー');
+  await page.keyboard.press('Escape');
+  await page.click('#db-view .itable-head h3');
+  // 画面に置いてある「取引先名」を消すと、部品は消したときの中身で固定される
+  await page.click('#db-view [data-action="delete-item"][data-id="i6"]');
+  await shot(page, '25_項目_画面に置いた項目を消す確かめの窓');
+  await page.click('.modal [data-dlg="ok"]');
+  await page.click('.sl-item');
+  await page.click('#stage .part[data-part-id="p6"]');
+  await shot(page, '26_項目_項目を消した後に残った部品');
+  await page.close();
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await puppeteer.launch({
@@ -185,9 +246,10 @@ async function shootParts(browser) {
     args: ['--no-sandbox', '--proxy-server=direct://', '--proxy-bypass-list=*'],
   });
   try {
-    await shootHome(browser);
-    await shootEditor(browser);
-    await shootParts(browser);
+    if (wants('home')) await shootHome(browser);
+    if (wants('editor')) await shootEditor(browser);
+    if (wants('parts')) await shootParts(browser);
+    if (wants('db')) await shootDatabase(browser);
   } finally {
     await browser.close();
   }

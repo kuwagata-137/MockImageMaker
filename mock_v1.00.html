@@ -111,6 +111,7 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .tbtn{background:transparent;border:1px solid transparent;color:#334155;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;white-space:nowrap}
 .tbtn:hover{background:#e2e8f0;color:#0f172a}
 .tbtn:disabled{opacity:.4;cursor:default;background:transparent}
+.bigbtn:disabled{opacity:.4;cursor:default}
 .zoom-label{min-width:52px;color:#475569;align-self:center}
 
 .editor-body{flex:1;min-height:0;display:flex}
@@ -122,6 +123,15 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .sl-item:hover .sl-thumb{background:#eef2f7}
 .sl-name{font-size:12px;color:#475569;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl-item.active .sl-name{color:#1d4ed8;font-weight:600}
+/* 左の一覧のいちばん上の「データベースの項目」（画像 q19 の案A） */
+.db-entry{display:flex;align-items:center;gap:8px;width:100%;border:2px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:8px;background:#f8fafc;cursor:pointer;text-align:left}
+.db-entry:hover{background:#eef2f7}
+.db-entry .ic{font-size:18px;color:#1d3f6e;line-height:1}
+.db-entry b{display:block;font-size:12.5px;color:#0f172a}
+.db-entry small{display:block;color:#64748b;font-size:11px}
+.db-entry.active{border-color:#2563eb;background:#eff6ff}
+.db-entry.active b{color:#1d4ed8}
+.sl-sep{border-top:1px solid #e2e8f0;margin:6px 0 10px}
 
 .canvas-area{flex:1;min-width:0;position:relative;background:#e2e8f0}
 #canvas-wrap{position:absolute;inset:0;overflow:auto}
@@ -248,6 +258,71 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 .height-value{font-size:13px;font-weight:600}
 .check{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;cursor:pointer}
 .check input{margin-top:3px}
+
+/* ── データベースの項目の一覧表（真ん中。画像 q19）── */
+.db-view{position:absolute;inset:0;overflow:auto;padding:22px 26px 40px}
+.itable{background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px 18px;max-width:1240px;position:relative}
+.itable-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.itable-head h3{font-size:16px;color:#0f172a}
+.itable-head .hint{margin-left:4px}
+.itable table{border-collapse:collapse;width:100%;font-size:13px}
+.itable th,.itable td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top;line-height:1.55}
+.itable th{background:#eef2f7;color:#334155;font-size:12px;white-space:nowrap}
+.itable td.c-grip{width:26px;text-align:center;color:#94a3b8;cursor:grab;user-select:none}
+.itable td.c-del{width:34px;text-align:center}
+.itable td.c-set{white-space:pre-line}
+.itable td.none,.itable .none{color:#94a3b8}
+.itable tr[data-action]{cursor:pointer}
+.itable tr[data-action]:hover td{background:#f8fafc}
+.itable tr.sel td{background:#eff6ff}
+.itable tr.drop-before td{box-shadow:inset 0 3px 0 #2563eb}
+.itable tr.drop-after td{box-shadow:inset 0 -3px 0 #2563eb}
+.itable-empty{color:#64748b;font-size:13px;line-height:1.7;border:1px dashed #94a3b8;border-radius:6px;padding:14px;background:#f8fafc}
+.del-x{border:none;background:none;color:#94a3b8;cursor:pointer;font-size:14px;padding:0 4px;border-radius:4px}
+.del-x:hover{color:#dc2626;background:#fef2f2}
+.pop-menu{position:absolute;z-index:10;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.18);padding:4px;min-width:190px;display:flex;flex-direction:column}
+.pop-menu button{border:none;background:none;text-align:left;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;gap:8px;align-items:center}
+.pop-menu button:hover{background:#f1f5f9}
+.pop-menu button i{font-style:normal;width:18px;text-align:center;color:#1d3f6e}
+body.sorting,body.sorting *{cursor:grabbing!important}
+/* 部品や項目に付ける小さな札（編集の画面だけ。ルックアップの札は書き出しにも出す） */
+.tag{display:inline-block;font-size:10.5px;font-weight:700;border-radius:4px;padding:0 5px;white-space:nowrap;line-height:1.6;vertical-align:middle}
+.tag.link{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.tag.lost,.tag.gone{background:#f1f5f9;color:#475569;border:1px solid #94a3b8}
+/* 部品の箱のいちばん上の「データベースの項目」の組 */
+.pal-group.items{border-color:#93c5fd}
+.pal-group.items .pal-head{background:#eff6ff;color:#1d4ed8}
+.pal-items{display:flex;flex-direction:column;gap:3px;padding:5px}
+.pal-item{display:flex;align-items:center;gap:6px;border:1px solid #bfdbfe;border-radius:6px;background:#fff;padding:5px 8px;font-size:12px;cursor:grab;text-align:left;min-width:0}
+.pal-item i{font-style:normal;color:#1d3f6e;width:16px;text-align:center;flex-shrink:0}
+.pal-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pal-item small{margin-left:auto;color:#64748b;font-size:10.5px;white-space:nowrap;flex-shrink:0}
+.pal-item:hover{background:#eff6ff}
+.pal-item.placed{opacity:.5;border-color:#e2e8f0;cursor:default}
+.pal-item.placed small{color:#1d4ed8}
+.pal-empty{color:#64748b;font-size:11.5px;padding:6px 8px;line-height:1.5}
+/* 選んだ部品の設定の欄の 2 つの枠（画像 q20）: 紺＝項目の設定、灰＝この画面だけの設定 */
+.pf-sec{margin:0 0 10px;padding:0;border:0;min-width:0}
+.pf-sec-head{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:6px 9px;border-radius:7px 7px 0 0}
+.pf-sec-head small{font-weight:400;font-size:10.5px}
+.pf-sec-body{padding:10px 10px 4px;border:1px solid;border-top:none;border-radius:0 0 7px 7px}
+.pf-sec.item .pf-sec-head{background:#1d3f6e;color:#fff}
+.pf-sec.item .pf-sec-head small{color:#cbd5e1}
+.pf-sec.item .pf-sec-body{border-color:#1d3f6e}
+.pf-sec.here .pf-sec-head{background:#e2e8f0;color:#334155}
+.pf-sec.here .pf-sec-head small{color:#64748b}
+.pf-sec.here .pf-sec-body{border-color:#cbd5e1}
+.pf-sec.locked .pf-sec-head{background:#64748b;color:#fff}
+.pf-sec.locked .pf-sec-head small{color:#e2e8f0}
+.pf-sec.locked .pf-sec-body{border-color:#94a3b8;background:#f8fafc}
+.pf-sec.locked input,.pf-sec.locked textarea,.pf-sec.locked select{background:#f1f5f9;color:#64748b;border-style:dashed}
+.pf-used{font-size:11.5px;color:#475569;margin-bottom:8px;line-height:1.5}
+.pf-used b{color:#1d3f6e}
+.pf-banner{border-radius:7px;padding:8px 10px;font-size:12px;line-height:1.55;margin-bottom:10px}
+.pf-banner .btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.pf-banner.link{background:#f0fdf4;border:1px solid #86efac;color:#14532d}
+.pf-banner.gone{background:#fff7ed;border:1px solid #fdba74;color:#7c2d12}
+.pf-note{font-size:11px;color:#64748b;text-align:right;margin-top:3px}
 </style>
 </head>
 <body>
@@ -460,6 +535,27 @@ function resolvePart(design, p) {
 
 // その画面に、その項目を指す部品があるか（同じ項目を 1 つの画面に 2 回は置かない）
 const itemOnScreen = (screen, itemId) => !!screen && screen.parts.some((p) => p.itemId === itemId);
+// その項目を置いている画面（画面の順）
+const screensWithItem = (design, itemId) => design.screens.filter((s) => itemOnScreen(s, itemId));
+// 項目を一覧表から消した後に、画面に残った部品か（項目を指していたが、その項目がもうない）
+const isOrphanPart = (design, p) => !!p.itemId && isItemType(p.type) && !findItem(design, p.itemId);
+// 「＋ 項目を足す」で選べる種類（部品の箱の並びの順）
+const itemMenuTypes = () => PALETTE_GROUPS.flatMap((g) => g.types).filter(isItemType);
+
+// 項目を消すとき、その項目を置いた部品に写す中身（消したときの中身で固定するため）
+function frozenItemFields(item) {
+  const f = { label: item.name, required: item.required, memo: item.memo, props: clone(item.props) };
+  if (item.lookup) f.lookup = clone(item.lookup);
+  if (item.link) f.link = clone(item.link);
+  return f;
+}
+
+// 項目の種類を変える。設定は新しい種類の形にそろえ（同じ名前の設定は残す）、その項目を置いた部品の種類も変える
+function changeItemType(design, item, type) {
+  item.type = type;
+  item.props = keepInitialInOptions(type, normalizeProps(partType(type), item.props));
+  design.screens.forEach((s) => s.parts.forEach((p) => { if (p.itemId === item.id) p.type = type; }));
+}
 
 // 部品の位置と大きさを 8 ドットのマス目に吸い付け、画面の中に収める（大きさは変えずに位置をずらす）
 function fitRect(r, screen) {
@@ -582,6 +678,9 @@ function describePart(p) {
   return [short.join('・'), ...eq, v(p.memo)].filter(Boolean).join('\n');
 }
 
+// データベースの項目の一覧表の「設定」の列の文（部品の設定の一覧表と同じ書き方）
+const describeItem = (item) => describePart({ type: item.type, required: item.required, memo: item.memo, props: item.props });
+
 // 一覧表の「項目名」の列。説明の文字は 1 行目の初めの 20 文字。名前がなければ部品の種類
 function partTitle(p) {
   const first = String(p.label == null ? '' : p.label).split('\n')[0].trim();
@@ -648,7 +747,7 @@ function normalizePart(src, items = []) {
 }
 
 function withoutItemFields(p) {
-  const { label, required, memo, props, ...rest } = p;
+  const { label, required, memo, props, lookup, link, ...rest } = p;
   return rest;
 }
 
@@ -1061,6 +1160,67 @@ const actions = {
   renumberParts(designId, screenId) {
     return mutateScreen(designId, screenId, (sc) => { sc.parts = renumberedParts(sc.parts); });
   },
+
+  // ── データベースの項目の操作 ──
+  addItem(designId, type) {
+    if (!isItemType(type) || !findDesign(store.state, designId)) return null;
+    const item = createItemData(type);
+    mutateDesign(designId, (d) => { d.items.push(item); });
+    return item.id;
+  },
+  // patch は { label（項目名）, required, memo, props, type } のどれか
+  updateItem(designId, itemId, patch) {
+    if (!findItem(findDesign(store.state, designId), itemId)) return false;
+    if ('type' in patch && !isItemType(patch.type)) return false;
+    return mutateDesign(designId, (d) => {
+      const item = findItem(d, itemId);
+      if ('type' in patch && patch.type !== item.type) changeItemType(d, item, patch.type);
+      applyFieldPatch(item, 'name', patch);
+    });
+  },
+  // 項目を並べ替える。toIndex は、今の並びで「この位置の項目の前」に入れる位置（いちばん後ろは項目の数）
+  moveItem(designId, itemId, toIndex) {
+    const d = findDesign(store.state, designId);
+    const from = d ? d.items.findIndex((it) => it.id === itemId) : -1;
+    if (from < 0 || !Number.isInteger(toIndex) || toIndex < 0 || toIndex > d.items.length || toIndex === from || toIndex === from + 1) return false;
+    return mutateDesign(designId, (dd) => {
+      const [it] = dd.items.splice(from, 1);
+      dd.items.splice(toIndex > from ? toIndex - 1 : toIndex, 0, it);
+    });
+  },
+  // 項目を一覧表から消す。その項目を置いた部品は画面に残し、消したときの項目名と設定を部品に写して固定する（ユーザーの指示）
+  deleteItem(designId, itemId) {
+    const item = findItem(findDesign(store.state, designId), itemId);
+    if (!item) return false;
+    const fields = frozenItemFields(item);
+    return mutateDesign(designId, (d) => {
+      d.items = d.items.filter((it) => it.id !== itemId);
+      d.screens.forEach((s) => s.parts.forEach((p) => { if (p.itemId === itemId) Object.assign(p, clone(fields)); }));
+    });
+  },
+  // 項目を消した後に残った部品から、消したときの中身で項目を一覧表のいちばん下に戻す。同じ項目を指していたほかの部品もつながり直る
+  restoreItem(designId, itemId) {
+    const d = findDesign(store.state, designId);
+    if (!d || findItem(d, itemId)) return false;
+    const src = d.screens.flatMap((s) => s.parts).find((p) => p.itemId === itemId && isItemType(p.type));
+    if (!src) return false;
+    const item = normalizeItem({ id: itemId, name: src.label, type: src.type, required: src.required, memo: src.memo, props: clone(src.props), lookup: src.lookup || null, link: src.link || null });
+    return mutateDesign(designId, (dd) => {
+      dd.items.push(item);
+      dd.screens.forEach((s) => { s.parts = s.parts.map((p) => (p.itemId === itemId ? withoutItemFields(p) : p)); });
+    });
+  },
+  // データベースの項目の一覧表にある項目を、画面に置く。その画面にもう置いてあれば置かない（戻り値 null）
+  addItemPart(designId, screenId, itemId, at) {
+    const sc = findScreen(designId, screenId);
+    const item = findItem(findDesign(store.state, designId), itemId);
+    const t = item && partType(item.type);
+    if (!sc || !t || !isItemType(item.type) || itemOnScreen(sc, itemId)) return null;
+    const start = fitRect({ x: at.x, y: Math.max(sc.showHeader ? BAND_H : 0, at.y), w: t.w, h: t.h }, sc);
+    const p = createPartData(item.type, sc, freeSpot(sc, start), itemId);
+    mutateScreen(designId, screenId, (s) => { s.parts.push(p); });
+    return p.id;
+  },
 };
 
 function findScreen(designId, screenId) {
@@ -1211,10 +1371,11 @@ function targetChip(target) {
   return `<span class="chip${cls}">${esc(targetLabel(target))}</span>`;
 }
 
-// 画面を、編集の画面と同じ HTML で描く（縮小画像にも使う）。selectedId の部品には、選んだ印と縁のつまみを付ける
-function screenHtml(design, screen, { grid = false, height = screen.height, selectedId = null } = {}) {
+// 画面を、編集の画面と同じ HTML で描く（縮小画像にも使う）。selectedId の部品には、選んだ印と縁のつまみを付ける。
+// marks のとき（編集の画面）は、項目を消した後に残った部品などに小さな札を付ける（書き出しと縮小画像には付けない）
+function screenHtml(design, screen, { grid = false, height = screen.height, selectedId = null, marks = false } = {}) {
   const band = screen.showHeader ? `<div class="screen-band">${esc(design.name)} ／ ${esc(screen.name)}</div>` : '';
-  const parts = screen.parts.map((p) => partHtml(resolvePart(design, p), p.id === selectedId)).join('');
+  const parts = screen.parts.map((p) => partHtml(resolvePart(design, p), p.id === selectedId, marks)).join('');
   return `<div class="screen${grid ? ' grid' : ''}" style="width:${screen.width}px;height:${height}px">${band}${parts}</div>`;
 }
 
@@ -1222,7 +1383,7 @@ function screenHtml(design, screen, { grid = false, height = screen.height, sele
 const GRIPS = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 const partNoHtml = (p, cls = '') => (p.no != null ? `<span class="pno${cls}">${p.no}</span>` : '');
 
-function partHtml(p, selected = false) {
+function partHtml(p, selected = false, marks = false) {
   const t = partType(p.type);
   const cls = ['part', 'pt-' + (t ? p.type : 'unknown')];
   if (t && t.input && p.labelPos === 'left') cls.push('lab-left');
@@ -1231,14 +1392,20 @@ function partHtml(p, selected = false) {
   // 読み込んだデータが思わぬ形でも、ほかの部品と画面は描けるように、この部品だけを「描けない部品」の箱にする
   let inner;
   try {
-    inner = partInnerHtml(p, t);
+    inner = partInnerHtml(p, t, marks);
   } catch (e) {
     inner = `<div class="punknown">この部品は描けません（${esc(e.message || e)}）</div>`;
   }
   return `<div class="${cls.join(' ')}" data-part-id="${esc(p.id)}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px">${inner}${grips}</div>`;
 }
 
-function partInnerHtml(p, t) {
+// 編集の画面だけで、項目名の後ろに付ける札（項目を一覧表から消した後に残った部品）
+function partMarksHtml(p) {
+  if (isItemType(p.type) && p.itemId && !p.item) return ' <span class="tag gone" title="この部品の項目は、データベースの項目の一覧表から消しました">項目なし</span>';
+  return '';
+}
+
+function partInnerHtml(p, t, marks = false) {
   if (!t) return `<div class="punknown">${partNoHtml(p)}${esc(partTypeName(p.type))}</div>`;
   const pr = p.props;
   switch (p.type) {
@@ -1252,7 +1419,7 @@ function partInnerHtml(p, t) {
     case 'divider':
       return `<div class="pline">${partNoHtml(p)}<i></i></div>`;
   }
-  const label = `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span>${p.required ? '<span class="preq">*</span>' : ''}</div>`;
+  const label = `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span>${p.required ? '<span class="preq">*</span>' : ''}${marks ? partMarksHtml(p) : ''}</div>`;
   return label + partFieldHtml(p, t);
 }
 
@@ -1312,6 +1479,9 @@ const ui = {
   partId: null, // 選んでいる部品の id
   clipboard: null, // コピーした部品の写し（アプリを閉じるまで。画面を移っても貼り付けられる）
   paletteClosed: {}, // 部品の箱で閉じている組（{ 組の id: true }。アプリを閉じるまで覚えておく）
+  panel: 'screen', // 真ん中に出しているもの: 'screen'（画面）か 'items'（データベースの項目の一覧表）
+  itemId: null, // データベースの項目の一覧表で選んでいる項目の id
+  addItemMenu: false, // 「＋ 項目を足す」の種類の小さなメニューを開いているか
 };
 const appEl = () => $('#app');
 
@@ -1509,17 +1679,24 @@ function currentPart() {
   const p = findPart(currentScreen(), ui.partId);
   return p ? resolvePart(currentDesign(), p) : null;
 }
+// 右の設定の欄が今出している中身。画面では選んでいる部品（項目と合わせた形）、
+// データベースの項目の一覧表では選んでいる項目を部品と同じ形（label＝項目名・item）にしたもの
+function currentSubject() {
+  if (ui.panel !== 'items') return currentPart();
+  const it = findItem(currentDesign(), ui.itemId);
+  return it ? { ...it, label: it.name, item: it } : null;
+}
 
 function openDesign(id) {
   const d = findDesign(store.state, id);
   if (!d) return;
-  Object.assign(ui, { view: 'editor', designId: id, screenId: d.screens[0].id, zoom: 1, mode: 'select', menuFor: null, previewHeight: null, partId: null });
+  Object.assign(ui, { view: 'editor', designId: id, screenId: d.screens[0].id, zoom: 1, mode: 'select', menuFor: null, previewHeight: null, partId: null, panel: 'screen', itemId: null, addItemMenu: false });
   store.clearHistory();
   mountEditor();
 }
 
 function goHome() {
-  Object.assign(ui, { view: 'home', designId: null, screenId: null, previewHeight: null, partId: null });
+  Object.assign(ui, { view: 'home', designId: null, screenId: null, previewHeight: null, partId: null, panel: 'screen', itemId: null, addItemMenu: false });
   store.clearHistory();
   renderHome();
 }
@@ -1533,6 +1710,7 @@ function mountEditor() {
       <div class="canvas-area">
         <div id="canvas-wrap"><div id="zoom-spacer"></div><div id="stage"></div></div>
         <div class="zoom-badge" id="zoom-badge">100%</div>
+        <div class="db-view" id="db-view" hidden></div>
       </div>
       <aside class="side-panel" id="side-panel" aria-label="部品の箱と設定">
         <div class="side-box" id="side-box"></div>
@@ -1540,7 +1718,6 @@ function mountEditor() {
       </aside>
     </div>`;
   initCanvasEvents($('#canvas-wrap'));
-  renderPalette();
   updateEditor();
 }
 
@@ -1558,13 +1735,15 @@ function toolbarHtml() {
       <button class="tbtn" data-action="duplicate-part" id="tb-dup" title="選んだ部品を複製します（Ctrl+D）">❐ 複製</button>
       <button class="tbtn" data-action="delete-part" id="tb-del" title="選んだ部品を消します（Delete）">✕ 削除</button></div>
       <button class="bigbtn" data-action="renumber" id="tb-renumber" title="赤い番号を、上から下・左から右の順に 1 から付け直します"><span class="ico">①</span>番号を<br>振り直す</button>`),
+    group('項目', `
+      <button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="データベースの項目の一覧表に項目を足します"><span class="ico">＋</span>項目を<br>足す</button>`),
     group('モード', `
-      <button class="bigbtn" data-action="mode-select" id="tb-mode-select" title="部品を選んで動かすモード"><span class="ico">➤</span>選択</button>
-      <button class="bigbtn" data-action="mode-hand" id="tb-mode-hand" title="ドラッグで画面を動かすモード（ホイールで拡大縮小）"><span class="ico">✋</span>ハンド</button>`),
+      <button data-screen-only class="bigbtn" data-action="mode-select" id="tb-mode-select" title="部品を選んで動かすモード"><span class="ico">➤</span>選択</button>
+      <button data-screen-only class="bigbtn" data-action="mode-hand" id="tb-mode-hand" title="ドラッグで画面を動かすモード（ホイールで拡大縮小）"><span class="ico">✋</span>ハンド</button>`),
     group('表示', `<div class="stack">
-      <button class="tbtn" data-action="zoom-in" title="拡大（Ctrl+＋・Ctrl+ホイール）">＋ 拡大</button>
-      <button class="tbtn" data-action="zoom-out" title="縮小（Ctrl+－・Ctrl+ホイール）">－ 縮小</button></div>
-      <button class="tbtn zoom-label" data-action="zoom-reset" id="zoom-label" title="100% に戻します（Ctrl+0）">100%</button>`),
+      <button data-screen-only class="tbtn" data-action="zoom-in" title="拡大（Ctrl+＋・Ctrl+ホイール）">＋ 拡大</button>
+      <button data-screen-only class="tbtn" data-action="zoom-out" title="縮小（Ctrl+－・Ctrl+ホイール）">－ 縮小</button></div>
+      <button data-screen-only class="tbtn zoom-label" data-action="zoom-reset" id="zoom-label" title="100% に戻します（Ctrl+0）">100%</button>`),
   ].join('');
 }
 
@@ -1574,28 +1753,40 @@ function updateEditor({ keepSide = false } = {}) {
   if (!d || d.trashedAt) { goHome(); return; }
   if (!d.screens.some((s) => s.id === ui.screenId)) ui.screenId = d.screens[0].id;
   if (!findPart(currentScreen(), ui.partId)) ui.partId = null; // 元に戻すなどで部品が消えたとき
+  if (!findItem(d, ui.itemId)) ui.itemId = null;
   $('#ed-title').textContent = `${d.name}（${targetLabel(d.target)}）`;
   updateToolbarState();
   $('#screen-list').innerHTML = screenListHtml(d);
-  renderStage();
+  const onScreen = ui.panel === 'screen';
+  $('#canvas-wrap').hidden = !onScreen;
+  $('#zoom-badge').hidden = !onScreen;
+  $('#db-view').hidden = onScreen;
+  $('#side-box').hidden = !onScreen;
+  if (onScreen) renderStage();
+  else renderItemsView(d);
+  renderPalette(d);
   if (!keepSide) renderSettings(d);
 }
 
 function updateToolbarState() {
   const s = currentScreen();
+  const onScreen = ui.panel === 'screen';
   $('#tb-undo').disabled = !store.canUndo();
   $('#tb-redo').disabled = !store.canRedo();
-  ['#tb-copy', '#tb-dup', '#tb-del'].forEach((sel) => { $(sel).disabled = !ui.partId; });
-  $('#tb-paste').disabled = !ui.clipboard;
-  $('#tb-renumber').disabled = !s || !s.parts.some((p) => p.no != null);
+  ['#tb-copy', '#tb-dup', '#tb-del'].forEach((sel) => { $(sel).disabled = !onScreen || !ui.partId; });
+  $('#tb-paste').disabled = !onScreen || !ui.clipboard;
+  $('#tb-renumber').disabled = !onScreen || !s || !s.parts.some((p) => p.no != null);
   $('#tb-mode-select').classList.toggle('on', ui.mode === 'select');
   $('#tb-mode-hand').classList.toggle('on', ui.mode === 'hand');
+  document.querySelectorAll('#toolbar [data-screen-only]').forEach((b) => { b.disabled = !onScreen; });
   $('#canvas-wrap').classList.toggle('hand', ui.mode === 'hand');
 }
 
 function screenListHtml(d) {
-  return '<div class="panel-title">画面</div>' + d.screens.map((s, i) => `
-    <button class="sl-item${s.id === ui.screenId ? ' active' : ''}" data-action="select-screen" data-id="${esc(s.id)}" title="${esc(s.name)}">
+  const entry = `<button class="db-entry${ui.panel === 'items' ? ' active' : ''}" data-action="open-items" title="データベースの項目の一覧表を開きます">
+      <span class="ic">▦</span><span><b>データベースの項目</b><small>${d.items.length} 個</small></span></button>`;
+  return entry + '<div class="sl-sep"></div><div class="panel-title">画面</div>' + d.screens.map((s, i) => `
+    <button class="sl-item${ui.panel === 'screen' && s.id === ui.screenId ? ' active' : ''}" data-action="select-screen" data-id="${esc(s.id)}" title="${esc(s.name)}">
       <div class="sl-thumb">${thumbHtml(d, s, 132, 84)}</div>
       <div class="sl-name">${i + 1}　${esc(s.name)}</div>
     </button>`).join('');
@@ -1609,7 +1800,7 @@ function renderStage() {
   $('#stage').innerHTML = `
     <div class="stage-row ${s.tablePos === 'bottom' ? 'bottom' : 'right'}">
       <div class="screen-frame" style="width:${s.width}px">
-        ${screenHtml(d, s, { grid: true, height: h, selectedId: ui.partId })}
+        ${screenHtml(d, s, { grid: true, height: h, selectedId: ui.partId, marks: true })}
         <div class="screen-resize" data-drag="resize" title="ドラッグで画面の高さを変えます（8 ドットずつ。機器の 1 画面分と、いちばん下の部品より低くはなりません）"><span></span></div>
         <div class="screen-size">${DEVICES[s.device].label}・${s.width} × ${h}</div>
       </div>
@@ -1620,21 +1811,85 @@ function renderStage() {
   applyZoom();
 }
 
-// 右の欄の上の部品の箱。組の見出しを押すと開く・閉じる（最初は全部開いている）
-function renderPalette() {
+// ── データベースの項目の一覧表（真ん中。画像 q19 の案A）──
+function renderItemsView(d) {
+  const el = $('#db-view');
+  const top = el.scrollTop;
+  el.innerHTML = itemTableHtml(d);
+  el.scrollTop = top;
+}
+
+function itemTableHtml(d) {
+  const rows = d.items.map((it) => {
+    const scr = screensWithItem(d, it.id).map((s) => s.name);
+    return `<tr data-action="select-item" data-id="${esc(it.id)}"${it.id === ui.itemId ? ' class="sel"' : ''}>
+      <td class="c-grip" data-drag="item-sort" title="ドラッグで並べ替えます">⋮⋮</td>
+      <td>${it.name ? esc(it.name) : '<span class="none">（名前なし）</span>'}</td>
+      <td>${esc(partTypeName(it.type))}</td>
+      <td class="c-set">${esc(isItemType(it.type) ? describeItem(it) : '')}</td>
+      <td>${itemSourceHtml(d, it)}</td>
+      <td>${scr.length ? esc(scr.join('・')) : '<span class="none">どの画面にもない</span>'}</td>
+      <td class="c-del"><button class="del-x" data-action="delete-item" data-id="${esc(it.id)}" title="この項目を消します" aria-label="「${esc(it.name)}」を消す">✕</button></td>
+    </tr>`;
+  }).join('');
+  const body = d.items.length
+    ? `<table><thead><tr><th></th><th>項目名</th><th>部品の種類</th><th>設定</th><th>ルックアップ元・取り込み元</th><th>置いている画面</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<div class="itable-empty">まだ項目がありません。「＋ 項目を足す」で足すか、画面に入力欄の部品を置くと、ここに並びます。</div>';
+  return `
+    <div class="itable">
+      <div class="itable-head">
+        <h3>データベースの項目（${esc(d.name)}）</h3>
+        <span class="hint">行の左のつまみ（⋮⋮）をドラッグすると並べ替えられます。行を押すと、右の欄に設定が出ます。</span>
+        <span class="spacer"></span>
+        <button class="btn primary small" data-action="add-item-menu" aria-expanded="${ui.addItemMenu}">＋ 項目を足す ▾</button>
+      </div>
+      ${ui.addItemMenu ? addItemMenuHtml() : ''}
+      ${body}
+    </div>`;
+}
+
+// 「ルックアップ元・取り込み元」の列（ルックアップと取り込みは、この後の手順で作る）
+function itemSourceHtml(d, it) {
+  return '<span class="none">－</span>';
+}
+
+function addItemMenuHtml() {
+  return `<div class="pop-menu" role="menu" style="right:18px;top:50px">${itemMenuTypes().map((type) => {
+    const t = partType(type);
+    return `<button role="menuitem" data-action="add-item" data-type="${type}"><i>${t.icon}</i>${esc(t.name)}</button>`;
+  }).join('')}</div>`;
+}
+
+// 右の欄の上の部品の箱。組の見出しを押すと開く・閉じる（最初は全部開いている）。
+// いちばん上の「データベースの項目」の組には、この画面設計の項目を並べる（画像 q19）。この画面にまだ置いていない項目を先に並べ、
+// 置いた項目は薄く出して「置いた」と書く（同じ項目を 1 つの画面に 2 回は置かないため、置けない）
+function renderPalette(d) {
   const box = $('#side-box');
   const top = box.scrollTop;
+  const head = (id, name, n, open) =>
+    `<button class="pal-head" data-action="toggle-palette" data-id="${id}" aria-expanded="${open}">${open ? '▼' : '▶'} ${esc(name)}<span class="n">${n}</span></button>`;
   const btn = (type) => {
     const t = partType(type);
     return `<button class="pal-btn" data-action="add-part" data-type="${type}" title="${esc(t.name)}（画面へドラッグして置く。押すと、見えている所の真ん中に置く）"><i>${t.icon}</i>${esc(t.pal || t.name)}</button>`;
   };
-  box.innerHTML = '<div class="panel-title">部品 <small>（画面へドラッグして置く）</small></div>' + PALETTE_GROUPS.map((g) => {
-    const open = !ui.paletteClosed[g.id];
-    return `<div class="pal-group">
-      <button class="pal-head" data-action="toggle-palette" data-id="${g.id}" aria-expanded="${open}">${open ? '▼' : '▶'} ${esc(g.name)}<span class="n">${g.types.length}</span></button>
-      ${open ? `<div class="pal-grid">${g.types.map(btn).join('')}</div>` : ''}
-    </div>`;
-  }).join('');
+  const sc = currentScreen();
+  const items = d.items.filter((it) => isItemType(it.type));
+  const placed = (it) => itemOnScreen(sc, it.id);
+  const itemBtn = (it) => {
+    const t = partType(it.type);
+    const name = esc(it.name || '（名前なし）');
+    if (placed(it)) return `<div class="pal-item placed" title="この画面にもう置いています"><i>${t.icon}</i><span>${name}</span><small>置いた</small></div>`;
+    return `<button class="pal-item" data-action="add-item-part" data-item-id="${esc(it.id)}" title="「${name}」を画面へドラッグして置く（押すと、見えている所の真ん中に置く）"><i>${t.icon}</i><span>${name}</span><small>${esc(t.name)}</small></button>`;
+  };
+  const itemsOpen = !ui.paletteClosed.items;
+  const itemList = [...items.filter((it) => !placed(it)), ...items.filter(placed)].map(itemBtn).join('')
+    || '<div class="pal-empty">まだ項目がありません。下の組から入力欄の部品を置くと、ここにも並びます。</div>';
+  box.innerHTML = '<div class="panel-title">部品 <small>（画面へドラッグして置く）</small></div>'
+    + `<div class="pal-group items">${head('items', 'データベースの項目', items.length, itemsOpen)}${itemsOpen ? `<div class="pal-items">${itemList}</div>` : ''}</div>`
+    + PALETTE_GROUPS.map((g) => {
+      const open = !ui.paletteClosed[g.id];
+      return `<div class="pal-group">${head(g.id, g.name, g.types.length, open)}${open ? `<div class="pal-grid">${g.types.map(btn).join('')}</div>` : ''}</div>`;
+    }).join('');
   box.scrollTop = top;
 }
 
@@ -1642,10 +1897,11 @@ function renderPalette() {
 // 同じものを描き直すときは、スクロールの位置を保つ
 function renderSettings(d) {
   const el = $('#side-settings');
-  const key = ui.partId || 'screen:' + ui.screenId;
+  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ui.partId || 'screen:' + ui.screenId;
   const top = el.dataset.key === key ? el.scrollTop : 0;
-  const p = currentPart();
-  if (p) el.innerHTML = partSettingsHtml(p);
+  const p = currentSubject();
+  if (ui.panel === 'items') el.innerHTML = p ? itemSettingsHtml(d, p) : itemsHintHtml(d);
+  else if (p) el.innerHTML = partSettingsHtml(p);
   else renderScreenSettings(d, el);
   el.dataset.key = key;
   el.scrollTop = top;
@@ -1691,8 +1947,17 @@ const pfSelect = (key, label, value, choices) => `<label class="field">${pfLabel
 const pfRow = (...cells) => `<div class="row2">${cells.join('')}</div>`;
 const NUM = { type: 'number' };
 
+// 一覧表の「設定」に出る文の欄。番号を外した部品は、一覧表に出ないことを書く
+function pfOutHtml(p, { forItem = false } = {}) {
+  if (!forItem && p.no == null) return '<div class="pf-out"><b>一覧表の「設定」に出る文</b><div>（番号を外しているので、一覧表には出ません）</div></div>';
+  return `<div class="pf-out"><b>一覧表の「設定」に出る文</b><div id="pf-out">${esc(describePart(p)) || '（まだありません）'}</div></div>`;
+}
+
+// 選んだ部品の設定の欄。入力欄の部品は、上に「項目の設定（どの画面でも同じ）」、下に「この画面だけの設定」を出す（画像 q20）。
+// 項目を一覧表から消した後に残った部品は、項目の設定を灰色にして直せなくし、「項目の一覧表に戻す」を出す
 function partSettingsHtml(p) {
   const t = partType(p.type);
+  if (t && isItemType(p.type)) return itemPartSettingsHtml(p, t);
   const del = '<div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を消す</button></div>';
   if (!t) return `<div class="panel-title">選んだ部品</div><p class="hint">${esc(partTypeName(p.type))}です。新しい版のアプリで足した部品のため、この版では設定を変えられません。</p>${del}`;
   const typeFields = partTypeFieldsHtml(p);
@@ -1702,29 +1967,80 @@ function partSettingsHtml(p) {
     : `<div class="pf-out"><b>一覧表の「設定」に出る文</b><div id="pf-out">${esc(setting) || '（まだありません）'}</div></div>`;
   return `
     <div class="panel-title">選んだ部品の設定（${p.no != null ? `番号 ${p.no}・` : ''}${esc(t.name)}）</div>
-    ${partCommonFieldsHtml(p, t)}
+    ${partCommonFieldsHtml(p)}
     ${typeFields ? `<div class="pf-sep"><i>${esc(t.name)}の欄</i></div>${typeFields}` : ''}
     ${pfArea('memo', 'メモ', p.memo, { hint: '（自由に書く）' })}
     ${out}
     ${del}`;
 }
 
-// 共通の欄。入力欄の部品は 項目名・項目名の位置・見本の値・必須・番号を付ける（見本の値は薄い字のある部品だけ）
-function partCommonFieldsHtml(p, t) {
+// 項目を指さない部品の共通の欄（ボタン・見出し・説明の文字は文字、どれも番号を付ける）
+function partCommonFieldsHtml(p) {
   const numbered = pfCheck('numbered', '番号を付ける', p.no != null);
   if (p.type === 'button') return pfText('label', 'ボタンの文字', p.label) + numbered;
   if (p.type === 'heading') return pfText('label', '文字', p.label) + numbered;
   if (p.type === 'desc') return pfArea('label', '文字', p.label) + numbered;
-  if (!t.input) return numbered;
+  return numbered;
+}
+
+function itemPartSettingsHtml(p, t) {
+  const d = currentDesign();
+  const gone = !p.item;
+  const banner = gone
+    ? `<div class="pf-banner gone">⚠ この部品の項目「${esc(p.label)}」は、データベースの項目の一覧表から消しました。消したときの中身のまま表示しています。ここでは直せません。
+        <div class="btns"><button class="btn small primary" data-action="restore-item" data-id="${esc(p.itemId)}">項目の一覧表に戻す</button></div></div>`
+    : '';
   const sample = t.ph
     ? pfText('sample', '見本の値', p.sample, { hint: '（書かないときは薄い字）', placeholder: p.placeholder || t.ph })
       + pfText('placeholder', '薄い字', p.placeholder, { hint: '（見本の値がないときに出す字）', placeholder: t.ph })
     : '';
-  return pfText('label', '項目名', p.label)
-    + pfSeg('labelPos', '項目名の位置', p.labelPos, [['top', '上'], ['left', '左']])
-    + sample
-    + pfCheck('required', '必須', p.required)
-    + numbered;
+  return `
+    <div class="panel-title">選んだ部品の設定（${p.no != null ? `番号 ${p.no}・` : ''}${esc(t.name)}）</div>
+    ${banner}
+    ${itemSectionHtml(d, p, { locked: gone, note: gone ? '消したときの中身' : 'どの画面でも同じ' })}
+    <div class="pf-sec here"><div class="pf-sec-head">この画面だけの設定<small>${esc(currentScreen().name)}の画面</small></div><div class="pf-sec-body">
+      ${pfSeg('labelPos', '項目名の位置', p.labelPos, [['top', '上'], ['left', '左']])}
+      ${sample}
+      ${pfCheck('numbered', '番号を付ける', p.no != null)}
+    </div></div>
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を消す</button></div>
+    ${gone ? '' : '<div class="pf-note">（項目は、データベースの項目の一覧表に残ります）</div>'}`;
+}
+
+// 「項目の設定」の紺の枠。locked のときは灰色にして、中の欄を全部押せなくする（fieldset の disabled）。
+// withType のとき（データベースの項目の一覧表で項目を選んだとき）は、部品の種類も選べるようにする
+function itemSectionHtml(d, p, { locked = false, withType = false, note = 'どの画面でも同じ' } = {}) {
+  const t = partType(p.type);
+  const typeFields = partTypeFieldsHtml(p);
+  const used = p.item ? screensWithItem(d, p.item.id).map((s) => s.name) : [];
+  return `
+    <fieldset class="pf-sec ${locked ? 'locked' : 'item'}"${locked ? ' disabled' : ''}>
+      <div class="pf-sec-head">${locked ? '🔒 ' : ''}項目の設定<small>${esc(note)}</small></div>
+      <div class="pf-sec-body">
+        ${p.item ? `<div class="pf-used">この項目を置いている画面: <b>${used.length ? esc(used.join('・')) : 'なし'}</b></div>` : ''}
+        ${pfText('label', '項目名', p.label)}
+        ${withType ? pfSelect('type', '部品の種類', p.type, itemMenuTypes().map((k) => [k, partTypeName(k)])) : ''}
+        ${pfCheck('required', '必須', p.required)}
+        ${typeFields ? `<div class="pf-sep"><i>${esc(t.name)}の欄</i></div>${typeFields}` : ''}
+        ${pfArea('memo', 'メモ', p.memo, { hint: '（自由に書く）' })}
+        ${pfOutHtml(p, { forItem: withType })}
+      </div>
+    </fieldset>`;
+}
+
+// データベースの項目の一覧表で項目を選んだときの右の欄（画像 q20 の 4）
+function itemSettingsHtml(d, p) {
+  return `
+    <div class="panel-title">選んだ項目の設定（${esc(p.label || '名前なし')}）</div>
+    ${itemSectionHtml(d, p, { withType: true })}
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-item" data-id="${esc(p.id)}">この項目を消す</button></div>`;
+}
+
+function itemsHintHtml(d) {
+  return `
+    <div class="panel-title">データベースの項目</div>
+    <p class="hint">「${esc(d.name)}」が持つ項目を、画面に関係なく 1 か所にまとめた表です。どの画面の入力欄の部品も、この表の項目を指します。</p>
+    <p class="hint" style="margin-top:8px">表の行を押すと、ここにその項目の設定が出ます。画面に置くときは、左の一覧で画面を選び、右の部品の箱のいちばん上の「データベースの項目」から画面へドラッグします。</p>`;
 }
 
 // 部品の種類ごとの欄（CLAUDE.md の「部品の細かい決めごと」）
@@ -1809,19 +2125,24 @@ function onSidePanelChange(e) {
 const isTextInput = (el) => el.matches('input[type=text], input[type=number], input[type=date], textarea');
 function onPartFieldChange(el) {
   const s = currentScreen();
-  const p = currentPart();
+  const p = currentSubject();
   if (!p) return;
   const key = el.dataset.pf;
   const value = readPartField(el);
   const old = key.startsWith('props.') ? p.props[key.slice(6)] : key === 'numbered' ? p.no != null : p[key];
   if (JSON.stringify(old) === JSON.stringify(value)) return;
   const patch = key.startsWith('props.') ? { props: { [key.slice(6)]: value } } : { [key]: value };
-  if (!isTextInput(el)) { actions.updatePart(ui.designId, s.id, p.id, patch); return; }
-  commitKeepSide(() => actions.updatePart(ui.designId, s.id, p.id, patch));
-  const now = currentPart();
+  // データベースの項目の一覧表では項目を、画面では部品を書き換える（部品の項目名と設定は、部品が指す項目に書く）
+  const apply = () => (ui.panel === 'items' ? actions.updateItem(ui.designId, p.id, patch) : actions.updatePart(ui.designId, s.id, p.id, patch));
+  if (!isTextInput(el)) { apply(); return; }
+  commitKeepSide(apply);
+  const now = currentSubject();
   const out = $('#pf-out');
   if (out) out.textContent = describePart(now) || '（まだありません）';
   if (key === 'props.options') refreshChoiceInitial(now.props.options);
+  // 項目名を変えたときは、項目の一覧表と部品の箱の名前も合わせる（右の欄は描き直さない）
+  if (key === 'label' && ui.panel === 'items') renderItemsView(currentDesign());
+  if (key === 'label') renderPalette(currentDesign());
 }
 
 const parseOptions = (text) => String(text).split('\n').map((o) => o.trim()).filter(Boolean);
@@ -1829,7 +2150,7 @@ const parseOptions = (text) => String(text).split('\n').map((o) => o.trim()).fil
 // 選択肢の部品の初期値の欄を、options（まだ保存していない打ちかけの選択肢でもよい）に合わせて描き直す。同じ選択肢なら描き直さない
 function refreshChoiceInitial(options) {
   const box = $('#pf-initial');
-  const p = currentPart();
+  const p = currentSubject();
   if (!box || !p) return;
   const key = JSON.stringify(options);
   if (box.dataset.options === key) return;
@@ -2004,12 +2325,13 @@ function dragPart(ev) {
   if (el) Object.assign(el.style, { left: rect.x + 'px', top: rect.y + 'px', width: rect.w + 'px', height: rect.h + 'px' });
 }
 
-// 部品の箱のボタンを押したときに、ドラッグで置くかもしれないので覚えておく（動かさずに放せば click で真ん中に置く）
-function startPlace(ev, type) {
+// 部品の箱のボタンを押したときに、ドラッグで置くかもしれないので覚えておく（動かさずに放せば click で真ん中に置く）。
+// itemId を渡したとき（部品の箱の「データベースの項目」の組）は、その項目を指す部品を置く
+function startPlace(ev, type, itemId = null) {
   if (ev.button !== 0 || !partType(type)) return;
   ev.preventDefault();
   flushSideField();
-  drag = { kind: 'place', type, sx: ev.clientX, sy: ev.clientY, moved: false, ghost: null };
+  drag = { kind: 'place', type, itemId, sx: ev.clientX, sy: ev.clientY, moved: false, ghost: null };
 }
 
 const PLACE_GRAB = 8; // 置くときの影の左上から、マウスの位置までの幅（窓の上のドット）
@@ -2020,7 +2342,8 @@ function dragPlace(ev) {
     drag.moved = true;
     drag.ghost = document.createElement('div');
     drag.ghost.className = 'place-ghost';
-    drag.ghost.textContent = t.name;
+    const item = drag.itemId ? findItem(currentDesign(), drag.itemId) : null;
+    drag.ghost.textContent = item ? `${item.name}（${t.name}）` : t.name;
     drag.ghost.style.width = t.w * ui.zoom + 'px';
     drag.ghost.style.height = t.h * ui.zoom + 'px';
     document.body.appendChild(drag.ghost);
@@ -2045,16 +2368,17 @@ function dropPlace(done, ev) {
   if (!scr || !hit || !scr.contains(hit)) return;
   const r = scr.getBoundingClientRect();
   const at = { x: (ev.clientX - PLACE_GRAB - r.left) / ui.zoom, y: (ev.clientY - PLACE_GRAB - r.top) / ui.zoom };
-  addPartAt(done.type, at);
+  addPartAt(done.type, at, done.itemId);
 }
 
-function addPartAt(type, at) {
-  const id = actions.addPart(ui.designId, currentScreen().id, type, at);
+function addPartAt(type, at, itemId = null) {
+  const sid = currentScreen().id;
+  const id = itemId ? actions.addItemPart(ui.designId, sid, itemId, at) : actions.addPart(ui.designId, sid, type, at);
   if (id) selectPart(id);
 }
 
 // 部品の箱のボタンを押しただけのときは、窓に見えている画面の真ん中に置く
-function addPartAtCenter(type) {
+function addPartAtCenter(type, itemId = null) {
   const t = partType(type);
   const wrap = $('#canvas-wrap');
   const scr = $('#stage .screen');
@@ -2063,11 +2387,75 @@ function addPartAtCenter(type) {
   const sr = scr.getBoundingClientRect();
   const cx = (wr.left + wr.width / 2 - sr.left) / ui.zoom;
   const cy = (wr.top + wr.height / 2 - sr.top) / ui.zoom;
-  addPartAt(type, { x: cx - t.w / 2, y: cy - t.h / 2 });
+  addPartAt(type, { x: cx - t.w / 2, y: cy - t.h / 2 }, itemId);
+}
+
+// ── データベースの項目の一覧表の操作 ──
+// 真ん中を項目の一覧表にする（選んでいた部品は選ぶのをやめる）
+function openItemsPanel() {
+  flushSideField();
+  if (ui.panel === 'items') return;
+  Object.assign(ui, { panel: 'items', partId: null });
+  updateEditor();
+}
+
+function selectItem(id) {
+  flushSideField();
+  if (ui.itemId === id && ui.panel === 'items') return;
+  Object.assign(ui, { panel: 'items', itemId: id });
+  updateEditor();
+}
+
+function addItemOfType(type) {
+  ui.addItemMenu = false;
+  ui.panel = 'items';
+  const id = actions.addItem(ui.designId, type);
+  if (id) selectItem(id);
+}
+
+// 項目を消す。画面に置いてあるときは、部品が残って固定されることを確かめてから消す
+async function deleteItemWithConfirm(itemId) {
+  const d = currentDesign();
+  const item = findItem(d, itemId);
+  if (!item) return;
+  const scr = screensWithItem(d, itemId).map((s) => s.name);
+  if (scr.length) {
+    const ok = await showDialog({
+      title: '項目を消す',
+      okLabel: '消す',
+      okClass: 'danger',
+      body: `<p>データベースの項目の一覧表から「${esc(item.name)}」を消します。</p>
+        <p class="warn">${esc(scr.join('・'))}の画面にある部品は残り、消したときの項目名と設定で固定されます（部品の設定の欄の「項目の一覧表に戻す」で戻せます）。</p>`,
+    });
+    if (!ok) return;
+  }
+  if (ui.itemId === itemId) ui.itemId = null;
+  actions.deleteItem(d.id, itemId);
+}
+
+// 項目の一覧表の並べ替え（行の左のつまみのドラッグ）。放した行の上半分なら前、下半分なら後ろに入れる
+function startItemSort(ev, itemId) {
+  ev.preventDefault();
+  flushSideField();
+  drag = { kind: 'item-sort', id: itemId, to: null };
+  document.body.classList.add('sorting');
+}
+
+function dragItemSort(ev) {
+  document.querySelectorAll('#db-view tr.drop-before, #db-view tr.drop-after').forEach((r) => r.classList.remove('drop-before', 'drop-after'));
+  const hit = document.elementFromPoint ? document.elementFromPoint(ev.clientX, ev.clientY) : null;
+  const row = hit && hit.closest ? hit.closest('#db-view tr[data-id]') : null;
+  if (!row) { drag.to = null; return; }
+  const ids = currentDesign().items.map((it) => it.id);
+  const r = row.getBoundingClientRect();
+  const after = ev.clientY > r.top + r.height / 2;
+  drag.to = ids.indexOf(row.dataset.id) + (after ? 1 : 0);
+  row.classList.add(after ? 'drop-after' : 'drop-before');
 }
 
 function onDragMove(ev) {
   if (!drag) return;
+  if (drag.kind === 'item-sort') { dragItemSort(ev); return; }
   if (drag.kind === 'move' || drag.kind === 'size') { dragPart(ev); return; }
   if (drag.kind === 'place') { dragPlace(ev); return; }
   const { wrap } = drag;
@@ -2090,7 +2478,11 @@ function onDragEnd(ev) {
   if (!drag) return;
   const done = drag;
   drag = null;
-  document.body.classList.remove('resizing', 'moving');
+  document.body.classList.remove('resizing', 'moving', 'sorting');
+  if (done.kind === 'item-sort') {
+    if (done.to == null || !actions.moveItem(ui.designId, done.id, done.to)) renderItemsView(currentDesign());
+    return;
+  }
   if (done.kind === 'place') { if (done.moved) dropPlace(done, ev); return; }
   if (done.kind === 'move' || done.kind === 'size') {
     const r = done.rect;
@@ -2160,6 +2552,17 @@ function runCommand(cmd) {
   }
   if (ui.view !== 'editor') return false;
   switch (cmd) {
+    case 'openItems': openItemsPanel(); return true;
+    case 'addItemMenu':
+      if (ui.panel !== 'items') Object.assign(ui, { panel: 'items', partId: null });
+      ui.addItemMenu = !ui.addItemMenu;
+      updateEditor();
+      return true;
+    case 'deleteItem': if (ui.panel === 'items' && ui.itemId) deleteItemWithConfirm(ui.itemId).catch(reportPageError); return true;
+    case 'deselectItem': if (ui.panel === 'items') selectItem(null); return true;
+  }
+  if (ui.panel !== 'screen') return false;
+  switch (cmd) {
     case 'zoomIn': case 'zoomOut': case 'zoomReset': zoomByCommand(cmd); return true;
     case 'modeSelect': setMode('select'); return true;
     case 'modeHand': setMode('hand'); return true;
@@ -2179,23 +2582,33 @@ const ACTION_COMMANDS = {
   undo: 'undo', redo: 'redo', home: 'goHome', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
+  'open-items': 'openItems', 'add-item-menu': 'addItemMenu',
 };
 
 // 編集の画面だけで使う、ボタン以外の押したときの動き
 function onEditorClick(action, btn) {
   switch (action) {
+    case 'open-items': openItemsPanel(); return true;
     case 'select-screen':
       flushSideField();
-      if (btn.dataset.id === ui.screenId) return true; // mousedown で切り替えた後の click
-      ui.screenId = btn.dataset.id;
-      ui.partId = null;
+      if (btn.dataset.id === ui.screenId && ui.panel === 'screen') return true; // mousedown で切り替えた後の click
+      Object.assign(ui, { screenId: btn.dataset.id, partId: null, panel: 'screen', addItemMenu: false });
       updateEditor();
       return true;
     case 'add-part': addPartAtCenter(btn.dataset.type); return true;
+    case 'add-item-part': {
+      const item = findItem(currentDesign(), btn.dataset.itemId);
+      if (item) addPartAtCenter(item.type, item.id);
+      return true;
+    }
     case 'select-part': selectPart(btn.dataset.id); return true;
+    case 'select-item': selectItem(btn.dataset.id); return true;
+    case 'add-item': addItemOfType(btn.dataset.type); return true;
+    case 'delete-item': deleteItemWithConfirm(btn.dataset.id).catch(reportPageError); return true;
+    case 'restore-item': actions.restoreItem(ui.designId, btn.dataset.id); return true;
     case 'toggle-palette':
       ui.paletteClosed[btn.dataset.id] = !ui.paletteClosed[btn.dataset.id];
-      renderPalette();
+      renderPalette(currentDesign());
       return true;
   }
   return false;
@@ -2206,6 +2619,10 @@ function onAppClick(e) {
   if (ui.menuFor && !e.target.closest('.card-menu, .card-more')) {
     ui.menuFor = null;
     refreshCards();
+  }
+  if (ui.addItemMenu && !e.target.closest('.pop-menu, [data-action="add-item-menu"]')) {
+    ui.addItemMenu = false;
+    renderItemsView(currentDesign());
   }
   const btn = e.target.closest('[data-action]');
   if (!btn || btn.disabled) return;
@@ -2235,6 +2652,11 @@ function keyCommand(e) {
 // 編集の画面で、入力欄の外で押したキー（部品を選んでいるときの Delete・矢印・Esc と、Ctrl+C・Ctrl+V・Ctrl+D）
 function editorKeyCommand(e) {
   const k = String(e.key || '');
+  if (ui.panel === 'items') {
+    if (e.ctrlKey || e.metaKey || !ui.itemId) return null;
+    if (k === 'Delete' || k === 'Backspace') return 'deleteItem';
+    return k === 'Escape' ? 'deselectItem' : null;
+  }
   if (e.ctrlKey || e.metaKey) {
     const low = k.toLowerCase();
     if (low === 'c' && ui.partId) return 'copyPart';
@@ -2289,9 +2711,18 @@ function bindGlobalEvents() {
     // 部品の箱のボタンからのドラッグ（押しただけなら click で置く）
     const btn = e.target.closest('.pal-btn');
     if (btn) { startPlace(e, btn.dataset.type); return; }
+    const itemBtn = e.target.closest('button.pal-item');
+    if (itemBtn) {
+      const item = findItem(currentDesign(), itemBtn.dataset.itemId);
+      if (item) startPlace(e, item.type, item.id);
+      return;
+    }
+    const grip = e.target.closest('#db-view [data-drag="item-sort"]');
+    if (grip) { startItemSort(e, grip.closest('tr').dataset.id); return; }
     // 一覧表の行と画面の一覧は、押した時点で切り替える。右の欄で打ちかけの文字があると、離れたときの保存で
     // 一覧表と画面の一覧が描き直され、押した行・ボタンが click の前に消えて、1 回目の押しが効かないため
-    const sel = e.target.closest('[data-action="select-part"], [data-action="select-screen"]');
+    if (e.target.closest('.del-x')) return;
+    const sel = e.target.closest('[data-action="select-part"], [data-action="select-screen"], [data-action="select-item"], [data-action="open-items"]');
     if (sel) onEditorClick(sel.dataset.action, sel);
   });
   document.addEventListener('keydown', onKeyDown);

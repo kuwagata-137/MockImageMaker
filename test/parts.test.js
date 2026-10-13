@@ -42,7 +42,7 @@ async function bootEditor(t) {
 
 test('部品の箱: 基本と入力の画面用の組に 15 種類。組の見出しで閉じたり開いたりできる', async (t) => {
   const { app, api } = await bootEditor(t);
-  assert.deepEqual($$(app, '.pal-head').map((e) => e.textContent.replace(/\s+/g, ' ').trim()), ['▼ 基本11', '▼ 入力の画面用4']);
+  assert.deepEqual($$(app, '.pal-head').map((e) => e.textContent.replace(/\s+/g, ' ').trim()), ['▼ データベースの項目0', '▼ 基本11', '▼ 入力の画面用4']);
   assert.equal($$(app, '.pal-btn').length, 15);
   click($(app, '.pal-head[data-id="basic"]'));
   assert.equal($$(app, '.pal-btn').length, 4, '基本を閉じた');
