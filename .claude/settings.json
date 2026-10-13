@@ -1,4 +1,5 @@
 {
+  "autoCompactWindow": 500000,
   "hooks": {
     "PreToolUse": [
       {
@@ -8,6 +9,29 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-main-push.js\"",
             "statusMessage": "main直push ガード"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/compact-plan.js\" pre",
+            "statusMessage": "圧縮の前にプランを控える"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/compact-plan.js\" post",
+            "statusMessage": "圧縮の後にプランを確かめる"
           }
         ]
       }

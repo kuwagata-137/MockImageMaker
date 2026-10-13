@@ -33,6 +33,7 @@
       "main.js",
       "preload.js",
       "storage.js",
+      "export.js",
       "package.json"
     ],
     "win": {
