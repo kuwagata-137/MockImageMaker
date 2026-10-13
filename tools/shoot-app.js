@@ -14,7 +14,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・screens をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・screens・export をカンマで区切る）]
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -54,6 +54,27 @@ async function openApp(browser, seed) {
     localStorage.clear();
     if (data) localStorage.setItem('mockimagemaker.v1', data);
   }, seed ? JSON.stringify(seed) : null);
+  await page.goto(pathToFileURL(path.join(ROOT, HTML_NAME)).href, { waitUntil: 'load' });
+  await page.waitForFunction(() => window.__test__ && window.__test__.ready);
+  return page;
+}
+
+// デスクトップ版の書き出しの窓口の身代わりを入れて開く（受け取った中身は window.__xp に残す。取り込む HTML は window.__nextImport）
+async function openDeskApp(browser, seed) {
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1400, height: 860 });
+  await page.evaluateOnNewDocument((data) => {
+    window.__test__ = {};
+    window.__xp = [];
+    window.exportAPI = {
+      saveHtml: async (p) => { window.__xp.push(['html', p]); return { ok: true, path: 'C:\\Users\\user\\Documents\\' + p.name }; },
+      savePdf: async (p) => { window.__xp.push(['pdf', p]); return { ok: true, path: 'C:\\Users\\user\\Documents\\' + p.name }; },
+      savePng: async (p) => { window.__xp.push(['png', p]); return { ok: true, count: p.files.length, path: p.files[0].name, dir: 'C:\\Users\\user\\Documents' }; },
+      openHtml: async () => (window.__nextImport ? { ok: true, text: window.__nextImport, name: 'import.html' } : { ok: false, canceled: true }),
+    };
+    localStorage.clear();
+    if (data) localStorage.setItem('mockimagemaker.v1', data);
+  }, JSON.stringify(seed));
   await page.goto(pathToFileURL(path.join(ROOT, HTML_NAME)).href, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__test__ && window.__test__.ready);
   return page;
@@ -590,6 +611,84 @@ async function shootMap(browser) {
   await page.close();
 }
 
+// 書き出しと取り込み（第 5 段階）: 書き出しの窓・印刷用のページ（表紙・図・表・画面）・単体で開いた HTML・取り込みの確かめの窓
+async function shootExport(browser) {
+  const page = await openDeskApp(browser, MAP_SAMPLE);
+  await page.evaluate(() => {
+    // 顧客管理に吹き出しを 1 つ置き、画面を 1 つ足す（印刷のページで、吹き出しと一覧表の並び方を見るため）
+    const T = window.__test__;
+    const d = T.store.state.designs.find((x) => x.id === 'd1');
+    const s = d.screens[0];
+    const p = s.parts.find((x) => x.itemId) || s.parts[0];
+    const c = T.actions.addCallout('d1', s.id, { x: s.width + 40, y: 120 }, p ? p.id : null);
+    T.actions.updateCallout('d1', s.id, c, { text: '顧客コードは 10 桁。重ならないように自動で振る。', color: 'yellow', tip: 'arrow' });
+    T.actions.moveCallout('d1', s.id, c, { x: s.width + 24, y: 112, w: 208, h: 80 });
+    T.actions.addScreen('d1', 'list', s.id);
+  });
+  await page.click('.card-open[data-id="d1"]');
+  await page.click('#toolbar [data-action="export"]');
+  await page.waitForSelector('.modal .xp-kinds');
+  await shot(page, '71_書き出し_書き出しの窓（PDF）');
+  await page.click('[data-xkind="html"]');
+  await shot(page, '72_書き出し_書き出しの窓（HTML）');
+  await page.click('[data-xkind="png"]');
+  await shot(page, '73_書き出し_書き出しの窓（PNG）');
+  await page.click('[data-xkind="pdf"]');
+  await page.click('.modal [data-dlg="ok"]');
+  await page.waitForFunction(() => window.__xp.some((x) => x[0] === 'pdf'));
+  const pdf = await page.evaluate(() => window.__xp.find((x) => x[0] === 'pdf')[1]);
+  console.log('PDF:', pdf.name, JSON.stringify(pdf.pageSize), '開く:', pdf.open);
+  // 印刷用の文書を、用紙の大きさのページごとに撮る
+  const doc = await browser.newPage();
+  await doc.setViewport({ width: 1200, height: 900 });
+  await doc.setContent(pdf.html, { waitUntil: 'load' });
+  const pages = await doc.$$('body > .pg');
+  const labels = ['74_書き出し_PDF_表紙', '75_書き出し_PDF_つながりの図', '76_書き出し_PDF_項目の一覧表', '77_書き出し_PDF_画面のページ（吹き出しと一覧表）'];
+  for (let i = 0; i < Math.min(pages.length, labels.length); i++) {
+    const file = path.join(OUT, `v${VERSION}_${labels[i]}.png`);
+    await pages[i].screenshot({ path: file });
+    console.log('saved', path.relative(ROOT, file));
+  }
+  console.log('PDF のページの数:', pages.length);
+  await doc.close();
+  // HTML を書き出して、単体で開く
+  await page.click('#toolbar [data-action="export"]');
+  await page.waitForSelector('.modal .xp-kinds');
+  await page.click('[data-xkind="html"]');
+  await page.click('.modal [data-dlg="ok"]');
+  await page.waitForFunction(() => window.__xp.some((x) => x[0] === 'html'));
+  const html = await page.evaluate(() => window.__xp.find((x) => x[0] === 'html')[1].html);
+  const saFile = path.join(ROOT, '.devdata', 'shoot-export', '顧客管理.html');
+  fs.mkdirSync(path.dirname(saFile), { recursive: true });
+  fs.writeFileSync(saFile, html);
+  const sa = await browser.newPage();
+  await sa.setViewport({ width: 1400, height: 860 });
+  await sa.evaluateOnNewDocument(() => { window.__test__ = {}; });
+  await sa.goto(pathToFileURL(saFile).href, { waitUntil: 'load' });
+  await sa.waitForFunction(() => window.__test__ && window.__test__.ready);
+  await shot(sa, '78_書き出し_単体で開いたHTML');
+  await sa.evaluate(() => window.__test__.runCommand('openMap'));
+  await shot(sa, '79_書き出し_単体で開いたHTMLのつながりの図');
+  // ベンダーが直したことにして保存し直した文字を作り、アプリで取り込む
+  const vendor = await sa.evaluate(() => {
+    const T = window.__test__;
+    const d = T.currentDesign();
+    T.actions.updateDesignInfo(d.id, { description: 'ベンダーが直した説明。' });
+    T.actions.addScreen(d.id, 'input', d.screens[0].id);
+    return T.buildStandaloneHtml(T.currentDesign(), T.store.state);
+  });
+  await sa.close();
+  await page.evaluate((txt) => { window.__nextImport = txt; window.__test__.goHome(); }, vendor);
+  await page.click('[data-action="import-html"]');
+  await page.waitForSelector('.modal .imp-cmp');
+  await shot(page, '80_書き出し_取り込みの確かめの窓');
+  await page.click('.modal [data-dlg="ok"]');
+  await page.waitForFunction(() => !document.querySelector('.modal'));
+  await shot(page, '81_書き出し_取り込んだ後の一覧');
+  console.log('取り込んだ後:', await page.evaluate(() => { const d = window.__test__.store.state.designs.find((x) => x.id === 'd1'); return `説明「${d.description}」・画面 ${d.screens.length} つ・改訂の記録 ${d.revisions.map((r) => r.note).join('・')}`; }));
+  await page.close();
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await puppeteer.launch({
@@ -608,6 +707,7 @@ async function shootMap(browser) {
     if (wants('multi')) await shootMulti(browser);
     if (wants('map')) await shootMap(browser);
     if (wants('screens')) await shootScreens(browser);
+    if (wants('export')) await shootExport(browser);
   } finally {
     await browser.close();
   }
