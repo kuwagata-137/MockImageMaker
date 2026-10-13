@@ -1,12 +1,15 @@
 // 使い方: node tools/check-electron.js
-// Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、次の 4 つを確かめる。
-//  1. 画面設計を作って名前を変え、部品の箱から部品を 1 つ置き、窓を閉じたあと <userData>/data/designs.json に残っている
+// Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、次の 5 つを確かめる。
+//  1. 画面設計を作って名前を変え、部品の箱から部品を 1 つ（データベースの項目も 1 つ増える）と吹き出しを 1 つ置き、
+//     つながりの図の箱をドラッグで動かし、窓を閉じたあと <userData>/data/designs.json に残っている
 //  2. 1 つ目が動いている間に 2 つ目を起動すると、2 つ目はすぐに終わる
 //  3. 右の欄の文字の欄に文字を打ち、欄を離れない（change が起きていない）まま閉じても、その文字が designs.json に残る。閉じ方は 3 つ。
 //      - 窓の ×（BrowserWindow.close()。× を押したときと同じ流れ）: 「説明」と「名前」の欄で確かめる
 //      - ファイル > 終了（app.quit()。メニューの「終了」〔role: quit〕と同じ呼び出し）: 「説明」の欄で確かめる
 //      - ページの window.close(): 「説明」の欄で確かめる
-//  4. 起動し直すと、作った画面設計が一覧に出て、3 で打った文字も右の欄に出る。1 で置いた部品も画面に出る
+//  4. 起動し直すと、作った画面設計が一覧に出て、3 で打った文字も右の欄に出る。1 で置いた部品・吹き出し・項目・箱の位置も出る
+//  5. データの形 v1（部品が項目名と設定を持つ形）の designs.json を、v2（データベースの項目に移す形）に直して読める。
+//     直したデータを保存すると、v1 の形のファイルは .bak に残る（保存先は .devdata/check-userData-v1）
 // 窓の × と終了は、メインプロセスを --inspect で起動し、Node の inspector から呼んで再現する。
 // 保存先は作業フォルダの .devdata/check-userData（毎回消してから始める。npm start のデータとは別）。
 'use strict';
@@ -20,6 +23,8 @@ const electronPath = require('electron');
 const ROOT = path.resolve(__dirname, '..');
 const USER_DATA = path.join(ROOT, '.devdata', 'check-userData');
 const STATE_FILE = path.join(USER_DATA, 'data', 'designs.json');
+const USER_DATA_V1 = path.join(ROOT, '.devdata', 'check-userData-v1');
+const STATE_FILE_V1 = path.join(USER_DATA_V1, 'data', 'designs.json');
 const PORT = 9333; // ページ（renderer）の remote debugging
 const MAIN_PORT = 9334; // メインプロセスの inspector（窓の × と終了で使う）
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -33,8 +38,8 @@ const TYPING_CASES = [
 ];
 const MAIN_CLOSE = { x: 'BrowserWindow.getAllWindows()[0].close()', quit: 'app.quit()' }; // メインプロセスで呼ぶ閉じ方
 
-function launch(extraArgs = []) {
-  const env = { ...process.env, MIM_HEADLESS: '1', MIM_USER_DATA: USER_DATA };
+function launch(extraArgs = [], userData = USER_DATA) {
+  const env = { ...process.env, MIM_HEADLESS: '1', MIM_USER_DATA: userData };
   delete env.ELECTRON_RUN_AS_NODE;
   const child = spawn(electronPath, ['.', ...extraArgs], { cwd: ROOT, env, stdio: 'ignore', windowsHide: true });
   child.exited = new Promise((resolve) => child.on('exit', (code) => resolve(code)));
@@ -114,6 +119,15 @@ async function firstRun() {
     input.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await page.click('.pal-btn[data-type="text1"]');
+  await page.click('.pal-btn[data-type="callout"]');
+  // つながりの図の箱（この画面設計）を、右へ 80・下へ 40 ドラッグする
+  await page.click('[data-action="open-map"]');
+  const box = await (await page.waitForSelector('#design-map .mnode')).boundingBox();
+  await page.mouse.move(box.x + 40, box.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 120, box.y + 60, { steps: 8 });
+  await page.mouse.up();
+  await page.click('.sl-item[data-action="select-screen"]');
   const title = await page.$eval('#ed-title', (e) => e.textContent);
 
   const second = launch();
@@ -158,10 +172,57 @@ async function secondRun() {
   const name = await page.$eval('[data-field="design-name"]', (e) => e.value);
   const desc = await page.$eval('[data-field="design-desc"]', (e) => e.value);
   const parts = await page.$$eval('#stage .part', (els) => els.length);
+  const callouts = await page.$$eval('#stage .callout', (els) => els.length);
+  const items = await page.$eval('[data-action="open-items"] small', (e) => e.textContent);
+  await page.click('[data-action="open-map"]');
+  const mapBox = await page.$eval('#design-map .mnode', (e) => `${e.style.left}, ${e.style.top}`);
   await page.evaluate(() => window.close());
   browser.disconnect();
   await withTimeout(child.exited, 15000, '起動し直したアプリが閉じない');
-  return { names, name, desc, parts };
+  return { names, name, desc, parts, callouts, items, mapBox };
+}
+
+// データの形 v1 の designs.json（部品が項目名と設定を持つ。入力欄 2 つとボタン 1 つ）
+const V1_STATE = {
+  schemaVersion: 1,
+  settings: { customTargets: [] },
+  designs: [{
+    id: 'd1', name: '顧客管理（v1 の形）', target: 'kintone', description: '', createdAt: '2026-10-13T00:00:00.000Z', updatedAt: '2026-10-13T00:00:00.000Z',
+    trashedAt: null, revisions: [],
+    screens: [{
+      id: 's1', name: '新規登録', device: 'pc', width: 1280, height: 800, showHeader: true, tablePos: 'right',
+      parts: [
+        { id: 'p1', type: 'text1', x: 24, y: 64, w: 320, h: 64, no: 1, label: '顧客名', labelPos: 'top', sample: '', placeholder: '', required: true, memo: '', props: { maxLen: '50', initial: '' } },
+        { id: 'p2', type: 'dropdown', x: 24, y: 152, w: 320, h: 64, no: 2, label: '区分', labelPos: 'top', sample: '', placeholder: '', required: false, memo: '', props: { options: ['法人', '個人'], initial: '法人' } },
+        { id: 'p3', type: 'button', x: 24, y: 240, w: 96, h: 40, no: 3, label: '保存', labelPos: 'top', sample: '', placeholder: '', required: false, memo: '', props: { style: 'primary', action: '' } },
+      ],
+    }],
+  }],
+};
+
+// v1 の形の designs.json を置いて起動し、データベースの項目の一覧表を開いて、項目を 1 つ足して（保存させるため）閉じる
+async function migrateRun() {
+  fs.rmSync(USER_DATA_V1, { recursive: true, force: true });
+  fs.mkdirSync(path.dirname(STATE_FILE_V1), { recursive: true });
+  fs.writeFileSync(STATE_FILE_V1, JSON.stringify(V1_STATE), 'utf8');
+  const child = launch([`--remote-debugging-port=${PORT}`], USER_DATA_V1);
+  const browser = await connect();
+  const page = await appPage(browser);
+  const names = await page.$$eval('.card-name', (els) => els.map((e) => e.textContent));
+  await page.click('[data-action="open"]');
+  await page.waitForSelector('#stage .part');
+  const labels = await page.$$eval('#stage .part .plabel-text', (els) => els.map((e) => e.textContent));
+  await page.click('[data-action="open-items"]');
+  const rows = await page.$$eval('#db-view tbody tr', (els) => els.map((r) => r.children[1].textContent.trim()));
+  await page.click('#db-view [data-action="add-item-menu"]');
+  await page.click('#db-view .pop-menu [data-type="date"]');
+  await sleep(500);
+  await page.evaluate(() => window.close());
+  browser.disconnect();
+  await withTimeout(child.exited, 15000, 'v1 の形を読んだアプリが閉じない');
+  const saved = JSON.parse(fs.readFileSync(STATE_FILE_V1, 'utf8'));
+  const bak = JSON.parse(fs.readFileSync(STATE_FILE_V1 + '.bak', 'utf8'));
+  return { names, labels, rows, saved, bakVersion: bak.schemaVersion };
 }
 
 async function checkTypingCases() {
@@ -184,15 +245,29 @@ async function checkTypingCases() {
   console.log('1 つ目を閉じたときの終了コード:', r.code);
   const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
   console.log('designs.json の画面設計:', saved.designs.map((d) => `${d.name}（${d.target}・画面 ${d.screens.length} つ・部品 ${d.screens[0].parts.length} つ）`).join('、'));
-  const firstOk = r.firstAlive && saved.designs.length === 1 && saved.designs[0].name === '顧客管理' && saved.designs[0].screens[0].parts.length === 1;
+  const d0 = saved.designs[0];
+  console.log('designs.json の項目・吹き出し・つながりの図の箱の位置:', d0.items.map((it) => it.name).join('、'), '／ 吹き出し', d0.screens[0].callouts.length, 'つ ／', JSON.stringify(d0.mapPos));
+  const firstOk = r.firstAlive && saved.designs.length === 1 && d0.name === '顧客管理' && d0.screens[0].parts.length === 1
+    && d0.items.length === 1 && d0.screens[0].parts[0].itemId === d0.items[0].id && d0.screens[0].callouts.length === 1 && Object.keys(d0.mapPos).length === 1;
   const typedOk = await checkTypingCases();
   const again = await secondRun();
   console.log('起動し直したときの一覧:', again.names.join('、'));
-  console.log(`起動し直したときの右の欄: 名前「${again.name}」／ 説明「${again.desc}」 ／ 画面の部品: ${again.parts} つ`);
+  console.log(`起動し直したときの右の欄: 名前「${again.name}」／ 説明「${again.desc}」 ／ 画面の部品: ${again.parts} つ ／ 吹き出し: ${again.callouts} つ`,
+    `／ データベースの項目: ${again.items} ／ つながりの図の箱の位置: ${again.mapBox}`);
   const want = { name: '顧客管理', description: '' };
   TYPING_CASES.forEach((c) => { want[c.key] += c.text; });
-  const againOk = again.names.join() === want.name && again.name === want.name && again.desc === want.description && again.parts === 1;
-  const ok = firstOk && typedOk && againOk;
+  const [mx, my] = [d0.mapPos[Object.keys(d0.mapPos)[0]].x, d0.mapPos[Object.keys(d0.mapPos)[0]].y];
+  const againOk = again.names.join() === want.name && again.name === want.name && again.desc === want.description && again.parts === 1
+    && again.callouts === 1 && again.items === '1 個' && again.mapBox === `${mx}px, ${my}px`;
+  const m = await migrateRun();
+  const md = m.saved.designs[0];
+  console.log('v1 の形の designs.json: 一覧', m.names.join('、'), '／ 画面の部品の項目名', m.labels.join('・'), '／ 項目の一覧表', m.rows.join('・'));
+  console.log('項目を 1 つ足して保存した後: 形の版', m.saved.schemaVersion, '／ 項目', md.items.map((it) => `${it.name}（${it.type}${it.required ? '・必須' : ''}）`).join('、'),
+    '／ 部品が指す項目', md.screens[0].parts.map((p) => (p.itemId ? md.items.find((it) => it.id === p.itemId).name : `なし（${p.label}）`)).join('・'), '／ .bak の形の版', m.bakVersion);
+  const migrateOk = m.labels.join() === '顧客名,区分' && m.rows.join() === '顧客名,区分' && m.saved.schemaVersion === 2 && md.items.length === 3
+    && md.screens[0].parts[0].itemId === md.items[0].id && md.screens[0].parts[1].itemId === md.items[1].id && !md.screens[0].parts[2].itemId
+    && md.items[0].required === true && md.items[1].props.options.join() === '法人,個人' && m.bakVersion === 1;
+  const ok = firstOk && typedOk && againOk && migrateOk;
   console.log(ok ? 'OK' : 'NG');
   process.exit(ok ? 0 : 1);
 })().catch((e) => {
