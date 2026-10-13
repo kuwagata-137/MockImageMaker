@@ -21,7 +21,9 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
 - 2026-10-08: 共同開発者のデスクトップで clone・`npm install` を済ませた（`package-lock.json` を追加）。Puppeteer（システムの Chrome）とフックが動くことを確かめた。
 - 2026-10-08: 引継書 4 章のまだ決まっていないことを決めた（下の「設計方針」）。アプリの本体はまだない。次は土台づくり（`開発ロードマップ.txt`）。
 - 2026-10-09: 土台（v1.00）の下調べを済ませた。社内のネットワークから Electron と electron-builder を npm で入れられた。
-- 2026-10-13: 仕様を 18 問で詰めた（下の「設計方針」の「画面設計」「最初の画面」「編集の画面」「書き出しと受け渡し」「改訂の記録」）。次は土台（v1.00）を作る。
+- 2026-10-13: 仕様を 28 問で詰めた（下の「設計方針」の「画面設計」「最初の画面」「編集の画面」「書き出しと受け渡し」「改訂の記録」）。
+- 2026-10-13: 土台（v1.00）を作った。最初の画面（カード・名前で探す・新規作成・名前の変更・複製・ごみ箱）、編集の画面の骨組み（画面の一覧・帯とマス目・機器の種類・高さ・右の設定の欄）、自動保存、元に戻す・やり直す、拡大縮小・ハンド、インストーラ。
+  次は第 3 段階（画面の中身）。作る前に、部品ごとの細かい決めごとをモックを見せて聞く（`開発ロードマップ.txt`）。
 
 ## 設計方針
 
@@ -36,6 +38,19 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
 - 保存データの埋め込みの名前と、ブラウザの保存領域（IndexedDB・localStorage）の名前は、ビジネスダイアグラムメーカー・CheckListMaker と別の名前にする（引継書 6-1）。
 - アプリの中の保存先は `<userData>/data/designs.json`（インストール後は `%APPDATA%\MockImageMaker`、`npm start` のときは作業フォルダの `.devdata/userData`）。ブラウザで開いたときは localStorage のキー `mockimagemaker.v1`。
 - 画面の中身は HTML の要素で描く（吹き出しの線だけは、画面に重ねた SVG）。
+
+### ファイルの役割（v1.00〜）
+
+- `mock_v<版>.html`: アプリの画面。script は「版／データの形／保存／元に戻す／共通の部品／一覧の画面／編集の画面／命令／起動／テスト用の窓口」の順に区切り、冒頭に目次がある。
+  - データの形を変えるときは `SCHEMA_VERSION` を上げ、`migrate()` に古い形を直す処理を足す。読み込んだデータの知らない項目は消さずに残す。
+  - ボタン・キー・アプリのメニューからの命令は、すべて `runCommand()` で受ける。
+- `main.js`（窓・メニュー・二重起動の防止・終了前の保存待ち）・`preload.js`（`storageAPI`・`menuAPI`）・`storage.js`（`designs.json` の読み書き）。
+- `test/`: `npm test`（node --test と jsdom）。`test/harness.js` がアプリの HTML を jsdom で起動し、`window.__test__` から中を触る。
+- `tools/`: 確かめの道具（どれも窓を出さない）。
+  - `node tools/shoot.js <html> <png>`: HTML を headless の Chrome で撮る（モックの撮影）。
+  - `node tools/shoot-app.js`: アプリの場面（一覧・新規作成の窓・編集の画面など）を順に撮り、`screenshots/v<版>_*.png` に置く。
+  - `node tools/check-electron.js`: Electron を窓を出さずに起動し、保存・二重起動の防止・起動し直しを確かめる（保存先は `.devdata/check-userData`）。
+- 取得物と作業用のファイルは `.devdata/`（Git に入れない）に置く。`npm run dist` は、環境変数 `ELECTRON_BUILDER_CACHE` と `electron_config_cache` を `.devdata/eb-cache`・`.devdata/electron-cache` に向けて動かす。
 
 ### 画面設計（2026-10-13）
 
