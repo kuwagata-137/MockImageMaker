@@ -2,6 +2,7 @@
 // アプリの HTML（package.json の build.files の mock_v*.html）を headless の Chrome で開き、
 // 見た目を確かめるための場面を順に撮る。中身は架空の業務アプリだけを使う。
 // Chrome のプロファイルは作業フォルダの .devdata/chrome-profile に置く（tools/shoot.js と同じ）。
+// 環境変数 MIM_CHROME_PATH にブラウザの場所を書くと、システムの Chrome の代わりにそれを使う（tools/shoot.js と同じ）。
 'use strict';
 
 const fs = require('fs');
@@ -540,7 +541,7 @@ async function shootMap(browser) {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await puppeteer.launch({
     headless: true,
-    channel: 'chrome',
+    ...(process.env.MIM_CHROME_PATH ? { executablePath: process.env.MIM_CHROME_PATH } : { channel: 'chrome' }),
     userDataDir: path.join(ROOT, '.devdata', 'chrome-profile'),
     args: ['--no-sandbox', '--proxy-server=direct://', '--proxy-bypass-list=*'],
   });

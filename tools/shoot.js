@@ -1,6 +1,7 @@
 // 使い方: node tools/shoot.js <html のパス> <png の出力先> [幅] [倍率]
 // HTML を headless の Chrome で開き、ページ全体を撮影する（引継書 7-3 の起動設定）。
 // Chrome のプロファイルは作業フォルダの .devdata/chrome-profile に置く（指定しないと %TEMP% に作られるため）。
+// 環境変数 MIM_CHROME_PATH にブラウザの場所を書くと、システムの Chrome の代わりにそれを使う（Chrome のないクラウドの環境で使う）。
 'use strict';
 
 const path = require('path');
@@ -17,7 +18,7 @@ if (!htmlPath || !pngPath) {
 (async () => {
   const browser = await puppeteer.launch({
     headless: true,
-    channel: 'chrome',
+    ...(process.env.MIM_CHROME_PATH ? { executablePath: process.env.MIM_CHROME_PATH } : { channel: 'chrome' }),
     userDataDir: path.join(ROOT, '.devdata', 'chrome-profile'),
     args: ['--no-sandbox', '--proxy-server=direct://', '--proxy-bypass-list=*'],
   });
