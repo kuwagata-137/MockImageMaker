@@ -68,6 +68,18 @@ function buildAppMenu() {
       ],
     },
     {
+      // 画面の一覧の操作（メニューバーの「画面」の組と同じ）。PageUp・PageDown はページが入力欄の外のときだけ画面を移るのに使う
+      label: '画面',
+      submenu: [
+        commandItem('画面を足す…', 'addScreen'),
+        commandItem('画面を複製', 'duplicateScreen'),
+        commandItem('画面を消す…', 'deleteScreen'),
+        { type: 'separator' },
+        commandItem('前の画面へ', 'prevScreen', 'PageUp'),
+        commandItem('次の画面へ', 'nextScreen', 'PageDown'),
+      ],
+    },
+    {
       // いくつか選んだ部品と吹き出しを、最初に選んだものに合わせて揃える（メニューバーの「揃える」の組と同じ）
       label: '揃える',
       submenu: [

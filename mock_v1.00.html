@@ -153,6 +153,32 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .sl-item:hover .sl-thumb{background:#eef2f7}
 .sl-name{font-size:12px;color:#475569;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl-item.active .sl-name{color:#1d4ed8;font-weight:600}
+/* 画面の一覧の「…」・並べ替え・「＋ 画面を足す」（画像 q31・q29） */
+.sl-wrap{position:relative}
+.sl-more{position:absolute;right:6px;top:6px;width:26px;height:22px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;color:#475569;font-size:14px;line-height:1;cursor:pointer;display:none}
+.sl-wrap:hover .sl-more,.sl-more.open,.sl-more:focus-visible{display:block}
+.sl-more:hover{background:#f1f5f9}
+.sl-wrap.drop-before::before,.sl-wrap.drop-after::after{content:'';display:block;height:3px;background:#2563eb;border-radius:2px;margin:-2px 0 2px}
+.sl-wrap.drop-after::after{margin:-10px 0 9px}
+body.screen-sorting,body.screen-sorting *{cursor:grabbing!important}
+body.screen-sorting .sl-item.dragging{opacity:.4}
+.sl-add{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;padding:8px 0;border:1px dashed #94a3b8;border-radius:8px;background:#f8fafc;color:#1d3f6e;font-weight:700;cursor:pointer}
+.sl-add:hover{background:#eef2f7}
+.screen-menu{position:fixed;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.18);padding:4px;min-width:170px;display:flex;flex-direction:column}
+.screen-menu button{border:none;background:none;text-align:left;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px}
+.screen-menu button:hover{background:#f1f5f9}
+.screen-menu button.danger{color:#dc2626}
+.screen-menu button:disabled{color:#94a3b8;cursor:default;background:none}
+.screen-menu hr{border:none;border-top:1px solid #e2e8f0;margin:4px 0}
+/* 「画面を足す」の窓のひな形の札 */
+.tpl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tpl{border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:6px;text-align:center;cursor:pointer}
+.tpl:hover{border-color:#94a3b8}
+.tpl.sel{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.35)}
+.tpl .th{height:112px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.tpl b{display:block;margin-top:6px;font-size:13px}
+.tpl small{display:block;color:#64748b;font-size:11px;line-height:1.4}
+.tpl-dup{margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;font-size:13px;color:#475569}
 /* 左の一覧のいちばん上の「データベースの項目」（画像 q19 の案A） */
 .db-entry{display:flex;align-items:center;gap:8px;width:100%;border:2px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:8px;background:#f8fafc;cursor:pointer;text-align:left}
 .db-entry:hover{background:#eef2f7}
@@ -608,23 +634,164 @@ function duplicateDesignData(d, now = nowIso()) {
   copy.trashedAt = null;
   // 項目の id は画面設計の中だけで重ならなければよいので、そのまま写す（部品・ルックアップが指す id を付け直さなくて済むため）。
   // 画面と部品の id は付け直し、それを指す吹き出しのつなぐ部品と、リンクの文字の移る先も付け直す
-  const screenIds = new Map();
-  const partIds = new Map();
-  copy.screens.forEach((s) => {
-    screenIds.set(s.id, newId('s'));
-    s.id = screenIds.get(s.id);
-    s.parts.forEach((p) => { partIds.set(p.id, newId('p')); p.id = partIds.get(p.id); });
-  });
-  copy.screens.forEach((s) => {
-    (s.callouts || []).forEach((c) => { if (c.target) c.target = partIds.get(c.target) || null; });
-    s.parts.forEach((p) => { if (p.type === 'link' && isObj(p.props) && p.props.screenId) p.props.screenId = screenIds.get(p.props.screenId) || ''; });
-  });
+  const screenIds = new Map(d.screens.map((s) => [s.id, newId('s')]));
+  copy.screens = d.screens.map((s) => copyScreenData(s, { name: s.name, id: screenIds.get(s.id), screenIds }));
   // 編集の画面のつながりの図で覚えた「この画面設計」の箱の位置は、複製の箱の鍵で覚え直す
   if (isObj(copy.mapPos) && copy.mapPos['d:' + d.id]) {
     copy.mapPos['d:' + copy.id] = copy.mapPos['d:' + d.id];
     delete copy.mapPos['d:' + d.id];
   }
   return copy;
+}
+
+// ── 画面を足す・複製する（第 4 段階。画像 q29・q30）──
+// 画面 1 つの写し。画面・部品・吹き出しの id を付け直し、吹き出しのつなぐ部品とリンクの文字の移る先も付け直す。
+// 部品は同じ項目を指したまま（ほかの画面へ貼るときと同じ。1 つの画面に同じ項目は 1 回だけだが、別の画面には置ける）。
+// screenIds（元の画面の id → 新しい id）を渡したとき（画面設計の複製）は、移る先をそれで付け直し、ないものは外す。
+// 渡さないとき（画面の複製）は、自分の画面を指す移る先だけを新しい画面に付け直し、ほかの画面を指すものはそのままにする
+function copyScreenData(src, { name, id = newId('s'), screenIds = null }) {
+  const copy = clone(src);
+  copy.id = id;
+  copy.name = name;
+  const partIds = new Map();
+  copy.parts.forEach((p) => { partIds.set(p.id, newId('p')); p.id = partIds.get(p.id); });
+  copy.callouts = (copy.callouts || []).map((c) => ({ ...c, id: newId('k'), target: c.target ? partIds.get(c.target) || null : null }));
+  copy.parts.forEach((p) => {
+    if (p.type !== 'link' || !isObj(p.props) || !p.props.screenId) return;
+    const to = p.props.screenId;
+    p.props.screenId = screenIds ? screenIds.get(to) || '' : to === src.id ? id : to;
+  });
+  return copy;
+}
+
+// 画面の名前が重ならないようにする（「一覧」がもうあれば「一覧 2」）
+function uniqueScreenName(design, base) {
+  const names = new Set(design.screens.map((s) => s.name));
+  if (!names.has(base)) return base;
+  for (let n = 2; ; n++) if (!names.has(`${base} ${n}`)) return `${base} ${n}`;
+}
+
+// 画面を afterId の画面のすぐ後ろに入れる（見つからなければいちばん後ろ）
+function insertScreenAfter(design, screen, afterId) {
+  const i = design.screens.findIndex((s) => s.id === afterId);
+  design.screens.splice(i < 0 ? design.screens.length : i + 1, 0, screen);
+}
+
+// リンクの文字で、移る先がその画面のもの
+const linksToScreen = (p, screenId) => p.type === 'link' && isObj(p.props) && !!screenId && p.props.screenId === screenId;
+// ほかの画面にある、その画面を移る先にしているリンクの文字の数（画面を消す確かめの窓に書く）
+const linksInto = (design, screenId) => design.screens.filter((s) => s.id !== screenId)
+  .reduce((n, s) => n + s.parts.filter((p) => linksToScreen(p, screenId)).length, 0);
+
+// ひな形（画像 q30）。note は「画面を足す」の窓の札に書く短い説明
+const SCREEN_TEMPLATES = [
+  { id: 'blank', name: '白紙', note: '帯だけ' },
+  { id: 'input', name: '入力', note: '項目を並べ、保存のボタン' },
+  { id: 'detail', name: '詳細', note: '項目を並べ、編集・削除のボタン' },
+  { id: 'list', name: '一覧', note: '検索・絞り込み・レコード一覧' },
+  { id: 'graph', name: 'グラフ', note: 'グラフを 2 つ' },
+  { id: 'agg', name: '集計', note: '表とグラフ' },
+  { id: 'steps', name: '進み具合', note: '進み具合の矢印・承認のボタン' },
+];
+const TPL_LEFT = 32; // ひな形で部品を置く左の端
+const TPL_COL2 = 480; // 項目を 2 列で並べるときの右の列（幅 400 の部品の右に 48 空ける）
+const TPL_GAP = 24; // 項目の行の間
+// データベースの項目がまだないときに、入力・詳細・進み具合へ置く見本の項目
+const TPL_SAMPLE_ITEMS = [['text1', '項目名 1'], ['date', '項目名 2'], ['dropdown', '項目名 3']];
+
+// ひな形から画面を作る（commit はしない）。戻り値 { screen, items（データベースの項目の一覧表に新しく足す項目）}。
+// 入力・詳細・進み具合には、データベースの項目の一覧表の項目を上から順に 2 列で並べ、テーブルの項目はその下に 1 つずつ置く
+function screenFromTemplate(design, templateId, name) {
+  const sc = createScreenData(name);
+  const items = [];
+  // 部品を置く。下の端が画面からはみ出すときは、画面を下へ伸ばす（部品が上へずれないように）
+  const put = (type, x, y, { itemId = null, tableKind = 'subtable', w, h, label, props, view } = {}) => {
+    const t = partType(type);
+    const bottom = y + (h || t.h) + TPL_LEFT;
+    if (bottom > sc.height) sc.height = snapHeight(Math.ceil(bottom / GRID) * GRID, sc.device);
+    const p = createPartData(type, sc, { x, y }, itemId, { tableKind, design });
+    if (label != null) p.label = label;
+    if (props) p.props = { ...p.props, ...props };
+    if (view) p.view = type === 'table' ? normalizeTableView({ ...p.view, ...view }) : { ...p.view, ...view };
+    Object.assign(p, fitRect({ ...p, w: w || p.w, h: h || p.h }, sc));
+    sc.parts.push(p);
+    return p;
+  };
+  const button = (x, y, label, style = 'primary') => put('button', x, y, { label, props: { style } });
+  const status = () => {
+    let it = design.items.find((x) => x.type === 'status') || items.find((x) => x.type === 'status');
+    if (!it) items.push((it = createItemData('status')));
+    return it;
+  };
+  const putStatus = (type, x, y) => {
+    const it = status();
+    put(type, x, y, { itemId: it.id, view: { current: it.props.states[1] || it.props.states[0] || '' } });
+  };
+  // 項目を 2 列で並べ、次に置ける y を返す
+  const flowItems = (y0) => {
+    let inputs = design.items.filter((it) => isInputType(it.type));
+    const tables = design.items.filter((it) => it.type === 'table');
+    if (!inputs.length && !tables.length) {
+      inputs = TPL_SAMPLE_ITEMS.map(([type, n]) => createItemData(type, n));
+      items.push(...inputs);
+    }
+    let y = y0;
+    let rowH = 0;
+    inputs.forEach((it, i) => {
+      const p = put(partTypeOfItem(it.type), i % 2 ? TPL_COL2 : TPL_LEFT, y, { itemId: it.id });
+      rowH = Math.max(rowH, p.h);
+      if (i % 2) { y += rowH + TPL_GAP; rowH = 0; }
+    });
+    if (rowH) y += rowH + TPL_GAP;
+    tables.forEach((it) => { y += put('table', TPL_LEFT, y, { itemId: it.id }).h + TPL_GAP; });
+    return y;
+  };
+  const right = (w) => sc.width - TPL_LEFT - w;
+  switch (templateId) {
+    case 'input': {
+      const y = flowItems(64);
+      button(TPL_LEFT, y + GRID, '保存');
+      button(TPL_LEFT + 128, y + GRID, 'キャンセル', 'normal');
+      break;
+    }
+    case 'detail':
+      button(right(96 + 32 + 96), 56, '編集');
+      button(right(96), 56, '削除', 'normal');
+      flowItems(112);
+      break;
+    case 'list': {
+      put('search', TPL_LEFT, 64);
+      put('filter', 368, 64);
+      put('button', right(128), 64, { label: '＋ 新規登録', w: 128 });
+      const t = put('table', TPL_LEFT, 128, { tableKind: 'records', w: sc.width - TPL_LEFT * 2, h: tableHeight(8), view: { rows: 8 } });
+      put('pager', right(PART_TYPES.pager.w), t.y + t.h + 16);
+      break;
+    }
+    case 'graph': {
+      const w = (sc.width - TPL_LEFT * 3) / 2;
+      put('filter', TPL_LEFT, 64);
+      put('graph', TPL_LEFT, 128, { w });
+      put('graph', TPL_LEFT * 2 + w, 128, { w, props: { chart: 'pie', samples: '分類 1, 45\n分類 2, 30\n分類 3, 25' } });
+      break;
+    }
+    case 'agg': {
+      const w = (sc.width - TPL_LEFT * 3) / 2;
+      put('filter', TPL_LEFT, 64);
+      put('table', TPL_LEFT, 128, { tableKind: 'records', w, h: tableHeight(6), view: { rows: 6 } });
+      put('graph', TPL_LEFT * 2 + w, 128, { w, props: { chart: 'hbar', samples: '分類 1, 42\n分類 2, 35\n分類 3, 28\n分類 4, 19' } });
+      break;
+    }
+    case 'steps': {
+      putStatus('steps', TPL_LEFT, 64);
+      putStatus('status', right(PART_TYPES.status.w), 64);
+      const y = flowItems(136);
+      button(TPL_LEFT, y + GRID, '承認する');
+      button(TPL_LEFT + 128, y + GRID, '差し戻す', 'normal');
+      break;
+    }
+    default: break; // 白紙は帯だけ
+  }
+  return { screen: sc, items };
 }
 
 // ── 項目と部品 ──
@@ -1837,6 +2004,47 @@ const actions = {
       d.screens[i] = sc;
     });
   },
+  // ひな形から画面を足し、afterId の画面のすぐ後ろに入れる。名前はひな形の名前（白紙は「画面 3」のような番号）。戻り値は新しい画面の id
+  addScreen(designId, templateId, afterId = null) {
+    const d = findDesign(store.state, designId);
+    const tpl = SCREEN_TEMPLATES.find((t) => t.id === templateId);
+    if (!d || !tpl) return null;
+    const name = uniqueScreenName(d, tpl.id === 'blank' ? `画面 ${d.screens.length + 1}` : tpl.name);
+    const { screen, items } = screenFromTemplate(d, tpl.id, name);
+    mutateDesign(designId, (dd) => {
+      dd.items.push(...items);
+      insertScreenAfter(dd, screen, afterId);
+    });
+    return screen.id;
+  },
+  // 画面を複製し、元の画面のすぐ後ろに入れる。戻り値は新しい画面の id
+  duplicateScreen(designId, screenId) {
+    const d = findDesign(store.state, designId);
+    const src = findScreen(designId, screenId);
+    if (!src) return null;
+    const copy = copyScreenData(src, { name: uniqueScreenName(d, cleanName(src.name + ' のコピー')) });
+    mutateDesign(designId, (dd) => { insertScreenAfter(dd, copy, screenId); });
+    return copy.id;
+  },
+  // 画面の並びを変える。toIndex は今の並びでの入れる位置（0 ならいちばん上、画面の数ならいちばん下）。動かないときは履歴に積まない
+  moveScreen(designId, screenId, toIndex) {
+    const d = findDesign(store.state, designId);
+    const from = d ? d.screens.findIndex((s) => s.id === screenId) : -1;
+    if (from < 0 || !Number.isInteger(toIndex) || toIndex < 0 || toIndex > d.screens.length || toIndex === from || toIndex === from + 1) return false;
+    return mutateDesign(designId, (dd) => {
+      const [s] = dd.screens.splice(from, 1);
+      dd.screens.splice(toIndex > from ? toIndex - 1 : toIndex, 0, s);
+    });
+  },
+  // 画面を消す（最後の 1 つは消せない）。データベースの項目は一覧表に残す。ほかの画面のリンクの文字がこの画面を指していれば、移る先を外す
+  deleteScreen(designId, screenId) {
+    const d = findDesign(store.state, designId);
+    if (!d || d.screens.length < 2 || !findScreen(designId, screenId)) return false;
+    return mutateDesign(designId, (dd) => {
+      dd.screens = dd.screens.filter((s) => s.id !== screenId);
+      dd.screens.forEach((s) => s.parts.forEach((p) => { if (linksToScreen(p, screenId)) p.props.screenId = ''; }));
+    });
+  },
 
   // ── 部品の操作 ──
   // at は置く位置（画面の左上から）。帯の下に置き、同じ位置に部品があればずらす。戻り値は新しい部品の id
@@ -2697,6 +2905,7 @@ const ui = {
   addItemMenu: false, // 「＋ 項目を足す」の種類の小さなメニューを開いているか
   homeMap: false, // 最初の画面で、カードの代わりにつながりの図を出しているか（アプリを閉じるまで覚えておく）
   colId: null, // 表の部品の設定の欄で選んでいる列の id
+  screenMenu: null, // 左の画面の一覧で「…」のメニューを開いている画面の id
 };
 // partId・calloutId は、1 つだけ選んでいるときのその部品・吹き出しの id（ほかのときは null）。入れると、それだけを選んだことにする
 ['partId', 'calloutId'].forEach((key) => {
@@ -2986,11 +3195,12 @@ function openNewDesignDialog() {
   });
 }
 
-function openRenameDialog(d) {
+// d は名前を変える画面設計か画面（name を持つもの）。label は欄の名前
+function openRenameDialog(d, label = '画面設計の名前') {
   return showDialog({
     title: '名前の変更',
     okLabel: '変更する',
-    body: `<label class="field"><span>画面設計の名前</span><input type="text" name="name" maxlength="${NAME_MAX}" value="${esc(d.name)}"></label>`,
+    body: `<label class="field"><span>${esc(label)}</span><input type="text" name="name" maxlength="${NAME_MAX}" value="${esc(d.name)}"></label>`,
     init: (m) => {
       const input = $('[name=name]', m);
       input.focus();
@@ -3124,6 +3334,7 @@ function mountEditor() {
     <div id="toolbar">${toolbarHtml()}</div>
     <div class="editor-body">
       <aside class="screen-list" id="screen-list" aria-label="画面の一覧"></aside>
+      <div id="screen-menu-root"></div>
       <div class="canvas-area">
         <div id="canvas-wrap"><div id="zoom-spacer"></div><div id="stage"></div></div>
         <div class="zoom-badge" id="zoom-badge">100%</div>
@@ -3142,6 +3353,10 @@ function toolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
   return [
     group('ファイル', '<button class="bigbtn" data-action="home" title="画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>'),
+    group('画面', `
+      <button class="bigbtn" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します"><span class="ico">＋</span>画面を<br>足す</button>
+      <button class="bigbtn" data-action="duplicate-screen" title="開いている画面を、部品も吹き出しもそのまま写して、すぐ後ろに足します"><span class="ico">❐</span>画面を<br>複製</button>
+      <button class="bigbtn" data-action="delete-screen" id="tb-del-screen" title="開いている画面を消します（最後の 1 つは消せません）"><span class="ico">✕</span>画面を<br>消す</button>`),
     group('履歴', `<div class="stack">
       <button class="tbtn" data-action="undo" id="tb-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" id="tb-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
@@ -3179,7 +3394,9 @@ function updateEditor({ keepSide = false } = {}) {
   if (!findItem(d, ui.itemId)) ui.itemId = null;
   $('#ed-title').textContent = `${d.name}（${targetLabel(d.target)}）`;
   updateToolbarState();
+  if (ui.screenMenu && !d.screens.some((s) => s.id === ui.screenMenu)) ui.screenMenu = null;
   $('#screen-list').innerHTML = screenListHtml(d);
+  renderScreenMenu(d);
   const onScreen = ui.panel === 'screen';
   $('#canvas-wrap').hidden = !onScreen;
   $('#zoom-badge').hidden = !onScreen;
@@ -3205,6 +3422,7 @@ function updateToolbarState() {
   });
   $('#tb-paste').disabled = !onScreen || !ui.clipboard;
   $('#tb-renumber').disabled = !onScreen || !s || !s.parts.some((p) => p.no != null);
+  $('#tb-del-screen').disabled = currentDesign().screens.length < 2;
   $('#tb-mode-select').classList.toggle('on', ui.mode === 'select');
   $('#tb-mode-hand').classList.toggle('on', ui.mode === 'hand');
   document.querySelectorAll('#toolbar [data-screen-only]').forEach((b) => { b.disabled = !onScreen; });
@@ -3217,11 +3435,176 @@ function screenListHtml(d) {
       <span class="ic">▦</span><span><b>データベースの項目</b><small>${d.items.length} 個</small></span></button>
     <button class="db-entry${ui.panel === 'map' ? ' active' : ''}" data-action="open-map" title="この画面設計と、直接つながる画面設計の図を開きます">
       <span class="ic">⇄</span><span><b>つながりの図</b><small>${linked > 0 ? `${linked} つとつながっている` : 'つながりなし'}</small></span></button>`;
+  // 縮小画像にマウスを乗せると右上に「…」が出る（画像 q31）。縮小画像はドラッグで並べ替える。いちばん下に「＋ 画面を足す」（画像 q29）
   return entry + '<div class="sl-sep"></div><div class="panel-title">画面</div>' + d.screens.map((s, i) => `
-    <button class="sl-item${ui.panel === 'screen' && s.id === ui.screenId ? ' active' : ''}" data-action="select-screen" data-id="${esc(s.id)}" title="${esc(s.name)}">
-      <div class="sl-thumb">${thumbHtml(d, s, 132, 84)}</div>
-      <div class="sl-name">${i + 1}　${esc(s.name)}</div>
-    </button>`).join('');
+    <div class="sl-wrap" data-id="${esc(s.id)}">
+      <button class="sl-item${ui.panel === 'screen' && s.id === ui.screenId ? ' active' : ''}" data-action="select-screen" data-id="${esc(s.id)}" title="${esc(s.name)}（ドラッグで並べ替えます）">
+        <div class="sl-thumb">${thumbHtml(d, s, 132, 84)}</div>
+        <div class="sl-name">${i + 1}　${esc(s.name)}</div>
+      </button>
+      <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-label="「${esc(s.name)}」の画面の操作" title="名前を変える・複製・並べ替え・消す">…</button>
+    </div>`).join('')
+    + '<button class="sl-add" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します">＋ 画面を足す</button>';
+}
+
+// 画面の一覧の「…」のメニュー（画像 q31）。一覧の枠の外まではみ出せるように、窓に対して置く
+function renderScreenMenu(d) {
+  const root = $('#screen-menu-root');
+  if (!root) return;
+  const i = d.screens.findIndex((s) => s.id === ui.screenMenu);
+  const btn = i < 0 ? null : [...document.querySelectorAll('.sl-more')].find((b) => b.dataset.id === ui.screenMenu);
+  if (!btn) { ui.screenMenu = null; root.innerHTML = ''; return; }
+  const r = btn.getBoundingClientRect();
+  const id = esc(ui.screenMenu);
+  root.innerHTML = `
+    <div class="screen-menu" role="menu" style="left:${Math.round(r.left)}px;top:${Math.round(r.bottom + 4)}px">
+      <button data-action="screen-rename" data-id="${id}">名前を変える</button>
+      <button data-action="screen-dup" data-id="${id}">複製する</button>
+      <hr>
+      <button data-action="screen-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ動かす</button>
+      <button data-action="screen-down" data-id="${id}"${i === d.screens.length - 1 ? ' disabled' : ''}>下へ動かす</button>
+      <hr>
+      <button class="danger" data-action="screen-del" data-id="${id}"${d.screens.length < 2 ? ' disabled title="最後の 1 つの画面は消せません"' : ''}>この画面を消す</button>
+    </div>`;
+}
+function closeScreenMenu() {
+  if (!ui.screenMenu) return;
+  ui.screenMenu = null;
+  const root = $('#screen-menu-root');
+  if (root) root.innerHTML = '';
+  document.querySelectorAll('.sl-more.open').forEach((b) => b.classList.remove('open'));
+}
+// 画面の一覧だけを描き直す（「…」のメニューを開け閉めしたとき・並べ替えをやめたとき）
+function refreshScreenList() {
+  const d = currentDesign();
+  if (!d || !$('#screen-list')) return;
+  $('#screen-list').innerHTML = screenListHtml(d);
+  renderScreenMenu(d);
+}
+
+// ── 画面を足す・複製・並べ替え・消す（第 4 段階。画像 q29〜q32）──
+function openScreen(id) {
+  Object.assign(ui, { screenId: id, sel: [], panel: 'screen', addItemMenu: false });
+  updateEditor();
+}
+
+// 「画面を足す」の窓（画像 q29 の案A）。ひな形を縮小画像付きの札で並べる。札のダブルクリックでも足す。窓の下に「今の画面を複製」
+async function openAddScreenDialog() {
+  const d = currentDesign();
+  const cur = findScreen(d.id, ui.screenId) || d.screens[0];
+  const cards = SCREEN_TEMPLATES.map((t, i) => {
+    const { screen, items } = screenFromTemplate(d, t.id, t.id === 'blank' ? `画面 ${d.screens.length + 1}` : t.name);
+    const preview = { ...d, items: [...d.items, ...items] }; // 見本の項目も名前を出すため
+    return `<button type="button" class="tpl${i === 0 ? ' sel' : ''}" data-tpl="${t.id}" aria-pressed="${i === 0}">
+      <div class="th">${thumbHtml(preview, screen, 180, 104)}</div><b>${esc(t.name)}</b><small>${esc(t.note)}</small></button>`;
+  }).join('');
+  const r = await showDialog({
+    title: '画面を足す',
+    okLabel: '足す',
+    wide: true,
+    body: `<p style="margin-bottom:12px;color:#475569">ひな形を選んでください。今開いている「${esc(cur.name)}」の画面のすぐ後ろに足します。</p>
+      <div class="tpl-grid">${cards}</div>
+      <div class="tpl-dup"><button type="button" class="btn" data-dup>❐ 今の画面（${esc(cur.name)}）を複製</button><span>部品も吹き出しもそのまま写します。</span></div>`,
+    init: (m) => {
+      const pick = (b) => m.querySelectorAll('.tpl').forEach((x) => {
+        x.classList.toggle('sel', x === b);
+        x.setAttribute('aria-pressed', String(x === b));
+      });
+      m.querySelectorAll('.tpl').forEach((b) => {
+        b.addEventListener('click', () => pick(b));
+        b.addEventListener('dblclick', () => { pick(b); $('[data-dlg="ok"]', m).click(); });
+      });
+      $('[data-dup]', m).addEventListener('click', () => { m.dataset.dup = '1'; $('[data-dlg="ok"]', m).click(); });
+    },
+    collect: (m) => (m.dataset.dup ? { duplicate: true } : { template: $('.tpl.sel', m).dataset.tpl }),
+  });
+  if (!r) return;
+  if (r.duplicate) { duplicateScreenAndOpen(cur.id); return; }
+  const id = actions.addScreen(d.id, r.template, cur.id);
+  if (id) openScreen(id);
+}
+
+function duplicateScreenAndOpen(screenId) {
+  const id = actions.duplicateScreen(ui.designId, screenId);
+  if (id) openScreen(id);
+}
+
+// 画面を消す前の確かめの窓（画像 q32）。開いている画面を消したときは、すぐ下の画面（なければすぐ上）を開く
+async function deleteScreenWithConfirm(screenId) {
+  const d = currentDesign();
+  const s = findScreen(d.id, screenId);
+  if (!s) return;
+  if (d.screens.length < 2) { toast('最後の 1 つの画面は消せません。'); return; }
+  const links = linksInto(d, screenId);
+  const what = [s.parts.length ? `部品 ${s.parts.length} 個` : '', s.callouts.length ? `吹き出し ${s.callouts.length} 個` : ''].filter(Boolean).join('と');
+  const ok = await showDialog({
+    title: `「${s.name}」の画面を消しますか`,
+    okLabel: '消す',
+    okClass: 'danger',
+    body: `<p>${what ? `この画面の${what}が消えます。` : 'この画面には、部品も吹き出しもありません。'}</p>
+      <p>データベースの項目は、項目の一覧表に残ります（ほかの画面に置いた部品もそのままです）。</p>
+      ${links ? `<p class="warn">ほかの画面のリンクの文字 ${links} 個が、この画面を移る先にしています。移る先は外れます。</p>` : ''}
+      <p style="color:#64748b;font-size:12px;margin-top:6px">消した後でも、元に戻す（Ctrl+Z）で戻せます。</p>`,
+  });
+  if (!ok) return;
+  const i = d.screens.findIndex((x) => x.id === screenId);
+  if (ui.screenId === screenId) Object.assign(ui, { screenId: (d.screens[i + 1] || d.screens[i - 1]).id, sel: [] });
+  actions.deleteScreen(d.id, screenId);
+}
+
+// PageUp・PageDown（アプリのメニューの「前の画面へ」「次の画面へ」）
+function stepScreen(dir) {
+  const d = currentDesign();
+  const next = d.screens[d.screens.findIndex((s) => s.id === ui.screenId) + dir];
+  if (next) openScreen(next.id);
+}
+
+// 画面の一覧の「…」のメニューで押したもの
+function onScreenMenu(action, screenId) {
+  const d = currentDesign();
+  const i = d.screens.findIndex((s) => s.id === screenId);
+  if (i < 0) return;
+  switch (action) {
+    case 'screen-rename':
+      openRenameDialog(d.screens[i], '画面の名前').then((r) => {
+        if (r && r.name !== d.screens[i].name) actions.updateScreen(d.id, screenId, { name: r.name });
+      }).catch(reportPageError);
+      return;
+    case 'screen-dup': duplicateScreenAndOpen(screenId); return;
+    case 'screen-up': actions.moveScreen(d.id, screenId, i - 1); return;
+    case 'screen-down': actions.moveScreen(d.id, screenId, i + 2); return;
+    case 'screen-del': deleteScreenWithConfirm(screenId).catch(reportPageError); return;
+  }
+}
+
+// 画面の縮小画像のドラッグで並べ替える（画像 q31）。放した画面の上半分なら前、下半分なら後ろに入れる。
+// 「＋ 画面を足す」の上で放したときは、いちばん下に入れる。少し動かすまでは並べ替えを始めない（押して画面を切り替えるだけのとき）
+function startScreenSort(ev, screenId) {
+  drag = { kind: 'screen-sort', id: screenId, sx: ev.clientX, sy: ev.clientY, moved: false, to: null };
+}
+function dragScreenSort(ev) {
+  if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
+  if (!drag.moved) {
+    drag.moved = true;
+    closeScreenMenu();
+    document.body.classList.add('screen-sorting');
+  }
+  const list = $('#screen-list');
+  list.querySelectorAll('.drop-before, .drop-after').forEach((w) => w.classList.remove('drop-before', 'drop-after'));
+  list.querySelectorAll('.sl-item').forEach((b) => b.classList.toggle('dragging', b.dataset.id === drag.id));
+  const hit = document.elementFromPoint ? document.elementFromPoint(ev.clientX, ev.clientY) : null;
+  const wraps = [...list.querySelectorAll('.sl-wrap[data-id]')];
+  if (hit && hit.closest && hit.closest('#screen-list .sl-add') && wraps.length) {
+    drag.to = wraps.length;
+    wraps[wraps.length - 1].classList.add('drop-after');
+    return;
+  }
+  const wrap = hit && hit.closest ? hit.closest('#screen-list .sl-wrap[data-id]') : null;
+  if (!wrap) { drag.to = null; return; }
+  const r = wrap.getBoundingClientRect();
+  const after = ev.clientY > r.top + r.height / 2;
+  drag.to = wraps.indexOf(wrap) + (after ? 1 : 0);
+  wrap.classList.add(after ? 'drop-after' : 'drop-before');
 }
 
 // 真ん中の画面と、部品の設定の一覧表を描く。ドラッグ中は ui.previewHeight の高さで描く（保存はドラッグを放したとき）
@@ -3776,7 +4159,8 @@ function partTypeFieldsHtml(p) {
       return pfArea('props.tabs', 'タブの名前', (pr.tabs || []).join('\n'), { hint: '（1 行に 1 つ）', rows: 4 })
         + pfSelect('props.current', '選んでいるタブ', pr.current, (pr.tabs || []).map((s) => [s, s]));
     case 'link': {
-      const screens = (currentDesign() || { screens: [] }).screens.map((s) => [s.id, `${s.name}の画面`]);
+      // 「この画面設計のほかの画面」なので、開いている画面は出さない（読み込んだデータで自分を指しているときだけ残す）
+      const screens = (currentDesign() || { screens: [] }).screens.filter((s) => s.id !== ui.screenId || s.id === pr.screenId).map((s) => [s.id, `${s.name}の画面`]);
       return pfSelect('props.to', '移る先', pr.to, [['', '（なし）'], ['screen', 'この画面設計のほかの画面'], ['url', 'URL を書く']])
         + (pr.to === 'screen' ? pfSelect('props.screenId', '移る画面', pr.screenId, [['', '（選んでください）'], ...screens]) : '')
         + (pr.to === 'url' ? pfText('props.url', 'URL', pr.url, { placeholder: 'https://' }) : '');
@@ -4882,6 +5266,7 @@ function onDragMove(ev) {
   if (drag.kind === 'group') { dragGroup(ev); return; }
   if (drag.kind === 'band') { dragBand(ev); return; }
   if (drag.kind === 'item-sort') { dragItemSort(ev); return; }
+  if (drag.kind === 'screen-sort') { dragScreenSort(ev); return; }
   if (drag.kind === 'co-move' || drag.kind === 'co-size') { dragCallout(ev); return; }
   if (drag.kind === 'co-link') { dragCalloutLink(ev); return; }
   if (drag.kind === 'move' || drag.kind === 'size') { dragPart(ev); return; }
@@ -4906,7 +5291,7 @@ function onDragEnd(ev) {
   if (!drag) return;
   const done = drag;
   drag = null;
-  document.body.classList.remove('resizing', 'moving', 'sorting', 'linking', 'copying');
+  document.body.classList.remove('resizing', 'moving', 'sorting', 'linking', 'copying', 'screen-sorting');
   if (done.kind === 'map') { endMapDrag(done); return; }
   if (done.kind === 'add') {
     // Ctrl を押して押しただけ（動かしていない）なら、選ぶものに足す・外す
@@ -4928,6 +5313,10 @@ function onDragEnd(ev) {
   }
   if (done.kind === 'item-sort') {
     if (done.to == null || !actions.moveItem(ui.designId, done.id, done.to)) renderItemsView(currentDesign());
+    return;
+  }
+  if (done.kind === 'screen-sort') {
+    if (done.moved && (done.to == null || !actions.moveScreen(ui.designId, done.id, done.to))) refreshScreenList();
     return;
   }
   if (done.kind === 'place') { if (done.moved) dropPlace(done, ev); return; }
@@ -4995,6 +5384,7 @@ function nudgePart(dx, dy) {
 function runCommand(cmd) {
   if (isDialogOpen()) return false;
   flushSideField();
+  closeScreenMenu();
   switch (cmd) {
     case 'undo': store.undo(); return true;
     case 'redo': store.redo(); return true;
@@ -5014,6 +5404,10 @@ function runCommand(cmd) {
     case 'deleteItem': if (ui.panel === 'items' && ui.itemId) deleteItemWithConfirm(ui.itemId).catch(reportPageError); return true;
     case 'importItems': openImportDialog().catch(reportPageError); return true;
     case 'deselectItem': if (ui.panel === 'items') selectItem(null); return true;
+    case 'addScreen': openAddScreenDialog().catch(reportPageError); return true;
+    case 'duplicateScreen': duplicateScreenAndOpen(ui.screenId); return true;
+    case 'deleteScreen': deleteScreenWithConfirm(ui.screenId).catch(reportPageError); return true;
+    case 'prevScreen': case 'nextScreen': stepScreen(cmd === 'nextScreen' ? 1 : -1); return true;
   }
   if (ui.panel !== 'screen') return false;
   switch (cmd) {
@@ -5062,6 +5456,7 @@ const ACTION_COMMANDS = {
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
   'open-items': 'openItems', 'open-map': 'openMap', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
   'select-all': 'selectAll', 'number-on': 'numberOn', 'number-off': 'numberOff', 'delete-many': 'deletePart',
+  'add-screen': 'addScreen', 'duplicate-screen': 'duplicateScreen', 'delete-screen': 'deleteScreen',
   ...Object.fromEntries([...ALIGN_BUTTONS, ...SIZE_BUTTONS].map(([cmd, action]) => [action, cmd])),
 };
 
@@ -5076,6 +5471,14 @@ function onEditorClick(action, btn) {
       if (btn.dataset.id === ui.screenId && ui.panel === 'screen') return true; // mousedown で切り替えた後の click
       Object.assign(ui, { screenId: btn.dataset.id, sel: [], panel: 'screen', addItemMenu: false });
       updateEditor();
+      return true;
+    case 'screen-menu':
+      ui.screenMenu = ui.screenMenu === btn.dataset.id ? null : btn.dataset.id;
+      refreshScreenList();
+      return true;
+    case 'screen-rename': case 'screen-dup': case 'screen-up': case 'screen-down': case 'screen-del':
+      closeScreenMenu();
+      onScreenMenu(action, btn.dataset.id);
       return true;
     case 'add-part': addPartAtCenter(btn.dataset.type); return true;
     case 'add-item-part': {
@@ -5109,6 +5512,7 @@ function onAppClick(e) {
     ui.menuFor = null;
     refreshCards();
   }
+  if (ui.screenMenu && !e.target.closest('.screen-menu, .sl-more')) closeScreenMenu();
   if (ui.addItemMenu && !e.target.closest('.pop-menu, [data-action="add-item-menu"]')) {
     ui.addItemMenu = false;
     renderItemsView(currentDesign());
@@ -5154,6 +5558,8 @@ function editorKeyCommand(e) {
     if (low === 'd' && ui.sel.length) return 'duplicatePart';
     return null;
   }
+  // PageUp・PageDown で前後の画面へ（画像 q31）
+  if (ui.panel === 'screen' && (k === 'PageUp' || k === 'PageDown')) return k === 'PageUp' ? 'prevScreen' : 'nextScreen';
   if (!ui.sel.length) return null;
   if (k === 'Delete' || k === 'Backspace') return 'deletePart';
   if (k === 'Escape') return 'deselectPart';
@@ -5163,6 +5569,7 @@ function editorKeyCommand(e) {
 function onKeyDown(e) {
   if (isDialogOpen()) return;
   if (e.key === 'Escape' && ui.menuFor) { ui.menuFor = null; refreshCards(); return; }
+  if (e.key === 'Escape' && ui.screenMenu) { closeScreenMenu(); return; }
   const inField = e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
   if (ui.view === 'editor' && !inField && !e.altKey && !e.isComposing) {
     const partCmd = editorKeyCommand(e);
@@ -5211,6 +5618,9 @@ function bindGlobalEvents() {
     }
     const grip = e.target.closest('#db-view [data-drag="item-sort"]');
     if (grip) { startItemSort(e, grip.closest('tr').dataset.id); return; }
+    // 画面の縮小画像は、押した時点で切り替え（下の select-screen）、そのままドラッグすると並べ替える
+    const slItem = e.target.closest('#screen-list .sl-item');
+    if (slItem) startScreenSort(e, slItem.dataset.id);
     // 一覧表の行と画面の一覧は、押した時点で切り替える。右の欄で打ちかけの文字があると、離れたときの保存で
     // 一覧表と画面の一覧が描き直され、押した行・ボタンが click の前に消えて、1 回目の押しが効かないため
     if (e.target.closest('.del-x')) return;
@@ -5245,7 +5655,7 @@ function exposeForTest() {
     store, ui, actions, runCommand, openDesign, goHome, migrate, normalizeState, snapHeight, changeDevice,
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, minScreenHeight, selectPart, currentScreen,
-    currentDesign, currentPart, resolvePart, findItem, describeItem, mapModel, mapLayout,
+    currentDesign, currentPart, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
     ready: true,
   });
 }
