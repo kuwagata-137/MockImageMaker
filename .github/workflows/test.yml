@@ -1,0 +1,23 @@
+# 自動テスト。push と PR で npm test（node --test と jsdom）を動かす（CheckListMaker の test.yml から写した）。
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # テストは Electron 本体も Puppeteer の Chrome も使わないので、取得しない
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      PUPPETEER_SKIP_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 依存を入れる（package-lock.json のとおり）
+        run: npm ci --no-audit --no-fund
+      - name: テスト
+        run: npm test

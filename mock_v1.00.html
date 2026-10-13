@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>モックイメージメーカー</title>
+<style>
+/* ── 全体 ─────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{font-family:'Segoe UI','Yu Gothic UI','Meiryo',sans-serif;background:#f1f5f9;color:#1e293b;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+#app{flex:1;min-height:0;display:flex;flex-direction:column}
+button{font-family:inherit;font-size:inherit;color:inherit}
+input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
+.spacer{flex:1}
+
+/* 保存を止めているときの帯・お知らせ */
+#banner{background:#fef2f2;color:#991b1b;border-bottom:1px solid #fecaca;padding:8px 16px;font-size:13px;font-weight:600}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1e293b;color:#f8fafc;padding:9px 18px;border-radius:8px;font-size:13px;box-shadow:0 6px 20px rgba(15,23,42,.3);z-index:50;max-width:80vw}
+
+/* ボタン */
+.btn{display:inline-flex;align-items:center;gap:4px;padding:7px 14px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;cursor:pointer;font-size:13px;white-space:nowrap}
+.btn:hover{background:#f1f5f9}
+.btn.primary{background:#1d3f6e;border-color:#1d3f6e;color:#fff;font-weight:600}
+.btn.primary:hover{background:#25528f}
+.btn.danger{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:600}
+.btn.danger:hover{background:#b91c1c}
+.btn.small{padding:4px 10px;font-size:12px}
+.btn.small.danger-text{color:#dc2626}
+.btn:disabled{opacity:.45;cursor:default}
+
+/* 上の細い帯（アプリ名） */
+.brandbar{display:flex;align-items:center;gap:10px;background:#fff;border-bottom:1px solid #e2e8f0;padding:6px 16px;min-height:38px;flex-shrink:0}
+.brand{font-weight:700;font-size:13px;color:#0f172a}
+.brand-ver{font-size:11px;color:#94a3b8}
+.brand-design{font-size:13px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* 作る先の印 */
+.chip{display:inline-block;padding:1px 9px;border:1px solid #cbd5e1;border-radius:999px;background:#f1f5f9;color:#475569;font-size:12px;white-space:nowrap}
+.chip.t-kintone{background:#fff7e6;border-color:#f5c26b;color:#a15c00}
+.chip.t-salesforce{background:#e8f4fd;border-color:#7cc0f0;color:#0b6fb3}
+.chip.t-claude{background:#f3edff;border-color:#c4a8f5;color:#6d3fc9}
+
+/* ── 最初の画面（画面設計の一覧）─────────────────────── */
+.home-scroll{flex:1;overflow:auto}
+.home{max-width:1120px;margin:0 auto;padding:22px 24px 40px}
+.home-head{display:flex;align-items:center;gap:10px}
+.home-head h1{font-size:22px;font-weight:700;color:#0f172a}
+.search{display:flex;align-items:center;gap:6px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;padding:0 10px;width:240px}
+.search input{border:none;outline:none;padding:7px 0;width:100%;background:transparent}
+.search:focus-within{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.25)}
+.home-note{color:#64748b;font-size:12px;margin:8px 0 16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.empty{color:#64748b;padding:32px 4px;font-size:14px}
+.card{position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:visible}
+.card:hover{border-color:#94a3b8;box-shadow:0 2px 10px rgba(15,23,42,.08)}
+.card-open{display:block;width:100%;border:none;background:none;text-align:left;cursor:pointer;border-radius:10px}
+.card-thumb{height:160px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center}
+.card-body{padding:12px 16px 14px}
+.card-name{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:24px}
+.card-meta{display:flex;align-items:center;gap:6px;color:#64748b;font-size:12px;margin-bottom:4px}
+.card-date{color:#64748b;font-size:12px}
+.card-more{position:absolute;right:10px;bottom:10px;width:30px;height:26px;border:1px solid transparent;border-radius:6px;background:none;cursor:pointer;color:#64748b;font-size:16px;line-height:1}
+.card-more:hover{background:#f1f5f9;border-color:#cbd5e1}
+.card-menu{position:absolute;right:10px;bottom:40px;z-index:10;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.18);padding:4px;min-width:170px;display:flex;flex-direction:column}
+.card-menu button{border:none;background:none;text-align:left;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px}
+.card-menu button:hover{background:#f1f5f9}
+.card-menu button.danger{color:#dc2626}
+.trash{margin-top:28px;border-top:1px solid #e2e8f0;padding-top:14px}
+.trash-toggle{border:none;background:none;cursor:pointer;color:#475569;font-size:13px;font-weight:600;padding:4px 2px}
+.trash-list{margin-top:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:6px 14px}
+.trash-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1f5f9}
+.trash-row:last-of-type{border-bottom:none}
+.trash-name{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trash-date{color:#64748b;font-size:12px;margin-left:auto;white-space:nowrap}
+.trash-empty,.trash-note{color:#64748b;font-size:12px;padding:8px 0}
+
+/* 縮小画像（画面を同じ HTML で描いて縮める） */
+.thumb{position:relative;overflow:hidden;background:#fff;border:1px solid #cbd5e1;flex-shrink:0}
+.thumb-scale{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}
+
+/* ── 小さな窓（名前を聞く・確かめる）────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:40}
+.modal{background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(15,23,42,.35);width:min(440px,calc(100vw - 32px));padding:20px 22px 18px}
+.modal h2{font-size:16px;margin-bottom:14px;color:#0f172a}
+.modal p{font-size:13px;line-height:1.6}
+.modal .warn{color:#b91c1c;margin-top:6px}
+.modal-error{color:#dc2626;font-size:12px;margin-top:8px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field>span:first-child{font-size:12px;color:#475569;font-weight:600}
+.field input[type=text],.field textarea,.target-picker select,.target-picker input{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:6px 8px;background:#fff}
+.field textarea{resize:vertical;min-height:72px;line-height:1.5}
+.field input:focus,.field textarea:focus,.target-picker select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.25)}
+.target-picker{display:flex;flex-direction:column;gap:6px}
+.hint{color:#64748b;font-size:12px;line-height:1.5}
+
+/* ── 編集の画面 ─────────────────────────────────────── */
+/* メニューバー（ビジネスダイアグラムメーカーの .rgroup などから写した） */
+#toolbar{background:#f8fafc;color:#334155;padding:4px 8px 0;display:flex;flex-shrink:0;border-bottom:1px solid #cbd5e1;box-shadow:0 1px 4px rgba(15,23,42,.12);position:relative;z-index:2;overflow-x:auto}
+.rgroup{display:flex;flex-direction:column;flex:0 0 auto;padding:0 7px 0 4px;border-right:1px solid #e2e8f0;margin-right:3px}
+.gbody{flex:1;display:flex;align-items:flex-start;gap:2px;padding:2px 2px 0}
+.glabel{text-align:center;font-size:10px;color:#64748b;padding:3px 2px 4px;white-space:nowrap}
+.stack{display:flex;flex-direction:column;gap:2px;align-items:stretch}
+.stack .tbtn{display:flex;align-items:center;gap:5px;text-align:left}
+.bigbtn{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:56px;padding:5px 7px 4px;border-radius:5px;border:1px solid transparent;background:transparent;color:#334155;font-size:11px;line-height:1.25;cursor:pointer}
+.bigbtn .ico{font-size:20px;line-height:1}
+.bigbtn:hover{background:#e2e8f0;color:#0f172a}
+.bigbtn.on{background:#2563eb;color:#fff;border-color:#3b82f6}
+.tbtn{background:transparent;border:1px solid transparent;color:#334155;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;white-space:nowrap}
+.tbtn:hover{background:#e2e8f0;color:#0f172a}
+.tbtn:disabled{opacity:.4;cursor:default;background:transparent}
+.zoom-label{min-width:52px;color:#475569;align-self:center}
+
+.editor-body{flex:1;min-height:0;display:flex}
+.screen-list{width:176px;flex-shrink:0;background:#fff;border-right:1px solid #e2e8f0;overflow-y:auto;padding:12px 12px 20px}
+.panel-title{font-size:12px;font-weight:700;color:#334155;margin-bottom:10px}
+.sl-item{display:block;width:100%;border:none;background:none;text-align:left;cursor:pointer;margin-bottom:12px;padding:0}
+.sl-thumb{display:flex;justify-content:center;padding:6px;border:2px solid transparent;border-radius:6px;background:#f8fafc}
+.sl-item.active .sl-thumb{border-color:#2563eb}
+.sl-item:hover .sl-thumb{background:#eef2f7}
+.sl-name{font-size:12px;color:#475569;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl-item.active .sl-name{color:#1d4ed8;font-weight:600}
+
+.canvas-area{flex:1;min-width:0;position:relative;background:#e2e8f0}
+#canvas-wrap{position:absolute;inset:0;overflow:auto}
+#canvas-wrap.hand{cursor:grab}
+#canvas-wrap.grabbing{cursor:grabbing}
+#zoom-spacer{position:absolute;left:0;top:0;pointer-events:none}
+#stage{position:absolute;left:0;top:0;padding:48px;transform-origin:0 0}
+.zoom-badge{position:absolute;right:16px;bottom:14px;background:#fff;border:1px solid #cbd5e1;border-radius:999px;padding:2px 12px;font-size:12px;color:#475569;pointer-events:none}
+
+/* 画面（描いた業務アプリの画面）。中身は HTML の要素で描く */
+.screen-frame{position:relative}
+.screen{position:relative;background:#fff;box-shadow:0 1px 6px rgba(15,23,42,.22);overflow:hidden}
+.screen.grid{background-image:linear-gradient(to right,rgba(148,163,184,.22) 1px,transparent 1px),linear-gradient(to bottom,rgba(148,163,184,.22) 1px,transparent 1px);background-size:8px 8px}
+.screen-band{height:40px;background:#1f2f4f;color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;padding:0 16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.screen-resize{position:absolute;left:0;right:0;bottom:22px;height:14px;transform:translateY(50%);cursor:ns-resize;display:flex;align-items:center;justify-content:center}
+.screen-resize span{width:56px;height:6px;border-radius:3px;background:#94a3b8;opacity:.75}
+.screen-resize:hover span{background:#2563eb;opacity:1}
+.screen-size{height:24px;line-height:24px;font-size:12px;color:#64748b;text-align:center;white-space:nowrap}
+body.resizing,body.resizing *{cursor:ns-resize!important}
+
+.side-panel{width:288px;flex-shrink:0;background:#fff;border-left:1px solid #e2e8f0;overflow-y:auto;padding:14px 16px 24px}
+.side-panel section+section{margin-top:10px;padding-top:14px;border-top:1px solid #e2e8f0}
+.seg{display:flex;gap:6px}
+.seg label{flex:1;cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid #cbd5e1;border-radius:6px;padding:6px 2px;font-size:12px;background:#fff}
+.seg small{font-size:10px;color:#64748b}
+.seg input:checked+span{border-color:#2563eb;background:#eff6ff;color:#1d4ed8;font-weight:600}
+.seg input:focus-visible+span{box-shadow:0 0 0 2px rgba(59,130,246,.35)}
+.height-value{font-size:13px;font-weight:600}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;cursor:pointer}
+.check input{margin-top:3px}
+</style>
+</head>
+<body>
+<div id="banner" hidden></div>
+<div id="app"></div>
+<div id="dialog-root"></div>
+<div id="toast" hidden></div>
+<script>
+'use strict';
+// =============================================================================
+// モックイメージメーカー（アプリの画面）
+// 目次
+//   1. 版
+//   2. データの形（純関数）  … 画面設計・画面の作り方、読み込んだデータを今の形に直す migrate()
+//   3. 保存                  … LocalStorageAdapter（ブラウザ）・FileAdapter（Electron）・BlockedAdapter（保存を止める）
+//   4. 元に戻す              … Store（commit・undo・redo・persist・subscribe）と、画面設計の操作（actions）
+//   5. 共通の部品            … 文字の置き換え・日時・お知らせ・小さな窓・作る先の選び方・縮小画像
+//   6. 一覧の画面            … カード・名前で探す・新規作成・名前の変更・複製・ごみ箱
+//   7. 編集の画面            … メニューバー・画面の一覧・画面（帯・マス目・高さ）・右の設定の欄・拡大縮小・ハンド
+//   8. 命令（runCommand）    … ボタン・キー・アプリのメニューからの命令を 1 か所で受ける
+//   9. 起動
+//  10. テスト用の窓口（window.__test__。テストのときだけ埋まる）
+// 手本: 保存と元に戻すと一覧の画面は CheckListMaker の index.html、
+//       拡大縮小とハンドとメニューバーの見た目はビジネスダイアグラムメーカー（参考/diagram_v8.31.html）から写した。
+// =============================================================================
+
+// ── 1. 版 ─────────────────────────────────────────────────────────────────────
+const APP_VERSION = '1.00';
+
+// ── 2. データの形（純関数）────────────────────────────────────────────────────
+// { schemaVersion, settings: { customTargets }, designs: [ { id, name, target, description,
+//   createdAt, updatedAt, trashedAt, revisions, screens: [ { id, name, device, width, height,
+//   showHeader, tablePos, parts, callouts } ] } ] }
+// 倍率・モード・開いている画面は保存しない（下の ui に持つ）。
+const SCHEMA_VERSION = 1;
+const STORAGE_KEY = 'mockimagemaker.v1';
+const HISTORY_LIMIT = 50;
+const GRID = 8;
+const NAME_MAX = 100;
+const TARGET_MAX = 60;
+const DEVICES = {
+  pc: { label: 'パソコン', width: 1280, height: 800 },
+  tablet: { label: 'タブレット', width: 768, height: 1024 },
+  phone: { label: 'スマホ', width: 375, height: 667 },
+};
+const BUILTIN_TARGETS = [
+  { id: 'kintone', label: 'kintone' },
+  { id: 'salesforce', label: 'Salesforce' },
+  { id: 'claude', label: 'Claude で作るアプリ' },
+];
+const FIRST_SCREEN_NAME = '画面 1';
+
+const clone = (obj) => JSON.parse(JSON.stringify(obj));
+const nowIso = () => new Date().toISOString();
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+const str = (v) => (typeof v === 'string' ? v : '');
+
+function newId(prefix) {
+  const c = window.crypto;
+  if (c && typeof c.randomUUID === 'function') return prefix + '-' + c.randomUUID();
+  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+// 名前の前後の空白を取り、続く空白を 1 つにする。長すぎる名前は切る
+function cleanName(s, max = NAME_MAX) {
+  return String(s == null ? '' : s).trim().replace(/\s+/g, ' ').slice(0, max);
+}
+
+function createInitialState() {
+  return { schemaVersion: SCHEMA_VERSION, settings: { customTargets: [] }, designs: [] };
+}
+
+function createScreenData(name, device = 'pc') {
+  const d = DEVICES[device];
+  return { id: newId('s'), name, device, width: d.width, height: d.height, showHeader: true, tablePos: 'right', parts: [], callouts: [] };
+}
+
+function createDesignData(name, target, now = nowIso()) {
+  return {
+    id: newId('d'), name, target, description: '', createdAt: now, updatedAt: now,
+    trashedAt: null, revisions: [], screens: [createScreenData(FIRST_SCREEN_NAME)],
+  };
+}
+
+// 高さは、機器の 1 画面分から 8 ドットずつ伸ばせる（1 画面分より低くはできない）
+function snapHeight(h, device) {
+  const min = DEVICES[device].height;
+  const extra = Math.round((Number(h) - min) / GRID) * GRID;
+  return min + Math.max(0, extra || 0);
+}
+
+// 機器の種類を変えると、幅はその機器の幅になる。下へ伸ばした分は、新しい機器の 1 画面分に足す
+function changeDevice(screen, device) {
+  const extra = Math.max(0, screen.height - DEVICES[screen.device].height);
+  return { ...screen, device, width: DEVICES[device].width, height: snapHeight(DEVICES[device].height + extra, device) };
+}
+
+function builtinTarget(id) {
+  return BUILTIN_TARGETS.find((t) => t.id === id) || null;
+}
+function targetLabel(target) {
+  const b = builtinTarget(target);
+  return b ? b.label : target || '作る先なし';
+}
+// 「その他」に書いた名前。kintone などと同じ名前なら、そちらを選んだことにする
+function resolveTargetName(text) {
+  const s = cleanName(text, TARGET_MAX);
+  const low = s.toLowerCase();
+  const b = BUILTIN_TARGETS.find((t) => t.label.toLowerCase() === low || t.id === low);
+  return b ? b.id : s;
+}
+function addCustomTarget(state, target) {
+  if (!target || builtinTarget(target)) return;
+  if (!state.settings.customTargets.includes(target)) state.settings.customTargets.push(target);
+}
+
+const byNewest = (key) => (a, b) => String(b[key] || '').localeCompare(String(a[key] || ''));
+// 一覧に出す画面設計（ごみ箱のものを除く・名前で探す・更新の新しい順）
+function visibleDesigns(state, query = '') {
+  const q = cleanName(query).toLowerCase();
+  return state.designs
+    .filter((d) => !d.trashedAt && (!q || d.name.toLowerCase().includes(q)))
+    .sort(byNewest('updatedAt'));
+}
+function trashedDesigns(state) {
+  return state.designs.filter((d) => d.trashedAt).sort(byNewest('trashedAt'));
+}
+
+function duplicateDesignData(d, now = nowIso()) {
+  const copy = clone(d);
+  copy.id = newId('d');
+  copy.name = cleanName(d.name + ' のコピー');
+  copy.createdAt = now;
+  copy.updatedAt = now;
+  copy.trashedAt = null;
+  copy.screens.forEach((s) => { s.id = newId('s'); });
+  return copy;
+}
+
+// ── 読み込んだデータを今の形に直す ──
+// 足りない項目を補い、知らない項目はそのまま残す（新しい版で足した項目を消さないため）。
+function normalizeScreen(src, i) {
+  const s = isObj(src) ? src : {};
+  const device = DEVICES[s.device] ? s.device : 'pc';
+  return {
+    ...s,
+    id: str(s.id) || newId('s'),
+    name: typeof s.name === 'string' ? s.name : `画面 ${i + 1}`,
+    device,
+    width: DEVICES[device].width,
+    height: snapHeight(s.height == null ? DEVICES[device].height : s.height, device),
+    showHeader: s.showHeader !== false,
+    tablePos: s.tablePos === 'bottom' ? 'bottom' : 'right',
+    parts: Array.isArray(s.parts) ? s.parts : [],
+    callouts: Array.isArray(s.callouts) ? s.callouts : [],
+  };
+}
+
+function normalizeDesign(src) {
+  const d = isObj(src) ? src : {};
+  const createdAt = str(d.createdAt) || nowIso();
+  const screens = Array.isArray(d.screens) && d.screens.length ? d.screens.map(normalizeScreen) : [createScreenData(FIRST_SCREEN_NAME)];
+  return {
+    ...d,
+    id: str(d.id) || newId('d'),
+    name: cleanName(d.name) || '名前なし',
+    target: str(d.target),
+    description: str(d.description),
+    createdAt,
+    updatedAt: str(d.updatedAt) || createdAt,
+    trashedAt: str(d.trashedAt) || null,
+    revisions: Array.isArray(d.revisions) ? d.revisions : [],
+    screens,
+  };
+}
+
+function normalizeState(raw, schemaVersion) {
+  const settings = isObj(raw.settings) ? raw.settings : {};
+  const customs = Array.isArray(settings.customTargets) ? settings.customTargets : [];
+  return {
+    ...raw,
+    schemaVersion,
+    settings: { ...settings, customTargets: [...new Set(customs.filter((t) => typeof t === 'string' && t.trim()))] },
+    designs: (Array.isArray(raw.designs) ? raw.designs : []).filter(isObj).map(normalizeDesign),
+  };
+}
+
+// 戻り値 { state, blockReason }。blockReason があるときは、保存を止める（データを消さないため）
+function migrate(raw) {
+  if (raw == null) return { state: createInitialState(), blockReason: null };
+  if (!isObj(raw)) return { state: createInitialState(), blockReason: '保存データの形が正しくありません。' };
+  const v = raw.schemaVersion === undefined ? 1 : Number(raw.schemaVersion);
+  if (!Number.isInteger(v) || v < 1) return { state: createInitialState(), blockReason: '保存データの版（schemaVersion）が正しくありません。' };
+  if (v > SCHEMA_VERSION) {
+    return {
+      state: normalizeState(raw, v),
+      blockReason: `この保存データは新しい版のアプリで保存されています（データの形の版 ${v}。この版のアプリが分かるのは ${SCHEMA_VERSION} まで）。新しい版のアプリを使ってください。`,
+    };
+  }
+  // データの形を上げるときは、ここに「v が N より小さければ N の形に直す」を足していく
+  return { state: normalizeState(raw, SCHEMA_VERSION), blockReason: null };
+}
+
+// ── 3. 保存 ───────────────────────────────────────────────────────────────────
+// ブラウザで開いたとき。容量の上限に当たると save() が false を返す
+class LocalStorageAdapter {
+  constructor(key = STORAGE_KEY) {
+    this.key = key;
+  }
+  // 中身が壊れているときは例外を投げる（起動のときに保存を止める）
+  load() {
+    const raw = localStorage.getItem(this.key);
+    return raw ? JSON.parse(raw) : null;
+  }
+  save(state) {
+    try {
+      localStorage.setItem(this.key, JSON.stringify(state));
+      return true;
+    } catch (e) {
+      console.warn('保存に失敗しました:', e);
+      return false;
+    }
+  }
+}
+
+// Electron で動いているとき。前の保存が終わるのを待たずにすぐ送る
+// （1 つずつ並べて書くのは、メインプロセスの storage.js の saveChain が受け持つ）
+class FileAdapter {
+  constructor() {
+    this.pending = Promise.resolve();
+    this.lastError = null;
+  }
+  save(state) {
+    const json = JSON.stringify(state);
+    this.pending = window.storageAPI.save(json)
+      .then((res) => {
+        if (!res || !res.ok) throw new Error((res && res.error) || 'わからない理由');
+        this.lastError = null;
+      })
+      .catch((e) => {
+        this.lastError = e;
+        console.error('ファイルへの保存に失敗しました:', e);
+        showBanner('ファイルへの保存に失敗しました（' + (e.message || e) + '）。ディスクの空きとフォルダの書き込みの許可を確かめてください。');
+      });
+    return true;
+  }
+}
+
+// 保存を止めているとき（読み込めなかった・新しい版のデータ）。何も書かない
+class BlockedAdapter {
+  save() {
+    return true;
+  }
+}
+
+// 戻り値 { store, blockReason, notice }。blockReason があるときは保存を止める。notice は知らせるだけ（保存は続ける）
+async function createAppStore() {
+  let raw;
+  let notice = null;
+  try {
+    if (window.storageAPI) {
+      const res = await window.storageAPI.load();
+      if (!res || !res.ok) throw new Error((res && res.error) || '読み込みに失敗しました');
+      raw = res.json == null ? null : JSON.parse(res.json);
+      notice = res.notice || null;
+    } else {
+      raw = new LocalStorageAdapter().load();
+    }
+  } catch (e) {
+    const reason = '保存データを読み込めませんでした（' + (e.message || e) + '）。';
+    return { store: new Store(new BlockedAdapter(), createInitialState()), blockReason: reason };
+  }
+  const { state, blockReason } = migrate(raw);
+  if (blockReason) return { store: new Store(new BlockedAdapter(), state), blockReason };
+  const adapter = window.storageAPI ? new FileAdapter() : new LocalStorageAdapter();
+  return { store: new Store(adapter, state), blockReason: null, notice };
+}
+
+// ── 4. 元に戻す ───────────────────────────────────────────────────────────────
+// 変更はすべて commit() を通す。変更の前の写しを履歴に積み、保存し、画面を描き直す。
+class Store {
+  constructor(adapter, state) {
+    this.adapter = adapter;
+    this.state = state;
+    this.undoStack = [];
+    this.redoStack = [];
+    this.listeners = new Set();
+  }
+  subscribe(fn) {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+  notify() {
+    this.listeners.forEach((fn) => fn(this.state));
+  }
+  commit(mutator, { history = true } = {}) {
+    if (history) {
+      this.undoStack.push(clone(this.state));
+      if (this.undoStack.length > HISTORY_LIMIT) this.undoStack.shift();
+      this.redoStack = [];
+    }
+    mutator(this.state);
+    this.persist();
+    this.notify();
+  }
+  canUndo() { return this.undoStack.length > 0; }
+  canRedo() { return this.redoStack.length > 0; }
+  undo() {
+    if (!this.canUndo()) return;
+    this.redoStack.push(clone(this.state));
+    this.state = this.undoStack.pop();
+    this.persist();
+    this.notify();
+  }
+  redo() {
+    if (!this.canRedo()) return;
+    this.undoStack.push(clone(this.state));
+    this.state = this.redoStack.pop();
+    this.persist();
+    this.notify();
+  }
+  // 画面設計を開くとき・一覧へ戻るとき・完全に削除したときに呼ぶ（開いていない画面設計が戻るのを防ぐ）
+  clearHistory() {
+    this.undoStack = [];
+    this.redoStack = [];
+  }
+  persist() {
+    this.lastSaveOk = this.adapter.save(this.state);
+    if (this.lastSaveOk === false) showBanner('保存に失敗しました。ブラウザの保存領域がいっぱいの可能性があります。');
+    return this.lastSaveOk;
+  }
+}
+
+let store = null;
+const findDesign = (state, id) => state.designs.find((d) => d.id === id) || null;
+
+// ── 画面設計の操作（store を書き換える）──
+function mutateDesign(id, fn, { touch = true } = {}) {
+  if (!findDesign(store.state, id)) return false;
+  store.commit((s) => {
+    const d = findDesign(s, id);
+    fn(d, s);
+    if (touch) d.updatedAt = nowIso();
+  });
+  return true;
+}
+
+const actions = {
+  createDesign(name, target) {
+    const n = cleanName(name);
+    if (!n) return null;
+    const d = createDesignData(n, target);
+    store.commit((s) => {
+      addCustomTarget(s, target);
+      s.designs.push(d);
+    });
+    return d.id;
+  },
+  renameDesign(id, name) {
+    const n = cleanName(name);
+    if (!n) return false;
+    return mutateDesign(id, (d) => { d.name = n; });
+  },
+  // patch は { name, target, description } のどれか
+  updateDesignInfo(id, patch) {
+    return mutateDesign(id, (d, s) => {
+      if ('name' in patch) d.name = cleanName(patch.name) || d.name;
+      if ('target' in patch) {
+        d.target = patch.target;
+        addCustomTarget(s, patch.target);
+      }
+      if ('description' in patch) d.description = String(patch.description);
+    });
+  },
+  duplicateDesign(id) {
+    const src = findDesign(store.state, id);
+    if (!src) return null;
+    const copy = duplicateDesignData(src);
+    store.commit((s) => { s.designs.push(copy); });
+    return copy.id;
+  },
+  trashDesign(id) {
+    return mutateDesign(id, (d) => { d.trashedAt = nowIso(); }, { touch: false });
+  },
+  restoreDesign(id) {
+    return mutateDesign(id, (d) => { d.trashedAt = null; }, { touch: false });
+  },
+  // 完全に削除は戻せない。履歴に写しが残っていると元に戻すで戻ってしまうので、履歴も空にする
+  deleteDesignForever(id) {
+    if (!findDesign(store.state, id)) return false;
+    store.clearHistory();
+    store.commit((s) => { s.designs = s.designs.filter((d) => d.id !== id); }, { history: false });
+    return true;
+  },
+  // patch は { name, device, height, showHeader } のどれか
+  updateScreen(designId, screenId, patch) {
+    return mutateDesign(designId, (d) => {
+      const i = d.screens.findIndex((x) => x.id === screenId);
+      if (i < 0) return;
+      let sc = d.screens[i];
+      if ('device' in patch && DEVICES[patch.device]) sc = changeDevice(sc, patch.device);
+      if ('height' in patch) sc = { ...sc, height: snapHeight(patch.height, sc.device) };
+      if ('name' in patch) sc = { ...sc, name: cleanName(patch.name) || sc.name };
+      if ('showHeader' in patch) sc = { ...sc, showHeader: !!patch.showHeader };
+      d.screens[i] = sc;
+    });
+  },
+};
+
+// ── 5. 共通の部品 ─────────────────────────────────────────────────────────────
+const $ = (sel, root = document) => root.querySelector(sel);
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function fmtDateTime(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function showBanner(message) {
+  const el = $('#banner');
+  el.textContent = message;
+  el.hidden = false;
+}
+
+let toastTimer = null;
+function toast(message) {
+  const el = $('#toast');
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 3500);
+}
+
+// 小さな窓。OK で collect(窓) の結果（{ error } なら窓に出して閉じない）、キャンセルで null を返す。
+// 窓は 1 つだけ。開いている間は後ろの画面（#app）を inert にして、押せないようにする
+function showDialog({ title, body, okLabel, okClass = 'primary', init, collect }) {
+  if (isDialogOpen()) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const root = $('#dialog-root');
+    root.innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+          <h2>${esc(title)}</h2>
+          <div class="modal-body">${body}</div>
+          <p class="modal-error" hidden></p>
+          <div class="modal-actions">
+            <button class="btn" data-dlg="cancel">キャンセル</button>
+            <button class="btn ${okClass}" data-dlg="ok">${esc(okLabel)}</button>
+          </div>
+        </div>
+      </div>`;
+    const modal = $('.modal', root);
+    const close = (value) => {
+      document.removeEventListener('keydown', onKey, true);
+      root.innerHTML = '';
+      appEl().removeAttribute('inert');
+      resolve(value);
+    };
+    const ok = () => {
+      const r = collect ? collect(modal) : true;
+      if (r && r.error) {
+        const errEl = $('.modal-error', modal);
+        errEl.textContent = r.error;
+        errEl.hidden = false;
+        return;
+      }
+      close(r);
+    };
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(null); return; }
+      if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+      // ボタンの上の Enter は、ブラウザの本来の動き（そのボタンを押す）に任せる。複数行の欄では改行にする
+      if (e.target && e.target.closest && e.target.closest('button, textarea')) return;
+      e.preventDefault();
+      ok();
+    }
+    document.addEventListener('keydown', onKey, true);
+    $('[data-dlg="cancel"]', modal).addEventListener('click', () => close(null));
+    $('[data-dlg="ok"]', modal).addEventListener('click', ok);
+    appEl().setAttribute('inert', '');
+    if (init) init(modal);
+    // 窓の中にフォーカスを移す。危ない操作の窓では「キャンセル」に置く（Enter の押し間違いで実行しないため）
+    if (!modal.contains(document.activeElement)) $(okClass === 'danger' ? '[data-dlg="cancel"]' : '[data-dlg="ok"]', modal).focus();
+  });
+}
+const isDialogOpen = () => !!$('#dialog-root .modal-overlay');
+
+// 作る先を選ぶ欄。「その他」を選ぶと名前を書く欄が出る。選んだ値は readTargetPicker で読む
+const OTHER_TARGET = '__other__';
+function targetPickerHtml(state, current) {
+  const customs = [...state.settings.customTargets];
+  if (current && !builtinTarget(current) && !customs.includes(current)) customs.push(current);
+  const opt = (v, label, sel) => `<option value="${esc(v)}"${sel ? ' selected' : ''}>${esc(label)}</option>`;
+  return `
+    <div class="target-picker">
+      <select class="target-select" aria-label="作る先">
+        ${current ? '' : opt('', '（選んでいません）', true)}
+        ${BUILTIN_TARGETS.map((t) => opt('b:' + t.id, t.label, current === t.id)).join('')}
+        ${customs.map((c) => opt('c:' + c, c, current === c)).join('')}
+        ${opt(OTHER_TARGET, 'その他（名前を書く）', false)}
+      </select>
+      <input type="text" class="target-other" maxlength="${TARGET_MAX}" placeholder="作る先の名前" aria-label="作る先の名前" hidden>
+    </div>`;
+}
+// 戻り値: 作る先（kintone などは id、その他は書いた名前）。その他で名前が空なら null
+function readTargetPicker(root) {
+  const v = $('.target-select', root).value;
+  if (v === OTHER_TARGET) return resolveTargetName($('.target-other', root).value) || null;
+  return v.slice(2);
+}
+function bindTargetPicker(root, onPick) {
+  const sel = $('.target-select', root);
+  const other = $('.target-other', root);
+  sel.addEventListener('change', () => {
+    other.hidden = sel.value !== OTHER_TARGET;
+    if (!other.hidden) { other.focus(); return; }
+    if (onPick && sel.value) onPick(readTargetPicker(root));
+  });
+  if (!onPick) return;
+  other.addEventListener('change', () => {
+    const t = readTargetPicker(root);
+    if (t) onPick(t);
+  });
+}
+
+function targetChip(target) {
+  const cls = builtinTarget(target) ? ' t-' + target : '';
+  return `<span class="chip${cls}">${esc(targetLabel(target))}</span>`;
+}
+
+// 画面を、編集の画面と同じ HTML で描く（縮小画像にも使う）
+function screenHtml(design, screen, { grid = false, height = screen.height } = {}) {
+  const band = screen.showHeader ? `<div class="screen-band">${esc(design.name)} ／ ${esc(screen.name)}</div>` : '';
+  return `<div class="screen${grid ? ' grid' : ''}" style="width:${screen.width}px;height:${height}px">${band}</div>`;
+}
+
+// 縮小画像。画面の上から機器の 1 画面分を、箱（boxW × boxH）に収まるように CSS の scale で縮める
+function thumbHtml(design, screen, boxW, boxH) {
+  const viewH = Math.min(screen.height, DEVICES[screen.device].height);
+  const k = Math.min(boxW / screen.width, boxH / viewH);
+  const w = Math.round(screen.width * k);
+  const h = Math.round(viewH * k);
+  return `<div class="thumb" style="width:${w}px;height:${h}px"><div class="thumb-scale" style="transform:scale(${k.toFixed(4)})">${screenHtml(design, screen)}</div></div>`;
+}
+
+// ── 6. 一覧の画面 ─────────────────────────────────────────────────────────────
+// 画面の状態（保存しない）
+const ui = {
+  view: 'home', // 'home'（一覧）か 'editor'（編集）
+  query: '', // 名前で探す欄の文字
+  menuFor: null, // 「…」の小さなメニューを開いているカードの画面設計の id
+  trashOpen: false,
+  designId: null,
+  screenId: null,
+  zoom: 1,
+  mode: 'select', // 'select' か 'hand'
+  previewHeight: null, // 下の縁をドラッグしている間の高さ
+};
+const appEl = () => $('#app');
+
+function renderHome() {
+  appEl().innerHTML = `
+    <header class="brandbar">
+      <span class="brand">モックイメージメーカー</span><span class="brand-ver">v${APP_VERSION}</span>
+      <span class="spacer"></span>
+      <button class="tbtn" data-action="undo" ${store.canUndo() ? '' : 'disabled'} title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
+      <button class="tbtn" data-action="redo" ${store.canRedo() ? '' : 'disabled'} title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button>
+    </header>
+    <main class="home-scroll">
+      <section class="home">
+        <div class="home-head">
+          <h1>画面設計</h1>
+          <span class="spacer"></span>
+          <label class="search"><span aria-hidden="true">🔍</span><input type="search" id="home-search" placeholder="名前で探す" aria-label="名前で探す" value="${esc(ui.query)}"></label>
+          <button class="btn primary" data-action="new">＋ 新規作成</button>
+        </div>
+        <p class="home-note">更新の新しい順に並べています。カードを押すと開きます。「…」から名前の変更・複製・削除ができます。</p>
+        <div class="cards" id="home-cards">${renderCards()}</div>
+        <div class="trash" id="home-trash">${renderTrash()}</div>
+      </section>
+    </main>`;
+}
+
+function renderCards() {
+  const list = visibleDesigns(store.state, ui.query);
+  if (list.length) return list.map(renderCard).join('');
+  if (!visibleDesigns(store.state).length) return '<p class="empty">まだ画面設計がありません。「＋ 新規作成」から始めましょう。</p>';
+  return `<p class="empty">「${esc(cleanName(ui.query))}」を名前に含む画面設計はありません。</p>`;
+}
+
+function revisionLabel(d) {
+  return d.revisions.length ? `第 ${d.revisions.length} 版` : '版なし';
+}
+
+function renderCard(d) {
+  return `
+    <article class="card" data-id="${esc(d.id)}">
+      <button class="card-open" data-action="open" data-id="${esc(d.id)}" title="「${esc(d.name)}」を開く">
+        <div class="card-thumb">${thumbHtml(d, d.screens[0], 240, 136)}</div>
+        <div class="card-body">
+          <h2 class="card-name">${esc(d.name)}</h2>
+          <div class="card-meta">${targetChip(d.target)}<span>画面 ${d.screens.length} つ・${revisionLabel(d)}</span></div>
+          <div class="card-date">更新 ${fmtDateTime(d.updatedAt)}</div>
+        </div>
+      </button>
+      <button class="card-more" data-action="card-menu" data-id="${esc(d.id)}" aria-label="「${esc(d.name)}」の操作" title="名前の変更・複製・削除">…</button>
+      ${ui.menuFor === d.id ? cardMenuHtml(d) : ''}
+    </article>`;
+}
+
+function cardMenuHtml(d) {
+  const id = esc(d.id);
+  return `
+    <div class="card-menu" role="menu">
+      <button role="menuitem" data-action="rename" data-id="${id}">名前の変更</button>
+      <button role="menuitem" data-action="duplicate" data-id="${id}">複製</button>
+      <button role="menuitem" class="danger" data-action="trash" data-id="${id}">削除（ごみ箱へ移す）</button>
+    </div>`;
+}
+
+function renderTrash() {
+  const list = trashedDesigns(store.state);
+  const head = `<button class="trash-toggle" data-action="toggle-trash" aria-expanded="${ui.trashOpen}">${ui.trashOpen ? '▾' : '▸'} ごみ箱（${list.length}）</button>`;
+  if (!ui.trashOpen) return head;
+  const rows = list.map((d) => `
+    <div class="trash-row" data-id="${esc(d.id)}">
+      <span class="trash-name">${esc(d.name)}</span>${targetChip(d.target)}
+      <span class="trash-date">ごみ箱へ移した日時 ${fmtDateTime(d.trashedAt)}</span>
+      <button class="btn small" data-action="restore" data-id="${esc(d.id)}">戻す</button>
+      <button class="btn small danger-text" data-action="delete-forever" data-id="${esc(d.id)}">完全に削除</button>
+    </div>`).join('');
+  return head + `
+    <div class="trash-list">
+      ${rows || '<p class="trash-empty">ごみ箱は空です。</p>'}
+      <p class="trash-note">「戻す」を押すと一覧に戻ります。「完全に削除」を押すと、元に戻せません。</p>
+    </div>`;
+}
+
+function refreshCards() {
+  const el = $('#home-cards');
+  if (el) el.innerHTML = renderCards();
+}
+
+function openNewDesignDialog() {
+  return showDialog({
+    title: '新しい画面設計',
+    okLabel: '作成して開く',
+    body: `
+      <label class="field"><span>名前（業務アプリの名前）</span><input type="text" name="name" maxlength="${NAME_MAX}" placeholder="例: 顧客管理アプリ"></label>
+      <div class="field"><span>作る先</span>${targetPickerHtml(store.state, 'kintone')}</div>
+      <p class="hint">白紙の画面を 1 つ入れて開きます。説明は、開いたあとに右の欄で書けます。</p>`,
+    init: (m) => {
+      bindTargetPicker(m);
+      $('[name=name]', m).focus();
+    },
+    collect: (m) => {
+      const name = cleanName($('[name=name]', m).value);
+      if (!name) return { error: '名前を書いてください。' };
+      const target = readTargetPicker(m);
+      if (!target) return { error: '「その他」を選んだときは、作る先の名前を書いてください。' };
+      return { name, target };
+    },
+  });
+}
+
+function openRenameDialog(d) {
+  return showDialog({
+    title: '名前の変更',
+    okLabel: '変更する',
+    body: `<label class="field"><span>画面設計の名前</span><input type="text" name="name" maxlength="${NAME_MAX}" value="${esc(d.name)}"></label>`,
+    init: (m) => {
+      const input = $('[name=name]', m);
+      input.focus();
+      input.select();
+    },
+    collect: (m) => {
+      const name = cleanName($('[name=name]', m).value);
+      return name ? { name } : { error: '名前を書いてください。' };
+    },
+  });
+}
+
+function openDeleteForeverDialog(d) {
+  return showDialog({
+    title: '完全に削除',
+    okLabel: '完全に削除する',
+    okClass: 'danger',
+    body: `<p>「${esc(d.name)}」を完全に削除します。</p><p class="warn">完全に削除すると、元に戻せません（「元に戻す」でも戻りません）。</p>`,
+  });
+}
+
+async function onHomeAction(action, id) {
+  const d = id ? findDesign(store.state, id) : null;
+  switch (action) {
+    case 'new': {
+      const r = await openNewDesignDialog();
+      if (r) openDesign(actions.createDesign(r.name, r.target));
+      return;
+    }
+    case 'open': openDesign(id); return;
+    case 'card-menu': ui.menuFor = ui.menuFor === id ? null : id; refreshCards(); return;
+    case 'toggle-trash': ui.trashOpen = !ui.trashOpen; $('#home-trash').innerHTML = renderTrash(); return;
+  }
+  if (!d) return;
+  if (ui.menuFor) {
+    ui.menuFor = null;
+    refreshCards();
+  }
+  await onDesignAction(action, d);
+}
+
+async function onDesignAction(action, d) {
+  switch (action) {
+    case 'rename': {
+      const r = await openRenameDialog(d);
+      if (r && r.name !== d.name) actions.renameDesign(d.id, r.name);
+      return;
+    }
+    case 'duplicate':
+      actions.duplicateDesign(d.id);
+      toast(`「${d.name} のコピー」を作りました。`);
+      return;
+    case 'trash':
+      actions.trashDesign(d.id);
+      toast(`「${d.name}」をごみ箱へ移しました。戻すときは、下の「ごみ箱」か「元に戻す」（Ctrl+Z）を使います。`);
+      return;
+    case 'restore':
+      actions.restoreDesign(d.id);
+      toast(`「${d.name}」を一覧に戻しました。`);
+      return;
+    case 'delete-forever':
+      if (await openDeleteForeverDialog(d)) {
+        actions.deleteDesignForever(d.id);
+        toast(`「${d.name}」を完全に削除しました。`);
+      }
+  }
+}
+
+// ── 7. 編集の画面 ─────────────────────────────────────────────────────────────
+const ZOOM_STEPS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2];
+const STAGE_PAD = 48; // 画面のまわりの余白（#stage の padding と同じ）
+const SIZE_LABEL_H = 24; // 画面の下の「パソコン・1280 × 800」の行の高さ
+
+const currentDesign = () => findDesign(store.state, ui.designId);
+function currentScreen() {
+  const d = currentDesign();
+  if (!d) return null;
+  return d.screens.find((s) => s.id === ui.screenId) || d.screens[0];
+}
+
+function openDesign(id) {
+  const d = findDesign(store.state, id);
+  if (!d) return;
+  Object.assign(ui, { view: 'editor', designId: id, screenId: d.screens[0].id, zoom: 1, mode: 'select', menuFor: null, previewHeight: null });
+  store.clearHistory();
+  mountEditor();
+}
+
+function goHome() {
+  Object.assign(ui, { view: 'home', designId: null, screenId: null, previewHeight: null });
+  store.clearHistory();
+  renderHome();
+}
+
+function mountEditor() {
+  appEl().innerHTML = `
+    <header class="brandbar"><span class="brand">モックイメージメーカー</span><span class="brand-design" id="ed-title"></span></header>
+    <div id="toolbar">${toolbarHtml()}</div>
+    <div class="editor-body">
+      <aside class="screen-list" id="screen-list" aria-label="画面の一覧"></aside>
+      <div class="canvas-area">
+        <div id="canvas-wrap"><div id="zoom-spacer"></div><div id="stage"></div></div>
+        <div class="zoom-badge" id="zoom-badge">100%</div>
+      </div>
+      <aside class="side-panel" id="side-panel" aria-label="設定"></aside>
+    </div>`;
+  initCanvasEvents($('#canvas-wrap'));
+  updateEditor();
+}
+
+function toolbarHtml() {
+  const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
+  return [
+    group('ファイル', '<button class="bigbtn" data-action="home" title="画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>'),
+    group('履歴', `<div class="stack">
+      <button class="tbtn" data-action="undo" id="tb-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
+      <button class="tbtn" data-action="redo" id="tb-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
+    group('モード', `
+      <button class="bigbtn" data-action="mode-select" id="tb-mode-select" title="部品を選んで動かすモード"><span class="ico">➤</span>選択</button>
+      <button class="bigbtn" data-action="mode-hand" id="tb-mode-hand" title="ドラッグで画面を動かすモード（ホイールで拡大縮小）"><span class="ico">✋</span>ハンド</button>`),
+    group('表示', `<div class="stack">
+      <button class="tbtn" data-action="zoom-in" title="拡大（Ctrl+＋・Ctrl+ホイール）">＋ 拡大</button>
+      <button class="tbtn" data-action="zoom-out" title="縮小（Ctrl+－・Ctrl+ホイール）">－ 縮小</button></div>
+      <button class="tbtn zoom-label" data-action="zoom-reset" id="zoom-label" title="100% に戻します（Ctrl+0）">100%</button>`),
+  ].join('');
+}
+
+// keepSide: 右の欄の文字を書き換えたときは、右の欄を描き直さない（次に押した入力欄が作り直されて、文字が打てなくなるため）
+function updateEditor({ keepSide = false } = {}) {
+  const d = currentDesign();
+  if (!d || d.trashedAt) { goHome(); return; }
+  if (!d.screens.some((s) => s.id === ui.screenId)) ui.screenId = d.screens[0].id;
+  $('#ed-title').textContent = `${d.name}（${targetLabel(d.target)}）`;
+  updateToolbarState();
+  $('#screen-list').innerHTML = screenListHtml(d);
+  renderStage();
+  if (!keepSide) renderSidePanel(d);
+}
+
+function updateToolbarState() {
+  $('#tb-undo').disabled = !store.canUndo();
+  $('#tb-redo').disabled = !store.canRedo();
+  $('#tb-mode-select').classList.toggle('on', ui.mode === 'select');
+  $('#tb-mode-hand').classList.toggle('on', ui.mode === 'hand');
+  $('#canvas-wrap').classList.toggle('hand', ui.mode === 'hand');
+}
+
+function screenListHtml(d) {
+  return '<div class="panel-title">画面</div>' + d.screens.map((s, i) => `
+    <button class="sl-item${s.id === ui.screenId ? ' active' : ''}" data-action="select-screen" data-id="${esc(s.id)}" title="${esc(s.name)}">
+      <div class="sl-thumb">${thumbHtml(d, s, 132, 84)}</div>
+      <div class="sl-name">${i + 1}　${esc(s.name)}</div>
+    </button>`).join('');
+}
+
+// 真ん中の画面を描く。ドラッグ中は ui.previewHeight の高さで描く（保存はドラッグを放したとき）
+function renderStage() {
+  const d = currentDesign();
+  const s = currentScreen();
+  const h = ui.previewHeight == null ? s.height : ui.previewHeight;
+  $('#stage').innerHTML = `
+    <div class="screen-frame" style="width:${s.width}px">
+      ${screenHtml(d, s, { grid: true, height: h })}
+      <div class="screen-resize" data-drag="resize" title="ドラッグで画面の高さを変えます（8 ドットずつ。機器の 1 画面分より低くはなりません）"><span></span></div>
+      <div class="screen-size">${DEVICES[s.device].label}・${s.width} × ${h}</div>
+    </div>`;
+  const hv = $('#side-height');
+  if (hv) hv.textContent = `${h} ドット`;
+  applyZoom();
+}
+
+function renderSidePanel(d) {
+  const s = currentScreen();
+  const devices = Object.entries(DEVICES).map(([key, v]) => `
+    <label><input type="radio" name="device" value="${key}" data-field="device"${s.device === key ? ' checked' : ''}><span>${v.label}<small>幅 ${v.width}</small></span></label>`).join('');
+  $('#side-panel').innerHTML = `
+    <section>
+      <div class="panel-title">画面設計の情報</div>
+      <label class="field"><span>名前</span><input type="text" data-field="design-name" maxlength="${NAME_MAX}" value="${esc(d.name)}"></label>
+      <div class="field"><span>作る先</span>${targetPickerHtml(store.state, d.target)}</div>
+      <label class="field"><span>説明</span><textarea data-field="design-desc" rows="4" placeholder="この業務アプリで何をするか など">${esc(d.description)}</textarea></label>
+    </section>
+    <section>
+      <div class="panel-title">画面の設定</div>
+      <label class="field"><span>画面の名前</span><input type="text" data-field="screen-name" maxlength="${NAME_MAX}" value="${esc(s.name)}"></label>
+      <div class="field"><span>機器の種類</span><div class="seg">${devices}</div></div>
+      <div class="field"><span>高さ</span><span class="height-value" id="side-height">${s.height} ドット</span>
+        <span class="hint">画面の下の縁をドラッグすると、8 ドットずつ伸ばせます。</span></div>
+      <label class="check"><input type="checkbox" data-field="screen-header"${s.showHeader ? ' checked' : ''}>画面のいちばん上に「業務アプリ名 ／ 画面の名前」の帯を付ける</label>
+    </section>`;
+  bindTargetPicker($('#side-panel'), (t) => actions.updateDesignInfo(d.id, { target: t }));
+}
+
+let keepSideOnNotify = false;
+function commitKeepSide(fn) {
+  keepSideOnNotify = true;
+  try { fn(); } finally { keepSideOnNotify = false; }
+}
+
+// 右の欄の変更（文字は、欄を離れたときか Enter を押したときに保存する）
+function onSidePanelChange(e) {
+  const field = e.target.dataset.field;
+  const d = currentDesign();
+  const s = currentScreen();
+  if (!field || !d) return;
+  const v = e.target.value;
+  if (field === 'design-name' || field === 'screen-name') {
+    const old = field === 'design-name' ? d.name : s.name;
+    const n = cleanName(v);
+    if (!n) { e.target.value = old; toast('名前を空にはできません。'); return; }
+    if (n === old) return;
+    const patch = { name: n };
+    commitKeepSide(() => (field === 'design-name' ? actions.updateDesignInfo(d.id, patch) : actions.updateScreen(d.id, s.id, patch)));
+    return;
+  }
+  if (field === 'design-desc' && v !== d.description) commitKeepSide(() => actions.updateDesignInfo(d.id, { description: v }));
+  if (field === 'device' && v !== s.device) actions.updateScreen(d.id, s.id, { device: v });
+  if (field === 'screen-header') actions.updateScreen(d.id, s.id, { showHeader: e.target.checked });
+}
+
+// 右の欄で打ちかけの文字（まだ change が起きていない）を保存する。
+// 右の欄を作り直す操作（高さのドラッグ）・命令・窓を離れる前に呼ぶ（呼ばないと、作り直しで打った文字が消える）
+const TEXT_FIELDS = ['design-name', 'screen-name', 'design-desc'];
+function flushSideField() {
+  const el = document.activeElement;
+  if (ui.view !== 'editor' || !el || !el.closest || !el.closest('#side-panel')) return;
+  if (!TEXT_FIELDS.includes(el.dataset.field)) return;
+  if (el.dataset.field !== 'design-desc' && !cleanName(el.value)) return; // 名前を消して打ち直している途中は待つ
+  onSidePanelChange({ target: el });
+}
+
+// ── 拡大縮小（ビジネスダイアグラムメーカーの applyZoom・syncZoomSpacer・zoomAtPointer から写した）──
+function stageOffsetX() {
+  return parseFloat($('#stage').style.left) || 0;
+}
+
+// スクロールできる範囲（#zoom-spacer）を、縮めた画面の大きさに合わせる。画面が窓より狭いときは真ん中に置く
+function syncZoomSpacer() {
+  const wrap = $('#canvas-wrap');
+  const s = currentScreen();
+  if (!wrap || !s) return;
+  const h = ui.previewHeight == null ? s.height : ui.previewHeight;
+  const sw = Math.round((s.width + STAGE_PAD * 2) * ui.zoom);
+  const sh = Math.round((h + STAGE_PAD * 2 + SIZE_LABEL_H) * ui.zoom);
+  const offX = Math.max(0, Math.round((wrap.clientWidth - sw) / 2));
+  $('#stage').style.left = offX + 'px';
+  const spacer = $('#zoom-spacer');
+  spacer.style.width = sw + offX + 'px';
+  spacer.style.height = sh + 'px';
+}
+
+function applyZoom() {
+  const stage = $('#stage');
+  if (!stage) return;
+  stage.style.transform = `scale(${ui.zoom})`;
+  syncZoomSpacer();
+  const label = Math.round(ui.zoom * 100) + '%';
+  $('#zoom-label').textContent = label;
+  $('#zoom-badge').textContent = label;
+}
+
+function nextZoom(dir) {
+  if (dir > 0) {
+    const up = ZOOM_STEPS.find((z) => z >= ui.zoom + 0.01);
+    return up == null ? ui.zoom : up;
+  }
+  const down = [...ZOOM_STEPS].reverse().find((z) => z <= ui.zoom - 0.01);
+  return down == null ? ui.zoom : down;
+}
+
+// 窓の中の点（vx, vy）が指している画面の位置を動かさずに、倍率を変える
+function zoomAt(vx, vy, zoom) {
+  const wrap = $('#canvas-wrap');
+  const before = ui.zoom;
+  if (!wrap || zoom === before) return;
+  const cx = (vx + wrap.scrollLeft - stageOffsetX()) / before;
+  const cy = (vy + wrap.scrollTop) / before;
+  ui.zoom = zoom;
+  applyZoom();
+  wrap.scrollLeft = Math.max(0, stageOffsetX() + cx * zoom - vx);
+  wrap.scrollTop = Math.max(0, cy * zoom - vy);
+}
+
+function zoomAtPointer(ev, dir) {
+  const r = $('#canvas-wrap').getBoundingClientRect();
+  zoomAt(ev.clientX - r.left, ev.clientY - r.top, nextZoom(dir));
+}
+
+// ボタン・キー・メニューからの拡大縮小は、見えている部分の真ん中を中心にする
+function zoomByCommand(cmd) {
+  const wrap = $('#canvas-wrap');
+  const zoom = cmd === 'zoomReset' ? 1 : nextZoom(cmd === 'zoomIn' ? 1 : -1);
+  zoomAt(wrap.clientWidth / 2, wrap.clientHeight / 2, zoom);
+}
+
+function setMode(mode) {
+  ui.mode = mode;
+  updateToolbarState();
+}
+
+// ── ハンドツールと高さのドラッグ（ビジネスダイアグラムメーカーの initHandTool から写した）──
+let drag = null;
+
+function initCanvasEvents(wrap) {
+  wrap.addEventListener('mousedown', (ev) => {
+    if (ev.button !== 0) return;
+    if (ev.target.closest('[data-drag="resize"]')) { startResize(ev, wrap); return; }
+    if (ui.mode !== 'hand') return;
+    ev.preventDefault();
+    drag = { kind: 'pan', wrap, sx: ev.clientX, sy: ev.clientY, sl: wrap.scrollLeft, st: wrap.scrollTop };
+    wrap.classList.add('grabbing');
+  });
+  // ハンドのときはホイールで、どのモードでも Ctrl+ホイールで、カーソルの位置を中心に拡大縮小する
+  wrap.addEventListener('wheel', (ev) => {
+    if (ui.mode !== 'hand' && !(ev.ctrlKey || ev.metaKey)) return;
+    ev.preventDefault();
+    if (ev.deltaY !== 0) zoomAtPointer(ev, ev.deltaY < 0 ? 1 : -1);
+  }, { passive: false });
+}
+
+function startResize(ev, wrap) {
+  ev.preventDefault();
+  flushSideField();
+  const s = currentScreen();
+  drag = { kind: 'resize', wrap, sy: ev.clientY, st: wrap.scrollTop, h0: s.height, device: s.device };
+  document.body.classList.add('resizing');
+}
+
+function onDragMove(ev) {
+  if (!drag) return;
+  const { wrap } = drag;
+  if (drag.kind === 'pan') {
+    wrap.scrollLeft = drag.sl - (ev.clientX - drag.sx);
+    wrap.scrollTop = drag.st - (ev.clientY - drag.sy);
+    return;
+  }
+  // 窓の下の端の近くまで来たら、下へ送る（画面を長く伸ばすため）
+  const r = wrap.getBoundingClientRect();
+  if (r.height && ev.clientY > r.bottom - 32) wrap.scrollTop += 24;
+  const dy = ev.clientY - drag.sy + (wrap.scrollTop - drag.st);
+  const h = snapHeight(drag.h0 + dy / ui.zoom, drag.device);
+  if (h === (ui.previewHeight == null ? drag.h0 : ui.previewHeight)) return;
+  ui.previewHeight = h;
+  renderStage();
+}
+
+function onDragEnd() {
+  if (!drag) return;
+  const done = drag;
+  drag = null;
+  done.wrap.classList.remove('grabbing');
+  document.body.classList.remove('resizing');
+  if (done.kind !== 'resize') return;
+  const h = ui.previewHeight;
+  ui.previewHeight = null;
+  if (h != null && h !== done.h0) actions.updateScreen(ui.designId, currentScreen().id, { height: h });
+  else renderStage();
+}
+
+// ── 8. 命令（runCommand）──────────────────────────────────────────────────────
+// ボタン・キー・アプリのメニュー（Electron の menu:command）からの命令は、すべてここで受ける
+function runCommand(cmd) {
+  if (isDialogOpen()) return false;
+  flushSideField();
+  switch (cmd) {
+    case 'undo': store.undo(); return true;
+    case 'redo': store.redo(); return true;
+    case 'goHome':
+      if (ui.view === 'editor') goHome();
+      return true;
+  }
+  if (ui.view !== 'editor') return false;
+  switch (cmd) {
+    case 'zoomIn': case 'zoomOut': case 'zoomReset': zoomByCommand(cmd); return true;
+    case 'modeSelect': setMode('select'); return true;
+    case 'modeHand': setMode('hand'); return true;
+  }
+  return false;
+}
+
+const ACTION_COMMANDS = {
+  undo: 'undo', redo: 'redo', home: 'goHome', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
+  'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
+};
+
+function onAppClick(e) {
+  if (isDialogOpen()) return;
+  if (ui.menuFor && !e.target.closest('.card-menu, .card-more')) {
+    ui.menuFor = null;
+    refreshCards();
+  }
+  const btn = e.target.closest('[data-action]');
+  if (!btn || btn.disabled) return;
+  const { action, id } = btn.dataset;
+  if (ACTION_COMMANDS[action]) { runCommand(ACTION_COMMANDS[action]); return; }
+  if (action === 'select-screen') {
+    ui.screenId = id;
+    updateEditor();
+    return;
+  }
+  onHomeAction(action, id).catch(reportPageError);
+}
+
+function reportPageError(e) {
+  console.error(e);
+  toast('うまくいきませんでした（' + ((e && e.message) || e) + '）。');
+}
+
+// Ctrl+Z・Ctrl+Y・Ctrl+Shift+Z と、拡大縮小のキー（CheckListMaker v1.0.8 と同じ考え方）。
+// 入力欄の中の Ctrl+Z・Ctrl+Y は、文字の取り消しとしてブラウザに任せる
+function keyCommand(e) {
+  const k = String(e.key || '').toLowerCase();
+  if (k === 'z') return e.shiftKey ? 'redo' : 'undo';
+  if (k === 'y') return 'redo';
+  if (k === '+' || k === '=' || k === ';') return 'zoomIn';
+  if (k === '-') return 'zoomOut';
+  if (k === '0') return 'zoomReset';
+  return null;
+}
+
+function onKeyDown(e) {
+  if (isDialogOpen()) return;
+  if (e.key === 'Escape' && ui.menuFor) { ui.menuFor = null; refreshCards(); return; }
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const cmd = keyCommand(e);
+  if (!cmd) return;
+  const inField = e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
+  if ((cmd === 'undo' || cmd === 'redo') && inField) return;
+  if (cmd.startsWith('zoom') && ui.view !== 'editor') return;
+  e.preventDefault();
+  runCommand(cmd);
+}
+
+function onStoreChange() {
+  if (ui.view === 'home') renderHome();
+  else updateEditor({ keepSide: keepSideOnNotify });
+}
+
+// ── 9. 起動 ───────────────────────────────────────────────────────────────────
+function bindGlobalEvents() {
+  const app = appEl();
+  app.addEventListener('click', onAppClick);
+  app.addEventListener('input', (e) => {
+    if (e.target.id !== 'home-search') return;
+    ui.query = e.target.value;
+    refreshCards();
+  });
+  app.addEventListener('change', (e) => {
+    if (e.target.closest('#side-panel') && !e.target.closest('.target-picker')) onSidePanelChange(e);
+  });
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+  window.addEventListener('resize', () => { if (ui.view === 'editor') syncZoomSpacer(); });
+  window.addEventListener('blur', flushSideField);
+  window.addEventListener('beforeunload', flushSideField);
+}
+
+async function boot() {
+  const created = await createAppStore();
+  store = created.store;
+  if (created.blockReason) showBanner(created.blockReason + ' 今のデータを消さないように、保存を止めています。');
+  else if (created.notice) showBanner(created.notice);
+  store.subscribe(onStoreChange);
+  bindGlobalEvents();
+  if (window.menuAPI) window.menuAPI.onCommand(runCommand);
+  renderHome();
+  exposeForTest();
+}
+
+// ── 10. テスト用の窓口 ────────────────────────────────────────────────────────
+// テストの土台（test/harness.js）が起動の前に window.__test__ を置いたときだけ埋める
+function exposeForTest() {
+  if (!window.__test__) return;
+  Object.assign(window.__test__, {
+    store, ui, actions, runCommand, openDesign, goHome, migrate, normalizeState, snapHeight, changeDevice,
+    visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
+    ready: true,
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
