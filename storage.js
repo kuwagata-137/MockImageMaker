@@ -98,7 +98,7 @@ function initStorage(app, ipcMain) {
       .catch((err) => ({ ok: false, error: String(err.message || err) }));
   });
 
-  // 終了の前に、並んでいる書き込みが全部終わるのを待つ（main.js の before-quit）
+  // 終了の前に、並んでいる書き込みが全部終わるのを待つ（main.js の will-quit）
   return { whenIdle: () => saveChain };
 }
 
