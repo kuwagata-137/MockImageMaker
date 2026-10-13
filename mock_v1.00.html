@@ -498,6 +498,99 @@ body.map-dragging,body.map-dragging *{cursor:grabbing!important}
 .lk-pair{display:flex;align-items:center;gap:4px;margin-bottom:5px;font-size:12px}
 .lk-pair select,.lk-pair input{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:6px;padding:4px 5px;background:#fff;font-size:12px}
 .lk-add{border:none;background:none;color:#2563eb;cursor:pointer;font-size:12px;padding:2px 0 6px}
+/* ── 書き出しと取り込み（第 5 段階）───────────────────────────── */
+/* 書き出しの窓（画像 q33） */
+.xp-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.xp-kind{border:1.5px solid #cbd5e1;border-radius:9px;padding:10px 12px;background:#fff;text-align:left;cursor:pointer}
+.xp-kind b{display:flex;align-items:center;gap:6px;font-size:14px;color:#0f172a}
+.xp-kind b i{font-style:normal;font-size:18px}
+.xp-kind small{display:block;color:#64748b;font-size:11.5px;line-height:1.5;margin-top:4px}
+.xp-kind.on{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 2px rgba(37,99,235,.25)}
+.xp-kind.on b{color:#1d4ed8}
+.xp-kind:disabled{opacity:.55;cursor:default;background:#f8fafc}
+.xp-box{border:1px solid #e2e8f0;border-radius:9px;padding:12px 14px 4px;background:#f8fafc}
+.xp-row{display:flex;gap:16px}
+.xp-row>.field{flex:1}
+.xp-pages{display:flex;gap:8px 18px;flex-wrap:wrap;margin-bottom:12px}
+.xp-screens{border:1px solid #cbd5e1;border-radius:7px;background:#fff;padding:6px 10px;max-height:150px;overflow:auto;margin-bottom:10px}
+.xp-screens .check{margin:3px 0}
+.xp-screens .dev{color:#64748b;margin-left:8px;font-size:11px}
+.xp-sub{display:flex;align-items:center;gap:10px;font-size:12px;color:#475569;font-weight:600;margin-bottom:5px}
+.xp-sub .link-btn{font-weight:400}
+.xp-note{font-size:12px;color:#475569;line-height:1.6;margin:2px 0 10px}
+.xp-open{margin-bottom:10px}
+/* 取り込みの確かめの窓（q39） */
+.imp-cmp{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 10px}
+.imp-cmp th,.imp-cmp td{border:1px solid #e2e8f0;padding:5px 8px;text-align:left}
+.imp-cmp thead th{background:#f1f5f9;color:#334155;font-size:12px}
+.imp-cmp tbody th{background:#f8fafc;color:#475569;font-weight:600;width:84px;white-space:nowrap}
+.imp-cmp td.diff{background:#fffbeb;font-weight:600}
+.imp-choice{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.imp-choice .check{font-size:13px}
+/* 単体で開いた HTML の上の帯（q37） */
+.sa-bar{display:flex;align-items:center;gap:12px;background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:6px 16px;font-size:13px;color:#1e3a8a;flex-shrink:0}
+.sa-state{font-size:12px;color:#166534;white-space:nowrap}
+.sa-state.dirty{color:#b45309;font-weight:700}
+.lk-ro{font-size:12px;color:#92400e;line-height:1.6;margin:4px 0 6px}
+.lk-ro-list{font-size:12px;color:#334155;line-height:1.7;background:#fff;border:1px solid #fcd34d;border-radius:6px;padding:6px 8px;margin-bottom:8px}
+/* 最初の画面へ HTML ファイルを落とすとき */
+body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;background:#eff6ff}
+/* 印刷用のページ（表紙・つながりの図・項目の一覧表・画面。画像 q34〜q36）。画面の中で測るときも、印刷用の文書でも同じ CSS を使う */
+.pg{background:#fff;position:relative;overflow:hidden;box-shadow:0 0 0 1px #94a3b8;flex-shrink:0;color:#1e293b;font-size:13px}
+.pg-cover{height:100%;padding:44px 56px 36px;display:flex;flex-direction:column}
+.cv-kicker{font-size:12px;letter-spacing:.25em;color:#64748b;font-weight:700}
+.cv-title{font-size:34px;font-weight:700;color:#0f172a;margin:4px 0 10px;line-height:1.3;overflow-wrap:anywhere}
+.cv-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:#475569}
+.cv-meta b{color:#1e293b;font-weight:600}
+.cv-rule{border:none;border-top:3px solid #1d3f6e;margin:16px 0 14px}
+.cv-sec h3{font-size:13px;color:#1d3f6e;margin-bottom:6px;font-weight:700}
+.cv-desc{font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;max-height:140px;overflow:hidden}
+.cv-desc.none{color:#94a3b8}
+.cv-cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:18px;min-height:0}
+.cv-cols.stack{grid-template-columns:1fr;gap:18px}
+.cv-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.cv-table th{background:#f1f5f9;color:#334155;font-weight:600;text-align:left;padding:5px 8px;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;white-space:nowrap}
+.cv-table td{padding:5px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;overflow-wrap:anywhere}
+.cv-table td.no,.cv-table th.no{text-align:right;width:52px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cv-table td.dev{color:#64748b;white-space:nowrap;width:88px}
+.cv-table tr.lead td.nm{color:#1d3f6e}
+.cv-table td.empty{color:#94a3b8;text-align:center;padding:14px 8px}
+.cv-spacer{flex:1}
+.cv-foot{font-size:11px;color:#94a3b8;display:flex;justify-content:space-between;margin-top:12px}
+.pg-in{height:100%;padding:30px 40px 18px;display:flex;flex-direction:column}
+.pg-head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid #1d3f6e;padding-bottom:6px;margin-bottom:12px;flex-shrink:0;min-width:0}
+.pg-head h2{font-size:17px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg-head span{font-size:12px;color:#64748b;white-space:nowrap}
+.pg-body{flex:1;min-height:0;position:relative;overflow:hidden}
+.pg-foot{display:flex;justify-content:space-between;gap:16px;font-size:10.5px;color:#64748b;margin-top:8px;border-top:1px solid #e2e8f0;padding-top:5px;flex-shrink:0}
+.pg-foot span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xp-itable{border-collapse:collapse;width:100%;font-size:12px;table-layout:fixed}
+.xp-itable th,.xp-itable td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;line-height:1.5;overflow-wrap:anywhere}
+.xp-itable th{background:#eef2f7;color:#334155;font-size:11.5px;white-space:nowrap}
+.xp-itable td.set{white-space:pre-line}
+.xp-itable .none{color:#94a3b8}
+.xp-itable small{color:#64748b;font-size:11px}
+.xp-legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:11.5px;color:#475569;margin:0 0 8px}
+.xp-legend i{display:inline-block;width:30px;height:0;border-top:2.5px solid #1d3f6e;vertical-align:middle;margin-right:5px}
+.xp-legend i.d{border-top:2.5px dashed #16a34a}
+.xp-legend i.x{width:16px;height:12px;border:1.5px dashed #94a3b8;border-radius:3px}
+.xp-fit{display:flex;justify-content:center;align-items:flex-start}
+.xp-fit .mnode,.xp-png .mnode{cursor:default}
+.xp-stage{margin:0 auto;position:relative}
+.xp-stage .screen{box-shadow:none;outline:1px solid #94a3b8}
+.xp-stage .callout{box-shadow:none;cursor:default}
+.xp-probe{position:absolute;left:-100000px;top:0;visibility:hidden;pointer-events:none}
+/* 印刷用の文書（PDF・PNG。body に xp-doc を付ける） */
+body.xp-doc{display:block;height:auto;overflow:visible;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body.xp-doc .pg{box-shadow:none}
+body.xp-doc .pg+.pg{break-before:page}
+.xp-png{background:#fff;position:relative}
+/* ブラウザの印刷（q38）。アプリの画面の代わりに案内の文だけを出す（PDF・PNG はデスクトップ版の「書き出す」で作る） */
+@media print{
+  body:not(.xp-doc){display:block;height:auto;overflow:visible;background:#fff}
+  body:not(.xp-doc)>*{display:none!important}
+  body:not(.xp-doc)::before{content:'この画面は印刷できません。PDF は、デスクトップ版のモックイメージメーカーの「書き出す」で作ります（HTML を受け取った人は、画面設計を作った人に PDF を頼んでください）。';display:block;padding:24px;font-size:14px;line-height:1.8;color:#1e293b}
+}
 </style>
 </head>
 <body>
@@ -518,15 +611,20 @@ body.map-dragging,body.map-dragging *{cursor:grabbing!important}
 //   6. 一覧の画面            … カード・名前で探す・新規作成・名前の変更・複製・ごみ箱
 //   7. 編集の画面            … メニューバー・画面の一覧・画面（帯・マス目・高さ）・部品の箱・設定の欄・拡大縮小・ハンド・
 //                              部品のドラッグ（置く・動かす・大きさ）・コピーと貼り付け
-//   8. 命令（runCommand）    … ボタン・キー・アプリのメニューからの命令を 1 か所で受ける
-//   9. 起動
-//  10. テスト用の窓口（window.__test__。テストのときだけ埋まる）
+//   8. 書き出しと取り込み    … 書き出しの窓（PDF・HTML・PNG）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面）・
+//                              単体で開いて編集できる HTML（埋め込み・保存し直す）・HTML の取り込み（確かめの窓）
+//   9. 命令（runCommand）    … ボタン・キー・アプリのメニューからの命令を 1 か所で受ける
+//  10. 起動
+//  11. テスト用の窓口（window.__test__。テストのときだけ埋まる）
 // 手本: 保存と元に戻すと一覧の画面は CheckListMaker の index.html、
 //       拡大縮小とハンドとメニューバーの見た目はビジネスダイアグラムメーカー（参考/diagram_v8.31.html）から写した。
 // =============================================================================
 
 // ── 1. 版 ─────────────────────────────────────────────────────────────────────
 const APP_VERSION = '1.00';
+// 書き出す HTML（単体で開いて編集できる HTML）の材料にする、このアプリの script の文字。
+// document.currentScript は script を実行している間しか取れないので、いちばん初めに取っておく（style の文字は起動のときに取る）
+const APP_SCRIPT = document.currentScript ? document.currentScript.textContent : '';
 
 // ── 2. データの形（純関数）────────────────────────────────────────────────────
 // { schemaVersion, settings: { customTargets }, designs: [ { id, name, target, description,
@@ -1488,6 +1586,9 @@ function syncLinkedItems(state) {
       const srcDesign = designs.get(it.link.designId);
       const src = srcDesign ? findItem(srcDesign, it.link.itemId) : null;
       if (!src || src === it) {
+        // 単体で開いた HTML には、元の画面設計が入っていない。「元なし」にせず、書き出したときの中身とつながりのまま残す
+        // （直して返してもらった HTML を取り込んだときに、一覧にある元とつなぎ直すため）
+        if (!srcDesign && standalone) return;
         if (!it.link.lost) { it.link.lost = true; changed = true; }
         return;
       }
@@ -1524,7 +1625,7 @@ const MAP_H = 64;
 const MAP_COL = 400; // 列の幅（箱の幅 200 ＋ 矢印の文字を書く間 200）
 const MAP_ROW = 112; // 段の高さ（箱の高さ 64 ＋ 間 48）
 function mapModel(state, focusId = null) {
-  const designs = visibleDesigns(state);
+  const designs = [...visibleDesigns(state), ...peerDesigns(state)]; // 単体で開いた HTML では、埋め込んだほかの画面設計の写しも箱にする
   const ids = new Set(designs.map((d) => d.id));
   const keyOfDb = (db) => (db && db.designId ? (ids.has(db.designId) ? 'd:' + db.designId : null) : db && db.name ? 'x:' + db.name : null);
   const edges = new Map();
@@ -2538,13 +2639,13 @@ function toast(message) {
 
 // 小さな窓。OK で collect(窓) の結果（{ error } なら窓に出して閉じない）、キャンセルで null を返す。
 // 窓は 1 つだけ。開いている間は後ろの画面（#app）を inert にして、押せないようにする
-function showDialog({ title, body, okLabel, okClass = 'primary', init, collect, wide = false }) {
+function showDialog({ title, body, okLabel, okClass = 'primary', init, collect, wide = false, width = null }) {
   if (isDialogOpen()) return Promise.resolve(null);
   return new Promise((resolve) => {
     const root = $('#dialog-root');
     root.innerHTML = `
       <div class="modal-overlay">
-        <div class="modal${wide ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <div class="modal${wide ? ' wide' : ''}"${width ? ` style="width:min(${width}px,calc(100vw - 32px))"` : ''} role="dialog" aria-modal="true" aria-label="${esc(title)}">
           <h2>${esc(title)}</h2>
           <div class="modal-body">${body}</div>
           <p class="modal-error" hidden></p>
@@ -2959,13 +3060,14 @@ function renderHome() {
           ${ui.homeMap ? '' : `<label class="search"><span aria-hidden="true">🔍</span><input type="search" id="home-search" placeholder="名前で探す" aria-label="名前で探す" value="${esc(ui.query)}"></label>`}
           <button class="btn${ui.homeMap ? '' : ' on'}" data-action="home-cards" aria-pressed="${!ui.homeMap}">▦ カードで並べる</button>
           <button class="btn${ui.homeMap ? ' on' : ''}" data-action="home-map" aria-pressed="${ui.homeMap}">⇄ つながりの図</button>
+          <button class="btn" data-action="import-html" title="このアプリで書き出した HTML（ベンダーが直して返したものなど）を取り込みます。HTML ファイルをこの画面へ落としても取り込めます">⇩ HTML を取り込む</button>
           <button class="btn primary" data-action="new">＋ 新規作成</button>
         </div>
         ${ui.homeMap ? `
         <p class="home-note">画面設計 1 つを、データベース 1 つ（箱）として描きます。箱を押すと、その画面設計を開きます。ドラッグで動かすと、その位置を覚えます。</p>
         ${mapLegendHtml()}
         <div class="map-canvas" id="home-map">${mapHtml(store.state, null, store.state.settings.mapPos || {})}</div>` : `
-        <p class="home-note">更新の新しい順に並べています。カードを押すと開きます。「…」から名前の変更・複製・削除ができます。</p>
+        <p class="home-note">更新の新しい順に並べています。カードを押すと開きます。「…」から名前の変更・複製・書き出し・削除ができます。書き出した HTML は、この画面へ落としても取り込めます。</p>
         <div class="cards" id="home-cards">${renderCards()}</div>
         <div class="trash" id="home-trash">${renderTrash()}</div>`}
       </section>
@@ -3003,11 +3105,11 @@ function mapHtml(state, focusId, saved) {
     const p = pos[n.key];
     const cur = focusId && n.key === 'd:' + focusId;
     const meta = n.design
-      ? `${cur ? '' : targetChip(n.design.target)}<span>項目 ${n.design.items.length} 個・画面 ${n.design.screens.length}</span>`
+      ? `${cur ? '' : targetChip(n.design.target)}<span>項目 ${n.design.peer ? n.design.itemCount : n.design.items.length} 個・画面 ${n.design.peer ? n.design.screenCount : n.design.screens.length}</span>`
       : '<span>一覧にないデータベース</span>';
     const role = roleOf[n.key];
     return `<div class="mnode${n.design ? '' : ' ext'}${cur ? ' cur' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${p.h}px"
-      title="${n.design && !cur ? `ドラッグで動かせます。押すと「${esc(n.name)}」を開きます` : 'ドラッグで動かせます'}"><b>${esc(n.name)}${cur ? '（この画面設計）' : ''}</b><div class="mt">${meta}</div>${role ? `<div class="mt role">${esc(role)}</div>` : ''}</div>`;
+      title="${n.design && n.design.peer ? 'ドラッグで動かせます（この HTML に入っていない画面設計なので、開けません）' : n.design && !cur ? `ドラッグで動かせます。押すと「${esc(n.name)}」を開きます` : 'ドラッグで動かせます'}"><b>${esc(n.name)}${cur ? '（この画面設計）' : ''}</b><div class="mt">${meta}</div>${role ? `<div class="mt role">${esc(role)}</div>` : ''}</div>`;
   }).join('');
   const w = Math.max(860, ...Object.values(pos).map((p) => p.x + MAP_W + 40));
   const h = Math.max(420, ...Object.values(pos).map((p) => p.y + p.h + 60));
@@ -3144,7 +3246,8 @@ function renderCards() {
 }
 
 function revisionLabel(d) {
-  return d.revisions.length ? `第 ${d.revisions.length} 版` : '版なし';
+  const n = d.revisions.filter((r) => isObj(r) && r.kind !== 'import').length; // 取り込んだときに自動で残した「取り込む前の状態」は数えない
+  return n ? `第 ${n} 版` : '版なし';
 }
 
 function renderCard(d) {
@@ -3158,7 +3261,7 @@ function renderCard(d) {
           <div class="card-date">更新 ${fmtDateTime(d.updatedAt)}</div>
         </div>
       </button>
-      <button class="card-more" data-action="card-menu" data-id="${esc(d.id)}" aria-label="「${esc(d.name)}」の操作" title="名前の変更・複製・削除">…</button>
+      <button class="card-more" data-action="card-menu" data-id="${esc(d.id)}" aria-label="「${esc(d.name)}」の操作" title="名前の変更・複製・書き出し・削除">…</button>
       ${ui.menuFor === d.id ? cardMenuHtml(d) : ''}
     </article>`;
 }
@@ -3169,6 +3272,7 @@ function cardMenuHtml(d) {
     <div class="card-menu" role="menu">
       <button role="menuitem" data-action="rename" data-id="${id}">名前の変更</button>
       <button role="menuitem" data-action="duplicate" data-id="${id}">複製</button>
+      <button role="menuitem" data-action="export-design" data-id="${id}">書き出す…</button>
       <button role="menuitem" class="danger" data-action="trash" data-id="${id}">削除（ごみ箱へ移す）</button>
     </div>`;
 }
@@ -3285,6 +3389,9 @@ async function onHomeAction(action, id) {
 
 async function onDesignAction(action, d) {
   switch (action) {
+    case 'export-design':
+      await openExportDialog(d.id);
+      return;
     case 'rename': {
       const r = await openRenameDialog(d);
       if (r && r.name !== d.name) actions.renameDesign(d.id, r.name);
@@ -3354,6 +3461,7 @@ function goHome() {
 function mountEditor() {
   appEl().innerHTML = `
     <header class="brandbar"><span class="brand">モックイメージメーカー</span><span class="brand-design" id="ed-title"></span></header>
+    ${standalone ? standaloneBarHtml() : ''}
     <div id="toolbar">${toolbarHtml()}</div>
     <div class="editor-body">
       <aside class="screen-list" id="screen-list" aria-label="画面の一覧"></aside>
@@ -3370,12 +3478,16 @@ function mountEditor() {
     </div>`;
   initCanvasEvents($('#canvas-wrap'));
   updateEditor();
+  refreshStandaloneBar();
 }
 
 function toolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
   return [
-    group('ファイル', '<button class="bigbtn" data-action="home" title="画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>'),
+    group('ファイル', standalone
+      ? '<button class="bigbtn" data-action="save-html" title="直した中身を HTML ファイルに保存します（Ctrl+S）"><span class="ico">💾</span>HTML を<br>保存</button>'
+      : `<button class="bigbtn" data-action="home" title="画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>
+      <button class="bigbtn" data-action="export" title="PDF・HTML・PNG に書き出します"><span class="ico">⇪</span>書き出す</button>`),
     group('画面', `
       <button class="bigbtn" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します"><span class="ico">＋</span>画面を<br>足す</button>
       <button data-screen-only class="bigbtn" data-action="duplicate-screen" title="開いている画面を、部品も吹き出しもそのまま写して、すぐ後ろに足します"><span class="ico">❐</span>画面を<br>複製</button>
@@ -3395,7 +3507,7 @@ function toolbarHtml() {
       `<button class="bigbtn" data-action="${action}" data-align-cmd="${cmd}" title="選んだものを揃えます（最初に選んだものに合わせる）">${alignSvg(svg)}${label.replace('\n', '<br>')}</button>`).join('')),
     group('項目', `
       <button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="データベースの項目の一覧表に項目を足します"><span class="ico">＋</span>項目を<br>足す</button>
-      <button class="bigbtn" data-action="import-items" id="tb-import" title="ほかのモック（画面設計）の項目を、つなげたまま取り込みます"><span class="ico">⇩</span>ほかのモック<br>から取り込む</button>`),
+      ${standalone ? '' : '<button class="bigbtn" data-action="import-items" id="tb-import" title="ほかのモック（画面設計）の項目を、つなげたまま取り込みます"><span class="ico">⇩</span>ほかのモック<br>から取り込む</button>'}`),
     group('モード', `
       <button data-screen-only class="bigbtn" data-action="mode-select" id="tb-mode-select" title="部品を選んで動かすモード"><span class="ico">➤</span>選択</button>
       <button data-screen-only class="bigbtn" data-action="mode-hand" id="tb-mode-hand" title="ドラッグで画面を動かすモード（ホイールで拡大縮小）"><span class="ico">✋</span>ハンド</button>`),
@@ -3704,7 +3816,7 @@ function itemTableHtml(d) {
         <span class="hint">行の左のつまみ（⋮⋮）をドラッグすると並べ替えられます。行を押すと、右の欄に設定が出ます。</span>
         <span class="spacer"></span>
         <button class="btn primary small" data-action="add-item-menu" aria-expanded="${ui.addItemMenu}">＋ 項目を足す ▾</button>
-        <button class="btn small" data-action="import-items">⇩ ほかのモックから取り込む</button>
+        ${standalone ? '' : '<button class="btn small" data-action="import-items">⇩ ほかのモックから取り込む</button>'}
       </div>
       ${ui.addItemMenu ? addItemMenuHtml() : ''}
       ${body}
@@ -3950,6 +4062,10 @@ function partCommonFieldsHtml(p) {
 
 // 取り込んだ項目の知らせ（画像 q20 の 2）。元を直すとここも変わること、ここでは直せないことと、元を開く・つながりを切るボタン
 function linkBannerHtml(item) {
+  if (standalone) {
+    return `<div class="pf-banner link">🔗 この項目は、モック「<b>${esc(item.link.designName)}</b>」の「${esc(item.name)}」から取り込んだ項目です（書き出したときの中身）。
+      元のモックで直す項目なので、ここでは直せません。</div>`;
+  }
   const btns = `<div class="btns">${item.link.lost ? '' : `<button class="btn small primary" data-action="open-link-source" data-id="${esc(item.id)}">元のモックを開く</button>`}
     <button class="btn small" data-action="unlink-item" data-id="${esc(item.id)}">つながりを切る</button></div>`;
   if (item.link.lost) {
@@ -4033,6 +4149,14 @@ function lookupFieldsHtml(d, p) {
   const head = `<label class="check"><input type="checkbox" data-lk="on"${lk ? ' checked' : ''}><span>ほかのデータベースから引く<span class="nb">（ルックアップ）</span></span></label>`;
   if (!lk) return `<div class="lk-box">${head}</div>`;
   const src = lk.db.designId ? findDesign(state, lk.db.designId) : null;
+  if (standalone && lk.db.designId && !src) {
+    // 単体で開いた HTML に、ルックアップ元の画面設計は入っていない。元・探す項目・元の項目を直すとつながりが壊れるので、直せない形で出す
+    const dbName = esc(lk.db.name || '（名前なし）');
+    const copies = lk.copies.filter((c) => c.from.name || c.to.itemId || c.to.name).map((c) => `${esc(c.from.name || '（項目を選んでいません）')} → ${esc(refLabel(d, c.to))}`).join('、');
+    return `<div class="lk-box"><label class="check"><input type="checkbox" checked disabled><span>ほかのデータベースから引く<span class="nb">（ルックアップ）</span></span></label>
+      <p class="lk-ro">ルックアップ元の「${dbName}」は、この HTML に入っていないため、ここでは直せません。</p>
+      <div class="lk-ro-list">ルックアップ元のデータベース: ${dbName}<br>探すときに使う元の項目: ${esc(lk.key.name || '（項目を選んでいません）')}${copies ? `<br>一緒に写す項目: ${copies}` : ''}</div></div>`;
+  }
   const dbs = visibleDesigns(state).filter((x) => x.id !== d.id);
   const dbChoices = [['', '（選んでください）'], ...dbs.map((x) => ['d:' + x.id, `${x.name}（${targetLabel(x.target)}）`])];
   if (lk.db.designId && !dbs.some((x) => x.id === lk.db.designId)) dbChoices.push(['d:' + lk.db.designId, `${dbLabel(state, lk.db)}（ごみ箱にあるか、もうありません）`]);
@@ -5205,6 +5329,7 @@ async function openImportDialog() {
 
 // 取り込んだ項目の元のモックを開き、データベースの項目の一覧表でその項目を選ぶ
 function openLinkSource(itemId) {
+  if (standalone) return;
   const it = findItem(currentDesign(), itemId);
   const src = it && it.link ? findDesign(store.state, it.link.designId) : null;
   if (!src || src.trashedAt) { toast('元のモックが見つかりません（ごみ箱にあるか、完全に削除されています）。'); return; }
@@ -5285,6 +5410,7 @@ function endMapDrag(done) {
   document.body.classList.remove('map-dragging');
   if (done.moved && (done.x !== done.x0 || done.y !== done.y0)) { actions.setMapPos(done.focus, done.key, { x: done.x, y: done.y }); return; }
   if (!done.key.startsWith('d:') || done.key === 'd:' + done.focus) return;
+  if (!findDesign(store.state, done.key.slice(2))) return; // 単体で開いた HTML の、ほかの画面設計の箱（この HTML にない）は開かない
   openDesign(done.key.slice(2));
 }
 
@@ -5408,7 +5534,812 @@ function nudgePart(dx, dy) {
   if (ui.sel.length) actions.moveMany(ui.designId, currentScreen().id, ui.sel, dx * GRID, dy * GRID);
 }
 
-// ── 8. 命令（runCommand）──────────────────────────────────────────────────────
+// ── 8. 書き出しと取り込み ─────────────────────────────────────────────────────
+// 書き出しの窓（PDF・HTML・PNG。画像 q33）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面。q34〜q36）・
+// HTML の書き出しと、単体で開いたとき（q37）・HTML の取り込み（q39）。PDF・PNG のファイルは、デスクトップ版の main（export.js）が作る（q38）
+const EMBED_ID = 'mim-embedded'; // 書き出した HTML に画面設計を埋め込む script の id（ビジネスダイアグラムメーカー・CheckListMaker と別の名前）
+const EMBED_FORMAT = 'mockimagemaker-design';
+const IMPORT_MAX_CHARS = 50 * 1024 * 1024; // 取り込む HTML の大きさの上限
+const PNG_MARGIN = 24; // PNG のまわりの白
+// 用紙（in はインチ）。スライドは PowerPoint のワイド画面と同じ大きさで、横だけ（2026-10-13 ユーザー指示）
+const PAPERS = {
+  A4: { label: 'A4', in: [297 / 25.4, 210 / 25.4] },
+  A3: { label: 'A3', in: [420 / 25.4, 297 / 25.4] },
+  slide: { label: 'スライド（16:9）', in: [40 / 3, 7.5], landscapeOnly: true },
+};
+let APP_STYLE = ''; // アプリの style の文字（起動のときに取る）
+// 単体で開いた HTML のとき { designId, peers, exportedAt, baseUpdatedAt, savedJson, savedOnce }。アプリとして開いたときは null
+let standalone = null;
+
+// 用紙の大きさ。px は 96 dpi。幅は切り捨て、高さはさらに 1px 小さくする（端数で白いページが増えないように）
+function paperSize(paper, orient) {
+  const key = own(PAPERS, paper) ? paper : 'A4';
+  const p = PAPERS[key];
+  const [a, b] = p.in;
+  const land = !!p.landscapeOnly || orient !== 'portrait';
+  const [wi, hi] = land ? [Math.max(a, b), Math.min(a, b)] : [Math.min(a, b), Math.max(a, b)];
+  return { paper: key, landscape: land, wi, hi, wmm: wi * 25.4, hmm: hi * 25.4, w: Math.floor(wi * 96 + 1e-6), h: Math.floor(hi * 96 + 1e-6) - 1 };
+}
+
+// ファイルの名前に使えない字（\ / : * ? " < > | と制御文字）を「_」にする
+function safeFileName(name, fallback = '画面設計') {
+  const s = String(name == null ? '' : name).replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().replace(/[. ]+$/, '').slice(0, 80);
+  return s || fallback;
+}
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// ── 測る（見えない所に置いた箱で実際に描いて測る。jsdom のように測れないときは測らない）──
+function measureBox(html, width = null) {
+  const probe = document.createElement('div');
+  probe.className = 'xp-probe';
+  if (width) probe.style.width = width + 'px';
+  probe.innerHTML = html;
+  document.body.append(probe);
+  return probe; // 使い終わったら remove する
+}
+function canMeasure() {
+  const probe = measureBox('<div style="width:100px;height:10px"></div>');
+  const ok = probe.firstElementChild.getBoundingClientRect().width > 0;
+  probe.remove();
+  return ok;
+}
+
+// ── 印刷用のページ（q34〜q36）──
+const pageFoot = (left, right) => `<div class="pg-foot"><span>${left}</span><span>${right}</span></div>`;
+// 表紙のほかのページの枠。上に見出しと紺の線、下の端に「画面設計の名前 ／ ページの名前」と「n / 全体」
+function pageFrame({ P, title, sub = '', body, left = '', right = '' }) {
+  return `<div class="pg" style="width:${P.w}px;height:${P.h}px"><div class="pg-in">
+    <div class="pg-head"><h2>${title}</h2>${sub ? `<span>${sub}</span>` : ''}</div>
+    <div class="pg-body">${body}</div>${pageFoot(left, right)}</div></div>`;
+}
+// 枠の本文の大きさ。測れないときは見込みの値
+function pageBodySize(P, measured) {
+  if (!measured) return { aw: P.w - 80, ah: P.h - 30 - 18 - 40 - 26 };
+  const probe = measureBox(pageFrame({ P, title: 'あ', sub: 'あ', body: '', left: 'あ', right: '1 / 1' }));
+  const r = probe.querySelector('.pg-body').getBoundingClientRect();
+  probe.remove();
+  return { aw: Math.floor(r.width), ah: Math.floor(r.height) };
+}
+
+// 表紙（q34 案A）。名前・作る先・書き出した日・最終更新・数・説明と、2 列で「画面の一覧」と「改訂の記録」。縦の用紙では上下に積む
+function coverListRows(plan) {
+  const rows = [];
+  if (plan.mapPage) rows.push(`<tr class="lead"><td class="nm">つながりの図</td><td class="dev"></td><td class="no">${plan.mapPage}</td></tr>`);
+  if (plan.itemsPage) rows.push(`<tr class="lead"><td class="nm">データベースの項目の一覧表</td><td class="dev"></td><td class="no">${plan.itemsPage}</td></tr>`);
+  plan.screens.forEach(({ s, i, page }) => rows.push(`<tr><td class="nm">${i + 1}　${esc(s.name)}</td><td class="dev">${DEVICES[s.device].label}</td><td class="no">${page}</td></tr>`));
+  return rows;
+}
+const coverListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面の名前</th><th>機器</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('') || '<tr><td class="empty" colspan="3">（書き出す画面はありません）</td></tr>'}</tbody></table>`;
+function coverRevisionTable(d) {
+  const revs = d.revisions.filter((r) => isObj(r) && r.kind !== 'import'); // 自動で残した「取り込む前の状態」は出さない
+  const rows = revs.length
+    ? revs.map((r) => `<tr><td>${r.no != null ? `第 ${esc(r.no)} 版` : ''}</td><td>${esc(fmtDateTime(r.date).slice(0, 10))}</td><td style="white-space:pre-wrap">${esc(r.note)}</td></tr>`).join('')
+    : '<tr><td class="empty" colspan="3">（まだ改訂の記録はありません）</td></tr>';
+  return `<table class="cv-table"><thead><tr><th style="width:70px">版</th><th style="width:96px">日付</th><th>変えた内容</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function coverPageHtml(d, P, rows, total, exportedAt) {
+  const desc = d.description.trim() ? `<div class="cv-desc">${esc(d.description)}</div>` : '<div class="cv-desc none">（説明は書かれていません）</div>';
+  return `<div class="pg" style="width:${P.w}px;height:${P.h}px"><div class="pg-cover">
+    <div class="cv-kicker">画面設計書</div>
+    <h1 class="cv-title">${esc(d.name)}</h1>
+    <div class="cv-meta">${targetChip(d.target)}<span>書き出した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span><span>最終更新 ${esc(fmtDateTime(d.updatedAt))}</span><span>画面 ${d.screens.length} つ・データベースの項目 ${d.items.length} 個</span></div>
+    <hr class="cv-rule">
+    <div class="cv-sec"><h3>説明</h3>${desc}</div>
+    <div class="cv-cols${P.h > P.w ? ' stack' : ''}">
+      <div class="cv-sec cv-list"><h3>画面の一覧</h3>${coverListTable(rows)}</div>
+      <div class="cv-sec cv-revs"><h3>改訂の記録</h3>${coverRevisionTable(d)}</div>
+    </div>
+    <div class="cv-spacer"></div>
+    <div class="cv-foot"><span>モックイメージメーカー v${APP_VERSION} で書き出し</span><span>全 ${total} ページ</span></div>
+  </div></div>`;
+}
+const coverContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '画面の一覧（続き）', body: coverListTable(rows),
+  left: `${esc(d.name)} ／ 画面の一覧（続き）`, right: `${page} / ${total}` });
+// 表紙の画面の一覧を、1 ページ目と続きのページに分ける（行の高さを測る。続きのページでは見出しの行を繰り返す）。測れないときは全部を 1 ページ目に
+function splitCoverRows(d, P, rows, measured, bodyH) {
+  if (!measured || !rows.length) return [rows];
+  const probe = measureBox(coverPageHtml(d, P, rows, 99, nowIso()));
+  const pgTop = probe.querySelector('.pg').getBoundingClientRect().top;
+  const footH = probe.querySelector('.cv-foot').getBoundingClientRect().height;
+  // 1 ページ目の一覧が入る下の端（下の余白と下の端の行を引く。縦の用紙では、一覧の下の改訂の記録の分も引く）
+  let limit = pgTop + P.h - 36 - footH - 12;
+  if (P.h > P.w) limit -= probe.querySelector('.cv-revs').getBoundingClientRect().height + 18;
+  const trs = [...probe.querySelectorAll('.cv-list tbody tr')].map((tr) => tr.getBoundingClientRect());
+  const headH = probe.querySelector('.cv-list thead').getBoundingClientRect().height;
+  probe.remove();
+  const over = trs.findIndex((r) => r.bottom > limit);
+  if (over < 0) return [rows];
+  const n = Math.max(1, over);
+  const chunks = [rows.slice(0, n)];
+  let cur = [];
+  let used = headH;
+  trs.slice(n).forEach((r, k) => {
+    if (cur.length && used + r.height > bodyH) { chunks.push(cur); cur = []; used = headH; }
+    cur.push(rows[n + k]);
+    used += r.height;
+  });
+  if (cur.length) chunks.push(cur);
+  return chunks;
+}
+
+// データベースの項目の一覧表（q35 案A。つまみ・消すボタン・足すボタンなし。元は札でなく文字で書く）
+function itemSourceText(d, it, state) {
+  const lines = [];
+  if (it.lookup) {
+    const src = it.lookup.db.designId ? findDesign(state, it.lookup.db.designId) : null;
+    const db = esc(dbLabel(state, it.lookup.db));
+    lines.push(`ルックアップ：${db} › ${esc(refLabel(src, it.lookup.key))}<br><small>（この値で${db}を探す）</small>`);
+  } else {
+    const role = lookupCopyOf(d, it);
+    if (role) {
+      const klk = role.key.lookup;
+      const src = klk.db.designId ? findDesign(state, klk.db.designId) : null;
+      lines.push(`ルックアップ：${esc(dbLabel(state, klk.db))} › ${esc(refLabel(src, role.copy.from))}<br><small>（${esc(role.key.name)}で引く）</small>`);
+    }
+  }
+  if (it.link) lines.push(`${it.link.lost ? '取り込み（元なし）' : '取り込み'}：${esc(it.link.designName || '（名前なし）')} › ${esc(it.name)}`);
+  return lines.join('<br>') || '<span class="none">－</span>';
+}
+function itemRowsHtml(d, state) {
+  return d.items.map((it) => {
+    const scr = screensWithItem(d, it.id).map((s) => s.name);
+    return `<tr><td>${it.name ? esc(it.name) : '<span class="none">（名前なし）</span>'}</td><td>${esc(itemTypeName(it.type))}</td>`
+      + `<td class="set">${esc(isItemType(it.type) ? describeItem(it, { design: d, state }) : '')}</td><td>${itemSourceText(d, it, state)}</td>`
+      + `<td>${scr.length ? esc(scr.join('・')) : '<span class="none">どの画面にもない</span>'}</td></tr>`;
+  });
+}
+const ITEM_COLS = '<colgroup><col style="width:15%"><col style="width:12%"><col style="width:33%"><col style="width:24%"><col style="width:16%"></colgroup>';
+const printItemTable = (rows) => `<table class="xp-itable">${ITEM_COLS}<thead><tr><th>項目名</th><th>部品の種類</th><th>設定</th><th>ルックアップ元・取り込み元</th><th>置いている画面</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+// 表を、ページに入る行ごとに分ける（行の高さは描いて測る。見出しの行はページごとに繰り返す）。測れないときは 1 ページ
+function splitItemRows(rows, aw, ah, measured) {
+  if (!measured || !rows.length) return rows.length ? [rows] : [];
+  const probe = measureBox(printItemTable(rows), aw);
+  const head = probe.querySelector('thead').getBoundingClientRect().height;
+  const hs = [...probe.querySelectorAll('tbody tr')].map((tr) => tr.getBoundingClientRect().height);
+  probe.remove();
+  const pages = [];
+  let cur = [];
+  let used = head;
+  rows.forEach((r, i) => {
+    if (cur.length && used + hs[i] > ah) { pages.push(cur); cur = []; used = head; }
+    cur.push(r);
+    used += hs[i];
+  });
+  if (cur.length) pages.push(cur);
+  return pages;
+}
+
+// つながりの図のページ（q35 案A）。凡例だけ出し（案内の文・並べ直すボタンなし）、箱のある所を切り出して本文に収まるように縮める（拡大しない）
+const hasMapLinks = (d, state) => mapModel(state, d.id).nodes.length > 1;
+function mapPageBody(d, state, aw, ah) {
+  const legend = '<div class="xp-legend"><span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span></div>';
+  // 矢印の印の id は、編集の画面の図と重ならない名前にする（同じ id があると矢印が消えるため）
+  const html = mapHtml(state, d.id, d.mapPos || {}).replace(/map-arrow-/g, 'xp-map-arrow-').replace(' id="map-inner"', '');
+  const boxes = [...html.matchAll(/class="mnode[^"]*"[^>]*style="left:(-?[\d.]+)px;top:(-?[\d.]+)px;width:([\d.]+)px;height:([\d.]+)px"/g)].map((m) => m.slice(1).map(Number));
+  const m = html.match(/class="map-inner"[^>]*style="width:([\d.]+)px;height:([\d.]+)px"/);
+  if (!m || !boxes.length) return legend + html;
+  const [mw, mh] = [Number(m[1]), Number(m[2])];
+  const pad = 28; // 線と矢印の文字が箱の外へ出る分
+  const x0 = Math.max(0, Math.min(...boxes.map((b) => b[0])) - pad);
+  const y0 = Math.max(0, Math.min(...boxes.map((b) => b[1])) - pad);
+  const x1 = Math.min(mw, Math.max(...boxes.map((b) => b[0] + b[2])) + pad);
+  const y1 = Math.min(mh, Math.max(...boxes.map((b) => b[1] + b[3])) + pad);
+  const [cw, ch] = [x1 - x0, y1 - y0];
+  const k = Math.min(1, aw / cw, (ah - 28) / ch); // 28 は凡例の分
+  return `${legend}<div class="xp-fit"><div style="width:${Math.floor(cw * k)}px;height:${Math.floor(ch * k)}px;position:relative;overflow:hidden">`
+    + `<div style="width:${cw}px;height:${ch}px;position:relative;transform:scale(${k.toFixed(4)});transform-origin:0 0">`
+    + `<div style="position:absolute;left:${-x0}px;top:${-y0}px">${html}</div></div></div></div>`;
+}
+
+// 画面と吹き出しと部品の設定の一覧表を 1 つに組む（q36 案A）。編集の画面と同じ並べ方（画面のまわり 240 ドット）を、
+// 画面と吹き出しを囲む範囲で切り取り、一覧表をその外側に 32 ドット空けて置く（右なら上の端を画面の上の端に、下なら左の端を画面の左の端にそろえる）。
+// 戻り値 { html, cw, ch }（縮める前の大きさ）。key は矢印の印の id の頭（ページごとに変える。同じ id が編集の画面にもあると矢印が消えるため）
+function screenComposite(d, s, key, measured) {
+  const Z = CALLOUT_ZONE;
+  const zoneW = s.width + Z * 2;
+  const zoneH = s.height + Z * 2;
+  const rects = [[Z, Z, Z + s.width, Z + s.height], ...s.callouts.map((c) => [Z + c.x, Z + c.y, Z + c.x + c.w, Z + c.y + c.h])];
+  const pad = 8;
+  const x0 = Math.max(0, Math.min(...rects.map((r) => r[0])) - pad);
+  const y0 = Math.max(0, Math.min(...rects.map((r) => r[1])) - pad);
+  const x1 = Math.min(zoneW, Math.max(...rects.map((r) => r[2])) + pad);
+  const y1 = Math.min(zoneH, Math.max(...rects.map((r) => r[3])) + pad);
+  const [cropW, cropH] = [x1 - x0, y1 - y0];
+  const lines = calloutLinesSvg(s).replace(' id="co-lines"', '').replace(/co-arrow-/g, `${key}-co-arrow-`);
+  const boxes = s.callouts.map((c) => `<div class="callout cc-${esc(c.color)}" style="left:${Z + c.x}px;top:${Z + c.y}px;width:${c.w}px;height:${c.h}px">${esc(c.text)}</div>`).join('');
+  const zone = `<div style="position:absolute;left:0;top:0;width:${cropW}px;height:${cropH}px;overflow:hidden">`
+    + `<div style="position:absolute;left:${-x0}px;top:${-y0}px;width:${zoneW}px;height:${zoneH}px">`
+    + `<div style="position:absolute;left:${Z}px;top:${Z}px">${screenHtml(d, s, { grid: false, marks: false })}</div>${lines}${boxes}</div></div>`;
+  const table = partTableHtml(d, s, { editor: false });
+  let [tw, th] = [0, 0];
+  if (table && measured) {
+    const probe = measureBox(table);
+    const r = probe.firstElementChild.getBoundingClientRect();
+    [tw, th] = [Math.ceil(r.width), Math.ceil(r.height)];
+    probe.remove();
+  } else if (table) {
+    tw = s.tablePos === 'bottom' ? s.width : TABLE_W;
+  }
+  const right = s.tablePos !== 'bottom';
+  const tx = right ? cropW + TABLE_GAP : Z - x0;
+  const ty = right ? Z - y0 : cropH + TABLE_GAP;
+  const cw = table ? Math.max(cropW, tx + tw) : cropW;
+  const ch = table ? Math.max(cropH, ty + th) : cropH;
+  return { cw, ch, html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
+}
+// 画面のページの本文。本文に収まるように縮め（拡大しない）、左右・上下の真ん中に置く。測れないときは縮めない
+function screenPageBody(comp, aw, ah, measured) {
+  const k = measured ? Math.min(1, aw / comp.cw, ah / comp.ch) : 1;
+  const top = measured ? Math.max(0, Math.floor((ah - comp.ch * k) / 2)) : 0;
+  return {
+    k,
+    html: `<div class="xp-stage" style="width:${Math.floor(comp.cw * k)}px;height:${Math.floor(comp.ch * k)}px;margin-top:${top}px">`
+      + `<div style="position:absolute;left:0;top:0;width:${comp.cw}px;height:${comp.ch}px;transform:scale(${k.toFixed(4)});transform-origin:0 0">${comp.html}</div></div>`,
+  };
+}
+
+// 印刷用の文書（PDF にする HTML）。アプリと同じ style に、用紙の大きさ（@page）を足す
+function printDocumentHtml(title, P, pagesHtml) {
+  return '<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="UTF-8">\n<title>' + esc(title) + '</title>\n<style>' + APP_STYLE
+    + '\n@page{size:' + P.wmm.toFixed(3) + 'mm ' + P.hmm.toFixed(3) + 'mm;margin:0}\n</style>\n</head>\n<body class="xp-doc">\n' + pagesHtml + '\n</body>\n</html>\n';
+}
+
+// PDF の中身を組む。opts { paper, orient, cover, map, items, screenIds（省略するとすべての画面） }。
+// 表紙（入りきらなければ「画面の一覧（続き）」）→ つながりの図（つながりがあるときだけ）→ 項目の一覧表（項目があるときだけ）→ 選んだ画面。
+// 戻り値 { html（印刷用の文書）, P（用紙）, pages（ページの HTML）, total }
+function exportDocument(d, state, opts, exportedAt = nowIso()) {
+  const P = paperSize(opts.paper, opts.orient);
+  const measured = canMeasure();
+  const { aw, ah } = pageBodySize(P, measured);
+  const screens = d.screens.map((s, i) => ({ s, i })).filter(({ s }) => !opts.screenIds || opts.screenIds.includes(s.id));
+  const withMap = !!opts.map && hasMapLinks(d, state);
+  const itemChunks = opts.items ? splitItemRows(itemRowsHtml(d, state), aw, ah, measured) : [];
+  // ページ番号は、表紙が何ページになるかで変わる。番号の桁で行の高さは変わらないので、仮の番号で 1 回分けてから決め直す
+  const numbering = (coverPages) => {
+    let n = coverPages;
+    const mapPage = withMap ? ++n : 0;
+    const itemsPage = itemChunks.length ? n + 1 : 0;
+    n += itemChunks.length;
+    return { mapPage, itemsPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n };
+  };
+  let plan = numbering(opts.cover ? 1 : 0);
+  let coverChunks = [];
+  if (opts.cover) {
+    coverChunks = splitCoverRows(d, P, coverListRows(plan), measured, ah);
+    if (coverChunks.length > 1) {
+      plan = numbering(coverChunks.length);
+      coverChunks = splitCoverRows(d, P, coverListRows(plan), measured, ah);
+    }
+  }
+  const { total } = plan;
+  const left = (t) => `${esc(d.name)} ／ ${t}`;
+  const pages = coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, total, exportedAt) : coverContHtml(d, P, rows, k + 1, total)));
+  if (withMap) {
+    pages.push(pageFrame({ P, title: 'つながりの図', sub: `「${esc(d.name)}」と、直接つながる画面設計`, body: mapPageBody(d, state, aw, ah),
+      left: left('つながりの図'), right: `${plan.mapPage} / ${total}` }));
+  }
+  itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`, sub: `項目 ${d.items.length} 個`,
+    body: printItemTable(rows), left: left('データベースの項目の一覧表'), right: `${plan.itemsPage + k} / ${total}` })));
+  plan.screens.forEach(({ s, i, page }) => {
+    const body = screenPageBody(screenComposite(d, s, 'p' + page, measured), aw, ah, measured);
+    const name = `${i + 1}　${esc(s.name)}`;
+    const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`;
+    pages.push(pageFrame({ P, title: name, sub, body: body.html, left: left(name), right: `${page} / ${total}` }));
+  });
+  return { P, pages, total, html: printDocumentHtml(d.name, P, pages.join('\n')) };
+}
+
+// PNG にする文書（画面ごとに 1 つ。ページの枠なし・縮めない・まわりに白の余白）。戻り値 [{ name, html, width, height }]
+function exportPngDocs(d, state, screenIds = null) {
+  const measured = canMeasure();
+  return d.screens.map((s, i) => ({ s, i })).filter(({ s }) => !screenIds || screenIds.includes(s.id)).map(({ s, i }) => {
+    const comp = screenComposite(d, s, 'g' + (i + 1), measured);
+    const width = comp.cw + PNG_MARGIN * 2;
+    const height = comp.ch + PNG_MARGIN * 2;
+    const body = `<div class="xp-png" style="width:${width}px;height:${height}px">`
+      + `<div class="xp-stage" style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN}px;width:${comp.cw}px;height:${comp.ch}px">${comp.html}</div></div>`;
+    const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="UTF-8">\n<title>' + esc(`${d.name} ／ ${s.name}`) + '</title>\n<style>' + APP_STYLE
+      + '\nhtml,body{margin:0;background:#fff}\n</style>\n</head>\n<body class="xp-doc">\n' + body + '\n</body>\n</html>\n';
+    return { name: `${safeFileName(d.name)}_${pad2(i + 1)}_${safeFileName(s.name, '画面')}.png`, width, height, html };
+  });
+}
+
+// ── 書き出す HTML（単体で開いて編集できる HTML。q37）──
+// 写しの中の、ほかの画面設計を指す名前（ルックアップ元・関連レコード一覧の元）を今の名前に直す。
+// 名前は選んだときの控えで、後の名前の変更に追いついていない。単体で開いたときは元がないので、この控えの名前で出す
+function refreshRefNames(copy, state) {
+  const live = (design, ref) => {
+    const it = design && ref && ref.itemId ? findItem(design, ref.itemId) : null;
+    if (it) ref.name = it.name;
+  };
+  const fixDb = (db) => {
+    const src = db && db.designId ? findDesign(state, db.designId) : null;
+    if (src) db.name = src.name;
+    return src;
+  };
+  copy.items.forEach((it) => {
+    if (!it.lookup) return;
+    const src = fixDb(it.lookup.db);
+    live(src, it.lookup.key);
+    it.lookup.copies.forEach((c) => { live(src, c.from); live(copy, c.to); });
+  });
+  copy.screens.forEach((s) => s.parts.forEach((p) => {
+    if (p.type !== 'table' || p.tableKind !== 'related' || !isObj(p.props) || !isObj(p.props.db)) return;
+    const src = fixDb(p.props.db);
+    if (isObj(p.props.cond)) { live(src, p.props.cond.from); live(copy, p.props.cond.to); }
+  }));
+}
+// つながりの図に要る、ほかの画面設計の短い写し（その画面設計の名前・作る先・数と、この画面設計を指すルックアップ・取り込み・関連レコード一覧）
+function peersOf(d, state) {
+  return mapModel(state, d.id).nodes.filter((n) => n.design && n.design.id !== d.id && !n.design.peer).map(({ design: p }) => {
+    const items = p.items.filter((it) => (it.lookup && it.lookup.db.designId === d.id) || (it.link && it.link.designId === d.id))
+      .map((it) => ({ id: it.id, name: it.name, type: it.type, lookup: it.lookup ? clone(it.lookup) : null, link: it.link ? clone(it.link) : null }));
+    const related = [];
+    p.screens.forEach((s) => s.parts.forEach((pt) => {
+      if (pt.type === 'table' && pt.tableKind === 'related' && isObj(pt.props) && isObj(pt.props.db) && pt.props.db.designId === d.id) related.push({ label: str(pt.label), db: clone(pt.props.db) });
+    }));
+    return { id: p.id, name: p.name, target: p.target, itemCount: p.items.length, screenCount: p.screens.length, items, related };
+  });
+}
+function normalizePeers(raw) {
+  return (Array.isArray(raw) ? raw : []).filter((p) => isObj(p) && str(p.id)).map((p) => ({
+    id: str(p.id),
+    name: cleanName(p.name) || '名前なし',
+    target: str(p.target),
+    itemCount: Math.max(0, Math.floor(Number(p.itemCount)) || 0),
+    screenCount: Math.max(0, Math.floor(Number(p.screenCount)) || 0),
+    items: (Array.isArray(p.items) ? p.items : []).filter(isObj).map((it) => ({ id: str(it.id), name: str(it.name), type: str(it.type), lookup: normalizeLookup(it.lookup), link: normalizeLink(it.link) })),
+    related: (Array.isArray(p.related) ? p.related : []).filter(isObj).map((r) => ({ label: str(r.label), db: normalizeDb(r.db) })),
+  }));
+}
+// 単体で開いたときの、つながりの図の仮の画面設計（この HTML にない画面設計。押しても開かない）
+function peerDesigns(state) {
+  if (!standalone) return [];
+  return standalone.peers.filter((p) => !findDesign(state, p.id)).map((p) => ({
+    ...p, peer: true, trashedAt: null,
+    screens: [{ id: 'peer-' + p.id, parts: p.related.map((r) => ({ type: 'table', tableKind: 'related', label: r.label, props: { db: r.db } })) }],
+  }));
+}
+// 埋め込むデータ。revisions の写し（snapshot）は入れない。作る先の自由な名前は、この画面設計の作る先だけを入れる
+function embedPayload(d, state) {
+  const copy = clone(d);
+  copy.revisions = copy.revisions.filter(isObj).map((r) => { const x = { ...r }; delete x.snapshot; return x; });
+  refreshRefNames(copy, state);
+  return {
+    format: EMBED_FORMAT, schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION, exportedAt: nowIso(), baseUpdatedAt: d.updatedAt,
+    data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: d.target && !builtinTarget(d.target) ? [d.target] : [], mapPos: {} }, designs: [copy] },
+    peers: peersOf(d, state),
+  };
+}
+// 単体で開いた HTML を保存し直すときのデータ（書き出したときの日時・元の更新日時・ほかの画面設計の写しは、そのまま持ち回る）
+function resavePayload(d, state) {
+  const copy = clone(d);
+  copy.revisions = copy.revisions.filter(isObj).map((r) => { const x = { ...r }; delete x.snapshot; return x; });
+  return {
+    format: EMBED_FORMAT, schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION, exportedAt: standalone.exportedAt, baseUpdatedAt: standalone.baseUpdatedAt, savedAt: nowIso(),
+    data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: [...state.settings.customTargets], mapPos: {} }, designs: [copy] },
+    peers: standalone.peers,
+  };
+}
+// アプリの HTML と同じ骨組みに、style・埋め込むデータ・script を入れる。埋め込むデータの「<」は JSON の書き方の < に逃がす（script の終わりの印で切れないように）。
+// この script の中には、script の始まりと終わりの印をそのまま書かない（HTML の解析で、この script が途中で切れるため）
+function standaloneHtml(title, payload) {
+  const json = JSON.stringify(payload).replace(/</g, '\\u003c');
+  const open = '<' + 'script';
+  const close = '<' + '/script>';
+  return '<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+    + '<title>' + esc(title) + '</title>\n<style>' + APP_STYLE + '</style>\n'
+    + open + ' type="application/json" id="' + EMBED_ID + '">' + json + close + '\n</head>\n<body>\n'
+    + '<div id="banner" hidden></div>\n<div id="app"></div>\n<div id="dialog-root"></div>\n<div id="toast" hidden></div>\n'
+    + open + '>' + APP_SCRIPT + close + '\n</body>\n</html>\n';
+}
+const buildStandaloneHtml = (d, state) => standaloneHtml(d.name, standalone ? resavePayload(d, state) : embedPayload(d, state));
+
+// HTML の文字を保存する（ブラウザ）。Chrome・Edge は保存の窓で場所と名前を選ぶ（文字を先に作ってから窓を開き、すぐ書く。
+// 引継書 7-1: 選んだファイルは書くまで空になり、書き込みの許可は押してから約 5 秒しか求められない）。ほかのブラウザはダウンロード
+async function saveHtmlInBrowser(html, name) {
+  if (typeof window.showSaveFilePicker === 'function') {
+    let handle;
+    try {
+      handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: 'HTML ファイル', accept: { 'text/html': ['.html', '.htm'] } }] });
+    } catch (e) {
+      if (e && e.name === 'AbortError') return { ok: false, canceled: true };
+      throw e;
+    }
+    const w = await handle.createWritable();
+    await w.write(html);
+    await w.close();
+    return { ok: true, path: handle.name };
+  }
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  return { ok: true, path: name, download: true };
+}
+
+// ── 単体で開いたとき（q37）──
+// 埋め込まれたデータから store を作る。読めないとき・新しい版のデータのときは、知らせて保存を止める（MemoryAdapter なので、どちらにしてもどこにも書かない）
+class MemoryAdapter {
+  save() {
+    return true;
+  }
+}
+function createStandaloneStore(el) {
+  const fail = (reason) => ({ store: new Store(new MemoryAdapter(), createInitialState()), blockReason: reason, failed: true });
+  let payload;
+  try {
+    payload = JSON.parse(el.textContent);
+  } catch (e) {
+    return fail('この HTML に入っている画面設計のデータを読めませんでした（' + (e.message || e) + '）。');
+  }
+  if (!isObj(payload) || payload.format !== EMBED_FORMAT) return fail('この HTML に入っている画面設計のデータの形が分かりません。');
+  standalone = { designId: null, peers: normalizePeers(payload.peers), exportedAt: str(payload.exportedAt), baseUpdatedAt: str(payload.baseUpdatedAt), savedJson: '', savedOnce: false };
+  let migrated;
+  try {
+    migrated = migrate(payload.data);
+  } catch (e) {
+    return fail('この HTML に入っている画面設計のデータを今の形に直せませんでした（' + (e.message || e) + '）。');
+  }
+  const { state, blockReason } = migrated;
+  if (!state.designs.length) return fail('この HTML には画面設計が入っていません。');
+  standalone.designId = state.designs[0].id;
+  standalone.savedJson = JSON.stringify(state);
+  return { store: new Store(new MemoryAdapter(), state), blockReason, failed: false };
+}
+const isStandaloneDirty = () => !!standalone && !!store && JSON.stringify(store.state) !== standalone.savedJson;
+function standaloneFileName() {
+  let n = '';
+  try {
+    n = decodeURIComponent(String(location.pathname).split('/').pop() || '');
+  } catch (_) { /* 名前を読めないときは、画面設計の名前にする */ }
+  if (/\.html?$/i.test(n)) return n;
+  const d = findDesign(store.state, standalone.designId);
+  return safeFileName(d ? d.name : '') + '.html';
+}
+function standaloneBarHtml() {
+  return `<div class="sa-bar" id="sa-bar"><span class="sa-msg">この HTML は「<b id="sa-name"></b>」の画面設計です。直したら「HTML を保存」で保存して、送り返してください。</span>
+    <span class="sa-state" id="sa-state" role="status"></span><span class="spacer"></span>
+    <button class="btn primary small" data-action="save-html" title="直した中身を HTML ファイルに保存します（Ctrl+S）">💾 HTML を保存</button></div>`;
+}
+function refreshStandaloneBar() {
+  const state = $('#sa-state');
+  if (!standalone || !state) return;
+  const d = findDesign(store.state, standalone.designId);
+  $('#sa-name').textContent = d ? d.name : '';
+  const dirty = isStandaloneDirty();
+  state.textContent = dirty ? '● 保存していない変更があります' : standalone.savedOnce ? '✓ 保存しました' : '';
+  state.classList.toggle('dirty', dirty);
+}
+// 単体で開いた HTML を保存し直す（打ちかけの文字を先に保存してから作る）
+async function saveStandalone() {
+  if (!standalone) return null;
+  flushSideField();
+  const d = findDesign(store.state, standalone.designId);
+  if (!d) return null;
+  const json = JSON.stringify(store.state);
+  const name = standaloneFileName();
+  const res = await saveHtmlInBrowser(buildStandaloneHtml(d, store.state), name);
+  if (res.ok) {
+    standalone.savedJson = json;
+    standalone.savedOnce = true;
+    refreshStandaloneBar();
+    toast(res.download ? `「${name}」をダウンロードしました。ダウンロードのフォルダにあります。` : 'HTML を保存しました。');
+  }
+  return res;
+}
+
+// ── 書き出しの窓（q33）──
+// 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない）
+const exportOpts = { kind: 'pdf', paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, openAfter: true };
+const EXPORT_KINDS = [
+  ['pdf', '📄', 'PDF', '印刷して渡す。1 画面＝1 ページ。表紙・つながりの図・項目の一覧表も入れられる'],
+  ['html', '🌐', 'HTML', 'ブラウザで開いて、見る・直すことができる。直したものはアプリで取り込める'],
+  ['png', '🖼', 'PNG（画像）', '画面ごとに 1 枚の画像。資料に貼るとき'],
+];
+function exportDialogBody(d, desk, kind, hasMap) {
+  const o = exportOpts;
+  const kinds = EXPORT_KINDS.map(([k, ic, name, note]) => {
+    const off = !desk && k !== 'html'; // PDF・PNG はデスクトップ版だけ（q38）
+    return `<button type="button" class="xp-kind${k === kind ? ' on' : ''}" data-xkind="${k}" aria-pressed="${k === kind}"${off ? ' disabled' : ''}>`
+      + `<b><i>${ic}</i>${name}</b><small>${off ? 'デスクトップ版のアプリで書き出せます' : note}</small></button>`;
+  }).join('');
+  const seg = (name, value, choices) => `<div class="seg">${choices.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}"${value === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
+  const screens = d.screens.map((s, i) => `<label class="check"><input type="checkbox" data-xscreen value="${esc(s.id)}" checked><span>${i + 1}　${esc(s.name)}<small class="dev">${DEVICES[s.device].label}</small></span></label>`).join('');
+  const pick = `<div class="xp-sub">書き出す画面<span class="spacer"></span><button type="button" class="link-btn" data-xall="1">すべて選ぶ</button><button type="button" class="link-btn" data-xall="0">すべて外す</button></div><div class="xp-screens">${screens}</div>`;
+  const page = (key, label, ok, why) => `<label class="check"><input type="checkbox" data-xpage="${key}"${ok && o[key] ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${label}${ok ? '' : `<small class="sub">${why}</small>`}</span></label>`;
+  const slide = o.paper === 'slide';
+  return `<div class="xp-kinds">${kinds}</div>
+    <div class="xp-box" data-xbox="pdf"${kind === 'pdf' ? '' : ' hidden'}>
+      <div class="xp-row">
+        <div class="field"><span>用紙</span>${seg('xp-paper', o.paper, Object.entries(PAPERS).map(([k, p]) => [k, p.label]))}</div>
+        <div class="field"><span>向き</span>${seg('xp-orient', slide ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
+      </div>
+      <div class="xp-sub">入れるページ</div>
+      <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', 'つながりの図', hasMap, 'ほかの画面設計とのつながりがないので、出しません')}${page('items', 'データベースの項目の一覧表', d.items.length > 0, '項目がないので、出しません')}</div>
+      ${pick}
+      <label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>書き出したら PDF を開く</span></label>
+    </div>
+    <div class="xp-box" data-xbox="html"${kind === 'html' ? '' : ' hidden'}>
+      <p class="xp-note">画面設計 1 つ分（画面 ${d.screens.length} つ・項目 ${d.items.length} 個）を、アプリごと 1 つの HTML ファイルにします。<br>
+        受け取った人は、ブラウザ（Chrome・Edge など）で開いて、見る・直す・保存し直すことができます。</p>
+      <p class="xp-note">ほかのモックから取り込んだ項目は、今の中身を写して入れます（受け取った人は直せません）。<br>
+        直して返してもらった HTML は、最初の画面の「⇩ HTML を取り込む」で取り込めます。</p>
+    </div>
+    <div class="xp-box" data-xbox="png"${kind === 'png' ? '' : ' hidden'}>
+      ${pick}
+      <p class="xp-note">1 画面＝1 枚（画面・吹き出し・部品の設定の一覧表が入る大きさ）。2 倍の細かさで書き出します。<br>
+        画面が 2 つ以上のときは、保存するフォルダを選びます（ファイルの名前は「${esc(safeFileName(d.name))}_01_${esc(safeFileName(d.screens[0].name, '画面'))}.png」のようにします）。</p>
+    </div>`;
+}
+// 書き出しの窓を開き、選んだ形で書き出す。戻り値は書き出しの結果（キャンセルは null）
+async function openExportDialog(designId) {
+  const d = findDesign(store.state, designId);
+  if (!d || standalone) return null;
+  flushSideField();
+  const desk = !!window.exportAPI;
+  const kind = desk ? exportOpts.kind : 'html';
+  const hasMap = hasMapLinks(d, store.state);
+  const r = await showDialog({
+    title: `「${d.name}」を書き出す`,
+    okLabel: '書き出す…',
+    width: 640,
+    body: exportDialogBody(d, desk, kind, hasMap),
+    init(m) {
+      const syncOrient = () => {
+        const slide = (m.querySelector('[name="xp-paper"]:checked') || {}).value === 'slide';
+        m.querySelectorAll('[name="xp-orient"]').forEach((x) => {
+          x.disabled = slide;
+          if (slide && x.value === 'landscape') x.checked = true;
+        });
+      };
+      m.addEventListener('click', (e) => {
+        const card = e.target.closest('[data-xkind]');
+        if (card && !card.disabled) {
+          m.querySelectorAll('[data-xkind]').forEach((b) => { b.classList.toggle('on', b === card); b.setAttribute('aria-pressed', String(b === card)); });
+          m.querySelectorAll('[data-xbox]').forEach((b) => { b.hidden = b.dataset.xbox !== card.dataset.xkind; });
+          return;
+        }
+        const all = e.target.closest('[data-xall]');
+        if (all) all.closest('.xp-box').querySelectorAll('[data-xscreen]').forEach((x) => { x.checked = all.dataset.xall === '1'; });
+      });
+      m.addEventListener('change', (e) => { if (e.target.name === 'xp-paper') syncOrient(); });
+      syncOrient();
+    },
+    collect(m) {
+      const k = m.querySelector('.xp-kind.on').dataset.xkind;
+      const box = m.querySelector(`[data-xbox="${k}"]`);
+      const screenIds = [...box.querySelectorAll('[data-xscreen]:checked')].map((x) => x.value);
+      if (k === 'png' && !screenIds.length) return { error: '書き出す画面を 1 つ以上選んでください。' };
+      if (k !== 'pdf') return { kind: k, screenIds };
+      const checked = (key) => { const x = box.querySelector(`[data-xpage="${key}"]`); return !!x && !x.disabled && x.checked; };
+      const r2 = {
+        kind: k, screenIds, paper: (box.querySelector('[name="xp-paper"]:checked') || {}).value || 'A4',
+        orient: (box.querySelector('[name="xp-orient"]:checked') || {}).value || 'landscape',
+        cover: checked('cover'), map: checked('map'), items: checked('items'), openAfter: !!box.querySelector('[data-xopen]').checked,
+      };
+      if (!screenIds.length && !r2.cover && !r2.map && !r2.items) return { error: '入れるページか、書き出す画面を 1 つ以上選んでください。' };
+      return r2;
+    },
+  });
+  if (!r) return null;
+  // 覚える（押せなかったチェックは、前の設定のままにする）
+  exportOpts.kind = r.kind;
+  if (r.kind === 'pdf') {
+    Object.assign(exportOpts, { paper: r.paper, orient: r.paper === 'slide' ? exportOpts.orient : r.orient, cover: r.cover, openAfter: r.openAfter });
+    if (hasMap) exportOpts.map = r.map;
+    if (d.items.length) exportOpts.items = r.items;
+  }
+  return runExport(d.id, r);
+}
+function reportExport(res, what) {
+  if (!res || res.canceled) return;
+  if (!res.ok) { toast(`${what}を書き出せませんでした（${res.error || 'わからない理由'}）。`); return; }
+  toast(res.count > 1 ? `${res.count} 枚の ${what} を書き出しました（${res.dir}）。` : `${what}を書き出しました（${res.path}）。`);
+}
+// 書き出す。r は書き出しの窓の結果（{ kind, screenIds, paper, orient, cover, map, items, openAfter }）
+async function runExport(designId, r) {
+  const d = findDesign(store.state, designId);
+  if (!d) return null;
+  const api = window.exportAPI;
+  let res = null;
+  if (r.kind === 'html') {
+    const html = buildStandaloneHtml(d, store.state);
+    const name = safeFileName(d.name) + '.html';
+    res = api ? await api.saveHtml({ name, html }) : await saveHtmlInBrowser(html, name);
+    reportExport(res, 'HTML');
+    return res;
+  }
+  if (!api) return null; // PDF・PNG はデスクトップ版だけ
+  if (r.kind === 'pdf') {
+    toast('PDF を作っています…');
+    const doc = exportDocument(d, store.state, r);
+    res = await api.savePdf({ name: safeFileName(d.name) + '.pdf', html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
+    reportExport(res, 'PDF');
+    return res;
+  }
+  toast('PNG を作っています…');
+  res = await api.savePng({ files: exportPngDocs(d, store.state, r.screenIds) });
+  reportExport(res, 'PNG');
+  return res;
+}
+
+// ── HTML の取り込み（q39）──
+// 書き出した HTML を読む。戻り値 { payload, design, customTargets } か { error }
+function parseExportedHtml(text) {
+  if (typeof text !== 'string' || !text.trim()) return { error: 'ファイルが空です。' };
+  if (text.length > IMPORT_MAX_CHARS) return { error: 'ファイルが大きすぎます（50MB まで）。' };
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(text, 'text/html');
+  } catch (_) {
+    return { error: 'HTML として読めませんでした。' };
+  }
+  const el = doc.getElementById(EMBED_ID);
+  if (!el) return { error: 'モックイメージメーカーで書き出した HTML ではありません（画面設計のデータが入っていません）。' };
+  let payload;
+  try {
+    payload = JSON.parse(el.textContent);
+  } catch (_) {
+    return { error: 'HTML に入っている画面設計のデータが壊れています。' };
+  }
+  if (!isObj(payload) || payload.format !== EMBED_FORMAT) return { error: 'モックイメージメーカーで書き出した HTML ではありません。' };
+  const v = Number(payload.schemaVersion);
+  if (!Number.isInteger(v) || v < 1) return { error: 'HTML に入っている画面設計のデータの版が正しくありません。' };
+  if (v > SCHEMA_VERSION) return { error: `新しい版のアプリで書き出した HTML です（データの形の版 ${v}。この版のアプリが分かるのは ${SCHEMA_VERSION} まで）。新しい版のアプリで取り込んでください。` };
+  let migrated;
+  try {
+    migrated = migrate(payload.data);
+  } catch (e) {
+    return { error: '画面設計のデータを今の形に直せませんでした（' + (e.message || e) + '）。' };
+  }
+  if (migrated.blockReason) return { error: migrated.blockReason };
+  if (migrated.state.designs.length !== 1) return { error: 'HTML に入っている画面設計が見つかりません。' };
+  return { payload, design: migrated.state.designs[0], customTargets: migrated.state.settings.customTargets };
+}
+// 中身（比べるところ）。キーの順に左右されないように、キーを並べ替えた JSON にする
+function canonicalJson(v) {
+  if (Array.isArray(v)) return '[' + v.map(canonicalJson).join(',') + ']';
+  if (isObj(v)) return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalJson(v[k])).join(',') + '}';
+  return JSON.stringify(v === undefined ? null : v);
+}
+const designContent = (d) => canonicalJson({ name: d.name, target: d.target, description: d.description, items: d.items, screens: d.screens, mapPos: d.mapPos });
+// 一覧にある画面設計を、取り込む中身で置き換える（state を書き換える）。今の中身は改訂の記録に「取り込む前の状態」として残す
+function replaceWithImported(s, incoming) {
+  const d = findDesign(s, incoming.id);
+  const snapshot = clone(d);
+  delete snapshot.revisions;
+  d.revisions.push({ id: newId('r'), kind: 'import', no: null, date: nowIso(), note: '取り込む前の状態', schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION, snapshot });
+  Object.assign(d, {
+    name: incoming.name, target: incoming.target, description: incoming.description,
+    items: clone(incoming.items), screens: clone(incoming.screens), mapPos: clone(incoming.mapPos), trashedAt: null, updatedAt: nowIso(),
+  });
+  addCustomTarget(s, incoming.target);
+  syncLinkedItems(s); // 一覧にある元の項目とつなぎ直す（元がなければ「元なし」で固定。この画面設計から取り込んだ、ほかの画面設計の項目もそろう）
+}
+// 置き換えても中身が変わらないか（つながった項目は、一覧にある元にそろえてから比べる。
+// 書き出した HTML ではルックアップ元などの名前を今の名前に直しているので、手元の写しも同じように直してから比べる）
+function sameAfterImport(existing, incoming) {
+  const trial = clone(store.state);
+  replaceWithImported(trial, incoming);
+  const cur = normalizeDesign(clone(existing));
+  refreshRefNames(cur, store.state);
+  return designContent(cur) === designContent(findDesign(trial, incoming.id));
+}
+const importedCopyName = (name) => cleanName(name).slice(0, NAME_MAX - 6).trim() + '（取り込み）';
+// 確かめの窓。戻り値 'replace'（置き換える）・'copy'（別の画面設計として足す）・null（キャンセル）
+function openImportConfirmDialog(cur, inc, payload) {
+  const count = (d) => ({ screens: d.screens.length, parts: d.screens.reduce((n, s) => n + s.parts.length, 0), items: d.items.length });
+  const [a, b] = [count(cur), count(inc)];
+  const row = (label, x, y) => `<tr><th>${label}</th><td>${x}</td><td${x !== y ? ' class="diff"' : ''}>${y}</td></tr>`;
+  const changedHere = !!payload.baseUpdatedAt && String(cur.updatedAt) > String(payload.baseUpdatedAt);
+  return showDialog({
+    title: `「${inc.name}」を取り込みますか？`,
+    okLabel: '取り込む',
+    okClass: 'danger',
+    width: 560,
+    body: `<p>一覧${cur.trashedAt ? 'の「ごみ箱」' : ''}にある画面設計「${esc(cur.name)}」から書き出した HTML です。</p>
+      <table class="imp-cmp"><thead><tr><th></th><th>今の中身</th><th>取り込む中身</th></tr></thead><tbody>
+        ${row('名前', esc(cur.name), esc(inc.name))}${row('更新日時', fmtDateTime(cur.updatedAt), fmtDateTime(inc.updatedAt))}
+        ${row('画面', `${a.screens} つ`, `${b.screens} つ`)}${row('部品', `${a.parts} 個`, `${b.parts} 個`)}${row('項目', `${a.items} 個`, `${b.items} 個`)}
+      </tbody></table>
+      ${changedHere ? `<p class="warn">書き出した後（${esc(fmtDateTime(payload.baseUpdatedAt))} より後）に、こちらでも変えています。置き換えると、こちらで変えた所は消えます（今の中身は改訂の記録に残ります）。</p>` : ''}
+      <div class="imp-choice">
+        <label class="check"><input type="radio" name="imp-how" value="replace" checked><span><b>置き換える</b><small class="sub">今の中身は、改訂の記録に「取り込む前の状態」として残ります。${cur.trashedAt ? 'ごみ箱から一覧に戻します。' : ''}元に戻す（Ctrl+Z）でも戻せます。</small></span></label>
+        <label class="check"><input type="radio" name="imp-how" value="copy"><span><b>別の画面設計として足す</b><small class="sub">「${esc(importedCopyName(inc.name))}」として一覧に足します。今の中身はそのままです。</small></span></label>
+      </div>`,
+    collect: (m) => (m.querySelector('[name="imp-how"]:checked') || {}).value || 'replace',
+  });
+}
+// 書き出した HTML の文字を取り込む。戻り値 { status: 'added'|'replaced'|'copied'|'same'|'canceled'|'error', designId?, error? }
+async function importHtmlText(text) {
+  const r = parseExportedHtml(text);
+  if (r.error) { toast(r.error); return { status: 'error', error: r.error }; }
+  const { payload, design: incoming, customTargets } = r;
+  const existing = findDesign(store.state, incoming.id);
+  if (!existing) {
+    // 一覧になければ、同じ id のまま足す（次に取り込むときに、同じ画面設計だと分かるように）
+    store.commit((s) => {
+      s.designs.push({ ...clone(incoming), trashedAt: null, updatedAt: nowIso() });
+      customTargets.forEach((t) => addCustomTarget(s, t));
+      addCustomTarget(s, incoming.target);
+      syncLinkedItems(s);
+    });
+    toast(`「${incoming.name}」を一覧に足しました。`);
+    return { status: 'added', designId: incoming.id };
+  }
+  if (sameAfterImport(existing, incoming)) {
+    toast(`「${existing.name}」と同じ中身なので、取り込みませんでした。`);
+    return { status: 'same', designId: existing.id };
+  }
+  const how = await openImportConfirmDialog(existing, incoming, payload);
+  if (!how) return { status: 'canceled' };
+  if (how === 'copy') {
+    const copy = duplicateDesignData(incoming);
+    copy.name = importedCopyName(incoming.name);
+    store.commit((s) => {
+      s.designs.push(copy);
+      addCustomTarget(s, copy.target);
+      syncLinkedItems(s);
+    });
+    toast(`「${copy.name}」として一覧に足しました。`);
+    return { status: 'copied', designId: copy.id };
+  }
+  store.commit((s) => replaceWithImported(s, incoming));
+  toast(`「${incoming.name}」を、取り込んだ中身に置き換えました。前の中身は改訂の記録に「取り込む前の状態」として残しています（元に戻す〔Ctrl+Z〕でも戻せます）。`);
+  return { status: 'replaced', designId: incoming.id };
+}
+const readFileText = (file) => (typeof file.text === 'function' ? file.text() : new Promise((resolve, reject) => {
+  const fr = new FileReader();
+  fr.onload = () => resolve(String(fr.result));
+  fr.onerror = () => reject(fr.error);
+  fr.readAsText(file);
+}));
+async function importHtmlFile(file) {
+  if (!file) return null;
+  if (file.size > IMPORT_MAX_CHARS) { toast('ファイルが大きすぎます（50MB まで）。'); return { status: 'error' }; }
+  return importHtmlText(await readFileText(file));
+}
+// 取り込む HTML を選ぶ（デスクトップは main の開く窓。アプリのメニューからも開けるように。ブラウザは隠した input）
+async function pickAndImportHtml() {
+  if (window.exportAPI) {
+    const res = await window.exportAPI.openHtml();
+    if (!res || res.canceled) return null;
+    if (!res.ok) { toast(`ファイルを読めませんでした（${res.error || 'わからない理由'}）。`); return { status: 'error' }; }
+    return importHtmlText(res.text);
+  }
+  const file = await new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.html,.htm,text/html';
+    input.addEventListener('change', () => resolve(input.files && input.files[0] ? input.files[0] : null));
+    input.addEventListener('cancel', () => resolve(null));
+    input.click();
+  });
+  return importHtmlFile(file);
+}
+// ファイルを落としたとき。最初の画面なら取り込み、ほかではページが置き換わらないように既定の動きを止めるだけ
+const hasFiles = (e) => !!e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
+const canDropImport = () => !standalone && ui.view === 'home' && !isDialogOpen();
+function onFileDragOver(e) {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = canDropImport() ? 'copy' : 'none';
+  document.body.classList.toggle('file-over', canDropImport());
+}
+function onFileDrop(e) {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  document.body.classList.remove('file-over');
+  if (!canDropImport()) return;
+  importHtmlFile(e.dataTransfer.files[0]).catch(reportPageError);
+}
+
+// ── 9. 命令（runCommand）──────────────────────────────────────────────────────
 // ボタン・キー・アプリのメニュー（Electron の menu:command）からの命令は、すべてここで受ける
 function runCommand(cmd) {
   if (isDialogOpen()) return false;
@@ -5418,7 +6349,21 @@ function runCommand(cmd) {
     case 'undo': store.undo(); return true;
     case 'redo': store.redo(); return true;
     case 'goHome':
+      if (ui.view === 'editor' && !standalone) goHome();
+      return true;
+    // 書き出しと取り込み（第 5 段階）。単体で開いた HTML では、書き出しの窓と取り込みは出さず、HTML を保存し直すだけ（q37）
+    case 'exportDialog':
+      if (standalone) return true;
+      if (ui.view === 'editor') openExportDialog(ui.designId).catch(reportPageError);
+      else toast('書き出す画面設計を開くか、カードの「…」から「書き出す…」を選んでください。');
+      return true;
+    case 'importHtml':
+      if (standalone) return true;
       if (ui.view === 'editor') goHome();
+      pickAndImportHtml().catch(reportPageError);
+      return true;
+    case 'saveHtml':
+      if (standalone) saveStandalone().catch(reportPageError);
       return true;
   }
   if (ui.view !== 'editor') return false;
@@ -5431,7 +6376,7 @@ function runCommand(cmd) {
       updateEditor();
       return true;
     case 'deleteItem': if (ui.panel === 'items' && ui.itemId) deleteItemWithConfirm(ui.itemId).catch(reportPageError); return true;
-    case 'importItems': openImportDialog().catch(reportPageError); return true;
+    case 'importItems': if (!standalone) openImportDialog().catch(reportPageError); return true;
     case 'deselectItem': if (ui.panel === 'items') selectItem(null); return true;
     case 'addScreen': openAddScreenDialog().catch(reportPageError); return true;
     case 'prevScreen': case 'nextScreen': stepScreen(cmd === 'nextScreen' ? 1 : -1); return true;
@@ -5481,7 +6426,7 @@ const SIZE_BUTTONS = [
 const alignSvg = (inner) => `<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">${inner}</svg>`;
 
 const ACTION_COMMANDS = {
-  undo: 'undo', redo: 'redo', home: 'goHome', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
+  undo: 'undo', redo: 'redo', home: 'goHome', export: 'exportDialog', 'import-html': 'importHtml', 'save-html': 'saveHtml', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
   'open-items': 'openItems', 'open-map': 'openMap', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
@@ -5603,6 +6548,12 @@ function editorKeyCommand(e) {
 
 function onKeyDown(e) {
   if (isDialogOpen()) return;
+  // 単体で開いた HTML では、Ctrl+S で HTML を保存し直す（ブラウザの「名前を付けて保存」は、描いた後のページを保存してしまうため止める）
+  if (standalone && (e.ctrlKey || e.metaKey) && !e.altKey && String(e.key || '').toLowerCase() === 's') {
+    e.preventDefault();
+    runCommand('saveHtml');
+    return;
+  }
   if (e.key === 'Escape' && ui.menuFor) { ui.menuFor = null; refreshCards(); return; }
   if (e.key === 'Escape' && ui.screenMenu) {
     const id = ui.screenMenu;
@@ -5628,9 +6579,10 @@ function onKeyDown(e) {
 function onStoreChange() {
   if (ui.view === 'home') renderHome();
   else updateEditor({ keepSide: keepSideOnNotify });
+  refreshStandaloneBar();
 }
 
-// ── 9. 起動 ───────────────────────────────────────────────────────────────────
+// ── 10. 起動 ──────────────────────────────────────────────────────────────────
 function bindGlobalEvents() {
   const app = appEl();
   app.addEventListener('click', onAppClick);
@@ -5679,22 +6631,40 @@ function bindGlobalEvents() {
   // 画面の一覧を送ったときは、「…」のメニューを閉じる（「…」から離れるため。scroll は泡立たないので、捕まえる側で受ける）
   document.addEventListener('scroll', (e) => { if (e.target && e.target.id === 'screen-list') closeScreenMenu(); }, true);
   window.addEventListener('blur', flushSideField);
-  window.addEventListener('beforeunload', flushSideField);
+  // 閉じる前に、打ちかけの文字を保存する。単体で開いた HTML で保存していない変更があれば、閉じるのを止める（ブラウザの確かめが出る）
+  window.addEventListener('beforeunload', (e) => {
+    flushSideField();
+    if (isStandaloneDirty()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+  // ファイルを落としたとき（最初の画面なら HTML を取り込む。ほかの画面では、ページが置き換わらないように止める）
+  document.addEventListener('dragover', onFileDragOver);
+  document.addEventListener('drop', onFileDrop);
+  document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) document.body.classList.remove('file-over'); });
 }
 
 async function boot() {
-  const created = await createAppStore();
+  const styleEl = document.querySelector('head > style');
+  APP_STYLE = styleEl ? styleEl.textContent : '';
+  // 書き出した HTML（画面設計が埋め込まれている）を開いたときは、単体で開いたときの形で起動する（q37。どこにも保存しない）
+  const embedded = document.getElementById(EMBED_ID);
+  const created = embedded ? createStandaloneStore(embedded) : await createAppStore();
   store = created.store;
-  if (created.blockReason) showBanner(created.blockReason + ' 今のデータを消さないように、保存を止めています。');
+  if (embedded) {
+    if (created.blockReason) showBanner(created.blockReason + (created.failed ? '' : ' この HTML は、新しい版のアプリで開いてください。'));
+  } else if (created.blockReason) showBanner(created.blockReason + ' 今のデータを消さないように、保存を止めています。');
   else if (created.notice) showBanner(created.notice);
   store.subscribe(onStoreChange);
   bindGlobalEvents();
   if (window.menuAPI) window.menuAPI.onCommand(runCommand);
-  renderHome();
+  if (!embedded) renderHome();
+  else if (!created.blockReason) openDesign(standalone.designId);
   exposeForTest();
 }
 
-// ── 10. テスト用の窓口 ────────────────────────────────────────────────────────
+// ── 11. テスト用の窓口 ────────────────────────────────────────────────────────
 // テストの土台（test/harness.js）が起動の前に window.__test__ を置いたときだけ埋める
 function exposeForTest() {
   if (!window.__test__) return;
@@ -5703,6 +6673,9 @@ function exposeForTest() {
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, minScreenHeight, selectPart, currentScreen,
     currentDesign, currentPart, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
+    exportDocument, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport,
+    paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
+    standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     ready: true,
   });
 }

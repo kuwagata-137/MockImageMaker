@@ -45,17 +45,19 @@ function createMainStorage() {
 //   storage      … createMainStorage() の戻り値。渡すと Electron で動いているとき（window.storageAPI あり）として起動する。
 //                  省略するとブラウザで開いたときとして起動する（保存先は localStorage）。
 //   localStorage … 起動前に localStorage へ入れる { キー: 値 }
+//   html         … アプリの HTML の代わりに起動する HTML の文字（書き出した HTML を単体で開いたときのテストに使う）
+//   exportAPI    … 書き出しの窓口（preload.js の exportAPI）の身代わり。渡すとデスクトップ版として PDF・PNG も選べる
 // 戻り値の api() は、起動が終わって window.__test__ が埋まるのを待ってから返す。
 // ページの中で起きた例外と console.error は errors に集め、close() のときに 1 件でもあれば失敗にする
 // （クリックの処理の中の例外を見落とさないため）。
-function bootApp({ storage = null, localStorage = null, url = 'https://localhost/app/' + HTML_NAME } = {}) {
+function bootApp({ storage = null, localStorage = null, url = 'https://localhost/app/' + HTML_NAME, html = null, exportAPI = null } = {}) {
   const errors = [];
   const vc = new VirtualConsole();
   vc.on('error', (...args) => errors.push('console.error: ' + args.map(String).join(' ')));
   vc.on('jsdomError', (e) => errors.push('例外: ' + ((e && e.message) || e)));
   const menu = { handler: null };
-  const html = fs.readFileSync(path.join(ROOT, HTML_NAME), 'utf8');
-  const dom = new JSDOM(html, {
+  const source = html != null ? html : fs.readFileSync(path.join(ROOT, HTML_NAME), 'utf8');
+  const dom = new JSDOM(source, {
     url,
     pretendToBeVisual: true,
     runScripts: 'dangerously',
@@ -63,6 +65,7 @@ function bootApp({ storage = null, localStorage = null, url = 'https://localhost
     beforeParse(window) {
       window.__test__ = {};
       window.alert = () => {};
+      if (exportAPI) window.exportAPI = exportAPI;
       if (localStorage) {
         for (const [k, v] of Object.entries(localStorage)) window.localStorage.setItem(k, v);
       }

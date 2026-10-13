@@ -4,6 +4,7 @@
 //  - 日本語のメニュー。元に戻す・やり直す・拡大・縮小は Electron の標準の動き（role）を使わず、
 //    IPC（menu:command）でページへ送り、ページの runCommand() で受ける
 //  - ファイルへの保存（storage.js）。終了の前に、並んでいる書き込みが終わるのを待つ
+//  - 書き出し（PDF・PNG・HTML）と HTML の取り込みのファイルの窓（export.js）
 //  - 2 つ目の起動を止める（2 つ動くと、互いの designs.json を丸ごと上書きするため）
 // CheckListMaker の録画・ガジェット・Word・Excel の書き出しは写していない。
 'use strict';
@@ -12,6 +13,7 @@ const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const path = require('path');
 const windowStateKeeper = require('electron-window-state');
 const { initStorage } = require('./storage');
+const { initExport } = require('./export');
 
 const APP_HTML = 'mock_v1.00.html';
 const APP_TITLE = 'モックイメージメーカー';
@@ -43,7 +45,15 @@ function buildAppMenu() {
   const template = [
     {
       label: 'ファイル',
-      submenu: [commandItem('一覧へ戻る', 'goHome'), { type: 'separator' }, { role: 'quit', label: '終了' }],
+      submenu: [
+        // 書き出す（PDF・HTML・PNG）は開いている画面設計を、取り込むは一覧へ戻ってから（第 5 段階）
+        commandItem('書き出す…', 'exportDialog'),
+        commandItem('HTML を取り込む…', 'importHtml'),
+        { type: 'separator' },
+        commandItem('一覧へ戻る', 'goHome'),
+        { type: 'separator' },
+        { role: 'quit', label: '終了' },
+      ],
     },
     {
       label: '編集',
@@ -175,6 +185,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     storage = initStorage(app, ipcMain);
+    initExport(app, ipcMain, { headless: HEADLESS });
     buildAppMenu();
     createMainWindow();
     app.on('activate', () => {
