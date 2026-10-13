@@ -14,7 +14,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・screens をカンマで区切る）]
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -449,6 +449,59 @@ async function shootMulti(browser) {
   await page.close();
 }
 
+// ── 複数の画面（第 4 段階。画像 q29〜q32）。画面を足す窓・ひな形の画面・「…」のメニュー・画面を消す確かめの窓を撮る。
+// 画面の縮小画像のドラッグでの並べ替えは、実際にマウスを動かして確かめる ──
+async function shootScreens(browser) {
+  const page = await openApp(browser, PARTS_SAMPLE);
+  await page.click('.card-open[data-id="d1"]');
+  const names = () => page.evaluate(() => window.__test__.currentDesign().screens.map((s) => s.name));
+  const ids = () => page.evaluate(() => window.__test__.currentDesign().screens.map((s) => s.id));
+  await page.click('.sl-add');
+  await page.waitForSelector('.modal .tpl');
+  await page.click('.modal .tpl[data-tpl="input"]');
+  await shot(page, '60_画面_画面を足す窓');
+  await page.click('.modal [data-dlg="ok"]');
+  // 残りのひな形は、札のダブルクリックで足す（足した画面のすぐ後ろに入る）
+  for (const tpl of ['detail', 'list', 'graph', 'agg', 'steps']) {
+    await page.click('#toolbar [data-action="add-screen"]');
+    await page.waitForSelector('.modal .tpl');
+    await page.click(`.modal .tpl[data-tpl="${tpl}"]`, { count: 2 });
+    await page.waitForFunction(() => !document.querySelector('.modal'));
+  }
+  console.log('ひな形から足した後の画面:', JSON.stringify(await names()));
+  for (let i = 0; i < 5; i++) await page.click('[data-action="zoom-out"]');
+  const all = await ids();
+  const shotNames = ['61_画面_ひな形_入力_50%', '62_画面_ひな形_詳細_50%', '63_画面_ひな形_一覧_50%', '64_画面_ひな形_グラフ_50%', '65_画面_ひな形_集計_50%', '66_画面_ひな形_進み具合_50%'];
+  for (let i = 0; i < shotNames.length; i++) {
+    await page.click(`.sl-item[data-id="${all[i + 1]}"]`);
+    await shot(page, shotNames[i]);
+  }
+  // 「…」のメニュー（2 つ目の画面）
+  await page.evaluate(() => { document.querySelector('#screen-list').scrollTop = 0; });
+  await page.hover(`.sl-wrap[data-id="${all[1]}"]`);
+  await page.click(`.sl-more[data-id="${all[1]}"]`);
+  await shot(page, '67_画面_一覧の「…」のメニュー');
+  await page.keyboard.press('Escape');
+  // 3 つ目の画面の縮小画像を、いちばん上へドラッグする（途中と放した後を撮る）
+  const from = await center(page, `.sl-item[data-id="${all[2]}"] .sl-thumb`);
+  const box = await (await page.$(`.sl-item[data-id="${all[0]}"] .sl-thumb`)).boundingBox();
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + 8, { steps: 12 });
+  await shot(page, '68_画面_縮小画像をドラッグしている途中');
+  await page.mouse.up();
+  console.log('ドラッグで並べ替えた後の画面:', JSON.stringify(await names()));
+  await shot(page, '69_画面_ドラッグで並べ替えた後');
+  // 画面を消す確かめの窓（いちばん上の画面）
+  await page.click(`.sl-item[data-id="${all[2]}"]`);
+  await page.click('#toolbar [data-action="delete-screen"]');
+  await page.waitForSelector('.modal');
+  await shot(page, '70_画面_画面を消す確かめの窓');
+  await page.click('.modal [data-dlg="ok"]');
+  console.log('消した後の画面:', JSON.stringify(await names()), '開いている画面:', await page.evaluate(() => window.__test__.currentScreen().name));
+  await page.close();
+}
+
 // ── データベースどうしのつながりの図（画像 q23）。q23 と同じ顔ぶれに、顧客管理の「受注の履歴」（関連レコード一覧。受注管理 → 顧客管理 で輪になる）を足す ──
 const lk = (dbId, dbName, key, copies) => ({ db: { designId: dbId, name: dbName, free: !dbId }, key, copies: copies.map(([from, to]) => ({ from, to })) });
 const ref = (itemId, name) => ({ itemId, name });
@@ -554,6 +607,7 @@ async function shootMap(browser) {
     if (wants('callout')) await shootCallouts(browser);
     if (wants('multi')) await shootMulti(browser);
     if (wants('map')) await shootMap(browser);
+    if (wants('screens')) await shootScreens(browser);
   } finally {
     await browser.close();
   }

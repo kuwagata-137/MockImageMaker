@@ -614,9 +614,11 @@ test('検索の欄・絞り込みの欄・ページ送り・タブ・リンク�
   set('[data-pf="props.current"]', '明細');
   assert.equal(partEl(tb.id).querySelector('.ptabs .on').textContent, '明細');
   const ln = add('link');
+  // 移る画面には、開いている画面は出ない（「この画面設計のほかの画面」）ので、画面をもう 1 つ足して選ぶ
+  const other = api.actions.addScreen(api.currentDesign().id, 'blank', api.currentScreen().id);
   api.selectPart(ln.id);
   set('[data-pf="props.to"]', 'screen');
-  set('[data-pf="props.screenId"]', api.currentScreen().id);
+  set('[data-pf="props.screenId"]', other);
   const ic = add('icon');
   api.selectPart(ic.id);
   set('[data-pf="props.icon"]', 'bell');
@@ -628,7 +630,7 @@ test('検索の欄・絞り込みの欄・ページ送り・タブ・リンク�
     '絞り込みの欄｜絞り込む項目＝区分・担当者',
     'ページ送り｜1 ページ 50 件',
     'タブ｜タブ＝基本情報／明細',
-    'リンクの文字｜移る先＝画面 1の画面',
+    'リンクの文字｜移る先＝画面 2の画面',
   ]);
 });
 
