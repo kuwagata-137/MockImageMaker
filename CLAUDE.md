@@ -26,6 +26,8 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
   次は第 3 段階（画面の中身）。作る前に、部品ごとの細かい決めごとをモックを見せて聞く（`開発ロードマップ.txt`）。
 - 2026-10-13: アプリが完成する（第 6 段階まで済む）までは版を上げないことにした（ユーザー指示。下の「運用」）。第 3 段階を前半・後半の 2 回に分けた。
   前半の部品の細かい決めごとをモックで聞いた（下の「部品の細かい決めごと」）。
+- 2026-10-13: 第 3 段階の前半を作った（部品 15 種類・部品の箱・選ぶ・動かす・大きさ・コピーと貼り付け・赤い番号・設定の欄・一覧表）。
+  次は第 3 段階の後半（表・グラフ・吹き出しなど 12 種類と、まとめて動かす操作）。作る前に、またモックで聞く。
 
 ## 設計方針
 
@@ -48,6 +50,7 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
   - ボタン・キー・アプリのメニューからの命令は、すべて `runCommand()` で受ける。
 - `main.js`（窓・メニュー・二重起動の防止・終了前の保存待ち）・`preload.js`（`storageAPI`・`menuAPI`）・`storage.js`（`designs.json` の読み書き）。
 - `test/`: `npm test`（node --test と jsdom）。`test/harness.js` がアプリの HTML を jsdom で起動し、`window.__test__` から中を触る。
+  部品のテストは `test/parts.test.js`。jsdom では要素の位置（getBoundingClientRect）が取れないので、箱からのドラッグで置く操作は `tools/shoot-app.js` で確かめる。
 - `tools/`: 確かめの道具（どれも窓を出さない）。
   - `node tools/shoot.js <html> <png>`: HTML を headless の Chrome で撮る（モックの撮影）。
   - `node tools/shoot-app.js`: アプリの場面（一覧・新規作成の窓・編集の画面など）を順に撮り、`screenshots/v<版>_*.png` に置く。
