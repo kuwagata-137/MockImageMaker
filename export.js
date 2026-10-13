@@ -24,8 +24,12 @@ const PAINT_TIMEOUT = 20000;
 
 // ファイルの名前に使えない字を「_」にする（ページ側でも直しているが、念のため）
 function safeName(name, fallback) {
-  const s = String(name || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().replace(/[. ]+$/, '').slice(0, 120);
-  return s || fallback;
+  const s = String(name || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().replace(/[. ]+$/, '');
+  if (!s) return fallback;
+  // 長いときは、拡張子（.png など）を残して前のほうを切る
+  const ext = (/\.[A-Za-z0-9]{1,5}$/.exec(s) || [''])[0];
+  const base = s.slice(0, s.length - ext.length).slice(0, 120 - ext.length).replace(/[. ]+$/, '');
+  return base ? base + ext : fallback;
 }
 const errText = (err) => String((err && err.message) || err);
 

@@ -16,7 +16,8 @@ const $$ = (app, sel) => [...app.document.querySelectorAll(sel)];
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const tick = () => new Promise((r) => setTimeout(r, 0));
 const STORAGE_KEY = 'mockimagemaker.v1';
-const ORIGINAL = fs.readFileSync(path.join(ROOT, HTML_NAME), 'utf8');
+// Windows の作業フォルダでは改行が CRLF になる（core.autocrlf）。HTML の解析は改行を LF にそろえるので、比べる側もそろえる
+const ORIGINAL = fs.readFileSync(path.join(ROOT, HTML_NAME), 'utf8').replace(/\r\n/g, '\n');
 
 // ── 見本（架空の業務）──
 const screen = (id, name, parts = [], extra = {}) => ({ id, name, device: 'pc', width: 1280, height: 800, showHeader: true, tablePos: 'right', parts, callouts: [], ...extra });
@@ -93,6 +94,14 @@ async function exportHtmlText(t, state = sampleState(), designId = 'd1') {
   const call = xapi.calls.find((c) => c[0] === 'saveHtml');
   assert.ok(call, 'saveHtml が呼ばれる');
   return { html: call[1].html, name: call[1].name, app, api };
+}
+
+// 起動済みのアプリ（ブラウザで開いたとき）から、書き出しの窓で HTML を書き出して、その文字を返す
+async function exportHtmlTextFrom(app, api, designId = 'd1') {
+  const written = [];
+  app.window.showSaveFilePicker = async (opts) => ({ name: opts.suggestedName, createWritable: async () => ({ write: async (s) => written.push(s), close: async () => {} }) });
+  await exportVia(app, api, designId);
+  return written[0];
 }
 
 async function bootStandalone(t, html) {
@@ -533,11 +542,11 @@ test('取り込み: 作る先の自由な名前は選択肢に足す。最初の
   assert.equal(api.store.state.designs[0].target, 'Excel マクロ');
   assert.deepEqual(plain(api.store.state.settings.customTargets), ['Excel マクロ']);
   assert.ok(xapi.calls.some((c) => c[0] === 'openHtml'));
-  // 編集の画面からアプリのメニューで取り込むときは、一覧へ戻ってから
+  // 編集の画面からアプリのメニューで取り込むときは、ファイルを選んだ後に一覧へ戻ってから
   api.openDesign('d1');
   app.menuCommand('importHtml');
-  assert.equal(api.ui.view, 'home');
   await waitFor(() => xapi.calls.filter((c) => c[0] === 'openHtml').length === 2, { label: '2 回目の開く窓' });
+  await waitFor(() => api.ui.view === 'home', { label: '一覧へ戻る' });
   await tick();
   assert.match($(app, '#toast').textContent, /同じ中身なので、取り込みませんでした/);
   await storage.whenIdle(); // 書き込みが済んでから片付ける
@@ -548,4 +557,166 @@ test('ブラウザの印刷では、アプリの画面の代わりに案内の�
   const css = api.appStyle();
   assert.match(css, /@media print\{[\s\S]*body:not\(\.xp-doc\)>\*\{display:none!important\}[\s\S]*この画面は印刷できません/);
   assert.match(css, /body\.xp-doc \.pg\+\.pg\{break-before:page\}/);
+});
+
+// ── 見直しで見つかった不具合（2026-10-13）──
+test('取り込み: 書き出した後に「元に戻す」で変えたときも、こちらでも変えたと赤で知らせる（更新日時でなく中身の印で比べる）', async (t) => {
+  const { app, api } = await bootSample(t);
+  api.actions.updateDesignInfo('d1', { description: '書き出す前に直した説明' });
+  const xapi = await exportHtmlTextFrom(app, api);
+  api.store.undo(); // 書き出した後に、こちらで取り消した
+  const done = api.importHtmlText(xapi.replace('書き出す前に直した説明', 'ベンダーが直した説明'));
+  await tick();
+  assert.ok($(app, '.modal .warn'), '赤の注意が出る');
+  click($(app, '[data-dlg="cancel"]'));
+  assert.equal((await done).status, 'canceled');
+});
+
+test('取り込み: 1 回取り込んだ後、同じ書き出しから直し続けた HTML を取り込んでも、こちらで変えていなければ赤の注意は出ない', async (t) => {
+  const { html, app, api } = await exportHtmlText(t);
+  const v1 = html.replace('取引先と顧客の連絡先を管理する。', 'ベンダーの 1 回目');
+  const first = api.importHtmlText(v1);
+  await tick();
+  click($(app, '[data-dlg="ok"]'));
+  assert.equal((await first).status, 'replaced');
+  const second = api.importHtmlText(v1.replace('ベンダーの 1 回目', 'ベンダーの 2 回目'));
+  await tick();
+  assert.ok($(app, '.modal .imp-cmp'), '確かめの窓は出る');
+  assert.equal($(app, '.modal .warn'), null, 'こちらで変えていないので、赤の注意は出ない');
+  click($(app, '[data-dlg="ok"]'));
+  assert.equal((await second).status, 'replaced');
+  api.actions.updateDesignInfo('d1', { description: 'こちらで直した' });
+  const third = api.importHtmlText(v1.replace('ベンダーの 1 回目', 'ベンダーの 3 回目'));
+  await tick();
+  assert.ok($(app, '.modal .warn'), 'こちらで変えたら、赤の注意が出る');
+  click($(app, '[data-dlg="cancel"]'));
+  await third;
+});
+
+test('取り込み: 書き出した後にルックアップ元の名前を変えても、そのまま返ってきた HTML は「同じ中身」', async (t) => {
+  const { html, api } = await exportHtmlText(t);
+  api.actions.renameDesign('d3', '取引先の台帳');
+  assert.equal((await api.importHtmlText(html)).status, 'same');
+});
+
+test('取り込み: 取り込んだ項目の元にルックアップがあり、その控えの名前が古くても、書き出したままなら「同じ中身」', async (t) => {
+  const state = sampleState();
+  // 住所の共通項目の郵便番号にルックアップを付け（控えの名前は古い）、顧客管理がそれを取り込んでいる
+  state.designs[1].items[0].lookup = { db: { designId: 'd3', name: '取引先マスタ（古い名前）', free: false }, key: { itemId: 'b1', name: '古いコード' }, copies: [] };
+  const { html, api } = await exportHtmlText(t, state);
+  assert.equal((await api.importHtmlText(html)).status, 'same');
+});
+
+test('取り込み: ごみ箱にある画面設計と同じ中身なら、中身は変えずに一覧に戻す。一覧になければ、作る先はその画面設計の分だけ選択肢に足す', async (t) => {
+  const { html, app, api } = await exportHtmlText(t);
+  api.actions.trashDesign('d1');
+  const r = await api.importHtmlText(html);
+  assert.equal(r.status, 'restored');
+  assert.equal(api.store.state.designs.find((d) => d.id === 'd1').trashedAt, null);
+  assert.match($(app, '#toast').textContent, /ごみ箱にありました/);
+  // 作る先の自由な名前（ベンダーが試しに書いた名前が入っていても、画面設計の作る先だけを足す）
+  const payload = JSON.parse(html.match(/id="mim-embedded">([^\n]*)<\/script>/)[1]);
+  payload.data.designs[0].id = 'd-new';
+  payload.data.designs[0].target = 'Excel マクロ';
+  payload.data.settings.customTargets = ['Excel マクロ', '試した作る先'];
+  const text = html.replace(/id="mim-embedded">[^\n]*<\/script>/, () => `id="mim-embedded">${JSON.stringify(payload).replace(/</g, '\\u003c')}</script>`);
+  assert.equal((await api.importHtmlText(text)).status, 'added');
+  assert.deepEqual(plain(api.store.state.settings.customTargets), ['Excel マクロ']);
+});
+
+test('取り込み: 吹き出しの id が重なった HTML でも、読み込むときに直す（片方を消しても、もう片方は残る）', async (t) => {
+  const state = sampleState();
+  const c = state.designs[0].screens[0].callouts[0];
+  state.designs[0].screens[0].callouts.push({ ...c, x: 1300, y: 300 });
+  const { api } = await bootSample(t, { state });
+  const ids = api.store.state.designs[0].screens[0].callouts.map((x) => x.id);
+  assert.equal(new Set(ids).size, 2);
+});
+
+test('取り込み: 編集の画面からアプリのメニューで取り込むとき、ファイルを選ばなければ編集の画面のまま', async (t) => {
+  const xapi = fakeExportAPI(); // openHtml はキャンセルを返す
+  const { app, api } = await bootSample(t, { exportAPI: xapi });
+  api.openDesign('d1');
+  api.actions.updateDesignInfo('d1', { description: '直した' });
+  api.runCommand('importHtml'); // アプリのメニューの命令と同じ
+  await waitFor(() => xapi.calls.some((c) => c[0] === 'openHtml'), { label: '開く窓' });
+  await tick();
+  assert.equal(api.ui.view, 'editor');
+  assert.equal(api.store.canUndo(), true, '元に戻すの履歴も残る');
+});
+
+test('単体で開いたとき: 関連レコード一覧の元がこの HTML にないときは、元・条件・列を直せない形で出す（列の名前は今の名前）', async (t) => {
+  const state = sampleState();
+  state.designs[3].items.push(item('e9', '受注日', 'date'));
+  state.designs[0].screens[1].parts.push({ id: 'pr', type: 'table', x: 32, y: 200, w: 640, h: 168, no: 2, labelPos: 'top', sample: '', placeholder: '', label: '受注の履歴', required: false, memo: '', tableKind: 'related',
+    props: { columns: [{ id: 'c1', ref: { itemId: 'e9', name: '受注日（古い名前）' } }], sort: '', perPage: '', limit: '5', db: { designId: 'd4', name: '受注管理', free: false }, cond: { from: { itemId: 'e1', name: '顧客コード' }, to: { itemId: 'i1', name: '顧客コード' } } },
+    view: { rows: 3, samples: {}, widths: {} } });
+  const { html } = await exportHtmlText(t, state);
+  const { app, api } = await bootStandalone(t, html);
+  click($(app, '[data-action="select-screen"][data-id="s2"]'));
+  api.selectPart('pr');
+  assert.ok($(app, '#side-settings .lk-ro'), '直せない形');
+  assert.match($(app, '#side-settings .lk-ro-list').textContent, /受注管理[\s\S]*顧客コード ＝ 顧客コード[\s\S]*列: 受注日$/);
+  for (const sel of ['[data-tb="db"]', '[data-tb="condFromName"]', '[data-tb="condFrom"]']) assert.equal($(app, `#side-settings ${sel}`), null, `${sel} を出さない`);
+  const before = JSON.stringify(api.store.state);
+  $(app, '#side-settings [data-pf="label"]').focus();
+  api.selectPart('p5');
+  assert.equal(JSON.stringify(api.store.state), before, '触っただけでは変わらない');
+});
+
+test('単体で開いたとき: ルックアップ元がない項目は部品の種類を変えられない。窓を開いている間の Ctrl+S も止める。壊れたデータでは閉じるのを止めない', async (t) => {
+  const { html } = await exportHtmlText(t);
+  const { app, api } = await bootStandalone(t, html);
+  api.runCommand('openItems');
+  click($(app, '[data-action="select-item"][data-id="i2"]'));
+  assert.equal($(app, '#side-settings [data-pf="type"]'), null, '取引先コード（ルックアップ元がない）は種類を変えられない');
+  click($(app, '[data-action="select-item"][data-id="i1"]'));
+  assert.ok($(app, '#side-settings [data-pf="type"]'), 'ほかの項目は変えられる');
+  // 窓を開いている間の Ctrl+S
+  api.runCommand('addScreen');
+  await tick();
+  assert.ok($(app, '.modal'));
+  const key = new app.window.KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true });
+  app.document.querySelector('.modal').dispatchEvent(key);
+  assert.equal(key.defaultPrevented, true, 'ブラウザの「名前を付けて保存」を止める');
+  assert.match($(app, '#toast').textContent, /窓を閉じてから保存/);
+  click($(app, '[data-dlg="cancel"]'));
+  // 壊れたデータ（画面設計が 0 件）
+  const broken = html.replace(/"designs":\[\{[\s\S]*\}\]\},"peers"/, '"designs":[]},"peers"');
+  const b = await bootStandalone(t, broken);
+  assert.equal(b.api.isStandaloneDirty(), false);
+  const ev = new b.app.window.Event('beforeunload', { cancelable: true });
+  b.app.window.dispatchEvent(ev);
+  assert.equal(ev.defaultPrevented, false, '閉じるのを止めない');
+});
+
+test('単体で開いたとき: 作る先の「その他」に打ちかけの名前も保存に入る。保存の窓が使えないときはダウンロードにする', async (t) => {
+  const { html } = await exportHtmlText(t);
+  const { app, api } = await bootStandalone(t, html);
+  const sel = $(app, '#side-settings .target-select');
+  sel.value = '__other__';
+  sel.dispatchEvent(new app.window.Event('change', { bubbles: true }));
+  const other = $(app, '#side-settings .target-other');
+  other.focus();
+  other.value = 'Access';
+  const downloads = [];
+  app.window.showSaveFilePicker = async () => { const e = new Error('止めてある'); e.name = 'SecurityError'; throw e; };
+  app.window.URL.createObjectURL = () => 'blob:x';
+  app.window.URL.revokeObjectURL = () => {};
+  app.window.HTMLAnchorElement.prototype.click = function click() { downloads.push(this.download); };
+  const res = await api.saveStandalone();
+  assert.equal(res.ok, true);
+  assert.equal(res.download, true, 'ダウンロードにした');
+  assert.deepEqual(downloads, ['顧客管理.html']);
+  assert.equal(api.currentDesign().target, 'Access', '打ちかけの作る先も入る');
+});
+
+test('PNG のファイルの名前: 長くても拡張子（.png）は残す', () => {
+  const { safeName } = require(path.join(ROOT, 'export.js'));
+  const long = 'あ'.repeat(130) + '.png';
+  const s = safeName(long, 'screen.png');
+  assert.ok(s.endsWith('.png'));
+  assert.ok(s.length <= 120);
+  assert.equal(safeName('a<b>:c?.png', 'x.png'), 'a_b__c_.png');
+  assert.equal(safeName('', 'x.png'), 'x.png');
 });

@@ -544,7 +544,8 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .cv-meta b{color:#1e293b;font-weight:600}
 .cv-rule{border:none;border-top:3px solid #1d3f6e;margin:16px 0 14px}
 .cv-sec h3{font-size:13px;color:#1d3f6e;margin-bottom:6px;font-weight:700}
-.cv-desc{font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;max-height:140px;overflow:hidden}
+.cv-desc{font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;overflow:hidden}
+.cv-desc-cut{font-size:11.5px;color:#64748b;margin-top:2px}
 .cv-desc.none{color:#94a3b8}
 .cv-cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:18px;min-height:0}
 .cv-cols.stack{grid-template-columns:1fr;gap:18px}
@@ -559,11 +560,12 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .cv-foot{font-size:11px;color:#94a3b8;display:flex;justify-content:space-between;margin-top:12px}
 .pg-in{height:100%;padding:30px 40px 18px;display:flex;flex-direction:column}
 .pg-head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid #1d3f6e;padding-bottom:6px;margin-bottom:12px;flex-shrink:0;min-width:0}
-.pg-head h2{font-size:17px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pg-head span{font-size:12px;color:#64748b;white-space:nowrap}
+.pg-head h2{font-size:17px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
+.pg-head span{font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 100 auto;min-width:0}
 .pg-body{flex:1;min-height:0;position:relative;overflow:hidden}
 .pg-foot{display:flex;justify-content:space-between;gap:16px;font-size:10.5px;color:#64748b;margin-top:8px;border-top:1px solid #e2e8f0;padding-top:5px;flex-shrink:0}
-.pg-foot span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg-foot span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pg-foot span:last-child{white-space:nowrap;flex-shrink:0}
 .xp-itable{border-collapse:collapse;width:100%;font-size:12px;table-layout:fixed}
 .xp-itable th,.xp-itable td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;line-height:1.5;overflow-wrap:anywhere}
 .xp-itable th{background:#eef2f7;color:#334155;font-size:11.5px;white-space:nowrap}
@@ -1814,7 +1816,7 @@ function normalizeScreen(src, i, items = []) {
     showHeader: s.showHeader !== false,
     tablePos: s.tablePos === 'bottom' ? 'bottom' : 'right',
     parts,
-    callouts: Array.isArray(s.callouts) ? s.callouts.filter(isObj).map(normalizeCallout) : [],
+    callouts: uniqueIds(Array.isArray(s.callouts) ? s.callouts.filter(isObj).map(normalizeCallout) : [], 'k'), // id が重なると、片方を消すと両方消えるため
   };
 }
 
@@ -4107,6 +4109,8 @@ function itemPartSettingsHtml(p, t) {
 }
 
 // 「項目の設定」の紺の枠。locked のときは灰色にして、中の欄を全部押せなくする（fieldset の disabled）。
+// 単体で開いた HTML で、ルックアップ元の画面設計が入っていない項目か（種類を変えるとルックアップが消え、作り直せないため、種類も変えさせない）
+const lookupFrozen = (p) => !!standalone && !!p.item && !!p.item.lookup && !!p.item.lookup.db.designId && !findDesign(store.state, p.item.lookup.db.designId);
 // withType のとき（データベースの項目の一覧表で項目を選んだとき）は、部品の種類も選べるようにする
 function itemSectionHtml(d, p, { locked = false, withType = false, note = 'どの画面でも同じ' } = {}) {
   const t = partType(p.type);
@@ -4118,7 +4122,9 @@ function itemSectionHtml(d, p, { locked = false, withType = false, note = 'ど�
       <div class="pf-sec-body">
         ${p.item ? `<div class="pf-used">この項目を置いている画面: <b>${used.length ? esc(used.join('・')) : 'なし'}</b></div>` : ''}
         ${pfText('label', '項目名', p.label)}
-        ${withType && isInputType(p.type) ? pfSelect('type', '部品の種類', p.type, PALETTE_GROUPS.flatMap((g) => g.types).filter(isInputType).map((k) => [k, partTypeName(k)])) : ''}
+        ${withType && isInputType(p.type) ? (lookupFrozen(p)
+    ? `<div class="field"><span>部品の種類</span><div class="hint">${esc(partTypeName(p.type))}（ルックアップの元がこの HTML に入っていないため、変えられません）</div></div>`
+    : pfSelect('type', '部品の種類', p.type, PALETTE_GROUPS.flatMap((g) => g.types).filter(isInputType).map((k) => [k, partTypeName(k)]))) : ''}
         ${p.type === 'status' || p.type === 'steps' ? '' : pfCheck('required', p.type === 'table' ? '必須（1 行以上）' : '必須', p.required)}
         ${lookupFieldsHtml(d, p)}
         ${p.type === 'table' ? tableColumnsEditorHtml(p, true) : ''}
@@ -4372,7 +4378,13 @@ function tableSettingsHtml(p, t) {
   }
   const pr = p.props;
   let source = '';
-  if (p.tableKind === 'related') {
+  // 単体で開いた HTML に、関連レコード一覧の元の画面設計が入っていないときは、元・条件・列を直せない形で出す（直すとつながりが壊れるため）
+  const roRelated = standalone && p.tableKind === 'related' && pr.db.designId && !findDesign(store.state, pr.db.designId);
+  if (roRelated) {
+    const cols = (pr.columns || []).map((c) => c.ref.name).filter(Boolean).join('・');
+    source = `<p class="lk-ro">関連レコード一覧の元の「${esc(pr.db.name || '（名前なし）')}」は、この HTML に入っていないため、元のデータベース・条件・列はここでは直せません。</p>
+      <div class="lk-ro-list">元のデータベース: ${esc(pr.db.name || '（名前なし）')}<br>条件: ${esc(pr.cond.from.name || '（項目を選んでいません）')} ＝ ${esc(refLabel(d, pr.cond.to))}${cols ? `<br>列: ${esc(cols)}` : ''}</div>`;
+  } else if (p.tableKind === 'related') {
     const dbs = visibleDesigns(store.state).filter((x) => x.id !== d.id);
     const choices = [['', '（選んでください）'], ...dbs.map((x) => ['d:' + x.id, `${x.name}（${targetLabel(x.target)}）`]), ['__free__', '✎ 一覧にないデータベース（名前を書く）']];
     const src = pr.db.designId ? findDesign(store.state, pr.db.designId) : null;
@@ -4392,7 +4404,7 @@ function tableSettingsHtml(p, t) {
     <div class="pf-sec item"><div class="pf-sec-head">この部品の設定<small>データベースの項目にはならない</small></div><div class="pf-sec-body">
       ${pfText('label', '表の名前', p.label)}
       ${source}
-      ${tableColumnsEditorHtml(p, false)}
+      ${roRelated ? '' : tableColumnsEditorHtml(p, false)}
       ${count}
       ${pfArea('memo', 'メモ', p.memo, { hint: '（自由に書く）' })}
       ${pfOutHtml(p)}
@@ -4760,6 +4772,8 @@ const TEXT_FIELDS = ['design-name', 'screen-name', 'design-desc'];
 function flushSideField() {
   const el = document.activeElement;
   if (ui.view !== 'editor' || !el || !el.closest || !el.closest('#side-settings') || !isTextInput(el)) return;
+  // 作る先の「その他」に打ちかけの名前（欄を離れたときの change で決まる）
+  if (el.classList.contains('target-other')) { el.dispatchEvent(new Event('change')); return; }
   if (!el.dataset.pf && !el.dataset.lk && !el.dataset.tb && !el.dataset.fl && !el.dataset.co && !TEXT_FIELDS.includes(el.dataset.field)) return;
   if ((el.dataset.field === 'design-name' || el.dataset.field === 'screen-name') && !cleanName(el.value)) return; // 名前を消して打ち直している途中は待つ
   onSidePanelChange({ target: el });
@@ -5618,8 +5632,11 @@ function coverRevisionTable(d) {
     : '<tr><td class="empty" colspan="3">（まだ改訂の記録はありません）</td></tr>';
   return `<table class="cv-table"><thead><tr><th style="width:70px">版</th><th style="width:96px">日付</th><th>変えた内容</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-function coverPageHtml(d, P, rows, total, exportedAt) {
-  const desc = d.description.trim() ? `<div class="cv-desc">${esc(d.description)}</div>` : '<div class="cv-desc none">（説明は書かれていません）</div>';
+function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false } = {}) {
+  const max = Math.round(P.h * 0.24);
+  const desc = d.description.trim()
+    ? `<div class="cv-desc" style="max-height:${max}px">${esc(d.description)}</div>${descCut ? '<p class="cv-desc-cut">（説明が長いため、続きを省略しました。全文はアプリか、書き出した HTML で見られます）</p>' : ''}`
+    : '<div class="cv-desc none">（説明は書かれていません）</div>';
   return `<div class="pg" style="width:${P.w}px;height:${P.h}px"><div class="pg-cover">
     <div class="cv-kicker">画面設計書</div>
     <h1 class="cv-title">${esc(d.name)}</h1>
@@ -5637,9 +5654,9 @@ function coverPageHtml(d, P, rows, total, exportedAt) {
 const coverContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '画面の一覧（続き）', body: coverListTable(rows),
   left: `${esc(d.name)} ／ 画面の一覧（続き）`, right: `${page} / ${total}` });
 // 表紙の画面の一覧を、1 ページ目と続きのページに分ける（行の高さを測る。続きのページでは見出しの行を繰り返す）。測れないときは全部を 1 ページ目に
-function splitCoverRows(d, P, rows, measured, bodyH) {
+function splitCoverRows(d, P, rows, measured, bodyH, opts = {}) {
   if (!measured || !rows.length) return [rows];
-  const probe = measureBox(coverPageHtml(d, P, rows, 99, nowIso()));
+  const probe = measureBox(coverPageHtml(d, P, rows, 99, nowIso(), opts));
   const pgTop = probe.querySelector('.pg').getBoundingClientRect().top;
   const footH = probe.querySelector('.cv-foot').getBoundingClientRect().height;
   // 1 ページ目の一覧が入る下の端（下の余白と下の端の行を引く。縦の用紙では、一覧の下の改訂の記録の分も引く）
@@ -5704,6 +5721,7 @@ function splitItemRows(rows, aw, ah, measured) {
   rows.forEach((r, i) => {
     if (cur.length && used + hs[i] > ah) { pages.push(cur); cur = []; used = head; }
     cur.push(r);
+    if (head + hs[i] > ah) cur.cut = true; // 1 行だけでもページに入らない（その行は途中までになる）
     used += hs[i];
   });
   if (cur.length) pages.push(cur);
@@ -5748,7 +5766,7 @@ function screenComposite(d, s, key, measured) {
   const [cropW, cropH] = [x1 - x0, y1 - y0];
   const lines = calloutLinesSvg(s).replace(' id="co-lines"', '').replace(/co-arrow-/g, `${key}-co-arrow-`);
   const boxes = s.callouts.map((c) => `<div class="callout cc-${esc(c.color)}" style="left:${Z + c.x}px;top:${Z + c.y}px;width:${c.w}px;height:${c.h}px">${esc(c.text)}</div>`).join('');
-  const zone = `<div style="position:absolute;left:0;top:0;width:${cropW}px;height:${cropH}px;overflow:hidden">`
+  const zone = `<div class="xp-zone" style="position:absolute;left:0;top:0;width:${cropW}px;height:${cropH}px;overflow:hidden">`
     + `<div style="position:absolute;left:${-x0}px;top:${-y0}px;width:${zoneW}px;height:${zoneH}px">`
     + `<div style="position:absolute;left:${Z}px;top:${Z}px">${screenHtml(d, s, { grid: false, marks: false })}</div>${lines}${boxes}</div></div>`;
   const table = partTableHtml(d, s, { editor: false });
@@ -5771,14 +5789,27 @@ function screenComposite(d, s, key, measured) {
 // 画面のページの本文。本文に収まるように縮め（拡大しない）、左右・上下の真ん中に置く。測れないときは縮めない。
 // 縮めるのは transform でなく zoom にする（transform だと、縮める前の幅が残り、画面のページが 2 つ以上あると、
 // Electron の印刷が用紙からはみ出しているとみなして全部のページを約 0.67 倍に縮めてしまうため）
+// zoom では 1px の罫線が縮まないので、縮めた表は「測った高さ × 倍率」より高くなる。縮めた後の大きさを測り直し、収まるまで倍率を下げる
 function screenPageBody(comp, aw, ah, measured) {
-  const k = measured ? Math.min(1, aw / comp.cw, ah / comp.ch) : 1;
-  const top = measured ? Math.max(0, Math.floor((ah - comp.ch * k) / 2)) : 0;
-  return {
-    k,
-    html: `<div class="xp-stage" style="width:${Math.floor(comp.cw * k)}px;height:${Math.floor(comp.ch * k)}px;margin-top:${top}px">`
-      + `<div style="position:absolute;left:0;top:0;width:${comp.cw}px;height:${comp.ch}px;zoom:${k.toFixed(4)}">${comp.html}</div></div>`,
-  };
+  const stage = (k, w, h, top) => `<div class="xp-stage" style="width:${Math.ceil(w)}px;height:${Math.ceil(h)}px;margin-top:${top}px">`
+    + `<div style="position:absolute;left:0;top:0;width:${comp.cw}px;height:${comp.ch}px;zoom:${k.toFixed(4)}">${comp.html}</div></div>`;
+  if (!measured) return { k: 1, html: stage(1, comp.cw, comp.ch, 0) };
+  let k = Math.min(1, aw / comp.cw, ah / comp.ch);
+  let [w, h] = [comp.cw * k, comp.ch * k];
+  for (let i = 0; i < 5; i++) {
+    const probe = measureBox(stage(k, w, h, 0));
+    const box = probe.querySelector('.xp-stage').getBoundingClientRect();
+    [w, h] = [0, 0];
+    probe.querySelectorAll('.xp-zone, .ptable').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      w = Math.max(w, r.right - box.left);
+      h = Math.max(h, r.bottom - box.top);
+    });
+    probe.remove();
+    if (w <= aw + 0.5 && h <= ah + 0.5) break;
+    k *= Math.min(aw / w, ah / h) * 0.995;
+  }
+  return { k, html: stage(k, w, h, Math.max(0, Math.floor((ah - h) / 2))) };
 }
 
 // 印刷用の文書（PDF にする HTML）。アプリと同じ style に、用紙の大きさ（@page）を足す
@@ -5807,21 +5838,30 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
   };
   let plan = numbering(opts.cover ? 1 : 0);
   let coverChunks = [];
+  // 表紙の説明が、決めた高さに入りきるか（入りきらなければ、省略したと書く）
+  let descCut = false;
+  if (opts.cover && measured && d.description.trim()) {
+    const probe = measureBox(coverPageHtml(d, P, [], 1, exportedAt));
+    const el = probe.querySelector('.cv-desc');
+    descCut = el.scrollHeight > el.clientHeight + 1;
+    probe.remove();
+  }
   if (opts.cover) {
-    coverChunks = splitCoverRows(d, P, coverListRows(plan), measured, ah);
+    coverChunks = splitCoverRows(d, P, coverListRows(plan), measured, ah, { descCut });
     if (coverChunks.length > 1) {
       plan = numbering(coverChunks.length);
-      coverChunks = splitCoverRows(d, P, coverListRows(plan), measured, ah);
+      coverChunks = splitCoverRows(d, P, coverListRows(plan), measured, ah, { descCut });
     }
   }
   const { total } = plan;
   const left = (t) => `${esc(d.name)} ／ ${t}`;
-  const pages = coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, total, exportedAt) : coverContHtml(d, P, rows, k + 1, total)));
+  const pages = coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, total, exportedAt, { descCut }) : coverContHtml(d, P, rows, k + 1, total)));
   if (withMap) {
     pages.push(pageFrame({ P, title: 'つながりの図', sub: `「${esc(d.name)}」と、直接つながる画面設計`, body: mapPageBody(d, state, aw, ah),
       left: left('つながりの図'), right: `${plan.mapPage} / ${total}` }));
   }
-  itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`, sub: `項目 ${d.items.length} 個`,
+  itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`,
+    sub: `項目 ${d.items.length} 個${rows.cut ? '・長い行は途中まで（全文はアプリか HTML で見られます）' : ''}`,
     body: printItemTable(rows), left: left('データベースの項目の一覧表'), right: `${plan.itemsPage + k} / ${total}` })));
   plan.screens.forEach(({ s, i, page }) => {
     const body = screenPageBody(screenComposite(d, s, 'p' + page, measured), aw, ah, measured);
@@ -5867,9 +5907,12 @@ function refreshRefNames(copy, state) {
     it.lookup.copies.forEach((c) => { live(src, c.from); live(copy, c.to); });
   });
   copy.screens.forEach((s) => s.parts.forEach((p) => {
-    if (p.type !== 'table' || p.tableKind !== 'related' || !isObj(p.props) || !isObj(p.props.db)) return;
+    if (p.type !== 'table' || !isObj(p.props)) return;
+    if (p.tableKind === 'records') (p.props.columns || []).forEach((c) => live(copy, c.ref));
+    if (p.tableKind !== 'related' || !isObj(p.props.db)) return;
     const src = fixDb(p.props.db);
     if (isObj(p.props.cond)) { live(src, p.props.cond.from); live(copy, p.props.cond.to); }
+    (p.props.columns || []).forEach((c) => live(src, c.ref));
   }));
 }
 // つながりの図に要る、ほかの画面設計の短い写し（その画面設計の名前・作る先・数と、この画面設計を指すルックアップ・取り込み・関連レコード一覧）
@@ -5910,6 +5953,7 @@ function embedPayload(d, state) {
   refreshRefNames(copy, state);
   return {
     format: EMBED_FORMAT, schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION, exportedAt: nowIso(), baseUpdatedAt: d.updatedAt,
+    baseHash: shortHash(comparableContent(d, state)), // 書き出したときの中身の印（取り込むときに、こちらでも変えたかを見る）
     data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: d.target && !builtinTarget(d.target) ? [d.target] : [], mapPos: {} }, designs: [copy] },
     peers: peersOf(d, state),
   };
@@ -5919,8 +5963,10 @@ function resavePayload(d, state) {
   const copy = clone(d);
   copy.revisions = copy.revisions.filter(isObj).map((r) => { const x = { ...r }; delete x.snapshot; return x; });
   return {
-    format: EMBED_FORMAT, schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION, exportedAt: standalone.exportedAt, baseUpdatedAt: standalone.baseUpdatedAt, savedAt: nowIso(),
-    data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: [...state.settings.customTargets], mapPos: {} }, designs: [copy] },
+    format: EMBED_FORMAT, schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION, exportedAt: standalone.exportedAt, baseUpdatedAt: standalone.baseUpdatedAt,
+    baseHash: standalone.baseHash, savedAt: nowIso(),
+    // 作る先の自由な名前は、この画面設計の作る先だけを入れる（「その他」に試しに書いた名前を、取り込む側の選択肢に増やさないため）
+    data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: d.target && !builtinTarget(d.target) ? [d.target] : [], mapPos: {} }, designs: [copy] },
     peers: standalone.peers,
   };
 }
@@ -5942,17 +5988,24 @@ const buildStandaloneHtml = (d, state) => standaloneHtml(d.name, standalone ? re
 // 引継書 7-1: 選んだファイルは書くまで空になり、書き込みの許可は押してから約 5 秒しか求められない）。ほかのブラウザはダウンロード
 async function saveHtmlInBrowser(html, name) {
   if (typeof window.showSaveFilePicker === 'function') {
-    let handle;
+    let handle = null;
     try {
       handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: 'HTML ファイル', accept: { 'text/html': ['.html', '.htm'] } }] });
     } catch (e) {
       if (e && e.name === 'AbortError') return { ok: false, canceled: true };
-      throw e;
+      console.warn('保存の窓を使えないので、ダウンロードにします:', e); // ポリシーで止めてある・iframe の中など
     }
-    const w = await handle.createWritable();
-    await w.write(html);
-    await w.close();
-    return { ok: true, path: handle.name };
+    if (handle) {
+      try {
+        const w = await handle.createWritable();
+        await w.write(html);
+        await w.close();
+        return { ok: true, path: handle.name };
+      } catch (e) {
+        console.warn('選んだファイルに書けなかったので、ダウンロードにします:', e);
+        toast('選んだファイルに書けませんでした。代わりにダウンロードします。');
+      }
+    }
   }
   const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
   const a = document.createElement('a');
@@ -5981,7 +6034,7 @@ function createStandaloneStore(el) {
     return fail('この HTML に入っている画面設計のデータを読めませんでした（' + (e.message || e) + '）。');
   }
   if (!isObj(payload) || payload.format !== EMBED_FORMAT) return fail('この HTML に入っている画面設計のデータの形が分かりません。');
-  standalone = { designId: null, peers: normalizePeers(payload.peers), exportedAt: str(payload.exportedAt), baseUpdatedAt: str(payload.baseUpdatedAt), savedJson: '', savedOnce: false };
+  standalone = { designId: null, peers: normalizePeers(payload.peers), exportedAt: str(payload.exportedAt), baseUpdatedAt: str(payload.baseUpdatedAt), baseHash: str(payload.baseHash), savedJson: '', savedOnce: false };
   let migrated;
   try {
     migrated = migrate(payload.data);
@@ -5994,7 +6047,7 @@ function createStandaloneStore(el) {
   standalone.savedJson = JSON.stringify(state);
   return { store: new Store(new MemoryAdapter(), state), blockReason, failed: false };
 }
-const isStandaloneDirty = () => !!standalone && !!store && JSON.stringify(store.state) !== standalone.savedJson;
+const isStandaloneDirty = () => !!standalone && !!standalone.designId && !!store && JSON.stringify(store.state) !== standalone.savedJson;
 function standaloneFileName() {
   let n = '';
   try {
@@ -6211,6 +6264,31 @@ function canonicalJson(v) {
   return JSON.stringify(v === undefined ? null : v);
 }
 const designContent = (d) => canonicalJson({ name: d.name, target: d.target, description: d.description, items: d.items, screens: d.screens, mapPos: d.mapPos });
+// 比べるための中身。形を整え、ほかの画面設計を指す控えの名前を今の名前に直してから作る（書き出した HTML の写しと同じ直し方）
+function comparableContent(d, state) {
+  const c = normalizeDesign(clone(d));
+  refreshRefNames(c, state);
+  return designContent(c);
+}
+// 中身の短い印（受け渡しで「書き出した後に、こちらでも変えたか」を見るため。FNV-1a を 2 本並べた 16 桁）
+function shortHash(text) {
+  let a = 0x811c9dc5;
+  let b = 0x9e3779b9;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193);
+    b = Math.imul(b ^ c, 0x5bd1e995);
+    b ^= b >>> 15;
+  }
+  return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
+}
+// 書き出した後に、こちらでも変えたか。書き出したときの中身の印（baseHash）か、前に取り込んだときの中身の印（画面設計の exchangeHash）と
+// 今の中身が同じなら、変えていない（元に戻すで戻した変更や、2 回目の取り込みも正しく分かるように、更新日時でなく中身で比べる）
+function changedSinceExport(cur, payload) {
+  const known = [str(payload.baseHash), str(cur.exchangeHash)].filter(Boolean);
+  if (!known.length) return !!payload.baseUpdatedAt && String(cur.updatedAt) > String(payload.baseUpdatedAt);
+  return !known.includes(shortHash(comparableContent(cur, store.state)));
+}
 // 一覧にある画面設計を、取り込む中身で置き換える（state を書き換える）。今の中身は改訂の記録に「取り込む前の状態」として残す
 function replaceWithImported(s, incoming) {
   const d = findDesign(s, incoming.id);
@@ -6223,15 +6301,14 @@ function replaceWithImported(s, incoming) {
   });
   addCustomTarget(s, incoming.target);
   syncLinkedItems(s); // 一覧にある元の項目とつなぎ直す（元がなければ「元なし」で固定。この画面設計から取り込んだ、ほかの画面設計の項目もそろう）
+  d.exchangeHash = shortHash(comparableContent(d, s)); // 取り込んだ中身の印（次に取り込むとき、こちらで変えていないと分かるように）
 }
 // 置き換えても中身が変わらないか（つながった項目は、一覧にある元にそろえてから比べる。
 // 書き出した HTML ではルックアップ元などの名前を今の名前に直しているので、手元の写しも同じように直してから比べる）
 function sameAfterImport(existing, incoming) {
   const trial = clone(store.state);
   replaceWithImported(trial, incoming);
-  const cur = normalizeDesign(clone(existing));
-  refreshRefNames(cur, store.state);
-  return designContent(cur) === designContent(findDesign(trial, incoming.id));
+  return comparableContent(existing, store.state) === comparableContent(findDesign(trial, incoming.id), trial);
 }
 const importedCopyName = (name) => cleanName(name).slice(0, NAME_MAX - 6).trim() + '（取り込み）';
 // 確かめの窓。戻り値 'replace'（置き換える）・'copy'（別の画面設計として足す）・null（キャンセル）
@@ -6239,7 +6316,7 @@ function openImportConfirmDialog(cur, inc, payload) {
   const count = (d) => ({ screens: d.screens.length, parts: d.screens.reduce((n, s) => n + s.parts.length, 0), items: d.items.length });
   const [a, b] = [count(cur), count(inc)];
   const row = (label, x, y) => `<tr><th>${label}</th><td>${x}</td><td${x !== y ? ' class="diff"' : ''}>${y}</td></tr>`;
-  const changedHere = !!payload.baseUpdatedAt && String(cur.updatedAt) > String(payload.baseUpdatedAt);
+  const changedHere = changedSinceExport(cur, payload);
   return showDialog({
     title: `「${inc.name}」を取り込みますか？`,
     okLabel: '取り込む',
@@ -6262,20 +6339,27 @@ function openImportConfirmDialog(cur, inc, payload) {
 async function importHtmlText(text) {
   const r = parseExportedHtml(text);
   if (r.error) { toast(r.error); return { status: 'error', error: r.error }; }
-  const { payload, design: incoming, customTargets } = r;
+  const { payload, design: incoming } = r;
   const existing = findDesign(store.state, incoming.id);
   if (!existing) {
-    // 一覧になければ、同じ id のまま足す（次に取り込むときに、同じ画面設計だと分かるように）
+    // 一覧になければ、同じ id のまま足す（次に取り込むときに、同じ画面設計だと分かるように）。作る先の自由な名前は、この画面設計の作る先だけを足す
     store.commit((s) => {
       s.designs.push({ ...clone(incoming), trashedAt: null, updatedAt: nowIso() });
-      customTargets.forEach((t) => addCustomTarget(s, t));
       addCustomTarget(s, incoming.target);
       syncLinkedItems(s);
+      const d = findDesign(s, incoming.id);
+      d.exchangeHash = shortHash(comparableContent(d, s));
     });
     toast(`「${incoming.name}」を一覧に足しました。`);
     return { status: 'added', designId: incoming.id };
   }
   if (sameAfterImport(existing, incoming)) {
+    // ごみ箱にあれば、中身は変えずに一覧に戻す（何も起きないと、一覧を探しても見つからないため）
+    if (existing.trashedAt) {
+      actions.restoreDesign(existing.id);
+      toast(`「${existing.name}」はごみ箱にありました。取り込む HTML と同じ中身なので、中身は変えずに一覧に戻しました。`);
+      return { status: 'restored', designId: existing.id };
+    }
     toast(`「${existing.name}」と同じ中身なので、取り込みませんでした。`);
     return { status: 'same', designId: existing.id };
   }
@@ -6307,13 +6391,14 @@ async function importHtmlFile(file) {
   if (file.size > IMPORT_MAX_CHARS) { toast('ファイルが大きすぎます（50MB まで）。'); return { status: 'error' }; }
   return importHtmlText(await readFileText(file));
 }
-// 取り込む HTML を選ぶ（デスクトップは main の開く窓。アプリのメニューからも開けるように。ブラウザは隠した input）
-async function pickAndImportHtml() {
+// 取り込む HTML を選んで、その文字を返す（キャンセル・読めないときは null）。デスクトップは main の開く窓（アプリのメニューからも開けるように）、
+// ブラウザは隠した input
+async function pickHtmlText() {
   if (window.exportAPI) {
     const res = await window.exportAPI.openHtml();
     if (!res || res.canceled) return null;
-    if (!res.ok) { toast(`ファイルを読めませんでした（${res.error || 'わからない理由'}）。`); return { status: 'error' }; }
-    return importHtmlText(res.text);
+    if (!res.ok) { toast(`ファイルを読めませんでした（${res.error || 'わからない理由'}）。`); return null; }
+    return res.text;
   }
   const file = await new Promise((resolve) => {
     const input = document.createElement('input');
@@ -6323,7 +6408,16 @@ async function pickAndImportHtml() {
     input.addEventListener('cancel', () => resolve(null));
     input.click();
   });
-  return importHtmlFile(file);
+  if (!file) return null;
+  if (file.size > IMPORT_MAX_CHARS) { toast('ファイルが大きすぎます（50MB まで）。'); return null; }
+  return readFileText(file);
+}
+// 選んでから取り込む。編集の画面からは、ファイルを選んだ後に一覧へ戻る（キャンセルしたときは、編集の画面のまま）
+async function pickAndImportHtml() {
+  const text = await pickHtmlText();
+  if (text == null) return null;
+  if (ui.view === 'editor') goHome();
+  return importHtmlText(text);
 }
 // ファイルを落としたとき。最初の画面なら取り込み、ほかではページが置き換わらないように既定の動きを止めるだけ
 const hasFiles = (e) => !!e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
@@ -6339,7 +6433,8 @@ function onFileDrop(e) {
   e.preventDefault();
   document.body.classList.remove('file-over');
   if (!canDropImport()) return;
-  importHtmlFile(e.dataTransfer.files[0]).catch(reportPageError);
+  const files = [...e.dataTransfer.files];
+  (async () => { for (const f of files) await importHtmlFile(f); })().catch(reportPageError); // いくつか落としたときは、順に取り込む
 }
 
 // ── 9. 命令（runCommand）──────────────────────────────────────────────────────
@@ -6362,7 +6457,6 @@ function runCommand(cmd) {
       return true;
     case 'importHtml':
       if (standalone) return true;
-      if (ui.view === 'editor') goHome();
       pickAndImportHtml().catch(reportPageError);
       return true;
     case 'saveHtml':
@@ -6550,13 +6644,14 @@ function editorKeyCommand(e) {
 }
 
 function onKeyDown(e) {
-  if (isDialogOpen()) return;
-  // 単体で開いた HTML では、Ctrl+S で HTML を保存し直す（ブラウザの「名前を付けて保存」は、描いた後のページを保存してしまうため止める）
+  // 単体で開いた HTML では、Ctrl+S で HTML を保存し直す（ブラウザの「名前を付けて保存」は、描いた後のページを保存してしまうため止める。窓を開いている間も止める）
   if (standalone && (e.ctrlKey || e.metaKey) && !e.altKey && String(e.key || '').toLowerCase() === 's') {
     e.preventDefault();
-    runCommand('saveHtml');
+    if (isDialogOpen()) toast('窓を閉じてから保存してください。');
+    else runCommand('saveHtml');
     return;
   }
+  if (isDialogOpen()) return;
   if (e.key === 'Escape' && ui.menuFor) { ui.menuFor = null; refreshCards(); return; }
   if (e.key === 'Escape' && ui.screenMenu) {
     const id = ui.screenMenu;
