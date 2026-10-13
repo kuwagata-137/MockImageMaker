@@ -190,6 +190,10 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .pbox.calc{background:#f1f5f9;border-style:dashed}
 .pval{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .pbox .pr{margin-left:auto;color:#475569;font-size:13px;flex-shrink:0}
+/* ルックアップの印（画像 q22）: 項目名の後ろの黄色い札、探す項目の「取得」、一緒に写される項目の灰色の入力欄。書き出しにも出す */
+.reftag{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;border-radius:4px;padding:0 5px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;line-height:1.6;flex-shrink:0}
+.pbox .pget{margin-left:auto;margin-right:-10px;align-self:stretch;display:flex;align-items:center;gap:3px;padding:0 10px;border-left:1px solid #94a3b8;background:#f8fafc;font-size:12px;color:#1d4ed8;font-weight:600;flex-shrink:0}
+.pbox.copied{background:#f1f5f9;color:#64748b}
 .pph{color:#94a3b8}
 .picon{flex-shrink:0}
 .popts{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:8px;align-content:flex-start;overflow:hidden;min-width:0}
@@ -351,6 +355,15 @@ body.sorting,body.sorting *{cursor:grabbing!important}
 .pf-banner.link{background:#f0fdf4;border:1px solid #86efac;color:#14532d}
 .pf-banner.gone{background:#fff7ed;border:1px solid #fdba74;color:#7c2d12}
 .pf-note{font-size:11px;color:#64748b;text-align:right;margin-top:3px}
+.pf-banner.ref{background:#fffbeb;border:1px solid #fcd34d;color:#78350f}
+.tag.ref{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+/* ルックアップの設定の欄（探す項目の「項目の設定」の中） */
+.lk-box{border:1.5px solid #f59e0b;border-radius:7px;background:#fffbeb;padding:8px 9px 4px;margin:4px 0 10px}
+.lk-box>.check{font-weight:700;color:#92400e}
+.lk-box .field select,.lk-box .field input[type=text]{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:5px 7px;background:#fff}
+.lk-pair{display:flex;align-items:center;gap:4px;margin-bottom:5px;font-size:12px}
+.lk-pair select,.lk-pair input{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:6px;padding:4px 5px;background:#fff;font-size:12px}
+.lk-add{border:none;background:none;color:#2563eb;cursor:pointer;font-size:12px;padding:2px 0 6px}
 </style>
 </head>
 <body>
@@ -555,10 +568,15 @@ function createItemData(type, name) {
 
 // 部品の中身を、指している項目と合わせた形にする（描く・一覧表の文を作る・設定の欄を出すときに使う）。
 // 項目を指していない部品（ボタン・見出しなど・項目を消した後に残った部品）は、そのまま返す
+// lookupRole は、ルックアップで探す項目なら 'key'、一緒に写される項目なら 'copy'（lookupKeyName は探す項目の名前）
 function resolvePart(design, p) {
   const item = p && p.itemId ? findItem(design, p.itemId) : null;
-  if (!item) return p;
-  return { ...p, label: item.name, required: item.required, memo: item.memo, props: item.props, item };
+  if (!item) return p && p.lookup && isItemType(p.type) ? { ...p, lookupRole: 'key' } : p;
+  const copy = item.lookup ? null : lookupCopyOf(design, item);
+  return {
+    ...p, label: item.name, required: item.required, memo: item.memo, props: item.props, item,
+    lookupRole: item.lookup ? 'key' : copy ? 'copy' : null, lookupKeyName: copy ? copy.key.name : '',
+  };
 }
 
 // その画面に、その項目を指す部品があるか（同じ項目を 1 つの画面に 2 回は置かない）
@@ -582,6 +600,7 @@ function frozenItemFields(item) {
 function changeItemType(design, item, type) {
   item.type = type;
   item.props = keepInitialInOptions(type, normalizeProps(partType(type), item.props));
+  if (!LOOKUP_TYPES.includes(type)) item.lookup = null;
   design.screens.forEach((s) => s.parts.forEach((p) => { if (p.itemId === item.id) p.type = type; }));
 }
 
@@ -652,7 +671,8 @@ function renumberedParts(parts) {
 
 // 一覧表の「設定」の列の文。1 行目に「必須・最大 50 文字」のような短い条件を「・」でつなぎ、
 // 「選択肢＝…」のように「＝」で書く項目は 1 つずつ行を分け、最後の行にメモを足す。何も書いていない欄は出さない
-function describePart(p) {
+// ctx（{ design, state }）を渡すと、ルックアップの文も足す（ルックアップ元の名前を引くため）
+function describePart(p, ctx = null) {
   const pr = p.props || {};
   const v = (s) => String(s == null ? '' : s).trim();
   const list = (a) => (Array.isArray(a) ? a.map(v).filter(Boolean).join('／') : '');
@@ -703,11 +723,12 @@ function describePart(p) {
       eqIf('押したとき', v(pr.action));
       break;
   }
+  if (ctx) eq.push(...lookupLines(ctx, p));
   return [short.join('・'), ...eq, v(p.memo)].filter(Boolean).join('\n');
 }
 
 // データベースの項目の一覧表の「設定」の列の文（部品の設定の一覧表と同じ書き方）
-const describeItem = (item) => describePart({ type: item.type, required: item.required, memo: item.memo, props: item.props });
+const describeItem = (item, ctx = null) => describePart({ type: item.type, required: item.required, memo: item.memo, props: item.props, item }, ctx);
 
 // 一覧表の「項目名」の列。説明の文字は 1 行目の初めの 20 文字。名前がなければ部品の種類
 function partTitle(p) {
@@ -717,13 +738,14 @@ function partTitle(p) {
 }
 
 // 部品の設定の一覧表の行（番号の付いた部品だけを番号の順に）。design を渡すと、部品が指す項目の中身で書く
-function tableRows(screen, design = null) {
+function tableRows(screen, design = null, state = null) {
+  const ctx = design && state ? { design, state } : null;
   return screen.parts
     .filter((p) => p.no != null)
     .sort((a, b) => a.no - b.no)
     .map((raw) => {
       const p = design ? resolvePart(design, raw) : raw;
-      return { id: p.id, no: p.no, label: partTitle(p), kind: partTypeName(p.type), setting: describePart(p) };
+      return { id: p.id, no: p.no, label: partTitle(p), kind: partTypeName(p.type), setting: describePart(p, ctx) };
     });
 }
 
@@ -792,9 +814,65 @@ function normalizeItem(src) {
     memo: str(it.memo),
     // 知らない種類の項目（新しい版で足した項目）は、設定をそのまま残す
     props: t ? keepInitialInOptions(type, normalizeProps(t, it.props)) : isObj(it.props) ? it.props : {},
-    lookup: isObj(it.lookup) ? it.lookup : null,
+    lookup: normalizeLookup(it.lookup),
     link: normalizeLink(it.link),
   };
+}
+
+// ルックアップ（ほかのデータベースのレコードから値を引いて入れる。画像 q22 の案A）。探すときに使う項目（例: 取引先コード）の lookup に、
+//   { db: { designId, name, free }, key: 項目の参照, copies: [{ from: 項目の参照, to: 項目の参照 }] } をまとめて持つ。
+//   db はルックアップ元のデータベース。designId は最初の画面に並ぶ画面設計の id。一覧にないデータベースは designId を null、free を true にして name に名前を書く。
+//   項目の参照は { itemId, name }。key と from はルックアップ元の項目（一覧にないデータベースでは itemId が null で、name だけ）。
+//   to は、一緒に写す先のこの画面設計の項目。name は名前の控え（項目が見つからないときに出す）。
+// ルックアップの設定を書けるのは、テキスト（1行）と数値の項目（kintone のルックアップと同じく、値で探せる種類）
+const LOOKUP_TYPES = ['text1', 'number'];
+const emptyRef = () => ({ itemId: null, name: '' });
+const normalizeRef = (r) => (isObj(r) ? { ...r, itemId: str(r.itemId) || null, name: str(r.name) } : emptyRef());
+function normalizeLookup(src) {
+  if (!isObj(src)) return null;
+  const db = isObj(src.db) ? src.db : {};
+  return {
+    ...src,
+    db: { ...db, designId: str(db.designId) || null, name: str(db.name), free: !!db.free },
+    key: normalizeRef(src.key),
+    copies: (Array.isArray(src.copies) ? src.copies : []).filter(isObj).map((c) => ({ ...c, from: normalizeRef(c.from), to: normalizeRef(c.to) })),
+  };
+}
+// ルックアップ元のデータベースの名前と、参照している項目の名前（項目が見つからないときは控えの名前）
+function dbLabel(state, db) {
+  const d = db && db.designId ? findDesign(state, db.designId) : null;
+  return (d ? d.name : db && db.name) || '（データベースを選んでいません）';
+}
+function refLabel(design, ref) {
+  const it = design && ref && ref.itemId ? findItem(design, ref.itemId) : null;
+  return (it ? it.name : ref && ref.name) || '（項目を選んでいません）';
+}
+const refMatches = (ref, item) => (ref.itemId ? ref.itemId === item.id : !!ref.name && ref.name === item.name);
+// その項目が、同じ画面設計のどれかの項目のルックアップで「一緒に写される」項目なら { key（探す項目）, copy } を返す
+function lookupCopyOf(design, item) {
+  for (const k of design.items) {
+    if (k === item || !k.lookup) continue;
+    const copy = k.lookup.copies.find((c) => refMatches(c.to, item));
+    if (copy) return { key: k, copy };
+  }
+  return null;
+}
+// 一覧表の「設定」に足すルックアップの文（画像 q22）。p は項目と合わせた部品か、項目を部品の形にしたもの
+function lookupLines({ design, state }, p) {
+  const lk = p.item ? p.item.lookup : p.lookup; // 項目を一覧表から消した後の部品は、消したときのルックアップ
+  if (lk) {
+    const src = lk.db.designId ? findDesign(state, lk.db.designId) : null;
+    const db = dbLabel(state, lk.db);
+    const lines = [`ルックアップ＝${db}の「${refLabel(src, lk.key)}」で探す`];
+    const copies = lk.copies.filter((c) => c.from.itemId || c.from.name || c.to.itemId || c.to.name);
+    if (copies.length) lines.push('一緒に写す＝' + copies.map((c) => `${refLabel(src, c.from)} → ${refLabel(design, c.to)}`).join('、'));
+    return lines;
+  }
+  const role = p.item ? lookupCopyOf(design, p.item) : null;
+  if (!role) return [];
+  const klk = role.key.lookup;
+  const src = klk.db.designId ? findDesign(state, klk.db.designId) : null;
+  return [`ルックアップ＝${dbLabel(state, klk.db)}の「${refLabel(src, role.copy.from)}」（${role.key.name}で引く）`];
 }
 
 // 取り込んだ元 { designId, itemId, designName, lost }。designName は元の画面設計の名前の控え（元がなくなったときに出す）。
@@ -806,8 +884,10 @@ function normalizeLink(src) {
 
 // 取り込んだ項目に写す、元の項目の中身（取り込んだ側では直せない中身）
 const LINKED_FIELDS = ['name', 'type', 'required', 'memo', 'props', 'lookup'];
-function linkedFields(src) {
-  return { name: src.name, type: src.type, required: src.required, memo: src.memo, props: clone(src.props), lookup: src.lookup ? clone(src.lookup) : null };
+function linkedFields(src, srcDesign) {
+  const lookup = src.lookup ? clone(src.lookup) : null;
+  if (lookup) lookup.copies = lookup.copies.map((c) => ({ ...c, to: { itemId: null, name: refLabel(srcDesign, c.to) } }));
+  return { name: src.name, type: src.type, required: src.required, memo: src.memo, props: clone(src.props), lookup };
 }
 
 // 取り込んだ項目（つなげたまま）を、元の項目の今の中身にそろえる。元を直したときは、同じ操作（commit）の中で呼ぶ。
@@ -826,7 +906,7 @@ function syncLinkedItems(state) {
       }
       if (it.link.lost) { it.link.lost = false; changed = true; }
       if (it.link.designName !== srcDesign.name) { it.link.designName = srcDesign.name; changed = true; }
-      const want = linkedFields(src);
+      const want = linkedFields(src, srcDesign);
       if (LINKED_FIELDS.every((k) => JSON.stringify(it[k]) === JSON.stringify(want[k]))) return;
       if (want.type !== it.type && isItemType(want.type)) changeItemType(d, it, want.type);
       Object.assign(it, want);
@@ -1310,10 +1390,25 @@ const actions = {
     const src = findDesign(store.state, srcDesignId);
     if (!d || !src || d.id === src.id) return 0;
     const add = itemIds.map((id) => findItem(src, id)).filter((it) => it && importState(d, src, it) !== 'done' && importState(d, src, it) !== 'own')
-      .map((it) => ({ ...linkedFields(it), id: newId('i'), link: { designId: src.id, itemId: it.id, designName: src.name, lost: false } }));
+      .map((it) => ({ ...linkedFields(it, src), id: newId('i'), link: { designId: src.id, itemId: it.id, designName: src.name, lost: false } }));
     if (!add.length) return 0;
     mutateDesign(designId, (dd) => { dd.items.push(...add.map(normalizeItem)); });
     return add.length;
+  },
+  // ルックアップを書き換える（null で外す）。create（{ index, name, type }）を渡すと、一緒に写す先の項目を新しく作って、
+  // copies[index] の写す先にする（「＋ 同じ名前で新しく作る」）。取り込んだ項目と、ルックアップを書けない種類の項目は書き換えない
+  updateLookup(designId, itemId, lookup, create = null) {
+    const item = findItem(findDesign(store.state, designId), itemId);
+    if (!item || item.link || !LOOKUP_TYPES.includes(item.type)) return false;
+    const next = lookup ? normalizeLookup(clone(lookup)) : null;
+    const created = create && next && next.copies[create.index] ? createItemData(isItemType(create.type) ? create.type : 'text1', create.name) : null;
+    return mutateDesign(designId, (d) => {
+      if (created) {
+        d.items.push(created);
+        next.copies[create.index].to = { itemId: created.id, name: created.name };
+      }
+      findItem(d, itemId).lookup = next;
+    });
   },
   // 取り込んだ項目のつながりを切り、そのときの中身の、この画面設計だけの項目にする
   unlinkItem(designId, itemId) {
@@ -1533,7 +1628,8 @@ function partInnerHtml(p, t, marks = false) {
     case 'divider':
       return `<div class="pline">${partNoHtml(p)}<i></i></div>`;
   }
-  const label = `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span>${p.required ? '<span class="preq">*</span>' : ''}${marks ? partMarksHtml(p) : ''}</div>`;
+  const ref = p.lookupRole ? '<span class="reftag" title="ほかのデータベースから値を引く項目（ルックアップ）">⇦ ルックアップ</span>' : '';
+  const label = `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span>${p.required ? '<span class="preq">*</span>' : ''}${ref}${marks ? partMarksHtml(p) : ''}</div>`;
   return label + partFieldHtml(p, t);
 }
 
@@ -1545,20 +1641,24 @@ function partFieldHtml(p, t) {
   if (p.type === 'radio') return opts('rd', (o) => o === pr.initial);
   if (p.type === 'checkbox') return opts('ck', (o) => Array.isArray(pr.initial) && pr.initial.includes(o));
   if (p.type === 'file') return '<div class="pdrop">📎 ファイルをここにドラッグ、または <u>選ぶ</u></div>';
-  const value = p.sample ? esc(p.sample) : `<span class="pph">${esc(p.placeholder || t.ph)}</span>`;
+  // ルックアップで一緒に写される項目は、自分では書けないことが分かるように灰色にし、どこから入るかを薄い字で書く
+  const copied = p.lookupRole === 'copy';
+  const ph = copied && !p.placeholder ? `（${p.lookupKeyName}から自動で入る）` : p.placeholder || t.ph;
+  const value = p.sample ? esc(p.sample) : `<span class="pph">${esc(ph)}</span>`;
   const unit = String(pr.unit || '').trim();
   const right = {
     number: unit && esc(unit), calc: unit && esc(unit), date: '📅', datetime: '🕒', dropdown: '▼', user: '選ぶ',
   }[p.type];
   const head = p.type === 'user' ? '<span class="picon">👤</span>' : '';
-  const kind = p.type === 'text2' ? ' area' : p.type === 'calc' ? ' calc' : '';
-  return `<div class="pbox${kind}">${head}<span class="pval">${value}</span>${right ? `<span class="pr">${right}</span>` : ''}</div>`;
+  const kind = p.type === 'text2' ? ' area' : p.type === 'calc' ? ' calc' : copied ? ' copied' : '';
+  const get = p.lookupRole === 'key' ? '<span class="pget">🔍 取得</span>' : '';
+  return `<div class="pbox${kind}">${head}<span class="pval">${value}</span>${right ? `<span class="pr">${right}</span>` : ''}${get}</div>`;
 }
 
 // 部品の設定の一覧表。editor のときは、行を押すとその部品を選べるようにし、番号の付いた部品がなければ案内を出す。
 // 書き出し（editor でないとき）では、番号の付いた部品がなければ表を出さない
 function partTableHtml(design, screen, { editor = false, selectedId = null } = {}) {
-  const rows = tableRows(screen, design);
+  const rows = tableRows(screen, design, store.state);
   if (!rows.length && !editor) return '';
   const width = screen.tablePos === 'bottom' ? screen.width : TABLE_W;
   const body = rows.length
@@ -1960,7 +2060,7 @@ function itemTableHtml(d) {
       <td class="c-grip" data-drag="item-sort" title="ドラッグで並べ替えます">⋮⋮</td>
       <td>${it.name ? esc(it.name) : '<span class="none">（名前なし）</span>'}</td>
       <td>${esc(partTypeName(it.type))}</td>
-      <td class="c-set">${esc(isItemType(it.type) ? describeItem(it) : '')}</td>
+      <td class="c-set">${esc(isItemType(it.type) ? describeItem(it, { design: d, state: store.state }) : '')}</td>
       <td>${itemSourceHtml(d, it)}</td>
       <td>${scr.length ? esc(scr.join('・')) : '<span class="none">どの画面にもない</span>'}</td>
       <td class="c-del"><button class="del-x" data-action="delete-item" data-id="${esc(it.id)}" title="この項目を消します" aria-label="「${esc(it.name)}」を消す">✕</button></td>
@@ -1986,6 +2086,19 @@ function itemTableHtml(d) {
 // 「ルックアップ元・取り込み元」の列
 function itemSourceHtml(d, it) {
   const parts = [];
+  const tag = '<span class="tag ref">ルックアップ</span>';
+  if (it.lookup) {
+    const src = it.lookup.db.designId ? findDesign(store.state, it.lookup.db.designId) : null;
+    const db = esc(dbLabel(store.state, it.lookup.db));
+    parts.push(`${tag} ${db} › ${esc(refLabel(src, it.lookup.key))}<br><small>（この値で${db}を探す）</small>`);
+  } else {
+    const role = lookupCopyOf(d, it);
+    if (role) {
+      const klk = role.key.lookup;
+      const src = klk.db.designId ? findDesign(store.state, klk.db.designId) : null;
+      parts.push(`${tag} ${esc(dbLabel(store.state, klk.db))} › ${esc(refLabel(src, role.copy.from))}<br><small>（${esc(role.key.name)}で引く）</small>`);
+    }
+  }
   if (it.link) parts.push(linkSourceHtml(it.link, it.name));
   return parts.join('<br>') || '<span class="none">－</span>';
 }
@@ -2091,10 +2204,12 @@ const pfSelect = (key, label, value, choices) => `<label class="field">${pfLabel
 const pfRow = (...cells) => `<div class="row2">${cells.join('')}</div>`;
 const NUM = { type: 'number' };
 
+const fieldCtx = () => ({ design: currentDesign(), state: store.state });
+
 // 一覧表の「設定」に出る文の欄。番号を外した部品は、一覧表に出ないことを書く
 function pfOutHtml(p, { forItem = false } = {}) {
   if (!forItem && p.no == null) return '<div class="pf-out"><b>一覧表の「設定」に出る文</b><div>（番号を外しているので、一覧表には出ません）</div></div>';
-  return `<div class="pf-out"><b>一覧表の「設定」に出る文</b><div id="pf-out">${esc(describePart(p)) || '（まだありません）'}</div></div>`;
+  return `<div class="pf-out"><b>一覧表の「設定」に出る文</b><div id="pf-out">${esc(describePart(p, fieldCtx())) || '（まだありません）'}</div></div>`;
 }
 
 // 選んだ部品の設定の欄。入力欄の部品は、上に「項目の設定（どの画面でも同じ）」、下に「この画面だけの設定」を出す（画像 q20）。
@@ -2178,11 +2293,62 @@ function itemSectionHtml(d, p, { locked = false, withType = false, note = 'ど�
         ${pfText('label', '項目名', p.label)}
         ${withType ? pfSelect('type', '部品の種類', p.type, itemMenuTypes().map((k) => [k, partTypeName(k)])) : ''}
         ${pfCheck('required', '必須', p.required)}
+        ${lookupFieldsHtml(d, p)}
         ${typeFields ? `<div class="pf-sep"><i>${esc(t.name)}の欄</i></div>${typeFields}` : ''}
         ${pfArea('memo', 'メモ', p.memo, { hint: '（自由に書く）' })}
         ${pfOutHtml(p, { forItem: withType })}
       </div>
     </fieldset>`;
+}
+
+// ルックアップの欄（画像 q22 の案A）。探すときに使う項目（テキスト（1行）・数値）に、ルックアップ元のデータベース・探すときに使う元の項目・
+// 一緒に写す項目をまとめて書く。一緒に写される項目には、どの項目のルックアップで何が入るかと、その探す項目の設定を開くボタンを出す
+const lkSelect = (key, value, choices, { i = null, label = '' } = {}) => `<select data-lk="${key}"${i != null ? ` data-i="${i}"` : ''} aria-label="${esc(label)}">${choices.map(([v, l]) =>
+  `<option value="${esc(v)}"${value === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+const lkText = (key, value, { i = null, label = '', placeholder = '' } = {}) =>
+  `<input type="text" data-lk="${key}"${i != null ? ` data-i="${i}"` : ''} value="${esc(value)}" placeholder="${esc(placeholder)}" aria-label="${esc(label)}">`;
+
+function lookupFieldsHtml(d, p) {
+  const state = store.state;
+  const role = p.item ? lookupCopyOf(d, p.item) : null;
+  if (role && !p.item.lookup) {
+    const klk = role.key.lookup;
+    const src = klk.db.designId ? findDesign(state, klk.db.designId) : null;
+    return `<div class="pf-banner ref">⇦ この項目には、「${esc(role.key.name)}」のルックアップで、${esc(dbLabel(state, klk.db))}の「${esc(refLabel(src, role.copy.from))}」が入ります。
+      <div class="btns"><button class="btn small" data-action="open-lookup-key" data-id="${esc(role.key.id)}">${esc(role.key.name)}の設定を開く</button></div></div>`;
+  }
+  if (!LOOKUP_TYPES.includes(p.type)) return '';
+  const lk = p.item ? p.item.lookup : p.lookup || null;
+  const head = `<label class="check"><input type="checkbox" data-lk="on"${lk ? ' checked' : ''}>ほかのデータベースから引く（ルックアップ）</label>`;
+  if (!lk) return `<div class="lk-box">${head}</div>`;
+  const src = lk.db.designId ? findDesign(state, lk.db.designId) : null;
+  const dbs = visibleDesigns(state).filter((x) => x.id !== d.id);
+  const dbChoices = [['', '（選んでください）'], ...dbs.map((x) => ['d:' + x.id, `${x.name}（${targetLabel(x.target)}）`])];
+  if (lk.db.designId && !dbs.some((x) => x.id === lk.db.designId)) dbChoices.push(['d:' + lk.db.designId, `${dbLabel(state, lk.db)}（ごみ箱にあるか、もうありません）`]);
+  dbChoices.push(['__free__', '✎ 一覧にないデータベース（名前を書く）']);
+  const dbValue = lk.db.designId ? 'd:' + lk.db.designId : lk.db.free ? '__free__' : '';
+  // 元の項目を選ぶ欄。一覧にないデータベースのときは名前を書く欄
+  const srcRef = (key, ref, opts) => {
+    if (!src) return lkText(key + 'Name', ref.name, { ...opts, placeholder: '元の項目の名前' });
+    const choices = [['', '（選んでください）'], ...src.items.map((it) => [it.id, it.name])];
+    if (ref.itemId && !findItem(src, ref.itemId)) choices.push([ref.itemId, `${ref.name}（もうありません）`]);
+    return lkSelect(key, ref.itemId || '', choices, opts);
+  };
+  const toChoices = (ref) => {
+    const c = [['', '（選んでください）'], ...d.items.filter((it) => !p.item || it.id !== p.item.id).map((it) => [it.id, it.name])];
+    if (ref.itemId && !findItem(d, ref.itemId)) c.push([ref.itemId, `${ref.name}（もうありません）`]);
+    return [...c, ['__new__', '＋ 同じ名前で新しく作る']];
+  };
+  const pairs = lk.copies.map((c, i) => `<div class="lk-pair">${srcRef('from', c.from, { i, label: `${i + 1} つ目の元の項目` })}→${lkSelect('to', c.to.itemId || '', toChoices(c.to), { i, label: `${i + 1} つ目の写す先の項目` })}
+      <button class="del-x" data-action="lk-del" data-i="${i}" title="この組を外します" aria-label="${i + 1} つ目の組を外す">✕</button></div>`).join('');
+  return `<div class="lk-box">${head}
+    <label class="field"><span>ルックアップ元のデータベース</span>${lkSelect('db', dbValue, dbChoices, { label: 'ルックアップ元のデータベース' })}</label>
+    ${!lk.db.designId && lk.db.free ? `<label class="field"><span>データベースの名前</span>${lkText('dbName', lk.db.name, { label: 'データベースの名前', placeholder: '例: 会計システム' })}</label>` : ''}
+    <label class="field"><span>探すときに使う元の項目 <small>（この項目の値で探す）</small></span>${srcRef('key', lk.key, { label: '探すときに使う元の項目' })}</label>
+    <div class="field" style="margin-bottom:4px"><span>一緒に写す項目 <small>（元の項目 → この画面設計の項目）</small></span></div>
+    ${pairs}
+    <button class="lk-add" data-action="lk-add">＋ 写す項目を足す</button>
+  </div>`;
 }
 
 // データベースの項目の一覧表で項目を選んだときの右の欄（画像 q20 の 4）
@@ -2258,6 +2424,7 @@ function commitKeepSide(fn) {
 
 // 右の欄の変更（文字は、欄を離れたときか Enter を押したときに保存する）
 function onSidePanelChange(e) {
+  if (e.target.dataset.lk) { onLookupFieldChange(e.target); return; }
   if (e.target.dataset.pf) { onPartFieldChange(e.target); return; }
   const field = e.target.dataset.field;
   const d = currentDesign();
@@ -2297,7 +2464,7 @@ function onPartFieldChange(el) {
   commitKeepSide(apply);
   const now = currentSubject();
   const out = $('#pf-out');
-  if (out) out.textContent = describePart(now) || '（まだありません）';
+  if (out) out.textContent = describePart(now, fieldCtx()) || '（まだありません）';
   if (key === 'props.options') refreshChoiceInitial(now.props.options);
   // 項目名を変えたときは、項目の一覧表と部品の箱の名前も合わせる（右の欄は描き直さない）
   if (key === 'label' && ui.panel === 'items') renderItemsView(currentDesign());
@@ -2305,6 +2472,82 @@ function onPartFieldChange(el) {
 }
 
 const parseOptions = (text) => String(text).split('\n').map((o) => o.trim()).filter(Boolean);
+
+// ルックアップの欄の変更（data-lk）。今のルックアップを写して直し、actions.updateLookup で 1 回で書く
+function onLookupFieldChange(el) {
+  const p = currentSubject();
+  const item = p && p.item;
+  const d = currentDesign();
+  if (!item || item.link) return;
+  const k = el.dataset.lk;
+  const i = Number(el.dataset.i);
+  const next = item.lookup ? clone(item.lookup) : null;
+  let create = null;
+  const src = next && next.db.designId ? findDesign(store.state, next.db.designId) : null;
+  const srcItemRef = (id) => { const it = findItem(src, id); return it ? { itemId: it.id, name: it.name } : emptyRef(); };
+  if (k === 'on') {
+    commitLookup(d, item, el.checked ? { db: { designId: null, name: '', free: false }, key: emptyRef(), copies: [] } : null, null, el);
+    return;
+  }
+  if (!next) return;
+  switch (k) {
+    case 'db': {
+      const v = el.value;
+      const x = v.startsWith('d:') ? findDesign(store.state, v.slice(2)) : null;
+      next.db = x ? { designId: x.id, name: x.name, free: false } : { designId: null, name: '', free: v === '__free__' };
+      // データベースを変えたら、元の項目は選び直す
+      next.key = emptyRef();
+      next.copies.forEach((c) => { c.from = emptyRef(); });
+      break;
+    }
+    case 'dbName': next.db.name = el.value.trim(); break;
+    case 'key': next.key = srcItemRef(el.value); break;
+    case 'keyName': next.key = { itemId: null, name: el.value.trim() }; break;
+    case 'from': next.copies[i].from = srcItemRef(el.value); break;
+    case 'fromName': next.copies[i].from = { itemId: null, name: el.value.trim() }; break;
+    case 'to': {
+      if (el.value === '__new__') {
+        const from = next.copies[i].from;
+        const srcIt = findItem(src, from.itemId);
+        create = { index: i, name: from.name || (srcIt && srcIt.name) || '項目名', type: srcIt && isItemType(srcIt.type) ? srcIt.type : 'text1' };
+      } else {
+        const it = findItem(d, el.value);
+        next.copies[i].to = it ? { itemId: it.id, name: it.name } : emptyRef();
+      }
+      break;
+    }
+    default: return;
+  }
+  commitLookup(d, item, next, create, el);
+}
+
+// 文字の欄は右の欄を描き直さずに保存し（打っている欄が作り直されないため）、一覧表に出る文だけを描き直す
+function commitLookup(d, item, next, create, el) {
+  if (!create && JSON.stringify(next) === JSON.stringify(item.lookup)) return;
+  const apply = () => actions.updateLookup(d.id, item.id, next, create);
+  if (!isTextInput(el)) { apply(); return; }
+  commitKeepSide(apply);
+  const out = $('#pf-out');
+  const now = currentSubject();
+  if (out && now) out.textContent = describePart(now, fieldCtx()) || '（まだありません）';
+}
+
+// 「＋ 写す項目を足す」と、組の ✕
+function editLookupCopies(fn) {
+  const p = currentSubject();
+  const item = p && p.item;
+  if (!item || !item.lookup || item.link) return;
+  const next = clone(item.lookup);
+  fn(next.copies);
+  actions.updateLookup(ui.designId, item.id, next);
+}
+
+// 一緒に写される項目から、探す項目の設定を開く。画面では、その画面に探す項目の部品があればそれを選び、なければ項目の一覧表で選ぶ
+function openLookupKey(itemId) {
+  const part = ui.panel === 'screen' ? currentScreen().parts.find((x) => x.itemId === itemId) : null;
+  if (part) selectPart(part.id);
+  else selectItem(itemId);
+}
 
 // 選択肢の部品の初期値の欄を、options（まだ保存していない打ちかけの選択肢でもよい）に合わせて描き直す。同じ選択肢なら描き直さない
 function refreshChoiceInitial(options) {
@@ -2334,7 +2577,7 @@ const TEXT_FIELDS = ['design-name', 'screen-name', 'design-desc'];
 function flushSideField() {
   const el = document.activeElement;
   if (ui.view !== 'editor' || !el || !el.closest || !el.closest('#side-settings') || !isTextInput(el)) return;
-  if (!el.dataset.pf && !TEXT_FIELDS.includes(el.dataset.field)) return;
+  if (!el.dataset.pf && !el.dataset.lk && !TEXT_FIELDS.includes(el.dataset.field)) return;
   if ((el.dataset.field === 'design-name' || el.dataset.field === 'screen-name') && !cleanName(el.value)) return; // 名前を消して打ち直している途中は待つ
   onSidePanelChange({ target: el });
 }
@@ -2598,7 +2841,7 @@ async function openImportDialog() {
       const st = importState(d, src, it);
       const dis = st === 'own' || st === 'done';
       return `<tr${dis ? ' class="dis"' : ''}><td class="ck"><input type="checkbox" data-imp-item="${esc(it.id)}" aria-label="「${esc(it.name)}」を取り込む"${dis || checked.has(it.id) ? ' checked' : ''}${dis ? ' disabled' : ''}></td>
-        <td>${esc(it.name)} ${stateLabel[st] || ''}</td><td>${esc(partTypeName(it.type))}</td><td class="set">${esc(isItemType(it.type) ? describeItem(it) : '')}</td></tr>`;
+        <td>${esc(it.name)} ${stateLabel[st] || ''}</td><td>${esc(partTypeName(it.type))}</td><td class="set">${esc(isItemType(it.type) ? describeItem(it, { design: src, state: store.state }) : '')}</td></tr>`;
     }).join('')}</tbody></table>`;
   };
   const footText = () => {
@@ -2863,6 +3106,9 @@ function onEditorClick(action, btn) {
     case 'delete-item': deleteItemWithConfirm(btn.dataset.id).catch(reportPageError); return true;
     case 'restore-item': actions.restoreItem(ui.designId, btn.dataset.id); return true;
     case 'unlink-item': actions.unlinkItem(ui.designId, btn.dataset.id); return true;
+    case 'lk-add': editLookupCopies((c) => c.push({ from: emptyRef(), to: emptyRef() })); return true;
+    case 'lk-del': editLookupCopies((c) => c.splice(Number(btn.dataset.i), 1)); return true;
+    case 'open-lookup-key': openLookupKey(btn.dataset.id); return true;
     case 'open-link-source': openLinkSource(btn.dataset.id); return true;
     case 'toggle-palette':
       ui.paletteClosed[btn.dataset.id] = !ui.paletteClosed[btn.dataset.id];
@@ -3011,7 +3257,7 @@ function exposeForTest() {
     store, ui, actions, runCommand, openDesign, goHome, migrate, normalizeState, snapHeight, changeDevice,
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, minScreenHeight, selectPart, currentScreen,
-    currentDesign, currentPart, resolvePart, findItem,
+    currentDesign, currentPart, resolvePart, findItem, describeItem,
     ready: true,
   });
 }

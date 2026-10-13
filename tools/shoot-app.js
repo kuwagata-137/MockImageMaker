@@ -205,7 +205,9 @@ const DB_SAMPLE = {
       item('i2', '顧客名', 'text1', { maxLen: '50', initial: '' }, { required: true, memo: '会社名か、個人の名前を書く' }),
       item('i3', '区分', 'radio', { options: ['法人', '個人'], initial: '法人', dir: 'h' }),
       item('i4', '担当者', 'user', { scope: '営業部の社員', multiple: false, initial: 'me' }, { required: true }),
-      item('i5', '取引先コード', 'text1', { maxLen: '', initial: '' }),
+      item('i5', '取引先コード', 'text1', { maxLen: '', initial: '' }, {
+        lookup: { db: { designId: 'd3', name: '取引先マスタ', free: false }, key: { itemId: 'b1', name: '取引先コード' }, copies: [{ from: { itemId: 'b2', name: '取引先名' }, to: { itemId: 'i6', name: '取引先名' } }] },
+      }),
       item('i6', '取引先名', 'text1', { maxLen: '', initial: '' }),
       item('i7', '都道府県', 'dropdown', { options: PREFS, initial: '' }, { link: { designId: 'd2', itemId: 'a2', designName: '住所の共通項目', lost: false } }),
       item('i8', '備考', 'text2', { maxLen: '', initial: '' }),
@@ -234,6 +236,9 @@ async function shootDatabase(browser) {
   await shot(page, '21_項目_部品の箱のデータベースの項目の組_70%');
   await page.click('#stage .part[data-part-id="p2"]');
   await shot(page, '22_項目_部品を選んだ設定の欄（2 つの枠）');
+  await page.click('#stage .part[data-part-id="p5"]');
+  await page.evaluate(() => { const s = document.querySelector('#side-settings'); s.scrollTop += s.querySelector('.lk-box').getBoundingClientRect().top - s.getBoundingClientRect().top - 8; });
+  await shot(page, '30_ルックアップ_探す項目を選んだところ');
   await page.click('[data-action="open-items"]');
   await page.click('#db-view tr[data-id="i2"]');
   await shot(page, '23_項目_データベースの項目の一覧表');

@@ -424,3 +424,110 @@ test('取り込んだ項目の部品を、元の画面設計へ貼り付ける�
   assert.equal(src().items.length, 3, '項目は増えない');
   assert.equal(src().screens[0].parts[0].itemId, ids.zip);
 });
+
+// ── ルックアップ（ほかのデータベースのレコードから値を引く。画像 q22 の案A）──
+
+// 「取引先マスタ」（取引先コード・取引先名・住所）と、「顧客管理」（取引先コード・取引先名。画面に置いてある）を作り、顧客管理を開く
+async function bootLookup(t) {
+  const ctx = await bootEditor(t, { name: '取引先マスタ' });
+  const { api } = ctx;
+  const masterId = ctx.design().id;
+  const mk = (designId, label, type = 'text1') => {
+    const id = api.actions.addItem(designId, type);
+    api.actions.updateItem(designId, id, { label });
+    return id;
+  };
+  const m = { code: mk(masterId, '取引先コード'), name: mk(masterId, '取引先名'), addr: mk(masterId, '住所') };
+  const custId = api.actions.createDesign('顧客管理', 'kintone');
+  api.openDesign(custId);
+  const c = { code: mk(custId, '取引先コード'), name: mk(custId, '取引先名') };
+  const sid = ctx.design().screens[0].id;
+  const parts = { code: api.actions.addItemPart(custId, sid, c.code, { x: 0, y: 48 }), name: api.actions.addItemPart(custId, sid, c.name, { x: 400, y: 48 }) };
+  const cust = () => api.store.state.designs.find((d) => d.id === custId);
+  return { ...ctx, masterId, custId, m, c, parts, cust };
+}
+
+test('ルックアップ: 探す項目に、元のデータベース・探す元の項目・一緒に写す項目を書き、写す先はその場で作れる', async (t) => {
+  const { app, api, masterId, m, c, cust } = await bootLookup(t);
+  click($(app, '[data-action="open-items"]'));
+  click($(app, `#db-view tr[data-id="${c.code}"]`));
+  check($(app, '#side-settings [data-lk="on"]'), true);
+  assert.deepEqual(plain(cust().items[0].lookup), { db: { designId: null, name: '', free: false }, key: { itemId: null, name: '' }, copies: [] });
+  assert.deepEqual(plain($$(app, '#side-settings [data-lk="db"] option').map((o) => o.textContent)),
+    ['（選んでください）', '取引先マスタ（kintone）', '✎ 一覧にないデータベース（名前を書く）'], '自分は出さない');
+  setValue($(app, '#side-settings [data-lk="db"]'), 'd:' + masterId);
+  setValue($(app, '#side-settings [data-lk="key"]'), m.code);
+  click($(app, '#side-settings [data-action="lk-add"]'));
+  setValue($(app, '#side-settings [data-lk="from"][data-i="0"]'), m.name);
+  setValue($(app, '#side-settings [data-lk="to"][data-i="0"]'), c.name);
+  click($(app, '#side-settings [data-action="lk-add"]'));
+  setValue($(app, '#side-settings [data-lk="from"][data-i="1"]'), m.addr);
+  setValue($(app, '#side-settings [data-lk="to"][data-i="1"]'), '__new__');
+  const items = cust().items;
+  assert.equal(items.length, 3, '「住所」を新しく作った');
+  assert.deepEqual(plain([items[2].name, items[2].type]), ['住所', 'text1']);
+  const lk = items[0].lookup;
+  assert.deepEqual(plain([lk.db.designId, lk.key.itemId, lk.copies.map((x) => [x.from.itemId, x.to.itemId])]), plain([masterId, m.code, [[m.name, c.name], [m.addr, items[2].id]]]));
+  assert.equal($(app, '#pf-out').textContent, 'ルックアップ＝取引先マスタの「取引先コード」で探す\n一緒に写す＝取引先名 → 取引先名、住所 → 住所');
+  const row = (id) => $(app, `#db-view tr[data-id="${id}"]`).textContent.replace(/\s+/g, ' ');
+  assert.match(row(c.code), /ルックアップ 取引先マスタ › 取引先コード ?（この値で取引先マスタを探す）/);
+  assert.match(row(c.name), /ルックアップ 取引先マスタ › 取引先名 ?（取引先コードで引く）/);
+  api.store.undo();
+  assert.equal(cust().items.length, 2, '元に戻すで、作った項目も消える');
+});
+
+test('ルックアップの印: 項目名の後ろに札、探す項目に「取得」、一緒に写される項目は灰色。一覧表に文を書く', async (t) => {
+  const { app, api, masterId, m, c, parts, custId } = await bootLookup(t);
+  api.actions.updateLookup(custId, c.code, { db: { designId: masterId }, key: { itemId: m.code }, copies: [{ from: { itemId: m.name }, to: { itemId: c.name } }] });
+  const el = (id) => $(app, `#stage .part[data-part-id="${id}"]`);
+  assert.equal(el(parts.code).querySelector('.reftag').textContent, '⇦ ルックアップ');
+  assert.match(el(parts.code).querySelector('.pget').textContent, /取得/);
+  assert.ok(el(parts.name).querySelector('.reftag'));
+  assert.ok(el(parts.name).querySelector('.pbox.copied'));
+  assert.equal(el(parts.name).querySelector('.pph').textContent, '（取引先コードから自動で入る）');
+  assert.ok($(app, '.sl-thumb .reftag'), 'ルックアップの札は縮小画像（書き出しと同じ見た目）にも出す');
+  const rows = $$(app, '.ptable tbody tr').map((r) => r.children[3].textContent);
+  assert.deepEqual(plain(rows), ['ルックアップ＝取引先マスタの「取引先コード」で探す\n一緒に写す＝取引先名 → 取引先名', 'ルックアップ＝取引先マスタの「取引先名」（取引先コードで引く）']);
+  // 一緒に写される項目の設定の欄から、探す項目の設定を開く
+  api.selectPart(parts.name);
+  assert.match($(app, '#side-settings .pf-banner.ref').textContent, /「取引先コード」のルックアップで、取引先マスタの「取引先名」が入ります/);
+  assert.equal($(app, '#side-settings [data-lk="on"]'), null, '写される項目にはルックアップの欄を出さない');
+  click($(app, '#side-settings [data-action="open-lookup-key"]'));
+  assert.equal(api.ui.partId, parts.code, '同じ画面の探す項目の部品を選ぶ');
+  // 元のデータベースの名前を変えると、文も変わる
+  api.actions.renameDesign(masterId, '取引先台帳');
+  assert.match($(app, '.ptable').textContent, /取引先台帳の「取引先コード」で探す/);
+});
+
+test('ルックアップ: 一覧にないデータベースは名前を書く。ルックアップを書けない種類にすると外れる', async (t) => {
+  const { app, api, c, cust } = await bootLookup(t);
+  click($(app, '[data-action="open-items"]'));
+  click($(app, `#db-view tr[data-id="${c.code}"]`));
+  check($(app, '#side-settings [data-lk="on"]'), true);
+  setValue($(app, '#side-settings [data-lk="db"]'), '__free__');
+  setValue($(app, '#side-settings [data-lk="dbName"]'), '会計システム');
+  setValue($(app, '#side-settings [data-lk="keyName"]'), '勘定科目コード');
+  click($(app, '#side-settings [data-action="lk-add"]'));
+  setValue($(app, '#side-settings [data-lk="fromName"][data-i="0"]'), '勘定科目名');
+  setValue($(app, '#side-settings [data-lk="to"][data-i="0"]'), c.name);
+  assert.equal($(app, '#pf-out').textContent, 'ルックアップ＝会計システムの「勘定科目コード」で探す\n一緒に写す＝勘定科目名 → 取引先名');
+  click($(app, '#side-settings [data-action="lk-del"][data-i="0"]'));
+  assert.equal(cust().items[0].lookup.copies.length, 0);
+  setValue($(app, '#side-settings [data-pf="type"]'), 'dropdown');
+  assert.equal(cust().items[0].lookup, null, 'ドロップダウンにはルックアップを書けない');
+  assert.equal($(app, '#side-settings .lk-box'), null);
+});
+
+test('ルックアップのある項目を取り込むと、写す先は名前で指す（取り込んだ側の同じ名前の項目に印が付く）', async (t) => {
+  const { api, masterId, m, c, custId } = await bootLookup(t);
+  api.actions.updateLookup(custId, c.code, { db: { designId: masterId }, key: { itemId: m.code }, copies: [{ from: { itemId: m.name }, to: { itemId: c.name } }] });
+  const orderId = api.actions.createDesign('受注管理', 'kintone');
+  const nameId = api.actions.addItem(orderId, 'text1');
+  api.actions.updateItem(orderId, nameId, { label: '取引先名' });
+  api.actions.importItems(orderId, custId, [c.code]);
+  const order = api.store.state.designs.find((d) => d.id === orderId);
+  const linked = order.items[1];
+  assert.deepEqual(plain(linked.lookup.copies[0].to), { itemId: null, name: '取引先名' });
+  const ctx = { design: order, state: api.store.state };
+  assert.match(api.describeItem(order.items[0], ctx), /ルックアップ＝取引先マスタの「取引先名」（取引先コードで引く）/);
+});
