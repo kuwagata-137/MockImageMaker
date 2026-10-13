@@ -324,6 +324,12 @@ test('HTML の書き出し: アプリと同じ骨組みに、画面設計を埋�
   assert.ok(!/swimlane-state|clm-data/.test(html.replace(api.appScript(), '')), 'ほかのアプリの埋め込みの名前は使わない');
 });
 
+test('アプリの script の中に、script の始まりと終わりの印・<!-- がない（書き出す HTML にそのまま入れるため）', () => {
+  const start = ORIGINAL.indexOf('<script>\n') + '<script>\n'.length;
+  const body = ORIGINAL.slice(start, ORIGINAL.lastIndexOf('</script>')).toLowerCase();
+  for (const mark of ['</script', '<script', '<!--']) assert.equal(body.split(mark).length - 1, 0, `script の中に「${mark}」がある`);
+});
+
 test('単体で開いたとき: その画面設計の編集の画面がすぐ開き、一覧へ戻る・書き出す・取り込みは出さない。ブラウザの保存領域は使わない', async (t) => {
   const { html } = await exportHtmlText(t);
   const { app, api } = await bootStandalone(t, html);

@@ -35,6 +35,11 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
 - 2026-10-13: 第 3 段階は PR #3 でマージ済み。第 4 段階（複数の画面）の細かい決めごとをモックで 4 問（q29〜q32）聞いた（下の「複数の画面の細かい決めごと」）。
 - 2026-10-13: 第 4 段階を作った（ひな形 7 つから画面を足す窓・画面の複製・「…」のメニューとドラッグでの並べ替え・画面を消す確かめの窓・
   メニューバーとアプリのメニューの「画面」・PageUp と PageDown）。クラウドのセッションで作った。次は第 5 段階（書き出しと受け渡し）。
+- 2026-10-13: 第 4 段階は PR #4 でマージ済み。第 5 段階の細かい決めごとをモックで 7 問（q33〜q39）聞いた（下の「書き出しと受け渡しの細かい決めごと」。
+  q35〜q39 は、ユーザーが席を外すため Claude のおすすめ案で決めた）。PDF の用紙にスライド（16:9）を足した。
+- 2026-10-13: 第 5 段階を作った（書き出しの窓・PDF〔表紙・つながりの図・項目の一覧表・画面〕・PNG・単体で開いて編集できる HTML・HTML の取り込み）。
+  クラウドのセッションで作った。ボタン・札の文字の改行も直した（左の欄の幅 192）。会話の圧縮の段取りのフックを足した（下の「コンテキストの圧縮の段取り」）。
+  次は第 6 段階（改訂の記録）。
 
 ## 設計方針
 
@@ -52,7 +57,7 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
 
 ### ファイルの役割（v1.00〜）
 
-- `mock_v<版>.html`: アプリの画面。script は「版／データの形／保存／元に戻す／共通の部品／一覧の画面／編集の画面／命令／起動／テスト用の窓口」の順に区切り、冒頭に目次がある。
+- `mock_v<版>.html`: アプリの画面。script は「版／データの形／保存／元に戻す／共通の部品／一覧の画面／編集の画面／書き出しと取り込み／命令／起動／テスト用の窓口」の順に区切り、冒頭に目次がある。
   - データの形を変えるときは `SCHEMA_VERSION` を上げ、`migrate()` に古い形を直す処理を足す。読み込んだデータの知らない項目は消さずに残す。
   - 今のデータの形は v2（2026-10-13）。データベースの項目は画面設計の `items` に 1 か所だけ持ち、入力欄の部品・テーブル・ステータスの印は `itemId` で項目を指す
     （項目名・必須・メモ・設定・ルックアップ `lookup`・取り込み元 `link` は項目が持つ）。描くときは `resolvePart()` で部品と項目を合わせる。
@@ -61,22 +66,37 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
   - ボタン・キー・アプリのメニューからの命令は、すべて `runCommand()` で受ける。
   - 変更はすべて `store.commit()` を通す（元に戻すの履歴に積む）。中身が変わらない変更は履歴に積まず、画面設計の更新日時も中身が変わったときだけ変える。
   - 画面の並びは画面設計の `screens` の順。ひな形の中身は `screenFromTemplate()`、画面の写しは `copyScreenData()`（画面の複製と画面設計の複製の両方で使う）。
-- `main.js`（窓・メニュー・二重起動の防止・終了前の保存待ち）・`preload.js`（`storageAPI`・`menuAPI`）・`storage.js`（`designs.json` の読み書き）。
+- `main.js`（窓・メニュー・二重起動の防止・終了前の保存待ち）・`preload.js`（`storageAPI`・`menuAPI`・`exportAPI`）・`storage.js`（`designs.json` の読み書き）・
+  `export.js`（PDF・PNG・HTML の保存の窓と書き込み、HTML の取り込みの開く窓。第 5 段階）。
+  - 書き出しのページ（PDF・PNG）は、ページ側（`mock_v*.html` の「8. 書き出しと取り込み」）で印刷用の HTML を組み、main で窓を出さない窓に開いて `printToPDF`・撮影する。
+    ページは実際に描いて測り、縮め方・表の分け方・ページ番号を決める（jsdom では測れないので、縮めない・表は 1 ページとみなす）。
+  - 画面のページとつながりの図のページは、transform でなく CSS の zoom で縮める（transform だと縮める前の幅が残り、画面のページが 2 つ以上あると、
+    Electron の印刷が全部のページを約 0.67 倍に縮める。2026-10-13）。PNG は debugger の命令（Emulation・Page.captureScreenshot）で 2 倍に撮る。
+  - 単体で開いて編集できる HTML は、アプリの style と script の文字（起動のときに取った APP_STYLE・APP_SCRIPT）を、アプリの HTML と同じ骨組みに入れ、
+    画面設計を `<script type="application/json" id="mim-embedded">` に埋め込む（「<」は \u003c に逃がす）。
+    そのため、script の中に script の始まりと終わりの印・`<!--` をそのまま書かない（`'<' + '/script>'` のように分ける。テストで確かめる）。
 - `test/`: `npm test`（node --test と jsdom）。`test/harness.js` がアプリの HTML を jsdom で起動し、`window.__test__` から中を触る。
   部品・吹き出し・まとめて操作のテストは `test/parts.test.js`、データの形 v2・項目・取り込み・ルックアップ・つながりの図のテストは `test/database.test.js`、
   複数の画面（ひな形・複製・並べ替え・消す・画面の一覧の「…」・画面を足す窓）のテストは `test/screens.test.js`。
+  書き出しと受け渡し（書き出しの窓・印刷用のページ・単体で開いた HTML・取り込み）のテストは `test/export.test.js`
+  （`bootApp({ html })` で書き出した HTML を起動し、`bootApp({ exportAPI })` で書き出しの窓口の身代わりを渡す）。
   jsdom では要素の位置（getBoundingClientRect）が取れないので、箱からのドラッグで置く・囲んで選ぶなどの操作は `tools/shoot-app.js` で確かめる。
   jsdom の中で作った配列は、テストの側の配列と deepEqual で比べると違うと判定されるので、`JSON.parse(JSON.stringify(...))` などで写してから比べる。
 - `tools/`: 確かめの道具（どれも窓を出さない）。
   - `node tools/shoot.js <html> <png>`: HTML を headless の Chrome で撮る（モックの撮影）。
   - 撮影の道具は、環境変数 `MIM_CHROME_PATH` にブラウザの場所を書くと、システムの Chrome の代わりにそれを使う（Chrome のないクラウドのセッションで使う）。
   - `node tools/shoot-app.js`: アプリの場面（一覧・新規作成の窓・編集の画面など）を順に撮り、`screenshots/v<版>_*.png` に置く。
-    `--only=home,editor,parts,db,parts2,callout,multi,map,screens` で一部の場面だけを撮れる。ドラッグの操作は Puppeteer で実際にマウスを動かす。
+    `--only=home,editor,parts,db,parts2,callout,multi,map,screens,export` で一部の場面だけを撮れる（export は場面 71〜81。書き出しの窓・印刷用のページ・
+    単体で開いた HTML・取り込みの窓）。ドラッグの操作は Puppeteer で実際にマウスを動かす。
   - `node tools/check-electron.js`: Electron を窓を出さずに起動し、保存・二重起動の防止・起動し直しと、右の欄で打ちかけの文字が閉じても保存されるか
     （窓の ×・ファイル > 終了・window.close()）、項目・吹き出し・つながりの図の箱の位置と画面の並びが残るか、v1 の形の designs.json を v2 に直して読めるかを確かめる
     （保存先は `.devdata/check-userData` と `.devdata/check-userData-v1`）。
     クラウドのセッション（Linux・root）では `ELECTRON_DISABLE_SANDBOX=1` を付けて `xvfb-run -a node tools/check-electron.js` で動かす。
     その環境では「ファイル > 終了」の確かめだけが、変更前の main でも時間切れになる（2026-10-13。社内の Windows PC で確かめる）。
+  - `node tools/check-export.js`: Electron を窓を出さずに起動し、書き出しの窓から PDF（A4 横・A3 縦・16:9）・PNG・HTML を書き出して、ページ数・用紙の大きさ・文字・
+    中身が用紙いっぱいに入っているか（pdfinfo・pdftotext があるとき）、PNG の大きさ、書き出した HTML の取り込み直しを確かめる（保存先は `.devdata/check-export`）。
+    `MIM_HEADLESS=1` のときだけ、環境変数 `MIM_EXPORT_DIR` があれば保存の窓を出さずにそこへ書き、`MIM_IMPORT_FILE` があれば開く窓を出さずにそれを読む。
+    クラウドのセッションでは check-electron.js と同じく `ELECTRON_DISABLE_SANDBOX=1 xvfb-run -a` を付ける。
 - 取得物と作業用のファイルは `.devdata/`（Git に入れない）に置く。`npm run dist` は、環境変数 `ELECTRON_BUILDER_CACHE` と `electron_config_cache` を `.devdata/eb-cache`・`.devdata/electron-cache` に向けて動かす。
 
 ### 画面設計（2026-10-13）
