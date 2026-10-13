@@ -40,10 +40,10 @@ async function bootEditor(t) {
   return { app, api, id, screen, parts, add, partEl };
 }
 
-test('部品の箱: 5 つの組に 26 種類（吹き出しは次の手順）。組の見出しで閉じたり開いたりできる', async (t) => {
+test('部品の箱: 5 つの組に 26 種類の部品と吹き出し。組の見出しで閉じたり開いたりできる', async (t) => {
   const { app, api } = await bootEditor(t);
-  assert.deepEqual($$(app, '.pal-head').map((e) => e.textContent.replace(/\s+/g, ' ').trim()), ['▼ データベースの項目0', '▼ 基本13', '▼ 入力の画面用4', '▼ 一覧の画面用3', '▼ 進み具合の画面用3', '▼ 見た目用3']);
-  assert.equal($$(app, '.pal-btn').length, 26);
+  assert.deepEqual($$(app, '.pal-head').map((e) => e.textContent.replace(/\s+/g, ' ').trim()), ['▼ データベースの項目0', '▼ 基本14', '▼ 入力の画面用4', '▼ 一覧の画面用3', '▼ 進み具合の画面用3', '▼ 見た目用3']);
+  assert.equal($$(app, '.pal-btn').length, 27);
   click($(app, '.pal-head[data-id="basic"]'));
   assert.equal($$(app, '.pal-btn').length, 13, '基本を閉じた');
   assert.equal(api.ui.paletteClosed.basic, true);
@@ -51,7 +51,7 @@ test('部品の箱: 5 つの組に 26 種類（吹き出しは次の手順）。
   api.openDesign(api.store.state.designs[0].id);
   assert.equal($$(app, '.pal-btn').length, 13, '画面設計を開き直しても閉じたまま');
   click($(app, '.pal-head[data-id="basic"]'));
-  assert.equal($$(app, '.pal-btn').length, 26);
+  assert.equal($$(app, '.pal-btn').length, 27);
 });
 
 test('部品を置く: 押すと帯の下に置き、番号が付き、選んだ状態になる。続けて押すとずらして置く', async (t) => {
@@ -648,4 +648,87 @@ test('ステータス: 並びは項目に 1 つ。並びを直すと、ステー
   const rows = $$(app, '.ptable tbody tr').map((r) => r.children[3].textContent);
   assert.deepEqual(plain(rows), ['ステータス＝受付／対応中／完了', 'ステータス＝受付 → 対応中 → 完了']);
   assert.equal(api.currentDesign().items.length, 1);
+});
+
+// ── 吹き出し（画像 q27）──
+
+test('吹き出し: 部品を選んで部品の箱の「吹き出し」を押すと、その部品の右上につないで置く。線と点を描く', async (t) => {
+  const { app, api, add, screen } = await bootEditor(t);
+  const p = add('text1');
+  api.selectPart(p.id);
+  click($(app, '.pal-btn[data-type="callout"]'));
+  const c = screen().callouts[0];
+  assert.deepEqual(plain([c.x, c.y, c.w, c.h, c.target, c.color, c.tip, c.text]), [344, -56, 200, 80, p.id, 'yellow', 'dot', '説明を書きます。']);
+  assert.equal(api.ui.calloutId, c.id, '置いた吹き出しを選ぶ');
+  assert.ok($(app, '#stage .callout.sel.cc-yellow'));
+  assert.equal($$(app, '#co-lines line').length, 1);
+  assert.equal($$(app, '#co-lines circle').length, 1, '線の先は点');
+  assert.ok($(app, '#stage [data-co-handle]'), '線の先の ○');
+  assert.match($(app, '#side-settings .panel-title').textContent, /選んだ吹き出しの設定/);
+  assert.equal($(app, '.ptable').textContent.includes('説明を書きます'), false, '一覧表には入らない');
+  assert.equal($(app, '.sl-thumb .callout'), null, '縮小画像には描かない');
+});
+
+test('吹き出しの設定の欄: 文字・つなぐ部品・線の先の形・色', async (t) => {
+  const { app, api, add, screen } = await bootEditor(t);
+  const a = add('text1');
+  const b = add('button');
+  const id = api.actions.addCallout(api.ui.designId, screen().id, { x: -232, y: 100 }, null);
+  api.selectPart(null);
+  click($(app, `#stage .callout[data-callout-id="${id}"]`));
+  mouse(app, $(app, `#stage .callout[data-callout-id="${id}"]`), 'mousedown', { clientX: 0, clientY: 0 });
+  mouse(app, app.document, 'mouseup', {});
+  assert.equal(api.ui.calloutId, id);
+  setValue($(app, '#side-settings [data-co="text"]'), '50 文字を超えたら赤い字で知らせる');
+  setValue($(app, '#side-settings [data-co="target"]'), a.id);
+  check($(app, '#side-settings [data-co="tip"][value="arrow"]'), true);
+  check($(app, '#side-settings [data-co="color"][value="red"]'), true);
+  const c = screen().callouts[0];
+  assert.deepEqual(plain([c.text, c.target, c.tip, c.color]), ['50 文字を超えたら赤い字で知らせる', a.id, 'arrow', 'red']);
+  assert.ok($(app, '#stage .callout.cc-red'));
+  assert.match($(app, '#co-lines line').getAttribute('marker-end'), /co-arrow-red/);
+  assert.equal($(app, '#co-lines line').getAttribute('stroke'), '#dc2626', '線の色も枠に合わせる');
+  assert.equal($$(app, '#side-settings [data-co="target"] option').length, 3, 'つながない・部品 2 つ');
+  assert.ok(b);
+});
+
+test('吹き出し: 置ける範囲は画面のまわり 240 ドットまで。つないだ部品を消すと線だけ消え、元に戻すで戻る', async (t) => {
+  const { app, api, add, screen } = await bootEditor(t);
+  const p = add('text1');
+  const id = api.actions.addCallout(api.ui.designId, screen().id, { x: -1000, y: 5000 }, p.id);
+  const c = () => screen().callouts[0];
+  assert.deepEqual(plain([c().x, c().y]), [-240, 800 + 240 - 80], '範囲の中へ寄せる');
+  api.actions.moveCallout(api.ui.designId, screen().id, id, { ...c(), x: 2000 });
+  assert.equal(c().x, 1280 + 240 - 200);
+  api.selectPart(p.id);
+  api.runCommand('deletePart');
+  assert.equal(c().target, null, '吹き出しは残り、線を外す');
+  assert.equal($$(app, '#co-lines line').length, 0);
+  api.store.undo();
+  assert.equal(c().target, p.id);
+  api.actions.updateScreen(api.ui.designId, screen().id, { device: 'phone' });
+  assert.equal(c().x, 375 + 240 - 200, '画面が狭くなると、吹き出しも範囲の中へ寄せる');
+});
+
+test('吹き出し: Delete で消す・矢印のキーで 8 ドット動かす・Esc で選ぶのをやめる', async (t) => {
+  const { app, api, screen } = await bootEditor(t);
+  const id = api.actions.addCallout(api.ui.designId, screen().id, { x: 16, y: 64 }, null);
+  api.ui.calloutId = id;
+  api.runCommand('moveRight');
+  assert.equal(screen().callouts[0].x, 24);
+  key(app, app.document.body, { key: 'Escape' });
+  assert.equal(api.ui.calloutId, null);
+  api.ui.calloutId = id;
+  key(app, app.document.body, { key: 'Delete' });
+  assert.equal(screen().callouts.length, 0);
+});
+
+test('読み込み: 吹き出しの足りない値を補い、知らない色・形は最初の値にする', async (t) => {
+  const { api } = await bootEditor(t);
+  const { state } = api.migrate({ schemaVersion: 2, designs: [{ id: 'd1', name: '顧客管理', items: [], screens: [{ id: 's1', parts: [], callouts: [
+    { id: 'k1', x: '-16', y: 8, text: 'メモ', color: 'pink', tip: 'zigzag', extra: 1 }, 'bad',
+  ] }] }] });
+  const c = state.designs[0].screens[0].callouts;
+  assert.equal(c.length, 1);
+  assert.deepEqual(plain([c[0].x, c[0].w, c[0].h, c[0].color, c[0].tip, c[0].target, c[0].extra]), [-16, 200, 80, 'yellow', 'dot', null, 1]);
 });

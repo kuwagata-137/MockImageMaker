@@ -276,6 +276,24 @@ body.placing,body.placing *{cursor:copy!important}
 /* 部品の設定の一覧表（画面の右か下。見た目は画像 q18） */
 .stage-row{display:flex;gap:32px;align-items:flex-start}
 .stage-row.bottom{flex-direction:column}
+/* 吹き出しを置ける範囲（画面のまわり 240 ドット。画像 q27）。部品の設定の一覧表はこの範囲の外に置く */
+.co-zone{position:relative;flex-shrink:0}
+.co-zone::before{content:'';position:absolute;inset:0;border:1.5px dashed rgba(148,163,184,.75);border-radius:8px;pointer-events:none}
+.co-zone-cap{position:absolute;left:10px;top:6px;font-size:12px;color:#94a3b8;pointer-events:none}
+.stage-row.right .ptable{margin-top:240px}
+.stage-row.bottom .ptable{margin-left:240px}
+/* 吹き出し（4 色。線の色も枠に合わせる） */
+.callout{position:absolute;border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.55;box-shadow:0 2px 6px rgba(15,23,42,.18);white-space:pre-wrap;overflow:hidden;cursor:move;z-index:3;border:1.5px solid}
+.callout.cc-yellow{background:#fef9c3;border-color:#eab308;color:#422006}
+.callout.cc-red{background:#fef2f2;border-color:#ef4444;color:#7f1d1d}
+.callout.cc-blue{background:#eff6ff;border-color:#3b82f6;color:#1e3a8a}
+.callout.cc-gray{background:#f8fafc;border-color:#94a3b8;color:#334155}
+.callout.sel{outline:2px solid #2563eb;outline-offset:2px;overflow:visible}
+.co-lines{position:absolute;left:0;top:0;pointer-events:none;z-index:2;overflow:visible}
+.co-handle{position:absolute;width:13px;height:13px;border-radius:50%;background:#fff;border:2px solid #2563eb;cursor:crosshair;z-index:4;transform:translate(-50%,-50%)}
+body.linking .co-handle{pointer-events:none}
+body.linking,body.linking *{cursor:crosshair!important}
+.co-swatch{display:inline-block;width:12px;height:12px;border-radius:3px;border:1.5px solid;vertical-align:-1px;margin-right:3px}
 .ptable{background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px 18px;flex-shrink:0;font-size:14px;color:#1e293b}
 .ptable h3{font-size:16px;color:#0f172a;margin-bottom:10px}
 .ptable table{border-collapse:collapse;width:100%}
@@ -605,15 +623,57 @@ const PART_TYPES = {
   link: { name: 'リンクの文字', pal: 'リンク\nの文字', icon: '🔗', w: 200, h: 24, label: 'リンクの文字', props: { to: '', screenId: '', url: '' } },
   icon: { name: 'アイコン', icon: '⚙', w: 32, h: 32, label: '', noNumber: true, props: { icon: 'gear', color: 'black' } },
 };
-// 部品の箱の組（吹き出しは第 3 段階の後半の次の手順で足す。作るまで箱に出さない）
+// 部品の箱にだけ並べる、部品ではないもの（吹き出し）。PART_TYPES には入れない（画面の parts には入らないため）
+const PALETTE_EXTRA = { callout: { name: '吹き出し', icon: '💬', w: 200, h: 80 } };
+const paletteEntry = (type) => (own(PALETTE_EXTRA, type) ? PALETTE_EXTRA[type] : partType(type));
+// 部品の箱の組。吹き出し（callout）は部品ではないが、部品の箱から置く（画面の callouts に入る）
 const PALETTE_GROUPS = [
-  { id: 'basic', name: '基本', types: ['text1', 'text2', 'number', 'date', 'dropdown', 'radio', 'checkbox', 'table', 'button', 'graph', 'heading', 'desc', 'divider'] },
+  { id: 'basic', name: '基本', types: ['text1', 'text2', 'number', 'date', 'dropdown', 'radio', 'checkbox', 'table', 'button', 'graph', 'heading', 'desc', 'divider', 'callout'] },
   { id: 'input', name: '入力の画面用', types: ['file', 'user', 'datetime', 'calc'] },
   { id: 'list', name: '一覧の画面用', types: ['search', 'filter', 'pager'] },
   { id: 'progress', name: '進み具合の画面用', types: ['status', 'steps', 'tabs'] },
   { id: 'look', name: '見た目用', types: ['image', 'link', 'icon'] },
 ];
 const TABLE_KINDS = { subtable: 'テーブル', records: 'レコード一覧', related: '関連レコード一覧' };
+// 吹き出し（画像 q27）
+const CALLOUT_ZONE = 240; // 画面のまわりの、吹き出しを置ける範囲の幅
+const CALLOUT_MIN = 32;
+const CALLOUT_COLORS = { yellow: ['黄', '#ca8a04'], red: ['赤', '#dc2626'], blue: ['青', '#2563eb'], gray: ['灰', '#64748b'] };
+const findCallout = (screen, id) => (screen && id ? screen.callouts.find((c) => c.id === id) || null : null);
+// 吹き出しを置ける範囲（画面の左上から）
+const calloutBounds = (screen) => ({ x0: -CALLOUT_ZONE, y0: -CALLOUT_ZONE, x1: screen.width + CALLOUT_ZONE, y1: screen.height + CALLOUT_ZONE });
+// 吹き出しの位置と大きさを、マス目に吸い付けて範囲の中に収める
+function fitCallout(r, screen) {
+  const b = calloutBounds(screen);
+  const w = Math.min(Math.max(CALLOUT_MIN, snapGrid(r.w)), b.x1 - b.x0);
+  const h = Math.min(Math.max(CALLOUT_MIN, snapGrid(r.h)), b.y1 - b.y0);
+  return { x: Math.min(Math.max(b.x0, snapGrid(r.x)), b.x1 - w), y: Math.min(Math.max(b.y0, snapGrid(r.y)), b.y1 - h), w, h };
+}
+function resizedCallout(r0, grip, dx, dy, screen) {
+  const b = calloutBounds(screen);
+  let [l, t, r, bt] = [r0.x, r0.y, r0.x + r0.w, r0.y + r0.h];
+  if (grip.includes('w')) l = Math.min(Math.max(b.x0, snapGrid(l + dx)), r - CALLOUT_MIN);
+  if (grip.includes('e')) r = Math.max(Math.min(b.x1, snapGrid(r + dx)), l + CALLOUT_MIN);
+  if (grip.includes('n')) t = Math.min(Math.max(b.y0, snapGrid(t + dy)), bt - CALLOUT_MIN);
+  if (grip.includes('s')) bt = Math.max(Math.min(b.y1, snapGrid(bt + dy)), t + CALLOUT_MIN);
+  return { x: l, y: t, w: r - l, h: bt - t };
+}
+// 吹き出しから部品への線の両端（吹き出しの縁の点 → 部品のいちばん近い点）。重なっているときは null
+function calloutLine(c, part) {
+  if (!part) return null;
+  const cx = c.x + c.w / 2;
+  const cy = c.y + c.h / 2;
+  const inside = cx >= part.x && cx <= part.x + part.w && cy >= part.y && cy <= part.y + part.h;
+  const ex = inside ? part.x + part.w / 2 : Math.min(Math.max(cx, part.x), part.x + part.w);
+  const ey = inside ? part.y + part.h / 2 : Math.min(Math.max(cy, part.y), part.y + part.h);
+  const dx = ex - cx;
+  const dy = ey - cy;
+  const tx = dx > 0 ? (c.w / 2) / dx : dx < 0 ? (-c.w / 2) / dx : Infinity;
+  const ty = dy > 0 ? (c.h / 2) / dy : dy < 0 ? (-c.h / 2) / dy : Infinity;
+  const k = Math.min(tx, ty);
+  if (!(k < 1)) return null;
+  return { x1: cx + dx * k, y1: cy + dy * k, x2: ex, y2: ey };
+}
 const TABLE_LABEL_H = 28; // 表の部品の項目名の行の高さ
 const TABLE_ROW_H = 34; // 表の部品の見出しの行と、見本の行の高さ
 const DEFAULT_STATES = ['申請', '承認待ち', '承認済み', '完了'];
@@ -1228,7 +1288,22 @@ function normalizeScreen(src, i, items = []) {
     showHeader: s.showHeader !== false,
     tablePos: s.tablePos === 'bottom' ? 'bottom' : 'right',
     parts,
-    callouts: Array.isArray(s.callouts) ? s.callouts : [],
+    callouts: Array.isArray(s.callouts) ? s.callouts.filter(isObj).map(normalizeCallout) : [],
+  };
+}
+
+// 吹き出し { id, x, y, w, h, text, color, target, tip }（画面の callouts。画像 q27）。x・y は画面の左上から（外の余白はマイナスや画面の幅より先）。
+// target はつないだ部品の id（つながないときは null）。color は yellow・red・blue・gray。tip は線の先の形（dot・arrow・none）
+function normalizeCallout(src) {
+  return {
+    ...src,
+    id: str(src.id) || newId('k'),
+    x: numOr(src.x, 0), y: numOr(src.y, 0),
+    w: Math.max(CALLOUT_MIN, numOr(src.w, 200)), h: Math.max(CALLOUT_MIN, numOr(src.h, 80)),
+    text: str(src.text),
+    color: own(CALLOUT_COLORS, src.color) ? src.color : 'yellow',
+    target: str(src.target) || null,
+    tip: ['dot', 'arrow', 'none'].includes(src.tip) ? src.tip : 'dot',
   };
 }
 
@@ -1501,6 +1576,7 @@ const actions = {
         // 横は、幅が狭くなって画面からはみ出す部品を画面の中へ寄せる（知らない種類の部品はそのまま）
         sc.height = Math.max(sc.height, minScreenHeight(sc));
         sc.parts = sc.parts.map((p) => (partType(p.type) ? { ...p, ...fitRect(p, sc) } : p));
+        sc.callouts = sc.callouts.map((c) => ({ ...c, ...fitCallout(c, sc) })); // 画面が狭くなったら、吹き出しも範囲の中へ寄せる
       }
       if ('height' in patch) sc = { ...sc, height: Math.max(snapHeight(patch.height, sc.device), minScreenHeight(sc)) };
       if ('name' in patch) sc = { ...sc, name: cleanName(patch.name) || sc.name };
@@ -1559,8 +1635,47 @@ const actions = {
     if (r.x === p.x && r.y === p.y && r.w === p.w && r.h === p.h) return false;
     return mutatePart(designId, screenId, partId, (q) => { Object.assign(q, r); });
   },
+  // 部品を消す。その部品につないだ吹き出しは残し、線だけを外す（画像 q27 の決めごと）
   deletePart(designId, screenId, partId) {
-    return mutatePart(designId, screenId, partId, (p, sc) => { sc.parts = sc.parts.filter((x) => x.id !== partId); });
+    return mutatePart(designId, screenId, partId, (p, sc) => {
+      sc.parts = sc.parts.filter((x) => x.id !== partId);
+      sc.callouts.forEach((c) => { if (c.target === partId) c.target = null; });
+    });
+  },
+
+  // ── 吹き出し ──
+  // at は吹き出しの左上（画面の左上から）。target はつなぐ部品の id。戻り値は新しい吹き出しの id
+  addCallout(designId, screenId, at, target = null) {
+    const sc = findScreen(designId, screenId);
+    if (!sc) return null;
+    const c = normalizeCallout({ id: newId('k'), ...fitCallout({ x: at.x, y: at.y, w: 200, h: 80 }, sc), text: '説明を書きます。', target: findPart(sc, target) ? target : null });
+    mutateScreen(designId, screenId, (s) => { s.callouts.push(c); });
+    return c.id;
+  },
+  // patch は { text, color, tip, target } のどれか
+  updateCallout(designId, screenId, id, patch) {
+    const sc = findScreen(designId, screenId);
+    if (!findCallout(sc, id)) return false;
+    if ('target' in patch && patch.target && !findPart(sc, patch.target)) return false;
+    return mutateScreen(designId, screenId, (s) => {
+      const c = findCallout(s, id);
+      if ('text' in patch) c.text = String(patch.text);
+      if ('color' in patch && own(CALLOUT_COLORS, patch.color)) c.color = patch.color;
+      if ('tip' in patch && ['dot', 'arrow', 'none'].includes(patch.tip)) c.tip = patch.tip;
+      if ('target' in patch) c.target = patch.target || null;
+    });
+  },
+  moveCallout(designId, screenId, id, rect) {
+    const sc = findScreen(designId, screenId);
+    const c = findCallout(sc, id);
+    if (!c) return false;
+    const r = fitCallout(rect, sc);
+    if (r.x === c.x && r.y === c.y && r.w === c.w && r.h === c.h) return false;
+    return mutateScreen(designId, screenId, (s) => { Object.assign(findCallout(s, id), r); });
+  },
+  deleteCallout(designId, screenId, id) {
+    if (!findCallout(findScreen(designId, screenId), id)) return false;
+    return mutateScreen(designId, screenId, (s) => { s.callouts = s.callouts.filter((c) => c.id !== id); });
   },
   // 貼り付けと複製。src の写しを at に置く。番号の付いた部品の写しには、その画面の次の番号を付ける。戻り値は新しい部品の id。
   // 項目を指す部品の写しは、その項目がこの画面にまだなければ同じ項目を指す（同じ画面設計のほかの画面へ貼り付けたとき）。
@@ -2147,7 +2262,7 @@ const ui = {
   zoom: 1,
   mode: 'select', // 'select' か 'hand'
   previewHeight: null, // 下の縁をドラッグしている間の高さ
-  partId: null, // 選んでいる部品の id
+  sel: [], // 選んでいる部品と吹き出し（選んだ順）。{ k: 'p'（部品）か 'c'（吹き出し）, id }
   clipboard: null, // コピーした部品の写し（アプリを閉じるまで。画面を移っても貼り付けられる）
   paletteClosed: {}, // 部品の箱で閉じている組（{ 組の id: true }。アプリを閉じるまで覚えておく）
   panel: 'screen', // 真ん中に出しているもの: 'screen'（画面）か 'items'（データベースの項目の一覧表）
@@ -2155,6 +2270,16 @@ const ui = {
   addItemMenu: false, // 「＋ 項目を足す」の種類の小さなメニューを開いているか
   colId: null, // 表の部品の設定の欄で選んでいる列の id
 };
+// partId・calloutId は、1 つだけ選んでいるときのその部品・吹き出しの id（ほかのときは null）。入れると、それだけを選んだことにする
+['partId', 'calloutId'].forEach((key) => {
+  const k = key === 'partId' ? 'p' : 'c';
+  Object.defineProperty(ui, key, {
+    enumerable: true,
+    get: () => (ui.sel.length === 1 && ui.sel[0].k === k ? ui.sel[0].id : null),
+    set: (id) => { ui.sel = id ? [{ k, id }] : []; },
+  });
+});
+const isSelected = (k, id) => ui.sel.some((x) => x.k === k && x.id === id);
 const appEl = () => $('#app');
 
 function renderHome() {
@@ -2381,13 +2506,13 @@ function currentSubject() {
 function openDesign(id) {
   const d = findDesign(store.state, id);
   if (!d) return;
-  Object.assign(ui, { view: 'editor', designId: id, screenId: d.screens[0].id, zoom: 1, mode: 'select', menuFor: null, previewHeight: null, partId: null, panel: 'screen', itemId: null, addItemMenu: false });
+  Object.assign(ui, { view: 'editor', designId: id, screenId: d.screens[0].id, zoom: 1, mode: 'select', menuFor: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false });
   store.clearHistory();
   mountEditor();
 }
 
 function goHome() {
-  Object.assign(ui, { view: 'home', designId: null, screenId: null, previewHeight: null, partId: null, panel: 'screen', itemId: null, addItemMenu: false });
+  Object.assign(ui, { view: 'home', designId: null, screenId: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false });
   store.clearHistory();
   renderHome();
 }
@@ -2444,7 +2569,9 @@ function updateEditor({ keepSide = false } = {}) {
   const d = currentDesign();
   if (!d || d.trashedAt) { goHome(); return; }
   if (!d.screens.some((s) => s.id === ui.screenId)) ui.screenId = d.screens[0].id;
-  if (!findPart(currentScreen(), ui.partId)) ui.partId = null; // 元に戻すなどで部品が消えたとき
+  // 元に戻すなどで部品・吹き出しが消えたときは、選ぶのをやめる
+  const sc0 = currentScreen();
+  ui.sel = ui.sel.filter((x) => (x.k === 'p' ? findPart(sc0, x.id) : findCallout(sc0, x.id)));
   if (!findItem(d, ui.itemId)) ui.itemId = null;
   $('#ed-title').textContent = `${d.name}（${targetLabel(d.target)}）`;
   updateToolbarState();
@@ -2489,12 +2616,17 @@ function renderStage() {
   const d = currentDesign();
   const s = currentScreen();
   const h = ui.previewHeight == null ? s.height : ui.previewHeight;
+  const Z = CALLOUT_ZONE;
   $('#stage').innerHTML = `
     <div class="stage-row ${s.tablePos === 'bottom' ? 'bottom' : 'right'}">
-      <div class="screen-frame" style="width:${s.width}px">
-        ${screenHtml(d, s, { grid: true, height: h, selectedId: ui.partId, marks: true })}
-        <div class="screen-resize" data-drag="resize" title="ドラッグで画面の高さを変えます（8 ドットずつ。機器の 1 画面分と、いちばん下の部品より低くはなりません）"><span></span></div>
-        <div class="screen-size">${DEVICES[s.device].label}・${s.width} × ${h}</div>
+      <div class="co-zone" id="co-zone" style="padding:${Z}px" title="">
+        <span class="co-zone-cap">吹き出しを置ける範囲（画面のまわり ${Z} ドット）</span>
+        <div class="screen-frame" style="width:${s.width}px">
+          ${screenHtml(d, s, { grid: true, height: h, selectedId: ui.partId, marks: true })}
+          <div class="screen-resize" data-drag="resize" title="ドラッグで画面の高さを変えます（8 ドットずつ。機器の 1 画面分と、いちばん下の部品より低くはなりません）"><span></span></div>
+          <div class="screen-size">${DEVICES[s.device].label}・${s.width} × ${h}</div>
+        </div>
+        ${calloutsHtml(s)}
       </div>
       ${partTableHtml(d, s, { editor: true, selectedId: ui.partId })}
     </div>`;
@@ -2575,6 +2707,48 @@ function addItemMenuHtml() {
   }).join('')}</div>`;
 }
 
+// 吹き出しと線（画面に重ねた SVG）。overrides（{ id: rect }）を渡すと、ドラッグ中の部品・吹き出しをその位置で描く
+function calloutsHtml(s) {
+  const Z = CALLOUT_ZONE;
+  const boxes = s.callouts.map((c) => {
+    const sel = isSelected('c', c.id);
+    const grips = sel && ui.sel.length === 1 ? GRIPS.map((g) => `<span class="grip g-${g}" data-grip="${g}"></span>`).join('') : '';
+    return `<div class="callout cc-${c.color}${sel ? ' sel' : ''}" data-callout-id="${esc(c.id)}" style="left:${Z + c.x}px;top:${Z + c.y}px;width:${c.w}px;height:${c.h}px">${esc(c.text)}${grips}</div>`;
+  }).join('');
+  return `${calloutLinesSvg(s)}${boxes}${calloutHandleHtml(s)}`;
+}
+function calloutLinesSvg(s, overrides = {}) {
+  const Z = CALLOUT_ZONE;
+  const rectOf = (k, x) => overrides[k + ':' + x.id] || x;
+  const lines = s.callouts.map((c0) => {
+    const c = rectOf('c', c0);
+    const p = c.target ? findPart(s, c.target) : null;
+    const ln = p && calloutLine(c, rectOf('p', p));
+    if (!ln) return '';
+    const col = CALLOUT_COLORS[c.color][1];
+    const [x1, y1, x2, y2] = [ln.x1 + Z, ln.y1 + Z, ln.x2 + Z, ln.y2 + Z].map((v) => v.toFixed(1));
+    const tip = c.tip === 'dot' ? `<circle cx="${x2}" cy="${y2}" r="4.5" fill="${col}"/>` : '';
+    const marker = c.tip === 'arrow' ? ` marker-end="url(#co-arrow-${c.color})"` : '';
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="2"${marker}/>${tip}`;
+  }).join('');
+  const temp = overrides.temp ? `<line x1="${(overrides.temp.x1 + Z).toFixed(1)}" y1="${(overrides.temp.y1 + Z).toFixed(1)}" x2="${(overrides.temp.x2 + Z).toFixed(1)}" y2="${(overrides.temp.y2 + Z).toFixed(1)}" stroke="#2563eb" stroke-width="2" stroke-dasharray="6 4"/>` : '';
+  const defs = Object.entries(CALLOUT_COLORS).map(([k, [, col]]) =>
+    `<marker id="co-arrow-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${col}"/></marker>`).join('');
+  return `<svg class="co-lines" id="co-lines" width="${s.width + Z * 2}" height="${s.height + Z * 2}"><defs>${defs}</defs>${lines}${temp}</svg>`;
+}
+// 1 つだけ選んだ吹き出しの線の先の ○（ドラッグして部品に重ねるとつなぐ）。つないでいないときは吹き出しの下に出す
+function calloutEnd(s, c) {
+  const p = c.target ? findPart(s, c.target) : null;
+  const ln = p && calloutLine(c, p);
+  return ln ? { x: ln.x2, y: ln.y2 } : { x: c.x + c.w / 2, y: c.y + c.h + 20 };
+}
+function calloutHandleHtml(s) {
+  const c = findCallout(s, ui.calloutId);
+  if (!c) return '';
+  const e = calloutEnd(s, c);
+  return `<span class="co-handle" data-co-handle="${esc(c.id)}" style="left:${CALLOUT_ZONE + e.x}px;top:${CALLOUT_ZONE + e.y}px" title="ドラッグして部品に重ねると、その部品につなぎます（何もない所で放すと、つながりを外します）"></span>`;
+}
+
 // 右の欄の上の部品の箱。組の見出しを押すと開く・閉じる（最初は全部開いている）。
 // いちばん上の「データベースの項目」の組には、この画面設計の項目を並べる（画像 q19）。この画面にまだ置いていない項目を先に並べ、
 // 置いた項目は薄く出して「置いた」と書く（同じ項目を 1 つの画面に 2 回は置かないため、置けない）
@@ -2584,8 +2758,9 @@ function renderPalette(d) {
   const head = (id, name, n, open) =>
     `<button class="pal-head" data-action="toggle-palette" data-id="${id}" aria-expanded="${open}">${open ? '▼' : '▶'} ${esc(name)}<span class="n">${n}</span></button>`;
   const btn = (type) => {
-    const t = partType(type);
-    return `<button class="pal-btn" data-action="add-part" data-type="${type}" title="${esc(t.name)}（画面へドラッグして置く。押すと、見えている所の真ん中に置く）"><i>${t.icon}</i>${esc(t.pal || t.name)}</button>`;
+    const t = paletteEntry(type);
+    const tip = type === 'callout' ? '吹き出し（部品の上に落とすと、その部品につながる。押すと、選んでいる部品につないで置く）' : `${t.name}（画面へドラッグして置く。押すと、見えている所の真ん中に置く）`;
+    return `<button class="pal-btn" data-action="add-part" data-type="${type}" title="${esc(tip)}"><i>${t.icon}</i>${esc(t.pal || t.name)}</button>`;
   };
   const sc = currentScreen();
   const items = d.items.filter((it) => isItemType(it.type));
@@ -2612,11 +2787,13 @@ function renderPalette(d) {
 // 同じものを描き直すときは、スクロールの位置を保つ
 function renderSettings(d) {
   const el = $('#side-settings');
-  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ui.partId || 'screen:' + ui.screenId;
+  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ui.partId || ui.calloutId || 'screen:' + ui.screenId;
   const top = el.dataset.key === key ? el.scrollTop : 0;
   const p = currentSubject();
+  const co = ui.panel === 'screen' ? findCallout(currentScreen(), ui.calloutId) : null;
   if (ui.panel === 'items') el.innerHTML = p ? itemSettingsHtml(d, p) : itemsHintHtml(d);
   else if (p) el.innerHTML = partSettingsHtml(p);
+  else if (co) el.innerHTML = calloutSettingsHtml(co);
   else renderScreenSettings(d, el);
   el.dataset.key = key;
   el.scrollTop = top;
@@ -2816,6 +2993,26 @@ function lookupFieldsHtml(d, p) {
     ${pairs}
     <button class="lk-add" data-action="lk-add">＋ 写す項目を足す</button>
   </div>`;
+}
+
+// 選んだ吹き出しの設定の欄（画像 q27）
+function calloutSettingsHtml(c) {
+  const s = currentScreen();
+  const d = currentDesign();
+  const parts = s.parts.map((raw) => resolvePart(d, raw)).filter((p) => partType(p.type))
+    .sort((a, b) => (a.no == null) - (b.no == null) || (a.no || 0) - (b.no || 0) || a.y - b.y || a.x - b.x)
+    .map((p) => [p.id, `${p.no != null ? p.no + '　' : ''}${partTitle(p)}（${partTypeName(p.type)}）`]);
+  const seg = (key, value, choices) => `<div class="seg">${choices.map(([v, l]) =>
+    `<label><input type="radio" name="co-${key}" value="${v}" data-co="${key}"${value === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
+  return `
+    <div class="panel-title">選んだ吹き出しの設定</div>
+    <label class="field"><span>文字</span><textarea data-co="text" rows="4">${esc(c.text)}</textarea></label>
+    <label class="field"><span>つなぐ部品 <small>（線の先の ○ をドラッグして部品に重ねても選べる）</small></span><select data-co="target">
+      <option value="">（つながない）</option>${parts.map(([v, l]) => `<option value="${esc(v)}"${c.target === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+    <div class="field"><span>線の先の形</span>${seg('tip', c.tip, [['dot', '● 点'], ['arrow', '➤ 矢印'], ['none', 'なし']])}</div>
+    <div class="field"><span>色</span>${seg('color', c.color, Object.entries(CALLOUT_COLORS).map(([k, [n, col]]) => [k, `<i class="co-swatch" style="border-color:${col};background:${col}22"></i>${n}`]))}</div>
+    <p class="hint">吹き出しには赤い番号を付けず、部品の設定の一覧表にも入りません。つないだ部品を消したときは、吹き出しは残り、線だけが消えます。</p>
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-callout">この吹き出しを消す</button></div>`;
 }
 
 // データベースの項目の一覧表で項目を選んだときの右の欄（画像 q20 の 4）
@@ -3041,6 +3238,7 @@ function commitKeepSide(fn) {
 
 // 右の欄の変更（文字は、欄を離れたときか Enter を押したときに保存する）
 function onSidePanelChange(e) {
+  if (e.target.dataset.co) { onCalloutFieldChange(e.target); return; }
   if (e.target.dataset.tb) { onTableFieldChange(e.target); return; }
   if (e.target.dataset.fl) { onFilterFieldChange(e.target); return; }
   if (e.target.dataset.lk) { onLookupFieldChange(e.target); return; }
@@ -3149,6 +3347,22 @@ function commitLookup(d, item, next, create, el) {
   const out = $('#pf-out');
   const now = currentSubject();
   if (out && now) out.textContent = describePart(now, fieldCtx()) || '（まだありません）';
+}
+
+// 吹き出しの設定の欄の変更（data-co）。文字は右の欄を描き直さずに保存する
+function onCalloutFieldChange(el) {
+  const s = currentScreen();
+  const c = findCallout(s, ui.calloutId);
+  if (!c) return;
+  const key = el.dataset.co;
+  const value = key === 'text' ? el.value : el.value || null;
+  if ((c[key] || null) === (value || null) && key !== 'text') return;
+  if (key === 'text') {
+    if (c.text === value) return;
+    commitKeepSide(() => actions.updateCallout(ui.designId, s.id, c.id, { text: value }));
+    return;
+  }
+  actions.updateCallout(ui.designId, s.id, c.id, { [key]: value });
 }
 
 // ── 表の部品の設定の欄の変更（data-tb）──
@@ -3315,7 +3529,7 @@ const TEXT_FIELDS = ['design-name', 'screen-name', 'design-desc'];
 function flushSideField() {
   const el = document.activeElement;
   if (ui.view !== 'editor' || !el || !el.closest || !el.closest('#side-settings') || !isTextInput(el)) return;
-  if (!el.dataset.pf && !el.dataset.lk && !el.dataset.tb && !el.dataset.fl && !TEXT_FIELDS.includes(el.dataset.field)) return;
+  if (!el.dataset.pf && !el.dataset.lk && !el.dataset.tb && !el.dataset.fl && !el.dataset.co && !TEXT_FIELDS.includes(el.dataset.field)) return;
   if ((el.dataset.field === 'design-name' || el.dataset.field === 'screen-name') && !cleanName(el.value)) return; // 名前を消して打ち直している途中は待つ
   onSidePanelChange({ target: el });
 }
@@ -3334,8 +3548,8 @@ function syncZoomSpacer() {
   if (!wrap || !s) return;
   const h = ui.previewHeight == null ? s.height : ui.previewHeight;
   const tableW = s.tablePos === 'bottom' ? 0 : TABLE_GAP + TABLE_W;
-  const sw = Math.round(Math.max(s.width + tableW + STAGE_PAD * 2, stage.offsetWidth) * ui.zoom);
-  const sh = Math.round(Math.max(h + STAGE_PAD * 2 + SIZE_LABEL_H, stage.offsetHeight) * ui.zoom);
+  const sw = Math.round(Math.max(s.width + CALLOUT_ZONE * 2 + tableW + STAGE_PAD * 2, stage.offsetWidth) * ui.zoom);
+  const sh = Math.round(Math.max(h + CALLOUT_ZONE * 2 + STAGE_PAD * 2, stage.offsetHeight) * ui.zoom);
   const offX = Math.max(0, Math.round((wrap.clientWidth - sw) / 2));
   $('#stage').style.left = offX + 'px';
   const spacer = $('#zoom-spacer');
@@ -3424,16 +3638,98 @@ function startResize(ev, wrap) {
 // 選択のモードで画面の上を押したとき: 部品・縁のつまみならドラッグを始め、何もない所なら選ぶのをやめる
 function onSelectModeMouseDown(ev) {
   const grip = ev.target.closest('.grip');
+  const handle = ev.target.closest('[data-co-handle]');
+  if (handle) { startCalloutLink(ev, handle.dataset.coHandle); return; }
+  const coEl = ev.target.closest('#stage .callout');
+  if (coEl) { startCalloutDrag(ev, coEl.dataset.calloutId, grip ? grip.dataset.grip : null); return; }
   const partEl = ev.target.closest('#stage .screen .part');
   if (partEl) { startPartDrag(ev, partEl.dataset.partId, grip ? grip.dataset.grip : null); return; }
   if (ev.target.closest('.ptable')) return; // 一覧表の行は click で選ぶ
-  if (ui.partId) selectPart(null);
+  if (ui.sel.length) selectPart(null);
+}
+
+// 吹き出しを選ぶ（null で選ぶのをやめる）
+function selectCallout(id) {
+  flushSideField();
+  if (ui.calloutId === id) return;
+  ui.calloutId = id;
+  renderStage();
+  renderSettings(currentDesign());
+  updateToolbarState();
+}
+
+function startCalloutDrag(ev, id, grip) {
+  ev.preventDefault();
+  selectCallout(id);
+  const active = document.activeElement;
+  if (active && active.closest && active.closest('#side-panel')) active.blur();
+  const c = findCallout(currentScreen(), id);
+  if (!c) return;
+  drag = { kind: grip ? 'co-size' : 'co-move', grip, id, sx: ev.clientX, sy: ev.clientY, r0: { x: c.x, y: c.y, w: c.w, h: c.h }, rect: null };
+  if (!grip) document.body.classList.add('moving');
+}
+
+// ドラッグ中は、その吹き出しの要素と線だけを描き直す（保存は放したとき）
+function dragCallout(ev) {
+  const s = currentScreen();
+  const dx = (ev.clientX - drag.sx) / ui.zoom;
+  const dy = (ev.clientY - drag.sy) / ui.zoom;
+  const r0 = drag.r0;
+  const rect = drag.kind === 'co-move' ? fitCallout({ ...r0, x: r0.x + dx, y: r0.y + dy }, s) : resizedCallout(r0, drag.grip, dx, dy, s);
+  drag.rect = rect;
+  const el = [...document.querySelectorAll('#stage .callout')].find((e) => e.dataset.calloutId === drag.id);
+  if (el) Object.assign(el.style, { left: CALLOUT_ZONE + rect.x + 'px', top: CALLOUT_ZONE + rect.y + 'px', width: rect.w + 'px', height: rect.h + 'px' });
+  redrawCalloutLines({ ['c:' + drag.id]: rect });
+}
+function redrawCalloutLines(overrides) {
+  const svg = $('#co-lines');
+  if (svg) svg.outerHTML = calloutLinesSvg(currentScreen(), overrides);
+  const h = $('#stage [data-co-handle]');
+  if (h) h.style.display = 'none'; // 動かしている間は線の先の ○ を隠す（放すと描き直す）
+}
+
+// 線の先の ○ をドラッグして、部品に重ねたところでつなぐ
+function startCalloutLink(ev, id) {
+  ev.preventDefault();
+  drag = { kind: 'co-link', id, target: undefined };
+  document.body.classList.add('linking');
+}
+function dragCalloutLink(ev) {
+  const s = currentScreen();
+  const c = findCallout(s, drag.id);
+  const zone = $('#co-zone');
+  if (!c || !zone) return;
+  const r = zone.getBoundingClientRect();
+  const x = (ev.clientX - r.left) / ui.zoom - CALLOUT_ZONE;
+  const y = (ev.clientY - r.top) / ui.zoom - CALLOUT_ZONE;
+  const hit = document.elementFromPoint ? document.elementFromPoint(ev.clientX, ev.clientY) : null;
+  const partEl = hit && hit.closest ? hit.closest('#stage .screen .part') : null;
+  drag.target = partEl ? partEl.dataset.partId : null;
+  redrawCalloutLines({ temp: { x1: c.x + c.w / 2, y1: c.y + c.h / 2, x2: x, y2: y } });
+}
+
+function placeCalloutAt(at, target) {
+  const id = actions.addCallout(ui.designId, currentScreen().id, at, target);
+  if (id) selectCallout(id);
+}
+
+// 部品を選んでいるときに部品の箱の「吹き出し」を押すと、その部品の右上につないで置く。選んでいないときは見えている所の真ん中に置く
+function addCalloutByClick() {
+  const s = currentScreen();
+  const p = findPart(s, ui.partId);
+  if (p) { placeCalloutAt({ x: p.x + p.w + 24, y: p.y - 96 }, p.id); return; }
+  const wrap = $('#canvas-wrap');
+  const scr = $('#stage .screen');
+  if (!wrap || !scr) return;
+  const wr = wrap.getBoundingClientRect();
+  const sr = scr.getBoundingClientRect();
+  placeCalloutAt({ x: (wr.left + wr.width / 2 - sr.left) / ui.zoom - 100, y: (wr.top + wr.height / 2 - sr.top) / ui.zoom - 40 }, null);
 }
 
 // 部品を選ぶ（null で選ぶのをやめる）。右の欄で打ちかけの文字は、前に選んでいた部品に保存してから切り替える
 function selectPart(id) {
   flushSideField();
-  if (ui.partId === id) return;
+  if (id ? ui.partId === id : !ui.sel.length) return; // null のときは、吹き出しを選んでいても選ぶのをやめる
   ui.partId = id;
   ui.colId = null;
   renderStage();
@@ -3464,12 +3760,13 @@ function dragPart(ev) {
   // id は読み込んだデータの値なので、セレクタに埋め込まずに dataset で探す
   const el = [...document.querySelectorAll('#stage .part')].find((e) => e.dataset.partId === drag.id);
   if (el) Object.assign(el.style, { left: rect.x + 'px', top: rect.y + 'px', width: rect.w + 'px', height: rect.h + 'px' });
+  if (s.callouts.some((c) => c.target === drag.id)) redrawCalloutLines({ ['p:' + drag.id]: rect });
 }
 
 // 部品の箱のボタンを押したときに、ドラッグで置くかもしれないので覚えておく（動かさずに放せば click で真ん中に置く）。
 // itemId を渡したとき（部品の箱の「データベースの項目」の組）は、その項目を指す部品を置く
 function startPlace(ev, type, itemId = null) {
-  if (ev.button !== 0 || !partType(type)) return;
+  if (ev.button !== 0 || !paletteEntry(type)) return;
   ev.preventDefault();
   flushSideField();
   drag = { kind: 'place', type, itemId, sx: ev.clientX, sy: ev.clientY, moved: false, ghost: null };
@@ -3478,7 +3775,7 @@ function startPlace(ev, type, itemId = null) {
 const PLACE_GRAB = 8; // 置くときの影の左上から、マウスの位置までの幅（窓の上のドット）
 function dragPlace(ev) {
   if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
-  const t = partType(drag.type);
+  const t = paletteEntry(drag.type);
   if (!drag.ghost) {
     drag.moved = true;
     drag.ghost = document.createElement('div');
@@ -3506,6 +3803,18 @@ function dropPlace(done, ev) {
   // （スクロールで見えない所）で放しても置いてしまうため。影（.place-ghost）は消してあるので邪魔にならない
   const scr = $('#stage .screen');
   const hit = document.elementFromPoint ? document.elementFromPoint(ev.clientX, ev.clientY) : null;
+  const zone = $('#co-zone');
+  if (done.type === 'callout') {
+    if (!scr || !hit || !zone || !zone.contains(hit)) return;
+    const r = scr.getBoundingClientRect();
+    const x = (ev.clientX - r.left) / ui.zoom;
+    const y = (ev.clientY - r.top) / ui.zoom;
+    const partEl = hit.closest('#stage .screen .part');
+    // 部品の上に落としたときは、部品と重ならないように右上へずらして置き、その部品につなぐ
+    if (partEl) placeCalloutAt({ x: x + 40, y: y - 120 }, partEl.dataset.partId);
+    else placeCalloutAt({ x: x - PLACE_GRAB / ui.zoom, y: y - PLACE_GRAB / ui.zoom }, null);
+    return;
+  }
   if (!scr || !hit || !scr.contains(hit)) return;
   const r = scr.getBoundingClientRect();
   const at = { x: (ev.clientX - PLACE_GRAB - r.left) / ui.zoom, y: (ev.clientY - PLACE_GRAB - r.top) / ui.zoom };
@@ -3520,6 +3829,7 @@ function addPartAt(type, at, itemId = null) {
 
 // 部品の箱のボタンを押しただけのときは、窓に見えている画面の真ん中に置く
 function addPartAtCenter(type, itemId = null) {
+  if (type === 'callout') { addCalloutByClick(); return; }
   const t = partType(type);
   const wrap = $('#canvas-wrap');
   const scr = $('#stage .screen');
@@ -3693,6 +4003,8 @@ function dragItemSort(ev) {
 function onDragMove(ev) {
   if (!drag) return;
   if (drag.kind === 'item-sort') { dragItemSort(ev); return; }
+  if (drag.kind === 'co-move' || drag.kind === 'co-size') { dragCallout(ev); return; }
+  if (drag.kind === 'co-link') { dragCalloutLink(ev); return; }
   if (drag.kind === 'move' || drag.kind === 'size') { dragPart(ev); return; }
   if (drag.kind === 'place') { dragPlace(ev); return; }
   const { wrap } = drag;
@@ -3715,7 +4027,17 @@ function onDragEnd(ev) {
   if (!drag) return;
   const done = drag;
   drag = null;
-  document.body.classList.remove('resizing', 'moving', 'sorting');
+  document.body.classList.remove('resizing', 'moving', 'sorting', 'linking');
+  if (done.kind === 'co-move' || done.kind === 'co-size') {
+    const r = done.rect;
+    if (!r || !actions.moveCallout(ui.designId, currentScreen().id, done.id, r)) renderStage();
+    return;
+  }
+  if (done.kind === 'co-link') {
+    const c = findCallout(currentScreen(), done.id);
+    if (done.target === undefined || !c || c.target === done.target || !actions.updateCallout(ui.designId, currentScreen().id, done.id, { target: done.target })) renderStage();
+    return;
+  }
   if (done.kind === 'item-sort') {
     if (done.to == null || !actions.moveItem(ui.designId, done.id, done.to)) renderItemsView(currentDesign());
     return;
@@ -3764,6 +4086,12 @@ function duplicatePart() {
 }
 
 function deletePart() {
+  if (ui.calloutId) {
+    const cid = ui.calloutId;
+    ui.sel = [];
+    actions.deleteCallout(ui.designId, currentScreen().id, cid);
+    return;
+  }
   if (!ui.partId) return;
   const id = ui.partId;
   ui.partId = null;
@@ -3771,8 +4099,11 @@ function deletePart() {
 }
 
 function nudgePart(dx, dy) {
-  const p = findPart(currentScreen(), ui.partId);
-  if (p) actions.movePart(ui.designId, currentScreen().id, p.id, { ...p, x: p.x + dx * GRID, y: p.y + dy * GRID });
+  const s = currentScreen();
+  const c = findCallout(s, ui.calloutId);
+  if (c) { actions.moveCallout(ui.designId, s.id, c.id, { ...c, x: c.x + dx * GRID, y: c.y + dy * GRID }); return; }
+  const p = findPart(s, ui.partId);
+  if (p) actions.movePart(ui.designId, s.id, p.id, { ...p, x: p.x + dx * GRID, y: p.y + dy * GRID });
 }
 
 // ── 8. 命令（runCommand）──────────────────────────────────────────────────────
@@ -3820,7 +4151,7 @@ const ACTION_COMMANDS = {
   undo: 'undo', redo: 'redo', home: 'goHome', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
-  'open-items': 'openItems', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems',
+  'open-items': 'openItems', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
 };
 
 // 編集の画面だけで使う、ボタン以外の押したときの動き
@@ -3830,7 +4161,7 @@ function onEditorClick(action, btn) {
     case 'select-screen':
       flushSideField();
       if (btn.dataset.id === ui.screenId && ui.panel === 'screen') return true; // mousedown で切り替えた後の click
-      Object.assign(ui, { screenId: btn.dataset.id, partId: null, panel: 'screen', addItemMenu: false });
+      Object.assign(ui, { screenId: btn.dataset.id, sel: [], panel: 'screen', addItemMenu: false });
       updateEditor();
       return true;
     case 'add-part': addPartAtCenter(btn.dataset.type); return true;
@@ -3909,7 +4240,7 @@ function editorKeyCommand(e) {
     if (low === 'd' && ui.partId) return 'duplicatePart';
     return null;
   }
-  if (!ui.partId) return null;
+  if (!ui.partId && !ui.calloutId) return null;
   if (k === 'Delete' || k === 'Backspace') return 'deletePart';
   if (k === 'Escape') return 'deselectPart';
   return { ArrowLeft: 'moveLeft', ArrowRight: 'moveRight', ArrowUp: 'moveUp', ArrowDown: 'moveDown' }[k] || null;

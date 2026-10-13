@@ -355,6 +355,52 @@ async function shootParts2(browser) {
   await page.close();
 }
 
+// ── 吹き出し（画像 q27）。ドラッグの操作は、実際にマウスを動かして確かめる ──
+async function shootCallouts(browser) {
+  const page = await openApp(browser, PARTS_SAMPLE);
+  await page.click('.card-open[data-id="d1"]');
+  for (let i = 0; i < 5; i++) await page.click('[data-action="zoom-out"]');
+  // 部品の箱の「吹き出し」を、顧客名の部品の上に落とす（部品の箱の中だけをスクロールして、ボタンを見えるようにする）
+  await page.evaluate(() => {
+    const box = document.querySelector('#side-box');
+    const b = box.querySelector('.pal-btn[data-type="callout"]');
+    box.scrollTop += b.getBoundingClientRect().top - box.getBoundingClientRect().top - 40;
+  });
+  await dragMouse(page, await center(page, '.pal-btn[data-type="callout"]'), await center(page, '#stage .part[data-part-id="p1"]'));
+  const placed = await page.evaluate(() => window.__test__.currentScreen().callouts.map((c) => [c.target, c.x, c.y]));
+  console.log('部品の上に落とした吹き出し（つないだ部品・位置）:', JSON.stringify(placed));
+  await shot(page, '38_吹き出し_部品の上に落として置いた_50%');
+  // 吹き出しを、画面の左の外の余白へ動かす
+  const co = await center(page, '#stage .callout');
+  const scr = await (await page.$('#stage .screen')).boundingBox();
+  await dragMouse(page, co, { x: scr.x - 70, y: scr.y + 60 });
+  const moved = await page.evaluate(() => window.__test__.currentScreen().callouts.map((c) => [c.x, c.y]));
+  console.log('外の余白へ動かした後の位置:', JSON.stringify(moved));
+  await shot(page, '39_吹き出し_外の余白へ動かした_50%');
+  // 線の先の ○ を、区分の部品へドラッグしてつなぎ直す
+  await page.click('#stage .callout');
+  await dragMouse(page, await center(page, '#stage [data-co-handle]'), await center(page, '#stage .part[data-part-id="p5"]'));
+  const linked = await page.evaluate(() => window.__test__.currentScreen().callouts.map((c) => c.target));
+  console.log('つなぎ直した後の部品:', JSON.stringify(linked));
+  await shot(page, '40_吹き出し_線の先をドラッグして区分につないだ_50%');
+  // つないだ部品（区分）を動かすと、線も付いてくる（動かしている途中を撮る）
+  const p5 = await center(page, '#stage .part[data-part-id="p5"]');
+  await page.mouse.move(p5.x, p5.y);
+  await page.mouse.down();
+  await page.mouse.move(p5.x + 200, p5.y + 60, { steps: 8 });
+  await shot(page, '41_吹き出し_つないだ部品を動かしている途中_50%');
+  await page.mouse.up();
+  // 設定の欄で赤・矢印にし、文字を書く
+  await page.click('#stage .callout');
+  await page.click('#side-settings [data-co="color"][value="red"] + span');
+  await page.click('#side-settings [data-co="tip"][value="arrow"] + span');
+  await page.click('#side-settings [data-co="text"]', { clickCount: 3 });
+  await page.keyboard.type('法人を選んだときだけ、会社名の欄を出す');
+  await page.click('#side-settings .panel-title');
+  await shot(page, '42_吹き出し_赤と矢印にして文字を書いた_50%');
+  await page.close();
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await puppeteer.launch({
@@ -369,6 +415,7 @@ async function shootParts2(browser) {
     if (wants('parts')) await shootParts(browser);
     if (wants('db')) await shootDatabase(browser);
     if (wants('parts2')) await shootParts2(browser);
+    if (wants('callout')) await shootCallouts(browser);
   } finally {
     await browser.close();
   }
