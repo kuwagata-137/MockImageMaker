@@ -3780,7 +3780,8 @@ function renderMapView(d) {
   const keep = $('#design-map') ? keepScroll(['#db-view', '#design-map']) : () => {};
   el.innerHTML = `<div class="itable"><div class="itable-head"><h3>つながりの図（${esc(d.name)}）</h3></div>
     <p class="map-note">「${esc(d.name)}」と、直接つながる画面設計を描きます。箱をドラッグで動かすと、その位置を覚えます。
-      ほかの画面設計の箱を押すと、その画面設計を開きます。全部の画面設計の図は、最初の画面の「つながりの図」で見られます。</p>${mapLegendHtml()}
+      ${standalone ? 'ほかの画面設計は、この HTML に入っていないので開けません（書き出したときの写しで描いています）。'
+    : 'ほかの画面設計の箱を押すと、その画面設計を開きます。全部の画面設計の図は、最初の画面の「つながりの図」で見られます。'}</p>${mapLegendHtml()}
     <div class="map-canvas" id="design-map">${mapHtml(store.state, d.id, d.mapPos || {})}</div></div>`;
   keep();
 }
@@ -5727,7 +5728,7 @@ function mapPageBody(d, state, aw, ah) {
   const [cw, ch] = [x1 - x0, y1 - y0];
   const k = Math.min(1, aw / cw, (ah - 28) / ch); // 28 は凡例の分
   return `${legend}<div class="xp-fit"><div style="width:${Math.floor(cw * k)}px;height:${Math.floor(ch * k)}px;position:relative;overflow:hidden">`
-    + `<div style="width:${cw}px;height:${ch}px;position:relative;transform:scale(${k.toFixed(4)});transform-origin:0 0">`
+    + `<div style="width:${cw}px;height:${ch}px;position:relative;zoom:${k.toFixed(4)}">`
     + `<div style="position:absolute;left:${-x0}px;top:${-y0}px">${html}</div></div></div></div>`;
 }
 
@@ -5767,14 +5768,16 @@ function screenComposite(d, s, key, measured) {
   const ch = table ? Math.max(cropH, ty + th) : cropH;
   return { cw, ch, html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
 }
-// 画面のページの本文。本文に収まるように縮め（拡大しない）、左右・上下の真ん中に置く。測れないときは縮めない
+// 画面のページの本文。本文に収まるように縮め（拡大しない）、左右・上下の真ん中に置く。測れないときは縮めない。
+// 縮めるのは transform でなく zoom にする（transform だと、縮める前の幅が残り、画面のページが 2 つ以上あると、
+// Electron の印刷が用紙からはみ出しているとみなして全部のページを約 0.67 倍に縮めてしまうため）
 function screenPageBody(comp, aw, ah, measured) {
   const k = measured ? Math.min(1, aw / comp.cw, ah / comp.ch) : 1;
   const top = measured ? Math.max(0, Math.floor((ah - comp.ch * k) / 2)) : 0;
   return {
     k,
     html: `<div class="xp-stage" style="width:${Math.floor(comp.cw * k)}px;height:${Math.floor(comp.ch * k)}px;margin-top:${top}px">`
-      + `<div style="position:absolute;left:0;top:0;width:${comp.cw}px;height:${comp.ch}px;transform:scale(${k.toFixed(4)});transform-origin:0 0">${comp.html}</div></div>`,
+      + `<div style="position:absolute;left:0;top:0;width:${comp.cw}px;height:${comp.ch}px;zoom:${k.toFixed(4)}">${comp.html}</div></div>`,
   };
 }
 
@@ -6138,8 +6141,8 @@ async function openExportDialog(designId) {
 }
 function reportExport(res, what) {
   if (!res || res.canceled) return;
-  if (!res.ok) { toast(`${what}を書き出せませんでした（${res.error || 'わからない理由'}）。`); return; }
-  toast(res.count > 1 ? `${res.count} 枚の ${what} を書き出しました（${res.dir}）。` : `${what}を書き出しました（${res.path}）。`);
+  if (!res.ok) { toast(`${what} を書き出せませんでした（${res.error || 'わからない理由'}）。`); return; }
+  toast(res.count > 1 ? `${res.count} 枚の ${what} を書き出しました（${res.dir}）。` : `${what} を書き出しました（${res.path}）。`);
 }
 // 書き出す。r は書き出しの窓の結果（{ kind, screenIds, paper, orient, cover, map, items, openAfter }）
 async function runExport(designId, r) {

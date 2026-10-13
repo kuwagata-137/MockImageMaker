@@ -106,24 +106,28 @@ function initExport(app, ipcMain, { headless = false } = {}) {
     }
   });
 
-  // 画面 1 つ分の HTML を、画面の外で描く窓で 2 倍の細かさに描いて撮る
+  // 画面 1 つ分の HTML を、画面の外で描く窓で 2 倍の細かさに描いて撮る。窓の大きさは画面より大きくできないことがあるので、
+  // Chromium の開発者向けの命令（debugger）で表示の大きさを中身に合わせ（細かさ 2 倍）、範囲を決めて撮る（Puppeteer の撮り方と同じ）
   function renderPng({ html, width, height }) {
     const w = Math.max(1, Math.ceil(Number(width) || 1));
     const h = Math.max(1, Math.ceil(Number(height) || 1));
     const scale = Math.min(PNG_SCALE, PNG_MAX_SIDE / Math.max(w, h));
-    const opts = { width: Math.ceil(w * scale), height: Math.ceil(h * scale), useContentSize: true, enableLargerThanScreen: true, frame: false, webPreferences: { offscreen: true, zoomFactor: scale } };
-    return withPageWindow(String(html), opts, async (win) => {
-      win.webContents.setZoomFactor(scale);
-      // 描いた絵（paint）を 1 枚もらう。来ないときは capturePage で撮る
-      const image = await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          win.webContents.capturePage().then(resolve, reject);
-        }, PAINT_TIMEOUT);
-        win.webContents.once('paint', (_ev, _dirty, img) => { clearTimeout(timer); resolve(img); });
-        win.webContents.invalidate();
-      });
-      if (!image || image.isEmpty()) throw new Error('画面を撮れませんでした');
-      return image.toPNG();
+    return withPageWindow(String(html), { width: 800, height: 600, webPreferences: { offscreen: true } }, async (win) => {
+      const dbg = win.webContents.debugger;
+      dbg.attach('1.3');
+      try {
+        await dbg.sendCommand('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: scale, mobile: false });
+        await dbg.sendCommand('Emulation.setDefaultBackgroundColorOverride', { color: { r: 255, g: 255, b: 255, a: 1 } });
+        const shot = await Promise.race([
+          dbg.sendCommand('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('画面を撮るのに時間がかかりすぎました')), PAINT_TIMEOUT)),
+        ]);
+        const buf = Buffer.from(shot.data, 'base64');
+        if (!buf.length) throw new Error('画面を撮れませんでした');
+        return buf;
+      } finally {
+        try { dbg.detach(); } catch (_) { /* もう外れている */ }
+      }
     });
   }
 
