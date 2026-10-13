@@ -1,8 +1,52 @@
 {
   "name": "mockimagemaker",
+  "productName": "MockImageMaker",
+  "version": "1.0.0",
   "private": true,
-  "description": "画面モックアプリ（仮称）の検証用。アプリ本体は 1 つの HTML ファイルで、ビルドはしない。",
+  "description": "モックイメージメーカー — 業務アプリの画面設計（モック）を描いてベンダーと共有するデスクトップアプリ",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "pack": "node node_modules/electron/install.js && electron-builder --dir",
+    "dist": "node node_modules/electron/install.js && electron-builder --win --publish never"
+  },
+  "author": "kuwagata-137",
+  "dependencies": {
+    "electron-window-state": "^5.0.3"
+  },
   "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
+    "jsdom": "^29.1.1",
     "puppeteer": "^25.0.4"
+  },
+  "build": {
+    "appId": "com.kuwagata.mockimagemaker",
+    "productName": "MockImageMaker",
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "mock_v1.00.html",
+      "main.js",
+      "preload.js",
+      "storage.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "モックイメージメーカー"
+    }
   }
 }
