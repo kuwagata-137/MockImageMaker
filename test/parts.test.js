@@ -832,3 +832,93 @@ test('まとめてコピー・貼り付け: 一緒にコピーした部品につ
   api.runCommand('duplicatePart');
   assert.equal(screen().callouts[2].target, ids[0], '吹き出しだけを複製すると、元の部品につないだまま');
 });
+
+// ── 見直し用のエージェントが見つけた不具合（後半の部品と吹き出し）──
+
+test('表: 見本の行の数を増やして画面の下からはみ出すときは、表を上へずらさず、画面を下へ伸ばす', async (t) => {
+  const { api, add, screen } = await bootEditor(t);
+  const tb = add('table');
+  api.actions.movePart(api.ui.designId, screen().id, tb.id, { ...tb, y: 600 });
+  api.actions.updatePart(api.ui.designId, screen().id, tb.id, { view: { rows: 12 } });
+  const p = screen().parts[0];
+  assert.deepEqual(plain([p.y, p.h]), [600, 472], '表の位置はそのまま、高さは 12 行分');
+  assert.equal(screen().height, 1072, '画面を表の下の端まで伸ばす');
+  api.store.undo();
+  assert.deepEqual(plain([screen().parts[0].h, screen().height]), [168, 800], '元に戻すで 1 回で戻る');
+});
+
+test('取り込んだテーブル: この画面だけの設定で列を選んで、見本の値を書ける（項目の設定の枠は直せない）', async (t) => {
+  const { app, api } = await bootEditor(t);
+  const srcId = api.ui.designId;
+  const sid = api.currentScreen().id;
+  api.actions.addPart(srcId, sid, 'table', { x: 0, y: 48 });
+  const tableItem = api.currentDesign().items[0];
+  const dstId = api.actions.createDesign('受注管理', 'kintone');
+  api.actions.importItems(dstId, srcId, [tableItem.id]);
+  api.openDesign(dstId);
+  const linked = api.currentDesign().items[0];
+  const pid = api.actions.addItemPart(dstId, api.currentScreen().id, linked.id, { x: 0, y: 48 });
+  api.selectPart(pid);
+  assert.ok($(app, '#side-settings fieldset[disabled] [data-action="tb-col"]'), '項目の設定の枠の中の列は押せない');
+  const pick = $(app, '#side-settings .pf-sec.here [data-action="tb-col"]');
+  assert.ok(pick, 'この画面だけの設定に、列を選ぶボタン');
+  click(pick);
+  assert.ok(api.ui.colId);
+  setValue($(app, '#side-settings .pf-sec.here [data-tb="sample"]'), '鉛筆\n消しゴム');
+  assert.deepEqual(plain(api.currentScreen().parts[0].view.samples[api.ui.colId]), ['鉛筆', '消しゴム']);
+});
+
+test('関連レコード一覧の「列を足す」（名前を書く欄）: 打った後に命令を出してから離れても、列は 1 本だけ足す', async (t) => {
+  const { app, api, add, screen } = await bootEditor(t);
+  const tb = add('table');
+  api.actions.setTableKind(api.ui.designId, screen().id, tb.id, 'related');
+  api.selectPart(tb.id);
+  setValue($(app, '#side-settings [data-tb="db"]'), '__free__');
+  const input = $(app, '#side-settings [data-tb="addColName"]');
+  input.focus();
+  input.value = '受注番号';
+  api.runCommand('zoomIn'); // 命令を出す前に、打ちかけの欄を保存する
+  input.dispatchEvent(new app.window.Event('change', { bubbles: true })); // その後で欄を離れる
+  const cols = api.resolvePart(api.currentDesign(), screen().parts[0]).props.columns.map((c) => c.ref.name);
+  assert.deepEqual(plain(cols), ['受注番号']);
+});
+
+test('画面の高さを縮めると、画面の下の余白に置いた吹き出しも、置ける範囲の中へ寄せる', async (t) => {
+  const { api, screen } = await bootEditor(t);
+  api.actions.updateScreen(api.ui.designId, screen().id, { height: 1200 });
+  api.actions.addCallout(api.ui.designId, screen().id, { x: 0, y: 1300 }, null);
+  api.actions.updateScreen(api.ui.designId, screen().id, { height: 800 });
+  assert.equal(screen().callouts[0].y, 800 + 240 - 80);
+});
+
+test('吹き出しをドラッグしている間も、その吹き出しの線を描く', async (t) => {
+  const { app, api, add, screen } = await bootEditor(t);
+  const p = add('text1');
+  const id = api.actions.addCallout(api.ui.designId, screen().id, { x: 400, y: 200 }, p.id);
+  const el = $(app, `#stage .callout[data-callout-id="${id}"]`);
+  mouse(app, el, 'mousedown', { clientX: 100, clientY: 100 });
+  mouse(app, app.document, 'mousemove', { clientX: 140, clientY: 120 });
+  assert.equal($$(app, '#co-lines line').length, 1, 'ドラッグ中も線がある');
+  mouse(app, app.document, 'mouseup', { clientX: 140, clientY: 120 });
+  assert.equal($$(app, '#co-lines line').length, 1);
+});
+
+test('グラフの見本の値: 全角の数字・桁の区切り・単位を読み、数字のない行は描かない。0 でない値が 1 つの円グラフは円で描く', async (t) => {
+  const { api, add, screen, partEl } = await bootEditor(t);
+  const g = add('graph');
+  api.actions.updatePart(api.ui.designId, screen().id, g.id, { props: { chart: 'hbar', samples: '4月, １２０\n5月, 1,200\n6月, abc\n7月, 120万' } });
+  const texts = [...partEl(g.id).querySelectorAll('svg text')].map((e) => e.textContent);
+  assert.deepEqual(plain(texts), ['4月', '120', '5月', '1200', '7月', '120']);
+  api.actions.updatePart(api.ui.designId, screen().id, g.id, { props: { chart: 'pie', samples: 'A, 100\nB, 0' } });
+  assert.equal(partEl(g.id).querySelectorAll('svg circle').length, 1, '円で描く');
+  api.actions.movePart(api.ui.designId, screen().id, g.id, { ...screen().parts[0], w: 80, h: 64 });
+  api.actions.updatePart(api.ui.designId, screen().id, g.id, { props: { chart: 'bar', samples: 'A, 1\nB, 2' } });
+  assert.ok([...partEl(g.id).querySelectorAll('svg rect')].every((r) => Number(r.getAttribute('width')) >= 0 && Number(r.getAttribute('height')) >= 0), '小さくしても負の幅・高さにしない');
+});
+
+test('ページ送り: 全部の件数が 0 のときは「0 件」とだけ出す', async (t) => {
+  const { api, add, screen, partEl } = await bootEditor(t);
+  const pg = add('pager');
+  api.actions.updatePart(api.ui.designId, screen().id, pg.id, { props: { total: '0' } });
+  assert.equal(partEl(pg.id).querySelector('em').textContent, '0 件');
+});

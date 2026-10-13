@@ -455,6 +455,8 @@ body.sorting,body.sorting *{cursor:grabbing!important}
 .mnode.cur{background:#eff6ff;border:2.5px solid #2563eb}
 .mnode.cur b{color:#1d4ed8}
 body.map-dragging,body.map-dragging *{cursor:grabbing!important}
+.tb-pick{display:flex;flex-wrap:wrap;gap:4px}
+.tb-pick .pal-item{width:auto;flex:0 0 auto;cursor:pointer}
 .map-note{color:#64748b;font-size:12px;line-height:1.7;margin:-4px 0 4px}
 .map-empty{color:#64748b;font-size:13px;padding:18px;line-height:1.7}
 .pf-banner.ref{background:#fffbeb;border:1px solid #fcd34d;color:#78350f}
@@ -1819,7 +1821,10 @@ const actions = {
         sc.parts = sc.parts.map((p) => (partType(p.type) ? { ...p, ...fitRect(p, sc) } : p));
         sc.callouts = sc.callouts.map((c) => ({ ...c, ...fitCallout(c, sc) })); // 画面が狭くなったら、吹き出しも範囲の中へ寄せる
       }
-      if ('height' in patch) sc = { ...sc, height: Math.max(snapHeight(patch.height, sc.device), minScreenHeight(sc)) };
+      if ('height' in patch) {
+        sc = { ...sc, height: Math.max(snapHeight(patch.height, sc.device), minScreenHeight(sc)) };
+        sc.callouts = sc.callouts.map((c) => ({ ...c, ...fitCallout(c, sc) }));
+      }
       if ('name' in patch) sc = { ...sc, name: cleanName(patch.name) || sc.name };
       if ('showHeader' in patch) sc = { ...sc, showHeader: !!patch.showHeader };
       if ('tablePos' in patch) sc = { ...sc, tablePos: patch.tablePos === 'bottom' ? 'bottom' : 'right' };
@@ -1859,7 +1864,9 @@ const actions = {
         p.view = { ...(p.view || {}), ...clone(patch.view) };
         if (p.type === 'table') {
           p.view = normalizeTableView(p.view);
-          Object.assign(p, fitRect({ ...p, h: tableHeight(p.view.rows) }, sc));
+          const h = tableHeight(p.view.rows);
+          if (p.y + h > sc.height) sc.height = Math.ceil((p.y + h) / GRID) * GRID; // 表を上へずらさず、画面を伸ばす
+          Object.assign(p, fitRect({ ...p, h }, sc));
         }
       }
       const item = findItem(d, p.itemId);
@@ -2448,7 +2455,7 @@ function partInnerHtml(p, t, marks = false) {
       const total = Math.max(0, Number(pr.total) || 0);
       const pages = Math.max(1, Math.ceil(total / per));
       const nums = pages <= 4 ? Array.from({ length: pages }, (_, i) => String(i + 1)) : ['1', '2', '3', '…', String(pages)];
-      const count = pr.showCount !== false ? `<em>${total} 件中 1〜${Math.min(per, total)} 件</em>` : '';
+      const count = pr.showCount === false ? '' : total ? `<em>${total} 件中 1〜${Math.min(per, total)} 件</em>` : '<em>0 件</em>';
       return `${outNo()}<div class="ppager"><span>‹</span>${nums.map((n, i) => `<span${i === 0 ? ' class="on"' : ''}>${n}</span>`).join('')}<span>›</span>${count}</div>`;
     }
     case 'status': {
@@ -2517,11 +2524,14 @@ function tableHtml(p) {
 
 // グラフの部品の絵。見本の値（1 行に「分類, 値」）から、棒・横棒・折れ線・円を描く
 const GRAPH_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
+// 1 行に「分類, 値」。全角の数字は半角に直し、値の中の桁の区切り（1,200）は数に含める。値の後ろの単位（120万）は読み飛ばす。
+// 値に数字のない行は描かない（0 の棒にしない）
 function parseGraphSamples(text) {
-  return String(text || '').split('\n').map((line) => {
-    const m = line.split(/[,，、\t]/);
-    const value = Number(String(m[m.length - 1] || '').replace(/[^0-9.\-]/g, ''));
-    return m.length >= 2 && Number.isFinite(value) ? { label: m.slice(0, -1).join(',').trim(), value: Math.max(0, value) } : null;
+  return String(text || '').normalize('NFKC').split('\n').map((line) => {
+    const m = line.match(/^(.*?)[,、\t]\s*[¥$]?([-+]?\d[\d,]*(?:\.\d+)?)[^\d]*$/);
+    if (!m) return null;
+    const value = Number(m[2].replace(/,/g, ''));
+    return Number.isFinite(value) ? { label: m[1].trim(), value: Math.max(0, value) } : null;
   }).filter(Boolean).slice(0, 24);
 }
 // 目盛りを 4 つに分けたとき、1 目盛りがきりのよい数（6・60・250 など）になるいちばん上の値
@@ -2546,10 +2556,11 @@ function graphSvg(p) {
     const cx = r + 16;
     const cy = h / 2;
     let a = -Math.PI / 2;
+    const whole = data.filter((d) => d.value > 0).length === 1;
     const slices = data.map((d, i) => {
       const da = (d.value / total) * Math.PI * 2;
       const [x1, y1, x2, y2] = [cx + r * Math.cos(a), cy + r * Math.sin(a), cx + r * Math.cos(a + da), cy + r * Math.sin(a + da)];
-      const path = data.length === 1 ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${GRAPH_COLORS[0]}"/>`
+      const path = whole ? (d.value > 0 ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${GRAPH_COLORS[i % 8]}"/>` : '')
         : `<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${da > Math.PI ? 1 : 0},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${GRAPH_COLORS[i % 8]}"/>`;
       a += da;
       return path;
@@ -2562,15 +2573,15 @@ function graphSvg(p) {
     const left = 96;
     const bw = (h - 20) / data.length;
     const bars = data.map((d, i) => {
-      const len = ((w - left - 50) * d.value) / max;
+      const len = Math.max(0, ((w - left - 50) * d.value) / max);
       const y = 10 + i * bw + bw * 0.18;
-      return `<rect x="${left}" y="${y.toFixed(1)}" width="${len.toFixed(1)}" height="${(bw * 0.64).toFixed(1)}" fill="#3b82f6"/>${text(left - 6, y + bw * 0.42, d.label, 'text-anchor="end" font-size="12"')}${text(left + len + 5, y + bw * 0.42, String(d.value))}`;
+      return `<rect x="${left}" y="${y.toFixed(1)}" width="${len.toFixed(1)}" height="${Math.max(0, bw * 0.64).toFixed(1)}" fill="#3b82f6"/>${text(left - 6, y + bw * 0.42, d.label, 'text-anchor="end" font-size="12"')}${text(left + len + 5, y + bw * 0.42, String(d.value))}`;
     }).join('');
     return svg(`<line x1="${left}" y1="6" x2="${left}" y2="${h - 6}" stroke="#64748b"/>${bars}`);
   }
   const [L, R, T, B] = [44, 12, unit ? 22 : 12, 24];
-  const pw = w - L - R;
-  const ph = h - T - B;
+  const pw = Math.max(0, w - L - R);
+  const ph = Math.max(0, h - T - B);
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((k) => {
     const y = T + ph * (1 - k);
     return `<line x1="${L}" y1="${y.toFixed(1)}" x2="${w - R}" y2="${y.toFixed(1)}" stroke="${k ? '#e2e8f0' : '#64748b'}"/>${text(L - 5, y + 4, String(Math.round(max * k * 100) / 100), 'text-anchor="end" font-size="10.5"')}`;
@@ -2581,7 +2592,7 @@ function graphSvg(p) {
   const labels = data.map((d, i) => text(cxs[i], h - 8, d.label, 'text-anchor="middle"')).join('');
   const marks = chart === 'line'
     ? `<polyline points="${cxs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ')}" fill="none" stroke="#3b82f6" stroke-width="2.5"/>${cxs.map((x, i) => `<circle cx="${x.toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4" fill="#fff" stroke="#3b82f6" stroke-width="2"/>`).join('')}`
-    : cxs.map((x, i) => `<rect x="${(x - step * 0.32).toFixed(1)}" y="${ys[i].toFixed(1)}" width="${(step * 0.64).toFixed(1)}" height="${(T + ph - ys[i]).toFixed(1)}" fill="#3b82f6"/>`).join('');
+    : cxs.map((x, i) => `<rect x="${(x - step * 0.32).toFixed(1)}" y="${ys[i].toFixed(1)}" width="${(step * 0.64).toFixed(1)}" height="${Math.max(0, T + ph - ys[i]).toFixed(1)}" fill="#3b82f6"/>`).join('');
   return svg(`${ticks}<line x1="${L}" y1="${T}" x2="${L}" y2="${T + ph}" stroke="#64748b"/>${marks}${labels}${unit ? text(L, 12, `（${unit}）`, 'font-size="10.5"') : ''}`);
 }
 
@@ -3310,7 +3321,10 @@ function calloutsHtml(s) {
 }
 function calloutLinesSvg(s, overrides = {}) {
   const Z = CALLOUT_ZONE;
-  const rectOf = (k, x) => overrides[k + ':' + x.id] || x;
+  const rectOf = (k, x) => {
+    const o = overrides[k + ':' + x.id];
+    return o ? { ...x, ...o } : x;
+  };
   const lines = s.callouts.map((c0) => {
     const c = rectOf('c', c0);
     const p = c.target ? findPart(s, c.target) : null;
@@ -3756,9 +3770,11 @@ function tableSettingsHtml(p, t) {
   const kind = `<div class="field">${pfLabel('表の中身')}<div class="seg">${Object.entries(TABLE_KINDS).map(([k, n]) =>
     `<label><input type="radio" name="tb-kind" value="${k}" data-tb="kind"${p.tableKind === k ? ' checked' : ''}><span>${n}</span></label>`).join('')}</div></div>`;
   const title = `<div class="panel-title">選んだ部品の設定（${p.no != null ? `番号 ${p.no}・` : ''}表（${TABLE_KINDS[p.tableKind]}））</div>`;
+  // 項目の設定の枠を直せないテーブル（取り込んだ表・項目を一覧表から消した後の表）は、列を選ぶボタンを、この画面だけの設定にも出す
+  const lockedCols = p.tableKind === 'subtable' && (!p.item || !!p.item.link);
   const here = `<div class="pf-sec here"><div class="pf-sec-head">この画面だけの設定<small>${esc(currentScreen().name)}の画面</small></div><div class="pf-sec-body">
       <label class="field"><span>見本の行の数</span><input type="number" min="1" max="20" data-tb="rows" value="${(p.view || {}).rows || 3}"></label>
-      ${tableColumnViewHtml(p)}
+      ${tableColumnViewHtml(p, lockedCols)}
       ${pfCheck('numbered', '番号を付ける', p.no != null)}
     </div></div>`;
   if (p.tableKind === 'subtable') {
@@ -3839,9 +3855,15 @@ function tableColumnsEditorHtml(p, isItem) {
 }
 
 // 選んだ列の見本の値と幅（この画面だけ）
-function tableColumnViewHtml(p) {
-  const c = (p.columns || []).find((x) => x.id === ui.colId);
-  if (!c) return '<p class="hint" style="margin-bottom:8px">列の欄で列を押すと、その列の見本の値と幅を書けます。</p>';
+function tableColumnViewHtml(p, pick = false) {
+  const cols = p.columns || [];
+  const picker = pick && cols.length ? `<div class="field">${pfLabel('列', '（押すと、その列の見本の値と幅）')}<div class="tb-pick">${cols.map((x) =>
+    `<button class="pal-item${x.id === ui.colId ? ' on' : ''}" data-action="tb-col" data-id="${esc(x.id)}"><span>${esc(x.name)}</span></button>`).join('')}</div></div>` : '';
+  const c = cols.find((x) => x.id === ui.colId);
+  if (!c) return picker || '<p class="hint" style="margin-bottom:8px">列の欄で列を押すと、その列の見本の値と幅を書けます。</p>';
+  return picker + tableColumnSampleHtml(p, c);
+}
+function tableColumnSampleHtml(p, c) {
   const view = p.view || { samples: {}, widths: {} };
   return `<label class="field"><span>見本の値（${esc(c.name)}の列） <small>1 行に 1 つ。上の行から入る</small></span><textarea data-tb="sample" rows="4">${esc((view.samples[c.id] || []).join('\n'))}</textarea></label>
     <label class="field"><span>列の幅（${esc(c.name)}の列） <small>書かないときは残りを分ける</small></span><input type="number" min="40" data-tb="width" value="${view.widths[c.id] || ''}"></label>`;
@@ -4053,6 +4075,7 @@ function onTableFieldChange(el) {
     const name = it ? it.name : el.value.trim();
     if (!name) return;
     pr.columns.push({ id: newId('c'), ref: { itemId: it ? it.id : null, name } });
+    if (k === 'addColName') el.value = '';
   } else return;
   run(() => actions.updatePart(d.id, s.id, p.id, { props: pr }));
 }
