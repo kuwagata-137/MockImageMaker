@@ -248,16 +248,17 @@ test('データの形: 読み込むときに足りない項目を補い、知ら
   t.after(() => app.close());
   const { state, blockReason } = api.migrate({ designs: [{ id: 'd1', name: '顧客管理', extra: 'x', screens: [{ id: 's1', device: 'zzz', height: 10 }] }], future: 1 });
   assert.equal(blockReason, null);
-  assert.equal(state.schemaVersion, 1);
+  assert.equal(state.schemaVersion, 2);
   assert.equal(state.future, 1);
   assert.deepEqual(plain(state.settings.customTargets), []);
   const d = state.designs[0];
   assert.equal(d.extra, 'x');
-  assert.deepEqual(plain([d.target, d.description, d.trashedAt, d.revisions]), ['', '', null, []]);
+  assert.deepEqual(plain([d.target, d.description, d.trashedAt, d.revisions, d.items]), ['', '', null, [], []]);
   assert.deepEqual([d.screens[0].device, d.screens[0].width, d.screens[0].height, d.screens[0].showHeader], ['pc', 1280, 800, true]);
   assert.equal(api.migrate(null).blockReason, null);
   assert.ok(api.migrate([]).blockReason);
-  assert.ok(api.migrate({ schemaVersion: 2, designs: [] }).blockReason);
+  assert.equal(api.migrate({ schemaVersion: 2, designs: [] }).blockReason, null);
+  assert.ok(api.migrate({ schemaVersion: 3, designs: [] }).blockReason, 'この版より新しいデータの形');
 });
 
 test('新しい版のデータ・壊れたデータを読んだときは、警告を出して保存しない', async (t) => {

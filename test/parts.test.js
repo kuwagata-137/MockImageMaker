@@ -33,7 +33,8 @@ async function bootEditor(t) {
   const id = api.actions.createDesign('顧客管理アプリ', 'kintone');
   api.openDesign(id);
   const screen = () => api.currentScreen();
-  const parts = () => screen().parts;
+  // 部品は、指している項目と合わせた形で返す（項目名と設定は項目が持つため）
+  const parts = () => screen().parts.map((p) => api.resolvePart(api.currentDesign(), p));
   const add = (type) => { click($(app, `.pal-btn[data-type="${type}"]`)); return parts()[parts().length - 1]; };
   const partEl = (id) => $(app, `#stage .part[data-part-id="${id}"]`);
   return { app, api, id, screen, parts, add, partEl };
@@ -286,10 +287,16 @@ test('データの形: 部品の足りない項目を補い、知らない種類
       'bad',
     ] }] }],
   });
-  const [p1, p2] = state.designs[0].screens[0].parts;
-  assert.equal(state.designs[0].screens[0].parts.length, 2);
-  assert.deepEqual(plain([p1.x, p1.y, p1.w, p1.h, p1.no, p1.label, p1.labelPos, p1.required, p1.extra]), [24, 0, 320, 64, 2, '項目名', 'top', false, 'x']);
-  assert.deepEqual(plain(p1.props), { maxLen: '50', initial: '', future: 1 });
+  const design = state.designs[0];
+  const [p1, p2] = design.screens[0].parts;
+  assert.equal(design.screens[0].parts.length, 2);
+  assert.deepEqual(plain([p1.x, p1.y, p1.w, p1.h, p1.no, p1.labelPos, p1.extra]), [24, 0, 320, 64, 2, 'top', 'x']);
+  assert.equal(design.items.length, 1, '入力欄の部品から項目を 1 つ作る');
+  const item = design.items[0];
+  assert.equal(p1.itemId, item.id);
+  assert.equal(p1.label, undefined, '項目名と設定は項目に移す');
+  assert.deepEqual(plain([item.name, item.type, item.required, item.memo]), ['項目名', 'text1', false, '']);
+  assert.deepEqual(plain(item.props), { maxLen: '50', initial: '', future: 1 });
   assert.deepEqual(plain([p2.type, p2.no, p2.data]), ['chart', 3, [1, 2]], '知らない種類の部品は中身を残す');
 
   api.store.commit((s) => { s.designs = state.designs; });
@@ -337,7 +344,9 @@ test('画面設計の複製: 部品も写し、部品の id は新しくする',
   const copy = api.store.state.designs.find((d) => d.id === copyId);
   assert.equal(copy.screens[0].parts.length, 1);
   assert.notEqual(copy.screens[0].parts[0].id, p.id);
-  assert.equal(copy.screens[0].parts[0].label, '項目名');
+  assert.equal(copy.items.length, 1, '項目も写す');
+  assert.equal(copy.screens[0].parts[0].itemId, copy.items[0].id);
+  assert.equal(api.resolvePart(copy, copy.screens[0].parts[0]).label, '項目名');
 });
 
 // ── 見直しで見つかった不具合のテスト ──
@@ -430,7 +439,8 @@ test('読み込んだデータが思わぬ形でも起動でき、部品の id �
   t.after(() => app.close());
   assert.equal($(app, '#banner').hidden, true, '警告は出さない');
   assert.equal($$(app, '.card').length, 1, '一覧が出る');
-  const [p1, p2, p3] = api.store.state.designs[0].screens[0].parts;
+  const design = api.store.state.designs[0];
+  const [p1, p2, p3] = design.screens[0].parts.map((p) => api.resolvePart(design, p));
   assert.notEqual(p1.id, p2.id, '重なった id は付け直す');
   assert.deepEqual(plain([p1.no, p1.props.options, p1.props.initial, p1.props.dir]), [2, ['選択肢 1', '選択肢 2'], '', 'v']);
   assert.deepEqual(plain([p2.type, p2.w, p2.h]), ['constructor', 16, 16], '知らない種類は残し、見えない大きさは 16 にする');

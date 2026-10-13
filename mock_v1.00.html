@@ -280,11 +280,12 @@ const APP_VERSION = '1.00';
 
 // ── 2. データの形（純関数）────────────────────────────────────────────────────
 // { schemaVersion, settings: { customTargets }, designs: [ { id, name, target, description,
-//   createdAt, updatedAt, trashedAt, revisions, screens: [ { id, name, device, width, height,
+//   createdAt, updatedAt, trashedAt, revisions, items, screens: [ { id, name, device, width, height,
 //   showHeader, tablePos, parts, callouts } ] } ] }
-// parts の 1 つずつの形は、下の「部品」に書いた。callouts（吹き出し）は第 3 段階の後半で使う。
+// items（データベースの項目の一覧表）と parts の 1 つずつの形は、下の「項目」「部品」に書いた。callouts（吹き出し）は第 3 段階の後半で使う。
 // 倍率・モード・開いている画面・選んでいる部品・コピーした部品は保存しない（下の ui に持つ）。
-const SCHEMA_VERSION = 1;
+// データの形の版: 1＝部品が項目名と設定を持つ（第 3 段階の前半まで）。2＝項目は画面設計の items に持ち、入力欄の部品は itemId で項目を指す。
+const SCHEMA_VERSION = 2;
 const STORAGE_KEY = 'mockimagemaker.v1';
 const HISTORY_LIMIT = 50;
 const GRID = 8;
@@ -330,7 +331,7 @@ function createScreenData(name, device = 'pc') {
 function createDesignData(name, target, now = nowIso()) {
   return {
     id: newId('d'), name, target, description: '', createdAt: now, updatedAt: now,
-    trashedAt: null, revisions: [], screens: [createScreenData(FIRST_SCREEN_NAME)],
+    trashedAt: null, revisions: [], items: [], screens: [createScreenData(FIRST_SCREEN_NAME)],
   };
 }
 
@@ -385,6 +386,7 @@ function duplicateDesignData(d, now = nowIso()) {
   copy.createdAt = now;
   copy.updatedAt = now;
   copy.trashedAt = null;
+  // 項目の id は画面設計の中だけで重ならなければよいので、そのまま写す（部品・ルックアップが指す id を付け直さなくて済むため）
   copy.screens.forEach((s) => {
     s.id = newId('s');
     s.parts.forEach((p) => { p.id = newId('p'); });
@@ -392,11 +394,17 @@ function duplicateDesignData(d, now = nowIso()) {
   return copy;
 }
 
-// ── 部品 ──
-// 部品 { id, type, x, y, w, h, no, label, labelPos, sample, placeholder, required, memo, props }
+// ── 項目と部品 ──
+// 項目 { id, name, type, required, memo, props, lookup, link }（画面設計の items。データベースの項目の一覧表の 1 行）
+//   type は入力欄の部品の種類（text1 など）。name は項目名。props は種類ごとの設定（PART_TYPES の props が最初の値）。
+//   lookup はルックアップ（第 3 段階の後半）、link はほかのモックから取り込んだ元（第 3 段階の後半）。使わないときは null。
+// 部品 { id, type, x, y, w, h, no, labelPos, sample, placeholder, itemId }（入力欄の部品。項目名と設定は itemId の項目が持つ）
+// 部品 { id, type, x, y, w, h, no, label, labelPos, sample, placeholder, required, memo, props }（ボタン・見出しなど、項目を指さない部品）
 //   x・y は画面の左上から（帯の上にも置ける）。no は赤い番号（番号を外した部品は null）。
-//   label は項目名（ボタン・見出し・説明の文字では、その文字）。placeholder は見本の値を書かないときに出す薄い字（空なら種類ごとの字）。
-//   props は部品の種類ごとの設定（PART_TYPES の props が最初の値）。
+//   label はボタン・見出し・説明の文字では、その文字。placeholder は見本の値を書かないときに出す薄い字（空なら種類ごとの字）。
+//   項目を一覧表から消した後に画面に残った入力欄の部品は、消したときの項目名と設定を label・required・memo・props に写して持ち、
+//   orphan: { itemId }（消した項目の id）を付ける（ユーザーの指示。消したときの中身で固定する）。
+// 部品の中身を描くときは、resolvePart で項目と合わせた形（label・required・memo・props がそろった形）にしてから使う。
 // 見た目と最初の大きさは CLAUDE.md の「部品の細かい決めごと」（画像 q15）のとおり。
 const PART_MIN = 16; // 部品のいちばん小さい幅と高さ
 const PART_GAP = 16; // 貼り付け・複製・押して置いたときに、重ならないようにずらす幅
@@ -432,6 +440,26 @@ const partType = (type) => (own(PART_TYPES, type) ? PART_TYPES[type] : null);
 const partTypeName = (type) => (partType(type) ? partType(type).name : `この版では描けない部品（${type}）`);
 const snapGrid = (v) => Math.round(Number(v) / GRID) * GRID || 0;
 const findPart = (screen, id) => (screen && id ? screen.parts.find((p) => p.id === id) || null : null);
+const findItem = (design, id) => (design && id && Array.isArray(design.items) ? design.items.find((it) => it.id === id) || null : null);
+
+// 項目になる部品（データベースの項目の一覧表に行がある部品）か
+const isItemType = (type) => !!(partType(type) && partType(type).input);
+
+function createItemData(type, name) {
+  const t = partType(type);
+  return { id: newId('i'), name: name == null ? t.label : name, type, required: false, memo: '', props: clone(t.props), lookup: null, link: null };
+}
+
+// 部品の中身を、指している項目と合わせた形にする（描く・一覧表の文を作る・設定の欄を出すときに使う）。
+// 項目を指していない部品（ボタン・見出しなど・項目を消した後に残った部品）は、そのまま返す
+function resolvePart(design, p) {
+  const item = p && p.itemId ? findItem(design, p.itemId) : null;
+  if (!item) return p;
+  return { ...p, label: item.name, required: item.required, memo: item.memo, props: item.props, item };
+}
+
+// その画面に、その項目を指す部品があるか（同じ項目を 1 つの画面に 2 回は置かない）
+const itemOnScreen = (screen, itemId) => !!screen && screen.parts.some((p) => p.itemId === itemId);
 
 // 部品の位置と大きさを 8 ドットのマス目に吸い付け、画面の中に収める（大きさは変えずに位置をずらす）
 function fitRect(r, screen) {
@@ -474,13 +502,13 @@ function freeSpot(screen, at) {
   return { x, y };
 }
 
-function createPartData(type, screen, at) {
+// itemId を渡すと、その項目を指す部品を作る（項目名と設定は項目が持つ）
+function createPartData(type, screen, at, itemId = null) {
   const t = partType(type);
   const rect = fitRect({ x: at.x, y: at.y, w: t.w, h: t.h }, screen);
-  return {
-    id: newId('p'), type, ...rect, no: t.noNumber ? null : nextPartNo(screen),
-    label: t.label, labelPos: 'top', sample: '', placeholder: '', required: false, memo: '', props: clone(t.props),
-  };
+  const base = { id: newId('p'), type, ...rect, no: t.noNumber ? null : nextPartNo(screen), labelPos: 'top', sample: '', placeholder: '' };
+  if (itemId) return { ...base, itemId };
+  return { ...base, label: t.label, required: false, memo: '', props: clone(t.props) };
 }
 
 // 選択肢の部品の初期値を、今の選択肢の中のものだけにする（選択肢を書き換えて、なくなった選択肢が初期値に残らないため）
@@ -561,12 +589,15 @@ function partTitle(p) {
   return p.type === 'desc' && first.length > 20 ? first.slice(0, 20) + '…' : first;
 }
 
-// 部品の設定の一覧表の行（番号の付いた部品だけを番号の順に）
-function tableRows(screen) {
+// 部品の設定の一覧表の行（番号の付いた部品だけを番号の順に）。design を渡すと、部品が指す項目の中身で書く
+function tableRows(screen, design = null) {
   return screen.parts
     .filter((p) => p.no != null)
     .sort((a, b) => a.no - b.no)
-    .map((p) => ({ id: p.id, no: p.no, label: partTitle(p), kind: partTypeName(p.type), setting: describePart(p) }));
+    .map((raw) => {
+      const p = design ? resolvePart(design, raw) : raw;
+      return { id: p.id, no: p.no, label: partTitle(p), kind: partTypeName(p.type), setting: describePart(p) };
+    });
 }
 
 // 部品のいちばん下の端より画面を低くしない（下の縁のドラッグで部品が切れないため）。機器の 1 画面分から 8 ドットずつ
@@ -578,31 +609,64 @@ function minScreenHeight(screen) {
 
 // ── 読み込んだデータを今の形に直す ──
 // 足りない項目を補い、知らない項目はそのまま残す（新しい版で足した項目を消さないため）。
-function normalizePart(src) {
+const numOr = (v, d) => (v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
+
+// items はその画面設計の項目（直した後のもの）。項目を指していない入力欄の部品（データの形の版 1 の部品）は、
+// 部品が持っていた項目名と設定から項目を 1 つ作って items に足し、その項目を指す部品にする
+function normalizePart(src, items = []) {
   const p = isObj(src) ? src : {};
   const t = partType(p.type);
-  const num = (v, d) => (v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
   const no = Number(p.no);
   const base = {
     ...p,
     id: str(p.id) || newId('p'),
     type: str(p.type) || 'unknown',
-    x: num(p.x, 0),
-    y: num(p.y, 0),
-    w: Math.max(PART_MIN, num(p.w, t ? t.w : 160)),
-    h: Math.max(PART_MIN, num(p.h, t ? t.h : 64)),
+    x: numOr(p.x, 0),
+    y: numOr(p.y, 0),
+    w: Math.max(PART_MIN, numOr(p.w, t ? t.w : 160)),
+    h: Math.max(PART_MIN, numOr(p.h, t ? t.h : 64)),
     no: p.no != null && p.no !== '' && Number.isInteger(no) && no > 0 ? no : null,
   };
   if (!t) return base; // 知らない種類（新しい版で足した部品）は、中身をそのまま残す
-  return {
-    ...base,
+  const common = { ...base, labelPos: p.labelPos === 'left' ? 'left' : 'top', sample: str(p.sample), placeholder: str(p.placeholder) };
+  const fields = {
     label: typeof p.label === 'string' ? p.label : t.label,
-    labelPos: p.labelPos === 'left' ? 'left' : 'top',
-    sample: str(p.sample),
-    placeholder: str(p.placeholder),
     required: !!p.required,
     memo: str(p.memo),
     props: keepInitialInOptions(base.type, normalizeProps(t, p.props)),
+  };
+  if (!isItemType(base.type)) return { ...common, ...fields };
+  const itemId = str(p.itemId);
+  if (!itemId) {
+    const item = normalizeItem({ name: fields.label, type: base.type, required: fields.required, memo: fields.memo, props: fields.props });
+    items.push(item);
+    return withoutItemFields({ ...common, itemId: item.id });
+  }
+  // 指している項目があれば、項目名と設定は項目のものを使う。なければ（項目を一覧表から消した後）、部品が持っている中身で描く
+  if (items.some((it) => it.id === itemId)) return withoutItemFields({ ...common, itemId });
+  return { ...common, itemId, ...fields };
+}
+
+function withoutItemFields(p) {
+  const { label, required, memo, props, ...rest } = p;
+  return rest;
+}
+
+function normalizeItem(src) {
+  const it = isObj(src) ? src : {};
+  const type = str(it.type) || 'text1';
+  const t = isItemType(type) ? partType(type) : null;
+  return {
+    ...it,
+    id: str(it.id) || newId('i'),
+    name: typeof it.name === 'string' ? it.name : t ? t.label : '項目名',
+    type,
+    required: !!it.required,
+    memo: str(it.memo),
+    // 知らない種類の項目（新しい版で足した項目）は、設定をそのまま残す
+    props: t ? keepInitialInOptions(type, normalizeProps(t, it.props)) : isObj(it.props) ? it.props : {},
+    lookup: isObj(it.lookup) ? it.lookup : null,
+    link: isObj(it.link) ? it.link : null,
   };
 }
 
@@ -627,10 +691,24 @@ function uniquePartIds(screens) {
   }));
   return screens;
 }
+// 項目の id も同じ（重なっていると、片方を直すと両方の部品が変わるため）。後のほうの項目を指す部品はないものとして扱う
+function uniqueItemIds(items) {
+  const seen = new Set();
+  items.forEach((it) => {
+    if (seen.has(it.id)) it.id = newId('i');
+    seen.add(it.id);
+  });
+  return items;
+}
 
-function normalizeScreen(src, i) {
+function normalizeScreen(src, i, items = []) {
   const s = isObj(src) ? src : {};
   const device = own(DEVICES, s.device) ? s.device : 'pc';
+  // 部品から項目を作るとき（データの形の版 1 を直すとき）は、上から下・左から右の順に作る（一覧表の並びを画面の読む順にするため）
+  const raw = Array.isArray(s.parts) ? s.parts.filter(isObj) : [];
+  const order = raw.map((p, k) => k).sort((a, b) => numOr(raw[a].y, 0) - numOr(raw[b].y, 0) || numOr(raw[a].x, 0) - numOr(raw[b].x, 0));
+  const parts = [];
+  order.forEach((k) => { parts[k] = normalizePart(raw[k], items); });
   return {
     ...s,
     id: str(s.id) || newId('s'),
@@ -640,7 +718,7 @@ function normalizeScreen(src, i) {
     height: snapHeight(s.height == null ? DEVICES[device].height : s.height, device),
     showHeader: s.showHeader !== false,
     tablePos: s.tablePos === 'bottom' ? 'bottom' : 'right',
-    parts: Array.isArray(s.parts) ? s.parts.filter(isObj).map(normalizePart) : [],
+    parts,
     callouts: Array.isArray(s.callouts) ? s.callouts : [],
   };
 }
@@ -648,7 +726,10 @@ function normalizeScreen(src, i) {
 function normalizeDesign(src) {
   const d = isObj(src) ? src : {};
   const createdAt = str(d.createdAt) || nowIso();
-  const screens = Array.isArray(d.screens) && d.screens.length ? uniquePartIds(d.screens.map(normalizeScreen)) : [createScreenData(FIRST_SCREEN_NAME)];
+  const items = uniqueItemIds((Array.isArray(d.items) ? d.items : []).filter(isObj).map(normalizeItem));
+  const screens = Array.isArray(d.screens) && d.screens.length
+    ? uniquePartIds(d.screens.map((s, i) => normalizeScreen(s, i, items)))
+    : [createScreenData(FIRST_SCREEN_NAME)];
   return {
     ...d,
     id: str(d.id) || newId('d'),
@@ -659,6 +740,7 @@ function normalizeDesign(src) {
     updatedAt: str(d.updatedAt) || createdAt,
     trashedAt: str(d.trashedAt) || null,
     revisions: Array.isArray(d.revisions) ? d.revisions : [],
+    items,
     screens,
   };
 }
@@ -686,7 +768,9 @@ function migrate(raw) {
       blockReason: `この保存データは新しい版のアプリで保存されています（データの形の版 ${v}。この版のアプリが分かるのは ${SCHEMA_VERSION} まで）。新しい版のアプリを使ってください。`,
     };
   }
-  // データの形を上げるときは、ここに「v が N より小さければ N の形に直す」を足していく
+  // データの形を上げるときは、ここに「v が N より小さければ N の形に直す」を足していく。
+  // 1 → 2（項目を画面設計の items へ移す）は normalizePart が受け持つ: 項目を指していない入力欄の部品 1 つから項目を 1 つ作る
+  // （同じ項目名の部品が別の画面にあっても 1 つにまとめない。別の項目のつもりの部品を 1 つにしてしまわないため）
   return { state: normalizeState(raw, SCHEMA_VERSION), blockReason: null };
 }
 
@@ -916,16 +1000,25 @@ const actions = {
     const t = partType(type);
     if (!sc || !t) return null;
     const start = fitRect({ x: at.x, y: Math.max(sc.showHeader ? BAND_H : 0, at.y), w: t.w, h: t.h }, sc);
-    const p = createPartData(type, sc, freeSpot(sc, start));
-    mutateScreen(designId, screenId, (s) => { s.parts.push(p); });
+    // 入力欄の部品を置くと、データベースの項目の一覧表にも項目を 1 つ足す（項目名と設定は項目が持つ）
+    const item = isItemType(type) ? createItemData(type) : null;
+    const p = createPartData(type, sc, freeSpot(sc, start), item && item.id);
+    mutateScreen(designId, screenId, (s, d) => {
+      if (item) d.items.push(item);
+      s.parts.push(p);
+    });
     return p.id;
   },
-  // patch は { label, labelPos, sample, placeholder, required, memo, numbered, props } のどれか（props は足りない分だけ書き換える）
+  // patch は { label, labelPos, sample, placeholder, required, memo, numbered, props } のどれか（props は足りない分だけ書き換える）。
+  // 項目を指す部品の label（項目名）・required・memo・props は項目に書く（その項目を置いた全部の画面が変わる）。
+  // 項目を一覧表から消した後に残った部品では、それらを書き換えない（消したときの中身で固定する）
   updatePart(designId, screenId, partId, patch) {
-    return mutatePart(designId, screenId, partId, (p, sc) => {
-      ['label', 'labelPos', 'sample', 'placeholder', 'required', 'memo'].forEach((k) => { if (k in patch) p[k] = patch[k]; });
+    return mutatePart(designId, screenId, partId, (p, sc, d) => {
+      ['labelPos', 'sample', 'placeholder'].forEach((k) => { if (k in patch) p[k] = patch[k]; });
       if ('numbered' in patch) p.no = patch.numbered ? (p.no != null ? p.no : nextPartNo(sc)) : null;
-      if (isObj(patch.props)) p.props = keepInitialInOptions(p.type, { ...p.props, ...patch.props });
+      const item = findItem(d, p.itemId);
+      if (item) applyFieldPatch(item, 'name', patch);
+      else if (!p.itemId) applyFieldPatch(p, 'label', patch);
     });
   },
   // 位置と大きさを変える（マス目に吸い付け、画面の中に収める）。変わらないときは履歴に積まない
@@ -940,13 +1033,29 @@ const actions = {
   deletePart(designId, screenId, partId) {
     return mutatePart(designId, screenId, partId, (p, sc) => { sc.parts = sc.parts.filter((x) => x.id !== partId); });
   },
-  // 貼り付けと複製。src の写しを at に置く。番号の付いた部品の写しには、その画面の次の番号を付ける。戻り値は新しい部品の id
-  insertPartCopy(designId, screenId, src, at) {
+  // 貼り付けと複製。src の写しを at に置く。番号の付いた部品の写しには、その画面の次の番号を付ける。戻り値は新しい部品の id。
+  // 項目を指す部品の写しは、その項目がこの画面にまだなければ同じ項目を指す（同じ画面設計のほかの画面へ貼り付けたとき）。
+  // この画面にもうあれば、項目も写して新しい項目にする（同じ項目を 1 つの画面に 2 回は置かないため）。
+  // srcItem はコピーしたときの項目の写し。ほかの画面設計へ貼り付けて、その項目がないときに、同じ id で足す
+  insertPartCopy(designId, screenId, src, at, srcItem = null) {
     const sc = findScreen(designId, screenId);
+    const d = findDesign(store.state, designId);
     if (!sc || !isObj(src)) return null;
     const p = { ...clone(src), id: newId('p'), ...fitRect({ ...src, ...freeSpot(sc, fitRect({ ...src, ...at }, sc)) }, sc) };
     p.no = src.no != null ? nextPartNo(sc) : null;
-    mutateScreen(designId, screenId, (s) => { s.parts.push(p); });
+    let newItem = null;
+    if (p.itemId && isItemType(p.type)) {
+      const item = findItem(d, p.itemId);
+      if (!item && isObj(srcItem) && srcItem.id === p.itemId) newItem = clone(srcItem);
+      else if (item && itemOnScreen(sc, item.id)) {
+        newItem = { ...clone(item), id: newId('i') };
+        p.itemId = newItem.id;
+      }
+    }
+    mutateScreen(designId, screenId, (s, dd) => {
+      if (newItem) dd.items.push(newItem);
+      s.parts.push(p);
+    });
     return p.id;
   },
   renumberParts(designId, screenId) {
@@ -965,7 +1074,15 @@ function mutateScreen(designId, screenId, fn) {
 }
 function mutatePart(designId, screenId, partId, fn) {
   if (!findPart(findScreen(designId, screenId), partId)) return false;
-  return mutateScreen(designId, screenId, (sc) => fn(findPart(sc, partId), sc));
+  return mutateScreen(designId, screenId, (sc, d) => fn(findPart(sc, partId), sc, d));
+}
+
+// 設定の欄の変更を、項目（nameKey は 'name'）か、項目を指さない部品（nameKey は 'label'）に書く
+function applyFieldPatch(target, nameKey, patch) {
+  if ('label' in patch) target[nameKey] = patch.label;
+  if ('required' in patch) target.required = !!patch.required;
+  if ('memo' in patch) target.memo = patch.memo;
+  if (isObj(patch.props)) target.props = keepInitialInOptions(target.type, { ...target.props, ...patch.props });
 }
 
 // ── 5. 共通の部品 ─────────────────────────────────────────────────────────────
@@ -1097,7 +1214,7 @@ function targetChip(target) {
 // 画面を、編集の画面と同じ HTML で描く（縮小画像にも使う）。selectedId の部品には、選んだ印と縁のつまみを付ける
 function screenHtml(design, screen, { grid = false, height = screen.height, selectedId = null } = {}) {
   const band = screen.showHeader ? `<div class="screen-band">${esc(design.name)} ／ ${esc(screen.name)}</div>` : '';
-  const parts = screen.parts.map((p) => partHtml(p, p.id === selectedId)).join('');
+  const parts = screen.parts.map((p) => partHtml(resolvePart(design, p), p.id === selectedId)).join('');
   return `<div class="screen${grid ? ' grid' : ''}" style="width:${screen.width}px;height:${height}px">${band}${parts}</div>`;
 }
 
@@ -1159,8 +1276,8 @@ function partFieldHtml(p, t) {
 
 // 部品の設定の一覧表。editor のときは、行を押すとその部品を選べるようにし、番号の付いた部品がなければ案内を出す。
 // 書き出し（editor でないとき）では、番号の付いた部品がなければ表を出さない
-function partTableHtml(screen, { editor = false, selectedId = null } = {}) {
-  const rows = tableRows(screen);
+function partTableHtml(design, screen, { editor = false, selectedId = null } = {}) {
+  const rows = tableRows(screen, design);
   if (!rows.length && !editor) return '';
   const width = screen.tablePos === 'bottom' ? screen.width : TABLE_W;
   const body = rows.length
@@ -1387,6 +1504,11 @@ function currentScreen() {
   if (!d) return null;
   return d.screens.find((s) => s.id === ui.screenId) || d.screens[0];
 }
+// 選んでいる部品を、指している項目と合わせた形で返す（選んでいなければ null）
+function currentPart() {
+  const p = findPart(currentScreen(), ui.partId);
+  return p ? resolvePart(currentDesign(), p) : null;
+}
 
 function openDesign(id) {
   const d = findDesign(store.state, id);
@@ -1491,7 +1613,7 @@ function renderStage() {
         <div class="screen-resize" data-drag="resize" title="ドラッグで画面の高さを変えます（8 ドットずつ。機器の 1 画面分と、いちばん下の部品より低くはなりません）"><span></span></div>
         <div class="screen-size">${DEVICES[s.device].label}・${s.width} × ${h}</div>
       </div>
-      ${partTableHtml(s, { editor: true, selectedId: ui.partId })}
+      ${partTableHtml(d, s, { editor: true, selectedId: ui.partId })}
     </div>`;
   const hv = $('#side-height');
   if (hv) hv.textContent = `${h} ドット`;
@@ -1522,7 +1644,7 @@ function renderSettings(d) {
   const el = $('#side-settings');
   const key = ui.partId || 'screen:' + ui.screenId;
   const top = el.dataset.key === key ? el.scrollTop : 0;
-  const p = findPart(currentScreen(), ui.partId);
+  const p = currentPart();
   if (p) el.innerHTML = partSettingsHtml(p);
   else renderScreenSettings(d, el);
   el.dataset.key = key;
@@ -1687,7 +1809,7 @@ function onSidePanelChange(e) {
 const isTextInput = (el) => el.matches('input[type=text], input[type=number], input[type=date], textarea');
 function onPartFieldChange(el) {
   const s = currentScreen();
-  const p = findPart(s, ui.partId);
+  const p = currentPart();
   if (!p) return;
   const key = el.dataset.pf;
   const value = readPartField(el);
@@ -1696,7 +1818,7 @@ function onPartFieldChange(el) {
   const patch = key.startsWith('props.') ? { props: { [key.slice(6)]: value } } : { [key]: value };
   if (!isTextInput(el)) { actions.updatePart(ui.designId, s.id, p.id, patch); return; }
   commitKeepSide(() => actions.updatePart(ui.designId, s.id, p.id, patch));
-  const now = findPart(currentScreen(), p.id);
+  const now = currentPart();
   const out = $('#pf-out');
   if (out) out.textContent = describePart(now) || '（まだありません）';
   if (key === 'props.options') refreshChoiceInitial(now.props.options);
@@ -1707,7 +1829,7 @@ const parseOptions = (text) => String(text).split('\n').map((o) => o.trim()).fil
 // 選択肢の部品の初期値の欄を、options（まだ保存していない打ちかけの選択肢でもよい）に合わせて描き直す。同じ選択肢なら描き直さない
 function refreshChoiceInitial(options) {
   const box = $('#pf-initial');
-  const p = findPart(currentScreen(), ui.partId);
+  const p = currentPart();
   if (!box || !p) return;
   const key = JSON.stringify(options);
   if (box.dataset.options === key) return;
@@ -1985,22 +2107,24 @@ function onDragEnd(ev) {
 }
 
 // ── 部品のコピー・貼り付け・複製・削除・矢印のキーで動かす ──
+// コピーした部品は { part（部品の写し）, item（指している項目の写し。ほかの画面設計へ貼り付けるときに使う）} で持つ
 function copyPart() {
   const p = findPart(currentScreen(), ui.partId);
   if (!p) return;
-  ui.clipboard = clone(p);
+  const item = findItem(currentDesign(), p.itemId);
+  ui.clipboard = { part: clone(p), item: item ? clone(item) : null };
   updateToolbarState();
   toast('部品をコピーしました。Ctrl+V で貼り付けます。');
 }
 
 // 続けて貼り付けると、前に貼り付けた所から右下へずらして置く
 function pastePart() {
-  const src = ui.clipboard;
-  if (!src) return;
-  const id = actions.insertPartCopy(ui.designId, currentScreen().id, src, { x: src.x + PART_GAP, y: src.y + PART_GAP });
+  if (!ui.clipboard) return;
+  const { part: src, item } = ui.clipboard;
+  const id = actions.insertPartCopy(ui.designId, currentScreen().id, src, { x: src.x + PART_GAP, y: src.y + PART_GAP }, item);
   const p = findPart(currentScreen(), id);
   if (!p) return;
-  ui.clipboard = { ...src, x: p.x, y: p.y };
+  ui.clipboard = { ...ui.clipboard, part: { ...src, x: p.x, y: p.y } };
   selectPart(id);
 }
 
@@ -2198,6 +2322,7 @@ function exposeForTest() {
     store, ui, actions, runCommand, openDesign, goHome, migrate, normalizeState, snapHeight, changeDevice,
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, minScreenHeight, selectPart, currentScreen,
+    currentDesign, currentPart, resolvePart, findItem,
     ready: true,
   });
 }
