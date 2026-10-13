@@ -266,6 +266,95 @@ async function shootDatabase(browser) {
   await page.close();
 }
 
+// ── 第 3 段階の後半の部品（表・グラフ・一覧の画面用・進み具合の画面用・見た目用）──
+// 画面を足す操作は第 4 段階で作るので、アプリの中の操作（window.__test__.actions）とデータで組み立てる
+async function buildParts2(page) {
+  return page.evaluate(() => {
+    const { actions: a, store } = window.__test__;
+    const did = a.createDesign('受注管理', 'kintone');
+    const item = (type, label, props) => { const id = a.addItem(did, type); a.updateItem(did, id, { label, ...(props ? { props } : {}) }); return id; };
+    const ids = {
+      no: item('text1', '受注番号'), date: item('date', '受注日'), cust: item('text1', '顧客名'),
+      kind: item('radio', '区分', { options: ['法人', '個人'] }), staff: item('user', '担当者'), amount: item('number', '合計金額', { unit: '円' }),
+    };
+    const sc = (name) => ({ id: 's-' + name, name, device: 'pc', width: 1280, height: 800, showHeader: true, tablePos: 'right', parts: [], callouts: [] });
+    store.commit((s) => { const d = s.designs.find((x) => x.id === did); d.screens = [sc('一覧'), sc('新規登録'), sc('進み具合'), sc('グラフ')]; });
+    const put = (sid, type, x, y, patch, w, h) => {
+      const pid = a.addPart(did, sid, type, { x, y });
+      if (patch) a.updatePart(did, sid, pid, patch);
+      const d = store.state.designs.find((x2) => x2.id === did);
+      const p = d.screens.find((s) => s.id === sid).parts.find((q) => q.id === pid);
+      if (w || h) a.movePart(did, sid, pid, { ...p, w: w || p.w, h: h || p.h });
+      return pid;
+    };
+    // 一覧の画面
+    put('s-一覧', 'search', 24, 64, { props: { items: [ids.cust, ids.no] } });
+    put('s-一覧', 'filter', 376, 64, { props: { items: [ids.kind, ids.staff], values: ['法人', ''] } });
+    const rec = put('s-一覧', 'table', 24, 128, { view: { rows: 4, samples: {} } }, 1000);
+    a.setTableKind(did, 's-一覧', rec, 'records');
+    a.updatePart(did, 's-一覧', rec, { label: '受注の一覧' });
+    put('s-一覧', 'pager', 24, 360, { props: { perPage: '20', total: '86' } });
+    // 新規登録の画面（テーブル）
+    const tb = put('s-新規登録', 'table', 24, 64, { label: '明細', required: true, view: { rows: 3 } }, 760);
+    const d1 = store.state.designs.find((x) => x.id === did);
+    const tItem = d1.items.find((it) => it.type === 'table');
+    const cols = [['品名', 'text1', true], ['数量', 'number', true], ['単価', 'number', false], ['金額', 'calc', false]].map(([name, type, required], i) => ({ ...(tItem.props.columns[i] || {}), id: 'c' + i, name, type, required, memo: '', props: type === 'calc' ? { formula: '数量×単価', unit: '円' } : type === 'number' ? { unit: '', min: '', max: '', decimals: '', initial: '' } : { maxLen: '50', initial: '' } }));
+    a.updateItem(did, tItem.id, { props: { columns: cols } });
+    a.updatePart(did, 's-新規登録', tb, { view: { samples: { c0: ['コピー用紙 A4', 'ボールペン 黒'], c1: ['10', '20'], c2: ['450 円', '120 円'], c3: ['4,500 円', '2,400 円'] }, widths: { c0: 260 } } });
+    // 進み具合と見た目用
+    put('s-進み具合', 'status', 24, 64);
+    put('s-進み具合', 'steps', 232, 64);
+    put('s-進み具合', 'tabs', 24, 136);
+    put('s-進み具合', 'image', 24, 200, { label: '会社のロゴ' });
+    put('s-進み具合', 'link', 296, 200, { label: '受注の詳しい画面を開く', props: { to: 'screen', screenId: 's-新規登録' } });
+    ['gear', 'bell', 'mail', 'trash', 'edit', 'info', 'search', 'plus', 'check', 'close', 'user', 'calendar', 'home', 'star', 'download', 'upload'].forEach((icon, i) =>
+      put('s-進み具合', 'icon', 296 + (i % 8) * 48, 248 + Math.floor(i / 8) * 48, { props: { icon, color: ['black', 'blue', 'red', 'gray'][i % 4] } }));
+    // グラフの画面
+    put('s-グラフ', 'graph', 24, 64, { label: '月ごとの受注金額', props: { byItem: ids.date, byUnit: '月ごと', aggItem: ids.amount, unit: '万円' } });
+    put('s-グラフ', 'graph', 528, 64, { label: '区分ごとの顧客数', props: { chart: 'pie', byItem: ids.kind, agg: 'count', samples: '法人, 60\n個人, 30\n官公庁, 10' } });
+    put('s-グラフ', 'graph', 24, 400, { label: '月ごとの受注件数', props: { chart: 'line', agg: 'count' } });
+    put('s-グラフ', 'graph', 528, 400, { label: '担当者ごとの受注金額', props: { chart: 'hbar', samples: '山田 太郎, 560\n佐藤 花子, 380\n鈴木 次郎, 240' } });
+    // 関連レコード一覧のために、顧客管理を作る
+    const cid = a.createDesign('顧客管理', 'kintone');
+    const ccode = a.addItem(cid, 'text1');
+    a.updateItem(cid, ccode, { label: '顧客コード' });
+    const ocode = a.addItem(did, 'text1');
+    a.updateItem(did, ocode, { label: '顧客コード' });
+    window.__test__.openDesign(cid);
+    const cs = store.state.designs.find((x) => x.id === cid).screens[0].id;
+    const rel = a.addPart(cid, cs, 'table', { x: 24, y: 64 });
+    a.setTableKind(cid, cs, rel, 'related');
+    const dd = store.state.designs.find((x) => x.id === cid);
+    const relPart = dd.screens[0].parts.find((p) => p.id === rel);
+    a.updatePart(cid, cs, rel, { label: 'この顧客の受注', props: { ...relPart.props, db: { designId: did, name: '受注管理', free: false }, cond: { from: { itemId: ocode, name: '顧客コード' }, to: { itemId: ccode, name: '顧客コード' } },
+      columns: [ids.no, ids.date, ids.amount].map((id, i) => ({ id: 'r' + i, ref: { itemId: id, name: '' } })), sort: '受注日の新しい順', limit: '5' } });
+    return { did, cid, rel };
+  });
+}
+
+async function shootParts2(browser) {
+  const page = await openApp(browser, null);
+  const ids = await buildParts2(page);
+  await page.evaluate((id) => window.__test__.openDesign(id), ids.did);
+  for (let i = 0; i < 4; i++) await page.click('[data-action="zoom-out"]');
+  await shot(page, '31_後半の部品_一覧の画面（検索・絞り込み・レコード一覧・ページ送り）_60%');
+  await page.click('.sl-item[data-id="s-新規登録"]');
+  await shot(page, '32_後半の部品_テーブルと一覧表の枝番_60%');
+  await page.click('#stage .part.pt-table');
+  await page.click('#side-settings [data-action="tb-col"][data-id="c1"]');
+  await shot(page, '33_後半の部品_テーブルの列を選んだ設定の欄_60%');
+  await page.click('.sl-item[data-id="s-進み具合"]');
+  await shot(page, '34_後半の部品_ステータス・進み具合・タブ・見た目用_60%');
+  await page.click('.sl-item[data-id="s-グラフ"]');
+  await shot(page, '35_後半の部品_グラフ 4 種類_60%');
+  await page.click('#stage .part.pt-graph');
+  await shot(page, '36_後半の部品_グラフの設定の欄_60%');
+  await page.evaluate((id) => window.__test__.openDesign(id), ids.cid);
+  await page.click('#stage .part.pt-table');
+  await shot(page, '37_後半の部品_関連レコード一覧と設定の欄');
+  await page.close();
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await puppeteer.launch({
@@ -279,6 +368,7 @@ async function shootDatabase(browser) {
     if (wants('editor')) await shootEditor(browser);
     if (wants('parts')) await shootParts(browser);
     if (wants('db')) await shootDatabase(browser);
+    if (wants('parts2')) await shootParts2(browser);
   } finally {
     await browser.close();
   }

@@ -40,18 +40,18 @@ async function bootEditor(t) {
   return { app, api, id, screen, parts, add, partEl };
 }
 
-test('部品の箱: 基本と入力の画面用の組に 15 種類。組の見出しで閉じたり開いたりできる', async (t) => {
+test('部品の箱: 5 つの組に 26 種類（吹き出しは次の手順）。組の見出しで閉じたり開いたりできる', async (t) => {
   const { app, api } = await bootEditor(t);
-  assert.deepEqual($$(app, '.pal-head').map((e) => e.textContent.replace(/\s+/g, ' ').trim()), ['▼ データベースの項目0', '▼ 基本11', '▼ 入力の画面用4']);
-  assert.equal($$(app, '.pal-btn').length, 15);
+  assert.deepEqual($$(app, '.pal-head').map((e) => e.textContent.replace(/\s+/g, ' ').trim()), ['▼ データベースの項目0', '▼ 基本13', '▼ 入力の画面用4', '▼ 一覧の画面用3', '▼ 進み具合の画面用3', '▼ 見た目用3']);
+  assert.equal($$(app, '.pal-btn').length, 26);
   click($(app, '.pal-head[data-id="basic"]'));
-  assert.equal($$(app, '.pal-btn').length, 4, '基本を閉じた');
+  assert.equal($$(app, '.pal-btn').length, 13, '基本を閉じた');
   assert.equal(api.ui.paletteClosed.basic, true);
   api.goHome();
   api.openDesign(api.store.state.designs[0].id);
-  assert.equal($$(app, '.pal-btn').length, 4, '画面設計を開き直しても閉じたまま');
+  assert.equal($$(app, '.pal-btn').length, 13, '画面設計を開き直しても閉じたまま');
   click($(app, '.pal-head[data-id="basic"]'));
-  assert.equal($$(app, '.pal-btn').length, 15);
+  assert.equal($$(app, '.pal-btn').length, 26);
 });
 
 test('部品を置く: 押すと帯の下に置き、番号が付き、選んだ状態になる。続けて押すとずらして置く', async (t) => {
@@ -449,4 +449,203 @@ test('読み込んだデータが思わぬ形でも起動でき、部品の id �
   assert.match($(app, `#stage .part[data-part-id="${p2.id}"]`).textContent, /この版では描けない部品（constructor）/);
   api.selectPart(p1.id);
   assert.match($(app, '#side-settings .panel-title').textContent, /番号 2・ラジオボタン/);
+});
+
+// ── 第 3 段階の後半の部品（表・グラフと、一覧の画面用・進み具合の画面用・見た目用。画像 q24〜q26）──
+
+test('後半の部品: 最初の大きさ・赤い番号・見た目。表はテーブルの項目、ステータスの 2 つは 1 つのステータスの項目を指す', async (t) => {
+  const { app, api, parts, add, partEl } = await bootEditor(t);
+  const sizes = {
+    table: [640, 168], graph: [480, 320], search: [320, 40], filter: [480, 40], pager: [360, 32],
+    status: [160, 32], steps: [560, 40], tabs: [480, 40], image: [240, 160], link: [200, 24], icon: [32, 32],
+  };
+  const placed = Object.keys(sizes).map((type) => add(type));
+  placed.forEach((p) => assert.deepEqual(plain([p.type, p.w, p.h]), plain([p.type, ...sizes[p.type]])));
+  assert.deepEqual(plain(placed.filter((p) => p.no == null).map((p) => p.type)), ['image', 'icon'], '画像の置き場とアイコンには番号を付けない');
+  const design = api.currentDesign();
+  assert.deepEqual(plain(design.items.map((it) => [it.type, it.name])), [['table', '明細'], ['status', 'ステータス']]);
+  const [table, , , , , status, steps] = parts();
+  assert.equal(table.tableKind, 'subtable');
+  assert.equal(status.itemId, steps.itemId, 'ステータスの印と進み具合の矢印は同じ項目');
+  assert.deepEqual(plain(status.props.states), ['申請', '承認待ち', '承認済み', '完了']);
+  const el = (p, sel) => partEl(p.id).querySelector(sel);
+  assert.equal(el(placed[0], '.ptbl').querySelectorAll('th').length, 3, 'テーブルの最初の列は 3 つ');
+  assert.equal(el(placed[0], '.ptbl-ops').children.length, 3, '行ごとに ＋ − を描く');
+  assert.ok(el(placed[1], '.pgraph svg rect'), 'グラフは見本の値から描く');
+  assert.match(el(placed[2], '.psearch').textContent, /キーワードで探す.*検索/);
+  assert.match(el(placed[4], '.ppager').textContent, /200 件中 1〜20 件/);
+  assert.equal(el(placed[5], '.pbadge').textContent, '承認待ち');
+  assert.equal(el(placed[6], '.psteps .on').textContent, '承認待ち');
+  assert.equal(el(placed[6], '.psteps .done').textContent, '申請');
+  assert.equal(el(placed[7], '.ptabs .on').textContent, '基本情報');
+  assert.match(el(placed[8], '.pimage').textContent, /画像/);
+  assert.equal(el(placed[9], '.plink').textContent, 'リンクの文字');
+  assert.ok(el(placed[10], '.picon-wrap svg'));
+  assert.equal($$(app, '.pal-item').length, 2, '部品の箱の項目の組に、明細とステータスが並ぶ');
+  assert.ok(api.actions.addItemPart(design.id, api.currentScreen().id, status.itemId, { x: 0, y: 600 }), 'ステータスは同じ画面に何度でも置ける');
+});
+
+test('表（テーブル）: 列の名前・種類・見本の値・幅を書き、見本の行の数で高さが変わる。一覧表は列ごとに枝番の行', async (t) => {
+  const { app, api, parts, add } = await bootEditor(t);
+  const p = add('table');
+  api.selectPart(p.id);
+  const cols = () => api.currentDesign().items[0].props.columns;
+  click($(app, `#side-settings [data-action="tb-col"][data-id="${cols()[1].id}"]`));
+  setValue($(app, '#side-settings [data-tb="col.name"]'), '数量');
+  setValue($(app, '#side-settings [data-tb="col.type"]'), 'number');
+  setValue($(app, '#side-settings [data-tb="col.props.min"]'), '1');
+  check($(app, '#side-settings [data-tb="col.required"]'), true);
+  assert.deepEqual(plain([cols()[1].name, cols()[1].type, cols()[1].props.min, cols()[1].required]), ['数量', 'number', '1', true]);
+  setValue($(app, '#side-settings [data-tb="sample"]'), '10\n20');
+  setValue($(app, '#side-settings [data-tb="width"]'), '90');
+  setValue($(app, '#side-settings [data-tb="rows"]'), '5');
+  const now = parts()[0];
+  assert.deepEqual(plain([now.view.samples[cols()[1].id], now.view.widths[cols()[1].id], now.view.rows, now.h]), [['10', '20'], 90, 5, 240]);
+  const cells = $$(app, '#stage .ptbl tr')[1].querySelectorAll('td');
+  assert.equal(cells[1].textContent, '10');
+  click($(app, '#side-settings [data-action="tb-col-add"]'));
+  assert.equal(cols().length, 4);
+  click($(app, `#side-settings [data-action="tb-col-up"][data-id="${cols()[3].id}"]`));
+  assert.equal(cols()[2].name, '列 4', '並べ替え');
+  const rows = $$(app, '.ptable tbody tr').map((r) => [r.children[0].textContent, r.children[1].textContent, r.children[2].textContent]);
+  assert.deepEqual(plain(rows.slice(0, 3)), [['1', '明細', '表（テーブル）'], ['1-1', '列 1', 'テキスト（1行）'], ['1-2', '数量', '数値']]);
+  assert.match($$(app, '.ptable tbody tr')[2].children[3].textContent, /必須・1 以上/);
+  assert.ok($$(app, '.ptable tbody tr')[1].classList.contains('br'));
+});
+
+test('表の中身: レコード一覧にするとテーブルの項目を消し、列は項目から選ぶ。関連レコード一覧は元のデータベースと条件を書く', async (t) => {
+  const { app, api, parts, add } = await bootEditor(t);
+  const did = api.ui.designId;
+  const code = api.actions.addItem(did, 'text1');
+  api.actions.updateItem(did, code, { label: '顧客コード' });
+  const p = add('table');
+  api.selectPart(p.id);
+  check($(app, '#side-settings [data-tb="kind"][value="records"]'), true);
+  let now = parts()[0];
+  assert.equal(now.tableKind, 'records');
+  assert.equal(now.itemId, undefined);
+  assert.deepEqual(plain(api.currentDesign().items.map((it) => it.name)), ['顧客コード'], 'ほかで使っていないテーブルの項目は消す');
+  assert.deepEqual(plain(now.props.columns.map((c) => c.ref.name)), ['顧客コード'], '列はこの画面設計の項目から');
+  setValue($(app, '#side-settings [data-pf="props.sort"]'), '顧客コードの小さい順');
+  assert.match($$(app, '.ptable tbody tr')[0].children[3].textContent, /1 ページ 20 件.*並べ順＝顧客コードの小さい順/s);
+  assert.equal($$(app, '.ptable tbody tr')[1].children[0].textContent, '1-1');
+  assert.ok($(app, '#stage .ptbl td.ic'), 'レコード一覧は左に詳しく見る印の列');
+  // 関連レコード一覧
+  const orderId = api.actions.createDesign('受注管理', 'kintone');
+  const ono = api.actions.addItem(orderId, 'text1');
+  api.actions.updateItem(orderId, ono, { label: '受注番号' });
+  const ocode = api.actions.addItem(orderId, 'text1');
+  api.actions.updateItem(orderId, ocode, { label: '顧客コード' });
+  api.selectPart(null);
+  api.selectPart(p.id);
+  check($(app, '#side-settings [data-tb="kind"][value="related"]'), true);
+  setValue($(app, '#side-settings [data-tb="db"]'), 'd:' + orderId);
+  setValue($(app, '#side-settings [data-tb="condFrom"]'), ocode);
+  setValue($(app, '#side-settings [data-tb="condTo"]'), code);
+  setValue($(app, '#side-settings [data-tb="addCol"]'), ono);
+  setValue($(app, '#side-settings [data-pf="props.limit"]'), '5');
+  now = parts()[0];
+  assert.equal(now.label, '関連レコード一覧');
+  assert.match($(app, '#stage .part .reftag').textContent, /受注管理/);
+  const set = $$(app, '.ptable tbody tr')[0].children[3].textContent;
+  assert.match(set, /関連レコード一覧＝受注管理/);
+  assert.match(set, /条件＝受注管理の「顧客コード」がこのレコードの「顧客コード」と同じ/);
+  assert.match(set, /最大 5 件/);
+  assert.deepEqual(plain([...$$(app, '.ptable tbody tr')[1].children].map((c) => c.textContent)), ['1-1', '受注番号', 'テキスト（1行）', '受注管理の項目']);
+  // テーブルに戻すと、新しいテーブルの項目を作る
+  check($(app, '#side-settings [data-tb="kind"][value="subtable"]'), true);
+  assert.equal(api.currentDesign().items.length, 2);
+  assert.equal(parts()[0].itemId, api.currentDesign().items[1].id);
+});
+
+test('グラフ: 種類・分類・集計・見本の値。一覧表に「グラフ＝」「分類＝」「集計＝」を書く', async (t) => {
+  const { app, api, add, partEl } = await bootEditor(t);
+  const did = api.ui.designId;
+  const date = api.actions.addItem(did, 'date');
+  api.actions.updateItem(did, date, { label: '受注日' });
+  const amount = api.actions.addItem(did, 'number');
+  api.actions.updateItem(did, amount, { label: '合計金額' });
+  const g = add('graph');
+  assert.equal(partEl(g.id).querySelectorAll('.pgraph rect').length, 6, '最初の見本の値は 6 か月分');
+  api.selectPart(g.id);
+  setValue($(app, '#side-settings [data-pf="label"]'), '月ごとの受注金額');
+  setValue($(app, '#side-settings [data-pf="props.byItem"]'), date);
+  setValue($(app, '#side-settings [data-pf="props.byUnit"]'), '月ごと');
+  setValue($(app, '#side-settings [data-pf="props.aggItem"]'), amount);
+  setValue($(app, '#side-settings [data-pf="props.unit"]'), '万円');
+  setValue($(app, '#side-settings [data-pf="props.samples"]'), '法人, 60\n個人, 30\n官公庁, 10');
+  check($(app, '#side-settings [data-pf="props.chart"][value="pie"]'), true);
+  assert.equal(partEl(g.id).querySelectorAll('.pgraph path').length, 3, '円グラフは 3 つに分ける');
+  assert.match(partEl(g.id).querySelector('.pgraph').textContent, /法人　60（60%）/);
+  assert.equal($(app, '.ptable tbody tr').children[3].textContent, 'グラフ＝円グラフ\n分類＝受注日（月ごと）\n集計＝合計金額の合計（万円）');
+  setValue($(app, '#side-settings [data-pf="props.agg"]'), 'count');
+  assert.match($(app, '.ptable').textContent, /集計＝レコードの件数（万円）/);
+});
+
+test('検索の欄・絞り込みの欄・ページ送り・タブ・リンク・アイコンの設定の欄と一覧表の文', async (t) => {
+  const { app, api, parts, add, partEl } = await bootEditor(t);
+  const did = api.ui.designId;
+  const ids = ['区分', '担当者', '受注日'].map((label) => {
+    const id = api.actions.addItem(did, 'text1');
+    api.actions.updateItem(did, id, { label });
+    return id;
+  });
+  const set = (sel, v) => setValue($(app, `#side-settings ${sel}`), v);
+  const s = add('search');
+  api.selectPart(s.id);
+  check($(app, `#side-settings [data-pf="props.items"][value="${ids[0]}"]`), true);
+  check($(app, `#side-settings [data-pf="props.items"][value="${ids[2]}"]`), true);
+  check($(app, '#side-settings [data-pf="props.button"]'), false);
+  assert.equal(partEl(s.id).querySelector('.psearch b'), null, '「検索」ボタンなし');
+  const f = add('filter');
+  api.selectPart(f.id);
+  set('[data-fl="add"]', ids[1]);
+  set('[data-fl="add"]', ids[0]);
+  set('[data-fl="value"][data-i="1"]', '法人');
+  click($(app, '#side-settings [data-action="fl-up"][data-i="1"]'));
+  assert.deepEqual(plain([parts()[1].props.items, parts()[1].props.values]), plain([[ids[0], ids[1]], ['法人', '']]));
+  assert.match(partEl(f.id).textContent, /絞り込み:区分法人▼担当者すべて▼/);
+  const pg = add('pager');
+  api.selectPart(pg.id);
+  set('[data-pf="props.perPage"]', '50');
+  const tb = add('tabs');
+  api.selectPart(tb.id);
+  set('[data-pf="props.tabs"]', '基本情報\n明細');
+  set('[data-pf="props.current"]', '明細');
+  assert.equal(partEl(tb.id).querySelector('.ptabs .on').textContent, '明細');
+  const ln = add('link');
+  api.selectPart(ln.id);
+  set('[data-pf="props.to"]', 'screen');
+  set('[data-pf="props.screenId"]', api.currentScreen().id);
+  const ic = add('icon');
+  api.selectPart(ic.id);
+  set('[data-pf="props.icon"]', 'bell');
+  check($(app, '#side-settings [data-pf="props.color"][value="red"]'), true);
+  assert.equal(partEl(ic.id).querySelector('svg').getAttribute('stroke'), '#dc2626');
+  const rows = $$(app, '.ptable tbody tr').map((r) => `${r.children[2].textContent}｜${r.children[3].textContent}`);
+  assert.deepEqual(plain(rows), [
+    '検索の欄｜「検索」ボタンなし\n探す項目＝区分・受注日',
+    '絞り込みの欄｜絞り込む項目＝区分・担当者',
+    'ページ送り｜1 ページ 50 件',
+    'タブ｜タブ＝基本情報／明細',
+    'リンクの文字｜移る先＝画面 1の画面',
+  ]);
+});
+
+test('ステータス: 並びは項目に 1 つ。並びを直すと、ステータスの印と進み具合の矢印の両方が変わる', async (t) => {
+  const { app, api, add, partEl } = await bootEditor(t);
+  const st = add('status');
+  const sp = add('steps');
+  api.selectPart(sp.id);
+  setValue($(app, '#side-settings [data-pf="props.states"]'), '受付\n対応中\n完了');
+  assert.deepEqual(plain([...partEl(sp.id).querySelectorAll('.psteps span')].map((e) => e.textContent)), ['受付', '対応中', '完了']);
+  setValue($(app, '#side-settings [data-pf="view.current"]'), '完了');
+  assert.equal(partEl(sp.id).querySelectorAll('.psteps .done').length, 2);
+  api.selectPart(st.id);
+  setValue($(app, '#side-settings [data-pf="view.current"]'), '対応中');
+  check($(app, '#side-settings [data-pf="view.showWord"]'), false);
+  assert.equal(partEl(st.id).querySelector('.pstatus').textContent.trim(), '対応中');
+  const rows = $$(app, '.ptable tbody tr').map((r) => r.children[3].textContent);
+  assert.deepEqual(plain(rows), ['ステータス＝受付／対応中／完了', 'ステータス＝受付 → 対応中 → 完了']);
+  assert.equal(api.currentDesign().items.length, 1);
 });

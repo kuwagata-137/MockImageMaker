@@ -182,7 +182,7 @@ test('項目の一覧表: 「＋ 項目を足す」で種類を選んで足し�
   click($(app, '[data-action="open-items"]'));
   click($(app, '#db-view [data-action="add-item-menu"]'));
   assert.ok($(app, '#db-view .pop-menu'));
-  assert.equal($$(app, '#db-view .pop-menu button').length, 11, '入力欄の部品の 11 種類');
+  assert.equal($$(app, '#db-view .pop-menu button').length, 12, '入力欄の部品の 11 種類と表（テーブル）');
   click($(app, '#db-view .pop-menu [data-type="date"]'));
   assert.equal($(app, '#db-view .pop-menu'), null);
   assert.equal(items().length, 2);

@@ -217,6 +217,50 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .pline{flex:1;display:flex;align-items:center;gap:6px}
 .pline i{flex:1;height:1px;background:#94a3b8}
 .punknown{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:1px dashed #94a3b8;color:#64748b;font-size:12px;background:#f8fafc;overflow:hidden}
+/* 表の部品（画像 q24） */
+.ptbl-wrap{margin-top:4px;display:flex;align-items:flex-start;gap:6px;min-width:0;overflow:hidden}
+.ptbl{border-collapse:collapse;font-size:13px;background:#fff;table-layout:fixed}
+.ptbl th,.ptbl td{border:1px solid #94a3b8;height:34px;padding:0 8px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ptbl th{background:#eef2f7;color:#334155;font-weight:600}
+.ptbl td.num{text-align:right}
+.ptbl td.calc{background:#f1f5f9;text-align:right}
+.ptbl td.ic{text-align:center;color:#64748b;padding:0}
+.ptbl .pph{color:#94a3b8}
+.ptbl-ops{display:flex;flex-direction:column;padding-top:34px;flex-shrink:0}
+.ptbl-ops span{height:34px;display:flex;align-items:center;gap:3px}
+.ptbl-ops i{width:20px;height:20px;border:1px solid #94a3b8;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;color:#64748b;background:#fff}
+/* グラフの部品（画像 q25） */
+.pgraph{flex:1;min-height:0;margin-top:4px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;overflow:hidden}
+.pgraph svg{display:block}
+/* 一覧の画面用・進み具合の画面用・見た目用（画像 q26） */
+.psearch{flex:1;display:flex;align-items:center;border:1px solid #94a3b8;border-radius:6px;background:#fff;overflow:hidden;min-width:0}
+.psearch .pph{flex:1;padding:0 10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.psearch b{align-self:stretch;display:flex;align-items:center;padding:0 14px;background:#2563eb;color:#fff;font-size:13px;flex-shrink:0}
+.pfilter{flex:1;display:flex;align-items:center;gap:8px;overflow:hidden;white-space:nowrap;font-size:13px;color:#475569}
+.pfilter .f{height:32px;border:1px solid #94a3b8;border-radius:6px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;background:#fff;color:#1e293b;flex-shrink:0}
+.pfilter .f small{color:#64748b;font-size:12px}
+.pfilter .f i{font-style:normal;color:#64748b;font-size:10px}
+.ppager{flex:1;display:flex;align-items:center;gap:4px;overflow:hidden;white-space:nowrap;font-size:13px}
+.ppager span{min-width:28px;height:28px;border:1px solid #cbd5e1;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#334155;padding:0 4px;flex-shrink:0}
+.ppager span.on{background:#2563eb;border-color:#2563eb;color:#fff;font-weight:700}
+.ppager em{font-style:normal;color:#64748b;font-size:12px;margin-left:8px}
+.pstatus{flex:1;display:flex;align-items:center;gap:8px;overflow:hidden;white-space:nowrap;font-size:13px;color:#475569}
+.pbadge{display:inline-flex;align-items:center;height:28px;padding:0 14px;border-radius:14px;font-size:13px;font-weight:700;border:1px solid}
+.sc0{background:#f1f5f9;color:#475569;border-color:#cbd5e1}.sc1{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+.sc2{background:#dbeafe;color:#1e40af;border-color:#93c5fd}.sc3{background:#dcfce7;color:#166534;border-color:#86efac}.sc4{background:#fae8ff;color:#86198f;border-color:#f0abfc}
+.psteps{flex:1;display:flex;min-width:0;overflow:hidden}
+.psteps span{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:13px;background:#e2e8f0;color:#475569;white-space:nowrap;overflow:hidden;
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%,14px 50%);margin-right:-8px;padding:0 16px}
+.psteps span:first-child{clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%)}
+.psteps span.done{background:#bfdbfe;color:#1e3a8a}
+.psteps span.on{background:#2563eb;color:#fff;font-weight:700}
+.ptabs{flex:1;display:flex;align-items:flex-end;border-bottom:2px solid #cbd5e1;overflow:hidden;white-space:nowrap}
+.ptabs span{height:100%;padding:0 16px;display:flex;align-items:center;font-size:13px;color:#475569;border:1px solid transparent;border-bottom:none;border-radius:6px 6px 0 0;flex-shrink:0}
+.ptabs span.on{background:#fff;border-color:#cbd5e1;color:#1d4ed8;font-weight:700;margin-bottom:-2px;border-bottom:2px solid #fff}
+.pimage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1.5px dashed #94a3b8;border-radius:6px;background:#f1f5f9;color:#64748b;font-size:12.5px;overflow:hidden;text-align:center;padding:4px}
+.plink{flex:1;display:flex;align-items:center;color:#2563eb;text-decoration:underline;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picon-wrap{flex:1;display:flex;align-items:center;justify-content:center}
+.picon-wrap svg{width:100%;height:100%}
 /* 選んだ部品の印と、縁のつまみ（編集の画面だけ） */
 .part.sel{outline:2px solid #2563eb;outline-offset:1px;z-index:1}
 .grip{position:absolute;width:9px;height:9px;background:#fff;border:1.5px solid #2563eb;border-radius:2px;z-index:2}
@@ -244,6 +288,7 @@ body.placing,body.placing *{cursor:copy!important}
 .ptable tr[data-action]{cursor:pointer}
 .ptable tr[data-action]:hover td{background:#f8fafc}
 .ptable tr.sel td{background:#eff6ff}
+.ptable tr.br td:nth-child(2){padding-left:22px}
 .ptable-empty{color:#64748b;font-size:13px;line-height:1.7;border:1px dashed #94a3b8;border-radius:6px;padding:14px;background:#f8fafc}
 .screen-resize{position:absolute;left:0;right:0;bottom:22px;height:14px;transform:translateY(50%);cursor:ns-resize;display:flex;align-items:center;justify-content:center}
 .screen-resize span{width:56px;height:6px;border-radius:3px;background:#94a3b8;opacity:.75}
@@ -332,6 +377,7 @@ body.sorting,body.sorting *{cursor:grabbing!important}
 .pal-item:hover{background:#eff6ff}
 .pal-item.placed{opacity:.5;border-color:#e2e8f0;cursor:default}
 .pal-item.placed small{color:#1d4ed8}
+.pal-item.on{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 1px #2563eb}
 .pal-empty{color:#64748b;font-size:11.5px;padding:6px 8px;line-height:1.5}
 /* 選んだ部品の設定の欄の 2 つの枠（画像 q20）: 紺＝項目の設定、灰＝この画面だけの設定 */
 .pf-sec{margin:0 0 10px;padding:0;border:0;min-width:0}
@@ -543,12 +589,36 @@ const PART_TYPES = {
   user: { name: '人を選ぶ欄', pal: '人を選ぶ', icon: '👤', w: 320, h: 64, input: true, ph: '選択してください', label: '項目名', props: { scope: '', multiple: false, initial: 'none' } },
   datetime: { name: '日時', icon: '🕒', w: 240, h: 64, input: true, ph: '年-月-日 時:分', label: '項目名', props: { initial: 'none' } },
   calc: { name: '自動計算の値', pal: '自動計算', icon: 'ƒx', w: 200, h: 64, input: true, ph: '（自動計算）', label: '項目名', props: { formula: '', unit: '' } },
+  // ── 第 3 段階の後半で足した部品（見た目と最初の大きさは画像 q24・q25・q26 のとおり）──
+  // 表: 中身（tableKind）は テーブル（subtable。項目になる）・レコード一覧（records）・関連レコード一覧（related）。props はレコード一覧・関連レコード一覧の設定
+  table: { name: '表', icon: '▦', w: 640, h: 168, label: '一覧', props: {} },
+  graph: { name: 'グラフ', icon: '📊', w: 480, h: 320, label: 'グラフ', props: { chart: 'bar', byItem: '', byUnit: '', agg: 'sum', aggItem: '', samples: '4月, 120\n5月, 180\n6月, 150\n7月, 210\n8月, 170\n9月, 240', unit: '' } },
+  search: { name: '検索の欄', icon: '🔍', w: 320, h: 40, ph: 'キーワードで探す', label: '', props: { items: [], button: true } },
+  filter: { name: '絞り込みの欄', pal: '絞り込み', icon: '⏷', w: 480, h: 40, label: '', props: { items: [], values: [] } },
+  pager: { name: 'ページ送り', icon: '⋯', w: 360, h: 32, label: '', props: { perPage: '20', total: '200', showCount: true } },
+  // ステータスの印・進み具合の矢印は、画面設計に 1 つの「ステータス」の項目（ステータスの並び）を指す
+  status: { name: 'ステータスの印', pal: 'ステータス\nの印', icon: '●', w: 160, h: 32, label: 'ステータス', props: {} },
+  steps: { name: '進み具合の矢印', pal: '進み具合\nの矢印', icon: '➜', w: 560, h: 40, label: 'ステータス', props: {} },
+  // タブの高さは画像 q26 の 36 を、8 ドットのマス目に合わせて 40 にした（Claude が決めた）
+  tabs: { name: 'タブ', icon: '⊓', w: 480, h: 40, label: '', props: { tabs: ['基本情報', '明細', '添付ファイル', '履歴'], current: '基本情報' } },
+  image: { name: '画像の置き場', pal: '画像の\n置き場', icon: '🖼', w: 240, h: 160, label: '画像', noNumber: true, props: {} },
+  link: { name: 'リンクの文字', pal: 'リンク\nの文字', icon: '🔗', w: 200, h: 24, label: 'リンクの文字', props: { to: '', screenId: '', url: '' } },
+  icon: { name: 'アイコン', icon: '⚙', w: 32, h: 32, label: '', noNumber: true, props: { icon: 'gear', color: 'black' } },
 };
-// 部品の箱の組。表・グラフ・吹き出しと、一覧の画面用・進み具合の画面用・見た目用の組は、第 3 段階の後半で足す（作るまで箱に出さない）
+// 部品の箱の組（吹き出しは第 3 段階の後半の次の手順で足す。作るまで箱に出さない）
 const PALETTE_GROUPS = [
-  { id: 'basic', name: '基本', types: ['text1', 'text2', 'number', 'date', 'dropdown', 'radio', 'checkbox', 'button', 'heading', 'desc', 'divider'] },
+  { id: 'basic', name: '基本', types: ['text1', 'text2', 'number', 'date', 'dropdown', 'radio', 'checkbox', 'table', 'button', 'graph', 'heading', 'desc', 'divider'] },
   { id: 'input', name: '入力の画面用', types: ['file', 'user', 'datetime', 'calc'] },
+  { id: 'list', name: '一覧の画面用', types: ['search', 'filter', 'pager'] },
+  { id: 'progress', name: '進み具合の画面用', types: ['status', 'steps', 'tabs'] },
+  { id: 'look', name: '見た目用', types: ['image', 'link', 'icon'] },
 ];
+const TABLE_KINDS = { subtable: 'テーブル', records: 'レコード一覧', related: '関連レコード一覧' };
+const TABLE_LABEL_H = 28; // 表の部品の項目名の行の高さ
+const TABLE_ROW_H = 34; // 表の部品の見出しの行と、見本の行の高さ
+const DEFAULT_STATES = ['申請', '承認待ち', '承認済み', '完了'];
+const CHART_NAMES = { bar: '棒グラフ', hbar: '横棒グラフ', line: '折れ線グラフ', pie: '円グラフ' };
+const AGG_NAMES = { count: 'レコードの件数', sum: '合計', avg: '平均', max: 'いちばん大きい値', min: 'いちばん小さい値' };
 
 // 種類の引き当ては、PART_TYPES 自身の項目だけを見る（読み込んだデータの type が constructor などでも、継承した値を拾わないため）
 const own = (obj, key) => typeof key === 'string' && Object.prototype.hasOwnProperty.call(obj, key);
@@ -558,25 +628,61 @@ const snapGrid = (v) => Math.round(Number(v) / GRID) * GRID || 0;
 const findPart = (screen, id) => (screen && id ? screen.parts.find((p) => p.id === id) || null : null);
 const findItem = (design, id) => (design && id && Array.isArray(design.items) ? design.items.find((it) => it.id === id) || null : null);
 
-// 項目になる部品（データベースの項目の一覧表に行がある部品）か
-const isItemType = (type) => !!(partType(type) && partType(type).input);
+// 入力欄の部品の種類か（項目名＋入力欄の部品）
+const isInputType = (type) => !!(partType(type) && partType(type).input);
+// 項目の種類か（データベースの項目の一覧表の行になる種類）。入力欄の部品の種類と、表（テーブル）・ステータス
+const isItemType = (type) => isInputType(type) || type === 'table' || type === 'status';
+// 項目の種類の名前（データベースの項目の一覧表の「部品の種類」の列）
+const itemTypeName = (type) => (type === 'table' ? '表（テーブル）' : type === 'status' ? 'ステータス' : partTypeName(type));
+// 部品が指す項目の種類（項目を指さない部品は ''）。表はテーブルのときだけ、ステータスの印・進み具合の矢印はステータスの項目を指す
+function partItemType(p) {
+  if (!p) return '';
+  if (isInputType(p.type)) return p.type;
+  if (p.type === 'table') return p.tableKind === 'subtable' ? 'table' : '';
+  if (p.type === 'status' || p.type === 'steps') return 'status';
+  return '';
+}
+const isItemPart = (p) => !!partItemType(p);
+// 同じ項目を 1 つの画面に 2 回は置かない（ステータスは、ステータスの印と進み具合の矢印で同じ画面に何度でも置ける）
+const oncePerScreen = (itemType) => itemType !== 'status';
+
+const defaultColumns = () => ['列 1', '列 2', '列 3'].map((name) => createColumnData('text1', name));
+function createColumnData(type, name) {
+  return { id: newId('c'), name, type, required: false, memo: '', props: clone(partType(type).props) };
+}
 
 function createItemData(type, name) {
   const t = partType(type);
-  return { id: newId('i'), name: name == null ? t.label : name, type, required: false, memo: '', props: clone(t.props), lookup: null, link: null };
+  const props = type === 'table' ? { columns: defaultColumns() } : type === 'status' ? { states: [...DEFAULT_STATES] } : clone(t.props);
+  const defName = type === 'table' ? '明細' : type === 'status' ? 'ステータス' : t.label;
+  return { id: newId('i'), name: name == null ? defName : name, type, required: false, memo: '', props, lookup: null, link: null };
 }
+
+// 表の部品の高さ（項目名の行・見出しの行・見本の行）。8 ドットのマス目に切り上げる
+const tableHeight = (rows) => Math.ceil((TABLE_LABEL_H + TABLE_ROW_H * (rows + 1) + 2) / GRID) * GRID;
 
 // 部品の中身を、指している項目と合わせた形にする（描く・一覧表の文を作る・設定の欄を出すときに使う）。
 // 項目を指していない部品（ボタン・見出しなど・項目を消した後に残った部品）は、そのまま返す
 // lookupRole は、ルックアップで探す項目なら 'key'、一緒に写される項目なら 'copy'（lookupKeyName は探す項目の名前）
 function resolvePart(design, p) {
   const item = p && p.itemId ? findItem(design, p.itemId) : null;
-  if (!item) return p && p.lookup && isItemType(p.type) ? { ...p, lookupRole: 'key' } : p;
+  if (!item) return withViewExtras(design, p && p.lookup && isInputType(p.type) ? { ...p, lookupRole: 'key' } : p);
   const copy = item.lookup ? null : lookupCopyOf(design, item);
-  return {
+  return withViewExtras(design, {
     ...p, label: item.name, required: item.required, memo: item.memo, props: item.props, item,
     lookupRole: item.lookup ? 'key' : copy ? 'copy' : null, lookupKeyName: copy ? copy.key.name : '',
-  };
+  });
+}
+// 描くときだけ使う中身（表の列・絞り込みの欄の項目の名前・関連レコード一覧の元のデータベースの名前）
+function withViewExtras(design, p) {
+  if (!p || !design) return p;
+  if (p.type === 'table') {
+    const state = store ? store.state : { designs: [] };
+    const ctx = { design, state };
+    return { ...p, columns: tableColumns(p, ctx), relatedName: p.tableKind === 'related' && p.props && p.props.db ? dbLabel(state, p.props.db) : '' };
+  }
+  if (p.type === 'filter') return { ...p, itemNames: Object.fromEntries(design.items.map((it) => [it.id, it.name])) };
+  return p;
 }
 
 // その画面に、その項目を指す部品があるか（同じ項目を 1 つの画面に 2 回は置かない）
@@ -584,9 +690,11 @@ const itemOnScreen = (screen, itemId) => !!screen && screen.parts.some((p) => p.
 // その項目を置いている画面（画面の順）
 const screensWithItem = (design, itemId) => design.screens.filter((s) => itemOnScreen(s, itemId));
 // 項目を一覧表から消した後に、画面に残った部品か（項目を指していたが、その項目がもうない）
-const isOrphanPart = (design, p) => !!p.itemId && isItemType(p.type) && !findItem(design, p.itemId);
-// 「＋ 項目を足す」で選べる種類（部品の箱の並びの順）
-const itemMenuTypes = () => PALETTE_GROUPS.flatMap((g) => g.types).filter(isItemType);
+const isOrphanPart = (design, p) => !!p.itemId && isItemPart(p) && !findItem(design, p.itemId);
+// 「＋ 項目を足す」で選べる種類（部品の箱の並びの順）。入力欄の部品と、表（テーブル）
+const itemMenuTypes = () => PALETTE_GROUPS.flatMap((g) => g.types).filter((t) => isInputType(t) || t === 'table');
+// 項目を画面に置くときの部品の種類（ステータスの項目は、ステータスの印として置く）
+const partTypeOfItem = (itemType) => (itemType === 'status' ? 'status' : itemType);
 
 // 項目を消すとき、その項目を置いた部品に写す中身（消したときの中身で固定するため）
 function frozenItemFields(item) {
@@ -597,6 +705,7 @@ function frozenItemFields(item) {
 }
 
 // 項目の種類を変える。設定は新しい種類の形にそろえ（同じ名前の設定は残す）、その項目を置いた部品の種類も変える
+// 入力欄の部品の種類のあいだだけで変える（表・ステータスとは行き来しない）
 function changeItemType(design, item, type) {
   item.type = type;
   item.props = keepInitialInOptions(type, normalizeProps(partType(type), item.props));
@@ -645,13 +754,29 @@ function freeSpot(screen, at) {
   return { x, y };
 }
 
-// itemId を渡すと、その項目を指す部品を作る（項目名と設定は項目が持つ）
-function createPartData(type, screen, at, itemId = null) {
+// itemId を渡すと、その項目を指す部品を作る（項目名と設定は項目が持つ）。表の部品は tableKind で中身を決める
+function createPartData(type, screen, at, itemId = null, { tableKind = 'subtable', design = null } = {}) {
   const t = partType(type);
   const rect = fitRect({ x: at.x, y: at.y, w: t.w, h: t.h }, screen);
   const base = { id: newId('p'), type, ...rect, no: t.noNumber ? null : nextPartNo(screen), labelPos: 'top', sample: '', placeholder: '' };
+  if (type === 'table') base.tableKind = itemId ? 'subtable' : tableKind === 'subtable' ? 'records' : tableKind;
+  if (type === 'table') base.view = { rows: 3, samples: {}, widths: {} };
+  if (type === 'status' || type === 'steps') base.view = { current: '', showWord: true };
   if (itemId) return { ...base, itemId };
-  return { ...base, label: t.label, required: false, memo: '', props: clone(t.props) };
+  const props = type === 'table' ? defaultTablePartProps(design) : clone(t.props);
+  const label = type === 'table' ? (base.tableKind === 'related' ? '関連レコード一覧' : '一覧') : t.label;
+  return { ...base, label, required: false, memo: '', props };
+}
+
+// レコード一覧・関連レコード一覧の設定の最初の値。レコード一覧の列は、この画面設計の項目の初めの 4 つ（入力欄の部品の項目）
+function defaultTablePartProps(design) {
+  const cols = design ? design.items.filter((it) => isInputType(it.type)).slice(0, 4) : [];
+  return {
+    columns: cols.map((it) => ({ id: newId('c'), ref: { itemId: it.id, name: it.name } })),
+    sort: '', perPage: '20', limit: '5',
+    db: { designId: null, name: '', free: false },
+    cond: { from: emptyRef(), to: emptyRef() },
+  };
 }
 
 // 選択肢の部品の初期値を、今の選択肢の中のものだけにする（選択肢を書き換えて、なくなった選択肢が初期値に残らないため）
@@ -722,13 +847,77 @@ function describePart(p, ctx = null) {
     case 'button':
       eqIf('押したとき', v(pr.action));
       break;
+    case 'table':
+      if (p.tableKind === 'subtable') { if (p.required) short.push('必須（1 行以上）'); }
+      else if (p.tableKind === 'related') {
+        const src = ctx && pr.db && pr.db.designId ? findDesign(ctx.state, pr.db.designId) : null;
+        const db = ctx ? dbLabel(ctx.state, pr.db) : v(pr.db && pr.db.name);
+        eqIf('関連レコード一覧', db);
+        if (pr.cond && (pr.cond.from.itemId || pr.cond.from.name)) eqIf('条件', `${db}の「${refLabel(src, pr.cond.from)}」がこのレコードの「${refLabel(ctx && ctx.design, pr.cond.to)}」と同じ`);
+        eqIf('並べ順', v(pr.sort));
+        if (v(pr.limit)) short.push(`最大 ${v(pr.limit)} 件`);
+      } else {
+        eqIf('並べ順', v(pr.sort));
+        if (v(pr.perPage)) short.push(`1 ページ ${v(pr.perPage)} 件`);
+      }
+      break;
+    case 'graph': {
+      const by = itemNameIn(ctx, pr.byItem);
+      eqIf('グラフ', CHART_NAMES[pr.chart] || '');
+      eqIf('分類', by ? by + (v(pr.byUnit) ? `（${v(pr.byUnit)}）` : '') : v(pr.byUnit));
+      const agg = pr.agg === 'count' ? AGG_NAMES.count : itemNameIn(ctx, pr.aggItem) ? `${itemNameIn(ctx, pr.aggItem)}の${AGG_NAMES[pr.agg] || '合計'}` : '';
+      eqIf('集計', agg && agg + (v(pr.unit) ? `（${v(pr.unit)}）` : ''));
+      break;
+    }
+    case 'search':
+      eqIf('探す項目', (pr.items || []).map((id) => itemNameIn(ctx, id)).filter(Boolean).join('・'));
+      if (pr.button === false) short.push('「検索」ボタンなし');
+      break;
+    case 'filter':
+      eqIf('絞り込む項目', (pr.items || []).map((id) => itemNameIn(ctx, id)).filter(Boolean).join('・'));
+      break;
+    case 'pager':
+      if (v(pr.perPage)) short.push(`1 ページ ${v(pr.perPage)} 件`);
+      break;
+    case 'status': case 'steps':
+      eqIf('ステータス', (pr.states || []).join(p.type === 'steps' ? ' → ' : '／'));
+      break;
+    case 'tabs':
+      eqIf('タブ', list(pr.tabs));
+      break;
+    case 'link':
+      eqIf('移る先', pr.to === 'url' ? v(pr.url) : pr.to === 'screen' ? screenNameIn(ctx, pr.screenId) : '');
+      break;
   }
   if (ctx) eq.push(...lookupLines(ctx, p));
   return [short.join('・'), ...eq, v(p.memo)].filter(Boolean).join('\n');
 }
 
-// データベースの項目の一覧表の「設定」の列の文（部品の設定の一覧表と同じ書き方）
-const describeItem = (item, ctx = null) => describePart({ type: item.type, required: item.required, memo: item.memo, props: item.props, item }, ctx);
+const itemNameIn = (ctx, id) => { const it = ctx && id ? findItem(ctx.design, id) : null; return it ? it.name : ''; };
+const screenNameIn = (ctx, id) => { const s = ctx && id ? ctx.design.screens.find((x) => x.id === id) : null; return s ? `${s.name}の画面` : ''; };
+
+// データベースの項目の一覧表の「設定」の列の文（部品の設定の一覧表と同じ書き方）。表（テーブル）は列の名前も書く
+function describeItem(item, ctx = null) {
+  const text = describePart({ type: item.type, tableKind: 'subtable', required: item.required, memo: item.memo, props: item.props, item }, ctx);
+  if (item.type !== 'table') return text;
+  const cols = (item.props.columns || []).map((c) => c.name).filter(Boolean).join('・');
+  return [cols && `列＝${cols}`, text].filter(Boolean).join('\n');
+}
+
+// 表の部品の列（描くときと、一覧表の枝番の行に使う）。{ id, name, type, kind（部品の種類の名前）, setting（設定の文） }
+function tableColumns(p, ctx = null) {
+  const pr = p.props || {};
+  if (p.tableKind === 'subtable') {
+    return (pr.columns || []).map((c) => ({ id: c.id, name: c.name, type: c.type, kind: partTypeName(c.type), setting: describePart({ type: c.type, required: c.required, memo: c.memo, props: c.props }) }));
+  }
+  const design = ctx && ctx.design;
+  const src = p.tableKind === 'related' ? (ctx && pr.db && pr.db.designId ? findDesign(ctx.state, pr.db.designId) : null) : design;
+  return (pr.columns || []).map((c) => {
+    const it = src && c.ref.itemId ? findItem(src, c.ref.itemId) : null;
+    const setting = p.tableKind === 'related' ? `${ctx ? dbLabel(ctx.state, pr.db) : ''}の項目` : it ? describeItem(it, ctx) : '';
+    return { id: c.id, name: it ? it.name : c.ref.name || '（項目を選んでいません）', type: it ? it.type : 'text1', kind: it ? itemTypeName(it.type) : '－', setting };
+  });
+}
 
 // 一覧表の「項目名」の列。説明の文字は 1 行目の初めの 20 文字。名前がなければ部品の種類
 function partTitle(p) {
@@ -740,12 +929,16 @@ function partTitle(p) {
 // 部品の設定の一覧表の行（番号の付いた部品だけを番号の順に）。design を渡すと、部品が指す項目の中身で書く
 function tableRows(screen, design = null, state = null) {
   const ctx = design && state ? { design, state } : null;
+  // 表の部品は、表の行の下に、列ごとの行を枝番（3-1・3-2）で並べる（CLAUDE.md の「部品の細かい決めごと（後半）」）
   return screen.parts
     .filter((p) => p.no != null)
     .sort((a, b) => a.no - b.no)
-    .map((raw) => {
+    .flatMap((raw) => {
       const p = design ? resolvePart(design, raw) : raw;
-      return { id: p.id, no: p.no, label: partTitle(p), kind: partTypeName(p.type), setting: describePart(p, ctx) };
+      const kind = p.type === 'table' ? `表（${TABLE_KINDS[p.tableKind] || 'テーブル'}）` : partTypeName(p.type);
+      const row = { id: p.id, no: p.no, label: partTitle(p), kind, setting: describePart(p, ctx) };
+      if (p.type !== 'table') return [row];
+      return [row, ...tableColumns(p, ctx).map((c, i) => ({ id: p.id, no: `${p.no}-${i + 1}`, label: c.name, kind: c.kind, setting: c.setting, branch: true }))];
     });
 }
 
@@ -778,17 +971,27 @@ function normalizePart(src, items = []) {
   };
   if (!t) return base; // 知らない種類（新しい版で足した部品）は、中身をそのまま残す
   const common = { ...base, labelPos: p.labelPos === 'left' ? 'left' : 'top', sample: str(p.sample), placeholder: str(p.placeholder) };
+  if (base.type === 'table') {
+    common.tableKind = own(TABLE_KINDS, p.tableKind) ? p.tableKind : str(p.itemId) ? 'subtable' : 'records';
+    common.view = normalizeTableView(p.view);
+  }
+  if (base.type === 'status' || base.type === 'steps') common.view = { ...(isObj(p.view) ? p.view : {}), current: str(p.view && p.view.current), showWord: !(p.view && p.view.showWord === false) };
+  const itemType = partItemType(common);
   const fields = {
     label: typeof p.label === 'string' ? p.label : t.label,
     required: !!p.required,
     memo: str(p.memo),
-    props: keepInitialInOptions(base.type, normalizeProps(t, p.props)),
+    props: itemType && !isInputType(itemType) ? normalizeItemProps(itemType, p.props)
+      : base.type === 'table' ? normalizeTablePartProps(p.props) : keepInitialInOptions(base.type, normalizeProps(t, p.props)),
   };
-  if (!isItemType(base.type)) return { ...common, ...fields };
+  if (!itemType) return { ...common, ...fields };
   const itemId = str(p.itemId);
   if (!itemId) {
-    const item = normalizeItem({ name: fields.label, type: base.type, required: fields.required, memo: fields.memo, props: fields.props });
-    items.push(item);
+    // 項目を指していない部品（データの形の版 1 の入力欄の部品など）は、部品の中身から項目を作る。
+    // ステータスの部品は、画面設計にステータスの項目があればそれを指す
+    const found = itemType === 'status' ? items.find((it) => it.type === 'status') : null;
+    const item = found || normalizeItem({ name: fields.label, type: itemType, required: fields.required, memo: fields.memo, props: fields.props });
+    if (!found) items.push(item);
     return withoutItemFields({ ...common, itemId: item.id });
   }
   // 指している項目があれば、項目名と設定は項目のものを使う。なければ（項目を一覧表から消した後）、部品が持っている中身で描く
@@ -800,23 +1003,66 @@ function withoutItemFields(p) {
   const { label, required, memo, props, lookup, link, ...rest } = p;
   return rest;
 }
+function withoutItemFieldsInPlace(p) {
+  ['label', 'required', 'memo', 'props', 'lookup', 'link'].forEach((k) => { delete p[k]; });
+  return p;
+}
 
 function normalizeItem(src) {
   const it = isObj(src) ? src : {};
   const type = str(it.type) || 'text1';
-  const t = isItemType(type) ? partType(type) : null;
   return {
     ...it,
     id: str(it.id) || newId('i'),
-    name: typeof it.name === 'string' ? it.name : t ? t.label : '項目名',
+    name: typeof it.name === 'string' ? it.name : isItemType(type) ? createItemData(type).name : '項目名',
     type,
     required: !!it.required,
     memo: str(it.memo),
     // 知らない種類の項目（新しい版で足した項目）は、設定をそのまま残す
-    props: t ? keepInitialInOptions(type, normalizeProps(t, it.props)) : isObj(it.props) ? it.props : {},
+    props: isItemType(type) ? normalizeItemProps(type, it.props) : isObj(it.props) ? it.props : {},
     lookup: normalizeLookup(it.lookup),
     link: normalizeLink(it.link),
   };
+}
+
+// 項目の種類ごとの設定を直す。表（テーブル）は列（{ id, name, type, required, memo, props }）、ステータスはステータスの並び
+function normalizeItemProps(type, src) {
+  const props = isObj(src) ? { ...src } : {};
+  if (type === 'table') return { ...props, columns: (Array.isArray(props.columns) ? props.columns : []).filter(isObj).map(normalizeColumn) };
+  if (type === 'status') {
+    const states = Array.isArray(props.states) ? props.states.filter((s) => typeof s === 'string' && s.trim()) : [];
+    return { ...props, states: states.length ? states : [...DEFAULT_STATES] };
+  }
+  return keepInitialInOptions(type, normalizeProps(partType(type), props));
+}
+function normalizeColumn(src) {
+  const type = isInputType(src.type) ? src.type : 'text1';
+  return {
+    ...src, id: str(src.id) || newId('c'), name: typeof src.name === 'string' ? src.name : '列', type,
+    required: !!src.required, memo: str(src.memo), props: keepInitialInOptions(type, normalizeProps(partType(type), src.props)),
+  };
+}
+// レコード一覧・関連レコード一覧の設定（列は { id, ref: 項目の参照 }）
+function normalizeTablePartProps(src) {
+  const props = isObj(src) ? { ...src } : {};
+  const cond = isObj(props.cond) ? props.cond : {};
+  return {
+    ...props,
+    columns: (Array.isArray(props.columns) ? props.columns : []).filter(isObj).map((c) => ({ ...c, id: str(c.id) || newId('c'), ref: normalizeRef(c.ref) })),
+    sort: str(props.sort), perPage: str(props.perPage), limit: str(props.limit),
+    db: normalizeDb(props.db),
+    cond: { ...cond, from: normalizeRef(cond.from), to: normalizeRef(cond.to) },
+  };
+}
+// 表の部品の、この画面だけの設定（見本の行の数・列ごとの見本の値・列の幅）
+function normalizeTableView(src) {
+  const v = isObj(src) ? src : {};
+  const rows = Math.round(numOr(v.rows, 3));
+  const samples = {};
+  if (isObj(v.samples)) Object.entries(v.samples).forEach(([k, a]) => { if (Array.isArray(a)) samples[k] = a.map((x) => String(x == null ? '' : x)); });
+  const widths = {};
+  if (isObj(v.widths)) Object.entries(v.widths).forEach(([k, w]) => { if (Number.isFinite(Number(w)) && Number(w) > 0) widths[k] = Math.round(Number(w)); });
+  return { ...v, rows: Math.min(20, Math.max(1, rows || 3)), samples, widths };
 }
 
 // ルックアップ（ほかのデータベースのレコードから値を引いて入れる。画像 q22 の案A）。探すときに使う項目（例: 取引先コード）の lookup に、
@@ -828,12 +1074,15 @@ function normalizeItem(src) {
 const LOOKUP_TYPES = ['text1', 'number'];
 const emptyRef = () => ({ itemId: null, name: '' });
 const normalizeRef = (r) => (isObj(r) ? { ...r, itemId: str(r.itemId) || null, name: str(r.name) } : emptyRef());
+const normalizeDb = (src) => {
+  const db = isObj(src) ? src : {};
+  return { ...db, designId: str(db.designId) || null, name: str(db.name), free: !!db.free };
+};
 function normalizeLookup(src) {
   if (!isObj(src)) return null;
-  const db = isObj(src.db) ? src.db : {};
   return {
     ...src,
-    db: { ...db, designId: str(db.designId) || null, name: str(db.name), free: !!db.free },
+    db: normalizeDb(src.db),
     key: normalizeRef(src.key),
     copies: (Array.isArray(src.copies) ? src.copies : []).filter(isObj).map((c) => ({ ...c, from: normalizeRef(c.from), to: normalizeRef(c.to) })),
   };
@@ -908,7 +1157,7 @@ function syncLinkedItems(state) {
       if (it.link.designName !== srcDesign.name) { it.link.designName = srcDesign.name; changed = true; }
       const want = linkedFields(src, srcDesign);
       if (LINKED_FIELDS.every((k) => JSON.stringify(it[k]) === JSON.stringify(want[k]))) return;
-      if (want.type !== it.type && isItemType(want.type)) changeItemType(d, it, want.type);
+      if (want.type !== it.type && isInputType(want.type) && isInputType(it.type)) changeItemType(d, it, want.type);
       Object.assign(it, want);
       changed = true;
     }));
@@ -1268,9 +1517,14 @@ const actions = {
     const t = partType(type);
     if (!sc || !t) return null;
     const start = fitRect({ x: at.x, y: Math.max(sc.showHeader ? BAND_H : 0, at.y), w: t.w, h: t.h }, sc);
-    // 入力欄の部品を置くと、データベースの項目の一覧表にも項目を 1 つ足す（項目名と設定は項目が持つ）
-    const item = isItemType(type) ? createItemData(type) : null;
-    const p = createPartData(type, sc, freeSpot(sc, start), item && item.id);
+    // 入力欄の部品と表（最初はテーブル）を置くと、データベースの項目の一覧表にも項目を 1 つ足す（項目名と設定は項目が持つ）。
+    // ステータスの印・進み具合の矢印は、画面設計のステータスの項目を指す（なければ作る）
+    const d0 = findDesign(store.state, designId);
+    const status = type === 'status' || type === 'steps' ? d0.items.find((it) => it.type === 'status') : null;
+    const itemType = isInputType(type) ? type : type === 'table' ? 'table' : type === 'status' || type === 'steps' ? 'status' : '';
+    const item = itemType && !status ? createItemData(itemType) : null;
+    const p = createPartData(type, sc, freeSpot(sc, start), (status || item || {}).id || null, { design: d0 });
+    if (p.view && 'current' in p.view) p.view.current = ((status || item).props.states[1] || (status || item).props.states[0] || '');
     mutateScreen(designId, screenId, (s, d) => {
       if (item) d.items.push(item);
       s.parts.push(p);
@@ -1284,6 +1538,13 @@ const actions = {
     return mutatePart(designId, screenId, partId, (p, sc, d) => {
       ['labelPos', 'sample', 'placeholder'].forEach((k) => { if (k in patch) p[k] = patch[k]; });
       if ('numbered' in patch) p.no = patch.numbered ? (p.no != null ? p.no : nextPartNo(sc)) : null;
+      if (isObj(patch.view)) {
+        p.view = { ...(p.view || {}), ...clone(patch.view) };
+        if (p.type === 'table') {
+          p.view = normalizeTableView(p.view);
+          Object.assign(p, fitRect({ ...p, h: tableHeight(p.view.rows) }, sc));
+        }
+      }
       const item = findItem(d, p.itemId);
       if (item) { if (!item.link) applyFieldPatch(item, 'name', patch); } // 取り込んだ項目は直せない（元のモックで直す）
       else if (!p.itemId) applyFieldPatch(p, 'label', patch);
@@ -1312,13 +1573,13 @@ const actions = {
     const p = { ...clone(src), id: newId('p'), ...fitRect({ ...src, ...freeSpot(sc, fitRect({ ...src, ...at }, sc)) }, sc) };
     p.no = src.no != null ? nextPartNo(sc) : null;
     let newItem = null;
-    if (p.itemId && isItemType(p.type)) {
+    if (p.itemId && isItemPart(p)) {
       // 取り込んだ項目の部品を、取り込んだ元の画面設計へ貼り付けるときは、元の項目を指す
       const home = isObj(srcItem) && srcItem.link && srcItem.link.designId === designId ? findItem(d, srcItem.link.itemId) : null;
       if (home && !findItem(d, p.itemId)) p.itemId = home.id;
       const item = findItem(d, p.itemId);
       if (!item && isObj(srcItem) && srcItem.id === p.itemId) newItem = clone(srcItem);
-      else if (item && itemOnScreen(sc, item.id)) {
+      else if (item && oncePerScreen(item.type) && itemOnScreen(sc, item.id)) {
         newItem = { ...clone(item), id: newId('i') };
         p.itemId = newItem.id;
       }
@@ -1335,7 +1596,7 @@ const actions = {
 
   // ── データベースの項目の操作 ──
   addItem(designId, type) {
-    if (!isItemType(type) || !findDesign(store.state, designId)) return null;
+    if (!(isInputType(type) || type === 'table') || !findDesign(store.state, designId)) return null;
     const item = createItemData(type);
     mutateDesign(designId, (d) => { d.items.push(item); });
     return item.id;
@@ -1344,7 +1605,7 @@ const actions = {
   updateItem(designId, itemId, patch) {
     const item = findItem(findDesign(store.state, designId), itemId);
     if (!item || item.link) return false; // 取り込んだ項目は直せない（元のモックで直す）
-    if ('type' in patch && !isItemType(patch.type)) return false;
+    if ('type' in patch && !(isInputType(patch.type) && isInputType(item.type))) return false;
     return mutateDesign(designId, (d) => {
       const item = findItem(d, itemId);
       if ('type' in patch && patch.type !== item.type) changeItemType(d, item, patch.type);
@@ -1375,12 +1636,40 @@ const actions = {
   restoreItem(designId, itemId) {
     const d = findDesign(store.state, designId);
     if (!d || findItem(d, itemId)) return false;
-    const src = d.screens.flatMap((s) => s.parts).find((p) => p.itemId === itemId && isItemType(p.type));
+    const src = d.screens.flatMap((s) => s.parts).find((p) => p.itemId === itemId && isItemPart(p));
     if (!src) return false;
-    const item = normalizeItem({ id: itemId, name: src.label, type: src.type, required: src.required, memo: src.memo, props: clone(src.props), lookup: src.lookup || null, link: src.link || null });
+    const item = normalizeItem({ id: itemId, name: src.label, type: partItemType(src), required: src.required, memo: src.memo, props: clone(src.props), lookup: src.lookup || null, link: src.link || null });
     return mutateDesign(designId, (dd) => {
       dd.items.push(item);
       dd.screens.forEach((s) => { s.parts = s.parts.map((p) => (p.itemId === itemId ? withoutItemFields(p) : p)); });
+    });
+  },
+  // 表の部品の中身（テーブル・レコード一覧・関連レコード一覧）を変える。テーブルにすると項目（表）を作って指し、
+  // テーブルから変えると項目を指さなくなる。そのとき、その項目をほかのどの画面にも置いていなければ、項目も消す
+  // （中身を選び直しただけで、使わない項目が一覧表に残らないため。Claude が決めた）
+  setTableKind(designId, screenId, partId, kind) {
+    const p0 = findPart(findScreen(designId, screenId), partId);
+    if (!p0 || p0.type !== 'table' || !own(TABLE_KINDS, kind) || p0.tableKind === kind) return false;
+    const d0 = findDesign(store.state, designId);
+    const item = kind === 'subtable' ? createItemData('table') : null;
+    return mutatePart(designId, screenId, partId, (p, sc, d) => {
+      const old = p.itemId;
+      if (item) {
+        d.items.push(item);
+        Object.assign(withoutItemFieldsInPlace(p), { tableKind: kind, itemId: item.id });
+        return;
+      }
+      const defLabel = (k) => (k === 'related' ? '関連レコード一覧' : '一覧');
+      if (p.tableKind === 'subtable') {
+        const oldItem = findItem(d, old);
+        delete p.itemId;
+        p.label = defLabel(kind);
+        p.required = false;
+        p.memo = '';
+        p.props = defaultTablePartProps(d0);
+        if (oldItem && !d.screens.some((s) => s.parts.some((x) => x.itemId === old))) d.items = d.items.filter((it) => it.id !== old);
+      } else if (p.label === defLabel(p.tableKind)) p.label = defLabel(kind); // 名前が最初のままなら、新しい中身の名前にする
+      p.tableKind = kind;
     });
   },
   // ほかの画面設計（srcDesignId）の項目を取り込み、一覧表のいちばん下に足す。取り込んだ項目は元とつなげたままにする。
@@ -1420,10 +1709,12 @@ const actions = {
   addItemPart(designId, screenId, itemId, at) {
     const sc = findScreen(designId, screenId);
     const item = findItem(findDesign(store.state, designId), itemId);
-    const t = item && partType(item.type);
-    if (!sc || !t || !isItemType(item.type) || itemOnScreen(sc, itemId)) return null;
+    const type = item && isItemType(item.type) ? partTypeOfItem(item.type) : '';
+    const t = partType(type);
+    if (!sc || !t || (oncePerScreen(item.type) && itemOnScreen(sc, itemId))) return null;
     const start = fitRect({ x: at.x, y: Math.max(sc.showHeader ? BAND_H : 0, at.y), w: t.w, h: t.h }, sc);
-    const p = createPartData(item.type, sc, freeSpot(sc, start), itemId);
+    const p = createPartData(type, sc, freeSpot(sc, start), itemId);
+    if (p.view && 'current' in p.view) p.view.current = item.props.states[1] || item.props.states[0] || '';
     mutateScreen(designId, screenId, (s) => { s.parts.push(p); });
     return p.id;
   },
@@ -1607,7 +1898,7 @@ function partHtml(p, selected = false, marks = false) {
 
 // 編集の画面だけで、項目名の後ろに付ける札（項目を一覧表から消した後に残った部品）
 function partMarksHtml(p) {
-  if (isItemType(p.type) && p.itemId && !p.item) return ' <span class="tag gone" title="この部品の項目は、データベースの項目の一覧表から消しました">項目なし</span>';
+  if (isItemPart(p) && p.itemId && !p.item) return ' <span class="tag gone" title="この部品の項目は、データベースの項目の一覧表から消しました">項目なし</span>';
   const link = p.item && p.item.link;
   if (link && link.lost) return ` <span class="tag lost" title="取り込んだ元のモック（または元の項目）はもうありません">取り込み・元なし</span>`;
   if (link) return ` <span class="tag link" title="モック「${esc(link.designName)}」から取り込んだ項目">取り込み</span>`;
@@ -1617,7 +1908,50 @@ function partMarksHtml(p) {
 function partInnerHtml(p, t, marks = false) {
   if (!t) return `<div class="punknown">${partNoHtml(p)}${esc(partTypeName(p.type))}</div>`;
   const pr = p.props;
+  // 項目名のない部品の番号は、ボタンと同じく左の外（左に入る幅がないときは左上の角に重ねる）
+  const outNo = () => partNoHtml(p, p.x >= 28 ? ' pno-out' : ' pno-corner');
   switch (p.type) {
+    case 'table': return `${partLabelHtml(p, marks)}${tableHtml(p)}`;
+    case 'graph': return `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span></div><div class="pgraph">${graphSvg(p)}</div>`;
+    case 'search':
+      return `${outNo()}<div class="psearch"><span class="pph">🔍 ${esc(p.placeholder || t.ph)}</span>${pr.button !== false ? '<b>検索</b>' : ''}</div>`;
+    case 'filter': {
+      const names = (pr.items || []).map((id, i) => [p.itemNames ? p.itemNames[id] : '', (pr.values || [])[i]]);
+      const chips = names.length
+        ? names.map(([n, val]) => `<span class="f"><small>${esc(n || '（項目なし）')}</small>${esc(val || 'すべて')}<i>▼</i></span>`).join('')
+        : '<span class="pph">（絞り込む項目を選んでください）</span>';
+      return `${outNo()}<div class="pfilter"><span>絞り込み:</span>${chips}</div>`;
+    }
+    case 'pager': {
+      const per = Math.max(1, Number(pr.perPage) || 20);
+      const total = Math.max(0, Number(pr.total) || 0);
+      const pages = Math.max(1, Math.ceil(total / per));
+      const nums = pages <= 4 ? Array.from({ length: pages }, (_, i) => String(i + 1)) : ['1', '2', '3', '…', String(pages)];
+      const count = pr.showCount !== false ? `<em>${total} 件中 1〜${Math.min(per, total)} 件</em>` : '';
+      return `${outNo()}<div class="ppager"><span>‹</span>${nums.map((n, i) => `<span${i === 0 ? ' class="on"' : ''}>${n}</span>`).join('')}<span>›</span>${count}</div>`;
+    }
+    case 'status': {
+      const states = pr.states || [];
+      const cur = p.view && states.includes(p.view.current) ? p.view.current : states[0] || '';
+      const word = p.view && p.view.showWord === false ? '' : `<span>${esc(p.label)}</span>`;
+      return `${outNo()}<div class="pstatus">${word}<span class="pbadge sc${Math.max(0, states.indexOf(cur)) % 5}">${esc(cur)}</span>${marks ? partMarksHtml(p) : ''}</div>`;
+    }
+    case 'steps': {
+      const states = pr.states || [];
+      const at = p.view ? states.indexOf(p.view.current) : -1;
+      return `${outNo()}<div class="psteps">${states.map((s, i) => `<span class="${i < at ? 'done' : i === at ? 'on' : ''}">${esc(s)}</span>`).join('')}</div>`;
+    }
+    case 'tabs': {
+      const tabs = pr.tabs || [];
+      const cur = tabs.includes(pr.current) ? pr.current : tabs[0];
+      return `${outNo()}<div class="ptabs">${tabs.map((s) => `<span${s === cur ? ' class="on"' : ''}>${esc(s)}</span>`).join('')}</div>`;
+    }
+    case 'image':
+      return `${partNoHtml(p, ' pno-corner')}<div class="pimage"><svg width="40" height="32" viewBox="0 0 40 32" aria-hidden="true"><rect x="1" y="1" width="38" height="30" rx="3" fill="none" stroke="#94a3b8" stroke-width="2"/><circle cx="12" cy="10" r="3.5" fill="#94a3b8"/><path d="M4,28 L15,17 L22,23 L28,15 L37,28 Z" fill="#94a3b8"/></svg>${esc(p.label)}</div>`;
+    case 'link':
+      return `${outNo()}<div class="plink">${esc(p.label)}</div>`;
+    case 'icon':
+      return `${partNoHtml(p, ' pno-corner')}<div class="picon-wrap">${iconSvg(pr.icon, pr.color)}</div>`;
     case 'button':
       // 番号はボタンの左の外。左に番号の入る幅がないときは、画面の縁で切れないように左上の角に重ねる
       return `${partNoHtml(p, p.x >= 28 ? ' pno-out' : ' pno-corner')}<div class="pbtn ${pr.style === 'normal' ? 'normal' : 'primary'}">${esc(p.label)}</div>`;
@@ -1628,9 +1962,132 @@ function partInnerHtml(p, t, marks = false) {
     case 'divider':
       return `<div class="pline">${partNoHtml(p)}<i></i></div>`;
   }
+  return partLabelHtml(p, marks) + partFieldHtml(p, t);
+}
+
+// 入力欄の部品と表の、番号・項目名・必須の印・ルックアップの札（と、編集の画面だけの札）
+function partLabelHtml(p, marks) {
   const ref = p.lookupRole ? '<span class="reftag" title="ほかのデータベースから値を引く項目（ルックアップ）">⇦ ルックアップ</span>' : '';
-  const label = `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span>${p.required ? '<span class="preq">*</span>' : ''}${ref}${marks ? partMarksHtml(p) : ''}</div>`;
-  return label + partFieldHtml(p, t);
+  const related = p.type === 'table' && p.tableKind === 'related' && p.relatedName ? `<span class="reftag" title="ほかのデータベースのレコードを並べる表（関連レコード一覧）">⇦ ${esc(p.relatedName)}</span>` : '';
+  return `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span>${p.required ? '<span class="preq">*</span>' : ''}${ref}${related}${marks ? partMarksHtml(p) : ''}</div>`;
+}
+
+// 表の部品の中身。列の名前・見本の値・幅は p.columns（resolvePart で付けた列）と、この画面だけの設定（view）から
+function tableHtml(p) {
+  const cols = p.columns || [];
+  const view = p.view || { rows: 3, samples: {}, widths: {} };
+  const ops = p.tableKind === 'subtable';
+  const icon = p.tableKind === 'records';
+  const avail = Math.max(60, p.w - (ops ? 52 : 0) - (icon ? 34 : 0) - 2);
+  const fixed = cols.reduce((s, c) => s + (view.widths[c.id] || 0), 0);
+  const free = cols.filter((c) => !view.widths[c.id]).length;
+  const each = free ? Math.max(40, Math.floor((avail - fixed) / free)) : 0;
+  const width = (c) => view.widths[c.id] || each;
+  const PH = { number: '数値', calc: '自動計算', date: '年-月-日', datetime: '年-月-日 時:分', dropdown: '選択', radio: '選択', checkbox: '選択', user: '人', file: 'ファイル', text2: '文章' };
+  const head = `<tr>${icon ? '<th style="width:34px"></th>' : ''}${cols.map((c) => `<th style="width:${width(c)}px">${esc(c.name)}${c.required ? ' <span class="preq">*</span>' : ''}</th>`).join('') || '<th>（列がありません）</th>'}</tr>`;
+  const rows = Array.from({ length: view.rows }, (_, r) => `<tr>${icon ? '<td class="ic">📄</td>' : ''}${cols.map((c) => {
+    const val = (view.samples[c.id] || [])[r];
+    const cls = c.type === 'number' ? ' class="num"' : c.type === 'calc' ? ' class="calc"' : '';
+    return `<td${cls}>${val ? esc(val) : `<span class="pph">${esc(PH[c.type] || '文字列')}</span>`}</td>`;
+  }).join('') || '<td></td>'}</tr>`).join('');
+  const opsHtml = ops ? `<div class="ptbl-ops">${Array.from({ length: view.rows }, () => '<span><i>＋</i><i>−</i></span>').join('')}</div>` : '';
+  return `<div class="ptbl-wrap"><table class="ptbl">${head}${rows}</table>${opsHtml}</div>`;
+}
+
+// グラフの部品の絵。見本の値（1 行に「分類, 値」）から、棒・横棒・折れ線・円を描く
+const GRAPH_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
+function parseGraphSamples(text) {
+  return String(text || '').split('\n').map((line) => {
+    const m = line.split(/[,，、\t]/);
+    const value = Number(String(m[m.length - 1] || '').replace(/[^0-9.\-]/g, ''));
+    return m.length >= 2 && Number.isFinite(value) ? { label: m.slice(0, -1).join(',').trim(), value: Math.max(0, value) } : null;
+  }).filter(Boolean).slice(0, 24);
+}
+// 目盛りを 4 つに分けたとき、1 目盛りがきりのよい数（6・60・250 など）になるいちばん上の値
+function niceMax(v) {
+  if (v <= 0) return 4;
+  const raw = v / 4;
+  const p = 10 ** Math.floor(Math.log10(raw));
+  return [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map((k) => k * p).find((x) => x >= raw - 1e-9) * 4;
+}
+function graphSvg(p) {
+  const w = Math.max(40, p.w - 2);
+  const h = Math.max(40, p.h - TABLE_LABEL_H - 6);
+  const data = parseGraphSamples(p.props.samples);
+  const svg = (inner) => `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true">${inner}</svg>`;
+  const text = (x, y, s, attrs = '') => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="11" fill="#475569" ${attrs}>${esc(s)}</text>`;
+  if (!data.length) return svg(text(w / 2, h / 2, '見本の値を書くと、グラフが出ます', 'text-anchor="middle"'));
+  const max = niceMax(Math.max(...data.map((d) => d.value)));
+  const chart = p.props.chart;
+  if (chart === 'pie') {
+    const total = data.reduce((s, d) => s + d.value, 0) || 1;
+    const r = Math.max(10, Math.min(h / 2 - 10, w * 0.28));
+    const cx = r + 16;
+    const cy = h / 2;
+    let a = -Math.PI / 2;
+    const slices = data.map((d, i) => {
+      const da = (d.value / total) * Math.PI * 2;
+      const [x1, y1, x2, y2] = [cx + r * Math.cos(a), cy + r * Math.sin(a), cx + r * Math.cos(a + da), cy + r * Math.sin(a + da)];
+      const path = data.length === 1 ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${GRAPH_COLORS[0]}"/>`
+        : `<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${da > Math.PI ? 1 : 0},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${GRAPH_COLORS[i % 8]}"/>`;
+      a += da;
+      return path;
+    }).join('');
+    const legend = data.map((d, i) => `<rect x="${cx + r + 24}" y="${18 + i * 22}" width="11" height="11" fill="${GRAPH_COLORS[i % 8]}"/>${text(cx + r + 40, 28 + i * 22, `${d.label}　${d.value}（${Math.round((d.value / total) * 100)}%）`, 'font-size="12"')}`).join('');
+    return svg(slices + legend);
+  }
+  const unit = String(p.props.unit || '').trim();
+  if (chart === 'hbar') {
+    const left = 96;
+    const bw = (h - 20) / data.length;
+    const bars = data.map((d, i) => {
+      const len = ((w - left - 50) * d.value) / max;
+      const y = 10 + i * bw + bw * 0.18;
+      return `<rect x="${left}" y="${y.toFixed(1)}" width="${len.toFixed(1)}" height="${(bw * 0.64).toFixed(1)}" fill="#3b82f6"/>${text(left - 6, y + bw * 0.42, d.label, 'text-anchor="end" font-size="12"')}${text(left + len + 5, y + bw * 0.42, String(d.value))}`;
+    }).join('');
+    return svg(`<line x1="${left}" y1="6" x2="${left}" y2="${h - 6}" stroke="#64748b"/>${bars}`);
+  }
+  const [L, R, T, B] = [44, 12, unit ? 22 : 12, 24];
+  const pw = w - L - R;
+  const ph = h - T - B;
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((k) => {
+    const y = T + ph * (1 - k);
+    return `<line x1="${L}" y1="${y.toFixed(1)}" x2="${w - R}" y2="${y.toFixed(1)}" stroke="${k ? '#e2e8f0' : '#64748b'}"/>${text(L - 5, y + 4, String(Math.round(max * k * 100) / 100), 'text-anchor="end" font-size="10.5"')}`;
+  }).join('');
+  const step = pw / data.length;
+  const cxs = data.map((d, i) => L + step * (i + 0.5));
+  const ys = data.map((d) => T + ph * (1 - d.value / max));
+  const labels = data.map((d, i) => text(cxs[i], h - 8, d.label, 'text-anchor="middle"')).join('');
+  const marks = chart === 'line'
+    ? `<polyline points="${cxs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ')}" fill="none" stroke="#3b82f6" stroke-width="2.5"/>${cxs.map((x, i) => `<circle cx="${x.toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4" fill="#fff" stroke="#3b82f6" stroke-width="2"/>`).join('')}`
+    : cxs.map((x, i) => `<rect x="${(x - step * 0.32).toFixed(1)}" y="${ys[i].toFixed(1)}" width="${(step * 0.64).toFixed(1)}" height="${(T + ph - ys[i]).toFixed(1)}" fill="#3b82f6"/>`).join('');
+  return svg(`${ticks}<line x1="${L}" y1="${T}" x2="${L}" y2="${T + ph}" stroke="#64748b"/>${marks}${labels}${unit ? text(L, 12, `（${unit}）`, 'font-size="10.5"') : ''}`);
+}
+
+// アイコンの部品の絵（16 種類。どれも 24 × 24 の線の絵で、Claude が描いた）
+const ICONS = {
+  gear: ['歯車', '<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="6.6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'],
+  bell: ['ベル', '<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>'],
+  mail: ['メール', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'],
+  trash: ['ごみ箱', '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>'],
+  edit: ['えんぴつ', '<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>'],
+  info: ['お知らせ（i）', '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>'],
+  search: ['虫めがね', '<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>'],
+  plus: ['プラス', '<path d="M12 5v14M5 12h14"/>'],
+  check: ['チェック', '<path d="M5 12l5 5 9-10"/>'],
+  close: ['バツ', '<path d="M6 6l12 12M18 6L6 18"/>'],
+  user: ['人', '<circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/>'],
+  calendar: ['カレンダー', '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'],
+  home: ['家', '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>'],
+  star: ['星', '<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1.1 6.2L12 17.4l-5.6 2.9 1.1-6.2L3 9.7l6.2-.9z"/>'],
+  download: ['ダウンロード', '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'],
+  upload: ['アップロード', '<path d="M12 20V9M7 14l5-5 5 5M5 4h14"/>'],
+};
+const ICON_COLORS = { black: ['黒', '#1e293b'], blue: ['青', '#2563eb'], red: ['赤', '#dc2626'], gray: ['灰', '#64748b'] };
+function iconSvg(name, color) {
+  const icon = own(ICONS, name) ? ICONS[name] : ICONS.gear;
+  const c = own(ICON_COLORS, color) ? ICON_COLORS[color][1] : ICON_COLORS.black[1];
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon[1]}</svg>`;
 }
 
 // 入力欄の部品の、項目名より下（入力欄・選択肢・添付の枠）
@@ -1663,7 +2120,7 @@ function partTableHtml(design, screen, { editor = false, selectedId = null } = {
   const width = screen.tablePos === 'bottom' ? screen.width : TABLE_W;
   const body = rows.length
     ? `<table><thead><tr><th class="c-no">番号</th><th class="c-label">項目名</th><th class="c-kind">部品の種類</th><th>設定</th></tr></thead><tbody>${rows.map((r) => `
-        <tr${editor ? ` data-action="select-part" data-id="${esc(r.id)}"` : ''}${r.id === selectedId ? ' class="sel"' : ''}>
+        <tr${editor ? ` data-action="select-part" data-id="${esc(r.id)}"` : ''}${r.id === selectedId || r.branch ? ` class="${[r.id === selectedId ? 'sel' : '', r.branch ? 'br' : ''].join(' ').trim()}"` : ''}>
           <td class="c-no">${r.no}</td><td>${esc(r.label)}</td><td>${esc(r.kind)}</td><td class="c-set">${esc(r.setting)}</td></tr>`).join('')}</tbody></table>`
     : '<div class="ptable-empty">番号の付いた部品はまだありません。<br>部品を置くと、ここに番号ごとの設定が並びます。<br>（この案内は書き出しには出ません）</div>';
   return `<div class="ptable" style="width:${width}px"><h3>部品の設定</h3>${body}</div>`;
@@ -1696,6 +2153,7 @@ const ui = {
   panel: 'screen', // 真ん中に出しているもの: 'screen'（画面）か 'items'（データベースの項目の一覧表）
   itemId: null, // データベースの項目の一覧表で選んでいる項目の id
   addItemMenu: false, // 「＋ 項目を足す」の種類の小さなメニューを開いているか
+  colId: null, // 表の部品の設定の欄で選んでいる列の id
 };
 const appEl = () => $('#app');
 
@@ -2059,7 +2517,7 @@ function itemTableHtml(d) {
     return `<tr data-action="select-item" data-id="${esc(it.id)}"${it.id === ui.itemId ? ' class="sel"' : ''}>
       <td class="c-grip" data-drag="item-sort" title="ドラッグで並べ替えます">⋮⋮</td>
       <td>${it.name ? esc(it.name) : '<span class="none">（名前なし）</span>'}</td>
-      <td>${esc(partTypeName(it.type))}</td>
+      <td>${esc(itemTypeName(it.type))}</td>
       <td class="c-set">${esc(isItemType(it.type) ? describeItem(it, { design: d, state: store.state }) : '')}</td>
       <td>${itemSourceHtml(d, it)}</td>
       <td>${scr.length ? esc(scr.join('・')) : '<span class="none">どの画面にもない</span>'}</td>
@@ -2136,7 +2594,7 @@ function renderPalette(d) {
     const t = partType(it.type);
     const name = esc(it.name || '（名前なし）');
     if (placed(it)) return `<div class="pal-item placed" title="この画面にもう置いています"><i>${t.icon}</i><span>${name}</span><small>置いた</small></div>`;
-    return `<button class="pal-item" data-action="add-item-part" data-item-id="${esc(it.id)}" title="「${name}」を画面へドラッグして置く（押すと、見えている所の真ん中に置く）"><i>${t.icon}</i><span>${name}</span><small>${esc(t.name)}</small></button>`;
+    return `<button class="pal-item" data-action="add-item-part" data-item-id="${esc(it.id)}" title="「${name}」を画面へドラッグして置く（押すと、見えている所の真ん中に置く）"><i>${t.icon}</i><span>${name}</span><small>${esc(itemTypeName(it.type))}</small></button>`;
   };
   const itemsOpen = !ui.paletteClosed.items;
   const itemList = [...items.filter((it) => !placed(it)), ...items.filter(placed)].map(itemBtn).join('')
@@ -2216,7 +2674,8 @@ function pfOutHtml(p, { forItem = false } = {}) {
 // 項目を一覧表から消した後に残った部品は、項目の設定を灰色にして直せなくし、「項目の一覧表に戻す」を出す
 function partSettingsHtml(p) {
   const t = partType(p.type);
-  if (t && isItemType(p.type)) return itemPartSettingsHtml(p, t);
+  if (t && p.type === 'table') return tableSettingsHtml(p, t);
+  if (t && isItemPart(p)) return itemPartSettingsHtml(p, t);
   const del = '<div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を消す</button></div>';
   if (!t) return `<div class="panel-title">選んだ部品</div><p class="hint">${esc(partTypeName(p.type))}です。新しい版のアプリで足した部品のため、この版では設定を変えられません。</p>${del}`;
   const typeFields = partTypeFieldsHtml(p);
@@ -2239,6 +2698,9 @@ function partCommonFieldsHtml(p) {
   if (p.type === 'button') return pfText('label', 'ボタンの文字', p.label) + numbered;
   if (p.type === 'heading') return pfText('label', '文字', p.label) + numbered;
   if (p.type === 'desc') return pfArea('label', '文字', p.label) + numbered;
+  if (p.type === 'graph') return pfText('label', 'グラフの名前', p.label) + numbered;
+  if (p.type === 'image') return pfText('label', '説明の文字', p.label, { placeholder: '例: 会社のロゴ' }) + numbered;
+  if (p.type === 'link') return pfText('label', '文字', p.label) + numbered;
   return numbered;
 }
 
@@ -2266,13 +2728,17 @@ function itemPartSettingsHtml(p, t) {
     ? pfText('sample', '見本の値', p.sample, { hint: '（書かないときは薄い字）', placeholder: p.placeholder || t.ph })
       + pfText('placeholder', '薄い字', p.placeholder, { hint: '（見本の値がないときに出す字）', placeholder: t.ph })
     : '';
+  const states = (p.props && p.props.states) || [];
+  const here = p.type === 'status' || p.type === 'steps'
+    ? pfSelect('view.current', p.type === 'steps' ? '今のステータス（見本）' : '見本で出すステータス', (p.view || {}).current, states.map((s) => [s, s]))
+      + (p.type === 'status' ? pfCheck('view.showWord', '「ステータス」の文字を付ける', !(p.view && p.view.showWord === false)) : '')
+    : pfSeg('labelPos', '項目名の位置', p.labelPos, [['top', '上'], ['left', '左']]) + sample;
   return `
     <div class="panel-title">選んだ部品の設定（${p.no != null ? `番号 ${p.no}・` : ''}${esc(t.name)}）</div>
     ${banner}
     ${itemSectionHtml(d, p, { locked: gone || linked, note: gone ? '消したときの中身' : linked ? '元のモックの中身' : 'どの画面でも同じ' })}
     <div class="pf-sec here"><div class="pf-sec-head">この画面だけの設定<small>${esc(currentScreen().name)}の画面</small></div><div class="pf-sec-body">
-      ${pfSeg('labelPos', '項目名の位置', p.labelPos, [['top', '上'], ['left', '左']])}
-      ${sample}
+      ${here}
       ${pfCheck('numbered', '番号を付ける', p.no != null)}
     </div></div>
     <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を消す</button></div>
@@ -2283,7 +2749,7 @@ function itemPartSettingsHtml(p, t) {
 // withType のとき（データベースの項目の一覧表で項目を選んだとき）は、部品の種類も選べるようにする
 function itemSectionHtml(d, p, { locked = false, withType = false, note = 'どの画面でも同じ' } = {}) {
   const t = partType(p.type);
-  const typeFields = partTypeFieldsHtml(p);
+  const typeFields = p.type === 'table' ? '' : partTypeFieldsHtml(p);
   const used = p.item ? screensWithItem(d, p.item.id).map((s) => s.name) : [];
   return `
     <fieldset class="pf-sec ${locked ? 'locked' : 'item'}"${locked ? ' disabled' : ''}>
@@ -2291,10 +2757,11 @@ function itemSectionHtml(d, p, { locked = false, withType = false, note = 'ど�
       <div class="pf-sec-body">
         ${p.item ? `<div class="pf-used">この項目を置いている画面: <b>${used.length ? esc(used.join('・')) : 'なし'}</b></div>` : ''}
         ${pfText('label', '項目名', p.label)}
-        ${withType ? pfSelect('type', '部品の種類', p.type, itemMenuTypes().map((k) => [k, partTypeName(k)])) : ''}
-        ${pfCheck('required', '必須', p.required)}
+        ${withType && isInputType(p.type) ? pfSelect('type', '部品の種類', p.type, PALETTE_GROUPS.flatMap((g) => g.types).filter(isInputType).map((k) => [k, partTypeName(k)])) : ''}
+        ${p.type === 'status' || p.type === 'steps' ? '' : pfCheck('required', p.type === 'table' ? '必須（1 行以上）' : '必須', p.required)}
         ${lookupFieldsHtml(d, p)}
-        ${typeFields ? `<div class="pf-sep"><i>${esc(t.name)}の欄</i></div>${typeFields}` : ''}
+        ${p.type === 'table' ? tableColumnsEditorHtml(p, true) : ''}
+        ${typeFields ? `<div class="pf-sep"><i>${esc(p.item ? itemTypeName(p.item.type) : t.name)}の欄</i></div>${typeFields}` : ''}
         ${pfArea('memo', 'メモ', p.memo, { hint: '（自由に書く）' })}
         ${pfOutHtml(p, { forItem: withType })}
       </div>
@@ -2402,8 +2869,158 @@ function partTypeFieldsHtml(p) {
     case 'button':
       return pfSeg('props.style', '見た目', pr.style, [['primary', '目立つ（青）'], ['normal', 'ふつう（白）']])
         + pfArea('props.action', '押したとき', pr.action);
+    case 'status': case 'steps':
+      return pfArea('props.states', 'ステータスの並び', (pr.states || []).join('\n'), { hint: '（1 行に 1 つ。上から順に進む）', rows: 4 });
+    case 'graph': {
+      const items = (currentDesign() || { items: [] }).items.filter((it) => isInputType(it.type)).map((it) => [it.id, it.name]);
+      return pfSeg('props.chart', 'グラフの種類', pr.chart, Object.entries(CHART_NAMES).map(([k, n]) => [k, n.replace('グラフ', '')]))
+        + pfRow(pfSelect('props.byItem', '分類する項目', pr.byItem, [['', '（なし）'], ...items]), pfText('props.byUnit', '分け方', pr.byUnit, { placeholder: '例: 月ごと' }))
+        + pfRow(pfSelect('props.agg', '集計のしかた', pr.agg, Object.entries(AGG_NAMES).map(([k, n]) => [k, k === 'count' ? '件数' : n])), pfSelect('props.aggItem', '集計する項目', pr.aggItem, [['', '（なし）'], ...items]))
+        + pfArea('props.samples', '見本の値', pr.samples, { hint: '（1 行に「分類, 値」を 1 組）', rows: 6 })
+        + pfText('props.unit', '値の単位', pr.unit, { placeholder: '例: 万円' });
+    }
+    case 'search': {
+      const on = pr.items || [];
+      const boxes = (currentDesign() || { items: [] }).items.filter((it) => isInputType(it.type)).map((it) =>
+        `<label><input type="checkbox" data-pf="props.items" value="${esc(it.id)}"${on.includes(it.id) ? ' checked' : ''}>${esc(it.name)}</label>`).join('');
+      return pfText('placeholder', '薄い字', p.placeholder, { placeholder: partType('search').ph })
+        + `<div class="field">${pfLabel('探す項目', '（いくつでも）')}<div class="pf-multi">${boxes || '<span class="hint">データベースの項目がまだありません。</span>'}</div></div>`
+        + pfCheck('props.button', '「検索」ボタンを付ける', pr.button !== false);
+    }
+    case 'filter': return filterFieldsHtml(p);
+    case 'pager':
+      return pfRow(pfText('props.perPage', '1 ページの件数', pr.perPage, NUM), pfText('props.total', '見本の全部の件数', pr.total, NUM))
+        + pfCheck('props.showCount', '件数を書く', pr.showCount !== false);
+    case 'tabs':
+      return pfArea('props.tabs', 'タブの名前', (pr.tabs || []).join('\n'), { hint: '（1 行に 1 つ）', rows: 4 })
+        + pfSelect('props.current', '選んでいるタブ', pr.current, (pr.tabs || []).map((s) => [s, s]));
+    case 'link': {
+      const screens = (currentDesign() || { screens: [] }).screens.map((s) => [s.id, `${s.name}の画面`]);
+      return pfSelect('props.to', '移る先', pr.to, [['', '（なし）'], ['screen', 'この画面設計のほかの画面'], ['url', 'URL を書く']])
+        + (pr.to === 'screen' ? pfSelect('props.screenId', '移る画面', pr.screenId, [['', '（選んでください）'], ...screens]) : '')
+        + (pr.to === 'url' ? pfText('props.url', 'URL', pr.url, { placeholder: 'https://' }) : '');
+    }
+    case 'icon':
+      return pfSelect('props.icon', 'アイコンの種類', pr.icon, Object.entries(ICONS).map(([k, v]) => [k, v[0]]))
+        + pfSeg('props.color', '色', pr.color, Object.entries(ICON_COLORS).map(([k, v]) => [k, v[0]]));
   }
   return '';
+}
+
+// 絞り込みの欄: 絞り込む項目を並べ（↑↓ で並べ替え・✕ で外す）、項目ごとに見本の値を書く
+function filterFieldsHtml(p) {
+  const pr = p.props;
+  const d = currentDesign();
+  const ids = pr.items || [];
+  const rows = ids.map((id, i) => {
+    const it = findItem(d, id);
+    return `<div class="lk-pair"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it ? it.name : '（項目なし）')}</span>
+      <input type="text" data-fl="value" data-i="${i}" value="${esc((pr.values || [])[i] || '')}" placeholder="すべて" aria-label="${esc(it ? it.name : '')}の見本の値" style="flex:1">
+      <button class="del-x" data-action="fl-up" data-i="${i}" title="上へ" aria-label="上へ"${i ? '' : ' disabled'}>↑</button>
+      <button class="del-x" data-action="fl-down" data-i="${i}" title="下へ" aria-label="下へ"${i < ids.length - 1 ? '' : ' disabled'}>↓</button>
+      <button class="del-x" data-action="fl-del" data-i="${i}" title="外す" aria-label="外す">✕</button></div>`;
+  }).join('');
+  const choices = d.items.filter((it) => isInputType(it.type) && !ids.includes(it.id)).map((it) => [it.id, it.name]);
+  return `<div class="field">${pfLabel('絞り込む項目', '（右の欄は見本の値）')}${rows || '<span class="hint">まだありません。下で項目を選んで足します。</span>'}</div>
+    <label class="field"><span>絞り込む項目を足す</span><select data-fl="add"><option value="">（選んでください）</option>${choices.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select></label>`;
+}
+
+// ── 表の部品の設定の欄（画像 q24）──
+// 表の中身（テーブル・レコード一覧・関連レコード一覧）を選ぶ。テーブルは項目になるので「項目の設定」と「この画面だけの設定」に分ける
+function tableSettingsHtml(p, t) {
+  const d = currentDesign();
+  const kind = `<div class="field">${pfLabel('表の中身')}<div class="seg">${Object.entries(TABLE_KINDS).map(([k, n]) =>
+    `<label><input type="radio" name="tb-kind" value="${k}" data-tb="kind"${p.tableKind === k ? ' checked' : ''}><span>${n}</span></label>`).join('')}</div></div>`;
+  const title = `<div class="panel-title">選んだ部品の設定（${p.no != null ? `番号 ${p.no}・` : ''}表（${TABLE_KINDS[p.tableKind]}））</div>`;
+  const here = `<div class="pf-sec here"><div class="pf-sec-head">この画面だけの設定<small>${esc(currentScreen().name)}の画面</small></div><div class="pf-sec-body">
+      <label class="field"><span>見本の行の数</span><input type="number" min="1" max="20" data-tb="rows" value="${(p.view || {}).rows || 3}"></label>
+      ${tableColumnViewHtml(p)}
+      ${pfCheck('numbered', '番号を付ける', p.no != null)}
+    </div></div>`;
+  if (p.tableKind === 'subtable') {
+    const gone = !p.item;
+    const linked = !!(p.item && p.item.link);
+    const banner = gone
+      ? `<div class="pf-banner gone">⚠ この表の項目「${esc(p.label)}」は、データベースの項目の一覧表から消しました。消したときの中身のまま表示しています。ここでは直せません。
+          <div class="btns"><button class="btn small primary" data-action="restore-item" data-id="${esc(p.itemId)}">項目の一覧表に戻す</button></div></div>`
+      : linked ? linkBannerHtml(p.item) : '';
+    return `${title}${kind}${banner}
+      ${itemSectionHtml(d, p, { locked: gone || linked, note: gone ? '消したときの中身' : linked ? '元のモックの中身' : 'どの画面でも同じ' })}
+      ${here}
+      <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を消す</button></div>`;
+  }
+  const pr = p.props;
+  let source = '';
+  if (p.tableKind === 'related') {
+    const dbs = visibleDesigns(store.state).filter((x) => x.id !== d.id);
+    const choices = [['', '（選んでください）'], ...dbs.map((x) => ['d:' + x.id, `${x.name}（${targetLabel(x.target)}）`]), ['__free__', '✎ 一覧にないデータベース（名前を書く）']];
+    const src = pr.db.designId ? findDesign(store.state, pr.db.designId) : null;
+    const fromField = src
+      ? `<select data-tb="condFrom" aria-label="元の項目"><option value="">（選んでください）</option>${src.items.map((it) => `<option value="${esc(it.id)}"${pr.cond.from.itemId === it.id ? ' selected' : ''}>${esc(it.name)}</option>`).join('')}</select>`
+      : `<input type="text" data-tb="condFromName" value="${esc(pr.cond.from.name)}" placeholder="元の項目の名前" aria-label="元の項目の名前">`;
+    const toField = `<select data-tb="condTo" aria-label="このレコードの項目"><option value="">（選んでください）</option>${d.items.filter((it) => isInputType(it.type)).map((it) => `<option value="${esc(it.id)}"${pr.cond.to.itemId === it.id ? ' selected' : ''}>${esc(it.name)}</option>`).join('')}</select>`;
+    source = `<label class="field"><span>関連レコード一覧の元のデータベース</span><select data-tb="db">${choices.map(([v, l]) =>
+      `<option value="${esc(v)}"${(pr.db.designId ? 'd:' + pr.db.designId : pr.db.free ? '__free__' : '') === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+      ${!pr.db.designId && pr.db.free ? `<label class="field"><span>データベースの名前</span><input type="text" data-tb="dbName" value="${esc(pr.db.name)}" placeholder="例: 受注管理"></label>` : ''}
+      <div class="field">${pfLabel('条件', '（元の項目 ＝ このレコードの項目）')}<div class="lk-pair">${fromField}＝${toField}</div></div>`;
+  }
+  const count = p.tableKind === 'related'
+    ? pfRow(pfText('props.sort', '並べ順', pr.sort, { placeholder: '例: 受注日の新しい順' }), pfText('props.limit', '最大の件数', pr.limit, NUM))
+    : pfRow(pfText('props.sort', '並べ順', pr.sort, { placeholder: '例: 顧客コードの小さい順' }), pfText('props.perPage', '1 ページの件数', pr.perPage, NUM));
+  return `${title}${kind}
+    <div class="pf-sec item"><div class="pf-sec-head">この部品の設定<small>データベースの項目にはならない</small></div><div class="pf-sec-body">
+      ${pfText('label', '表の名前', p.label)}
+      ${source}
+      ${tableColumnsEditorHtml(p, false)}
+      ${count}
+      ${pfArea('memo', 'メモ', p.memo, { hint: '（自由に書く）' })}
+      ${pfOutHtml(p)}
+    </div></div>
+    ${here}
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を消す</button></div>`;
+}
+
+// 表の列の欄。押した列を選び（選んだ列の見本の値と幅を、この画面だけの設定で書く）、↑↓ で並べ替え、✕ で外す。
+// テーブルは選んだ列の設定（列の名前・種類・必須・種類ごとの欄）もここで書く。レコード一覧・関連レコード一覧は項目を選んで足す
+function tableColumnsEditorHtml(p, isItem) {
+  const cols = p.columns || tableColumns({ ...p, tableKind: 'subtable' });
+  const pr = p.props || {};
+  const rows = cols.map((c, i) => {
+    const sel = c.id === ui.colId;
+    const head = `<div class="lk-pair"><button class="pal-item${sel ? ' on' : ''}" data-action="tb-col" data-id="${esc(c.id)}" style="flex:1;cursor:pointer"><span>${esc(c.name)}</span><small>${esc(c.kind)}</small></button>
+      <button class="del-x" data-action="tb-col-up" data-id="${esc(c.id)}" title="左へ" aria-label="左へ"${i ? '' : ' disabled'}>↑</button>
+      <button class="del-x" data-action="tb-col-down" data-id="${esc(c.id)}" title="右へ" aria-label="右へ"${i < cols.length - 1 ? '' : ' disabled'}>↓</button>
+      <button class="del-x" data-action="tb-col-del" data-id="${esc(c.id)}" title="この列を外す" aria-label="この列を外す">✕</button></div>`;
+    if (!sel || !isItem) return head;
+    const col = (pr.columns || []).find((x) => x.id === c.id);
+    const fake = { ...col, label: col.name };
+    const fields = partTypeFieldsHtml(fake).replace(/data-pf="props\./g, 'data-tb="col.props.').replace(/id="pf-initial"/g, '').replace(/name="pf-props\./g, 'name="tb-col.');
+    return `${head}<div class="lk-box" style="border-color:#93c5fd;background:#fff">
+      <label class="field"><span>列の名前</span><input type="text" data-tb="col.name" value="${esc(col.name)}"></label>
+      <label class="field"><span>部品の種類</span><select data-tb="col.type">${PALETTE_GROUPS.flatMap((g) => g.types).filter(isInputType).map((k) => `<option value="${k}"${col.type === k ? ' selected' : ''}>${esc(partTypeName(k))}</option>`).join('')}</select></label>
+      <label class="check"><input type="checkbox" data-tb="col.required"${col.required ? ' checked' : ''}>必須</label>
+      ${fields}
+    </div>`;
+  }).join('');
+  let add;
+  if (isItem) add = '<button class="lk-add" data-action="tb-col-add">＋ 列を足す</button>';
+  else {
+    const src = p.tableKind === 'related' ? (pr.db.designId ? findDesign(store.state, pr.db.designId) : null) : currentDesign();
+    const used = new Set((pr.columns || []).map((c) => c.ref.itemId).filter(Boolean));
+    add = src
+      ? `<label class="field"><span>列を足す</span><select data-tb="addCol"><option value="">（${esc(src.name)}の項目から選ぶ）</option>${src.items.filter((it) => isInputType(it.type) && !used.has(it.id)).map((it) => `<option value="${esc(it.id)}">${esc(it.name)}</option>`).join('')}</select></label>`
+      : '<label class="field"><span>列を足す</span><input type="text" data-tb="addColName" placeholder="元の項目の名前を書く"></label>';
+  }
+  return `<div class="field" style="margin-bottom:4px">${pfLabel('列', '（押すと、その列の設定と見本の値）')}</div>${rows || '<p class="hint" style="margin-bottom:6px">列がまだありません。</p>'}${add}`;
+}
+
+// 選んだ列の見本の値と幅（この画面だけ）
+function tableColumnViewHtml(p) {
+  const c = (p.columns || []).find((x) => x.id === ui.colId);
+  if (!c) return '<p class="hint" style="margin-bottom:8px">列の欄で列を押すと、その列の見本の値と幅を書けます。</p>';
+  const view = p.view || { samples: {}, widths: {} };
+  return `<label class="field"><span>見本の値（${esc(c.name)}の列） <small>1 行に 1 つ。上の行から入る</small></span><textarea data-tb="sample" rows="4">${esc((view.samples[c.id] || []).join('\n'))}</textarea></label>
+    <label class="field"><span>列の幅（${esc(c.name)}の列） <small>書かないときは残りを分ける</small></span><input type="number" min="40" data-tb="width" value="${view.widths[c.id] || ''}"></label>`;
 }
 
 // 選択肢の部品の「初期値」。選択肢を書き換えたときは、ここだけを描き直す
@@ -2424,6 +3041,8 @@ function commitKeepSide(fn) {
 
 // 右の欄の変更（文字は、欄を離れたときか Enter を押したときに保存する）
 function onSidePanelChange(e) {
+  if (e.target.dataset.tb) { onTableFieldChange(e.target); return; }
+  if (e.target.dataset.fl) { onFilterFieldChange(e.target); return; }
   if (e.target.dataset.lk) { onLookupFieldChange(e.target); return; }
   if (e.target.dataset.pf) { onPartFieldChange(e.target); return; }
   const field = e.target.dataset.field;
@@ -2455,9 +3074,9 @@ function onPartFieldChange(el) {
   if (!p) return;
   const key = el.dataset.pf;
   const value = readPartField(el);
-  const old = key.startsWith('props.') ? p.props[key.slice(6)] : key === 'numbered' ? p.no != null : p[key];
+  const old = key.startsWith('props.') ? p.props[key.slice(6)] : key.startsWith('view.') ? (p.view || {})[key.slice(5)] : key === 'numbered' ? p.no != null : p[key];
   if (JSON.stringify(old) === JSON.stringify(value)) return;
-  const patch = key.startsWith('props.') ? { props: { [key.slice(6)]: value } } : { [key]: value };
+  const patch = key.startsWith('props.') ? { props: { [key.slice(6)]: value } } : key.startsWith('view.') ? { view: { [key.slice(5)]: value } } : { [key]: value };
   // データベースの項目の一覧表では項目を、画面では部品を書き換える（部品の項目名と設定は、部品が指す項目に書く）
   const apply = () => (ui.panel === 'items' ? actions.updateItem(ui.designId, p.id, patch) : actions.updatePart(ui.designId, s.id, p.id, patch));
   if (!isTextInput(el)) { apply(); return; }
@@ -2509,7 +3128,7 @@ function onLookupFieldChange(el) {
       if (el.value === '__new__') {
         const from = next.copies[i].from;
         const srcIt = findItem(src, from.itemId);
-        create = { index: i, name: from.name || (srcIt && srcIt.name) || '項目名', type: srcIt && isItemType(srcIt.type) ? srcIt.type : 'text1' };
+        create = { index: i, name: from.name || (srcIt && srcIt.name) || '項目名', type: srcIt && isInputType(srcIt.type) ? srcIt.type : 'text1' };
       } else {
         const it = findItem(d, el.value);
         next.copies[i].to = it ? { itemId: it.id, name: it.name } : emptyRef();
@@ -2530,6 +3149,125 @@ function commitLookup(d, item, next, create, el) {
   const out = $('#pf-out');
   const now = currentSubject();
   if (out && now) out.textContent = describePart(now, fieldCtx()) || '（まだありません）';
+}
+
+// ── 表の部品の設定の欄の変更（data-tb）──
+// テーブルの列は項目（表）の列なので項目に書き、レコード一覧・関連レコード一覧の設定と、見本の値・幅は部品に書く
+function onTableFieldChange(el) {
+  const p = currentSubject();
+  const s = currentScreen();
+  if (!p || p.type !== 'table') return;
+  const k = el.dataset.tb;
+  const d = currentDesign();
+  const keep = isTextInput(el);
+  const run = (fn) => (keep ? commitKeepSide(fn) : fn());
+  if (k === 'kind') { actions.setTableKind(d.id, s.id, p.id, el.value); return; }
+  if (k === 'rows') { run(() => actions.updatePart(d.id, s.id, p.id, { view: { rows: Number(el.value) || 3 } })); return; }
+  if (k === 'sample' || k === 'width') {
+    if (!ui.colId) return;
+    const view = clone(p.view);
+    if (k === 'sample') view.samples[ui.colId] = String(el.value).split('\n').map((x) => x.trim());
+    else if (Number(el.value) > 0) view.widths[ui.colId] = Math.round(Number(el.value));
+    else delete view.widths[ui.colId];
+    run(() => actions.updatePart(d.id, s.id, p.id, { view: { samples: view.samples, widths: view.widths } }));
+    return;
+  }
+  if (k.startsWith('col.')) {
+    if (!p.item || p.item.link) return;
+    const cols = clone(p.item.props.columns);
+    const c = cols.find((x) => x.id === ui.colId);
+    if (!c) return;
+    const f = k.slice(4);
+    if (f === 'name') c.name = el.value.trim();
+    else if (f === 'required') c.required = el.checked;
+    else if (f === 'type') Object.assign(c, { type: el.value, props: keepInitialInOptions(el.value, normalizeProps(partType(el.value), c.props)) });
+    else if (f.startsWith('props.')) {
+      const pk = f.slice(6);
+      c.props = keepInitialInOptions(c.type, { ...c.props, [pk]: el.type === 'checkbox' && pk !== 'initial' ? el.checked
+        : pk === 'options' ? parseOptions(el.value)
+        : pk === 'initial' && el.type === 'checkbox' ? [...document.querySelectorAll('#side-settings [data-tb="col.props.initial"]')].filter((x) => x.checked).map((x) => x.value)
+        : el.tagName === 'TEXTAREA' ? el.value : el.value.trim() });
+    }
+    const apply = () => actions.updateItem(d.id, p.item.id, { props: { columns: cols.map(normalizeColumn) } });
+    if (keep && f !== 'props.options') commitKeepSide(apply); else apply();
+    return;
+  }
+  const pr = clone(p.props);
+  if (k === 'db') {
+    const x = el.value.startsWith('d:') ? findDesign(store.state, el.value.slice(2)) : null;
+    pr.db = x ? { designId: x.id, name: x.name, free: false } : { designId: null, name: '', free: el.value === '__free__' };
+    pr.cond.from = emptyRef();
+    pr.columns = [];
+  } else if (k === 'dbName') pr.db.name = el.value.trim();
+  else if (k === 'condFrom') {
+    const it = findItem(findDesign(store.state, pr.db.designId), el.value);
+    pr.cond.from = it ? { itemId: it.id, name: it.name } : emptyRef();
+  } else if (k === 'condFromName') pr.cond.from = { itemId: null, name: el.value.trim() };
+  else if (k === 'condTo') {
+    const it = findItem(d, el.value);
+    pr.cond.to = it ? { itemId: it.id, name: it.name } : emptyRef();
+  } else if (k === 'addCol' || k === 'addColName') {
+    const src = p.tableKind === 'related' ? findDesign(store.state, pr.db.designId) : d;
+    const it = k === 'addCol' ? findItem(src, el.value) : null;
+    const name = it ? it.name : el.value.trim();
+    if (!name) return;
+    pr.columns.push({ id: newId('c'), ref: { itemId: it ? it.id : null, name } });
+  } else return;
+  run(() => actions.updatePart(d.id, s.id, p.id, { props: pr }));
+}
+
+// 表の列の欄のボタン（列を選ぶ・並べ替える・外す・足す）
+function onTableColumnAction(action, id) {
+  const p = currentSubject();
+  const s = currentScreen();
+  if (!p || p.type !== 'table') return;
+  if (action === 'tb-col') { ui.colId = ui.colId === id ? null : id; renderSettings(currentDesign()); return; }
+  const isItem = ui.panel === 'items' || p.tableKind === 'subtable';
+  if (isItem && (!p.item || p.item.link)) return;
+  const cols = clone(isItem ? p.item.props.columns : p.props.columns);
+  const i = cols.findIndex((c) => c.id === id);
+  if (action === 'tb-col-add') {
+    const c = createColumnData('text1', `列 ${cols.length + 1}`);
+    cols.push(c);
+    ui.colId = c.id;
+  } else if (i < 0) return;
+  else if (action === 'tb-col-del') cols.splice(i, 1);
+  else {
+    const j = action === 'tb-col-up' ? i - 1 : i + 1;
+    if (j < 0 || j >= cols.length) return;
+    [cols[i], cols[j]] = [cols[j], cols[i]];
+  }
+  if (isItem) actions.updateItem(ui.designId, p.item.id, { props: { columns: cols } });
+  else actions.updatePart(ui.designId, s.id, p.id, { props: { columns: cols } });
+}
+
+// 絞り込みの欄の変更（data-fl）と、↑↓✕
+function onFilterFieldChange(el) {
+  const p = currentPart();
+  if (!p || p.type !== 'filter') return;
+  const items = [...(p.props.items || [])];
+  const values = items.map((_, i) => (p.props.values || [])[i] || '');
+  if (el.dataset.fl === 'add') {
+    if (!el.value) return;
+    items.push(el.value);
+    values.push('');
+  } else if (el.dataset.fl === 'value') values[Number(el.dataset.i)] = el.value.trim();
+  else return;
+  const apply = () => actions.updatePart(ui.designId, currentScreen().id, p.id, { props: { items, values } });
+  if (isTextInput(el)) commitKeepSide(apply); else apply();
+}
+function onFilterAction(action, i) {
+  const p = currentPart();
+  if (!p || p.type !== 'filter') return;
+  const items = [...(p.props.items || [])];
+  const values = items.map((_, k) => (p.props.values || [])[k] || '');
+  if (action === 'fl-del') { items.splice(i, 1); values.splice(i, 1); } else {
+    const j = action === 'fl-up' ? i - 1 : i + 1;
+    if (j < 0 || j >= items.length) return;
+    [items[i], items[j]] = [items[j], items[i]];
+    [values[i], values[j]] = [values[j], values[i]];
+  }
+  actions.updatePart(ui.designId, currentScreen().id, p.id, { props: { items, values } });
 }
 
 // 「＋ 写す項目を足す」と、組の ✕
@@ -2562,11 +3300,11 @@ function refreshChoiceInitial(options) {
 
 function readPartField(el) {
   const key = el.dataset.pf;
-  if (key === 'props.initial' && el.type === 'checkbox') {
-    return [...document.querySelectorAll('#side-settings [data-pf="props.initial"]')].filter((c) => c.checked).map((c) => c.value);
+  if ((key === 'props.initial' || key === 'props.items') && el.type === 'checkbox') {
+    return [...document.querySelectorAll(`#side-settings [data-pf="${key}"]`)].filter((c) => c.checked).map((c) => c.value);
   }
   if (el.type === 'checkbox') return el.checked;
-  if (key === 'props.options') return parseOptions(el.value);
+  if (key === 'props.options' || key === 'props.states' || key === 'props.tabs') return parseOptions(el.value);
   // 1 行の欄は前後の空白を取る。複数行の欄（説明の文字・メモ・押したとき）は書いたまま
   return el.tagName === 'TEXTAREA' ? el.value : el.value.trim();
 }
@@ -2577,7 +3315,7 @@ const TEXT_FIELDS = ['design-name', 'screen-name', 'design-desc'];
 function flushSideField() {
   const el = document.activeElement;
   if (ui.view !== 'editor' || !el || !el.closest || !el.closest('#side-settings') || !isTextInput(el)) return;
-  if (!el.dataset.pf && !el.dataset.lk && !TEXT_FIELDS.includes(el.dataset.field)) return;
+  if (!el.dataset.pf && !el.dataset.lk && !el.dataset.tb && !el.dataset.fl && !TEXT_FIELDS.includes(el.dataset.field)) return;
   if ((el.dataset.field === 'design-name' || el.dataset.field === 'screen-name') && !cleanName(el.value)) return; // 名前を消して打ち直している途中は待つ
   onSidePanelChange({ target: el });
 }
@@ -2697,6 +3435,7 @@ function selectPart(id) {
   flushSideField();
   if (ui.partId === id) return;
   ui.partId = id;
+  ui.colId = null;
   renderStage();
   renderSettings(currentDesign());
   updateToolbarState();
@@ -2804,7 +3543,7 @@ function openItemsPanel() {
 function selectItem(id) {
   flushSideField();
   if (ui.itemId === id && ui.panel === 'items') return;
-  Object.assign(ui, { panel: 'items', itemId: id });
+  Object.assign(ui, { panel: 'items', itemId: id, colId: null });
   updateEditor();
 }
 
@@ -3109,6 +3848,8 @@ function onEditorClick(action, btn) {
     case 'lk-add': editLookupCopies((c) => c.push({ from: emptyRef(), to: emptyRef() })); return true;
     case 'lk-del': editLookupCopies((c) => c.splice(Number(btn.dataset.i), 1)); return true;
     case 'open-lookup-key': openLookupKey(btn.dataset.id); return true;
+    case 'tb-col': case 'tb-col-up': case 'tb-col-down': case 'tb-col-del': case 'tb-col-add': onTableColumnAction(action, btn.dataset.id); return true;
+    case 'fl-up': case 'fl-down': case 'fl-del': onFilterAction(action, Number(btn.dataset.i)); return true;
     case 'open-link-source': openLinkSource(btn.dataset.id); return true;
     case 'toggle-palette':
       ui.paletteClosed[btn.dataset.id] = !ui.paletteClosed[btn.dataset.id];
