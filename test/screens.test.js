@@ -367,3 +367,119 @@ test('保存して開き直しても、画面の順番と中身が残る', async
   await waitFor(() => api2.store.state.designs.length === 1, { label: '読み込み' });
   assert.deepEqual(plain(api2.store.state.designs[0].screens.map((s) => [s.name, s.parts.length])), before);
 });
+
+// ── 見直しで見つかったこと ──
+test('白紙の画面の名前は、使われていない番号にする（画面を消した後でも「画面 3 2」にしない）', async (t) => {
+  const { api, id, design, names } = await bootEditor(t);
+  const s1 = design().screens[0].id;
+  const s2 = api.actions.addScreen(id, 'blank', s1);
+  const s3 = api.actions.addScreen(id, 'blank', s2);
+  api.actions.deleteScreen(id, s2);
+  assert.deepEqual(names(), ['画面 1', '画面 3']);
+  api.actions.addScreen(id, 'blank', s3);
+  assert.deepEqual(names(), ['画面 1', '画面 3', '画面 4']);
+});
+
+test('移る先を「URL を書く」に変えたリンクの文字は、画面を消すときに数えない', async (t) => {
+  const { app, api, id, design } = await bootEditor(t);
+  const s1 = design().screens[0].id;
+  const s2 = api.actions.addScreen(id, 'blank', s1);
+  const link = api.actions.addPart(id, s1, 'link', { x: 0, y: 200 });
+  api.actions.updatePart(id, s1, link, { props: { to: 'screen', screenId: s2 } });
+  api.actions.updatePart(id, s1, link, { props: { to: 'url', url: 'https://example.com/' } });
+  click($(app, `.sl-item[data-id="${s2}"]`));
+  api.runCommand('deleteScreen');
+  await waitFor(() => $(app, '.modal'));
+  assert.doesNotMatch($(app, '.modal').textContent, /リンクの文字/);
+  click($(app, '.modal [data-dlg="cancel"]'));
+  await tick();
+});
+
+test('長い名前の画面を複製しても、名前は 100 文字までで「のコピー」が残る', async (t) => {
+  const { api, id, design } = await bootEditor(t);
+  const s1 = design().screens[0].id;
+  api.actions.updateScreen(id, s1, { name: 'あ'.repeat(100) });
+  api.actions.duplicateScreen(id, s1);
+  api.actions.duplicateScreen(id, s1);
+  const [, c2, c1] = design().screens.map((s) => s.name);
+  assert.ok(c1.endsWith(' のコピー') && c1.length <= 100, c1);
+  assert.ok(c2.endsWith(' のコピー 2') && c2.length <= 100, c2);
+});
+
+test('項目の一覧表・つながりの図を出している間は、開いている画面の複製・消すは使わない（「…」のメニューからは使える）', async (t) => {
+  const { app, api, id, design, names } = await bootEditor(t);
+  const s1 = design().screens[0].id;
+  const s2 = api.actions.addScreen(id, 'blank', s1);
+  click($(app, '[data-action="open-items"]'));
+  assert.equal($(app, '#toolbar [data-action="duplicate-screen"]').disabled, true);
+  assert.equal($(app, '#tb-del-screen').disabled, true);
+  assert.equal(api.runCommand('duplicateScreen'), false);
+  assert.equal(api.runCommand('deleteScreen'), false);
+  assert.equal(names().length, 2);
+  click($(app, `.sl-more[data-id="${s2}"]`));
+  click($(app, '.screen-menu [data-action="screen-dup"]'));
+  assert.deepEqual(names(), ['画面 1', '画面 2', '画面 2 のコピー']);
+  assert.equal(api.ui.panel, 'screen', '複製した画面を開く');
+  assert.equal($(app, '#tb-del-screen').disabled, false);
+});
+
+test('ドラッグの途中で PageDown を押しても、画面は移らない（放したときに、移った先の画面へ高さが書かれないように）', async (t) => {
+  const { app, api, id, design, screenOf } = await bootEditor(t);
+  const s1 = design().screens[0].id;
+  const s2 = api.actions.addScreen(id, 'blank', s1);
+  click($(app, `.sl-item[data-id="${s1}"]`));
+  const mouse = (el, type, init) => el.dispatchEvent(new app.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init }));
+  mouse($(app, '.screen-resize'), 'mousedown', { clientY: 100 });
+  key(app, app.document.body, { key: 'PageDown' });
+  assert.equal(api.ui.screenId, s1, 'ドラッグの途中では移らない');
+  mouse(app.document, 'mousemove', { clientY: 200 });
+  mouse(app.document, 'mouseup', { clientY: 200 });
+  assert.equal(screenOf(s2).height, 800, 'ほかの画面の高さは変わらない');
+  assert.ok(screenOf(s1).height > 800, 'ドラッグした画面の高さが変わる');
+});
+
+test('画面を足して元に戻すと、足す前に開いていた画面へ戻る', async (t) => {
+  const { app, api, id, design } = await bootEditor(t);
+  const s1 = design().screens[0].id;
+  const s2 = api.actions.addScreen(id, 'blank', s1);
+  click($(app, `.sl-item[data-id="${s2}"]`));
+  api.runCommand('duplicateScreen');
+  assert.notEqual(api.ui.screenId, s2);
+  api.store.undo();
+  assert.equal(api.ui.screenId, s2, 'いちばん上の画面ではなく、複製する前の画面');
+});
+
+test('窓を Esc で閉じても、選んでいる部品は外れない', async (t) => {
+  const { app, api, id, design } = await bootEditor(t);
+  const s1 = design().screens[0].id;
+  api.actions.addScreen(id, 'blank', s1);
+  click($(app, `.sl-item[data-id="${s1}"]`));
+  const pid = api.actions.addPart(id, s1, 'button', { x: 0, y: 48 });
+  api.selectPart(pid);
+  api.runCommand('deleteScreen');
+  await waitFor(() => $(app, '.modal'));
+  key(app, $(app, '.modal [data-dlg="cancel"]'), { key: 'Escape' });
+  await tick();
+  assert.equal($(app, '.modal'), null, '窓は閉じる');
+  assert.equal(api.ui.partId, pid, '部品は選んだまま');
+});
+
+test('「…」のメニューを開いたまま、ほかの画面の縮小画像を押すとメニューを閉じる。メニューの項目は押す前に打ちかけの文字を保存する', async (t) => {
+  const { app, api, id, design, names } = await bootEditor(t);
+  const s1 = design().screens[0].id;
+  const s2 = api.actions.addScreen(id, 'blank', s1);
+  click($(app, `.sl-item[data-id="${s1}"]`));
+  click($(app, `.sl-more[data-id="${s2}"]`));
+  assert.equal($(app, `.sl-more[data-id="${s2}"]`).getAttribute('aria-expanded'), 'true');
+  assert.equal(app.document.activeElement, $(app, '.screen-menu [data-action="screen-rename"]'), '最初の項目にフォーカスを移す');
+  $(app, `.sl-item[data-id="${s2}"]`).dispatchEvent(new app.window.MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+  assert.equal($(app, '.screen-menu'), null);
+  assert.equal(api.ui.screenId, s2);
+  // 右の欄で画面の名前を打ちかけのまま、「…」から複製する
+  const field = $(app, '[data-field="screen-name"]');
+  field.focus();
+  field.value = '詳細';
+  click($(app, `.sl-more[data-id="${s2}"]`));
+  click($(app, '.screen-menu [data-action="screen-dup"]'));
+  assert.deepEqual(names(), ['画面 1', '詳細', '詳細 のコピー'], '打ちかけの名前を保存してから複製する');
+});

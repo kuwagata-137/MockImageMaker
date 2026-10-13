@@ -154,12 +154,14 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .sl-name{font-size:12px;color:#475569;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl-item.active .sl-name{color:#1d4ed8;font-weight:600}
 /* 画面の一覧の「…」・並べ替え・「＋ 画面を足す」（画像 q31・q29） */
-.sl-wrap{position:relative}
-.sl-more{position:absolute;right:6px;top:6px;width:26px;height:22px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;color:#475569;font-size:14px;line-height:1;cursor:pointer;display:none}
-.sl-wrap:hover .sl-more,.sl-more.open,.sl-more:focus-visible{display:block}
+.sl-wrap{position:relative;padding-bottom:12px}
+.sl-wrap .sl-item{margin-bottom:0}
+.sl-more{position:absolute;right:6px;top:6px;width:26px;height:22px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;color:#475569;font-size:14px;line-height:1;cursor:pointer;opacity:0}
+.sl-wrap:hover .sl-more,.sl-wrap:focus-within .sl-more,.sl-more.open{opacity:1}
 .sl-more:hover{background:#f1f5f9}
-.sl-wrap.drop-before::before,.sl-wrap.drop-after::after{content:'';display:block;height:3px;background:#2563eb;border-radius:2px;margin:-2px 0 2px}
-.sl-wrap.drop-after::after{margin:-10px 0 9px}
+.sl-wrap.drop-before::before,.sl-wrap.drop-after::after{content:'';position:absolute;left:0;right:0;height:3px;background:#2563eb;border-radius:2px}
+.sl-wrap.drop-before::before{top:-8px}
+.sl-wrap.drop-after::after{bottom:4px}
 body.screen-sorting,body.screen-sorting *{cursor:grabbing!important}
 body.screen-sorting .sl-item.dragging{opacity:.4}
 .sl-add{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;padding:8px 0;border:1px dashed #94a3b8;border-radius:8px;background:#f8fafc;color:#1d3f6e;font-weight:700;cursor:pointer}
@@ -664,11 +666,28 @@ function copyScreenData(src, { name, id = newId('s'), screenIds = null }) {
   return copy;
 }
 
-// 画面の名前が重ならないようにする（「一覧」がもうあれば「一覧 2」）
+// 画面の名前が重ならないようにする（「一覧」がもうあれば「一覧 2」）。番号を足しても名前の長さの上限を超えないように、元の名前を切る
 function uniqueScreenName(design, base) {
   const names = new Set(design.screens.map((s) => s.name));
   if (!names.has(base)) return base;
-  for (let n = 2; ; n++) if (!names.has(`${base} ${n}`)) return `${base} ${n}`;
+  for (let n = 2; ; n++) {
+    const name = `${base.slice(0, NAME_MAX - String(n).length - 1).trim()} ${n}`;
+    if (!names.has(name)) return name;
+  }
+}
+// 白紙の画面の名前（「画面 4」）。画面の数＋1 から数えて、使われていない番号にする（「画面 3 2」のようにしないため）
+function blankScreenName(design) {
+  const names = new Set(design.screens.map((s) => s.name));
+  for (let n = design.screens.length + 1; ; n++) if (!names.has(`画面 ${n}`)) return `画面 ${n}`;
+}
+// 複製した画面の名前（「◯◯ のコピー」、重なれば「◯◯ のコピー 2」）。長い名前でも「のコピー」と番号が切れないように、元の名前のほうを切る
+function copyScreenName(design, name) {
+  const names = new Set(design.screens.map((s) => s.name));
+  for (let n = 1; ; n++) {
+    const suffix = n === 1 ? ' のコピー' : ` のコピー ${n}`;
+    const full = cleanName(name).slice(0, NAME_MAX - suffix.length).trim() + suffix;
+    if (!names.has(full)) return full;
+  }
 }
 
 // 画面を afterId の画面のすぐ後ろに入れる（見つからなければいちばん後ろ）
@@ -678,7 +697,8 @@ function insertScreenAfter(design, screen, afterId) {
 }
 
 // リンクの文字で、移る先がその画面のもの
-const linksToScreen = (p, screenId) => p.type === 'link' && isObj(p.props) && !!screenId && p.props.screenId === screenId;
+// （移る先を「URL を書く」に変えた後も screenId は残るので、移る先が画面のものだけを見る）
+const linksToScreen = (p, screenId) => p.type === 'link' && isObj(p.props) && p.props.to === 'screen' && !!screenId && p.props.screenId === screenId;
 // ほかの画面にある、その画面を移る先にしているリンクの文字の数（画面を消す確かめの窓に書く）
 const linksInto = (design, screenId) => design.screens.filter((s) => s.id !== screenId)
   .reduce((n, s) => n + s.parts.filter((p) => linksToScreen(p, screenId)).length, 0);
@@ -2009,7 +2029,7 @@ const actions = {
     const d = findDesign(store.state, designId);
     const tpl = SCREEN_TEMPLATES.find((t) => t.id === templateId);
     if (!d || !tpl) return null;
-    const name = uniqueScreenName(d, tpl.id === 'blank' ? `画面 ${d.screens.length + 1}` : tpl.name);
+    const name = tpl.id === 'blank' ? blankScreenName(d) : uniqueScreenName(d, tpl.name);
     const { screen, items } = screenFromTemplate(d, tpl.id, name);
     mutateDesign(designId, (dd) => {
       dd.items.push(...items);
@@ -2022,7 +2042,7 @@ const actions = {
     const d = findDesign(store.state, designId);
     const src = findScreen(designId, screenId);
     if (!src) return null;
-    const copy = copyScreenData(src, { name: uniqueScreenName(d, cleanName(src.name + ' のコピー')) });
+    const copy = copyScreenData(src, { name: copyScreenName(d, src.name) });
     mutateDesign(designId, (dd) => { insertScreenAfter(dd, copy, screenId); });
     return copy.id;
   },
@@ -2550,7 +2570,7 @@ function showDialog({ title, body, okLabel, okClass = 'primary', init, collect, 
       close(r);
     };
     function onKey(e) {
-      if (e.key === 'Escape') { e.preventDefault(); close(null); return; }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(null); return; }
       if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
       // ボタンの上の Enter は、ブラウザの本来の動き（そのボタンを押す）に任せる。複数行の欄では改行にする
       if (e.target && e.target.closest && e.target.closest('button, textarea')) return;
@@ -2906,6 +2926,7 @@ const ui = {
   homeMap: false, // 最初の画面で、カードの代わりにつながりの図を出しているか（アプリを閉じるまで覚えておく）
   colId: null, // 表の部品の設定の欄で選んでいる列の id
   screenMenu: null, // 左の画面の一覧で「…」のメニューを開いている画面の id
+  prevScreenId: null, // 画面を足す・複製する前に開いていた画面の id（元に戻すでその画面が消えたときに戻る先）
 };
 // partId・calloutId は、1 つだけ選んでいるときのその部品・吹き出しの id（ほかのときは null）。入れると、それだけを選んだことにする
 ['partId', 'calloutId'].forEach((key) => {
@@ -3317,7 +3338,7 @@ function currentSubject() {
 function openDesign(id) {
   const d = findDesign(store.state, id);
   if (!d) return;
-  Object.assign(ui, { view: 'editor', designId: id, screenId: d.screens[0].id, zoom: 1, mode: 'select', menuFor: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false });
+  Object.assign(ui, { view: 'editor', designId: id, screenId: d.screens[0].id, prevScreenId: null, screenMenu: null, zoom: 1, mode: 'select', menuFor: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false });
   store.clearHistory();
   mountEditor();
 }
@@ -3355,8 +3376,8 @@ function toolbarHtml() {
     group('ファイル', '<button class="bigbtn" data-action="home" title="画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>'),
     group('画面', `
       <button class="bigbtn" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します"><span class="ico">＋</span>画面を<br>足す</button>
-      <button class="bigbtn" data-action="duplicate-screen" title="開いている画面を、部品も吹き出しもそのまま写して、すぐ後ろに足します"><span class="ico">❐</span>画面を<br>複製</button>
-      <button class="bigbtn" data-action="delete-screen" id="tb-del-screen" title="開いている画面を消します（最後の 1 つは消せません）"><span class="ico">✕</span>画面を<br>消す</button>`),
+      <button data-screen-only class="bigbtn" data-action="duplicate-screen" title="開いている画面を、部品も吹き出しもそのまま写して、すぐ後ろに足します"><span class="ico">❐</span>画面を<br>複製</button>
+      <button data-screen-only class="bigbtn" data-action="delete-screen" id="tb-del-screen" title="開いている画面を消します（最後の 1 つは消せません）"><span class="ico">✕</span>画面を<br>消す</button>`),
     group('履歴', `<div class="stack">
       <button class="tbtn" data-action="undo" id="tb-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" id="tb-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
@@ -3387,7 +3408,7 @@ function toolbarHtml() {
 function updateEditor({ keepSide = false } = {}) {
   const d = currentDesign();
   if (!d || d.trashedAt) { goHome(); return; }
-  if (!d.screens.some((s) => s.id === ui.screenId)) ui.screenId = d.screens[0].id;
+  if (!d.screens.some((s) => s.id === ui.screenId)) ui.screenId = (d.screens.find((s) => s.id === ui.prevScreenId) || d.screens[0]).id;
   // 元に戻すなどで部品・吹き出しが消えたときは、選ぶのをやめる
   const sc0 = currentScreen();
   ui.sel = ui.sel.filter((x) => (x.k === 'p' ? findPart(sc0, x.id) : findCallout(sc0, x.id)));
@@ -3422,10 +3443,10 @@ function updateToolbarState() {
   });
   $('#tb-paste').disabled = !onScreen || !ui.clipboard;
   $('#tb-renumber').disabled = !onScreen || !s || !s.parts.some((p) => p.no != null);
-  $('#tb-del-screen').disabled = currentDesign().screens.length < 2;
   $('#tb-mode-select').classList.toggle('on', ui.mode === 'select');
   $('#tb-mode-hand').classList.toggle('on', ui.mode === 'hand');
   document.querySelectorAll('#toolbar [data-screen-only]').forEach((b) => { b.disabled = !onScreen; });
+  if (currentDesign().screens.length < 2) $('#tb-del-screen').disabled = true; // 最後の 1 つの画面は消せない
   $('#canvas-wrap').classList.toggle('hand', ui.mode === 'hand');
 }
 
@@ -3442,7 +3463,7 @@ function screenListHtml(d) {
         <div class="sl-thumb">${thumbHtml(d, s, 132, 84)}</div>
         <div class="sl-name">${i + 1}　${esc(s.name)}</div>
       </button>
-      <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-label="「${esc(s.name)}」の画面の操作" title="名前を変える・複製・並べ替え・消す">…</button>
+      <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-haspopup="menu" aria-expanded="${ui.screenMenu === s.id}" aria-label="「${esc(s.name)}」の画面の操作" title="名前を変える・複製・並べ替え・消す">…</button>
     </div>`).join('')
     + '<button class="sl-add" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します">＋ 画面を足す</button>';
 }
@@ -3458,14 +3479,17 @@ function renderScreenMenu(d) {
   const id = esc(ui.screenMenu);
   root.innerHTML = `
     <div class="screen-menu" role="menu" style="left:${Math.round(r.left)}px;top:${Math.round(r.bottom + 4)}px">
-      <button data-action="screen-rename" data-id="${id}">名前を変える</button>
-      <button data-action="screen-dup" data-id="${id}">複製する</button>
+      <button role="menuitem" data-action="screen-rename" data-id="${id}">名前を変える</button>
+      <button role="menuitem" data-action="screen-dup" data-id="${id}">複製する</button>
       <hr>
-      <button data-action="screen-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ動かす</button>
-      <button data-action="screen-down" data-id="${id}"${i === d.screens.length - 1 ? ' disabled' : ''}>下へ動かす</button>
+      <button role="menuitem" data-action="screen-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ動かす</button>
+      <button role="menuitem" data-action="screen-down" data-id="${id}"${i === d.screens.length - 1 ? ' disabled' : ''}>下へ動かす</button>
       <hr>
-      <button class="danger" data-action="screen-del" data-id="${id}"${d.screens.length < 2 ? ' disabled title="最後の 1 つの画面は消せません"' : ''}>この画面を消す</button>
+      <button role="menuitem" class="danger" data-action="screen-del" data-id="${id}"${d.screens.length < 2 ? ' disabled title="最後の 1 つの画面は消せません"' : ''}>この画面を消す</button>
     </div>`;
+  // 窓の下からはみ出すときは、「…」の上に開く
+  const menu = root.firstElementChild;
+  if (r.bottom + 4 + menu.offsetHeight > window.innerHeight - 8) menu.style.top = Math.max(8, Math.round(r.top - 4 - menu.offsetHeight)) + 'px';
 }
 function closeScreenMenu() {
   if (!ui.screenMenu) return;
@@ -3483,7 +3507,9 @@ function refreshScreenList() {
 }
 
 // ── 画面を足す・複製・並べ替え・消す（第 4 段階。画像 q29〜q32）──
+// 足した・複製した画面を開く。元に戻すでその画面が消えたときは、前に開いていた画面へ戻る（updateEditor）
 function openScreen(id) {
+  if (ui.screenId !== id) ui.prevScreenId = ui.screenId;
   Object.assign(ui, { screenId: id, sel: [], panel: 'screen', addItemMenu: false });
   updateEditor();
 }
@@ -3493,7 +3519,7 @@ async function openAddScreenDialog() {
   const d = currentDesign();
   const cur = findScreen(d.id, ui.screenId) || d.screens[0];
   const cards = SCREEN_TEMPLATES.map((t, i) => {
-    const { screen, items } = screenFromTemplate(d, t.id, t.id === 'blank' ? `画面 ${d.screens.length + 1}` : t.name);
+    const { screen, items } = screenFromTemplate(d, t.id, t.id === 'blank' ? blankScreenName(d) : t.name);
     const preview = { ...d, items: [...d.items, ...items] }; // 見本の項目も名前を出すため
     return `<button type="button" class="tpl${i === 0 ? ' sel' : ''}" data-tpl="${t.id}" aria-pressed="${i === 0}">
       <div class="th">${thumbHtml(preview, screen, 180, 104)}</div><b>${esc(t.name)}</b><small>${esc(t.note)}</small></button>`;
@@ -3554,6 +3580,7 @@ async function deleteScreenWithConfirm(screenId) {
 
 // PageUp・PageDown（アプリのメニューの「前の画面へ」「次の画面へ」）
 function stepScreen(dir) {
+  if (drag) return; // ドラッグの途中で画面を移ると、放したときに移った先の画面へ高さや位置が書かれるため
   const d = currentDesign();
   const next = d.screens[d.screens.findIndex((s) => s.id === ui.screenId) + dir];
   if (next) openScreen(next.id);
@@ -5405,8 +5432,6 @@ function runCommand(cmd) {
     case 'importItems': openImportDialog().catch(reportPageError); return true;
     case 'deselectItem': if (ui.panel === 'items') selectItem(null); return true;
     case 'addScreen': openAddScreenDialog().catch(reportPageError); return true;
-    case 'duplicateScreen': duplicateScreenAndOpen(ui.screenId); return true;
-    case 'deleteScreen': deleteScreenWithConfirm(ui.screenId).catch(reportPageError); return true;
     case 'prevScreen': case 'nextScreen': stepScreen(cmd === 'nextScreen' ? 1 : -1); return true;
   }
   if (ui.panel !== 'screen') return false;
@@ -5422,6 +5447,9 @@ function runCommand(cmd) {
     case 'selectAll': selectAll(); return true;
     case 'numberOn': case 'numberOff': actions.numberMany(ui.designId, currentScreen().id, ui.sel, cmd === 'numberOn'); return true;
     case 'renumber': actions.renumberParts(ui.designId, currentScreen().id); return true;
+    // 開いている画面の複製・消す（項目の一覧表やつながりの図を出している間は、どの画面か見えないので使わない）
+    case 'duplicateScreen': duplicateScreenAndOpen(ui.screenId); return true;
+    case 'deleteScreen': deleteScreenWithConfirm(ui.screenId).catch(reportPageError); return true;
   }
   if (own(ALIGN_COMMANDS, cmd)) { actions.alignMany(ui.designId, currentScreen().id, ui.sel, ALIGN_COMMANDS[cmd]); return true; }
   const nudge = { moveLeft: [-1, 0], moveRight: [1, 0], moveUp: [0, -1], moveDown: [0, 1] }[cmd];
@@ -5472,12 +5500,17 @@ function onEditorClick(action, btn) {
       Object.assign(ui, { screenId: btn.dataset.id, sel: [], panel: 'screen', addItemMenu: false });
       updateEditor();
       return true;
-    case 'screen-menu':
+    case 'screen-menu': {
+      flushSideField();
       ui.screenMenu = ui.screenMenu === btn.dataset.id ? null : btn.dataset.id;
       refreshScreenList();
+      const first = ui.screenMenu && $('#screen-menu-root .screen-menu button:not(:disabled)');
+      if (first) first.focus(); // キーボードでも項目を選べるように
       return true;
+    }
     case 'screen-rename': case 'screen-dup': case 'screen-up': case 'screen-down': case 'screen-del':
       closeScreenMenu();
+      flushSideField();
       onScreenMenu(action, btn.dataset.id);
       return true;
     case 'add-part': addPartAtCenter(btn.dataset.type); return true;
@@ -5569,7 +5602,13 @@ function editorKeyCommand(e) {
 function onKeyDown(e) {
   if (isDialogOpen()) return;
   if (e.key === 'Escape' && ui.menuFor) { ui.menuFor = null; refreshCards(); return; }
-  if (e.key === 'Escape' && ui.screenMenu) { closeScreenMenu(); return; }
+  if (e.key === 'Escape' && ui.screenMenu) {
+    const id = ui.screenMenu;
+    closeScreenMenu();
+    const more = [...document.querySelectorAll('.sl-more')].find((b) => b.dataset.id === id);
+    if (more) more.focus();
+    return;
+  }
   const inField = e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
   if (ui.view === 'editor' && !inField && !e.altKey && !e.isComposing) {
     const partCmd = editorKeyCommand(e);
@@ -5607,6 +5646,10 @@ function bindGlobalEvents() {
     const node = e.button === 0 ? e.target.closest('.mnode') : null;
     if (node) { startMapDrag(e, node); return; }
     if (ui.view !== 'editor' || e.button !== 0) return;
+    // 「…」・「＋ 画面を足す」・「…」のメニューの項目は、押した時点で右の欄を離れない（離れると打ちかけの文字の保存で画面の一覧が描き直され、
+    // 押したボタンが click の前に消えて、1 回目の押しが効かないため）。打ちかけの文字は、押したときの処理の初めに保存する
+    if (e.target.closest('.sl-more, .sl-add, .screen-menu button')) { e.preventDefault(); return; }
+    if (ui.screenMenu) closeScreenMenu();
     // 部品の箱のボタンからのドラッグ（押しただけなら click で置く）
     const btn = e.target.closest('.pal-btn');
     if (btn) { startPlace(e, btn.dataset.type); return; }
@@ -5630,7 +5673,9 @@ function bindGlobalEvents() {
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('mousemove', onDragMove);
   document.addEventListener('mouseup', onDragEnd);
-  window.addEventListener('resize', () => { if (ui.view === 'editor') syncZoomSpacer(); });
+  window.addEventListener('resize', () => { if (ui.view === 'editor') { syncZoomSpacer(); closeScreenMenu(); } });
+  // 画面の一覧を送ったときは、「…」のメニューを閉じる（「…」から離れるため。scroll は泡立たないので、捕まえる側で受ける）
+  document.addEventListener('scroll', (e) => { if (e.target && e.target.id === 'screen-list') closeScreenMenu(); }, true);
   window.addEventListener('blur', flushSideField);
   window.addEventListener('beforeunload', flushSideField);
 }
