@@ -1,0 +1,58 @@
+name: Build Windows installer
+
+# Windows 用のインストーラ（.exe）を GitHub の Windows の上で作り、ダウンロードできるように置く
+# （CheckListMaker の build-windows.yml から写した）。手元で npm run dist が通らないときの代わりにもなる。
+
+on:
+  # PR ごとに作る
+  pull_request:
+  # Actions の画面から手で動かすこともできる
+  workflow_dispatch:
+
+jobs:
+  build-win:
+    runs-on: windows-latest
+    env:
+      # インストーラに Puppeteer の Chrome は要らない
+      PUPPETEER_SKIP_DOWNLOAD: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        # package-lock.json をコミットしているので npm ci を使う
+        run: npm ci --no-audit --no-fund
+
+      - name: Build Windows installer
+        # npm run dist は、Electron 本体を取得してから electron-builder を動かす。署名の証明書はないので、署名なしの exe になる
+        run: npm run dist
+
+      - name: List build output
+        run: dir dist
+        shell: cmd
+
+      - name: Upload installer artifact
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: MockImageMaker-Windows-installer
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+          if-no-files-found: error
+
+      - name: Write download link to run summary
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo "## モックイメージメーカー Windows インストーラ";
+            echo "";
+            echo "- ダウンロード: ${{ steps.upload.outputs.artifact-url }}";
+            echo "- またはこのページの下の **Artifacts → MockImageMaker-Windows-installer** から取得";
+          } >> "$GITHUB_STEP_SUMMARY"
