@@ -6,6 +6,8 @@
 //  - ファイルへの保存（storage.js）。終了の前に、並んでいる書き込みが終わるのを待つ
 //  - 書き出し（PDF・PNG・HTML）と HTML の取り込みのファイルの窓（export.js）
 //  - 2 つ目の起動を止める（2 つ動くと、互いの designs.json を丸ごと上書きするため）
+//  - AI（Claude Code など）の頼みの受け口（automation-main.js。第 7 段階）。--background の起動では窓を出さずに動き、
+//    AI がつながっている間の窓の × は、終わらずに窓を隠す
 // CheckListMaker の録画・ガジェット・Word・Excel の書き出しは写していない。
 'use strict';
 
@@ -14,11 +16,15 @@ const path = require('path');
 const windowStateKeeper = require('electron-window-state');
 const { initStorage } = require('./storage');
 const { initExport } = require('./export');
+const { initAutomation } = require('./automation-main');
 
 const APP_HTML = 'mock_v1.00.html';
 const APP_TITLE = 'モックイメージメーカー';
 // 確かめのための起動（環境変数 MIM_HEADLESS=1）のときだけ、窓を画面に出さない
 const HEADLESS = process.env.MIM_HEADLESS === '1';
+// AI の入口（mcp-server.js）がアプリを起動したとき（--background）は、窓を作るが出さない（設計書 7-4）
+const BACKGROUND = process.argv.includes('--background');
+const APP_VERSION = APP_HTML.replace(/^mock_v|\.html$/g, '');
 
 // npm start のときは、保存データを作業フォルダの .devdata/userData に置く
 // （インストールしたアプリの %APPDATA%\MockImageMaker と混ざらないようにするため）。
@@ -28,6 +34,7 @@ if (!app.isPackaged) app.setPath('userData', process.env.MIM_USER_DATA || path.j
 let mainWin = null;
 let storage = null;
 let quitReady = false;
+let automation = null;
 
 // ── メニュー ───────────────────────────────────────────────
 // registerAccelerator:false は、キーの表示だけをしてキーは横取りしない指定。
@@ -157,14 +164,25 @@ function createMainWindow() {
     minWidth: 800,
     minHeight: 560,
     title: APP_TITLE,
-    show: !HEADLESS,
+    show: !HEADLESS && !BACKGROUND,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // 窓を隠している間も、AI の頼みの処理（タイマー・描き直し）を遅らせない
+      backgroundThrottling: false,
     },
   });
   winState.manage(mainWin);
+  // AI がつながっている間の ×（「ファイル > 終了」でないとき）は、終わらずに窓を隠す（設計書 7-5）
+  mainWin.on('close', (e) => {
+    if (!automation || !automation.shouldHideOnClose()) return;
+    e.preventDefault();
+    mainWin.hide();
+    automation.windowShownOrHidden(false); // 窓を出さない確かめの起動では hide の知らせが来ないので、ここでも知らせる
+  });
+  mainWin.on('show', () => automation && automation.windowShownOrHidden(true));
+  mainWin.on('hide', () => automation && automation.windowShownOrHidden(false));
   // 窓へ HTML ファイルなどを落としたときに、アプリの画面が置き換わるのを止める
   mainWin.webContents.on('will-navigate', (e) => e.preventDefault());
   mainWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -175,23 +193,34 @@ function createMainWindow() {
 }
 
 function focusMainWindow() {
-  if (!mainWin || HEADLESS) return;
+  if (!mainWin) return;
+  if (HEADLESS) {
+    if (automation) automation.noteShowRequested();
+    return;
+  }
+  if (!mainWin.isVisible()) mainWin.show(); // 裏で動いていた（--background・× で隠した）ときは窓を出す
   if (mainWin.isMinimized()) mainWin.restore();
   mainWin.focus();
 }
 
 // ── 起動と終了 ─────────────────────────────────────────────
-if (!app.requestSingleInstanceLock()) {
+if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
   // 2 つ目の起動は何もせずに終わる（1 つ目の窓は second-instance で前に出る）
   app.quit();
 } else {
-  app.on('second-instance', focusMainWindow);
+  // 2 つ目の起動が AI の入口からの --background なら、窓を前に出さない（人が使っている窓の邪魔をしない）
+  app.on('second-instance', (_e, _argv, _cwd, data) => {
+    if (data && data.background) return;
+    focusMainWindow();
+  });
 
   app.whenReady().then(() => {
     storage = initStorage(app, ipcMain);
     initExport(app, ipcMain, { headless: HEADLESS });
+    automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION });
     buildAppMenu();
     createMainWindow();
+    automation.windowCreated();
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
     });
@@ -205,12 +234,16 @@ if (!app.requestSingleInstanceLock()) {
   // 待つのは will-quit（窓が全部閉じたあと）で、before-quit ではない。メニューの「ファイル > 終了」（app.quit()）では、
   // before-quit の時点でまだ窓が開いていて、右の欄の打ちかけの文字の保存（ページの beforeunload で送る）が届く前に
   // 待ち終わってしまい、書きかけのまま終わるため。窓の × のときは、窓が閉じてから app.quit() になるので、どちらでも同じ
+  // AI の受け口は先に止める（automation.json を消し、つながりを閉じる）
   app.on('will-quit', (e) => {
     if (quitReady || !storage) return;
     e.preventDefault();
-    storage.whenIdle().finally(() => {
-      quitReady = true;
-      app.quit();
-    });
+    Promise.resolve(automation && automation.stop())
+      .catch(() => {})
+      .then(() => storage.whenIdle())
+      .finally(() => {
+        quitReady = true;
+        app.quit();
+      });
   });
 }

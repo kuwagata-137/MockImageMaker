@@ -36,6 +36,9 @@
       "preload.js",
       "storage.js",
       "export.js",
+      "automation-protocol.js",
+      "automation.js",
+      "automation-main.js",
       "package.json"
     ],
     "win": {
