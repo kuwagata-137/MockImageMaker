@@ -757,6 +757,11 @@ function snapHeight(h, device) {
   const extra = Math.round((Number(h) - min) / GRID) * GRID;
   return min + Math.max(0, extra || 0);
 }
+// 下の端（bottom）まで入る、いちばん低い高さ（機器の 1 画面分から 8 ドットずつ）
+function heightToFit(bottom, device) {
+  const min = DEVICES[device].height;
+  return min + Math.max(0, Math.ceil((bottom - min) / GRID) * GRID);
+}
 
 // 機器の種類を変えると、幅はその機器の幅になる。下へ伸ばした分は、新しい機器の 1 画面分に足す
 function changeDevice(screen, device) {
@@ -2634,7 +2639,7 @@ const actions = {
         if (p.type === 'table') {
           p.view = normalizeTableView(p.view);
           const h = tableHeight(p.view.rows);
-          if (p.y + h > sc.height) sc.height = Math.ceil((p.y + h) / GRID) * GRID; // 表を上へずらさず、画面を伸ばす
+          if (p.y + h > sc.height) sc.height = heightToFit(p.y + h, sc.device); // 表を上へずらさず、画面を伸ばす
           Object.assign(p, fitRect({ ...p, h }, sc));
         }
       }

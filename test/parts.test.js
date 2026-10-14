@@ -849,6 +849,19 @@ test('表: 見本の行の数を増やして画面の下からはみ出すとき
   assert.deepEqual(plain([screen().parts[0].h, screen().height]), [168, 800], '元に戻すで 1 回で戻る');
 });
 
+test('表: スマホの画面を伸ばすときも、高さは機器の 1 画面分から 8 ドットずつ（読み込み直しても高さが変わらない）', async (t) => {
+  const { api, add, screen } = await bootEditor(t);
+  api.actions.updateScreen(api.ui.designId, screen().id, { device: 'phone' });
+  const tb = add('table');
+  api.actions.movePart(api.ui.designId, screen().id, tb.id, { ...tb, y: 560 });
+  api.actions.updatePart(api.ui.designId, screen().id, tb.id, { view: { rows: 8 } });
+  const p = screen().parts[0];
+  const h = screen().height;
+  assert.equal((h - 667) % 8, 0, `高さ ${h} は 667 から 8 ドットずつ`);
+  assert.ok(h >= p.y + p.h && h - 8 < p.y + p.h, `表の下の端（${p.y + p.h}）まで伸ばす（高さ ${h}）`);
+  assert.equal(api.snapHeight(h, 'phone'), h, '読み込み直しても同じ高さ');
+});
+
 test('取り込んだテーブル: この画面だけの設定で列を選んで、見本の値を書ける（項目の設定の枠は直せない）', async (t) => {
   const { app, api } = await bootEditor(t);
   const srcId = api.ui.designId;
