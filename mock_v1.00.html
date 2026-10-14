@@ -4168,7 +4168,8 @@ function updateEditor({ keepSide = false } = {}) {
   $('#ed-title').textContent = `${d.name}（${targetLabel(d.target)}）`;
   updateToolbarState();
   if (ui.screenMenu && !d.screens.some((s) => s.id === ui.screenMenu)) ui.screenMenu = null;
-  if (ui.panel === 'screen') aiSeeScreen(currentScreen().id); // AI の印を付けた画面を開いたら、光らせて印を消す
+  // AI の印を付けた画面を開いたら、光らせて印を消す（前の版を見ている間は、印を残し、見るのをやめてから光らせる）
+  if (ui.panel === 'screen' && !store.isViewing) aiSeeScreen(currentScreen().id);
   $('#screen-list').innerHTML = screenListHtml(d);
   renderScreenMenu(d);
   const onScreen = ui.panel === 'screen';
@@ -4226,11 +4227,13 @@ function screenListHtml(d) {
       <span class="ic">▦</span><span><b>データベースの項目</b><small>${d.items.length} 個</small></span></button>
     <button class="db-entry${ui.panel === 'map' ? ' active' : ''}" data-action="open-map" title="この画面設計と、直接つながる画面設計の図を開きます">
       <span class="ic">⇄</span><span><b>つながりの図</b><small>${linked > 0 ? `${linked} つとつながっている` : 'つながりなし'}</small></span></button>`;
-  // 縮小画像にマウスを乗せると右上に「…」が出る（画像 q31）。縮小画像はドラッグで並べ替える。いちばん下に「＋ 画面を足す」（画像 q29）
+  // 縮小画像にマウスを乗せると右上に「…」が出る（画像 q31）。縮小画像はドラッグで並べ替える。いちばん下に「＋ 画面を足す」（画像 q29）。
+  // AI が直した画面の「AI」の印は、前の版を見ている間は出さない（前の版の縮小画像には付けない）
+  const aiDot = (s) => (!store.isViewing && aiView.unseen.has(s.id) ? '<span class="ai-dot" title="AI が直した画面です。開くと、直した部品を光らせます">AI</span>' : '');
   return entry + '<div class="sl-sep"></div><div class="panel-title">画面</div>' + d.screens.map((s, i) => `
     <div class="sl-wrap" data-id="${esc(s.id)}">
       <button class="sl-item${ui.panel === 'screen' && s.id === ui.screenId ? ' active' : ''}" data-action="select-screen" data-id="${esc(s.id)}" title="${esc(s.name)}（ドラッグで並べ替えます）">
-        <div class="sl-thumb">${thumbHtml(d, s, 148, 94)}${aiView.unseen.has(s.id) ? '<span class="ai-dot" title="AI が直した画面です。開くと、直した部品を光らせます">AI</span>' : ''}</div>
+        <div class="sl-thumb">${thumbHtml(d, s, 148, 94)}${aiDot(s)}</div>
         <div class="sl-name">${i + 1}　${esc(s.name)}</div>
       </button>
       <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-haspopup="menu" aria-expanded="${ui.screenMenu === s.id}" aria-label="「${esc(s.name)}」の画面の操作" title="名前を変える・複製・並べ替え・消す">…</button>
@@ -7478,8 +7481,9 @@ function runCommand(cmd) {
   }
   switch (cmd) {
     case 'undo':
-      // AI がほかの画面設計を直したときに履歴を消した後は、元に戻せない理由を知らせる（q51）
-      if (!store.canUndo() && aiView.cleared) toast(`元に戻せる操作はありません（AI が「${aiView.cleared}」を直したときに、履歴を消しました）。`);
+      // AI がほかの画面設計を直したときに履歴を消した後は、元に戻せない理由を知らせる（q51）。
+      // 前の版を見ている間は、元に戻せないのは見ているためなので知らせない
+      if (!store.isViewing && !store.canUndo() && aiView.cleared) toast(`元に戻せる操作はありません（AI が「${aiView.cleared}」を直したときに、履歴を消しました）。`);
       else store.undo();
       return true;
     case 'redo': store.redo(); return true;

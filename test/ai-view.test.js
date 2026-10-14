@@ -191,6 +191,49 @@ test('紫の帯の「元に戻す」は、その後に AI が元に戻すの履�
   }
 });
 
+test('前の版を見ている間は、画面の一覧の「AI」の印を出さず、開いても印と光らせ方を使わない。見るのをやめると元どおり働く', async () => {
+  const { app, T, call, $, click } = await boot();
+  T.openDesign('d1');
+  await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'search' }]] } });
+  const dotOf = (id) => $(`#screen-list .sl-item[data-id="${id}"] .ai-dot`);
+  assert.ok(dotOf('s2'));
+  const row = T.store.state.designs.find((d) => d.id === 'd1').revisions.find((r) => r.kind === 'ai');
+  assert.equal(T.startViewRevision(row.id), true);
+  assert.equal(T.store.isViewing, true);
+  assert.equal(dotOf('s2'), null, '前の版の縮小画像には印を付けない');
+  click('#screen-list .sl-item[data-id="s2"]');
+  assert.equal(T.ui.screenId, 's2');
+  assert.equal(T.aiView.unseen.has('s2'), true, '見ている間に開いても、印は消さない');
+  assert.equal(T.aiView.glow.has('s2'), false, '見ている間に開いても、光らせ始めない');
+  click('[data-action="rev-stop-view"]');
+  assert.equal(T.store.isViewing, false);
+  assert.equal(T.ui.screenId, 's1');
+  assert.ok(dotOf('s2'), '見るのをやめると、印が戻る');
+  click('#screen-list .sl-item[data-id="s2"]');
+  assert.equal(dotOf('s2'), null);
+  assert.ok($('#stage .screen .part.ai-glow'), '開くと光る');
+  app.close();
+});
+
+test('前の版を見ている間の Ctrl+Z では、「AI が履歴を消しました」の知らせを出さない（元に戻せないのは見ているため）', async () => {
+  const { app, T, call, $, click } = await boot();
+  T.openDesign('d1');
+  T.actions.updateDesignInfo('d1', { description: '人の変更' });
+  await call('update_design', { design: '受注管理', description: 'AI の変更' }); // 履歴を消す
+  await call('update_design', { design: 'd1', description: 'AI の変更 2' }); // 見るための「AI が直す前の状態」の行
+  T.actions.updateDesignInfo('d1', { description: '人の変更 2' }); // 消した後に、人がまた直した（元に戻せる）
+  const row = T.store.state.designs.find((d) => d.id === 'd1').revisions.find((r) => r.kind === 'ai');
+  assert.equal(T.startViewRevision(row.id), true);
+  $('#toast').textContent = '';
+  T.runCommand('undo');
+  assert.doesNotMatch(text($('#toast')), /履歴を消しました/);
+  click('[data-action="rev-stop-view"]');
+  assert.equal(T.store.isViewing, false);
+  T.runCommand('undo');
+  assert.equal(T.store.state.designs.find((d) => d.id === 'd1').description, 'AI の変更 2', '見るのをやめた後は元に戻せる');
+  app.close();
+});
+
 test('元に戻すの履歴がないときに AI がほかの画面設計を直したら、紫の帯で知らせ、その画面設計を開ける', async () => {
   const { app, T, call, $, click } = await boot();
   T.openDesign('d1');
