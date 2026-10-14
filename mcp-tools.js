@@ -21,7 +21,8 @@ const TOOLS = [
     '画面設計の中身の要約を返す: 名前・作る先・説明・データベースの項目の一覧（設定の文つき）・画面の一覧（id・名前・機器・大きさ・部品の数）・改訂履歴の行・取り込まれている項目・更新の印 updatedAt。',
     { design: S.design, cursor: S.cursor }),
   read('get_screen', '画面の中身',
-    '画面 1 つの中身を返す: 部品（id・赤い番号・種類・項目名・位置と大きさ・設定の文）・吹き出し・部品の設定の一覧表の文。',
+    '画面 1 つの中身を返す: 部品（id・赤い番号・種類・項目名・位置と大きさ・設定の文）・吹き出し・部品の設定の一覧表の文。' +
+    '多いときは、部品・吹き出し・一覧表の行の順に分けて返し、nextCursor を付ける（cursor に渡すと続きを読める。全部の数は partsTotal・calloutsTotal・tableTotal）。',
     { design: S.design, screen: S.screen, cursor: S.cursor }),
   read('get_screen_image', '画面の画像',
     '画面の画像（PNG。長い辺を 1568 ドットまでに縮める）を返す。作った画面の見た目を確かめるときに使う。',

@@ -7859,13 +7859,14 @@ function aiResolveRevision(d, ref) {
   return row;
 }
 
-// 返事を分ける（大きい一覧は cursor で続きを読む）。戻り値 { page, nextCursor（続きがなければ null）}
-function aiPage(list, cursor, budget = AI_REPLY_BUDGET) {
+// 返事を分ける（大きい一覧は cursor で続きを読む）。戻り値 { page, nextCursor（続きがなければ null）}。
+// sizeOf は 1 つ分の文字の数（区切りの「,」の 1 字も数える）
+function aiPage(list, cursor, budget = AI_REPLY_BUDGET, sizeOf = (x) => JSON.stringify(x).length + 1) {
   const start = Math.max(0, parseInt(cursor, 10) || 0);
   const page = [];
   let size = 0;
   for (let i = start; i < list.length; i++) {
-    const n = JSON.stringify(list[i]).length;
+    const n = sizeOf(list[i]);
     if (page.length && size + n > budget) return { page, nextCursor: String(i) };
     page.push(list[i]);
     size += n;
@@ -7929,22 +7930,30 @@ function aiPartSummary(d, sc, raw, ctx) {
   if ((raw.type === 'status' || raw.type === 'steps') && raw.view) out.current = raw.view.current || '';
   return out;
 }
+// 画面の中身。部品・吹き出し・部品の設定の一覧表の行を、この順に 1 つの並びにして、返事全体が目安に収まるように分ける
+// （どれか 1 つだけを分けると、ほかの並びが大きいときに目安を超えるため）。ページごとの parts・callouts・table は、その並びの続きの分だけ
 function aiGetScreen(args) {
   const S = aiState();
   const d = aiResolveDesign(S, args.design);
   const sc = aiResolveScreen(d, args.screen);
   const ctx = { design: d, state: S };
-  const { page, nextCursor } = aiPage(sc.parts.map((p) => aiPartSummary(d, sc, p, ctx)), args.cursor);
+  const parts = sc.parts.map((p) => aiPartSummary(d, sc, p, ctx));
   const callouts = (sc.callouts || []).map((c) => {
     const t = c.target ? findPart(sc, c.target) : null;
     return { id: c.id, text: c.text, color: c.color, tip: c.tip, x: c.x, y: c.y, w: c.w, h: c.h, target: t ? { id: t.id, no: t.no } : null };
   });
-  return {
+  const table = tableRows(sc, d, S).map((r) => ({ no: r.no, label: r.label, kind: r.kind, setting: r.setting }));
+  const out = {
     design: { id: d.id, name: d.name, updatedAt: d.updatedAt },
     id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height, showHeader: sc.showHeader, tablePos: sc.tablePos,
-    parts: page, partsTotal: sc.parts.length, nextCursor, callouts,
-    table: tableRows(sc, d, S).map((r) => ({ no: r.no, label: r.label, kind: r.kind, setting: r.setting })),
+    parts: [], partsTotal: parts.length, callouts: [], calloutsTotal: callouts.length, table: [], tableTotal: table.length, nextCursor: null,
   };
+  const all = [...parts.map((v) => ['parts', v]), ...callouts.map((v) => ['callouts', v]), ...table.map((v) => ['table', v])];
+  const head = JSON.stringify({ ...out, nextCursor: String(all.length) }).length; // 並びの外の文字（いちばん長い nextCursor で数える）
+  const { page, nextCursor } = aiPage(all, args.cursor, AI_REPLY_BUDGET - head, ([, v]) => JSON.stringify(v).length + 1);
+  page.forEach(([k, v]) => out[k].push(v));
+  out.nextCursor = nextCursor;
+  return out;
 }
 
 // 部品の設定（props）の欄の説明（get_catalog で AI に渡す。値の形と選べる値）

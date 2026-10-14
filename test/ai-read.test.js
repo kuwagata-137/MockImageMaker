@@ -5,7 +5,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { bootApp, waitFor } = require('./harness');
-const { sampleState, design, item, STORAGE_KEY, plain } = require('./ai-fixtures');
+const { sampleState, design, item, ipart, STORAGE_KEY, plain } = require('./ai-fixtures');
 
 async function boot(state = sampleState(), extra = {}) {
   const app = bootApp({ localStorage: { [STORAGE_KEY]: JSON.stringify(state) }, ...extra });
@@ -139,6 +139,37 @@ test('大きい返事は分ける。項目が 300 個あると nextCursor を返
   assert.ok(pages >= 2);
   assert.equal(seen.length, 300);
   assert.equal(new Set(seen).size, 300);
+  app.close();
+});
+
+test('get_screen: 部品が 150 個あっても、どのページも目安（24,000 字）以下。続きを読むと、部品・吹き出し・一覧表の行が重ならずに全部そろう', async () => {
+  const st = sampleState();
+  const d1 = st.designs[0];
+  d1.items = Array.from({ length: 150 }, (_, i) => item(`x${i}`, `項目 ${i + 1}`, 'dropdown', { memo: '説明の文。'.repeat(4), props: { options: ['あ', 'い', 'う'], initial: '' } }));
+  const sc = d1.screens[0];
+  sc.parts = Array.from({ length: 150 }, (_, i) => ipart(`q${i}`, 32 + (i % 2) * 448, 64 + Math.floor(i / 2) * 72, i + 1, `x${i}`, 'dropdown'));
+  sc.height = 5600;
+  sc.callouts = Array.from({ length: 30 }, (_, i) => ({ id: `k${i}`, x: 1300, y: 64 + i * 96, w: 200, h: 80, text: `吹き出しの文 ${i + 1}。`.repeat(3), color: 'yellow', tip: 'arrow', target: `q${i}` }));
+  const { app, call } = await boot(st);
+  const got = { parts: [], callouts: [], table: [] };
+  let cursor;
+  let pages = 0;
+  do {
+    const r = await call('get_screen', { design: 'd1', screen: 's1', cursor });
+    assert.equal(r.ok, true);
+    const size = JSON.stringify(r.result).length;
+    assert.ok(size <= 24000, `${pages + 1} ページ目の返事が ${size} 字`);
+    assert.deepEqual([r.result.partsTotal, r.result.calloutsTotal, r.result.tableTotal], [150, 30, 150]);
+    Object.keys(got).forEach((k) => got[k].push(...r.result[k]));
+    cursor = r.result.nextCursor;
+    pages++;
+  } while (cursor && pages < 50);
+  assert.ok(pages >= 2);
+  assert.ok(JSON.stringify(got).length > 36000, '全部を 1 回で返すと目安を超える大きさ');
+  assert.deepEqual(got.parts.map((p) => p.id), sc.parts.map((p) => p.id));
+  assert.deepEqual(got.callouts.map((c) => c.id), sc.callouts.map((c) => c.id));
+  assert.deepEqual(got.table.map((t) => t.no), Array.from({ length: 150 }, (_, i) => i + 1));
+  assert.equal(got.table[149].label, '項目 150');
   app.close();
 });
 
