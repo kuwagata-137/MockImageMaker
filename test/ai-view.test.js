@@ -176,6 +176,21 @@ test('オレンジの帯: AI がほかの画面設計を直して履歴を消し
   app.close();
 });
 
+test('紫の帯の「元に戻す」は、その後に AI が元に戻すの履歴を消したら出さない（押しても戻らないため）', async () => {
+  for (const next of [['create_design', { name: '経費精算' }], ['update_design', { design: '受注管理', description: 'AI がほかの画面設計を直す' }]]) {
+    const { app, T, call, $, $$ } = await boot();
+    T.openDesign('d1');
+    await call('update_design', { design: 'd1', description: 'AI の変更' });
+    assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更内容を見る', '元に戻す（Ctrl+Z）', '✕']);
+    assert.equal((await call(...next)).ok, true);
+    assert.ok($('#ai-warn'), `${next[0]}: オレンジの帯で、履歴を消したことを知らせる`);
+    assert.equal(T.store.canUndo(), false);
+    assert.match(text($('#ai-band')), /Claude Code が「顧客管理」を直しました（変更 1 件）。/, `${next[0]}: 紫の帯は残す`);
+    assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更内容を見る', '✕'], `${next[0]}: 「元に戻す」は出さない`);
+    app.close();
+  }
+});
+
 test('元に戻すの履歴がないときに AI がほかの画面設計を直したら、紫の帯で知らせ、その画面設計を開ける', async () => {
   const { app, T, call, $, click } = await boot();
   T.openDesign('d1');

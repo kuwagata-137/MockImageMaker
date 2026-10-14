@@ -9096,6 +9096,8 @@ function aiAfterWrite(tx, mode, hadHistory, beforeMap, seen) {
   const openChanged = !!open && designContent(open) !== seen.content;
   if (openChanged) aiNoteOpenEdited(open, seen, label, mode === true);
   else if (open && designJsonWithRefs(open) !== seen.json) toast(`${label} が「${open.name}」を改訂しました（${revisionLabel(open)}）。`); // 改訂履歴に版を足しただけ
+  // 元に戻すの履歴を消したら、前に出した紫の帯（開いている画面設計）の「元に戻す」は出さない（押しても戻らないため）
+  if (mode === 'clear' && aiView.band && aiView.band.kind === 'edited') aiView.band.undoable = false;
   if (mode === 'clear' && hadHistory) {
     aiView.warn = target ? { designId: target.id, name: target.name, label, created, openChanged } : null;
     aiView.cleared = target ? target.name : '画面設計';
