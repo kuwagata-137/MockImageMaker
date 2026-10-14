@@ -5,7 +5,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { bootApp } = require('./harness');
-const { sampleState, STORAGE_KEY, plain } = require('./ai-fixtures');
+const { sampleState, design, item, STORAGE_KEY, plain } = require('./ai-fixtures');
 
 async function boot(state = sampleState()) {
   const app = bootApp({ localStorage: { [STORAGE_KEY]: JSON.stringify(state) } });
@@ -105,6 +105,31 @@ test('8-2: 開いている画面設計への AI の 1 回の頼みは、Ctrl+Z 1
   assert.equal(d('d1').items.length, 3);
   assert.equal(d('d2').items[0].name, '顧客名');
   assert.equal(d('d1').description, '人の変更'); // 人の変更は残る
+  app.close();
+});
+
+test('8-2: 取り込んだ項目をさらに取り込んでいる画面設計（顧客管理 → 受注管理 → 請求管理）もそろうときも、Ctrl+Z 1 回で戻る（取り込みが輪になっても止まる）', async () => {
+  const st = sampleState();
+  st.designs.push(design('d4', '請求管理', 'kintone', {
+    items: [
+      item('z1', '顧客名', 'text1', { props: { maxLen: '50', initial: '' }, link: { designId: 'd2', itemId: 'o1', designName: '受注管理', lost: false } }),
+      item('z2', '請求番号', 'text1', { props: { maxLen: '20', initial: '' } }),
+    ],
+  }));
+  // 輪: 顧客管理も、請求管理の項目を取り込んでいる
+  st.designs[0].items.push(item('i9', '請求番号', 'text1', { props: { maxLen: '20', initial: '' }, link: { designId: 'd4', itemId: 'z2', designName: '請求管理', lost: false } }));
+  const { app, T, call, d } = await boot(st);
+  T.openDesign('d1');
+  T.actions.updateDesignInfo('d1', { description: '人の変更' });
+  const undo0 = T.store.undoStack.length;
+  assert.equal((await call('edit_items', { design: 'd1', ops: [{ op: 'update', item: '顧客名', name: '顧客の名前' }] })).ok, true);
+  assert.equal(d('d2').items[0].name, '顧客の名前');
+  assert.equal(d('d4').items[0].name, '顧客の名前', '取り込んだ項目をさらに取り込んだ項目もそろう');
+  assert.equal(T.store.undoStack.length, undo0 + 1, '履歴を消さずに積む');
+  assert.equal(app.document.querySelector('#ai-warn'), null);
+  T.store.undo();
+  assert.deepEqual([d('d1').items[1].name, d('d2').items[0].name, d('d4').items[0].name], ['顧客名', '顧客名', '顧客名']);
+  assert.equal(d('d1').description, '人の変更');
   app.close();
 });
 

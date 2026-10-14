@@ -8111,18 +8111,32 @@ function trimAiRows(d) {
   const drop = new Set(aiRows.slice(0, aiRows.length - AI_ROWS_MAX));
   for (let i = d.revisions.length - 1; i >= 0; i--) if (drop.has(d.revisions[i])) d.revisions.splice(i, 1);
 }
-// 元に戻すの履歴の扱い（8-2）。AI の変更が、人が開いている画面設計（と、そこから項目を取り込んでいる画面設計）の中だけなら積む。
+// 元に戻すの履歴の扱い（8-2）。AI の変更が、人が開いている画面設計（と、そこから項目を取り込んでいる画面設計。aiImportersOf）の中だけなら積む。
 // 開いていない画面設計・新しい画面設計を変えたときは、履歴を消す（履歴は状態まるごとの写しなので、人の Ctrl+Z で AI の変更まで消えないように）
 function aiHistoryMode(tx, beforeMap) {
   const open = ui.view === 'editor' ? ui.designId : null;
   if (!open || !tx.design || tx.design.id !== open || tx.createdDesign) return 'clear';
   const S = store.state;
-  const allowed = new Set([open, ...S.designs.filter((x) => x.items.some((it) => it.link && it.link.designId === open)).map((x) => x.id)]);
+  const allowed = aiImportersOf(S, open);
   const inside = S.designs.every((x) => {
     const old = beforeMap.get(x.id);
     return old !== undefined && (old === designJsonWithRefs(x) || allowed.has(x.id));
   });
   return inside ? true : 'clear';
+}
+// その画面設計と、そこから項目を取り込んでいる画面設計（取り込んだ項目をさらに取り込んだものも。syncLinkedItems がそろえる範囲）の id。
+// 取り込みのつながりをたどって集める（輪になっていても、集めた画面設計はもう一度たどらないので止まる）
+function aiImportersOf(S, rootId) {
+  const ids = new Set([rootId]);
+  for (let grew = true; grew;) {
+    grew = false;
+    S.designs.forEach((x) => {
+      if (ids.has(x.id) || !x.items.some((it) => it.link && ids.has(it.link.designId))) return;
+      ids.add(x.id);
+      grew = true;
+    });
+  }
+  return ids;
 }
 // ops（操作の並び）を 1 つずつ実行する。断るときは、何番目の操作かを文の頭に付ける
 function aiRunOps(ops, fn) {
