@@ -8976,6 +8976,9 @@ const aiView = {
   undoMark: null, // 紫の帯を出したときの元に戻すの履歴 { len, top }。変わったら人が直した（帯を閉じる）
   writing: false, // AI の変更を入れている間（その間の描き直しでは、人が直したとみなさない）
   glow: new Map(), // 画面の id → 光らせ始めた時刻
+  // 画面の id → 光らせる部品と吹き出し（aiScreenMarks の形）。開いている画面は、その 1 回の頼みで変わった分。
+  // まだ開いていない画面は、開くまでに AI が変えた分を足していく（札は帯の diff の合計で付ける）
+  glowMarks: new Map(),
   unseen: new Set(), // AI の印を付けた、まだ開いていない画面の id
   cards: new Map(), // 画面設計の id → { kind: 'created'|'edited', at: 光らせ始めた時刻（まだ一覧に出していなければ null）}
 };
@@ -9051,27 +9054,29 @@ const aiGlowElapsed = (at) => (at == null ? AI_GLOW_MS : Math.max(0, Date.now() 
 const aiGlowClass = (at) => (aiGlowElapsed(at) < AI_GLOW_MS ? ' ai-glow' : '');
 const aiGlowStyle = (at) => (aiGlowElapsed(at) < AI_GLOW_MS ? ` style="animation-delay:-${aiGlowElapsed(at)}ms"` : '');
 
-// 開いている画面の、AI が足した・直した部品と吹き出しに札を付け、光らせる（renderStage の最後に呼ぶ）
+// 開いている画面の、AI が足した・直した部品と吹き出しに札を付け、光らせる（renderStage の最後に呼ぶ）。
+// 札は紫の帯が出ている間の合計（帯の diff）、光らせるのは glowMarks の分だけ
 function markAiParts(s) {
   const b = aiView.band;
   if (!b || b.kind !== 'edited' || b.designId !== ui.designId || store.isViewing) return;
   const marks = aiScreenMarks(b.diff, s);
   if (!aiHasMarks(marks)) return;
   const elapsed = aiGlowElapsed(aiView.glow.get(s.id));
-  const mark = (el, kind, inside) => {
+  const glows = aiView.glowMarks.get(s.id) || { parts: {}, callouts: {} };
+  const mark = (el, kind, inside, glow) => {
     el.insertAdjacentHTML('beforeend', `<span class="ai-tag${inside ? ' ai-in' : ''}">${kind === 'new' ? 'AI が足した' : 'AI が直した'}</span>`);
-    if (elapsed >= AI_GLOW_MS) return;
+    if (!glow || elapsed >= AI_GLOW_MS) return;
     el.classList.add('ai-glow');
     el.style.animationDelay = `-${elapsed}ms`;
   };
   // 画面の上の端の部品は、札が画面の外で切れないように、部品の内側に出す
   document.querySelectorAll('#stage .screen .part[data-part-id]').forEach((el) => {
-    const k = marks.parts[el.dataset.partId];
-    if (k) mark(el, k, parseFloat(el.style.top) < 24);
+    const id = el.dataset.partId;
+    if (marks.parts[id]) mark(el, marks.parts[id], parseFloat(el.style.top) < 24, !!glows.parts[id]);
   });
   document.querySelectorAll('#stage .callout[data-callout-id]').forEach((el) => {
-    const k = marks.callouts[el.dataset.calloutId];
-    if (k) mark(el, k, false);
+    const id = el.dataset.calloutId;
+    if (marks.callouts[id]) mark(el, marks.callouts[id], false, !!glows.callouts[id]);
   });
 }
 // AI の印を付けた画面を開いたら、光らせ始めて印を消す
@@ -9127,11 +9132,18 @@ function aiNoteOpenEdited(open, seen, label, undoable) {
   aiView.band = { kind: 'edited', designId: open.id, name: open.name, label, base: seen.base, diff, undoable };
   const now = designDiff(seen.snap, open, store.state);
   open.screens.forEach((s) => {
-    if (!aiHasMarks(aiScreenMarks(now, s))) return;
+    const m = aiScreenMarks(now, s); // この 1 回の頼みで変わった部品と吹き出し
+    if (!aiHasMarks(m)) return;
     if (ui.panel === 'screen' && s.id === ui.screenId) {
       aiView.glow.set(s.id, Date.now()); // 開いている画面は、今から光らせる（開いている画面は切り替えない）
+      aiView.glowMarks.set(s.id, m);
       aiView.unseen.delete(s.id);
-    } else aiView.unseen.add(s.id); // ほかの画面は、左の一覧の縮小画像に「AI」の印
+      return;
+    }
+    // ほかの画面は、左の一覧の縮小画像に「AI」の印。開くまでに AI が変えた分を足していき、開いたときに光らせる
+    const prev = aiView.unseen.has(s.id) ? aiView.glowMarks.get(s.id) : null;
+    aiView.glowMarks.set(s.id, prev ? { parts: { ...prev.parts, ...m.parts }, callouts: { ...prev.callouts, ...m.callouts } } : m);
+    aiView.unseen.add(s.id);
   });
 }
 // 人が直した（元に戻すの履歴が、紫の帯を出したときから変わった）ら、紫の帯と光らせる印を閉じる（onStoreChange の初めに呼ぶ）
@@ -9144,6 +9156,7 @@ function aiNoteStoreChange() {
 function aiCloseBand() {
   Object.assign(aiView, { band: null, undoMark: null });
   aiView.glow.clear();
+  aiView.glowMarks.clear();
   aiView.unseen.clear();
 }
 // 一覧の画面と編集の画面を行き来したときに、知らせを片付ける。一覧の画面から画面設計を開くときは、カードの印も消す（q50c）

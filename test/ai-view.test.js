@@ -121,6 +121,28 @@ test('開いている画面設計を AI が直すと、紫の帯（件数）・�
   app.close();
 });
 
+test('光らせるのは、その 1 回の頼みで変わった部品だけ。札（AI が足した・直した）は紫の帯が出ている間の合計。見ていない画面は、開いたときに見ていない間の分を光らせる', async () => {
+  const { app, T, call, $, $$, click } = await boot();
+  T.openDesign('d1');
+  const el = (id) => $(`#stage .part[data-part-id="${id}"]`);
+  await call('edit_items', { design: 'd1', ops: [{ op: 'update', item: '区分', name: '顧客区分' }] });
+  assert.ok(el('p3').classList.contains('ai-glow'));
+  await call('edit_parts', { design: 'd1', screen: '新規登録', ops: [{ op: 'move', part: 'p1', x: 32, y: 240 }] });
+  assert.equal(text(el('p3').querySelector('.ai-tag')), 'AI が直した', '前の頼みで直した部品の札は残す');
+  assert.equal(el('p3').classList.contains('ai-glow'), false, '前の頼みで直した部品は、光らせ直さない');
+  assert.equal(text(el('p1').querySelector('.ai-tag')), 'AI が直した');
+  assert.ok(el('p1').classList.contains('ai-glow'));
+  // 見ていない画面（一覧）を 2 回直したら、開いたときに 2 回分を光らせる
+  await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'search' }]] } });
+  await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'pager' }]] } });
+  assert.equal(el('p1').classList.contains('ai-glow'), true, 'ほかの画面を直しても、開いている画面の光り方は続く');
+  click('#screen-list .sl-item[data-id="s2"]');
+  const parts = $$('#stage .screen .part');
+  assert.equal(parts.length, 2);
+  assert.ok(parts.every((p) => p.classList.contains('ai-glow')));
+  app.close();
+});
+
 test('紫の帯は、AI が続けて直すと件数を足して出し直し、人が直す・✕ を押すと閉じる。「元に戻す」は AI の変更を 1 回戻す', async () => {
   const { app, T, call, $, click } = await boot();
   T.openDesign('d1');
