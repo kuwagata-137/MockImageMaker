@@ -1,0 +1,2980 @@
+{
+ "blank/none": {
+  "height": 800,
+  "parts": [],
+  "newItems": []
+ },
+ "input/none": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 64,
+    "w": 320,
+    "h": 64,
+    "no": 1,
+    "label": null,
+    "tableKind": null,
+    "item": "項目名 1",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "date",
+    "x": 480,
+    "y": 64,
+    "w": 200,
+    "h": 64,
+    "no": 2,
+    "label": null,
+    "tableKind": null,
+    "item": "項目名 2",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "dropdown",
+    "x": 32,
+    "y": 152,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "項目名 3",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "button",
+    "x": 32,
+    "y": 248,
+    "w": 96,
+    "h": 40,
+    "no": 4,
+    "label": "保存",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 160,
+    "y": 248,
+    "w": 96,
+    "h": 40,
+    "no": 5,
+    "label": "キャンセル",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   }
+  ],
+  "newItems": [
+   {
+    "name": "項目名 1",
+    "type": "text1"
+   },
+   {
+    "name": "項目名 2",
+    "type": "date"
+   },
+   {
+    "name": "項目名 3",
+    "type": "dropdown"
+   }
+  ]
+ },
+ "detail/none": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "button",
+    "x": 1024,
+    "y": 56,
+    "w": 96,
+    "h": 40,
+    "no": 1,
+    "label": "編集",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 1152,
+    "y": 56,
+    "w": 96,
+    "h": 40,
+    "no": 2,
+    "label": "削除",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 112,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "項目名 1",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "date",
+    "x": 480,
+    "y": 112,
+    "w": 200,
+    "h": 64,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "項目名 2",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "dropdown",
+    "x": 32,
+    "y": 200,
+    "w": 320,
+    "h": 64,
+    "no": 5,
+    "label": null,
+    "tableKind": null,
+    "item": "項目名 3",
+    "view": null,
+    "props": null
+   }
+  ],
+  "newItems": [
+   {
+    "name": "項目名 1",
+    "type": "text1"
+   },
+   {
+    "name": "項目名 2",
+    "type": "date"
+   },
+   {
+    "name": "項目名 3",
+    "type": "dropdown"
+   }
+  ]
+ },
+ "list/none": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "search",
+    "x": 32,
+    "y": 64,
+    "w": 320,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "button": true
+    }
+   },
+   {
+    "type": "filter",
+    "x": 368,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 2,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "button",
+    "x": 1120,
+    "y": 64,
+    "w": 128,
+    "h": 40,
+    "no": 3,
+    "label": "＋ 新規登録",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 128,
+    "w": 1216,
+    "h": 336,
+    "no": 4,
+    "label": "一覧",
+    "tableKind": "records",
+    "item": null,
+    "view": {
+     "rows": 8,
+     "samples": {},
+     "widths": {}
+    },
+    "props": {
+     "columns": [],
+     "sort": "",
+     "perPage": "20",
+     "limit": "5",
+     "db": {
+      "designId": null,
+      "name": "",
+      "free": false
+     },
+     "cond": {
+      "from": {
+       "itemId": null,
+       "name": ""
+      },
+      "to": {
+       "itemId": null,
+       "name": ""
+      }
+     }
+    }
+   },
+   {
+    "type": "pager",
+    "x": 888,
+    "y": 480,
+    "w": 360,
+    "h": 32,
+    "no": 5,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "perPage": "20",
+     "total": "200",
+     "showCount": true
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "graph/none": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "filter",
+    "x": 32,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "graph",
+    "x": 32,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 2,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "bar",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "4月, 120\n5月, 180\n6月, 150\n7月, 210\n8月, 170\n9月, 240",
+     "unit": ""
+    }
+   },
+   {
+    "type": "graph",
+    "x": 656,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 3,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "pie",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "分類 1, 45\n分類 2, 30\n分類 3, 25",
+     "unit": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "agg/none": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "filter",
+    "x": 32,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 128,
+    "w": 592,
+    "h": 272,
+    "no": 2,
+    "label": "一覧",
+    "tableKind": "records",
+    "item": null,
+    "view": {
+     "rows": 6,
+     "samples": {},
+     "widths": {}
+    },
+    "props": {
+     "columns": [],
+     "sort": "",
+     "perPage": "20",
+     "limit": "5",
+     "db": {
+      "designId": null,
+      "name": "",
+      "free": false
+     },
+     "cond": {
+      "from": {
+       "itemId": null,
+       "name": ""
+      },
+      "to": {
+       "itemId": null,
+       "name": ""
+      }
+     }
+    }
+   },
+   {
+    "type": "graph",
+    "x": 656,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 3,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "hbar",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "分類 1, 42\n分類 2, 35\n分類 3, 28\n分類 4, 19",
+     "unit": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "steps/none": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "steps",
+    "x": 32,
+    "y": 64,
+    "w": 560,
+    "h": 40,
+    "no": 1,
+    "label": null,
+    "tableKind": null,
+    "item": "ステータス",
+    "view": {
+     "current": "承認待ち",
+     "showWord": true
+    },
+    "props": null
+   },
+   {
+    "type": "status",
+    "x": 1088,
+    "y": 64,
+    "w": 160,
+    "h": 32,
+    "no": 2,
+    "label": null,
+    "tableKind": null,
+    "item": "ステータス",
+    "view": {
+     "current": "承認待ち",
+     "showWord": true
+    },
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 136,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "項目名 1",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "date",
+    "x": 480,
+    "y": 136,
+    "w": 200,
+    "h": 64,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "項目名 2",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "dropdown",
+    "x": 32,
+    "y": 224,
+    "w": 320,
+    "h": 64,
+    "no": 5,
+    "label": null,
+    "tableKind": null,
+    "item": "項目名 3",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "button",
+    "x": 32,
+    "y": 320,
+    "w": 96,
+    "h": 40,
+    "no": 6,
+    "label": "承認する",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 160,
+    "y": 320,
+    "w": 96,
+    "h": 40,
+    "no": 7,
+    "label": "差し戻す",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   }
+  ],
+  "newItems": [
+   {
+    "name": "ステータス",
+    "type": "status"
+   },
+   {
+    "name": "項目名 1",
+    "type": "text1"
+   },
+   {
+    "name": "項目名 2",
+    "type": "date"
+   },
+   {
+    "name": "項目名 3",
+    "type": "dropdown"
+   }
+  ]
+ },
+ "blank/three": {
+  "height": 800,
+  "parts": [],
+  "newItems": []
+ },
+ "input/three": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 64,
+    "w": 320,
+    "h": 64,
+    "no": 1,
+    "label": null,
+    "tableKind": null,
+    "item": "顧客コード",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 480,
+    "y": 64,
+    "w": 320,
+    "h": 64,
+    "no": 2,
+    "label": null,
+    "tableKind": null,
+    "item": "顧客名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 152,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "電話番号",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "button",
+    "x": 32,
+    "y": 248,
+    "w": 96,
+    "h": 40,
+    "no": 4,
+    "label": "保存",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 160,
+    "y": 248,
+    "w": 96,
+    "h": 40,
+    "no": 5,
+    "label": "キャンセル",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "detail/three": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "button",
+    "x": 1024,
+    "y": 56,
+    "w": 96,
+    "h": 40,
+    "no": 1,
+    "label": "編集",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 1152,
+    "y": 56,
+    "w": 96,
+    "h": 40,
+    "no": 2,
+    "label": "削除",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 112,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "顧客コード",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 480,
+    "y": 112,
+    "w": 320,
+    "h": 64,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "顧客名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 200,
+    "w": 320,
+    "h": 64,
+    "no": 5,
+    "label": null,
+    "tableKind": null,
+    "item": "電話番号",
+    "view": null,
+    "props": null
+   }
+  ],
+  "newItems": []
+ },
+ "list/three": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "search",
+    "x": 32,
+    "y": 64,
+    "w": 320,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "button": true
+    }
+   },
+   {
+    "type": "filter",
+    "x": 368,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 2,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "button",
+    "x": 1120,
+    "y": 64,
+    "w": 128,
+    "h": 40,
+    "no": 3,
+    "label": "＋ 新規登録",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 128,
+    "w": 1216,
+    "h": 336,
+    "no": 4,
+    "label": "一覧",
+    "tableKind": "records",
+    "item": null,
+    "view": {
+     "rows": 8,
+     "samples": {},
+     "widths": {}
+    },
+    "props": {
+     "columns": [
+      {
+       "ref": {
+        "itemId": "顧客コード",
+        "name": "顧客コード"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "顧客名",
+        "name": "顧客名"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "電話番号",
+        "name": "電話番号"
+       }
+      }
+     ],
+     "sort": "",
+     "perPage": "20",
+     "limit": "5",
+     "db": {
+      "designId": null,
+      "name": "",
+      "free": false
+     },
+     "cond": {
+      "from": {
+       "itemId": null,
+       "name": ""
+      },
+      "to": {
+       "itemId": null,
+       "name": ""
+      }
+     }
+    }
+   },
+   {
+    "type": "pager",
+    "x": 888,
+    "y": 480,
+    "w": 360,
+    "h": 32,
+    "no": 5,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "perPage": "20",
+     "total": "200",
+     "showCount": true
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "graph/three": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "filter",
+    "x": 32,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "graph",
+    "x": 32,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 2,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "bar",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "4月, 120\n5月, 180\n6月, 150\n7月, 210\n8月, 170\n9月, 240",
+     "unit": ""
+    }
+   },
+   {
+    "type": "graph",
+    "x": 656,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 3,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "pie",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "分類 1, 45\n分類 2, 30\n分類 3, 25",
+     "unit": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "agg/three": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "filter",
+    "x": 32,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 128,
+    "w": 592,
+    "h": 272,
+    "no": 2,
+    "label": "一覧",
+    "tableKind": "records",
+    "item": null,
+    "view": {
+     "rows": 6,
+     "samples": {},
+     "widths": {}
+    },
+    "props": {
+     "columns": [
+      {
+       "ref": {
+        "itemId": "顧客コード",
+        "name": "顧客コード"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "顧客名",
+        "name": "顧客名"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "電話番号",
+        "name": "電話番号"
+       }
+      }
+     ],
+     "sort": "",
+     "perPage": "20",
+     "limit": "5",
+     "db": {
+      "designId": null,
+      "name": "",
+      "free": false
+     },
+     "cond": {
+      "from": {
+       "itemId": null,
+       "name": ""
+      },
+      "to": {
+       "itemId": null,
+       "name": ""
+      }
+     }
+    }
+   },
+   {
+    "type": "graph",
+    "x": 656,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 3,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "hbar",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "分類 1, 42\n分類 2, 35\n分類 3, 28\n分類 4, 19",
+     "unit": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "steps/three": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "steps",
+    "x": 32,
+    "y": 64,
+    "w": 560,
+    "h": 40,
+    "no": 1,
+    "label": null,
+    "tableKind": null,
+    "item": "ステータス",
+    "view": {
+     "current": "承認待ち",
+     "showWord": true
+    },
+    "props": null
+   },
+   {
+    "type": "status",
+    "x": 1088,
+    "y": 64,
+    "w": 160,
+    "h": 32,
+    "no": 2,
+    "label": null,
+    "tableKind": null,
+    "item": "ステータス",
+    "view": {
+     "current": "承認待ち",
+     "showWord": true
+    },
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 136,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "顧客コード",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 480,
+    "y": 136,
+    "w": 320,
+    "h": 64,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "顧客名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 224,
+    "w": 320,
+    "h": 64,
+    "no": 5,
+    "label": null,
+    "tableKind": null,
+    "item": "電話番号",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "button",
+    "x": 32,
+    "y": 320,
+    "w": 96,
+    "h": 40,
+    "no": 6,
+    "label": "承認する",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 160,
+    "y": 320,
+    "w": 96,
+    "h": 40,
+    "no": 7,
+    "label": "差し戻す",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   }
+  ],
+  "newItems": [
+   {
+    "name": "ステータス",
+    "type": "status"
+   }
+  ]
+ },
+ "blank/wide": {
+  "height": 800,
+  "parts": [],
+  "newItems": []
+ },
+ "input/wide": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 64,
+    "w": 320,
+    "h": 64,
+    "no": 1,
+    "label": null,
+    "tableKind": null,
+    "item": "氏名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "text2",
+    "x": 480,
+    "y": 64,
+    "w": 400,
+    "h": 120,
+    "no": 2,
+    "label": null,
+    "tableKind": null,
+    "item": "住所",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "checkbox",
+    "x": 32,
+    "y": 208,
+    "w": 400,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "連絡方法",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "number",
+    "x": 480,
+    "y": 208,
+    "w": 200,
+    "h": 64,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "年齢",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "date",
+    "x": 32,
+    "y": 296,
+    "w": 200,
+    "h": 64,
+    "no": 5,
+    "label": null,
+    "tableKind": null,
+    "item": "生年月日",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "file",
+    "x": 480,
+    "y": 296,
+    "w": 400,
+    "h": 96,
+    "no": 6,
+    "label": null,
+    "tableKind": null,
+    "item": "添付",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "radio",
+    "x": 32,
+    "y": 416,
+    "w": 320,
+    "h": 64,
+    "no": 7,
+    "label": null,
+    "tableKind": null,
+    "item": "区分",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "button",
+    "x": 32,
+    "y": 512,
+    "w": 96,
+    "h": 40,
+    "no": 8,
+    "label": "保存",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 160,
+    "y": 512,
+    "w": 96,
+    "h": 40,
+    "no": 9,
+    "label": "キャンセル",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "detail/wide": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "button",
+    "x": 1024,
+    "y": 56,
+    "w": 96,
+    "h": 40,
+    "no": 1,
+    "label": "編集",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 1152,
+    "y": 56,
+    "w": 96,
+    "h": 40,
+    "no": 2,
+    "label": "削除",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 112,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "氏名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "text2",
+    "x": 480,
+    "y": 112,
+    "w": 400,
+    "h": 120,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "住所",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "checkbox",
+    "x": 32,
+    "y": 256,
+    "w": 400,
+    "h": 64,
+    "no": 5,
+    "label": null,
+    "tableKind": null,
+    "item": "連絡方法",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "number",
+    "x": 480,
+    "y": 256,
+    "w": 200,
+    "h": 64,
+    "no": 6,
+    "label": null,
+    "tableKind": null,
+    "item": "年齢",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "date",
+    "x": 32,
+    "y": 344,
+    "w": 200,
+    "h": 64,
+    "no": 7,
+    "label": null,
+    "tableKind": null,
+    "item": "生年月日",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "file",
+    "x": 480,
+    "y": 344,
+    "w": 400,
+    "h": 96,
+    "no": 8,
+    "label": null,
+    "tableKind": null,
+    "item": "添付",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "radio",
+    "x": 32,
+    "y": 464,
+    "w": 320,
+    "h": 64,
+    "no": 9,
+    "label": null,
+    "tableKind": null,
+    "item": "区分",
+    "view": null,
+    "props": null
+   }
+  ],
+  "newItems": []
+ },
+ "list/wide": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "search",
+    "x": 32,
+    "y": 64,
+    "w": 320,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "button": true
+    }
+   },
+   {
+    "type": "filter",
+    "x": 368,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 2,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "button",
+    "x": 1120,
+    "y": 64,
+    "w": 128,
+    "h": 40,
+    "no": 3,
+    "label": "＋ 新規登録",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 128,
+    "w": 1216,
+    "h": 336,
+    "no": 4,
+    "label": "一覧",
+    "tableKind": "records",
+    "item": null,
+    "view": {
+     "rows": 8,
+     "samples": {},
+     "widths": {}
+    },
+    "props": {
+     "columns": [
+      {
+       "ref": {
+        "itemId": "氏名",
+        "name": "氏名"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "住所",
+        "name": "住所"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "連絡方法",
+        "name": "連絡方法"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "年齢",
+        "name": "年齢"
+       }
+      }
+     ],
+     "sort": "",
+     "perPage": "20",
+     "limit": "5",
+     "db": {
+      "designId": null,
+      "name": "",
+      "free": false
+     },
+     "cond": {
+      "from": {
+       "itemId": null,
+       "name": ""
+      },
+      "to": {
+       "itemId": null,
+       "name": ""
+      }
+     }
+    }
+   },
+   {
+    "type": "pager",
+    "x": 888,
+    "y": 480,
+    "w": 360,
+    "h": 32,
+    "no": 5,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "perPage": "20",
+     "total": "200",
+     "showCount": true
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "graph/wide": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "filter",
+    "x": 32,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "graph",
+    "x": 32,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 2,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "bar",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "4月, 120\n5月, 180\n6月, 150\n7月, 210\n8月, 170\n9月, 240",
+     "unit": ""
+    }
+   },
+   {
+    "type": "graph",
+    "x": 656,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 3,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "pie",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "分類 1, 45\n分類 2, 30\n分類 3, 25",
+     "unit": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "agg/wide": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "filter",
+    "x": 32,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 128,
+    "w": 592,
+    "h": 272,
+    "no": 2,
+    "label": "一覧",
+    "tableKind": "records",
+    "item": null,
+    "view": {
+     "rows": 6,
+     "samples": {},
+     "widths": {}
+    },
+    "props": {
+     "columns": [
+      {
+       "ref": {
+        "itemId": "氏名",
+        "name": "氏名"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "住所",
+        "name": "住所"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "連絡方法",
+        "name": "連絡方法"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "年齢",
+        "name": "年齢"
+       }
+      }
+     ],
+     "sort": "",
+     "perPage": "20",
+     "limit": "5",
+     "db": {
+      "designId": null,
+      "name": "",
+      "free": false
+     },
+     "cond": {
+      "from": {
+       "itemId": null,
+       "name": ""
+      },
+      "to": {
+       "itemId": null,
+       "name": ""
+      }
+     }
+    }
+   },
+   {
+    "type": "graph",
+    "x": 656,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 3,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "hbar",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "分類 1, 42\n分類 2, 35\n分類 3, 28\n分類 4, 19",
+     "unit": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "steps/wide": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "steps",
+    "x": 32,
+    "y": 64,
+    "w": 560,
+    "h": 40,
+    "no": 1,
+    "label": null,
+    "tableKind": null,
+    "item": "ステータス",
+    "view": {
+     "current": "承認待ち",
+     "showWord": true
+    },
+    "props": null
+   },
+   {
+    "type": "status",
+    "x": 1088,
+    "y": 64,
+    "w": 160,
+    "h": 32,
+    "no": 2,
+    "label": null,
+    "tableKind": null,
+    "item": "ステータス",
+    "view": {
+     "current": "承認待ち",
+     "showWord": true
+    },
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 136,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "氏名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "text2",
+    "x": 480,
+    "y": 136,
+    "w": 400,
+    "h": 120,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "住所",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "checkbox",
+    "x": 32,
+    "y": 280,
+    "w": 400,
+    "h": 64,
+    "no": 5,
+    "label": null,
+    "tableKind": null,
+    "item": "連絡方法",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "number",
+    "x": 480,
+    "y": 280,
+    "w": 200,
+    "h": 64,
+    "no": 6,
+    "label": null,
+    "tableKind": null,
+    "item": "年齢",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "date",
+    "x": 32,
+    "y": 368,
+    "w": 200,
+    "h": 64,
+    "no": 7,
+    "label": null,
+    "tableKind": null,
+    "item": "生年月日",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "file",
+    "x": 480,
+    "y": 368,
+    "w": 400,
+    "h": 96,
+    "no": 8,
+    "label": null,
+    "tableKind": null,
+    "item": "添付",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "radio",
+    "x": 32,
+    "y": 488,
+    "w": 320,
+    "h": 64,
+    "no": 9,
+    "label": null,
+    "tableKind": null,
+    "item": "区分",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "button",
+    "x": 32,
+    "y": 584,
+    "w": 96,
+    "h": 40,
+    "no": 10,
+    "label": "承認する",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 160,
+    "y": 584,
+    "w": 96,
+    "h": 40,
+    "no": 11,
+    "label": "差し戻す",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   }
+  ],
+  "newItems": [
+   {
+    "name": "ステータス",
+    "type": "status"
+   }
+  ]
+ },
+ "blank/tables": {
+  "height": 800,
+  "parts": [],
+  "newItems": []
+ },
+ "input/tables": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 64,
+    "w": 320,
+    "h": 64,
+    "no": 1,
+    "label": null,
+    "tableKind": null,
+    "item": "件名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "date",
+    "x": 480,
+    "y": 64,
+    "w": 200,
+    "h": 64,
+    "no": 2,
+    "label": null,
+    "tableKind": null,
+    "item": "日付",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 152,
+    "w": 640,
+    "h": 168,
+    "no": 3,
+    "label": null,
+    "tableKind": "subtable",
+    "item": "明細",
+    "view": {
+     "rows": 3,
+     "samples": {},
+     "widths": {}
+    },
+    "props": null
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 344,
+    "w": 640,
+    "h": 168,
+    "no": 4,
+    "label": null,
+    "tableKind": "subtable",
+    "item": "経費",
+    "view": {
+     "rows": 3,
+     "samples": {},
+     "widths": {}
+    },
+    "props": null
+   },
+   {
+    "type": "button",
+    "x": 32,
+    "y": 544,
+    "w": 96,
+    "h": 40,
+    "no": 5,
+    "label": "保存",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 160,
+    "y": 544,
+    "w": 96,
+    "h": 40,
+    "no": 6,
+    "label": "キャンセル",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "detail/tables": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "button",
+    "x": 1024,
+    "y": 56,
+    "w": 96,
+    "h": 40,
+    "no": 1,
+    "label": "編集",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 1152,
+    "y": 56,
+    "w": 96,
+    "h": 40,
+    "no": 2,
+    "label": "削除",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 112,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "件名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "date",
+    "x": 480,
+    "y": 112,
+    "w": 200,
+    "h": 64,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "日付",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 200,
+    "w": 640,
+    "h": 168,
+    "no": 5,
+    "label": null,
+    "tableKind": "subtable",
+    "item": "明細",
+    "view": {
+     "rows": 3,
+     "samples": {},
+     "widths": {}
+    },
+    "props": null
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 392,
+    "w": 640,
+    "h": 168,
+    "no": 6,
+    "label": null,
+    "tableKind": "subtable",
+    "item": "経費",
+    "view": {
+     "rows": 3,
+     "samples": {},
+     "widths": {}
+    },
+    "props": null
+   }
+  ],
+  "newItems": []
+ },
+ "list/tables": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "search",
+    "x": 32,
+    "y": 64,
+    "w": 320,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "button": true
+    }
+   },
+   {
+    "type": "filter",
+    "x": 368,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 2,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "button",
+    "x": 1120,
+    "y": 64,
+    "w": 128,
+    "h": 40,
+    "no": 3,
+    "label": "＋ 新規登録",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 128,
+    "w": 1216,
+    "h": 336,
+    "no": 4,
+    "label": "一覧",
+    "tableKind": "records",
+    "item": null,
+    "view": {
+     "rows": 8,
+     "samples": {},
+     "widths": {}
+    },
+    "props": {
+     "columns": [
+      {
+       "ref": {
+        "itemId": "件名",
+        "name": "件名"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "日付",
+        "name": "日付"
+       }
+      }
+     ],
+     "sort": "",
+     "perPage": "20",
+     "limit": "5",
+     "db": {
+      "designId": null,
+      "name": "",
+      "free": false
+     },
+     "cond": {
+      "from": {
+       "itemId": null,
+       "name": ""
+      },
+      "to": {
+       "itemId": null,
+       "name": ""
+      }
+     }
+    }
+   },
+   {
+    "type": "pager",
+    "x": 888,
+    "y": 480,
+    "w": 360,
+    "h": 32,
+    "no": 5,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "perPage": "20",
+     "total": "200",
+     "showCount": true
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "graph/tables": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "filter",
+    "x": 32,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "graph",
+    "x": 32,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 2,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "bar",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "4月, 120\n5月, 180\n6月, 150\n7月, 210\n8月, 170\n9月, 240",
+     "unit": ""
+    }
+   },
+   {
+    "type": "graph",
+    "x": 656,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 3,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "pie",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "分類 1, 45\n分類 2, 30\n分類 3, 25",
+     "unit": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "agg/tables": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "filter",
+    "x": 32,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 128,
+    "w": 592,
+    "h": 272,
+    "no": 2,
+    "label": "一覧",
+    "tableKind": "records",
+    "item": null,
+    "view": {
+     "rows": 6,
+     "samples": {},
+     "widths": {}
+    },
+    "props": {
+     "columns": [
+      {
+       "ref": {
+        "itemId": "件名",
+        "name": "件名"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "日付",
+        "name": "日付"
+       }
+      }
+     ],
+     "sort": "",
+     "perPage": "20",
+     "limit": "5",
+     "db": {
+      "designId": null,
+      "name": "",
+      "free": false
+     },
+     "cond": {
+      "from": {
+       "itemId": null,
+       "name": ""
+      },
+      "to": {
+       "itemId": null,
+       "name": ""
+      }
+     }
+    }
+   },
+   {
+    "type": "graph",
+    "x": 656,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 3,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "hbar",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "分類 1, 42\n分類 2, 35\n分類 3, 28\n分類 4, 19",
+     "unit": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "steps/tables": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "steps",
+    "x": 32,
+    "y": 64,
+    "w": 560,
+    "h": 40,
+    "no": 1,
+    "label": null,
+    "tableKind": null,
+    "item": "ステータス",
+    "view": {
+     "current": "承認待ち",
+     "showWord": true
+    },
+    "props": null
+   },
+   {
+    "type": "status",
+    "x": 1088,
+    "y": 64,
+    "w": 160,
+    "h": 32,
+    "no": 2,
+    "label": null,
+    "tableKind": null,
+    "item": "ステータス",
+    "view": {
+     "current": "承認待ち",
+     "showWord": true
+    },
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 136,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "件名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "date",
+    "x": 480,
+    "y": 136,
+    "w": 200,
+    "h": 64,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "日付",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 224,
+    "w": 640,
+    "h": 168,
+    "no": 5,
+    "label": null,
+    "tableKind": "subtable",
+    "item": "明細",
+    "view": {
+     "rows": 3,
+     "samples": {},
+     "widths": {}
+    },
+    "props": null
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 416,
+    "w": 640,
+    "h": 168,
+    "no": 6,
+    "label": null,
+    "tableKind": "subtable",
+    "item": "経費",
+    "view": {
+     "rows": 3,
+     "samples": {},
+     "widths": {}
+    },
+    "props": null
+   },
+   {
+    "type": "button",
+    "x": 32,
+    "y": 616,
+    "w": 96,
+    "h": 40,
+    "no": 7,
+    "label": "承認する",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 160,
+    "y": 616,
+    "w": 96,
+    "h": 40,
+    "no": 8,
+    "label": "差し戻す",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   }
+  ],
+  "newItems": [
+   {
+    "name": "ステータス",
+    "type": "status"
+   }
+  ]
+ },
+ "blank/status": {
+  "height": 800,
+  "parts": [],
+  "newItems": []
+ },
+ "input/status": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 64,
+    "w": 320,
+    "h": 64,
+    "no": 1,
+    "label": null,
+    "tableKind": null,
+    "item": "件名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "dropdown",
+    "x": 480,
+    "y": 64,
+    "w": 320,
+    "h": 64,
+    "no": 2,
+    "label": null,
+    "tableKind": null,
+    "item": "種別",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "button",
+    "x": 32,
+    "y": 160,
+    "w": 96,
+    "h": 40,
+    "no": 3,
+    "label": "保存",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 160,
+    "y": 160,
+    "w": 96,
+    "h": 40,
+    "no": 4,
+    "label": "キャンセル",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "detail/status": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "button",
+    "x": 1024,
+    "y": 56,
+    "w": 96,
+    "h": 40,
+    "no": 1,
+    "label": "編集",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 1152,
+    "y": 56,
+    "w": 96,
+    "h": 40,
+    "no": 2,
+    "label": "削除",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 112,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "件名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "dropdown",
+    "x": 480,
+    "y": 112,
+    "w": 320,
+    "h": 64,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "種別",
+    "view": null,
+    "props": null
+   }
+  ],
+  "newItems": []
+ },
+ "list/status": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "search",
+    "x": 32,
+    "y": 64,
+    "w": 320,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "button": true
+    }
+   },
+   {
+    "type": "filter",
+    "x": 368,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 2,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "button",
+    "x": 1120,
+    "y": 64,
+    "w": 128,
+    "h": 40,
+    "no": 3,
+    "label": "＋ 新規登録",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 128,
+    "w": 1216,
+    "h": 336,
+    "no": 4,
+    "label": "一覧",
+    "tableKind": "records",
+    "item": null,
+    "view": {
+     "rows": 8,
+     "samples": {},
+     "widths": {}
+    },
+    "props": {
+     "columns": [
+      {
+       "ref": {
+        "itemId": "件名",
+        "name": "件名"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "種別",
+        "name": "種別"
+       }
+      }
+     ],
+     "sort": "",
+     "perPage": "20",
+     "limit": "5",
+     "db": {
+      "designId": null,
+      "name": "",
+      "free": false
+     },
+     "cond": {
+      "from": {
+       "itemId": null,
+       "name": ""
+      },
+      "to": {
+       "itemId": null,
+       "name": ""
+      }
+     }
+    }
+   },
+   {
+    "type": "pager",
+    "x": 888,
+    "y": 480,
+    "w": 360,
+    "h": 32,
+    "no": 5,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "perPage": "20",
+     "total": "200",
+     "showCount": true
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "graph/status": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "filter",
+    "x": 32,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "graph",
+    "x": 32,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 2,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "bar",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "4月, 120\n5月, 180\n6月, 150\n7月, 210\n8月, 170\n9月, 240",
+     "unit": ""
+    }
+   },
+   {
+    "type": "graph",
+    "x": 656,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 3,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "pie",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "分類 1, 45\n分類 2, 30\n分類 3, 25",
+     "unit": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "agg/status": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "filter",
+    "x": 32,
+    "y": 64,
+    "w": 480,
+    "h": 40,
+    "no": 1,
+    "label": "",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "items": [],
+     "values": []
+    }
+   },
+   {
+    "type": "table",
+    "x": 32,
+    "y": 128,
+    "w": 592,
+    "h": 272,
+    "no": 2,
+    "label": "一覧",
+    "tableKind": "records",
+    "item": null,
+    "view": {
+     "rows": 6,
+     "samples": {},
+     "widths": {}
+    },
+    "props": {
+     "columns": [
+      {
+       "ref": {
+        "itemId": "件名",
+        "name": "件名"
+       }
+      },
+      {
+       "ref": {
+        "itemId": "種別",
+        "name": "種別"
+       }
+      }
+     ],
+     "sort": "",
+     "perPage": "20",
+     "limit": "5",
+     "db": {
+      "designId": null,
+      "name": "",
+      "free": false
+     },
+     "cond": {
+      "from": {
+       "itemId": null,
+       "name": ""
+      },
+      "to": {
+       "itemId": null,
+       "name": ""
+      }
+     }
+    }
+   },
+   {
+    "type": "graph",
+    "x": 656,
+    "y": 128,
+    "w": 592,
+    "h": 320,
+    "no": 3,
+    "label": "グラフ",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "chart": "hbar",
+     "byItem": "",
+     "byUnit": "",
+     "agg": "sum",
+     "aggItem": "",
+     "samples": "分類 1, 42\n分類 2, 35\n分類 3, 28\n分類 4, 19",
+     "unit": ""
+    }
+   }
+  ],
+  "newItems": []
+ },
+ "steps/status": {
+  "height": 800,
+  "parts": [
+   {
+    "type": "steps",
+    "x": 32,
+    "y": 64,
+    "w": 560,
+    "h": 40,
+    "no": 1,
+    "label": null,
+    "tableKind": null,
+    "item": "ステータス",
+    "view": {
+     "current": "承認待ち",
+     "showWord": true
+    },
+    "props": null
+   },
+   {
+    "type": "status",
+    "x": 1088,
+    "y": 64,
+    "w": 160,
+    "h": 32,
+    "no": 2,
+    "label": null,
+    "tableKind": null,
+    "item": "ステータス",
+    "view": {
+     "current": "承認待ち",
+     "showWord": true
+    },
+    "props": null
+   },
+   {
+    "type": "text1",
+    "x": 32,
+    "y": 136,
+    "w": 320,
+    "h": 64,
+    "no": 3,
+    "label": null,
+    "tableKind": null,
+    "item": "件名",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "dropdown",
+    "x": 480,
+    "y": 136,
+    "w": 320,
+    "h": 64,
+    "no": 4,
+    "label": null,
+    "tableKind": null,
+    "item": "種別",
+    "view": null,
+    "props": null
+   },
+   {
+    "type": "button",
+    "x": 32,
+    "y": 232,
+    "w": 96,
+    "h": 40,
+    "no": 5,
+    "label": "承認する",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "primary",
+     "action": ""
+    }
+   },
+   {
+    "type": "button",
+    "x": 160,
+    "y": 232,
+    "w": 96,
+    "h": 40,
+    "no": 6,
+    "label": "差し戻す",
+    "tableKind": null,
+    "item": null,
+    "view": null,
+    "props": {
+     "style": "normal",
+     "action": ""
+    }
+   }
+  ],
+  "newItems": []
+ }
+}
