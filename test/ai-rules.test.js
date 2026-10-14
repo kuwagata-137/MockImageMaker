@@ -211,6 +211,30 @@ test('8-5: 右の欄の打ちかけの文字は、AI が書く前に人の 1 回
   app.close();
 });
 
+test('8-5: 日本語を変換している間は、画像・書き出しの道具で右の欄の打ちかけの文字を確定しない（変換が終われば、確定してから描く）', async () => {
+  const { app, T, call, d } = await boot();
+  T.openDesign('d1');
+  assert.equal((await call(...desc('AI の変更'))).ok, true);
+  const doc = app.document;
+  assert.ok(doc.querySelector('#ai-band'));
+  const ta = doc.querySelector('#side-settings [data-field="design-desc"]');
+  ta.focus();
+  ta.value = 'にゅうりょく';
+  doc.dispatchEvent(new app.window.Event('compositionstart'));
+  const undo0 = T.store.undoStack.length;
+  for (const [tool, args] of [['get_screen_image', { design: 'd1', screen: 's1' }], ['export_design', { design: 'd1', format: 'html' }]]) {
+    assert.equal((await call(tool, args)).ok, true, tool);
+    assert.equal(d('d1').description, 'AI の変更', `${tool}: 変換中のかなは確定しない`);
+    assert.equal(T.store.undoStack.length, undo0, `${tool}: 人の変更として履歴に入れない`);
+    assert.ok(doc.querySelector('#ai-band'), `${tool}: 紫の帯は閉じない`);
+  }
+  doc.dispatchEvent(new app.window.Event('compositionend'));
+  ta.value = '入力';
+  assert.equal((await call('get_screen_image', { design: 'd1', screen: 's1' })).ok, true);
+  assert.equal(d('d1').description, '入力', '変換が終われば、確定してから描く');
+  app.close();
+});
+
 test('保存に失敗したときは、save_failed を返す', async () => {
   const { app, T, call } = await boot();
   T.store.adapter.save = () => false;

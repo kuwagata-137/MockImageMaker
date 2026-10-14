@@ -8891,9 +8891,13 @@ async function aiRestoreRevision(args, ctx) {
 
 // ── 画像と書き出し（main が render の HTML を PNG・PDF にし、決めたフォルダへ書く。ファイルの窓は出さない。設計書の 8-7）──
 const aiDesignBrief = (d) => ({ id: d.id, name: d.name, updatedAt: d.updatedAt });
+// 右の欄の打ちかけの文字を入れてから写す（8-5）。ただし日本語の変換中は確定しない（未確定のかなが人の 1 回の変更として履歴に入り、紫の帯も閉じるため）
+function aiFlushBeforeRead() {
+  if (!imeComposing) flushSideField();
+}
 // 画面の画像。withTable が true なら、部品の設定の一覧表と吹き出しも写す（書き出しの PNG と同じ形）。false なら画面だけ
 async function aiGetScreenImage(args) {
-  flushSideField(); // 右の欄の打ちかけの文字を入れてから写す（8-5）
+  aiFlushBeforeRead();
   const S = aiState();
   const d = aiResolveDesign(S, args.design);
   const sc = aiResolveScreen(d, args.screen);
@@ -8907,7 +8911,7 @@ async function aiGetScreenImage(args) {
 const AI_EXPORT_FORMATS = ['pdf', 'html', 'png'];
 // 書き出す。設定は書き出しの窓と同じ（PDF: 用紙・向き・表紙・つながりの図・項目の一覧表、PDF と PNG: 画面、全部: 違いの印を付ける版）
 async function aiExportDesign(args) {
-  flushSideField();
+  aiFlushBeforeRead();
   const S = aiState();
   const d = aiResolveDesign(S, args.design);
   const format = str(args.format);
