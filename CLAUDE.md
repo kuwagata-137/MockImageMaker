@@ -49,6 +49,10 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
   次は第 7 段階（AI の窓口と MCP の土台。下の「AI 設計基盤」と `開発ロードマップ.txt`）。
 - 2026-10-14: 版の決まりを改めた（ユーザー指示。下の「運用」）。アプリはまだ完成していない。第 7〜11 段階がすべて終わり、デバッグが終わったときに初めてリリースする。
   それまでは版を上げない（`mock_v1.00.html`・1.0.0 のまま）。
+- 2026-10-14: 第 7 段階（AI の窓口と MCP の土台）を作った（ブランチ `stage7/ai-mcp`。まだ PR にしていない）。AI の見た目の細かい決めごとをモックで聞いた（q48〜q51）。
+  入口 `mcp-server.js`（17 個の道具）→ 名前付きパイプ → main → ページの「AI の窓口」。紫の札・紫とオレンジの帯・光らせ方・「AI とつなぐ」の窓・タスクトレイ。
+  作った版（`dist/win-unpacked`）で、入口からの裏の起動・保存・画像・書き出し・終わる時を確かめた。ユーザーが席を外している間の決めごとは `開発記録.txt` の「質疑の記録」。
+  残り: ユーザーが claude にログインし直して Claude Code から 4 つの場面を試すことと、インストーラを入れて確かめること。次は第 8 段階（`開発ロードマップ.txt`）。
 
 ## 設計方針
 
@@ -66,7 +70,11 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
 
 ### ファイルの役割（v1.00〜）
 
-- `mock_v<版>.html`: アプリの画面。script は「版／データの形／保存／元に戻す／共通の部品／一覧の画面／編集の画面／書き出しと取り込み／命令／起動／テスト用の窓口」の順に区切り、冒頭に目次がある。
+- `mock_v<版>.html`: アプリの画面。script は「版／データの形／保存／元に戻す／共通の部品／一覧の画面／編集の画面／書き出しと取り込み／命令／AI の窓口／起動／テスト用の窓口」の順に区切り、冒頭に目次がある。
+  - AI の窓口（第 7 段階）: AI の頼みは `aiDispatch()` で 1 つずつ受け、道具は `AI_TOOLS`（区画の最後）。書く道具はすべて `aiWrite()` を通す
+    （断る判定 → 打ちかけの文字の確定 → `store.batch()` で 1 回の変更 → 「AI が直す前の状態」の行（kind 'ai'・`aiSession`。画面設計ごとに 10 行まで）→ 保存を待つ）。
+    元に戻すの履歴は `aiHistoryMode()` で積むか消すかを決める。見た目（紫の札・帯・光らせ方）は同じ区画の「AI の見た目」の `aiView` と `aiAfterWrite()`。
+    「AI とつなぐ」など見るだけの窓は `showDialog({ aiPassive: true })`（開いている間も AI の書く頼みを断らない）。
   - データの形を変えるときは `SCHEMA_VERSION` を上げ、`migrate()` に古い形を直す処理を足す。読み込んだデータの知らない項目は消さずに残す。
   - 今のデータの形は v2（2026-10-13）。データベースの項目は画面設計の `items` に 1 か所だけ持ち、入力欄の部品・テーブル・ステータスの印は `itemId` で項目を指す
     （項目名・必須・メモ・設定・ルックアップ `lookup`・取り込み元 `link` は項目が持つ）。描くときは `resolvePart()` で部品と項目を合わせる。
@@ -86,7 +94,7 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
   - ボタン・キー・アプリのメニューからの命令は、すべて `runCommand()` で受ける。
   - 変更はすべて `store.commit()` を通す（元に戻すの履歴に積む）。中身が変わらない変更は履歴に積まず、画面設計の更新日時も中身が変わったときだけ変える。
   - 画面の並びは画面設計の `screens` の順。ひな形の中身は `screenFromTemplate()`、画面の写しは `copyScreenData()`（画面の複製と画面設計の複製の両方で使う）。
-- `main.js`（窓・メニュー・二重起動の防止・終了前の保存待ち）・`preload.js`（`storageAPI`・`menuAPI`・`exportAPI`）・`storage.js`（`designs.json` の読み書き）・
+- `main.js`（窓・メニュー・二重起動の防止・終了前の保存待ち・AI の受け口とタスクトレイを始める）・`preload.js`（`storageAPI`・`menuAPI`・`exportAPI`・`aiAPI`）・`storage.js`（`designs.json` の読み書き）・
   `export.js`（PDF・PNG・HTML の保存の窓と書き込み、HTML の取り込みの開く窓。第 5 段階）。
   - 書き出しのページ（PDF・PNG）は、ページ側（`mock_v*.html` の「8. 書き出しと取り込み」）で印刷用の HTML を組み、main で窓を出さない窓に開いて `printToPDF`・撮影する。
     ページは実際に描いて測り、縮め方・表の分け方・ページ番号を決める（jsdom では測れないので、縮めない・表は 1 ページとみなす）。
@@ -95,32 +103,49 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
   - 単体で開いて編集できる HTML は、アプリの style と script の文字（起動のときに取った APP_STYLE・APP_SCRIPT）を、アプリの HTML と同じ骨組みに入れ、
     画面設計を `<script type="application/json" id="mim-embedded">` に埋め込む（「<」は \u003c に逃がす）。
     そのため、script の中に script の始まりと終わりの印・`<!--` をそのまま書かない（`'<' + '/script>'` のように分ける。テストで確かめる）。
+  - 終わる前の保存は will-quit で待ち、待ち終わったら `app.exit(0)` で終わる（`app.quit()` をもう一度呼ぶと、will-quit を止めた直後は Electron が受け付けず、窓のないアプリが残った。2026-10-14）。
+- AI の入口とつなぎ役（第 7 段階。設計は `AI設計基盤_設計書.md` の 7〜9・12 章）:
+  - `mcp-server.js`（入口。公式 SDK の McpServer・stdio。標準出力は MCP だけ）・`mcp-tools.js`（17 個の道具の名前と説明）・`mcp-schemas.js`（zod の入力の形）・
+    `mcp-guide.js`（instructions と手引き）・`automation-client.js`（入口の側のパイプの客。アプリが動いていなければ `--background` で起動する）。
+  - `automation-protocol.js`（やりとりの決まり・`automation.json`）・`automation.js`（パイプの受け口）・`automation-main.js`（main とページの橋・終わる時計・登録の文の IPC）・
+    `automation-render.js`（画像と書き出しを PNG・PDF にして書く）・`automation-tray.js`（タスクトレイ）・`automation-connect.js`（「AI とつなぐ」の登録の文）。
+  - 入口は、app.asar の中から動くとインストールした版（保存先は `%APPDATA%\MockImageMaker`）、外から動くと開発版（`.devdata/userData`）。
+    インストールした版でも、窓を出さない確かめの起動（`MIM_HEADLESS=1`）のときだけ `MIM_USER_DATA` で保存先を変えられる（人の保存データに触らずに確かめるため）。
+    `MIM_IDLE_QUIT_MS`・`MIM_AI_EXPORT_DIR` は、確かめの起動か開発版のときだけ読む。`MIM_APP_CMD`（入口がアプリを起動する文の差し替え）はテストと確かめの道具だけで使う。
 - `test/`: `npm test`（node --test と jsdom）。`test/harness.js` がアプリの HTML を jsdom で起動し、`window.__test__` から中を触る。
   部品・吹き出し・まとめて操作のテストは `test/parts.test.js`、データの形 v2・項目・取り込み・ルックアップ・つながりの図のテストは `test/database.test.js`、
   複数の画面（ひな形・複製・並べ替え・消す・画面の一覧の「…」・画面を足す窓）のテストは `test/screens.test.js`。
   書き出しと受け渡し（書き出しの窓・印刷用のページ・単体で開いた HTML・取り込み）のテストは `test/export.test.js`
   （`bootApp({ html })` で書き出した HTML を起動し、`bootApp({ exportAPI })` で書き出しの窓口の身代わりを渡す）。
   改訂履歴（改訂する・改訂履歴の窓・前の版を見る・戻す・違いの判定・書き出しの違いの印）のテストは `test/revisions.test.js`。
+  AI の窓口（第 7 段階）は、`test/ai-fixtures.js`（見本）・`test/ai-store.test.js`（batch など）・`test/layout.test.js`（並べ方とひな形の見本 `test/fixtures/template-layout.json`）・
+  `test/ai-read.test.js`・`test/ai-write.test.js`・`test/ai-rules.test.js`（断る・元に戻す・直す前の行）・`test/ai-export.test.js`・`test/ai-view.test.js`（見た目）。
+  main と入口の側は Node だけで動く `test/automation.test.js`（パイプの受け口）・`test/mcp.test.js`（入口。身代わりのアプリ `test/fixtures/fake-app.js`）・`test/automation-tray.test.js`。
   jsdom では要素の位置（getBoundingClientRect）が取れないので、箱からのドラッグで置く・囲んで選ぶなどの操作は `tools/shoot-app.js` で確かめる。
   jsdom の中で作った配列は、テストの側の配列と deepEqual で比べると違うと判定されるので、`JSON.parse(JSON.stringify(...))` などで写してから比べる。
 - `tools/`: 確かめの道具（どれも窓を出さない）。
   - `node tools/shoot.js <html> <png>`: HTML を headless の Chrome で撮る（モックの撮影）。
   - 撮影の道具は、環境変数 `MIM_CHROME_PATH` にブラウザの場所を書くと、システムの Chrome の代わりにそれを使う（Chrome のないクラウドのセッションで使う）。
   - `node tools/shoot-app.js`: アプリの場面（一覧・新規作成の窓・編集の画面など）を順に撮り、`screenshots/v<版>_*.png` に置く。
-    `--only=home,editor,parts,db,parts2,callout,multi,map,screens,export,revisions` で一部の場面だけを撮れる（export は場面 71〜81。書き出しの窓・印刷用のページ・
-    単体で開いた HTML・取り込みの窓。revisions は場面 82〜93。▼ のメニュー・改訂する窓・改訂履歴の窓・前の版を見る・戻す確かめの窓・違いの印の PDF と HTML）。
+    `--only=home,editor,parts,db,parts2,callout,multi,map,screens,export,revisions,ai` で一部の場面だけを撮れる（export は場面 71〜81。書き出しの窓・印刷用のページ・
+    単体で開いた HTML・取り込みの窓。revisions は場面 82〜93。▼ のメニュー・改訂する窓・改訂履歴の窓・前の版を見る・戻す確かめの窓・違いの印の PDF と HTML。
+    ai は場面 94〜100〔`tools/shoot-app-ai.js`〕。紫の札・帯・光らせ方・オレンジの帯・「AI とつなぐ」の窓・タスクトレイのアイコン）。
     ドラッグの操作は Puppeteer で実際にマウスを動かす。
   - `node tools/check-electron.js`: Electron を窓を出さずに起動し、保存・二重起動の防止・起動し直しと、右の欄で打ちかけの文字が閉じても保存されるか
     （窓の ×・ファイル > 終了・window.close()）、項目・吹き出し・つながりの図の箱の位置と画面の並びが残るか、改訂した版と写しが残り起動し直しても見られるか、
     v1 の形の designs.json を v2 に直して読めるかを確かめる（保存先は `.devdata/check-userData` と `.devdata/check-userData-v1`）。
     クラウドのセッション（Linux・root）では `ELECTRON_DISABLE_SANDBOX=1` を付けて `xvfb-run -a node tools/check-electron.js` で動かす。
-    その環境では「ファイル > 終了」の確かめだけが、変更前の main でも時間切れになる（2026-10-13。社内の Windows PC では OK だった。2026-10-14）。
+    その環境で「ファイル > 終了」の確かめだけが時間切れになっていた（2026-10-13）のは、終わった後も窓のないアプリが残る不具合（2026-10-14 に直した）によるものだったらしい。
   - `node tools/check-export.js`: Electron を窓を出さずに起動し、書き出しの窓から PDF（A4 横・A3 縦・16:9）・PNG・HTML を書き出して、ページ数・用紙の大きさ・文字・
     中身が用紙いっぱいに入っているか（pdfinfo・pdftotext があるとき）、PNG の大きさ、書き出した HTML の取り込み直し、第 1 版と比べた違いの印の PDF を確かめる
     （保存先は `.devdata/check-export`）。社内の Windows PC には pdfinfo・pdftotext がないので、PDF はページの数だけを確かめる。
     Windows の Node v24.12.0 では、日本語の名前のファイルを `fs.rmSync` に渡すと Node ごと落ちる（2026-10-14）。確かめの道具では `existsSync`＋`unlinkSync` を使う。
     `MIM_HEADLESS=1` のときだけ、環境変数 `MIM_EXPORT_DIR` があれば保存の窓を出さずにそこへ書き、`MIM_IMPORT_FILE` があれば開く窓を出さずにそれを読む。
     クラウドのセッションでは check-electron.js と同じく `ELECTRON_DISABLE_SANDBOX=1 xvfb-run -a` を付ける。
+  - `node tools/check-mcp.js [--packaged=dist/win-unpacked]`: AI の入口を公式 SDK の客で起動し、入口がアプリを裏で起動して使えるか（作る・保存・画像・書き出し・
+    2 つ目の起動・× で隠す・入口を閉じる／強制終了すると 5 秒で終わる）を確かめる（保存先は `.devdata/check-mcp`）。窓の × は、メインプロセスの inspector から
+    `BrowserWindow.close()` を呼んで再現する（ページの window.close() は close の知らせを通らない）。`--packaged` は、作った版の exe を入口にして同じことを確かめる
+    （保存先は `.devdata/check-mcp-packaged`。インストールした版と同じ動かし方）。
 - 取得物と作業用のファイルは `.devdata/`（Git に入れない）に置く。`npm run dist` は、環境変数 `ELECTRON_BUILDER_CACHE` と `electron_config_cache` を `.devdata/eb-cache`・`.devdata/electron-cache` に向けて動かす。
 
 ### 画面設計（2026-10-13）
