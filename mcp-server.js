@@ -3,7 +3,8 @@
 // 道具の中身は持たない（ページの「AI の窓口」にある）。手引き（read_guide・resources）だけは、アプリが動いていなくても返す。
 // 起動のしかた:
 //  - インストールした版: MockImageMaker.exe を環境変数 ELECTRON_RUN_AS_NODE=1 で起動し、resources\app.asar\mcp-server.js を渡す（設計書 12 章）
-//  - 開発版: node mcp-server.js --dev（保存先は npm start と同じ .devdata/userData。MIM_USER_DATA で変えられる）
+//  - 開発版: node mcp-server.js（app.asar の外から動くと開発版とみなす。保存先は npm start と同じ .devdata/userData。MIM_USER_DATA で変えられる）
+// 登録の文は「AI とつなぐ」の窓に出す（automation-connect.js）
 // 標準出力は MCP のやりとりだけに使う（console.log は標準エラーへ回す）。設計は AI設計基盤_設計書.md の 7・9 章。
 'use strict';
 

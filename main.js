@@ -31,6 +31,9 @@ const APP_VERSION = APP_HTML.replace(/^mock_v|\.html$/g, '');
 // （インストールしたアプリの %APPDATA%\MockImageMaker と混ざらないようにするため）。
 // 確かめのための起動（tools/check-electron.js）は、環境変数 MIM_USER_DATA で別のフォルダを指す
 if (!app.isPackaged) app.setPath('userData', process.env.MIM_USER_DATA || path.join(__dirname, '.devdata', 'userData'));
+// インストールした版でも、窓を出さない確かめの起動（MIM_HEADLESS=1）のときだけは MIM_USER_DATA で保存先を変えられる
+// （作った版を tools/check-mcp.js --packaged で確かめるとき、人の保存データ〔%APPDATA%\MockImageMaker〕に触らないため）
+else if (HEADLESS && process.env.MIM_USER_DATA) app.setPath('userData', path.resolve(process.env.MIM_USER_DATA));
 
 let mainWin = null;
 let storage = null;

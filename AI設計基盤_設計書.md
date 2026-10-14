@@ -761,13 +761,19 @@ PowerShell で 1 回だけ実行する。インストール先は `%LOCALAPPDATA
 （管理者の権限なしで入れる 1 クリックのインストーラは、package.json の `name` のフォルダに入れる。2026-10-14 に electron-builder の作りで確かめた）。
 
 ```powershell
-claude mcp add --scope user mockimagemaker --env ELECTRON_RUN_AS_NODE=1 -- "$env:LOCALAPPDATA\Programs\mockimagemaker\MockImageMaker.exe" "$env:LOCALAPPDATA\Programs\mockimagemaker\resources\app.asar\mcp-server.js"
+claude mcp add --env ELECTRON_RUN_AS_NODE=1 --scope user mockimagemaker 'C:\Users\<ユーザー名>\AppData\Local\Programs\mockimagemaker\MockImageMaker.exe' 'C:\Users\<ユーザー名>\AppData\Local\Programs\mockimagemaker\resources\app.asar\mcp-server.js'
 ```
 
+- 実際の文は、アプリの「ヘルプ > AI とつなぐ…」の窓に、インストール先の実際の場所を入れて出す（「コピー」で写せる。第 7 段階。`automation-connect.js`）。
+- `--env` は後ろの値をいくつでも受け取るので、`--scope` の前に置く（サーバーの名前を `--env` の値と取られないように）。
+  `--` は使わない（PowerShell では、claude の呼び方によって `--` が消えることがある）。場所は `'` で囲む（中の `'` は `''`）。
+  2026-10-14 に、この形の文を本物の claude（2.1.263）に読ませ、名前・exe・入口・`ELECTRON_RUN_AS_NODE=1` がそのとおりに登録されることを確かめた
+  （ユーザーの設定を変えないように、一時の `CLAUDE_CONFIG_DIR` と `--scope project` で試した）。
 - `--scope user` にすると、どのフォルダで Claude Code を起動しても使える。
-- 入口の js は asar の中のまま読める（7-2 の確かめ）。インストールした版で、この文のとおりに登録して動くかは、第 7 段階の終わりに確かめる。
+- 入口の js は asar の中のまま読める（7-2 の確かめ）。2026-10-14 に、作った版（`dist/win-unpacked`）の exe と asar の中の入口を、
+  この文と同じ動かし方で公式 SDK の客からつなぎ、17 個の道具・裏の起動・保存・画像・書き出し・終わる時を確かめた（`tools/check-mcp.js --packaged`）。
+  Claude Code（モデル）から 4 つの場面を試すのは、この PC の claude のログインの期限が切れていたため、ユーザーに頼む（`開発記録.txt`）。
 - 道具は、Claude Code では `mcp__mockimagemaker__create_design` のような名前で見える。毎回の許可を省くときは、Claude Code の設定の `permissions.allow` に足す。
-- 登録の文を、アプリの中の案内に出してコピーできるようにするかは、第 7 段階で聞く（16 章）。
 
 ### 12-2. ほかの AI のアプリ
 
@@ -787,13 +793,14 @@ MCP の設定の JSON に、次のように書く（書く場所はそれぞれ�
 
 ### 12-3. 開発版（npm start と同じ保存先）
 
-リポジトリのフォルダで実行する。
+開発版のアプリ（`npm start`）の「ヘルプ > AI とつなぐ…」に出る文を使う（作業フォルダの場所が入る）。
 
 ```powershell
-claude mcp add --scope local mockimagemaker-dev -- node mcp-server.js --dev
+claude mcp add --scope user mockimagemaker-dev node 'C:\<作業フォルダ>\mcp-server.js'
 ```
 
-- `--dev` の入口は、作業フォルダの `.devdata/userData` の `automation.json` を見る。
+- 入口は、app.asar の外から動くと開発版とみなす（`--dev` の引数は要らない。2026-10-14 に改めた）。
+- 開発版の入口は、作業フォルダの `.devdata/userData` の `automation.json` を見る。
   アプリが動いていなければ、`node_modules` の Electron で `--background` で起動する（保存先は `npm start` と同じ `.devdata/userData`）。
 - インストールした版と開発版は `userData` が違うので、つながる先が混ざらない。
 

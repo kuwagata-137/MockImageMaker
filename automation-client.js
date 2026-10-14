@@ -41,9 +41,11 @@ function appTarget({ dirname = ROOT, env = process.env, execPath = process.execP
   const custom = env.MIM_APP_CMD ? JSON.parse(env.MIM_APP_CMD) : null;
   const installed = /[\\/]app\.asar([\\/]|$)/i.test(dirname);
   const appData = env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+  // インストールした版の保存先は、窓を出さない確かめの起動（MIM_HEADLESS=1）のときだけ MIM_USER_DATA で変えられる（main.js と同じ）
+  const installedData = env.MIM_HEADLESS === '1' && env.MIM_USER_DATA ? path.resolve(env.MIM_USER_DATA) : path.join(appData, 'MockImageMaker');
   return {
     mode: installed ? 'installed' : 'dev',
-    userData: installed ? path.join(appData, 'MockImageMaker') : env.MIM_USER_DATA || path.join(ROOT, '.devdata', 'userData'),
+    userData: installed ? installedData : env.MIM_USER_DATA || path.join(ROOT, '.devdata', 'userData'),
     hide: !!custom,
     cwd: installed ? path.dirname(execPath) : ROOT,
     // 開発版の Electron の場所は、起動するときに初めて調べる（require('electron') は Node で動くとき、Electron の exe の場所を返す）

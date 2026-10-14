@@ -284,3 +284,20 @@ test('標準出力には JSON-RPC の行だけが出る。標準入力が閉じ�
   const code = await Promise.race([exited, delay(5000).then(() => 'timeout')]);
   assert.equal(code, 0);
 });
+
+test('入口のつなぎ先: インストールした版は APPDATA の MockImageMaker。保存先を変えられるのは、窓を出さない確かめの起動（MIM_HEADLESS=1）のときだけ', () => {
+  const { appTarget } = require('../automation-client');
+  const inst = path.join(BASE, 'fake-install', 'mockimagemaker'); // 架空のインストール先（読まない）
+  const asar = path.join(inst, 'resources', 'app.asar');
+  const exe = path.join(inst, 'MockImageMaker.exe');
+  const env = { APPDATA: path.join(BASE, 'fake-appdata') };
+  const t = appTarget({ dirname: asar, env, execPath: exe });
+  assert.equal(t.mode, 'installed');
+  assert.equal(t.userData, path.join(env.APPDATA, 'MockImageMaker'));
+  assert.deepEqual(t.command(), [exe, '--background']);
+  const other = path.join(BASE, 'fake-data');
+  assert.equal(appTarget({ dirname: asar, env: { ...env, MIM_USER_DATA: other } }).userData, path.join(env.APPDATA, 'MockImageMaker'), 'MIM_USER_DATA だけでは変えない');
+  assert.equal(appTarget({ dirname: asar, env: { ...env, MIM_USER_DATA: other, MIM_HEADLESS: '1' } }).userData, other);
+  const dev = appTarget({ dirname: REPO, env: { MIM_USER_DATA: other } });
+  assert.deepEqual([dev.mode, dev.userData], ['dev', other]);
+});

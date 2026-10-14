@@ -1,4 +1,4 @@
-// 使い方: node tools/check-mcp.js
+// 使い方: node tools/check-mcp.js [--packaged=<作った版のフォルダ（例 dist/win-unpacked）>]
 // AI の入口（mcp-server.js --dev）を公式の SDK の Client で起動してつなぎ、入口が Electron のアプリを裏で起動して使えるかを確かめる（第 7 段階の T9）。
 // アプリは窓を出さない（MIM_HEADLESS=1）。入口がアプリを起動するときの文は MIM_APP_CMD で差し替え、メインプロセスの inspector を開ける
 // （窓の × は、check-electron と同じく BrowserWindow.close() を inspector から呼んで再現する。ページの window.close() は close の知らせを通らないため）。
@@ -9,6 +9,9 @@
 //  B. 次の入口で、アプリをまた起動し、A で作った画面設計が一覧に出る。入口を強制終了しても、5 秒たってアプリが終わる
 //  C. 2 つ目の起動（--background なし。人がアプリを起動した）では窓を出す印が付き、入口を閉じても終わらない。AI のつながりがないときの窓の × では終わる
 // 保存先は作業フォルダの .devdata/check-mcp（毎回消してから始める）。
+// --packaged のときは、作った版（npm run dist の win-unpacked）の MockImageMaker.exe を ELECTRON_RUN_AS_NODE=1 で入口にし、
+// resources\app.asar\mcp-server.js を渡す（インストールした版と同じ動かし方）。保存先は .devdata/check-mcp-packaged
+// （窓を出さない確かめの起動〔MIM_HEADLESS=1〕のときだけ、インストールした版でも MIM_USER_DATA で保存先を変えられる。人の保存データに触らないため）。
 'use strict';
 
 const fs = require('fs');
@@ -21,7 +24,12 @@ const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio
 const P = require('../automation-protocol');
 
 const ROOT = path.resolve(__dirname, '..');
-const BASE = path.join(ROOT, '.devdata', 'check-mcp');
+const PACKAGED = ((process.argv.find((a) => a.startsWith('--packaged=')) || '').slice(11)) || null;
+const PKG_DIR = PACKAGED ? path.resolve(ROOT, PACKAGED) : null;
+const PKG_EXE = PKG_DIR ? path.join(PKG_DIR, 'MockImageMaker.exe') : null;
+// アプリの起動の文（2 つ目の起動と、入口がアプリを起動するときの差し替え）
+const appCommand = (...args) => (PKG_EXE ? [PKG_EXE, ...args] : [electronPath, ROOT, ...args]);
+const BASE = path.join(ROOT, '.devdata', PACKAGED ? 'check-mcp-packaged' : 'check-mcp');
 const USER_DATA = path.join(BASE, 'userData');
 const EXPORT_DIR = path.join(BASE, 'export');
 const STATE_FILE = path.join(USER_DATA, 'data', 'designs.json');
@@ -33,11 +41,13 @@ const check = (label, ok, detail = '') => { results.push(ok); console.log(`${ok 
 
 const ENV = {
   MIM_HEADLESS: '1', MIM_USER_DATA: USER_DATA, MIM_AI_EXPORT_DIR: EXPORT_DIR, MIM_IDLE_QUIT_MS: String(IDLE_MS),
-  MIM_APP_CMD: JSON.stringify([electronPath, ROOT, `--inspect=${MAIN_PORT}`]), MIM_TIMEOUT_MS: '40000',
+  MIM_APP_CMD: JSON.stringify(appCommand(`--inspect=${MAIN_PORT}`)), MIM_TIMEOUT_MS: '40000',
 };
 
 async function openEntry() {
-  const transport = new StdioClientTransport({ command: process.execPath, args: [path.join(ROOT, 'mcp-server.js'), '--dev'], env: ENV, stderr: 'pipe' });
+  const transport = PKG_EXE
+    ? new StdioClientTransport({ command: PKG_EXE, args: [path.join(PKG_DIR, 'resources', 'app.asar', 'mcp-server.js')], env: { ...ENV, ELECTRON_RUN_AS_NODE: '1' }, stderr: 'pipe' })
+    : new StdioClientTransport({ command: process.execPath, args: [path.join(ROOT, 'mcp-server.js')], env: ENV, stderr: 'pipe' });
   const client = new Client({ name: 'claude-code', version: 'check' });
   await client.connect(transport);
   return { client, transport };
@@ -80,7 +90,8 @@ function status() {
 function secondLaunch(background) {
   const env = { ...process.env, MIM_HEADLESS: '1', MIM_USER_DATA: USER_DATA };
   delete env.ELECTRON_RUN_AS_NODE;
-  const child = spawn(electronPath, [ROOT, ...(background ? ['--background'] : [])], { env, stdio: 'ignore', windowsHide: true });
+  const [cmd, ...args] = appCommand(...(background ? ['--background'] : []));
+  const child = spawn(cmd, args, { env, stdio: 'ignore', windowsHide: true });
   return new Promise((resolve) => child.on('exit', resolve));
 }
 
