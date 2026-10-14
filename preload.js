@@ -25,6 +25,34 @@ contextBridge.exposeInMainWorld('exportAPI', {
   openHtml: () => ipcRenderer.invoke('export:openHtml'),
 });
 
+// AI の窓口（第 7 段階。automation-main.js）。AI の頼みをページの aiDispatch に渡し、返事を main へ返す
+contextBridge.exposeInMainWorld('aiAPI', {
+  // cb({ tool, args, session, client }) は返事 { ok, result?, error? } か、その Promise を返す
+  onRequest: (cb) => {
+    ipcRenderer.removeAllListeners('ai:request');
+    ipcRenderer.on('ai:request', async (_e, { rid, tool, args, session, client }) => {
+      let res;
+      try {
+        res = await cb({ tool, args, session, client });
+      } catch (err) {
+        res = { ok: false, error: { code: 'internal', message: `アプリの中で失敗しました（${(err && err.message) || err}）。` } };
+      }
+      ipcRenderer.send('ai:response', { rid, res });
+    });
+  },
+  // 頼みを受けられるようになったことを知らせる（起動の終わりに 1 回）
+  ready: () => ipcRenderer.send('ai:ready'),
+  // AI のつながりが変わったときの知らせ { clients: [{ session, client }] } を受け取る
+  onStatus: (cb) => {
+    ipcRenderer.removeAllListeners('ai:status');
+    ipcRenderer.on('ai:status', (_e, status) => cb(status));
+  },
+  // 「AI とつなぐ」の窓の中身 { dev, serverName, claudeCommand, json }（automation-connect.js）
+  connectInfo: () => ipcRenderer.invoke('ai:connect-info'),
+  // 文をクリップボードに写す。戻り値は true
+  copyText: (text) => ipcRenderer.invoke('ai:copy', text),
+});
+
 contextBridge.exposeInMainWorld('menuAPI', {
   // アプリのメニューが押されたときの命令（'undo'・'zoomIn' など）を受け取る
   onCommand: (cb) => {

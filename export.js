@@ -9,6 +9,7 @@
 // 確かめの道具（tools/check-export.js）のため、MIM_HEADLESS=1 のときだけ、環境変数 MIM_EXPORT_DIR があれば窓を出さずにそこへ書き（PDF も開かない）、
 // MIM_IMPORT_FILE があれば開く窓を出さずにそのファイルを読む。
 // ページ側の対になる処理は mock_v*.html の「8. 書き出しと取り込み」。
+// HTML を PDF・PNG にする所は createPageRenderer に分けてあり、AI の書き出しと画面の画像（automation-main.js）でも使う（第 7 段階）。
 'use strict';
 
 const path = require('path');
@@ -33,26 +34,8 @@ function safeName(name, fallback) {
 }
 const errText = (err) => String((err && err.message) || err);
 
-function initExport(app, ipcMain, { headless = false } = {}) {
-  const fixedDir = headless && process.env.MIM_EXPORT_DIR ? path.resolve(process.env.MIM_EXPORT_DIR) : null;
-  const fixedImport = headless && process.env.MIM_IMPORT_FILE ? path.resolve(process.env.MIM_IMPORT_FILE) : null;
-  let lastDir = null; // 前に保存・読み込みしたフォルダ（アプリを閉じるまで覚える）
-  const startDir = () => lastDir || app.getPath('documents');
-  const winOf = (e) => BrowserWindow.fromWebContents(e.sender);
-
-  // 保存の窓。戻り値は書く先のパス（キャンセルは null）
-  async function askSavePath(e, { title, name, ext, label }) {
-    const fileName = safeName(name, 'export.' + ext);
-    if (fixedDir) {
-      await fsp.mkdir(fixedDir, { recursive: true });
-      return path.join(fixedDir, fileName);
-    }
-    const r = await dialog.showSaveDialog(winOf(e), { title, defaultPath: path.join(startDir(), fileName), filters: [{ name: label, extensions: [ext] }] });
-    if (r.canceled || !r.filePath) return null;
-    lastDir = path.dirname(r.filePath);
-    return r.filePath;
-  }
-
+// 印刷用の HTML を PDF・PNG にする（書き出しの窓と、AI の書き出し・画面の画像〔automation-main.js。第 7 段階〕の両方で使う）
+function createPageRenderer(app) {
   // HTML を一時ファイルに書き、窓を出さない窓で開いて fn(win) を呼ぶ。終わったら窓と一時ファイルを片付ける
   async function withPageWindow(html, winOpts, fn) {
     const dir = path.join(app.getPath('temp'), 'mockimagemaker-export');
@@ -77,6 +60,66 @@ function initExport(app, ipcMain, { headless = false } = {}) {
     }
   }
 
+  // pageSize は用紙の大きさ { width, height }（インチ）
+  function renderPdf({ html, pageSize }) {
+    return withPageWindow(String(html), { width: 1280, height: 900 }, (win) => win.webContents.printToPDF({
+      pageSize: { width: Number(pageSize.width), height: Number(pageSize.height) },
+      landscape: false, // 幅と高さをそのまま渡している（横の用紙は幅が大きい）
+      printBackground: true,
+      preferCSSPageSize: true,
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+    }));
+  }
+
+  // 画面 1 つ分の HTML を、画面の外で描く窓で細かさ scale 倍（長い辺が maxSide ピクセルを超えるときは下げる）に描いて撮る。
+  // 窓の大きさは画面より大きくできないことがあるので、Chromium の開発者向けの命令（debugger）で表示の大きさを中身に合わせ、
+  // 範囲を決めて撮る（Puppeteer の撮り方と同じ）
+  function renderPng({ html, width, height, scale = PNG_SCALE, maxSide = PNG_MAX_SIDE }) {
+    const w = Math.max(1, Math.ceil(Number(width) || 1));
+    const h = Math.max(1, Math.ceil(Number(height) || 1));
+    const k = Math.min(scale, maxSide / Math.max(w, h));
+    return withPageWindow(String(html), { width: 800, height: 600, webPreferences: { offscreen: true } }, async (win) => {
+      const dbg = win.webContents.debugger;
+      dbg.attach('1.3');
+      try {
+        await dbg.sendCommand('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: k, mobile: false });
+        await dbg.sendCommand('Emulation.setDefaultBackgroundColorOverride', { color: { r: 255, g: 255, b: 255, a: 1 } });
+        const shot = await Promise.race([
+          dbg.sendCommand('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('画面を撮るのに時間がかかりすぎました')), PAINT_TIMEOUT)),
+        ]);
+        const buf = Buffer.from(shot.data, 'base64');
+        if (!buf.length) throw new Error('画面を撮れませんでした');
+        return buf;
+      } finally {
+        try { dbg.detach(); } catch (_) { /* もう外れている */ }
+      }
+    });
+  }
+
+  return { renderPdf, renderPng };
+}
+
+function initExport(app, ipcMain, { headless = false, renderer = createPageRenderer(app) } = {}) {
+  const fixedDir = headless && process.env.MIM_EXPORT_DIR ? path.resolve(process.env.MIM_EXPORT_DIR) : null;
+  const fixedImport = headless && process.env.MIM_IMPORT_FILE ? path.resolve(process.env.MIM_IMPORT_FILE) : null;
+  let lastDir = null; // 前に保存・読み込みしたフォルダ（アプリを閉じるまで覚える）
+  const startDir = () => lastDir || app.getPath('documents');
+  const winOf = (e) => BrowserWindow.fromWebContents(e.sender);
+
+  // 保存の窓。戻り値は書く先のパス（キャンセルは null）
+  async function askSavePath(e, { title, name, ext, label }) {
+    const fileName = safeName(name, 'export.' + ext);
+    if (fixedDir) {
+      await fsp.mkdir(fixedDir, { recursive: true });
+      return path.join(fixedDir, fileName);
+    }
+    const r = await dialog.showSaveDialog(winOf(e), { title, defaultPath: path.join(startDir(), fileName), filters: [{ name: label, extensions: [ext] }] });
+    if (r.canceled || !r.filePath) return null;
+    lastDir = path.dirname(r.filePath);
+    return r.filePath;
+  }
+
   ipcMain.handle('export:saveHtml', async (e, { name, html }) => {
     try {
       const file = await askSavePath(e, { title: 'HTML に書き出す', name, ext: 'html', label: 'HTML ファイル' });
@@ -92,13 +135,7 @@ function initExport(app, ipcMain, { headless = false } = {}) {
     try {
       const file = await askSavePath(e, { title: 'PDF に書き出す', name, ext: 'pdf', label: 'PDF' });
       if (!file) return { ok: false, canceled: true };
-      const data = await withPageWindow(String(html), { width: 1280, height: 900 }, (win) => win.webContents.printToPDF({
-        pageSize: { width: Number(pageSize.width), height: Number(pageSize.height) }, // インチ
-        landscape: false, // 幅と高さをそのまま渡している（横の用紙は幅が大きい）
-        printBackground: true,
-        preferCSSPageSize: true,
-        margins: { top: 0, bottom: 0, left: 0, right: 0 },
-      }));
+      const data = await renderer.renderPdf({ html, pageSize });
       await fsp.writeFile(file, data);
       if (open && !headless) {
         const msg = await shell.openPath(file);
@@ -109,31 +146,6 @@ function initExport(app, ipcMain, { headless = false } = {}) {
       return { ok: false, error: errText(err) };
     }
   });
-
-  // 画面 1 つ分の HTML を、画面の外で描く窓で 2 倍の細かさに描いて撮る。窓の大きさは画面より大きくできないことがあるので、
-  // Chromium の開発者向けの命令（debugger）で表示の大きさを中身に合わせ（細かさ 2 倍）、範囲を決めて撮る（Puppeteer の撮り方と同じ）
-  function renderPng({ html, width, height }) {
-    const w = Math.max(1, Math.ceil(Number(width) || 1));
-    const h = Math.max(1, Math.ceil(Number(height) || 1));
-    const scale = Math.min(PNG_SCALE, PNG_MAX_SIDE / Math.max(w, h));
-    return withPageWindow(String(html), { width: 800, height: 600, webPreferences: { offscreen: true } }, async (win) => {
-      const dbg = win.webContents.debugger;
-      dbg.attach('1.3');
-      try {
-        await dbg.sendCommand('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: scale, mobile: false });
-        await dbg.sendCommand('Emulation.setDefaultBackgroundColorOverride', { color: { r: 255, g: 255, b: 255, a: 1 } });
-        const shot = await Promise.race([
-          dbg.sendCommand('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('画面を撮るのに時間がかかりすぎました')), PAINT_TIMEOUT)),
-        ]);
-        const buf = Buffer.from(shot.data, 'base64');
-        if (!buf.length) throw new Error('画面を撮れませんでした');
-        return buf;
-      } finally {
-        try { dbg.detach(); } catch (_) { /* もう外れている */ }
-      }
-    });
-  }
 
   ipcMain.handle('export:png', async (e, { files }) => {
     try {
@@ -162,7 +174,7 @@ function initExport(app, ipcMain, { headless = false } = {}) {
           if (ans.response !== 0) return { ok: false, canceled: true };
         }
       }
-      for (const t of targets) await fsp.writeFile(t.file, await renderPng(t.page));
+      for (const t of targets) await fsp.writeFile(t.file, await renderer.renderPng({ html: t.page.html, width: t.page.width, height: t.page.height }));
       return { ok: true, count: targets.length, path: targets[0].file, dir: path.dirname(targets[0].file) };
     } catch (err) {
       return { ok: false, error: errText(err) };
@@ -187,4 +199,4 @@ function initExport(app, ipcMain, { headless = false } = {}) {
   });
 }
 
-module.exports = { initExport, safeName };
+module.exports = { initExport, createPageRenderer, safeName };

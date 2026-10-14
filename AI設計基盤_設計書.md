@@ -398,7 +398,13 @@ props: {
   - 条件: Electron の fuse の RunAsNode を切らない（electron-builder の既定では切らない）。入口の js と SDK を asar の中のまま読めるかを確かめ、読めなければ `asarUnpack` で外に出す。
 - 予備 1: 同じことをする `.cmd` のファイルをインストール先に置く（AI のアプリが環境変数を渡せないとき）。
 - 予備 2: アプリを `--mcp` の引数で起動し、Electron の main が stdio を受ける（窓のアプリで標準入出力が使えるかの確かめが要る）。
-- 第 7 段階の最初に、本命が Claude Code で動くかを確かめて決める。
+- **確かめた結果（2026-10-14・第 7 段階の最初）: 本命で決めた。予備 1・2 は作らない。**
+  - 開発版の `electron.exe` に `ELECTRON_RUN_AS_NODE=1` を付けて入口の js を動かすと、SDK の客から initialize・道具の一覧・道具の呼び出しが通った。
+    標準出力に JSON 以外は出なかった（起動から initialize まで約 1.9 秒）。
+  - Claude Code 2.1.263 から（`claude -p` と一時の `--mcp-config`）: 設定の `env` に書いた環境変数が入口に届いた。
+    入口が受け取る AI のアプリの名前（`clientInfo.name`）は `claude-code`（`title` は `Claude Code`）。
+  - インストールした形（`electron-builder --dir`）の `MockImageMaker.exe` で、asar の中（`resources\app.asar\…`）の入口の js と SDK を、そのまま読めた。
+    `asarUnpack` も、1 本にまとめる作業も要らない。入口の場所は `<インストール先>\resources\app.asar\mcp-server.js`。
 
 ### 7-3. 名前付きパイプと合言葉
 
@@ -426,6 +432,17 @@ props: {
 - 確かめが要ること: AI のアプリを閉じたとき、AI のアプリが起動したプロセスが、Windows の「ジョブ」の仕組みでまとめて終わらされることがある。
   入口が起動したアプリまで一緒に終わると、人が後から窓を出して使っていても終わってしまう。
   第 7 段階の最初に確かめ、終わってしまうなら、ジョブの外で起動する方法（WMI の `Win32_Process.Create` など）に変える。
+- **確かめた結果（2026-10-14）: 入口は、アプリを `detached: true`・`stdio: 'ignore'` で起動する（二段起動も WMI も使わない）。**
+  - Claude Code（`claude -p`）が起動した入口から孫のプロセスを起動し、次の 3 つの場合に孫が残るかを見た。
+    | 起動のしかた | Claude Code が普通に終わる | Claude Code を強制終了 | 入口だけ終わる |
+    |---|---|---|---|
+    | `detached: false` | 孫も終わった | 孫も終わった | 孫も終わった |
+    | `detached: true` | 孫は残った | 孫は残った | 孫は残った |
+  - `detached: false` で孫が終わるのは、入口（Node）が、自分の起動した子を「閉じたら中を全部終わらせる」ジョブに入れるため。`detached: true` ならそのジョブに入らない。
+  - 残った孫は、Claude のデスクトップアプリの側のジョブには入ったままだった。そのジョブは「閉じても中を終わらせない」設定（KILL_ON_JOB_CLOSE なし・抜け出しは許す）だった。
+    Claude のデスクトップアプリそのものを閉じたときに裏のアプリが残るかは、セッションの中からは確かめられないので、インストールした版で手で確かめる（14 章）。
+  - `ELECTRON_RUN_AS_NODE` を外して起動すると Electron として立ち上がり、窓を出さないまま動き、後で `show()` すると窓が見えた。
+    起動の `windowsHide` は付けない（付けても見えたが、Windows は最初の窓の出し方を起動のときの指定で決めることがあるので、念のため付けない）。
 
 ### 7-5. アプリの状態と終わる時
 
@@ -440,6 +457,10 @@ props: {
 - 「ファイル > 終了」は、AI がつながっていても終わる。AI が次に頼むと、入口が裏でまたアプリを起動する。
 - 終わる前の保存の待ち（`will-quit` での `storage.whenIdle()`）は、裏で動いているときも同じに行う。
 - インストーラで新しい版に入れ替えるときは、裏のアプリも終わらせる必要がある。インストーラが窓のないアプリを見つけて終わらせられるかを、第 7 段階で確かめる。
+  - 2026-10-14: electron-builder のインストーラの台本（`allowOnlyOneInstallerInstance.nsh`）は、インストール先から起動された exe を探して `Stop-Process` で止める
+    （窓のない裏のアプリも、入口〔同じ exe を Node として動かしたもの〕も止まる。保存の終わりは待たない）。実機で入れ直して確かめるのは、ユーザーに頼んだ。
+    「AI とつなぐ」の窓に「入れ替えるときは、先にアプリを終了する（タスクトレイの「終了」）」と書いた。
+- 終わる前の保存を待った後は `app.exit(0)` で終わる（`app.quit()` をもう一度呼ぶと、will-quit を止めた直後は Electron が受け付けず、窓のないアプリが残った。2026-10-14）。
 
 ---
 
@@ -522,6 +543,9 @@ props: {
 - 返事は JSON の文字。画像は MCP の画像（PNG）で返す。
 - 返事の大きさ: Claude Code は、道具の返事が 10,000 トークンを超えると知らせ、25,000 トークン（既定）を超えると切る。
   1 回の返事は 10,000 トークン以下を目安にし、大きいものは `cursor` で分けて返す。
+  - 作るときに決めた（2026-10-14）: 目安は返事の JSON で 24,000 字。`get_screen` は、部品・吹き出し・一覧表の行を、この順に 1 つの並びにして同じ `cursor` で分ける
+    （どのページにも `parts`・`callouts`・`table` があり、そのページの分だけが入る。全部の数は `partsTotal`・`calloutsTotal`・`tableTotal`）。
+- AI の頼みで伸ばせる画面の高さは 20000 ドットまで（2026-10-14 に決めた。`get_catalog` の `maxScreenHeight`。超えて伸ばす頼みは `bad_request` で断る。人の操作には上限なし）。
 - 書く道具は、操作の並び（`ops`）を受け取れるものにし、いくつもの変更を 1 回で行う（8-1）。
 - 書く道具は、変えたものの id・名前・赤い番号と、新しい更新の印を返す。
 
@@ -740,16 +764,23 @@ props: {
 
 ### 12-1. Claude Code（インストールした版）
 
-PowerShell で 1 回だけ実行する（`<インストール先>` は、アプリを入れたフォルダ）。
+PowerShell で 1 回だけ実行する。インストール先は `%LOCALAPPDATA%\Programs\mockimagemaker`
+（管理者の権限なしで入れる 1 クリックのインストーラは、package.json の `name` のフォルダに入れる。2026-10-14 に electron-builder の作りで確かめた）。
 
 ```powershell
-claude mcp add --scope user mockimagemaker --env ELECTRON_RUN_AS_NODE=1 -- "<インストール先>\MockImageMaker.exe" "<インストール先>\resources\app.asar.unpacked\mcp-server.js"
+claude mcp add --env ELECTRON_RUN_AS_NODE=1 --scope user mockimagemaker 'C:\Users\<ユーザー名>\AppData\Local\Programs\mockimagemaker\MockImageMaker.exe' 'C:\Users\<ユーザー名>\AppData\Local\Programs\mockimagemaker\resources\app.asar\mcp-server.js'
 ```
 
+- 実際の文は、アプリの「ヘルプ > AI とつなぐ…」の窓に、インストール先の実際の場所を入れて出す（「コピー」で写せる。第 7 段階。`automation-connect.js`）。
+- `--env` は後ろの値をいくつでも受け取るので、`--scope` の前に置く（サーバーの名前を `--env` の値と取られないように）。
+  `--` は使わない（PowerShell では、claude の呼び方によって `--` が消えることがある）。場所は `'` で囲む（中の `'` は `''`）。
+  2026-10-14 に、この形の文を本物の claude（2.1.263）に読ませ、名前・exe・入口・`ELECTRON_RUN_AS_NODE=1` がそのとおりに登録されることを確かめた
+  （ユーザーの設定を変えないように、一時の `CLAUDE_CONFIG_DIR` と `--scope project` で試した）。
 - `--scope user` にすると、どのフォルダで Claude Code を起動しても使える。
-- 入口の js の場所（`app.asar.unpacked` の中か、asar の中か）は、7-2 の確かめで決まる。決まったら、この文を直す。
+- 入口の js は asar の中のまま読める（7-2 の確かめ）。2026-10-14 に、作った版（`dist/win-unpacked`）の exe と asar の中の入口を、
+  この文と同じ動かし方で公式 SDK の客からつなぎ、17 個の道具・裏の起動・保存・画像・書き出し・終わる時を確かめた（`tools/check-mcp.js --packaged`）。
+  Claude Code（モデル）から 4 つの場面を試すのは、この PC の claude のログインの期限が切れていたため、ユーザーに頼む（`開発記録.txt`）。
 - 道具は、Claude Code では `mcp__mockimagemaker__create_design` のような名前で見える。毎回の許可を省くときは、Claude Code の設定の `permissions.allow` に足す。
-- 登録の文を、アプリの中の案内に出してコピーできるようにするかは、第 7 段階で聞く（16 章）。
 
 ### 12-2. ほかの AI のアプリ
 
@@ -759,8 +790,8 @@ MCP の設定の JSON に、次のように書く（書く場所はそれぞれ�
 {
   "mcpServers": {
     "mockimagemaker": {
-      "command": "<インストール先>\\MockImageMaker.exe",
-      "args": ["<インストール先>\\resources\\app.asar.unpacked\\mcp-server.js"],
+      "command": "C:\\Users\\<ユーザー名>\\AppData\\Local\\Programs\\mockimagemaker\\MockImageMaker.exe",
+      "args": ["C:\\Users\\<ユーザー名>\\AppData\\Local\\Programs\\mockimagemaker\\resources\\app.asar\\mcp-server.js"],
       "env": { "ELECTRON_RUN_AS_NODE": "1" }
     }
   }
@@ -769,13 +800,14 @@ MCP の設定の JSON に、次のように書く（書く場所はそれぞれ�
 
 ### 12-3. 開発版（npm start と同じ保存先）
 
-リポジトリのフォルダで実行する。
+開発版のアプリ（`npm start`）の「ヘルプ > AI とつなぐ…」に出る文を使う（作業フォルダの場所が入る）。
 
 ```powershell
-claude mcp add --scope local mockimagemaker-dev -- node mcp-server.js --dev
+claude mcp add --scope user mockimagemaker-dev node 'C:\<作業フォルダ>\mcp-server.js'
 ```
 
-- `--dev` の入口は、作業フォルダの `.devdata/userData` の `automation.json` を見る。
+- 入口は、app.asar の外から動くと開発版とみなす（`--dev` の引数は要らない。2026-10-14 に改めた）。
+- 開発版の入口は、作業フォルダの `.devdata/userData` の `automation.json` を見る。
   アプリが動いていなければ、`node_modules` の Electron で `--background` で起動する（保存先は `npm start` と同じ `.devdata/userData`）。
 - インストールした版と開発版は `userData` が違うので、つながる先が混ざらない。
 
@@ -801,7 +833,7 @@ claude mcp add --scope local mockimagemaker-dev -- node mcp-server.js --dev
 | AI の窓口 | `test/ai.test.js`（jsdom。`test/harness.js` の `bootApp` で起動し、窓口の関数を呼ぶ。返事は JSON の文字で比べる） | 1 回の頼み＝1 回の変更・途中で失敗したら戻る・断るとき（8-4）・元に戻すの決まり（8-2）・「AI が直す前の状態」の行が接続ごと・画面設計ごとに 1 回・並べ方の位置（9-3）・名前と赤い番号での指し方・返事の大きさ |
 | 入口 | `test/mcp.test.js`（公式の SDK の Client で入口につなぎ、アプリの代わりの身代わりのパイプを置く） | 道具の一覧と入力の形・頼みと返事の受け渡し・合言葉が違うとき・`protocol` が違うとき・時間切れ |
 | 裏の起動と窓 | `tools/check-mcp.js`（`tools/check-electron.js` と同じ形。保存先は `.devdata/check-mcp`） | 入口からの起動・裏で動く・書いた中身が保存される・AI が切れて 30 秒で終わる・2 つ目の起動で窓を出す（テストでは別の窓を画面に出さない決まりなので、窓を出したかは印で確かめる） |
-| Claude Code での確かめ | 手で行う | インストーラで入れた版を Claude Code に登録し、架空の業務で 4 つの場面を試す。Claude Code を閉じたときに、裏のアプリと、窓を出したアプリが一緒に終わらないか（7-4） |
+| Claude Code での確かめ | 手で行う | インストーラで入れた版を Claude Code に登録し、架空の業務で 4 つの場面を試す。Claude Code を閉じたときに、裏のアプリと、窓を出したアプリが一緒に終わらないか（7-4。Claude のデスクトップアプリそのものを閉じたときも、窓を出したアプリが残るか） |
 
 今までのテスト（`npm test`・`tools/check-electron.js`・`tools/check-export.js`）も、各段階で通ることを確かめる。
 
@@ -810,7 +842,8 @@ claude mcp add --scope local mockimagemaker-dev -- node mcp-server.js --dev
 ## 15. 作る順番
 
 各段階では、足した機能の MCP の道具も同じ段階で足す。見た目のある所は、作る前にモックを見せて聞く。
-版は、第 7 段階の最初の作業を v1.01 とし、その後は作業 1 回ごとに 1 つ上げる（CLAUDE.md の「運用」）。
+アプリの版は、第 7〜11 段階の間は上げない（`mock_v1.00.html`・1.0.0 のまま）。第 11 段階まで済み、デバッグが終わったときに初めてリリースする
+（2026-10-14 ユーザー指示。初めは「第 7 段階の最初の作業を v1.01 とする」と書いていたのを改めた。CLAUDE.md の「運用」）。
 
 | 段階 | 作るもの | 終わりの確かめ |
 |---|---|---|
@@ -819,6 +852,10 @@ claude mcp add --scope local mockimagemaker-dev -- node mcp-server.js --dev
 | 第 9 段階: システム・資料・スイムレーン | システムのまとまり（案B・今ある画面設計を入れる窓）・システムの画面・資料の置き場（画像・PDF・Word・Excel・BDM を読む）・スイムレーン図・BDM を読む・第 9 段階の道具 | 架空の業務の資料（BDM の図・様式の Excel）から、AI がシステム・スイムレーンを作れる |
 | 第 10 段階: 段階ごとの手順・設計ノート・説明書 | prompts と手引き・設計ノート・システムの説明書（PDF）・第 10 段階の道具 | 架空の出張申請の資料から、10 章の手順で最後まで作れる |
 | 第 11 段階: BDM に描く | `export_bdm` と、アプリの「BDM の HTML に書き出す」 | 書き出した HTML を BDM で開ける。書き出した HTML をアプリで読み直すと、元と同じスイムレーンになる |
+
+第 7 段階の終わりの確かめ（2026-10-14）: 作った版（`dist/win-unpacked`。インストーラが入れるものと同じ中身）の入口を、登録の文と同じ動かし方で公式 SDK の客からつなぎ、
+4 つの場面で 17 個の道具を呼び、窓を出さない裏の起動・保存・終わる時を確かめた（`tools/check-mcp.js --packaged`）。Claude Code（モデル）から試すこと
+（この PC の claude のログインの期限が切れていた）と、インストーラで入れた版で試すことは、ユーザーに頼んだ（`開発記録.txt`）。
 
 この順にした理由:
 
@@ -835,10 +872,10 @@ claude mcp add --scope local mockimagemaker-dev -- node mcp-server.js --dev
 | 決めること | 決める段階 | 今の Claude の案 |
 |---|---|---|
 | 足す画面の見た目（6 章のすべて） | 各段階 | モックを見せて聞く |
-| AI がつながっていることの印と、登録のしかたの案内を出すか | 第 7 | 出す。タスクトレイのアイコン（裏で動いていることも分かる）と、ヘルプのメニューに「AI とつなぐ」の案内（登録の文をコピーできる） |
-| AI が開いている画面設計を直したときの見せ方 | 第 7 | 直した部品を短く光らせ、上に「AI が直しました」と出す |
-| 「AI が直す前の状態」の行の上限 | 第 7 | 画面設計ごとに新しいものから 10 行まで残し、古い行から消す（人の付けた版の行は消さない） |
-| 入口の起動のしかたと、ジョブの外で起動する方法 | 第 7 の最初 | 7-2・7-4 のとおり確かめて決める |
+| AI がつながっていることの印と、登録のしかたの案内を出すか | 第 7 | 出す。タスクトレイのアイコン（裏で動いていることも分かる）と、ヘルプのメニューに「AI とつなぐ」の案内（登録の文をコピーできる）。**決めた（2026-10-14）: 案のとおり。トレイのアイコンは AI がつながっている間と裏で動いている間だけ出し、窓の上の帯にも紫の札を出す（CLAUDE.md の「AI の見た目の細かい決めごと」・画像 q48・q49）** |
+| AI が開いている画面設計を直したときの見せ方 | 第 7 | 直した部品を短く光らせ、上に「AI が直しました」と出す。**決めた（2026-10-14）: メニューバーの下の紫の帯と、紫の枠で光らせる。履歴を消したときはオレンジの帯（画像 q50・q51 の案A）** |
+| 「AI が直す前の状態」の行の上限 | 第 7 | 画面設計ごとに新しいものから 10 行まで残し、古い行から消す（人の付けた版の行は消さない）。**決めた（2026-10-14）: 案のとおり** |
+| 入口の起動のしかたと、ジョブの外で起動する方法 | 第 7 の最初 | 7-2・7-4 のとおり確かめて決める。**決めた（2026-10-14）: exe を ELECTRON_RUN_AS_NODE=1 で入口にする。アプリは detached:true・stdio:'ignore' で起動する（7-2・7-4・開発記録）** |
 | 取り込んだステータスの項目に、プロセス管理も写すか | 第 8 | 写す（取り込んだ項目は、今も中身を全部写しているため） |
 | システムの変更の履歴（改訂履歴は画面設計ごとなので、スイムレーン・役割・設計ノートの前の中身をどう残すか） | 第 9 | システムにも「AI が直す前の状態」の写しを残し、戻せるようにする |
 | 資料の大きさの上限 | 第 9 | 1 つのファイルは 50 MB まで |

@@ -356,6 +356,42 @@ test('小さな窓: 危ない窓はキャンセルにフォーカスを置き、
   assert.ok(api.store.state.designs.some((d) => d.id === id), '完全に削除されていない');
 });
 
+test('小さな窓: ボタンは Windows の決まりで、肯定を左・取りやめを右に並べる（最初のフォーカスは並びと別に決める）', async (t) => {
+  const { app, api } = await boot();
+  t.after(() => app.close());
+  const order = () => $$(app, '.modal .modal-actions button').map((b) => b.dataset.dlg);
+  const closeDialog = async () => {
+    click($(app, '.modal [data-dlg="cancel"]'));
+    await waitFor(() => !$(app, '.modal'), { label: '窓が閉じる' });
+  };
+  // 危ない操作の窓: ［完全に削除する］［キャンセル］の並び。フォーカスはキャンセルのまま
+  const id = api.actions.createDesign('顧客管理アプリ', 'kintone');
+  api.actions.trashDesign(id);
+  click($(app, '.trash-toggle'));
+  click($(app, '[data-action="delete-forever"]'));
+  await waitFor(() => $(app, '.modal'));
+  assert.deepEqual(order(), ['ok', 'cancel'], '肯定が左、キャンセルが右');
+  assert.equal($(app, '.modal [data-dlg="ok"]').textContent, '完全に削除する');
+  assert.equal(app.document.activeElement, $(app, '.modal [data-dlg="cancel"]'), '危ない窓のフォーカスはキャンセル');
+  await closeDialog();
+  // ふつうの窓（画面を足す）: ［足す］［キャンセル］の並び。フォーカスは肯定のボタン
+  api.actions.restoreDesign(id);
+  api.openDesign(id);
+  api.runCommand('addScreen');
+  await waitFor(() => $(app, '.modal'));
+  assert.deepEqual(order(), ['ok', 'cancel']);
+  assert.equal($(app, '.modal [data-dlg="ok"]').textContent, '足す');
+  assert.equal(app.document.activeElement, $(app, '.modal [data-dlg="ok"]'), 'ふつうの窓のフォーカスは肯定のボタン');
+  await closeDialog();
+  // 「閉じる」だけの窓（改訂履歴）: OK は隠し、閉じるにフォーカス
+  api.runCommand('openRevisions');
+  await waitFor(() => $(app, '.modal'));
+  assert.deepEqual(order(), ['ok', 'cancel']);
+  assert.equal($(app, '.modal [data-dlg="ok"]').hidden, true);
+  assert.equal(app.document.activeElement, $(app, '.modal [data-dlg="cancel"]'), '「閉じる」だけの窓のフォーカスは閉じる');
+  await closeDialog();
+});
+
 test('小さな窓: 名前の欄で Enter を押すと OK になる', async (t) => {
   const { app, api } = await boot();
   t.after(() => app.close());

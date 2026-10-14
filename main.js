@@ -6,6 +6,8 @@
 //  - ファイルへの保存（storage.js）。終了の前に、並んでいる書き込みが終わるのを待つ
 //  - 書き出し（PDF・PNG・HTML）と HTML の取り込みのファイルの窓（export.js）
 //  - 2 つ目の起動を止める（2 つ動くと、互いの designs.json を丸ごと上書きするため）
+//  - AI（Claude Code など）の頼みの受け口（automation-main.js。第 7 段階）。--background の起動では窓を出さずに動き、
+//    AI がつながっている間の窓の × は、終わらずに窓を隠す。タスクトレイのアイコン（automation-tray.js）とアプリのメニューの「ヘルプ > AI とつなぐ…」
 // CheckListMaker の録画・ガジェット・Word・Excel の書き出しは写していない。
 'use strict';
 
@@ -13,21 +15,31 @@ const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const path = require('path');
 const windowStateKeeper = require('electron-window-state');
 const { initStorage } = require('./storage');
-const { initExport } = require('./export');
+const { initExport, createPageRenderer } = require('./export');
+const { initAutomation } = require('./automation-main');
+const { initTray } = require('./automation-tray');
 
 const APP_HTML = 'mock_v1.00.html';
 const APP_TITLE = 'モックイメージメーカー';
 // 確かめのための起動（環境変数 MIM_HEADLESS=1）のときだけ、窓を画面に出さない
 const HEADLESS = process.env.MIM_HEADLESS === '1';
+// AI の入口（mcp-server.js）がアプリを起動したとき（--background）は、窓を作るが出さない（設計書 7-4）
+const BACKGROUND = process.argv.includes('--background');
+const APP_VERSION = APP_HTML.replace(/^mock_v|\.html$/g, '');
 
 // npm start のときは、保存データを作業フォルダの .devdata/userData に置く
 // （インストールしたアプリの %APPDATA%\MockImageMaker と混ざらないようにするため）。
 // 確かめのための起動（tools/check-electron.js）は、環境変数 MIM_USER_DATA で別のフォルダを指す
 if (!app.isPackaged) app.setPath('userData', process.env.MIM_USER_DATA || path.join(__dirname, '.devdata', 'userData'));
+// インストールした版でも、窓を出さない確かめの起動（MIM_HEADLESS=1）のときだけは MIM_USER_DATA で保存先を変えられる
+// （作った版を tools/check-mcp.js --packaged で確かめるとき、人の保存データ〔%APPDATA%\MockImageMaker〕に触らないため）
+else if (HEADLESS && process.env.MIM_USER_DATA) app.setPath('userData', path.resolve(process.env.MIM_USER_DATA));
 
 let mainWin = null;
 let storage = null;
-let quitReady = false;
+let quitWaiting = false; // 終わる前の待ち（受け口を止める・保存を待つ）の途中か
+let automation = null;
+let tray = null; // タスクトレイのアイコン（AI がつながっている間と、裏で動いている間だけ出す。automation-tray.js）
 
 // ── メニュー ───────────────────────────────────────────────
 // registerAccelerator:false は、キーの表示だけをしてキーは横取りしない指定。
@@ -141,6 +153,11 @@ function buildAppMenu() {
       label: 'ウィンドウ',
       submenu: [{ role: 'minimize', label: '最小化' }, { role: 'close', label: '閉じる' }],
     },
+    {
+      // AI（Claude Code など）とつなぐ方法の窓（第 7 段階。q49）
+      label: 'ヘルプ',
+      submenu: [commandItem('AI とつなぐ…', 'aiConnect')],
+    },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
@@ -157,14 +174,30 @@ function createMainWindow() {
     minWidth: 800,
     minHeight: 560,
     title: APP_TITLE,
-    show: !HEADLESS,
+    show: !HEADLESS && !BACKGROUND,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // 窓を隠している間も、AI の頼みの処理（タイマー・描き直し）を遅らせない
+      backgroundThrottling: false,
     },
   });
-  winState.manage(mainWin);
+  // 窓を隠したまま始める起動（--background・確かめの起動）では、窓を初めて出すときに、覚えた最大化・全画面を戻して見張りを始める。
+  // manage() は maximize() を呼び、Electron の maximize() は隠れた窓も画面に出すため（裏の起動なのに窓が出た）。
+  // また、出していない窓の状態で window-state.json を書き換えない（人が最大化して使っていたことを忘れないように）
+  if (HEADLESS || BACKGROUND) mainWin.once('show', () => winState.manage(mainWin));
+  else winState.manage(mainWin);
+  // AI がつながっている間の ×（「ファイル > 終了」でないとき）は、終わらずに窓を隠す（設計書 7-5）
+  mainWin.on('close', (e) => {
+    if (!automation || !automation.shouldHideOnClose()) return;
+    e.preventDefault();
+    mainWin.hide();
+    automation.windowShownOrHidden(false); // 窓を出さない確かめの起動では hide の知らせが来ないので、ここでも知らせる
+    if (tray) tray.noteHiddenByClose(); // 起動してから最初の 1 回だけ、Windows の通知で「裏で動き続けています」
+  });
+  mainWin.on('show', () => automation && automation.windowShownOrHidden(true));
+  mainWin.on('hide', () => automation && automation.windowShownOrHidden(false));
   // 窓へ HTML ファイルなどを落としたときに、アプリの画面が置き換わるのを止める
   mainWin.webContents.on('will-navigate', (e) => e.preventDefault());
   mainWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -175,23 +208,45 @@ function createMainWindow() {
 }
 
 function focusMainWindow() {
-  if (!mainWin || HEADLESS) return;
+  if (!mainWin) return;
+  if (HEADLESS) {
+    if (automation) automation.noteShowRequested();
+    return;
+  }
+  if (!mainWin.isVisible()) mainWin.show(); // 裏で動いていた（--background・× で隠した）ときは窓を出す
   if (mainWin.isMinimized()) mainWin.restore();
   mainWin.focus();
 }
 
+// タスクトレイのメニューの「AI とつなぐ…」: 窓を出してから、ページに「AI とつなぐ」の窓を開かせる
+function openConnectWindow() {
+  focusMainWindow();
+  if (mainWin) mainWin.webContents.send('menu:command', 'aiConnect');
+}
+
 // ── 起動と終了 ─────────────────────────────────────────────
-if (!app.requestSingleInstanceLock()) {
+if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
   // 2 つ目の起動は何もせずに終わる（1 つ目の窓は second-instance で前に出る）
   app.quit();
 } else {
-  app.on('second-instance', focusMainWindow);
+  // 2 つ目の起動が AI の入口からの --background なら、窓を前に出さない（人が使っている窓の邪魔をしない）
+  app.on('second-instance', (_e, _argv, _cwd, data) => {
+    if (data && data.background) return;
+    focusMainWindow();
+  });
+
+  // Windows の通知に出すアプリの名前の元（インストールした版はインストーラのショートカットと同じ appId。開発版は Electron の場所）
+  if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'com.kuwagata.mockimagemaker' : process.execPath);
 
   app.whenReady().then(() => {
     storage = initStorage(app, ipcMain);
-    initExport(app, ipcMain, { headless: HEADLESS });
+    const renderer = createPageRenderer(app); // PDF・PNG を作る（書き出しの窓と AI の書き出しで同じものを使う）
+    initExport(app, ipcMain, { headless: HEADLESS, renderer });
+    automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION, renderer });
     buildAppMenu();
     createMainWindow();
+    automation.windowCreated();
+    tray = initTray({ automation, showWindow: focusMainWindow, openConnect: openConnectWindow, quit: () => app.quit(), headless: HEADLESS });
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
     });
@@ -205,12 +260,17 @@ if (!app.requestSingleInstanceLock()) {
   // 待つのは will-quit（窓が全部閉じたあと）で、before-quit ではない。メニューの「ファイル > 終了」（app.quit()）では、
   // before-quit の時点でまだ窓が開いていて、右の欄の打ちかけの文字の保存（ページの beforeunload で送る）が届く前に
   // 待ち終わってしまい、書きかけのまま終わるため。窓の × のときは、窓が閉じてから app.quit() になるので、どちらでも同じ
+  // AI の受け口は先に止める（automation.json を消し、つながりを閉じる）。
+  // 待ち終わったら app.exit(0) で終わる（app.quit() をもう一度呼ぶと、will-quit を止めた直後〔数ミリ秒〕のときは Electron が受け付けず、
+  // 窓のないアプリが残り続けた。2026-10-14。will-quit は窓が全部閉じた後に来るので、すぐ終わってよい）
   app.on('will-quit', (e) => {
-    if (quitReady || !storage) return;
+    if (!storage) return;
     e.preventDefault();
-    storage.whenIdle().finally(() => {
-      quitReady = true;
-      app.quit();
-    });
+    if (quitWaiting) return; // 待っている間にもう一度終わろうとしたときは、待ち終わるのを待つ
+    quitWaiting = true;
+    Promise.resolve(automation && automation.stop())
+      .catch(() => {})
+      .then(() => storage.whenIdle())
+      .finally(() => app.exit(0));
   });
 }
