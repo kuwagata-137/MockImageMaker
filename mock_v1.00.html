@@ -676,8 +676,9 @@ body.xp-doc .pg+.pg{break-before:page}
 //   8. 書き出しと取り込み    … 書き出しの窓（PDF・HTML・PNG）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面）・
 //                              単体で開いて編集できる HTML（埋め込み・保存し直す）・HTML の取り込み（確かめの窓）
 //   9. 命令（runCommand）    … ボタン・キー・アプリのメニューからの命令を 1 か所で受ける
-//  10. 起動
-//  11. テスト用の窓口（window.__test__。テストのときだけ埋まる）
+//  10. AI の窓口            … AI（Claude Code など）の頼みを受けて実行する（第 7 段階。AI設計基盤_設計書.md の 8・9 章）
+//  11. 起動
+//  12. テスト用の窓口（window.__test__。テストのときだけ埋まる）
 // 手本: 保存と元に戻すと一覧の画面は CheckListMaker の index.html、
 //       拡大縮小とハンドとメニューバーの見た目はビジネスダイアグラムメーカー（参考/diagram_v8.31.html）から写した。
 // =============================================================================
@@ -7691,7 +7692,287 @@ function onStoreChange() {
   refreshStandaloneBar();
 }
 
-// ── 10. 起動 ──────────────────────────────────────────────────────────────────
+// ── 10. AI の窓口（第 7 段階。AI設計基盤_設計書.md の 8・9 章）──────────────────
+// AI（Claude Code など）の頼みを main から preload の aiAPI で受け、actions.* に直して実行し、返事を返す。
+// 道具の決まりはここ 1 か所に置く（入口の mcp-server.js は、頼みをそのまま渡すだけ）。確かめの窓・ファイルを選ぶ窓を出す関数は呼ばない（8-5）。
+// 読む道具は本当の中身（前の版を見ている間は store.realState）を読む。書く道具は store.batch() で 1 回の変更にする（8-1）。
+// 返事は { ok: true, result } か { ok: false, error: { code, message, candidates? } }。画像と書き出しは render も返す（main が画像・PDF にする）。
+
+// 断るときの例外。message は AI に返す日本語の文（理由と、人がすること）
+class AiRefusal extends Error {
+  constructor(code, message, extra = {}) {
+    super(message);
+    this.code = code;
+    Object.assign(this, extra);
+  }
+}
+const AI_REPLY_BUDGET = 24000; // 1 回の返事の文字の目安（Claude Code が道具の返事を切らない大きさ。設計書の 9-1）
+const aiState = () => store.realState || store.state;
+let aiQueue = Promise.resolve();
+let imeComposing = false; // 人が日本語を変換している間（8-4。書く頼みは待つ）
+
+// 頼みを 1 つずつ実行する（2 つの AI がつながっても、頼みが混ざらないように）
+function aiDispatch(tool, args, ctx = {}) {
+  const run = aiQueue.then(() => aiRun(tool, args, ctx));
+  aiQueue = run.catch(() => {});
+  return run;
+}
+async function aiRun(tool, args, ctx) {
+  const t = own(AI_TOOLS, tool) ? AI_TOOLS[tool] : null;
+  if (!t) return aiError({ code: 'unknown_tool', message: `「${tool}」という道具はありません。` });
+  try {
+    const out = await t.run(isObj(args) ? args : {}, { session: str(ctx.session), client: str(ctx.client) });
+    if (out instanceof AiRendered) return { ok: true, result: out.result, render: out.render };
+    return { ok: true, result: out };
+  } catch (e) {
+    if (e instanceof AiRefusal) return aiError(e);
+    console.warn('AI の頼みの途中で問題が起きました:', e);
+    return aiError({ code: 'internal', message: `アプリの中で問題が起きました（${(e && e.message) || e}）。` });
+  }
+}
+function aiError(e) {
+  const error = { code: e.code, message: e.message };
+  if (e.candidates) error.candidates = e.candidates;
+  return { ok: false, error };
+}
+// 画像・書き出しの返事（main が render の HTML を PNG・PDF にする）
+class AiRendered {
+  constructor(result, render) {
+    this.result = result;
+    this.render = render;
+  }
+}
+
+// ── 指し方（8-6）── id がぴったり合うもの、なければ名前。2 つ以上に当たるときは候補を付けて断る
+function aiKey(ref) {
+  return typeof ref === 'number' && Number.isFinite(ref) ? String(ref) : str(ref).trim();
+}
+function aiPick(list, ref, what, { nameOf = (x) => x.name, candidate = (x) => ({ id: x.id, name: nameOf(x) }) } = {}) {
+  const key = aiKey(ref);
+  if (!key) throw new AiRefusal('bad_request', `${what}を id か名前で指してください。`);
+  const byId = list.find((x) => x.id === key);
+  if (byId) return byId;
+  const name = cleanName(key);
+  const hits = list.filter((x) => cleanName(nameOf(x)) === name);
+  if (hits.length === 1) return hits[0];
+  if (hits.length > 1) throw new AiRefusal('ambiguous', `「${key}」という${what}が ${hits.length} つあります。id で指してください。`, { candidates: hits.map(candidate) });
+  throw new AiRefusal('not_found', `「${key}」という${what}は見つかりません。`);
+}
+// 画面設計。一覧にあるものを先に探し、なければごみ箱を探す。write のとき、ごみ箱のものは断る（人に一覧へ戻してもらう）
+function aiResolveDesign(S, ref, { write = false } = {}) {
+  const cand = (d) => ({ id: d.id, name: d.name, updatedAt: d.updatedAt, ...(d.trashedAt ? { trashed: true } : {}) });
+  const live = S.designs.filter((d) => !d.trashedAt);
+  let d;
+  try {
+    d = aiPick(live, ref, '画面設計', { candidate: cand });
+  } catch (e) {
+    if (!(e instanceof AiRefusal) || e.code !== 'not_found') throw e;
+    d = aiPick(S.designs.filter((x) => x.trashedAt), ref, '画面設計', { candidate: cand });
+  }
+  if (write && d.trashedAt) throw new AiRefusal('trashed', `「${d.name}」はごみ箱にあるため、直せません。アプリのごみ箱から一覧に戻してから、もう一度頼んでください。`);
+  return d;
+}
+const aiResolveScreen = (d, ref) => aiPick(d.screens, ref, `「${d.name}」の画面`);
+const aiResolveItem = (d, ref) => aiPick(d.items, ref, `「${d.name}」のデータベースの項目`, { candidate: (it) => ({ id: it.id, name: it.name, type: it.type }) });
+// 部品は id か赤い番号（数でも、数字の文字でも）
+function aiResolvePart(sc, ref) {
+  const key = aiKey(ref);
+  const byId = sc.parts.find((p) => p.id === key);
+  if (byId) return byId;
+  if (/^\d+$/.test(key)) {
+    const hits = sc.parts.filter((p) => p.no === Number(key));
+    if (hits.length === 1) return hits[0];
+    if (hits.length > 1) throw new AiRefusal('ambiguous', `「${sc.name}」の画面に、番号 ${key} の部品が ${hits.length} つあります。id で指してください。`, { candidates: hits.map((p) => ({ id: p.id, no: p.no, type: p.type })) });
+  }
+  throw new AiRefusal('not_found', `「${sc.name}」の画面に、「${key}」という部品は見つかりません（部品は id か赤い番号で指します）。`);
+}
+function aiResolveCallout(sc, ref) {
+  const c = findCallout(sc, aiKey(ref));
+  if (!c) throw new AiRefusal('not_found', `「${sc.name}」の画面に、「${aiKey(ref)}」という吹き出しは見つかりません（吹き出しは id で指します）。`);
+  return c;
+}
+// 改訂履歴の行は id か版の番号（2・「第 2 版」）
+function aiResolveRevision(d, ref) {
+  const key = aiKey(ref);
+  const byId = findRevision(d, key);
+  if (byId) return byId;
+  const m = key.match(/^(?:第\s*)?(\d+)(?:\s*版)?$/);
+  const row = m ? versionRows(d).find((r) => r.no === Number(m[1])) : null;
+  if (!row) throw new AiRefusal('not_found', `「${d.name}」の改訂履歴に「${key}」という行は見つかりません。`);
+  return row;
+}
+
+// 返事を分ける（大きい一覧は cursor で続きを読む）。戻り値 { page, nextCursor（続きがなければ null）}
+function aiPage(list, cursor, budget = AI_REPLY_BUDGET) {
+  const start = Math.max(0, parseInt(cursor, 10) || 0);
+  const page = [];
+  let size = 0;
+  for (let i = start; i < list.length; i++) {
+    const n = JSON.stringify(list[i]).length;
+    if (page.length && size + n > budget) return { page, nextCursor: String(i) };
+    page.push(list[i]);
+    size += n;
+  }
+  return { page, nextCursor: null };
+}
+
+// ── 読む道具 ──
+function aiDesignSummary(d) {
+  const latest = latestVersion(d);
+  return {
+    id: d.id, name: d.name, target: targetLabel(d.target), screens: d.screens.length, items: d.items.length,
+    latestVersion: latest ? revisionTitle(latest) : null, updatedAt: d.updatedAt, ...(d.trashedAt ? { trashed: true } : {}),
+  };
+}
+function aiListDesigns(args) {
+  const S = aiState();
+  const q = str(args.query);
+  const ql = cleanName(q).toLowerCase();
+  const list = [...visibleDesigns(S, q), ...(args.trashed ? trashedDesigns(S).filter((d) => !ql || d.name.toLowerCase().includes(ql)) : [])];
+  const { page, nextCursor } = aiPage(list.map(aiDesignSummary), args.cursor);
+  return { designs: page, total: list.length, nextCursor };
+}
+function aiItemSummary(d, it, ctx) {
+  const out = { id: it.id, name: it.name, type: it.type, typeName: itemTypeName(it.type), required: !!it.required, setting: describeItem(it, ctx) };
+  if (it.type === 'table') out.columns = (it.props.columns || []).map((c) => ({ id: c.id, name: c.name, type: c.type }));
+  if (it.type === 'status') out.states = [...(it.props.states || [])];
+  if (it.link) out.importedFrom = { design: it.link.designName || '', lost: !!it.link.lost };
+  out.screens = screensWithItem(d, it.id).map((s) => s.name);
+  return out;
+}
+function aiGetDesign(args) {
+  const S = aiState();
+  const d = aiResolveDesign(S, args.design);
+  const ctx = { design: d, state: S };
+  const { page, nextCursor } = aiPage(d.items.map((it) => aiItemSummary(d, it, ctx)), args.cursor);
+  const importedBy = S.designs.filter((x) => x.id !== d.id && !x.trashedAt).flatMap((x) => x.items
+    .filter((it) => it.link && it.link.designId === d.id && !it.link.lost)
+    .map((it) => ({ design: x.name, item: it.name, from: (findItem(d, it.link.itemId) || { name: '' }).name })));
+  return {
+    id: d.id, name: d.name, target: targetLabel(d.target), description: d.description, updatedAt: d.updatedAt, ...(d.trashedAt ? { trashed: true } : {}),
+    items: page, itemsTotal: d.items.length, nextCursor,
+    screens: d.screens.map((s) => ({ id: s.id, name: s.name, device: s.device, width: s.width, height: s.height, showHeader: s.showHeader, tablePos: s.tablePos, parts: s.parts.length, callouts: (s.callouts || []).length })),
+    revisions: d.revisions.filter(isObj).map((r) => ({ id: r.id, kind: r.kind, title: revisionTitle(r), date: revisionDay(r), note: str(r.note), canRestore: hasSnapshot(r) })),
+    importedBy,
+  };
+}
+function aiPartSummary(d, sc, raw, ctx) {
+  const p = resolvePart(d, raw);
+  const out = {
+    id: raw.id, no: raw.no == null ? null : raw.no, type: raw.type,
+    typeName: raw.type === 'table' ? `表（${TABLE_KINDS[raw.tableKind] || 'テーブル'}）` : partTypeName(raw.type),
+    label: partTitle(p), x: raw.x, y: raw.y, w: raw.w, h: raw.h, setting: describePart(p, ctx),
+  };
+  if (raw.itemId && isItemPart(raw)) out.item = findItem(d, raw.itemId) ? { id: raw.itemId, name: p.label } : { id: raw.itemId, name: p.label, removed: true };
+  if (isInputType(raw.type)) Object.assign(out, { labelPos: raw.labelPos, sample: raw.sample || '', placeholder: raw.placeholder || '' });
+  if (raw.type === 'link' && p.props && p.props.to === 'screen') {
+    const to = d.screens.find((s) => s.id === p.props.screenId);
+    out.to = to ? { screen: to.name } : null;
+  }
+  if ((raw.type === 'status' || raw.type === 'steps') && raw.view) out.current = raw.view.current || '';
+  return out;
+}
+function aiGetScreen(args) {
+  const S = aiState();
+  const d = aiResolveDesign(S, args.design);
+  const sc = aiResolveScreen(d, args.screen);
+  const ctx = { design: d, state: S };
+  const { page, nextCursor } = aiPage(sc.parts.map((p) => aiPartSummary(d, sc, p, ctx)), args.cursor);
+  const callouts = (sc.callouts || []).map((c) => {
+    const t = c.target ? findPart(sc, c.target) : null;
+    return { id: c.id, text: c.text, color: c.color, tip: c.tip, x: c.x, y: c.y, w: c.w, h: c.h, target: t ? { id: t.id, no: t.no } : null };
+  });
+  return {
+    design: { id: d.id, name: d.name, updatedAt: d.updatedAt },
+    id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height, showHeader: sc.showHeader, tablePos: sc.tablePos,
+    parts: page, partsTotal: sc.parts.length, nextCursor, callouts,
+    table: tableRows(sc, d, S).map((r) => ({ no: r.no, label: r.label, kind: r.kind, setting: r.setting })),
+  };
+}
+
+// 部品の設定（props）の欄の説明（get_catalog で AI に渡す。値の形と選べる値）
+const AI_TEXT_PROPS = { maxLen: '最大の文字数（数字の文字。例 "50"）', initial: '初期値（文字）' };
+const AI_CHOICE_PROPS = { options: '選択肢（文字の配列）', initial: '初期値（選択肢の 1 つ。なしは ""）' };
+const AI_DIR = '並べ方: "h"（横）・"v"（縦）';
+const AI_PROP_NOTES = {
+  text1: AI_TEXT_PROPS,
+  text2: AI_TEXT_PROPS,
+  number: { unit: '単位（例 "円"）', min: 'いちばん小さい値（数字の文字）', max: 'いちばん大きい値（数字の文字）', decimals: '小数の桁数（数字の文字）', initial: '初期値（文字）' },
+  date: { initial: '初期値: "none"（なし）・"today"（今日）・"date"（日付を書く）', initialDate: '初期値の日付（"YYYY-MM-DD"。initial が "date" のとき）' },
+  datetime: { initial: '初期値: "none"（なし）・"now"（今の日時）' },
+  dropdown: AI_CHOICE_PROPS,
+  radio: { ...AI_CHOICE_PROPS, dir: AI_DIR },
+  checkbox: { options: '選択肢（文字の配列）', initial: '初期値（選択肢の配列。いくつでも）', dir: AI_DIR },
+  user: { scope: '選べる人（文。例 "営業部の社員"）', multiple: '複数人を選べる（true・false）', initial: '初期値: "none"（なし）・"me"（使っている人）' },
+  file: { accept: '受け付けるファイル（例 "PDF"）', maxCount: 'いちばん多い個数（数字の文字）' },
+  calc: { formula: '計算式（文。例 "数量×単価"）', unit: '単位' },
+  button: { style: '見た目: "primary"（目立つ・青）・"normal"（ふつう・白）', action: '押したとき（文。例 "一覧の画面へ移る"）' },
+  table: {
+    columns: 'レコード一覧・関連レコード一覧の列（項目名の配列。関連レコード一覧は元のデータベースの項目名）',
+    sort: '並べ順（文）', perPage: '1 ページの件数（数字の文字。レコード一覧）', limit: '最大の件数（数字の文字。関連レコード一覧）',
+    db: '関連レコード一覧の元のデータベース（画面設計の名前か id）', cond: '関連レコード一覧の条件 { from: 元の項目名, to: この画面設計の項目名 }',
+  },
+  graph: {
+    chart: `グラフの種類: ${Object.keys(CHART_NAMES).map((k) => `"${k}"（${CHART_NAMES[k]}）`).join('・')}`,
+    byItem: '分類する項目（項目名か id）', byUnit: '分け方（例 "月ごと"）',
+    agg: `集計のしかた: ${Object.keys(AGG_NAMES).map((k) => `"${k}"（${AGG_NAMES[k]}）`).join('・')}`, aggItem: '集計する項目（項目名か id）',
+    samples: '見本の値（1 行に「分類, 値」）', unit: '値の単位（例 "万円"）',
+  },
+  search: { items: '探す項目（項目名か id の配列）', button: '「検索」ボタンを付ける（true・false）' },
+  filter: { items: '絞り込む項目（項目名か id の配列）', values: '項目ごとの見本の値（items と同じ順の文字の配列）' },
+  pager: { perPage: '1 ページの件数（数字の文字）', total: '見本の全部の件数（数字の文字）', showCount: '件数を書く（true・false）' },
+  tabs: { tabs: 'タブの名前（文字の配列）', current: '選んでいるタブ（tabs の 1 つ）' },
+  link: { to: '移る先: ""（なし）・"screen"（この画面設計のほかの画面）・"url"', screenId: '移る画面（画面の名前か id。to が "screen" のとき）', url: 'URL（to が "url" のとき）' },
+  icon: { icon: `アイコン: ${Object.keys(ICONS).map((k) => `"${k}"（${ICONS[k][0]}）`).join('・')}`, color: `色: ${Object.keys(ICON_COLORS).map((k) => `"${k}"（${ICON_COLORS[k][0]}）`).join('・')}` },
+};
+// 項目の設定（edit_items の props）だけにある欄
+const AI_ITEM_PROP_NOTES = {
+  table: { columns: 'テーブルの列（{ name, type, required, props } の配列。type は入力欄の部品の種類。同じ名前の列は今の列を直す）' },
+  status: { states: 'ステータスの並び（文字の配列。上から順に進む。画面設計に 1 つだけ）' },
+};
+function aiGetCatalog() {
+  const S = aiState();
+  const group = (type) => (PALETTE_GROUPS.find((g) => g.types.includes(type)) || { name: '' }).name;
+  return {
+    parts: Object.entries(PART_TYPES).map(([type, t]) => ({
+      type, name: t.name, group: group(type), w: t.w, h: t.h,
+      item: isInputType(type) ? 'データベースの項目になる' : type === 'table' ? 'テーブルのときだけ項目になる' : type === 'status' || type === 'steps' ? 'ステータスの項目を指す' : null,
+      numbered: !t.noNumber, props: AI_PROP_NOTES[type] || {}, ...(AI_ITEM_PROP_NOTES[type] ? { itemProps: AI_ITEM_PROP_NOTES[type] } : {}),
+    })),
+    itemTypes: [...Object.keys(PART_TYPES).filter(isInputType), 'table', 'status'],
+    tableKinds: { ...TABLE_KINDS },
+    templates: SCREEN_TEMPLATES.map((t) => ({ id: t.id, name: t.name, note: t.note })),
+    devices: Object.fromEntries(Object.entries(DEVICES).map(([k, v]) => [k, { ...v }])),
+    targets: [...BUILTIN_TARGETS.map((t) => t.label), 'その他（名前を書く）', ...S.settings.customTargets],
+    callout: { colors: Object.fromEntries(Object.entries(CALLOUT_COLORS).map(([k, v]) => [k, v[0]])), tips: { dot: '点', arrow: '矢印', none: 'なし' }, w: PALETTE_EXTRA.callout.w, h: PALETTE_EXTRA.callout.h },
+    layout: {
+      columnsLeft: [TPL_LEFT, TPL_COL2], columnWidth: LAYOUT_COL_W, spanWidth: LAYOUT_SPAN_W, twoColumnsMinWidth: LAYOUT_TWO_COL_MIN,
+      rowGap: TPL_GAP, alignGap: LAYOUT_ALIGN_GAP, firstRowY: { withHeader: AI_FIRST_ROW_Y, withoutHeader: AI_FIRST_ROW_Y_NOHEADER }, grid: GRID,
+    },
+  };
+}
+const AI_FIRST_ROW_Y = 64; // 帯がある画面の並べ方の最初の行（高さ 40 の帯の下に 24 空ける）
+const AI_FIRST_ROW_Y_NOHEADER = 24; // 帯を消した画面の最初の行（Claude が決めた）
+
+// 道具の一覧（名前は入口 mcp-server.js の道具と同じ。read_guide は入口だけで返す）。write は書く道具
+const AI_TOOLS = {
+  list_designs: { write: false, run: aiListDesigns },
+  get_design: { write: false, run: aiGetDesign },
+  get_screen: { write: false, run: aiGetScreen },
+  get_catalog: { write: false, run: aiGetCatalog },
+};
+
+// 日本語の変換中と、窓が隠れたとき（AI がつながっている間の × は窓を隠すだけなので、打ちかけの文字をここで確定する）
+function bindAiEvents() {
+  document.addEventListener('compositionstart', () => { imeComposing = true; }, true);
+  document.addEventListener('compositionend', () => { imeComposing = false; }, true);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSideField(); });
+  if (!window.aiAPI) return;
+  window.aiAPI.onRequest((r) => aiDispatch(r && r.tool, r && r.args, { session: r && r.session, client: r && r.client }));
+  window.aiAPI.ready();
+}
+
+// ── 11. 起動 ──────────────────────────────────────────────────────────────────
 function bindGlobalEvents() {
   const app = appEl();
   app.addEventListener('click', onAppClick);
@@ -7777,10 +8058,11 @@ async function boot() {
   if (window.menuAPI) window.menuAPI.onCommand(runCommand);
   if (!embedded) renderHome();
   else if (!created.blockReason) openDesign(standalone.designId);
+  bindAiEvents();
   exposeForTest();
 }
 
-// ── 11. テスト用の窓口 ────────────────────────────────────────────────────────
+// ── 12. テスト用の窓口 ────────────────────────────────────────────────────────
 // テストの土台（test/harness.js）が起動の前に window.__test__ を置いたときだけ埋める
 function exposeForTest() {
   if (!window.__test__) return;
@@ -7794,6 +8076,7 @@ function exposeForTest() {
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
+    aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     ready: true,
   });

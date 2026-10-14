@@ -47,10 +47,11 @@ function createMainStorage() {
 //   localStorage … 起動前に localStorage へ入れる { キー: 値 }
 //   html         … アプリの HTML の代わりに起動する HTML の文字（書き出した HTML を単体で開いたときのテストに使う）
 //   exportAPI    … 書き出しの窓口（preload.js の exportAPI）の身代わり。渡すとデスクトップ版として PDF・PNG も選べる
+//   aiAPI        … AI の窓口（preload.js の aiAPI）の身代わり。{ onRequest(cb), ready() }（第 7 段階）
 // 戻り値の api() は、起動が終わって window.__test__ が埋まるのを待ってから返す。
 // ページの中で起きた例外と console.error は errors に集め、close() のときに 1 件でもあれば失敗にする
 // （クリックの処理の中の例外を見落とさないため）。
-function bootApp({ storage = null, localStorage = null, url = 'https://localhost/app/' + HTML_NAME, html = null, exportAPI = null } = {}) {
+function bootApp({ storage = null, localStorage = null, url = 'https://localhost/app/' + HTML_NAME, html = null, exportAPI = null, aiAPI = null } = {}) {
   const errors = [];
   const vc = new VirtualConsole();
   vc.on('error', (...args) => errors.push('console.error: ' + args.map(String).join(' ')));
@@ -66,6 +67,7 @@ function bootApp({ storage = null, localStorage = null, url = 'https://localhost
       window.__test__ = {};
       window.alert = () => {};
       if (exportAPI) window.exportAPI = exportAPI;
+      if (aiAPI) window.aiAPI = aiAPI;
       if (localStorage) {
         for (const [k, v] of Object.entries(localStorage)) window.localStorage.setItem(k, v);
       }
