@@ -14,7 +14,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・screens・export をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・screens・export・revisions をカンマで区切る）]
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -685,7 +685,109 @@ async function shootExport(browser) {
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForFunction(() => !document.querySelector('.modal'));
   await shot(page, '81_書き出し_取り込んだ後の一覧');
-  console.log('取り込んだ後:', await page.evaluate(() => { const d = window.__test__.store.state.designs.find((x) => x.id === 'd1'); return `説明「${d.description}」・画面 ${d.screens.length} つ・改訂の記録 ${d.revisions.map((r) => r.note).join('・')}`; }));
+  console.log('取り込んだ後:', await page.evaluate(() => { const d = window.__test__.store.state.designs.find((x) => x.id === 'd1'); return `説明「${d.description}」・画面 ${d.screens.length} つ・改訂履歴 ${d.revisions.map((r) => r.note).join('・')}`; }));
+  await page.close();
+}
+
+// ── 改訂履歴（第 6 段階。画像 q40c〜q44 のとおりか）──
+// 第 1 版を作ってから中身を変え、改訂する窓・改訂履歴の窓・前の版を見る・戻す確かめの窓・書き出しの違いの印を撮る
+async function shootRevisions(browser) {
+  const page = await openDeskApp(browser, DB_SAMPLE);
+  const r1 = await page.evaluate(() => {
+    const T = window.__test__;
+    const id = T.actions.addRevision('d1', { note: '最初の版。ベンダーに見積もりを頼んだ。', day: '2026-10-08' });
+    T.actions.updateItem('d1', 'i3', { props: { options: ['法人', '個人', '団体'] } }); // 設定変更
+    T.actions.movePart('d1', 's1', 'p6', { x: 528, y: 328, w: 472, h: 64 }); // 位置変更
+    T.actions.movePart('d1', 's1', 'p5', { x: 24, y: 240, w: 304, h: 64 }); // 大きさ変更
+    T.actions.deletePart('d1', 's1', 'p4'); // 削除
+    T.actions.addPart('d1', 's1', 'date', { x: 528, y: 240 }); // 追加
+    T.actions.addCallout('d1', 's1', { x: 1300, y: 120 }, 'p1');
+    return id;
+  });
+  await page.click('.card-open[data-id="d1"]');
+  await page.click('#tb-rev-arrow');
+  await shot(page, '82_改訂_▼のメニュー');
+  await page.click('#rev-menu-root [data-action="add-revision"]');
+  await page.waitForSelector('.modal [name="rv-note"]');
+  await page.type('.modal [name="rv-note"]', '区分に「団体」を足し、受付日の欄を足した。');
+  await shot(page, '83_改訂_改訂する窓（変更内容の一覧）');
+  await page.click('.modal [data-dlg="ok"]');
+  await page.waitForFunction(() => !document.querySelector('.modal'));
+  await page.click('#toolbar [data-action="open-revisions"]');
+  await page.waitForSelector('.modal .rv-list');
+  await page.click('.modal [data-rv="toggle"]');
+  await shot(page, '84_改訂_改訂履歴の窓（変更内容を開いた）');
+  await page.click(`.modal tr[data-rev="${r1}"] [data-rv="view"]`);
+  await page.waitForSelector('#rv-band:not([hidden])');
+  await page.click('#stage .part[data-part-id="p3"]');
+  await shot(page, '85_改訂_前の版を見る（部品を選んだ）');
+  await page.click('#screen-list [data-action="open-items"]');
+  await shot(page, '86_改訂_前の版を見る（データベースの項目）');
+  await page.click('#rv-band [data-action="rev-restore-viewing"]');
+  await page.waitForSelector('.modal .imp-cmp');
+  await shot(page, '87_改訂_前の版に戻す確かめの窓');
+  await page.click('.modal [data-dlg="cancel"]');
+  await page.click('#rv-band [data-action="rev-stop-view"]');
+  await page.click('#screen-list [data-action="select-screen"]');
+  // 書き出しの窓（違いの印）と、第 1 版と比べた PDF
+  await page.click('#toolbar [data-action="export"]');
+  await page.waitForSelector('.modal .xp-kinds');
+  await page.evaluate((id) => {
+    const box = document.querySelector('.modal [data-xbox="pdf"]');
+    box.querySelector('[data-xdiff]').checked = true;
+    box.querySelector('[data-xdiffrev]').value = id;
+  }, r1);
+  await shot(page, '88_改訂_書き出しの窓の違いの印');
+  await page.click('.modal [data-dlg="ok"]');
+  await page.waitForFunction(() => window.__xp.some((x) => x[0] === 'pdf'));
+  const pdf = await page.evaluate(() => window.__xp.find((x) => x[0] === 'pdf')[1]);
+  const doc = await browser.newPage();
+  await doc.setViewport({ width: 1200, height: 900 });
+  await doc.setContent(pdf.html, { waitUntil: 'load' });
+  const pages = await doc.$$('body > .pg');
+  // 表紙・変更内容のページと、最初の画面のページ（つながりの図・項目の一覧表のページの数で位置が変わるので、画面の入ったページを探す）
+  const screenAt = await doc.evaluate(() => [...document.querySelectorAll('body > .pg')].findIndex((p) => p.querySelector('.xp-zone')));
+  const shots = [[0, '89_改訂_PDF_表紙'], [1, '90_改訂_PDF_変更内容のページ'], [screenAt, '91_改訂_PDF_画面のページの札']];
+  for (const [i, label] of shots) {
+    if (!pages[i]) continue;
+    const file = path.join(OUT, `v${VERSION}_${label}.png`);
+    await pages[i].screenshot({ path: file });
+    console.log('saved', path.relative(ROOT, file));
+  }
+  console.log('違いの印の PDF のページの数:', pages.length);
+  await doc.close();
+  // 第 2 版と比べた HTML を書き出して、HTML の中で 1 つ直してから撮る
+  const r2 = await page.evaluate(() => window.__test__.latestVersion(window.__test__.currentDesign()).id);
+  await page.click('#toolbar [data-action="export"]');
+  await page.waitForSelector('.modal .xp-kinds');
+  await page.click('[data-xkind="html"]');
+  await page.evaluate((id) => {
+    const box = document.querySelector('.modal [data-xbox="html"]');
+    box.querySelector('[data-xdiff]').checked = true;
+    box.querySelector('[data-xdiffrev]').value = id;
+  }, r2);
+  await page.click('.modal [data-dlg="ok"]');
+  await page.waitForFunction(() => window.__xp.some((x) => x[0] === 'html'));
+  const html = await page.evaluate(() => window.__xp.find((x) => x[0] === 'html')[1].html);
+  const saFile = path.join(ROOT, '.devdata', 'shoot-revisions', '顧客管理.html');
+  fs.mkdirSync(path.dirname(saFile), { recursive: true });
+  fs.writeFileSync(saFile, html);
+  const sa = await browser.newPage();
+  await sa.setViewport({ width: 1400, height: 860 });
+  await sa.evaluateOnNewDocument(() => { window.__test__ = {}; });
+  await sa.goto(pathToFileURL(saFile).href, { waitUntil: 'load' });
+  await sa.waitForFunction(() => window.__test__ && window.__test__.ready);
+  await sa.evaluate(() => {
+    const T = window.__test__;
+    T.actions.updateItem('d1', 'i2', { required: false, props: { maxLen: '80' } });
+    T.actions.movePart('d1', 's1', 'p9', { x: 760, y: 440, w: 120, h: 40 });
+  });
+  for (let i = 0; i < 3; i++) await sa.click('[data-action="zoom-out"]');
+  await shot(sa, '92_改訂_単体で開いたHTMLの札と帯_70%');
+  await sa.click('[data-action="diff-list"]');
+  await sa.waitForSelector('.modal .cg-table');
+  await shot(sa, '93_改訂_単体で開いたHTMLの変更内容の一覧');
+  await sa.close();
   await page.close();
 }
 
@@ -708,6 +810,7 @@ async function shootExport(browser) {
     if (wants('map')) await shootMap(browser);
     if (wants('screens')) await shootScreens(browser);
     if (wants('export')) await shootExport(browser);
+    if (wants('revisions')) await shootRevisions(browser);
   } finally {
     await browser.close();
   }

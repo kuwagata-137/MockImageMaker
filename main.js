@@ -50,6 +50,10 @@ function buildAppMenu() {
         commandItem('書き出す…', 'exportDialog'),
         commandItem('HTML を取り込む…', 'importHtml'),
         { type: 'separator' },
+        // 改訂する・改訂履歴は、開いている画面設計について行う（第 6 段階）
+        commandItem('改訂する…', 'addRevision'),
+        commandItem('改訂履歴…', 'openRevisions'),
+        { type: 'separator' },
         commandItem('一覧へ戻る', 'goHome'),
         { type: 'separator' },
         { role: 'quit', label: '終了' },

@@ -9,6 +9,8 @@
 //  3. PNG: 画面ごとに 1 枚。大きさが 2 倍か、白だけの小さなファイルでないか
 //  4. HTML: 書き出した HTML を最初の画面の「HTML を取り込む」で取り込み直すと「同じ中身」と出て、何も変わらない（MIM_IMPORT_FILE で開く窓を出さない）。
 //     説明を直した HTML を取り込むと確かめの窓が出て、置き換えると designs.json に直した説明と「取り込む前の状態」が残る
+//  5. 違いの印（第 6 段階）: メニューバーの ▼ の「改訂する」で第 1 版を作り、部品を 1 つ消してから、第 1 版と比べた PDF を書き出す。
+//     変更内容のページで 1 ページ増え、「からの変更内容」「削除」と消した部品の名前が入る（5 の後に 3・4 を行う）
 // pdfinfo・pdftotext（poppler-utils）がないとき（社内の Windows PC など）は、PDF はファイルの頭とページの数え方だけで確かめる。
 // 保存先は作業フォルダの .devdata/check-export（毎回消してから始める。npm start のデータとは別）。
 'use strict';
@@ -158,7 +160,8 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
     const pdfCases = [['A4', 'landscape', 'A4横', [841.92, 595.2]], ['A3', 'portrait', 'A3縦', [841.92, 1190.88]], ['slide', null, 'スライド', [960, 540]]];
     for (const [paper, orient, tag, want] of pdfCases) {
       const file = path.join(OUT, '顧客管理.pdf');
-      fs.rmSync(file, { force: true });
+      // fs.rmSync は使わない。Windows の Node v24.12.0 では、日本語の名前（顧客管理.pdf など）を渡すと Node ごと落ちる（2026-10-14）
+      if (fs.existsSync(file)) fs.unlinkSync(file);
       await exportVia(page, clickPaper(paper, orient));
       await waitFile(file, `PDF（${tag}）`);
       const dest = path.join(OUT, `顧客管理_${tag}.pdf`);
@@ -175,6 +178,33 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
           `表紙のほかのページの、いちばん下の文字の位置: ${low.map((r) => Math.round(r * 100) + '%').join('・')}`);
       } else {
         check(`PDF（${tag}）`, f.head === '%PDF' && f.pages === 5, `${f.pages} ページ（pdfinfo がないので数えただけ）`);
+      }
+    }
+    // 5. 違いの印（第 1 版を作り、取引先名の部品を消してから、第 1 版と比べた PDF）
+    await page.click('#tb-rev-arrow');
+    await page.click('#rev-menu-root [data-action="add-revision"]');
+    await page.waitForSelector('.modal [name="rv-note"]');
+    await page.click('.modal [data-dlg="ok"]');
+    await page.waitForFunction(() => !document.querySelector('.modal'));
+    await page.click('#stage .part[data-part-id="p3"]');
+    await page.keyboard.press('Delete');
+    await page.waitForFunction(() => !document.querySelector('#stage .part[data-part-id="p3"]'));
+    {
+      const file = path.join(OUT, '顧客管理.pdf');
+      if (fs.existsSync(file)) fs.unlinkSync(file);
+      await exportVia(page, async (p) => {
+        await clickPaper('A4', 'landscape')(p);
+        await p.click('[data-xbox="pdf"] [data-xdiff]');
+      });
+      await waitFile(file, 'PDF（違いの印）');
+      const dest = path.join(OUT, '顧客管理_違いの印.pdf');
+      fs.renameSync(file, dest);
+      const f = pdfFacts(dest);
+      check('PDF（違いの印）のページ数', f.pages === 6, `${f.pages} ページ（変更内容のページで 1 ページ増える）`);
+      if (f.tool) {
+        const words = ['第1版', 'からの変更内容', '削除', '取引先名'];
+        const missing = words.filter((w) => !f.text.replace(/\s+/g, '').includes(w));
+        check('PDF（違いの印）の文字', !missing.length, missing.length ? `見つからない: ${missing.join('・')}` : words.join('・'));
       }
     }
     // 3. PNG（画面ごとに 1 枚・2 倍）
@@ -202,9 +232,10 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
     await page.waitForFunction(() => /置き換えました/.test(document.querySelector('#toast').textContent), { timeout: 15000 });
     await sleep(800); // designs.json への書き込みを待つ
     const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).designs.find((d) => d.id === 'd1');
-    check('直した HTML を取り込むと置き換わり、前の中身が改訂の記録に残る', saved.description === 'ベンダーが直した説明。'
-      && saved.revisions.length === 1 && saved.revisions[0].note === '取り込む前の状態' && saved.revisions[0].snapshot.description === '取引先と顧客の連絡先を管理する。',
-    `説明「${saved.description}」・改訂の記録 ${saved.revisions.map((r) => r.note).join('・')}`);
+    const imp = saved.revisions.find((r) => r.kind === 'import') || {};
+    check('直した HTML を取り込むと置き換わり、前の中身が改訂履歴に残る', saved.description === 'ベンダーが直した説明。'
+      && saved.revisions.length === 2 && imp.note === '取り込む前の状態' && imp.snapshot.description === '取引先と顧客の連絡先を管理する。',
+    `説明「${saved.description}」・改訂履歴 ${saved.revisions.map((r) => r.note || `第 ${r.no} 版`).join('・')}`);
   } finally {
     await page.evaluate(() => window.close()).catch(() => {});
     browser.disconnect();
