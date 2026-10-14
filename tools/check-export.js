@@ -158,7 +158,8 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
     const pdfCases = [['A4', 'landscape', 'A4横', [841.92, 595.2]], ['A3', 'portrait', 'A3縦', [841.92, 1190.88]], ['slide', null, 'スライド', [960, 540]]];
     for (const [paper, orient, tag, want] of pdfCases) {
       const file = path.join(OUT, '顧客管理.pdf');
-      fs.rmSync(file, { force: true });
+      // fs.rmSync は使わない。Windows の Node v24.12.0 では、日本語の名前（顧客管理.pdf など）を渡すと Node ごと落ちる（2026-10-14）
+      if (fs.existsSync(file)) fs.unlinkSync(file);
       await exportVia(page, clickPaper(paper, orient));
       await waitFile(file, `PDF（${tag}）`);
       const dest = path.join(OUT, `顧客管理_${tag}.pdf`);
