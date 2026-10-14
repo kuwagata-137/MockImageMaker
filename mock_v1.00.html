@@ -3492,6 +3492,7 @@ const ui = {
   prevScreenId: null, // 画面を足す・複製する前に開いていた画面の id（元に戻すでその画面が消えたときに戻る先）
   revMenu: false, // メニューバーの「改訂履歴」の ▼ のメニューを開いているか
   viewRev: null, // 見ている前の版の行の id（見ていないときは null。q41）
+  viewReturn: null, // 前の版を見る前に開いていた所 { screenId, panel }（見るのをやめたときに戻る）
   diffHidden: false, // 単体で開いた HTML で、違いの札を隠しているか（q44d）
 };
 // partId・calloutId は、1 つだけ選んでいるときのその部品・吹き出しの id（ほかのときは null）。入れると、それだけを選んだことにする
@@ -4364,7 +4365,10 @@ async function openRevisionsDialog() {
     });
     if (!r) return;
     if (r.act === 'view') { startViewRevision(r.id); return; }
-    if (r.act === 'restore') { await restoreRevisionWithConfirm(r.id); return; }
+    if (r.act === 'restore') {
+      if (await restoreRevisionWithConfirm(r.id)) return;
+      continue; // 確かめの窓でキャンセルしたら、この窓に戻る
+    }
     leaveViewing(); // 書き直す・消す・改訂するは、今の中身に戻ってから
     if (r.act === 'add') await openAddRevisionDialog();
     else if (r.act === 'edit') await openEditRevisionDialog(r.id);
@@ -4448,11 +4452,11 @@ async function deleteRevisionWithConfirm(revId) {
   if (ok) actions.deleteRevision(d.id, revId);
 }
 
-// 前の版に戻す確かめの窓（q41b）。今の中身とその版の画面・項目の数を並べる
+// 前の版に戻す確かめの窓（q41b）。今の中身とその版の画面・項目の数を並べる。戻り値は、戻したか
 async function restoreRevisionWithConfirm(revId) {
   const d = findDesign(realState(), ui.designId);
   const r = findRevision(d, revId);
-  if (!hasSnapshot(r)) return;
+  if (!hasSnapshot(r)) return false;
   const from = designFromSnapshot(d, r);
   const title = `${revisionTitle(r)}（${revisionDay(r)}）`;
   const names = (x) => x.screens.map((s) => s.name).join('・');
@@ -4478,9 +4482,11 @@ async function restoreRevisionWithConfirm(revId) {
       <div class="rv-note">置き換える前の今の中身は、改訂履歴に「戻す前の状態」として自動で残します。その行の「この版に戻す」で、もう一度戻せます。すぐ後なら、元に戻す（Ctrl+Z）でも戻せます。<br>
         ほかのモックから取り込んだ項目は、元のモックとつなぎ直し、元の今の中身に合わせます（元がもうないときは、この版の中身で固定します）。</div>`,
   });
-  if (!ok) return;
-  leaveViewing();
-  if (actions.restoreRevision(d.id, revId)) toast(`${title}に戻しました。戻す前の中身は、改訂履歴に「戻す前の状態」として残しています（元に戻す〔Ctrl+Z〕でも戻せます）。`);
+  if (!ok) return false;
+  leaveViewing({ keepScreen: ui.viewRev === revId });
+  const done = actions.restoreRevision(d.id, revId);
+  if (done) toast(`${title}に戻しました。戻す前の中身は、改訂履歴に「戻す前の状態」として残しています（元に戻す〔Ctrl+Z〕でも戻せます）。`);
+  return done;
 }
 
 // 前の版を見る（q41 案A）。編集の画面を、その版の写しで描く（見るだけ）。上に黄色い帯
@@ -4492,14 +4498,19 @@ function startViewRevision(revId) {
   if (!hasSnapshot(r)) return false;
   const shown = { ...designFromSnapshot(d, r), revisions: d.revisions, trashedAt: d.trashedAt };
   const view = { ...store.state, designs: store.state.designs.map((x) => (x.id === d.id ? shown : x)) };
-  Object.assign(ui, { viewRev: revId, sel: [], itemId: null, addItemMenu: false, screenMenu: null, revMenu: false, colId: null });
+  Object.assign(ui, {
+    viewRev: revId, viewReturn: { screenId: ui.screenId, panel: ui.panel },
+    sel: [], itemId: null, addItemMenu: false, screenMenu: null, revMenu: false, colId: null,
+  });
   store.startViewing(view);
   return true;
 }
-// 見るのをやめて、今の中身に戻る
-function leaveViewing() {
+// 見るのをやめて、今の中身に戻る。見る前に開いていた画面（データベースの項目・つながりの図）に戻る。
+// keepScreen のとき（見ていた版に戻したとき）は、見ていた画面のままにする（戻した後の中身にその画面がある）
+function leaveViewing({ keepScreen = false } = {}) {
   if (!store || !store.isViewing) return;
-  Object.assign(ui, { viewRev: null, sel: [], itemId: null, colId: null });
+  const back = keepScreen ? null : ui.viewReturn;
+  Object.assign(ui, { viewRev: null, viewReturn: null, sel: [], itemId: null, colId: null, ...(back || {}) });
   store.stopViewing();
 }
 function renderViewBand() {
@@ -4512,10 +4523,12 @@ function renderViewBand() {
     <button class="btn primary small" data-action="rev-restore-viewing">この版に戻す…</button>
     <button class="btn small" data-action="rev-stop-view">見るのをやめる（今の中身に戻る）</button>`;
 }
+// 見ている間も押せる、右の欄のボタン（見るだけの操作。表の列を選ぶ・ルックアップで探す項目の設定を開く）
+const VIEW_OK_SIDE_ACTIONS = ['tb-col', 'open-lookup-key'];
 // 見ている間は、右の欄・項目の一覧表・画面の一覧の、直すための欄とボタンを押せなくする（選ぶ・見るはできる）
 function lockForViewing() {
   document.querySelectorAll('#side-settings input, #side-settings select, #side-settings textarea, #side-settings button, #db-view button, #db-view input')
-    .forEach((x) => { x.disabled = true; });
+    .forEach((x) => { if (!VIEW_OK_SIDE_ACTIONS.includes(x.dataset.action)) x.disabled = true; });
   document.querySelectorAll('#screen-list .sl-more, #screen-list .sl-add').forEach((x) => { x.hidden = true; });
   // 項目の一覧表のつまみは、列がずれないように、セルを残して見えなくする
   document.querySelectorAll('#db-view [data-drag]').forEach((x) => { x.style.visibility = 'hidden'; });
@@ -7402,6 +7415,7 @@ function onEditorClick(action, btn) {
       ui.revMenu = !ui.revMenu;
       renderRevMenu();
       updateToolbarState();
+      if (ui.revMenu) { const first = $('#rev-menu-root [role="menuitem"]:not([disabled])'); if (first) first.focus(); } // キーボードでも選べるように
       return true;
     case 'rev-stop-view': leaveViewing(); return true;
     case 'rev-restore-viewing': if (ui.viewRev) restoreRevisionWithConfirm(ui.viewRev).catch(reportPageError); return true;
@@ -7609,7 +7623,7 @@ function bindGlobalEvents() {
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('mousemove', onDragMove);
   document.addEventListener('mouseup', onDragEnd);
-  window.addEventListener('resize', () => { if (ui.view === 'editor') { syncZoomSpacer(); closeScreenMenu(); } });
+  window.addEventListener('resize', () => { if (ui.view === 'editor') { syncZoomSpacer(); closeScreenMenu(); closeRevMenu(); } }); // メニューの位置がボタンからずれるので閉じる
   // 画面の一覧を送ったときは、「…」のメニューを閉じる（「…」から離れるため。scroll は泡立たないので、捕まえる側で受ける）
   document.addEventListener('scroll', (e) => { if (e.target && e.target.id === 'screen-list') closeScreenMenu(); }, true);
   window.addEventListener('blur', flushSideField);

@@ -686,3 +686,76 @@ test('前の版に戻す: ほかの画面設計が取り込んでいる項目が
   click($(app, '.modal [data-dlg="cancel"]'));
   await done;
 });
+
+// ── 見直しで見つかった不具合（画面。2026-10-14）──
+const pickScreen = (app, id) => click($(app, `#screen-list [data-action="select-screen"][data-id="${id}"]`));
+
+test('前の版を見る: 見るのをやめると、見る前に開いていた画面に戻る。帯から戻したときは、見ていた画面のまま', async (t) => {
+  const { app, api } = await bootSample(t);
+  api.openDesign('d1');
+  const s2 = api.actions.addScreen('d1', 'blank', 's1');
+  const r1 = api.actions.addRevision('d1');
+  pickScreen(app, 's1');
+  assert.equal(api.ui.screenId, 's1');
+  api.startViewRevision(r1);
+  pickScreen(app, s2);
+  assert.equal(api.ui.screenId, s2, '見ている間は、前の版の画面を切り替えて見られる');
+  click($(app, '#rv-band [data-action="rev-stop-view"]'));
+  assert.equal(api.ui.screenId, 's1', '見る前の画面に戻る');
+  // 帯の「この版に戻す…」
+  api.startViewRevision(r1);
+  pickScreen(app, s2);
+  click($(app, '#rv-band [data-action="rev-restore-viewing"]'));
+  await tick();
+  click($(app, '.modal [data-dlg="ok"]'));
+  await waitFor(() => !api.store.isViewing);
+  assert.equal(api.ui.screenId, s2, '戻した後は、見ていた画面のまま');
+});
+
+test('前の版を見る: 見ている間も、表の列を選ぶボタンと「〇〇の設定を開く」は押せる（見るだけの操作）', async (t) => {
+  const state = sampleState();
+  state.designs[0].items[0].lookup = { db: { designId: 'd2', name: '住所の共通項目' }, key: { itemId: 'a1', name: '郵便番号' }, copies: [{ from: { itemId: 'a1', name: '郵便番号' }, to: { itemId: 'i2', name: '顧客名' } }] };
+  const { app, api } = await bootSample(t, { state });
+  api.openDesign('d1');
+  const tb = api.actions.addPart('d1', 's1', 'table', { x: 0, y: 400 });
+  const r1 = api.actions.addRevision('d1');
+  api.startViewRevision(r1);
+  api.selectPart(tb);
+  const col = $(app, '#side-settings [data-action="tb-col"]');
+  assert.ok(col && !col.disabled, '列を選ぶボタンは押せる');
+  click(col);
+  assert.equal(api.ui.colId, col.dataset.id);
+  assert.ok($$(app, '#side-settings [data-action="tb-col-add"], #side-settings [data-action="tb-col-del"]').every((x) => x.disabled), '列を足す・消すボタンは押せない');
+  api.selectPart('p2');
+  const open = $(app, '#side-settings [data-action="open-lookup-key"]');
+  assert.ok(open && !open.disabled, '「顧客コードの設定を開く」は押せる');
+  click(open);
+  assert.equal(api.ui.partId, 'p1');
+});
+
+test('改訂履歴の窓: 「この版に戻す…」の確かめの窓でキャンセルすると、改訂履歴の窓に戻る', async (t) => {
+  const { app, api } = await bootSample(t);
+  api.openDesign('d1');
+  const { r1 } = makeTwoVersions(api);
+  const done = api.openRevisionsDialog();
+  await tick();
+  const title = () => ($(app, '.modal h2') || {}).textContent || '';
+  click($(app, `.modal [data-rv="restore"][data-id="${r1}"]`));
+  await waitFor(() => /第 1 版に戻す/.test(title()));
+  click($(app, '.modal [data-dlg="cancel"]'));
+  await waitFor(() => /改訂履歴/.test(title()));
+  click($(app, '.modal [data-dlg="cancel"]'));
+  await done;
+  assert.equal(api.store.isViewing, false);
+  assert.equal(d1(api).revisions.length, 2, '戻していない');
+});
+
+test('▼ のメニュー: 開くと最初の項目にフォーカスが移り、窓の大きさを変えると閉じる', async (t) => {
+  const { app, api } = await bootSample(t);
+  api.openDesign('d1');
+  click($(app, '#toolbar [data-action="rev-menu"]'));
+  assert.equal(app.document.activeElement, $(app, '#rev-menu-root [data-action="add-revision"]'));
+  app.window.dispatchEvent(new app.window.Event('resize'));
+  assert.ok(!$(app, '#rev-menu-root .rv-menu'), '窓の大きさを変えると閉じる');
+  assert.equal(api.ui.revMenu, false);
+});
