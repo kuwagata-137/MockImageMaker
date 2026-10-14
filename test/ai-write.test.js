@@ -306,3 +306,43 @@ test('add_revision と restore_revision: 版の番号を返す。戻すと「戻
   ng(await call('restore_revision', { design: 'd1', revision: 5 }), 'not_found');
   app.close();
 });
+
+test('画面の高さは 20000 ドットまで: edit_screen の height・edit_parts の move と rows・並べ方で画面を伸ばす頼みは、上限を超えると断る（何も変えない）', async () => {
+  const { app, call, d } = await boot();
+  const at0 = d('d1').updatedAt;
+  const refuse = async (tool, args) => {
+    const e = ng(await call(tool, args), 'bad_request');
+    assert.match(e.message, /20000 ドット/, tool);
+  };
+  await refuse('edit_screen', { design: 'd1', ops: [{ op: 'update', screen: '新規登録', height: 1e7 }] });
+  await refuse('edit_parts', { design: 'd1', screen: '新規登録', ops: [{ op: 'move', part: 1, y: 1e7 }] });
+  await refuse('edit_parts', { design: 'd1', screen: '新規登録', ops: [{ op: 'move', part: 1, h: 1e7 }] });
+  const tall = { rows: Array.from({ length: 400 }, (_, i) => [{ type: 'heading', label: `見出し ${i + 1}` }]) };
+  await refuse('layout_screen', { design: 'd1', screen: '一覧', layout: tall });
+  await refuse('add_screen', { design: 'd1', layout: tall });
+  assert.equal(d('d1').updatedAt, at0);
+  assert.deepEqual(d('d1').screens.map((s) => s.height), [800, 800]);
+  // 上限までは通る
+  const t = ok(await call('layout_screen', { design: 'd1', screen: '新規登録', layout: { rows: [[{ type: 'table', tableKind: 'records' }]] } })).parts[0];
+  ok(await call('edit_parts', { design: 'd1', screen: '新規登録', ops: [{ op: 'move', part: 1, y: 19900 }] }));
+  assert.equal(d('d1').screens[0].height, 19968);
+  ok(await call('edit_screen', { design: 'd1', ops: [{ op: 'update', screen: '新規登録', height: 20000 }] }));
+  assert.equal(d('d1').screens[0].height, 20000);
+  // 表の見本の行を増やして、下の端が上限を超えるときも断る
+  ok(await call('edit_parts', { design: 'd1', screen: '新規登録', ops: [{ op: 'move', part: t.id, y: 20000 - t.h }] }));
+  await refuse('edit_parts', { design: 'd1', screen: '新規登録', ops: [{ op: 'update', part: t.id, rows: 20 }] });
+  assert.equal(d('d1').screens[0].height, 20000);
+  app.close();
+});
+
+test('入口（mcp-schemas.js）の画面の高さの上限は、ページの上限（get_catalog の maxScreenHeight）と同じ', async () => {
+  const SC = require('../mcp-schemas');
+  const { app, call } = await boot();
+  const cat = ok(await call('get_catalog'));
+  assert.equal(cat.maxScreenHeight, 20000);
+  assert.equal(SC.MAX_SCREEN_HEIGHT, cat.maxScreenHeight);
+  const update = (height) => SC.screenOps.safeParse([{ op: 'update', screen: 's1', height }]).success;
+  assert.equal(update(cat.maxScreenHeight), true);
+  assert.equal(update(cat.maxScreenHeight + 1), false);
+  app.close();
+});

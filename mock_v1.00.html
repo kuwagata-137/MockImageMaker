@@ -8013,6 +8013,7 @@ function aiGetCatalog() {
     tableKinds: { ...TABLE_KINDS },
     templates: SCREEN_TEMPLATES.map((t) => ({ id: t.id, name: t.name, note: t.note })),
     devices: Object.fromEntries(Object.entries(DEVICES).map(([k, v]) => [k, { ...v }])),
+    maxScreenHeight: AI_SCREEN_H_MAX, // AI の頼みで伸ばせる画面の高さの上限（ドット）
     targets: [...BUILTIN_TARGETS.map((t) => t.label), 'その他（名前を書く）', ...S.settings.customTargets],
     callout: { colors: Object.fromEntries(Object.entries(CALLOUT_COLORS).map(([k, v]) => [k, v[0]])), tips: { dot: '点', arrow: '矢印', none: 'なし' }, w: PALETTE_EXTRA.callout.w, h: PALETTE_EXTRA.callout.h },
     layout: {
@@ -8030,6 +8031,14 @@ const AI_BUSY_WAIT_MS = 2000; // 人がドラッグ・日本語の変換をし�
 const AI_CLIENT_NAMES = { 'claude-code': 'Claude Code', 'claude-ai': 'Claude' };
 const aiClientLabel = (client) => AI_CLIENT_NAMES[client] || cleanName(client, 40) || 'AI';
 const aiBad = (message) => new AiRefusal('bad_request', message);
+// AI の頼みで伸ばせる画面の高さの上限（ドット。Claude が決めた。人が下の縁をドラッグして伸ばすときには上限がない）。
+// とても長い画面は、描くのも PNG にするのも重く、アプリが固まるおそれがあるため。入口の mcp-schemas.js の MAX_SCREEN_HEIGHT と同じにする
+const AI_SCREEN_H_MAX = 20000;
+// 画面の下の端（画面の高さ・部品の下の端）が上限を超える頼みは断る
+function aiCheckBottom(bottom, what) {
+  if (bottom <= AI_SCREEN_H_MAX) return;
+  throw aiBad(`${what}（${Math.round(bottom)} ドット）が、画面の高さの上限 ${AI_SCREEN_H_MAX} ドットを超えるため、できません。部品を減らすか、画面を分けてください。`);
+}
 
 // 書けない状態なら断る（8-4）
 function aiCheckWritable() {
@@ -8508,7 +8517,10 @@ function aiScreenOp(tx, op) {
       const patch = {};
       if (op.name !== undefined) patch.name = aiScreenName(tx, d(), op.name, sc.id);
       if (op.device !== undefined) patch.device = aiDevice(op.device);
-      if (op.height !== undefined) patch.height = aiNum(op.height, 'height');
+      if (op.height !== undefined) {
+        patch.height = aiNum(op.height, 'height');
+        aiCheckBottom(patch.height, '画面の高さ');
+      }
       if (op.showHeader !== undefined) {
         if (typeof op.showHeader !== 'boolean') throw aiBad('showHeader は true か false で書いてください。');
         patch.showHeader = op.showHeader;
@@ -8571,6 +8583,9 @@ function aiLayout(tx, designId, screenId, layout, mode) {
   const firstY = sc.showHeader ? AI_FIRST_ROW_Y : AI_FIRST_ROW_Y_NOHEADER;
   const startY = sc.parts.length ? Math.ceil((Math.max(...sc.parts.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : firstY;
   const { placed } = layoutPlacements({ rows, columns }, { width: sc.width, startY, sizeOf: (s) => ({ type: s.type, w: s.w0, h: s.h0 }) });
+  // 置くと画面が伸びる（placePartIn と同じく、下に TPL_LEFT 空ける）ときは、上限を超えないか見る
+  const bottom = placed.reduce((m, pl) => Math.max(m, pl.y + pl.h + TPL_LEFT), 0);
+  if (bottom > sc.height) aiCheckBottom(bottom, '並べた部品の下の端');
   const ids = [];
   mutateDesign(designId, (dd) => {
     dd.items.push(...plan.created);
@@ -8701,14 +8716,20 @@ function aiPartOp(tx, sid, op) {
   switch (op.op) {
     case 'update': {
       const p = part(op.part);
-      actions.updatePart(id, sid, p.id, aiPartPatch(tx, d(), p, op));
+      const patch = aiPartPatch(tx, d(), p, op);
+      // 表の見本の行を増やすと、下へはみ出す分だけ画面を伸ばす（上限まで）
+      if (patch.view && patch.view.rows && p.y + tableHeight(patch.view.rows) > sc().height) aiCheckBottom(p.y + tableHeight(patch.view.rows), '表の下の端');
+      actions.updatePart(id, sid, p.id, patch);
       return { op: 'update', ...brief(p.id) };
     }
     case 'move': {
       const p = part(op.part);
       const r = { x: p.x, y: p.y, w: p.w, h: p.h };
       ['x', 'y', 'w', 'h'].forEach((k) => { if (op[k] !== undefined) r[k] = aiNum(op[k], k); });
-      if (r.y + r.h > sc().height) actions.updateScreen(id, sid, { height: heightToFit(r.y + r.h, sc().device) }); // 下へはみ出すときは画面を伸ばす
+      if (r.y + r.h > sc().height) { // 下へはみ出すときは画面を伸ばす（上限まで）
+        aiCheckBottom(r.y + r.h, '部品の下の端（y + h）');
+        actions.updateScreen(id, sid, { height: heightToFit(r.y + r.h, sc().device) });
+      }
       actions.movePart(id, sid, p.id, r);
       return { op: 'move', ...brief(p.id) };
     }

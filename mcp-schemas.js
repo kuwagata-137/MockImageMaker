@@ -15,6 +15,8 @@ const TABLE_KINDS = ['subtable', 'records', 'related'];
 const CALLOUT_COLORS = ['yellow', 'red', 'blue', 'gray'];
 const CALLOUT_TIPS = ['dot', 'arrow', 'none'];
 const ALIGN_HOW = ['left', 'hcenter', 'right', 'top', 'vcenter', 'bottom', 'hdist', 'vdist', 'width', 'height'];
+// AI の頼みで伸ばせる画面の高さの上限（ドット）。ページの AI_SCREEN_H_MAX（get_catalog の maxScreenHeight）と同じ（test/ai-write.test.js で比べる）
+const MAX_SCREEN_HEIGHT = 20000;
 
 const S = {
   design: ref('画面設計の id か名前'),
@@ -93,7 +95,7 @@ const itemOps = z.discriminatedUnion('op', [
 // ── 画面の操作（edit_screen）──
 const screenOps = z.discriminatedUnion('op', [
   op('update', {
-    screen: S.screen, name: opt(z.string()), device: opt(z.enum(DEVICES).describe('機器: "pc"・"tablet"・"phone"')), height: opt(z.number().describe('画面の高さ（ドット）')),
+    screen: S.screen, name: opt(z.string()), device: opt(z.enum(DEVICES).describe('機器: "pc"・"tablet"・"phone"')), height: opt(z.number().max(MAX_SCREEN_HEIGHT).describe(`画面の高さ（ドット。${MAX_SCREEN_HEIGHT} まで）`)),
     showHeader: opt(z.boolean().describe('いちばん上の紺色の帯を出す')), tablePos: opt(z.enum(['right', 'bottom']).describe('部品の設定の一覧表の位置')),
   }, '画面の名前・機器・高さ・帯・一覧表の位置を直す'),
   op('move', { screen: S.screen, ...where }, '画面を並べ替える'),
@@ -130,5 +132,5 @@ const opsOf = (union) => z.array(union).min(1).describe('操作の並び（ま�
 
 module.exports = {
   z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps),
-  DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW,
+  DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT,
 };
