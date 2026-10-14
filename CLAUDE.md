@@ -104,6 +104,9 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
     画面設計を `<script type="application/json" id="mim-embedded">` に埋め込む（「<」は \u003c に逃がす）。
     そのため、script の中に script の始まりと終わりの印・`<!--` をそのまま書かない（`'<' + '/script>'` のように分ける。テストで確かめる）。
   - 終わる前の保存は will-quit で待ち、待ち終わったら `app.exit(0)` で終わる（`app.quit()` をもう一度呼ぶと、will-quit を止めた直後は Electron が受け付けず、窓のないアプリが残った。2026-10-14）。
+  - 窓を隠したまま始める起動（`--background`・確かめの起動）では、electron-window-state の `manage()` を窓を初めて出すときに呼ぶ
+    （`manage()` が覚えた最大化を `maximize()` で戻し、`maximize()` は隠れた窓も画面に出すため。2026-10-14）。
+  - 窓が見えているかは、出した・隠したの印と `isMinimized()` で見る（Windows の `isVisible()` は最小化した窓で false を返すので、最小化しただけの人の窓が 30 秒で終わった。2026-10-14）。
 - AI の入口とつなぎ役（第 7 段階。設計は `AI設計基盤_設計書.md` の 7〜9・12 章）:
   - `mcp-server.js`（入口。公式 SDK の McpServer・stdio。標準出力は MCP だけ）・`mcp-tools.js`（17 個の道具の名前と説明）・`mcp-schemas.js`（zod の入力の形）・
     `mcp-guide.js`（instructions と手引き）・`automation-client.js`（入口の側のパイプの客。アプリが動いていなければ `--background` で起動する）。
@@ -120,7 +123,8 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
   改訂履歴（改訂する・改訂履歴の窓・前の版を見る・戻す・違いの判定・書き出しの違いの印）のテストは `test/revisions.test.js`。
   AI の窓口（第 7 段階）は、`test/ai-fixtures.js`（見本）・`test/ai-store.test.js`（batch など）・`test/layout.test.js`（並べ方とひな形の見本 `test/fixtures/template-layout.json`）・
   `test/ai-read.test.js`・`test/ai-write.test.js`・`test/ai-rules.test.js`（断る・元に戻す・直す前の行）・`test/ai-export.test.js`・`test/ai-view.test.js`（見た目）。
-  main と入口の側は Node だけで動く `test/automation.test.js`（パイプの受け口）・`test/mcp.test.js`（入口。身代わりのアプリ `test/fixtures/fake-app.js`）・`test/automation-tray.test.js`。
+  main と入口の側は Node だけで動く `test/automation.test.js`（パイプの受け口）・`test/mcp.test.js`（入口。身代わりのアプリ `test/fixtures/fake-app.js`）・`test/automation-tray.test.js`・
+  `test/automation-main.test.js`（身代わりの app・窓で、終わる時計と AI の書き出しの仕上げ）。
   jsdom では要素の位置（getBoundingClientRect）が取れないので、箱からのドラッグで置く・囲んで選ぶなどの操作は `tools/shoot-app.js` で確かめる。
   jsdom の中で作った配列は、テストの側の配列と deepEqual で比べると違うと判定されるので、`JSON.parse(JSON.stringify(...))` などで写してから比べる。
 - `tools/`: 確かめの道具（どれも窓を出さない）。
@@ -143,7 +147,7 @@ Windows のデスクトップアプリ（Electron）として作り、インス�
     `MIM_HEADLESS=1` のときだけ、環境変数 `MIM_EXPORT_DIR` があれば保存の窓を出さずにそこへ書き、`MIM_IMPORT_FILE` があれば開く窓を出さずにそれを読む。
     クラウドのセッションでは check-electron.js と同じく `ELECTRON_DISABLE_SANDBOX=1 xvfb-run -a` を付ける。
   - `node tools/check-mcp.js [--packaged=dist/win-unpacked]`: AI の入口を公式 SDK の客で起動し、入口がアプリを裏で起動して使えるか（作る・保存・画像・書き出し・
-    2 つ目の起動・× で隠す・入口を閉じる／強制終了すると 5 秒で終わる）を確かめる（保存先は `.devdata/check-mcp`）。窓の × は、メインプロセスの inspector から
+    2 つ目の起動・× で隠す・入口を閉じる／強制終了すると 5 秒で終わる・前に最大化して閉じていても裏の起動で窓が出ない）を確かめる（保存先は `.devdata/check-mcp`）。窓の × は、メインプロセスの inspector から
     `BrowserWindow.close()` を呼んで再現する（ページの window.close() は close の知らせを通らない）。`--packaged` は、作った版の exe を入口にして同じことを確かめる
     （保存先は `.devdata/check-mcp-packaged`。インストールした版と同じ動かし方）。
 - 取得物と作業用のファイルは `.devdata/`（Git に入れない）に置く。`npm run dist` は、環境変数 `ELECTRON_BUILDER_CACHE` と `electron_config_cache` を `.devdata/eb-cache`・`.devdata/electron-cache` に向けて動かす。

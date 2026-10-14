@@ -43,7 +43,7 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
 - 人がアプリで開いている画面設計を直したときは、人がアプリの「元に戻す」（Ctrl+Z）1 回で戻せます。開いていない画面設計を直したときは、アプリの元に戻すの履歴が消えます（人には知らせが出ます）。
 - その画面設計を初めて直すとき、改訂履歴に「AI が直す前の状態」の行が自動で残ります。
 - 部品の位置と大きさは、並べ方（layout。read_guide の "layout"）でアプリに決めさせるのが基本です。細かく直すときだけ edit_parts の move で数を書きます。
-- 返事が大きいときは nextCursor が付きます。cursor に渡すと続きを読めます。
+- 返事が大きいときは nextCursor が付きます。cursor に渡すと続きを読めます（get_screen は、部品・吹き出し・一覧表の行を、この順にまとめて分けます）。
 
 ## 断られたとき（返事の code）
 - viewing: 人がアプリで前の版を見ている。stale: 読んだ後に人が直した（読み直す）。dialog: アプリで確かめの窓が開いている。busy: 人が操作している（少し待つ）。blocked: アプリが保存を止めている。trashed: ごみ箱にある。
@@ -76,7 +76,8 @@ const LAYOUT = `# 部品の並べ方（layout）
 - 部品の幅と高さは、その種類の最初の大きさ（get_catalog の parts[].w・h）。列の幅 400 に入らない部品（表 640・グラフ 480 など）は、span を書かなくても 2 列をまたぐ。
   span: 2 は 2 列の幅いっぱい（848）まで広げる。画面の幅から左右 32 ずつ引いた幅に入らない部品は、その幅まで縮める（スマホの表など）。
 - { "align": "left"・"center"・"right", "parts": [...] } の行は、列に合わせず、部品の間を 32 ドット空けて横に並べ、左・真ん中・右に寄せる。ボタンの行に使う（前の行との間は 32 ドット）。
-- 部品が画面の下からはみ出すときは、画面を下へ伸ばす。赤い番号は、置いた順に次の番号が付く（no: null で番号を外す）。
+- 部品が画面の下からはみ出すときは、画面を下へ伸ばす（画面の高さは 20000 ドットまで。超える並べ方は断られる。get_catalog の maxScreenHeight）。
+  赤い番号は、置いた順に次の番号が付く（no: null で番号を外す）。
 - mode（layout_screen）: "append" は今あるいちばん下の部品の下に足す。"replace" は、その画面の部品と吹き出しを全部消してから置く。
 
 ## 部品に書けること
@@ -95,7 +96,8 @@ const CATALOG = `# 部品のカタログ
 - parts[].item が「データベースの項目になる」の部品（入力欄）は、置くと項目を指す。項目名・必須・設定は項目が持つ（edit_items で直す）。
 - 表（type "table"）は tableKind で 3 種類に分かれる: "subtable"（テーブル。行を足せる明細。データベースの項目になる）・"records"（レコード一覧。このデータベースのレコードを並べる）・"related"（関連レコード一覧。ほかのデータベースのレコードを条件で並べる）。
 - ステータスの印（status）と進み具合の矢印（steps）は、画面設計に 1 つだけあるステータスの項目を指す（並びは edit_items で、その項目の props.states に書く）。
-- itemTypes: edit_items の add に書ける項目の種類。templates: add_screen の template に書けるひな形。devices: 機器。targets: 作る先。callout: 吹き出しの色（color）と線の先（tip）。layout: 並べ方の数（read_guide の "layout"）。`;
+- itemTypes: edit_items の add に書ける項目の種類。templates: add_screen の template に書けるひな形。devices: 機器。targets: 作る先。callout: 吹き出しの色（color）と線の先（tip）。layout: 並べ方の数（read_guide の "layout"）。
+- maxScreenHeight: AI の頼みで伸ばせる画面の高さの上限（20000 ドット）。edit_screen の height・edit_parts の move・並べ方で、これを超えて画面を伸ばす頼みは断られる。`;
 
 const RULES = `# 守ること
 
