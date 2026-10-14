@@ -47,6 +47,10 @@ contextBridge.exposeInMainWorld('aiAPI', {
     ipcRenderer.removeAllListeners('ai:status');
     ipcRenderer.on('ai:status', (_e, status) => cb(status));
   },
+  // 「AI とつなぐ」の窓の中身 { dev, serverName, claudeCommand, json }（automation-connect.js）
+  connectInfo: () => ipcRenderer.invoke('ai:connect-info'),
+  // 文をクリップボードに写す。戻り値は true
+  copyText: (text) => ipcRenderer.invoke('ai:copy', text),
 });
 
 contextBridge.exposeInMainWorld('menuAPI', {

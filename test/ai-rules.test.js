@@ -116,12 +116,14 @@ test('8-2: 開いていない画面設計・新しい画面設計を AI が変�
   assert.equal((await call('update_design', { design: '受注管理', description: 'AI の変更' })).ok, true);
   assert.equal(T.store.undoStack.length, 0);
   assert.equal(T.store.redoStack.length, 0);
-  assert.equal(app.document.querySelector('#toast').textContent, 'AI が「受注管理」を直したので、元に戻すの履歴を消しました。');
+  // 知らせはメニューバーの下のオレンジの帯（q51 の案A。test/ai-view.test.js でくわしく確かめる）
+  const warn = () => app.document.querySelector('#ai-warn');
+  assert.match(warn().textContent, /Claude Code が「受注管理」を直したので、元に戻す（Ctrl\+Z）の履歴を消しました。開いている「顧客管理」は変わっていません。/);
   assert.equal(d('d1').description, '人の変更');
   T.actions.updateDesignInfo('d1', { description: '人の変更 2' });
   assert.equal((await call('create_design', { name: '経費精算' })).ok, true);
   assert.equal(T.store.undoStack.length, 0);
-  assert.equal(app.document.querySelector('#toast').textContent, 'AI が「経費精算」を直したので、元に戻すの履歴を消しました。');
+  assert.match(warn().textContent, /Claude Code が「経費精算」を作ったので、元に戻す（Ctrl\+Z）の履歴を消しました。/);
   app.close();
 });
 

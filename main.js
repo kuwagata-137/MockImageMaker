@@ -7,7 +7,7 @@
 //  - 書き出し（PDF・PNG・HTML）と HTML の取り込みのファイルの窓（export.js）
 //  - 2 つ目の起動を止める（2 つ動くと、互いの designs.json を丸ごと上書きするため）
 //  - AI（Claude Code など）の頼みの受け口（automation-main.js。第 7 段階）。--background の起動では窓を出さずに動き、
-//    AI がつながっている間の窓の × は、終わらずに窓を隠す
+//    AI がつながっている間の窓の × は、終わらずに窓を隠す。タスクトレイのアイコン（automation-tray.js）とアプリのメニューの「ヘルプ > AI とつなぐ…」
 // CheckListMaker の録画・ガジェット・Word・Excel の書き出しは写していない。
 'use strict';
 
@@ -17,6 +17,7 @@ const windowStateKeeper = require('electron-window-state');
 const { initStorage } = require('./storage');
 const { initExport, createPageRenderer } = require('./export');
 const { initAutomation } = require('./automation-main');
+const { initTray } = require('./automation-tray');
 
 const APP_HTML = 'mock_v1.00.html';
 const APP_TITLE = 'モックイメージメーカー';
@@ -35,6 +36,7 @@ let mainWin = null;
 let storage = null;
 let quitWaiting = false; // 終わる前の待ち（受け口を止める・保存を待つ）の途中か
 let automation = null;
+let tray = null; // タスクトレイのアイコン（AI がつながっている間と、裏で動いている間だけ出す。automation-tray.js）
 
 // ── メニュー ───────────────────────────────────────────────
 // registerAccelerator:false は、キーの表示だけをしてキーは横取りしない指定。
@@ -148,6 +150,11 @@ function buildAppMenu() {
       label: 'ウィンドウ',
       submenu: [{ role: 'minimize', label: '最小化' }, { role: 'close', label: '閉じる' }],
     },
+    {
+      // AI（Claude Code など）とつなぐ方法の窓（第 7 段階。q49）
+      label: 'ヘルプ',
+      submenu: [commandItem('AI とつなぐ…', 'aiConnect')],
+    },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
@@ -180,6 +187,7 @@ function createMainWindow() {
     e.preventDefault();
     mainWin.hide();
     automation.windowShownOrHidden(false); // 窓を出さない確かめの起動では hide の知らせが来ないので、ここでも知らせる
+    if (tray) tray.noteHiddenByClose(); // 起動してから最初の 1 回だけ、Windows の通知で「裏で動き続けています」
   });
   mainWin.on('show', () => automation && automation.windowShownOrHidden(true));
   mainWin.on('hide', () => automation && automation.windowShownOrHidden(false));
@@ -203,6 +211,12 @@ function focusMainWindow() {
   mainWin.focus();
 }
 
+// タスクトレイのメニューの「AI とつなぐ…」: 窓を出してから、ページに「AI とつなぐ」の窓を開かせる
+function openConnectWindow() {
+  focusMainWindow();
+  if (mainWin) mainWin.webContents.send('menu:command', 'aiConnect');
+}
+
 // ── 起動と終了 ─────────────────────────────────────────────
 if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
   // 2 つ目の起動は何もせずに終わる（1 つ目の窓は second-instance で前に出る）
@@ -214,6 +228,9 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
     focusMainWindow();
   });
 
+  // Windows の通知に出すアプリの名前の元（インストールした版はインストーラのショートカットと同じ appId。開発版は Electron の場所）
+  if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'com.kuwagata.mockimagemaker' : process.execPath);
+
   app.whenReady().then(() => {
     storage = initStorage(app, ipcMain);
     const renderer = createPageRenderer(app); // PDF・PNG を作る（書き出しの窓と AI の書き出しで同じものを使う）
@@ -222,6 +239,7 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
     buildAppMenu();
     createMainWindow();
     automation.windowCreated();
+    tray = initTray({ automation, showWindow: focusMainWindow, openConnect: openConnectWindow, quit: () => app.quit(), headless: HEADLESS });
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
     });

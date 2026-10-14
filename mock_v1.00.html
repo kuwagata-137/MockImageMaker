@@ -545,6 +545,40 @@ body.map-dragging,body.map-dragging *{cursor:grabbing!important}
 .pop-menu button:disabled{opacity:.45;cursor:default;background:none}
 .rv-band{display:flex;align-items:center;gap:12px;background:#fef3c7;border-bottom:2px solid #f59e0b;padding:7px 16px;font-size:13.5px;color:#78350f;flex-shrink:0}
 .rv-band .ic{font-size:18px}
+/* AI の見た目（第 7 段階。CLAUDE.md の「AI の見た目の細かい決めごと」・画像 q48〜q51）。AI の色は紫（#7c3aed） */
+.ai-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #c4b5fd;background:#f5f3ff;color:#5b21b6;border-radius:999px;padding:2px 11px 2px 9px;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;font-family:inherit}
+.ai-chip:hover{background:#ede9fe}
+.ai-chip .dot{width:8px;height:8px;border-radius:50%;background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.18);flex-shrink:0}
+.ai-band{display:flex;align-items:center;gap:12px;background:#f5f3ff;border-bottom:2px solid #8b5cf6;padding:7px 16px;font-size:13.5px;color:#4c1d95;flex-shrink:0;line-height:1.55}
+.ai-band .ic{font-size:17px;color:#7c3aed}
+.ai-band .btn{white-space:nowrap}
+.ai-band .x{border:none;background:none;color:#6d28d9;font-size:15px;cursor:pointer;padding:2px 6px;border-radius:5px;font-family:inherit}
+.ai-band .x:hover{background:rgba(124,58,237,.1)}
+.ai-band.warn{background:#fff7ed;border-bottom-color:#f97316;color:#7c2d12}
+.ai-band.warn .ic{color:#ea580c}
+.ai-band.warn .x{color:#9a3412}
+.ai-band.warn .x:hover{background:rgba(234,88,12,.1)}
+@keyframes ai-glow{0%,50%,100%{box-shadow:0 0 0 0 rgba(139,92,246,0)}25%,75%{box-shadow:0 0 0 3px #8b5cf6,0 0 0 9px rgba(139,92,246,.22)}}
+.part.ai-glow,.callout.ai-glow{animation:ai-glow 2s ease-in-out 1 both}
+.ai-tag{position:absolute;left:-3px;top:-22px;background:#7c3aed;color:#fff;font-size:11px;font-weight:700;padding:0 7px;border-radius:4px;line-height:1.7;white-space:nowrap;z-index:6;pointer-events:none}
+.ai-tag.ai-in{top:3px;left:3px}
+.sl-thumb{position:relative}
+.ai-dot{position:absolute;left:4px;top:4px;display:inline-flex;align-items:center;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:0 6px;line-height:1.7;z-index:3;box-shadow:0 0 0 2px #fff;pointer-events:none}
+@keyframes ai-card-glow{0%,50%,100%{box-shadow:0 0 0 3px rgba(139,92,246,.25)}25%,75%{box-shadow:0 0 0 7px rgba(139,92,246,.45)}}
+.card.ai-mark{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.25)}
+.card.ai-glow{animation:ai-card-glow 2s ease-in-out 1 both}
+.card .ai-card-tag{position:absolute;left:10px;top:10px;background:#7c3aed;color:#fff;font-size:11px;font-weight:700;border-radius:4px;padding:1px 8px;z-index:2;pointer-events:none}
+/* 「AI とつなぐ」の窓（q49） */
+.aic-status{display:flex;align-items:center;gap:8px;margin:-4px 0 12px;font-size:12.5px;color:#475569}
+.aic-status .ai-chip{cursor:default}
+.aic-sec{border:1px solid #e2e8f0;border-radius:9px;padding:12px 14px;margin-top:12px;background:#f8fafc}
+.aic-sec h3{font-size:13.5px;color:#0f172a;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.aic-sec .hint{margin-top:6px;font-size:12.5px;color:#475569;line-height:1.65}
+.aic-code{margin-top:8px;background:#0f172a;color:#e2e8f0;border-radius:7px;padding:10px 12px;font-family:Consolas,'Cascadia Mono',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;user-select:text}
+.aic-copy{min-width:118px;justify-content:center}
+.aic-copy.done{background:#dcfce7;border-color:#86efac;color:#166534;font-weight:600}
+.aic-notes{margin:12px 0 0;font-size:12.5px;color:#334155;line-height:1.7;padding-left:18px}
+.aic-dev{margin-top:10px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:6px 10px}
 .rv-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px;color:#64748b}
 .rv-list{max-height:min(560px,calc(100vh - 230px));overflow:auto;border:1px solid #cbd5e1;border-radius:8px}
 .rv-list table{border-collapse:collapse;width:100%;font-size:13px}
@@ -3202,12 +3236,13 @@ function toast(message) {
 // okHidden: OK のボタンを隠す（「閉じる」だけの窓。窓の中のボタンから OK を押した形で閉じるときに使う）
 // ボタンは Windows の決まりで、肯定（OK）を左、取りやめ（キャンセル・閉じる）を右に並べ、右下に寄せる（2026-10-14 ユーザー指示）。
 // 最初にフォーカスを当てるボタンは、並びとは別に決める（下の focus の行）
-function showDialog({ title, body, okLabel = 'OK', okClass = 'primary', init, collect, wide = false, width = null, cancelLabel = 'キャンセル', okHidden = false }) {
+// aiPassive: 見るだけの窓（「AI とつなぐ」など）。開いている間も、AI の書く頼みを断らない（8-4 の例外）
+function showDialog({ title, body, okLabel = 'OK', okClass = 'primary', init, collect, wide = false, width = null, cancelLabel = 'キャンセル', okHidden = false, aiPassive = false }) {
   if (isDialogOpen()) return Promise.resolve(null);
   return new Promise((resolve) => {
     const root = $('#dialog-root');
     root.innerHTML = `
-      <div class="modal-overlay">
+      <div class="modal-overlay"${aiPassive ? ' data-ai-passive' : ''}>
         <div class="modal${wide ? ' wide' : ''}"${width ? ` style="width:min(${width}px,calc(100vw - 32px))"` : ''} role="dialog" aria-modal="true" aria-label="${esc(title)}">
           <h2>${esc(title)}</h2>
           <div class="modal-body">${body}</div>
@@ -3636,10 +3671,11 @@ function renderHome() {
   appEl().innerHTML = `
     <header class="brandbar">
       <span class="brand">モックイメージメーカー</span><span class="brand-ver">v${APP_VERSION}</span>
-      <span class="spacer"></span>
+      ${aiChipSlotHtml()}
       <button class="tbtn" data-action="undo" ${store.canUndo() ? '' : 'disabled'} title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" ${store.canRedo() ? '' : 'disabled'} title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button>
     </header>
+    <div id="ai-bands"></div>
     <main class="home-scroll">
       <section class="home${ui.homeMap ? ' wide' : ''}">
         <div class="home-head">
@@ -3661,6 +3697,7 @@ function renderHome() {
       </section>
     </main>`;
   keep();
+  renderAiChrome();
 }
 // 描き直す前のスクロールの位置を控え、描き直した後に戻す関数を返す（同じ id・クラスの要素が描き直した後もあるときだけ戻す）
 function keepScroll(selectors) {
@@ -3840,8 +3877,10 @@ function revisionLabel(d) {
 }
 
 function renderCard(d) {
+  const ai = aiCardMark(d.id); // AI が作った・直したカード（一覧の画面から画面設計を開くまで、紫の枠と札。q50c）
   return `
-    <article class="card" data-id="${esc(d.id)}">
+    <article class="card${ai ? ' ai-mark' + aiGlowClass(ai.at) : ''}" data-id="${esc(d.id)}"${ai ? aiGlowStyle(ai.at) : ''}>
+      ${ai ? `<span class="ai-card-tag">${ai.kind === 'created' ? 'AI が作った' : 'AI が直した'}</span>` : ''}
       <button class="card-open" data-action="open" data-id="${esc(d.id)}" title="「${esc(d.name)}」を開く">
         <div class="card-thumb">${thumbHtml(d, d.screens[0], 240, 136)}</div>
         <div class="card-body">
@@ -4037,6 +4076,7 @@ function openDesign(id) {
   leaveViewing();
   const d = findDesign(store.state, id);
   if (!d) return;
+  aiForgetView(ui.view === 'home');
   Object.assign(ui, { view: 'editor', designId: id, screenId: d.screens[0].id, prevScreenId: null, screenMenu: null, zoom: 1, mode: 'select', menuFor: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
   store.clearHistory();
   mountEditor();
@@ -4044,6 +4084,7 @@ function openDesign(id) {
 
 function goHome() {
   leaveViewing();
+  aiForgetView(false);
   Object.assign(ui, { view: 'home', designId: null, screenId: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
   store.clearHistory();
   renderHome();
@@ -4051,10 +4092,11 @@ function goHome() {
 
 function mountEditor() {
   appEl().innerHTML = `
-    <header class="brandbar"><span class="brand">モックイメージメーカー</span><span class="brand-design" id="ed-title"></span></header>
+    <header class="brandbar"><span class="brand">モックイメージメーカー</span><span class="brand-design" id="ed-title"></span>${aiChipSlotHtml()}</header>
     ${standalone ? standaloneBarHtml() : ''}
     <div id="toolbar">${toolbarHtml()}</div>
     <div class="rv-band" id="rv-band" hidden></div>
+    <div id="ai-bands"></div>
     <div id="rev-menu-root"></div>
     <div class="editor-body">
       <aside class="screen-list" id="screen-list" aria-label="画面の一覧"></aside>
@@ -4126,6 +4168,7 @@ function updateEditor({ keepSide = false } = {}) {
   $('#ed-title').textContent = `${d.name}（${targetLabel(d.target)}）`;
   updateToolbarState();
   if (ui.screenMenu && !d.screens.some((s) => s.id === ui.screenMenu)) ui.screenMenu = null;
+  if (ui.panel === 'screen') aiSeeScreen(currentScreen().id); // AI の印を付けた画面を開いたら、光らせて印を消す
   $('#screen-list').innerHTML = screenListHtml(d);
   renderScreenMenu(d);
   const onScreen = ui.panel === 'screen';
@@ -4140,6 +4183,7 @@ function updateEditor({ keepSide = false } = {}) {
   renderPalette(d);
   if (!keepSide) renderSettings(d);
   renderViewBand();
+  renderAiChrome();
   renderRevMenu();
   if (store.isViewing) lockForViewing();
 }
@@ -4186,7 +4230,7 @@ function screenListHtml(d) {
   return entry + '<div class="sl-sep"></div><div class="panel-title">画面</div>' + d.screens.map((s, i) => `
     <div class="sl-wrap" data-id="${esc(s.id)}">
       <button class="sl-item${ui.panel === 'screen' && s.id === ui.screenId ? ' active' : ''}" data-action="select-screen" data-id="${esc(s.id)}" title="${esc(s.name)}（ドラッグで並べ替えます）">
-        <div class="sl-thumb">${thumbHtml(d, s, 148, 94)}</div>
+        <div class="sl-thumb">${thumbHtml(d, s, 148, 94)}${aiView.unseen.has(s.id) ? '<span class="ai-dot" title="AI が直した画面です。開くと、直した部品を光らせます">AI</span>' : ''}</div>
         <div class="sl-name">${i + 1}　${esc(s.name)}</div>
       </button>
       <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-haspopup="menu" aria-expanded="${ui.screenMenu === s.id}" aria-label="「${esc(s.name)}」の画面の操作" title="名前を変える・複製・並べ替え・消す">…</button>
@@ -4383,6 +4427,7 @@ function renderStage() {
       ${partTableHtml(d, s, { editor: true, selected: selPartIds, diff: info && { info, label: df.label } })}
     </div>`;
   markMultiSelection(s);
+  markAiParts(s);
   const hv = $('#side-height');
   if (hv) hv.textContent = `${h} ドット`;
   applyZoom();
@@ -7432,8 +7477,14 @@ function runCommand(cmd) {
     return true;
   }
   switch (cmd) {
-    case 'undo': store.undo(); return true;
+    case 'undo':
+      // AI がほかの画面設計を直したときに履歴を消した後は、元に戻せない理由を知らせる（q51）
+      if (!store.canUndo() && aiView.cleared) toast(`元に戻せる操作はありません（AI が「${aiView.cleared}」を直したときに、履歴を消しました）。`);
+      else store.undo();
+      return true;
     case 'redo': store.redo(); return true;
+    // AI とつなぐ窓（第 7 段階。デスクトップ版だけ）
+    case 'aiConnect': openAiConnectDialog().catch(reportPageError); return true;
     // 改訂履歴（第 6 段階）。開いている画面設計について行う
     case 'addRevision': case 'openRevisions':
       if (ui.view !== 'editor') { toast('改訂する画面設計を開いてから選んでください。'); return true; }
@@ -7496,7 +7547,7 @@ function runCommand(cmd) {
 
 // 前の版を見ている間にも使える命令（見る・選ぶ・移る・拡大縮小と、今の中身に戻ってから行う命令）
 const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'importHtml', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'prevScreen', 'nextScreen',
-  'zoomIn', 'zoomOut', 'zoomReset', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart'];
+  'zoomIn', 'zoomOut', 'zoomReset', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart', 'aiConnect'];
 
 // 揃える命令（メニューバー・右の欄・アプリのメニュー）と、alignedRects の how
 const ALIGN_COMMANDS = {
@@ -7526,7 +7577,7 @@ const ACTION_COMMANDS = {
   'open-items': 'openItems', 'open-map': 'openMap', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
   'select-all': 'selectAll', 'number-on': 'numberOn', 'number-off': 'numberOff', 'delete-many': 'deletePart',
   'add-screen': 'addScreen', 'duplicate-screen': 'duplicateScreen', 'delete-screen': 'deleteScreen',
-  'add-revision': 'addRevision', 'open-revisions': 'openRevisions',
+  'add-revision': 'addRevision', 'open-revisions': 'openRevisions', 'ai-connect': 'aiConnect',
   ...Object.fromEntries([...ALIGN_BUTTONS, ...SIZE_BUTTONS].map(([cmd, action]) => [action, cmd])),
 };
 
@@ -7613,6 +7664,7 @@ function onAppClick(e) {
   if (!btn || btn.disabled) return;
   const { action, id } = btn.dataset;
   if (ACTION_COMMANDS[action]) { runCommand(ACTION_COMMANDS[action]); return; }
+  if (onAiClick(action, btn)) return;
   if (ui.view === 'editor' && onEditorClick(action, btn)) return;
   onHomeAction(action, id).catch(reportPageError);
 }
@@ -7691,6 +7743,7 @@ function onKeyDown(e) {
 }
 
 function onStoreChange() {
+  aiNoteStoreChange(); // 人が直したら、AI が直した知らせ（紫の帯）を閉じる
   if (ui.view === 'home') renderHome();
   else updateEditor({ keepSide: keepSideOnNotify });
   refreshStandaloneBar();
@@ -7972,7 +8025,9 @@ function aiCheckWritable() {
     throw new AiRefusal('viewing', `アプリで「${d ? d.name : '画面設計'}」の前の版を見ているため、今は直せません。アプリの黄色い帯の「見るのをやめる」を押してから、もう一度頼んでください。`);
   }
   if (store.blockReason) throw new AiRefusal('blocked', `アプリが保存を止めているため、直せません（理由: ${store.blockReason}）。`);
-  if (isDialogOpen()) throw new AiRefusal('dialog', 'アプリで確かめの窓が開いています。閉じてから、もう一度頼んでください。');
+  // 「AI とつなぐ」「変更内容を見る」の窓（aiPassive）は、見るだけなので止めない
+  const overlay = $('#dialog-root .modal-overlay');
+  if (overlay && !overlay.hasAttribute('data-ai-passive')) throw new AiRefusal('dialog', 'アプリで確かめの窓が開いています。閉じてから、もう一度頼んでください。');
 }
 // 人がドラッグ・日本語の変換をしている間は、2 秒まで待つ。終わらなければ断る
 async function aiWaitIdle() {
@@ -8003,13 +8058,20 @@ async function aiWrite(ctx, opts, run) {
   const rowAt = d ? d.revisions.length : 0;
   const beforeContent = d ? designContent(d) : null;
   const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
+  const seen = aiViewBefore(S); // 知らせ（紫・オレンジの帯と光らせ方）のため、直す前の様子を控える
   let mode = true;
   let out;
-  const { changed } = store.batch(() => {
-    out = run(tx);
-    if (d && !tx.noBeforeRow) aiAddBeforeRow(tx, d.id, row, rowAt, beforeContent);
-  }, { history: () => (mode = aiHistoryMode(tx, beforeMap)) });
-  if (changed) aiAfterWrite(tx, mode, hadHistory);
+  let changed;
+  aiView.writing = true;
+  try {
+    ({ changed } = store.batch(() => {
+      out = run(tx);
+      if (d && !tx.noBeforeRow) aiAddBeforeRow(tx, d.id, row, rowAt, beforeContent);
+    }, { history: () => (mode = aiHistoryMode(tx, beforeMap)) }));
+  } finally {
+    aiView.writing = false;
+  }
+  if (changed) aiAfterWrite(tx, mode, hadHistory, beforeMap, seen);
   try {
     await store.whenSaved();
   } catch (e) {
@@ -8025,6 +8087,16 @@ function aiAddBeforeRow(tx, designId, row, at, beforeContent) {
   if (!d || designContent(d) === beforeContent) return;
   if (d.revisions.some((r) => isObj(r) && r.kind === 'ai' && r.aiSession === row.aiSession)) return;
   d.revisions.splice(Math.min(at, d.revisions.length), 0, row);
+  trimAiRows(d);
+}
+// 「AI が直す前の状態」の行は、画面設計ごとに新しい方から 10 行まで残し、11 行目ができたら古い行から消す
+// （人の付けた版の行と、ほかの自動の行は消さない。行は古い順に並んでいる）
+const AI_ROWS_MAX = 10;
+function trimAiRows(d) {
+  const aiRows = d.revisions.filter((r) => isObj(r) && r.kind === 'ai');
+  if (aiRows.length <= AI_ROWS_MAX) return;
+  const drop = new Set(aiRows.slice(0, aiRows.length - AI_ROWS_MAX));
+  for (let i = d.revisions.length - 1; i >= 0; i--) if (drop.has(d.revisions[i])) d.revisions.splice(i, 1);
 }
 // 元に戻すの履歴の扱い（8-2）。AI の変更が、人が開いている画面設計（と、そこから項目を取り込んでいる画面設計）の中だけなら積む。
 // 開いていない画面設計・新しい画面設計を変えたときは、履歴を消す（履歴は状態まるごとの写しなので、人の Ctrl+Z で AI の変更まで消えないように）
@@ -8039,13 +8111,6 @@ function aiHistoryMode(tx, beforeMap) {
   });
   return inside ? true : 'clear';
 }
-// AI が直した後の知らせ（見た目は第 7 段階の後半でモックを見せて決める）
-function aiAfterWrite(tx, mode, hadHistory) {
-  if (mode !== 'clear' || !hadHistory) return;
-  const d = tx.design || findDesign(store.state, tx.createdDesign);
-  toast(`AI が「${d ? d.name : '画面設計'}」を直したので、元に戻すの履歴を消しました。`);
-}
-
 // ops（操作の並び）を 1 つずつ実行する。断るときは、何番目の操作かを文の頭に付ける
 function aiRunOps(ops, fn) {
   if (!Array.isArray(ops) || !ops.length) throw aiBad('ops（操作の並び）を 1 つ以上書いてください。');
@@ -8880,7 +8945,290 @@ function bindAiEvents() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSideField(); });
   if (!window.aiAPI) return;
   window.aiAPI.onRequest((r) => aiDispatch(r && r.tool, r && r.args, { session: r && r.session, client: r && r.client }));
+  if (window.aiAPI.onStatus) window.aiAPI.onStatus(onAiStatus);
   window.aiAPI.ready();
+}
+
+// ── AI の見た目（CLAUDE.md の「AI の見た目の細かい決めごと」・画像 q48〜q51）──
+// 紫の札（AI がつながっている）・紫の帯（AI が直した・作った）・オレンジの帯（元に戻すの履歴を消した）・直した部品を光らせる・
+// 画面の一覧の「AI」の印・一覧の画面のカードの札・「AI とつなぐ」の窓。どれも保存しない
+const AI_GLOW_MS = 2000; // 紫の枠で光らせる長さ（2 回光る）
+const aiView = {
+  clients: [], // つながっている AI（main の ai:status。{ session, client }）
+  // 紫の帯。kind: 'edited'（開いている画面設計を直した）・'other'（ほかの画面設計を直した）・'created'（作った）。
+  // edited のときは base（最初に直す前の写し）・diff（base と今の違い）・undoable（「元に戻す」を出すか）も持つ
+  band: null,
+  warn: null, // オレンジの帯（元に戻すの履歴を消した）{ designId, name, label, created, openChanged }
+  cleared: null, // 履歴を消した画面設計の名前（その後に Ctrl+Z を押したときの知らせに使う）
+  undoMark: null, // 紫の帯を出したときの元に戻すの履歴 { len, top }。変わったら人が直した（帯を閉じる）
+  writing: false, // AI の変更を入れている間（その間の描き直しでは、人が直したとみなさない）
+  glow: new Map(), // 画面の id → 光らせ始めた時刻
+  unseen: new Set(), // AI の印を付けた、まだ開いていない画面の id
+  cards: new Map(), // 画面設計の id → { kind: 'created'|'edited', at: 光らせ始めた時刻（まだ一覧に出していなければ null）}
+};
+
+function onAiStatus(status) {
+  aiView.clients = Array.isArray(status && status.clients) ? status.clients.filter(isObj) : [];
+  renderAiChrome();
+  const st = $('#aic-status');
+  if (st) st.innerHTML = aiConnectStatusHtml();
+}
+const aiClientLabels = () => aiView.clients.map((c) => aiClientLabel(c.client));
+// 札の文（AI がつながっていないときは空）
+function aiChipText() {
+  const labels = aiClientLabels();
+  if (!labels.length) return '';
+  return labels.length === 1 ? `${labels[0]} がつながっています` : `AI が ${labels.length} つつながっています（${labels.join('・')}）`;
+}
+// いちばん上の帯の右の端の札の置き場（一覧の画面と編集の画面。押すと「AI とつなぐ」の窓）
+const aiChipSlotHtml = () => '<span class="spacer"></span><button class="ai-chip" id="ai-chip" data-action="ai-connect" title="AI とつなぐ窓を開きます" hidden></button>';
+
+// 札と帯を描き直す（一覧の画面と編集の画面の描き直しの最後に呼ぶ）
+function renderAiChrome() {
+  const chip = $('#ai-chip');
+  if (chip) {
+    const t = aiChipText();
+    chip.hidden = !t;
+    chip.innerHTML = t ? `<span class="dot"></span>${esc(t)}` : '';
+  }
+  const el = $('#ai-bands');
+  if (el) el.innerHTML = (store.isViewing ? '' : aiBandHtml()) + aiWarnHtml(); // 前の版を見ている間は、紫の帯を出さない
+}
+const aiCloseBtn = (action) => `<button class="x" data-action="${action}" title="この知らせを閉じます" aria-label="閉じる">✕</button>`;
+function aiBandHtml() {
+  const b = aiView.band;
+  if (!b) return '';
+  const who = `<b>${esc(b.label)}</b>`;
+  let text;
+  let btns;
+  if (b.kind === 'edited') {
+    text = `${who} が「${esc(b.name)}」を直しました（変更 ${b.diff.rows.length} 件）。直した部品を紫の枠で光らせています。`;
+    btns = '<button class="btn small" data-action="ai-show-changes">変更内容を見る</button>'
+      + (b.undoable ? '<button class="btn small" data-action="undo">元に戻す（Ctrl+Z）</button>' : '');
+  } else {
+    const open = ui.view === 'editor' ? currentDesign() : null;
+    text = `${who} が「${esc(b.name)}」を${b.kind === 'created' ? '作りました' : '直しました'}。${open ? `開いている「${esc(open.name)}」は変わっていません。` : ''}`;
+    btns = `<button class="btn small" data-action="ai-open-design" data-id="${esc(b.designId)}">${open ? `「${esc(b.name)}」を開く` : '開く'}</button>`;
+  }
+  return `<div class="ai-band" id="ai-band" role="status"><span class="ic">✦</span><span>${text}</span><span class="spacer"></span>${btns}${aiCloseBtn('ai-band-close')}</div>`;
+}
+function aiWarnHtml() {
+  const w = aiView.warn;
+  if (!w) return '';
+  const open = ui.view === 'editor' ? currentDesign() : null;
+  let text = `<b>${esc(w.label)}</b> が「${esc(w.name)}」を${w.created ? '作った' : '直した'}ので、元に戻す（Ctrl+Z）の履歴を消しました。`;
+  if (open && !w.openChanged) text += `開いている「${esc(open.name)}」は変わっていません。`;
+  if (!w.created) text += `<br>AI の変更を戻すときは、「${esc(w.name)}」の改訂履歴の「${esc(w.label)} が直す前の状態」から戻せます。`;
+  const btn = w.created
+    ? `<button class="btn small" data-action="ai-open-design" data-id="${esc(w.designId)}">「${esc(w.name)}」を開く</button>`
+    : `<button class="btn small" data-action="ai-open-revisions" data-id="${esc(w.designId)}">「${esc(w.name)}」の改訂履歴を開く</button>`;
+  return `<div class="ai-band warn" id="ai-warn" role="status"><span class="ic">⚠</span><span>${text}</span><span class="spacer"></span>${btn}${aiCloseBtn('ai-warn-close')}</div>`;
+}
+
+// 画面ごとの印（designDiff の screens から）。AI が足した画面は、全部の部品と吹き出しを「足した」にする
+function aiScreenMarks(diff, s) {
+  const info = diff && diff.screens[s.id];
+  if (!info) return { parts: {}, callouts: {} };
+  if (!info.isNew) return { parts: info.parts, callouts: info.callouts };
+  return { parts: Object.fromEntries(s.parts.map((p) => [p.id, 'new'])), callouts: Object.fromEntries(s.callouts.map((c) => [c.id, 'new'])) };
+}
+const aiHasMarks = (m) => Object.keys(m.parts).length + Object.keys(m.callouts).length > 0;
+// 光らせ始めてからの時間。描き直しても光り方が続くように、CSS のアニメーションを経った分だけ進めて始める
+const aiGlowElapsed = (at) => (at == null ? AI_GLOW_MS : Math.max(0, Date.now() - at));
+const aiGlowClass = (at) => (aiGlowElapsed(at) < AI_GLOW_MS ? ' ai-glow' : '');
+const aiGlowStyle = (at) => (aiGlowElapsed(at) < AI_GLOW_MS ? ` style="animation-delay:-${aiGlowElapsed(at)}ms"` : '');
+
+// 開いている画面の、AI が足した・直した部品と吹き出しに札を付け、光らせる（renderStage の最後に呼ぶ）
+function markAiParts(s) {
+  const b = aiView.band;
+  if (!b || b.kind !== 'edited' || b.designId !== ui.designId || store.isViewing) return;
+  const marks = aiScreenMarks(b.diff, s);
+  if (!aiHasMarks(marks)) return;
+  const elapsed = aiGlowElapsed(aiView.glow.get(s.id));
+  const mark = (el, kind, inside) => {
+    el.insertAdjacentHTML('beforeend', `<span class="ai-tag${inside ? ' ai-in' : ''}">${kind === 'new' ? 'AI が足した' : 'AI が直した'}</span>`);
+    if (elapsed >= AI_GLOW_MS) return;
+    el.classList.add('ai-glow');
+    el.style.animationDelay = `-${elapsed}ms`;
+  };
+  // 画面の上の端の部品は、札が画面の外で切れないように、部品の内側に出す
+  document.querySelectorAll('#stage .screen .part[data-part-id]').forEach((el) => {
+    const k = marks.parts[el.dataset.partId];
+    if (k) mark(el, k, parseFloat(el.style.top) < 24);
+  });
+  document.querySelectorAll('#stage .callout[data-callout-id]').forEach((el) => {
+    const k = marks.callouts[el.dataset.calloutId];
+    if (k) mark(el, k, false);
+  });
+}
+// AI の印を付けた画面を開いたら、光らせ始めて印を消す
+function aiSeeScreen(id) {
+  if (aiView.unseen.delete(id)) aiView.glow.set(id, Date.now());
+}
+// 一覧の画面のカードの印。まだ一覧に出していない印は、初めて出すときに光らせ始める
+function aiCardMark(id) {
+  const m = aiView.cards.get(id);
+  if (m && m.at == null) m.at = Date.now();
+  return m || null;
+}
+
+// 直す前の様子を控える（aiWrite の batch の前）。開いている画面設計の写しは、光らせる部品と紫の帯の件数を決めるのに使う
+function aiViewBefore(S) {
+  const openId = ui.view === 'editor' ? ui.designId : null;
+  const open = openId ? findDesign(S, openId) : null;
+  if (!open) return { open: null };
+  const keep = aiView.band && aiView.band.kind === 'edited' && aiView.band.designId === openId;
+  const snap = designSnapshot(open);
+  return { open: openId, content: designContent(open), json: designJsonWithRefs(open), snap, base: keep ? aiView.band.base : snap };
+}
+// AI が直した後の知らせ（aiWrite で、中身が変わったときに呼ぶ）。mode は元に戻すの履歴の扱い（true か 'clear'）
+function aiAfterWrite(tx, mode, hadHistory, beforeMap, seen) {
+  const S = store.state;
+  const label = aiClientLabel(tx.ctx.client);
+  const target = findDesign(S, tx.createdDesign || (tx.design && tx.design.id));
+  const created = !!tx.createdDesign;
+  // 一覧の画面のカードの印（一覧の画面に出すときに光らせる）
+  S.designs.filter((x) => beforeMap.get(x.id) !== designJsonWithRefs(x)).forEach((x) => {
+    const was = aiView.cards.get(x.id);
+    aiView.cards.set(x.id, { kind: x.id === tx.createdDesign || (was && was.kind === 'created') ? 'created' : 'edited', at: ui.view === 'home' ? Date.now() : null });
+  });
+  const open = seen.open ? findDesign(S, seen.open) : null;
+  const openChanged = !!open && designContent(open) !== seen.content;
+  if (openChanged) aiNoteOpenEdited(open, seen, label, mode === true);
+  else if (open && designJsonWithRefs(open) !== seen.json) toast(`${label} が「${open.name}」を改訂しました（${revisionLabel(open)}）。`); // 改訂履歴に版を足しただけ
+  if (mode === 'clear' && hadHistory) {
+    aiView.warn = target ? { designId: target.id, name: target.name, label, created, openChanged } : null;
+    aiView.cleared = target ? target.name : '画面設計';
+  } else if (!openChanged && target && target.id !== seen.open) {
+    aiView.band = { kind: created ? 'created' : 'other', designId: target.id, name: target.name, label };
+  }
+  aiView.undoMark = { len: store.undoStack.length, top: store.undoStack[store.undoStack.length - 1] };
+  if (ui.view === 'home') renderHome();
+  else updateEditor({ keepSide: true });
+}
+// 開いている画面設計を AI が直したとき: 紫の帯（件数は最初に直す前と今の違い）と、この 1 回で変わった部品を光らせる
+function aiNoteOpenEdited(open, seen, label, undoable) {
+  const diff = designDiff(seen.base, open, store.state);
+  aiView.band = { kind: 'edited', designId: open.id, name: open.name, label, base: seen.base, diff, undoable };
+  const now = designDiff(seen.snap, open, store.state);
+  open.screens.forEach((s) => {
+    if (!aiHasMarks(aiScreenMarks(now, s))) return;
+    if (ui.panel === 'screen' && s.id === ui.screenId) {
+      aiView.glow.set(s.id, Date.now()); // 開いている画面は、今から光らせる（開いている画面は切り替えない）
+      aiView.unseen.delete(s.id);
+    } else aiView.unseen.add(s.id); // ほかの画面は、左の一覧の縮小画像に「AI」の印
+  });
+}
+// 人が直した（元に戻すの履歴が、紫の帯を出したときから変わった）ら、紫の帯と光らせる印を閉じる（onStoreChange の初めに呼ぶ）
+function aiNoteStoreChange() {
+  if (aiView.writing || !aiView.band || !aiView.undoMark) return;
+  const m = aiView.undoMark;
+  if (store.undoStack.length === m.len && store.undoStack[store.undoStack.length - 1] === m.top) return;
+  aiCloseBand();
+}
+function aiCloseBand() {
+  Object.assign(aiView, { band: null, undoMark: null });
+  aiView.glow.clear();
+  aiView.unseen.clear();
+}
+// 一覧の画面と編集の画面を行き来したときに、知らせを片付ける。一覧の画面から画面設計を開くときは、カードの印も消す（q50c）
+function aiForgetView(leavingHome) {
+  aiCloseBand();
+  Object.assign(aiView, { warn: null, cleared: null });
+  if (leavingHome) aiView.cards.clear();
+}
+
+function onAiClick(action, btn) {
+  switch (action) {
+    case 'ai-band-close':
+      aiCloseBand();
+      if (ui.view === 'home') renderHome();
+      else updateEditor({ keepSide: true });
+      return true;
+    case 'ai-warn-close':
+      aiView.warn = null;
+      renderAiChrome();
+      return true;
+    case 'ai-show-changes': openAiChangesDialog().catch(reportPageError); return true;
+    case 'ai-open-design':
+      flushSideField();
+      if (findDesign(store.state, btn.dataset.id)) openDesign(btn.dataset.id);
+      return true;
+    case 'ai-open-revisions':
+      flushSideField();
+      if (!(ui.view === 'editor' && ui.designId === btn.dataset.id)) {
+        if (!findDesign(store.state, btn.dataset.id)) return true;
+        openDesign(btn.dataset.id);
+      }
+      openRevisionsDialog().catch(reportPageError);
+      return true;
+  }
+  return false;
+}
+
+// 紫の帯の「変更内容を見る」（AI が最初に直す前と今の違い。AI の書く頼みは止めない窓）
+async function openAiChangesDialog() {
+  const b = aiView.band;
+  if (!b || b.kind !== 'edited') return;
+  const rows = b.diff.rows;
+  await showDialog({
+    title: `${b.label} が「${b.name}」を直した内容`,
+    width: 1080,
+    okHidden: true,
+    cancelLabel: '閉じる',
+    aiPassive: true,
+    body: rows.length ? `<p class="cg-title">${rows.length} 件</p><div class="cg-wrap">${changeTableHtml(rows)}</div>` : '<div class="cg-none">変わった所はありません。</div>',
+  });
+}
+
+// 「AI とつなぐ」の窓（q49）。アプリのメニューの「ヘルプ > AI とつなぐ…」・タスクトレイのメニュー・紫の札から開く（ブラウザで開いたときは出さない）。
+// 登録の文は main が作る（インストール先の実際の場所を入れる。開発版では開発版の文）。AI の書く頼みは止めない窓
+function aiConnectStatusHtml() {
+  const labels = aiClientLabels();
+  return labels.length ? `<span class="ai-chip"><span class="dot"></span>今つながっている AI：${esc(labels.join('・'))}</span>` : '今つながっている AI はありません。';
+}
+async function openAiConnectDialog() {
+  if (!window.aiAPI || !window.aiAPI.connectInfo) return;
+  const info = await window.aiAPI.connectInfo();
+  if (!info || isDialogOpen()) return;
+  await showDialog({
+    title: 'AI とつなぐ',
+    width: 760,
+    okHidden: true,
+    cancelLabel: '閉じる',
+    aiPassive: true,
+    body: `
+      <div class="aic-status" id="aic-status">${aiConnectStatusHtml()}</div>
+      <p>Claude Code などの AI から、このアプリの画面設計を読んだり、作ったり、直したりできます（MCP というつなぎ方を使います）。
+      使う前に、AI のアプリに、このアプリを 1 回だけ登録してください。</p>
+      <div class="aic-sec">
+        <h3>Claude Code に登録する<span class="spacer"></span><button class="btn small aic-copy" data-copy="claude">コピー</button></h3>
+        <div class="hint">PowerShell に下の文を貼り付けて、1 回だけ実行します。</div>
+        <div class="aic-code" data-code="claude">${esc(info.claudeCommand)}</div>
+        <div class="hint">登録した後に Claude Code を起動し直すと使えます。起動している Claude Code では、<b>/mcp</b> でつなぎ直します。</div>
+      </div>
+      <div class="aic-sec">
+        <h3>ほかの AI のアプリ（MCP に対応したもの）に登録する<span class="spacer"></span><button class="btn small aic-copy" data-copy="json">コピー</button></h3>
+        <div class="hint">それぞれのアプリの説明に従って、MCP の設定に下の内容を書きます。</div>
+        <div class="aic-code" data-code="json">${esc(info.json)}</div>
+      </div>
+      ${info.dev ? '<div class="aic-dev">これは開発版（npm start で動かしているアプリ）の文です。インストールした版のアプリでは、その版の「AI とつなぐ」に出る文を使ってください。</div>' : ''}
+      <ul class="aic-notes">
+        <li>AI が今ある画面設計を直すと、直す前の中身が改訂履歴に「AI が直す前の状態」として自動で残ります。そこから戻せます。</li>
+        <li>AI には、画面設計の削除・ごみ箱へ移すこと・改訂履歴の行を消すことはさせません。</li>
+        <li>アプリを新しい版に入れ替えるときは、先にアプリを終了してください（タスクトレイのアイコンの「終了」）。入れ替えた後は、Claude Code の <b>/mcp</b> でつなぎ直します。</li>
+      </ul>`,
+    init: (modal) => modal.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => {
+      copyAiText(b, info[b.dataset.copy === 'claude' ? 'claudeCommand' : 'json']).catch(reportPageError);
+    })),
+  });
+}
+async function copyAiText(btn, text) {
+  const ok = await window.aiAPI.copyText(String(text || ''));
+  if (!ok) { toast('コピーできませんでした。文を選んで Ctrl+C でコピーしてください。'); return; }
+  btn.textContent = '✓ コピーしました';
+  btn.classList.add('done');
+  setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('done'); }, 2000);
 }
 
 // ── 11. 起動 ──────────────────────────────────────────────────────────────────
@@ -8988,6 +9336,7 @@ function exposeForTest() {
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
+    aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     ready: true,
   });

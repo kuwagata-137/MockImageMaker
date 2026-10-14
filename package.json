@@ -41,6 +41,8 @@
       "automation-main.js",
       "automation-render.js",
       "automation-client.js",
+      "automation-connect.js",
+      "automation-tray.js",
       "mcp-server.js",
       "mcp-tools.js",
       "mcp-schemas.js",

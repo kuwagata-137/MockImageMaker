@@ -14,7 +14,8 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・screens・export・revisions をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・screens・export・revisions・ai をカンマで区切る）]
+// ai の場面（94〜100）は tools/shoot-app-ai.js にある
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -811,6 +812,7 @@ async function shootRevisions(browser) {
     if (wants('screens')) await shootScreens(browser);
     if (wants('export')) await shootExport(browser);
     if (wants('revisions')) await shootRevisions(browser);
+    if (wants('ai')) await require('./shoot-app-ai')(browser, { ROOT, HTML_NAME, shot });
   } finally {
     await browser.close();
   }

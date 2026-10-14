@@ -2,7 +2,8 @@
 // 役割:
 //  - パイプの受け口を起動のすぐ後に始め、頼みを preload の aiAPI（IPC の ai:request・ai:response）でページの AI の窓口へ渡す。
 //    ページの準備（ai:ready）を最大 30 秒待つ。ページを読み直したら、待っている頼みを失敗にする
-//  - AI のつながりの数をページへ知らせる（ai:status。窓の上の帯の紫の札に使う）
+//  - AI のつながりの数をページへ知らせる（ai:status。窓の上の帯の紫の札に使う）。つながりと窓の見え方の変わり目をタスクトレイに知らせる
+//  - 「AI とつなぐ」の窓の登録の文（automation-connect.js）とコピー（IPC の ai:connect-info・ai:copy）
 //  - アプリが終わる時を決める（設計書 7-5）: AI のつながりが 0 で窓が見えていなければ 30 秒の時計を回し、実行中の頼みがなければ終わる。
 //    AI がつながっている間の窓の × は、終わらずに窓を隠す。「ファイル > 終了」は隠さずに終わる
 // 設計は AI設計基盤_設計書.md の 7-3・7-5。やりとりの決まりは automation-protocol.js、パイプの受け口は automation.js。
@@ -10,6 +11,7 @@
 
 const { createAutomationServer } = require('./automation');
 const { createRenderFinisher } = require('./automation-render');
+const { connectInfo } = require('./automation-connect');
 
 const READY_WAIT_MS = 30000; // ページの準備を待つ時間
 const IDLE_QUIT_MS = 30000; // AI のつながりが 0 で窓が見えていないとき、終わるまでの時間
@@ -33,7 +35,8 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
   let rid = 0;
   const pending = new Map(); // rid → resolve
   const page = { wc: null, ready: false, waiters: [] };
-  const clientWatchers = [];
+  const stateWatchers = []; // AI のつながり・窓が見えているかが変わったときに呼ぶ（タスクトレイ。automation-tray.js）
+  const notifyState = () => stateWatchers.forEach((fn) => fn());
 
   // ── ページとのやりとり ────────────────────────────────────
   const currentWc = () => {
@@ -102,10 +105,10 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
     appVersion,
     onRequest,
     isSlow: (tool) => SLOW_TOOLS.has(tool),
-    onClientsChanged: (count, list) => {
+    onClientsChanged: () => {
       if (quitting) return; // 終わる途中で閉じたつながりの知らせは拾わない
       sendStatus();
-      clientWatchers.forEach((fn) => fn(count, list));
+      notifyState();
       reconsiderIdle();
     },
     onStatus: () => ({ visible: windowVisible(), background, showRequested, pageReady: page.ready, idleTimer: !!idleTimer }),
@@ -139,16 +142,25 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
   app.on('before-quit', () => { quitting = true; clearTimeout(idleTimer); });
   server.start().catch((err) => console.error('[automation] パイプの受け口を始められませんでした:', err));
 
+  // 「AI とつなぐ」の窓（ページ）に出す登録の文と、その「コピー」（第 7 段階。q49）
+  ipcMain.handle('ai:connect-info', () => connectInfo({ packaged: app.isPackaged, execPath: process.execPath, resourcesPath: process.resourcesPath, root: __dirname }));
+  ipcMain.handle('ai:copy', (_e, text) => {
+    require('electron').clipboard.writeText(String(text == null ? '' : text));
+    return true;
+  });
+
   return {
     clientCount: () => server.clientCount(),
     clients: () => server.clients(),
-    onClientsChange: (fn) => clientWatchers.push(fn),
+    windowVisible,
+    onStateChange: (fn) => stateWatchers.push(fn),
     // 窓の × で、終わらずに窓を隠すか（AI がつながっていて、「ファイル > 終了」でないとき）
     shouldHideOnClose: () => !quitting && server.clientCount() > 0,
-    // 窓を出した（shown: true）・隠した（false）ときに呼ぶ（終わる時計を見直す）
+    // 窓を出した（shown: true）・隠した（false）ときに呼ぶ（終わる時計とタスクトレイを見直す）
     windowShownOrHidden: (shown) => {
       if (headless && typeof shown === 'boolean') headlessShown = shown;
       reconsiderIdle();
+      if (!quitting) notifyState();
     },
     // 2 つ目の起動で窓を出すよう頼まれた（headless のときの確かめ用の印）
     noteShowRequested: () => { showRequested = true; reconsiderIdle(); },
