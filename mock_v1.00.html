@@ -3369,7 +3369,7 @@ function partTableHtml(design, screen, { editor = false, selectedId = null, sele
 function diffTableFoot(info, label) {
   const marked = Object.keys(info.parts).length + Object.keys(info.callouts).length > 0;
   const del = info.deleted.length
-    ? `<div class="df-del"><h4>削除した部品（${esc(label)}にあって、今はない部品）</h4><table><thead><tr><th class="c-no">${esc(label)}の番号</th><th class="c-label">項目名</th><th class="c-kind">部品の種類</th><th>設定</th></tr></thead><tbody>${
+    ? `<div class="df-del"><h4>削除した部品（${esc(label)}にあって、今はない部品。番号は${esc(label)}のもの）</h4><table><thead><tr><th class="c-no">番号</th><th class="c-label">項目名</th><th class="c-kind">部品の種類</th><th>設定</th></tr></thead><tbody>${
       info.deleted.map((x) => `<tr><td class="c-no">${x.no == null ? '－' : x.no}</td><td>${esc(x.title)}</td><td>${esc(x.kind)}</td><td class="c-set">${esc(x.setting)}</td></tr>`).join('')}</tbody></table></div>`
     : '';
   const legend = marked || del ? `<div class="df-legend">${diffBadgeInline('new')}${esc(label)}の後に足した部品　${diffBadgeInline('chg')}${esc(label)}の後に設定・位置・大きさを変えた部品</div>` : '';
@@ -3939,6 +3939,8 @@ function updateEditor({ keepSide = false } = {}) {
 function updateToolbarState() {
   const s = currentScreen();
   const onScreen = ui.panel === 'screen';
+  // 前の版を見ている間に押せなくしたボタンを、いったん戻す（下で、今の状態に合わせて押せる・押せないを決め直す）
+  document.querySelectorAll('#toolbar [data-view-locked]').forEach((b) => { b.disabled = false; delete b.dataset.viewLocked; });
   $('#tb-undo').disabled = !store.canUndo();
   $('#tb-redo').disabled = !store.canRedo();
   ['#tb-copy', '#tb-dup', '#tb-del'].forEach((sel) => { $(sel).disabled = !onScreen || !ui.sel.length; });
@@ -3954,7 +3956,13 @@ function updateToolbarState() {
   if (currentDesign().screens.length < 2) $('#tb-del-screen').disabled = true; // 最後の 1 つの画面は消せない
   $('#canvas-wrap').classList.toggle('hand', ui.mode === 'hand');
   // 前の版を見ている間は、一覧へ・拡大縮小・選択・ハンドのほかは押せない（上の黄色い帯から戻す・やめる）
-  if (store.isViewing) document.querySelectorAll('#toolbar button').forEach((b) => { if (!VIEW_OK_ACTIONS.includes(b.dataset.action)) b.disabled = true; });
+  if (store.isViewing) {
+    document.querySelectorAll('#toolbar button').forEach((b) => {
+      if (VIEW_OK_ACTIONS.includes(b.dataset.action) || b.disabled) return;
+      b.disabled = true;
+      b.dataset.viewLocked = '1';
+    });
+  }
   $('#tb-rev-arrow').classList.toggle('open', ui.revMenu);
   $('#tb-rev-arrow').setAttribute('aria-expanded', String(ui.revMenu));
 }
@@ -4417,7 +4425,9 @@ function renderViewBand() {
 function lockForViewing() {
   document.querySelectorAll('#side-settings input, #side-settings select, #side-settings textarea, #side-settings button, #db-view button, #db-view input')
     .forEach((x) => { x.disabled = true; });
-  document.querySelectorAll('#screen-list .sl-more, #screen-list .sl-add, #db-view [data-drag]').forEach((x) => { x.hidden = true; });
+  document.querySelectorAll('#screen-list .sl-more, #screen-list .sl-add').forEach((x) => { x.hidden = true; });
+  // 項目の一覧表のつまみは、列がずれないように、セルを残して見えなくする
+  document.querySelectorAll('#db-view [data-drag]').forEach((x) => { x.style.visibility = 'hidden'; });
 }
 
 // 単体で開いた HTML で出す違い（違いの印を付けて書き出したとき。q44d）。戻り値 { result, label } か null

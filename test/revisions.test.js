@@ -204,6 +204,9 @@ test('前の版を見る: 編集の画面を写しで描き、上に黄色い帯
   assert.equal($(app, '#rv-band').hidden, true);
   assert.equal(api.currentDesign().items.find((x) => x.id === 'i1').required, false, '今の中身に戻る');
   assert.ok(!$(app, '#stage .part[data-part-id="p4"]'));
+  assert.equal($(app, '#toolbar [data-action="export"]').disabled, false, '見ている間に押せなくしたボタンが、また押せる');
+  assert.equal($(app, '#toolbar [data-action="add-screen"]').disabled, false);
+  assert.equal($(app, '#side-box').hidden, false);
   assert.ok(api.actions.updateDesignInfo('d1', { description: '直せる' }));
 });
 
@@ -488,7 +491,7 @@ test('書き出し（PDF）: 表紙の次に変更内容のページ。画面の
   assert.ok(screenPage.querySelector('.part[data-part-id="p1"] .df-chg'), '設定を変えた部品に「変」');
   assert.ok(screenPage.querySelector('.part .df-new'), '足した部品に「新」');
   assert.match(screenPage.querySelector('.df-sum').textContent, /第 1 版（.+）との違い：新 1・変 3・削除 1/);
-  assert.match(screenPage.querySelector('.df-del').textContent, /削除した部品（第 1 版にあって、今はない部品）/);
+  assert.match(screenPage.querySelector('.df-del').textContent, /削除した部品（第 1 版にあって、今はない部品。番号は第 1 版のもの）/);
   assert.match(screenPage.querySelector('.df-del').textContent, /郵便番号/);
   assert.ok(screenPage.querySelector('.ptable .df-in.df-chg'), '一覧表の番号の前にも札');
 });
