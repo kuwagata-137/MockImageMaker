@@ -580,6 +580,7 @@ body.map-dragging,body.map-dragging *{cursor:grabbing!important}
 /* 違いの印（部品・吹き出しの右上の札と、一覧表の番号の前の札。q42 案A） */
 .df{position:absolute;top:-11px;right:-11px;z-index:4;min-width:26px;height:26px;padding:0 5px;border-radius:6px;font-size:15px;font-weight:700;line-height:26px;color:#fff;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.25);pointer-events:none}
 .callout .df{top:2px;right:2px}
+.df.df-t{top:2px}.df.df-r{right:2px}
 .df-new{background:#16a34a}
 .df-chg{background:#ea580c}
 .df-in{display:inline-block;min-width:18px;height:18px;padding:0 4px;border-radius:4px;font-size:11px;font-weight:700;line-height:18px;color:#fff;text-align:center;margin-right:4px;vertical-align:1px}
@@ -3179,7 +3180,9 @@ function targetChip(target) {
 function screenHtml(design, screen, { grid = false, height = screen.height, selectedId = null, selected = null, gripId = selectedId, marks = false, diff = null } = {}) {
   const band = screen.showHeader ? `<div class="screen-band">${esc(design.name)} ／ ${esc(screen.name)}</div>` : '';
   const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
-  const parts = screen.parts.map((p) => partHtml(resolvePart(design, p), isSel(p.id), marks, p.id === gripId, diff ? diff.parts[p.id] : null)).join('');
+  // 札は部品の右上の角から外へ出す。画面の上・右の端の部品では、画面の外へ出た分が切れるので内側に寄せる
+  const edge = (p) => `${p.y < DF_OUT ? ' df-t' : ''}${p.x + p.w + DF_OUT > screen.width ? ' df-r' : ''}`;
+  const parts = screen.parts.map((p) => partHtml(resolvePart(design, p), isSel(p.id), marks, p.id === gripId, diff ? diff.parts[p.id] : null, edge(p))).join('');
   return `<div class="screen${grid ? ' grid' : ''}" style="width:${screen.width}px;height:${height}px">${band}${parts}</div>`;
 }
 
@@ -3187,10 +3190,11 @@ function screenHtml(design, screen, { grid = false, height = screen.height, sele
 const GRIPS = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 const partNoHtml = (p, cls = '') => (p.no != null ? `<span class="pno${cls}">${p.no}</span>` : '');
 
-// 違いの札（q42 案A）。kind は 'new'（新）か 'chg'（変）
-const diffBadge = (kind) => (kind ? `<span class="df df-${kind === 'new' ? 'new' : 'chg'}">${kind === 'new' ? '新' : '変'}</span>` : '');
+// 違いの札（q42 案A）。kind は 'new'（新）か 'chg'（変）。edge は内側に寄せるクラス（' df-t'・' df-r'）。DF_OUT は札が部品の角から外へ出る幅（CSS の .df と同じ）
+const DF_OUT = 11;
+const diffBadge = (kind, edge = '') => (kind ? `<span class="df df-${kind === 'new' ? 'new' : 'chg'}${edge}">${kind === 'new' ? '新' : '変'}</span>` : '');
 const diffBadgeInline = (kind) => (kind ? `<span class="df-in df-${kind === 'new' ? 'new' : 'chg'}">${kind === 'new' ? '新' : '変'}</span>` : '');
-function partHtml(p, selected = false, marks = false, withGrips = selected, diffKind = null) {
+function partHtml(p, selected = false, marks = false, withGrips = selected, diffKind = null, diffEdge = '') {
   const t = partType(p.type);
   const cls = ['part', 'pt-' + (t ? p.type : 'unknown')];
   if (t && t.input && p.labelPos === 'left') cls.push('lab-left');
@@ -3203,7 +3207,7 @@ function partHtml(p, selected = false, marks = false, withGrips = selected, diff
   } catch (e) {
     inner = `<div class="punknown">この部品は描けません（${esc(e.message || e)}）</div>`;
   }
-  return `<div class="${cls.join(' ')}" data-part-id="${esc(p.id)}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px">${inner}${grips}${diffBadge(diffKind)}</div>`;
+  return `<div class="${cls.join(' ')}" data-part-id="${esc(p.id)}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px">${inner}${grips}${diffBadge(diffKind, diffEdge)}</div>`;
 }
 
 // 編集の画面だけで、項目名の後ろに付ける札（項目を一覧表から消した後に残った部品）
@@ -6740,12 +6744,15 @@ function embedPayload(d, state, { diffRevId = null } = {}) {
   const copy = withoutSnapshots(d);
   refreshRefNames(copy, state);
   const r = diffRevId ? findRevision(d, diffRevId) : null;
+  // 比べる版の写しも、名前の控えを今の名前に直す（今の中身と同じ直し方にしないと、版の後にルックアップ元の名前を変えただけで「変」になる）
+  const diffSnap = isVersionRow(r) && hasSnapshot(r) ? clone(r.snapshot) : null;
+  if (diffSnap) refreshRefNames(diffSnap, state);
   return {
     format: EMBED_FORMAT, schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION, exportedAt: nowIso(), baseUpdatedAt: d.updatedAt,
     baseHash: shortHash(comparableContent(d, state)), // 書き出したときの中身の印（取り込むときに、こちらでも変えたかを見る）
     data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: d.target && !builtinTarget(d.target) ? [d.target] : [], mapPos: {} }, designs: [copy] },
     peers: peersOf(d, state),
-    ...(isVersionRow(r) && hasSnapshot(r) ? { diffBase: { title: revisionTitle(r), day: revisionDay(r), snapshot: clone(r.snapshot) } } : {}),
+    ...(diffSnap ? { diffBase: { title: revisionTitle(r), day: revisionDay(r), snapshot: diffSnap } } : {}),
   };
 }
 // 単体で開いた HTML を保存し直すときのデータ（書き出したときの日時・元の更新日時・ほかの画面設計の写しは、そのまま持ち回る）

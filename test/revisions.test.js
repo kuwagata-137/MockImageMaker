@@ -559,6 +559,37 @@ test('書き出し（HTML）: 違いの印を選ばなければ、写しも帯�
   assert.ok(!html.includes('"snapshot"'));
 });
 
+test('書き出し（HTML）: 版の後にルックアップ元の名前を変えても、開いた HTML で「変」にしない（比べる版の写しの名前の控えも今の名前に直す）', async (t) => {
+  const xapi = fakeExportAPI();
+  const state = sampleState();
+  state.designs[0].items[0].lookup = { db: { designId: 'd2', name: '住所の共通項目' }, key: { itemId: 'a1', name: '郵便番号' }, copies: [] };
+  const { app, api } = await bootSample(t, { exportAPI: xapi, state });
+  const r1 = api.actions.addRevision('d1');
+  api.actions.renameDesign('d2', '住所マスタ');
+  await exportWith(app, api, 'html', r1);
+  const html = xapi.calls.find((c) => c[0] === 'saveHtml')[1].html;
+  const sa = bootApp({ html, url: 'https://localhost/vendor/customer.html' });
+  await sa.api();
+  t.after(() => sa.close());
+  assert.match($(sa, '#sa-diff').textContent, /新 0・変 0・削除 0/);
+  assert.ok(!$(sa, '#stage .df'), '札は出ない');
+});
+
+test('書き出し: 画面の上・右の端にある部品の札は、画面の外で切れないように内側に寄せる', async (t) => {
+  const xapi = fakeExportAPI();
+  const { app, api } = await bootSample(t, { exportAPI: xapi });
+  const r1 = api.actions.addRevision('d1');
+  api.actions.movePart('d1', 's1', 'p3', { x: 960, y: 64, w: 320, h: 64 }); // 右の端
+  api.actions.movePart('d1', 's1', 'p1', { x: 32, y: 0, w: 320, h: 64 }); // 上の端
+  api.actions.movePart('d1', 's1', 'p2', { x: 32, y: 240, w: 320, h: 64 }); // 端でない
+  await exportWith(app, api, 'pdf', r1);
+  const doc = new app.window.DOMParser().parseFromString(xapi.calls.find((c) => c[0] === 'savePdf')[1].html, 'text/html');
+  const badge = (id) => doc.querySelector(`.xp-zone .part[data-part-id="${id}"] .df`);
+  assert.ok(badge('p3').classList.contains('df-r'), '右の端の部品の札は内側へ');
+  assert.ok(badge('p1').classList.contains('df-t'), '上の端の部品の札は内側へ');
+  assert.ok(!badge('p2').classList.contains('df-r') && !badge('p2').classList.contains('df-t'), '端でない部品の札はそのまま');
+});
+
 // ── ブラウザで保存しきれないとき ──
 test('保存: ブラウザで保存できなかったときの赤い帯に、改訂履歴の古い版を消すと空きが増えることを書く', async (t) => {
   const { app, api } = await bootSample(t);
