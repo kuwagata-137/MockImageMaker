@@ -19,9 +19,13 @@ const fsp = fs.promises;
 const IS_WIN = process.platform === 'win32';
 const CLOSE_GRACE_MS = 1000; // protocol が違うと知らせた後、相手が切るのを待つ時間
 const UNIQUE_MAX = 999; // writeUnique で番号を付ける上限
+// 頼みの期限は、列に入った時から「時間切れ＋この余り」。入口（automation-client.js）は送った時から「時間切れ＋15 秒」待つので、
+// それより短くして、入口が時間切れにした後で頼みを実行しないようにする（書く頼みを AI がやり直して 2 回入るのを防ぐ）
+const QUEUE_GRACE_MS = 10000;
 const MSG = {
   protocol: 'アプリの版が変わりました。AI のアプリを起動し直してください。',
   timeout: 'アプリが応えません（時間切れ）。',
+  queueTimeout: 'ほかの頼みを実行していて、順番が来る前に時間切れになりました。この頼みは実行していません。もう一度頼んでください。',
 };
 const TIMEOUT = Symbol('timeout');
 const STOPPED = Symbol('stopped');
@@ -71,7 +75,7 @@ function answerFor(id, outcome) {
 
 function createAutomationServer({
   dir, appVersion, onRequest, onClientsChanged, onStatus, isSlow,
-  helloTimeoutMs = 5000, requestTimeoutMs = 60000, slowTimeoutMs = 300000, maxLineBytes = P.MAX_LINE_BYTES,
+  helloTimeoutMs = 5000, requestTimeoutMs = 60000, slowTimeoutMs = 300000, queueGraceMs = QUEUE_GRACE_MS, maxLineBytes = P.MAX_LINE_BYTES,
 } = {}) {
   if (!dir) throw new TypeError('dir が要ります。');
   if (typeof onRequest !== 'function') throw new TypeError('onRequest が要ります。');
@@ -80,7 +84,7 @@ function createAutomationServer({
   let info = null; // { pipe, token }
   let starting = null;
   const conns = new Set(); // { socket, ready, closing, session, client, timer }
-  let queue = []; // 待っている頼み { conn, id, tool, args, session, client }
+  let queue = []; // 待っている頼み { conn, id, tool, args, session, client, queuedAt }
   let running = null; // 実行中の頼み
 
   const readyConns = () => [...conns].filter((c) => c.ready);
@@ -123,10 +127,14 @@ function createAutomationServer({
     }
   }
 
+  // 実行してよい時間は「時間切れ」と「列に入った時からの期限までの残り」の短い方。期限を過ぎていれば実行しない
   async function runJob(job) {
+    const timeout = timeoutFor(job.tool);
+    const limitMs = Math.min(timeout, job.queuedAt + timeout + queueGraceMs - Date.now());
+    if (limitMs <= 0) return reply(job.conn, failure(job.id, 'timeout', MSG.queueTimeout));
     let timer;
     const limit = new Promise((resolve) => {
-      timer = setTimeout(() => resolve(TIMEOUT), timeoutFor(job.tool));
+      timer = setTimeout(() => resolve(TIMEOUT), limitMs);
       job.cancel = () => resolve(STOPPED);
     });
     const work = Promise.resolve()
@@ -192,6 +200,7 @@ function createAutomationServer({
       args: msg.args || {},
       session: msg.session === undefined ? conn.session : msg.session,
       client: msg.client === undefined ? conn.client : msg.client,
+      queuedAt: Date.now(),
     });
     pump();
   }

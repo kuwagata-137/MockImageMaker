@@ -19,7 +19,7 @@ const LAUNCH_WAIT_MS = 30000; // 起動してからつながるまで待つ長�
 const HELLO_WAIT_MS = 5000;
 const REQUEST_MS = 60000; // アプリの側の時間切れ（automation.js）と同じ
 const SLOW_MS = 300000;
-const MARGIN_MS = 15000; // アプリの側が時間切れを返すのを待つ余り
+const MARGIN_MS = 15000; // アプリの側が時間切れを返すのを待つ余り（アプリの列の余り automation.js の QUEUE_GRACE_MS 10 秒より長くする）
 
 class AppLinkError extends Error {
   constructor(code, message, { fatal = false } = {}) {

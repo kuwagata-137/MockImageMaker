@@ -336,6 +336,40 @@ test('時間切れで timeout を返し、次の頼みへ進む。isSlow の頼�
   assert.deepEqual(ran, ['hang', 'quick', 'export_pdf', 'export_png']);
 });
 
+test('列で待つ間に期限（時間切れ＋queueGraceMs）を過ぎた頼みは、実行せずに timeout を返す（入口が時間切れにした後で実行しない）', async (t) => {
+  const ran = [];
+  const { info } = await startServer(t, {
+    requestTimeoutMs: 150,
+    slowTimeoutMs: 2000,
+    queueGraceMs: 100,
+    isSlow: (tool) => tool.startsWith('export'),
+    onRequest: async ({ tool, args }) => {
+      ran.push(tool);
+      if (args.ms) await delay(args.ms);
+      return { ok: true, result: tool };
+    },
+  });
+  const a = await greet(info);
+  const b = await greet(info);
+  a.send({ id: 1, tool: 'export_pdf', args: { ms: 500 } }); // 長い書き出しが列の先にある
+  await delay(20);
+  b.send({ id: 2, tool: 'create_design' }); // 150＋100ms を過ぎても順番が来ない
+  assert.deepEqual(await a.next(), { id: 1, ok: true, result: 'export_pdf' });
+  const r2 = await b.next();
+  assert.equal(r2.id, 2);
+  assert.equal(r2.ok, false);
+  assert.equal(r2.error.code, 'timeout');
+  assert.match(r2.error.message, /実行していません/);
+  assert.deepEqual(ran, ['export_pdf']);
+  // 期限の前に順番が来た頼みは、残りの時間で実行する
+  a.send({ id: 3, tool: 'export_pdf', args: { ms: 120 } });
+  await delay(20);
+  b.send({ id: 4, tool: 'quick' });
+  assert.deepEqual(await a.next(), { id: 3, ok: true, result: 'export_pdf' });
+  assert.deepEqual(await b.next(), { id: 4, ok: true, result: 'quick' });
+  assert.deepEqual(ran, ['export_pdf', 'export_pdf', 'quick']);
+});
+
 test('onRequest の例外・reject・形の違う返事で code internal', async (t) => {
   const { info } = await startServer(t, {
     onRequest: ({ tool }) => {
