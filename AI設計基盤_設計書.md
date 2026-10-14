@@ -398,7 +398,13 @@ props: {
   - 条件: Electron の fuse の RunAsNode を切らない（electron-builder の既定では切らない）。入口の js と SDK を asar の中のまま読めるかを確かめ、読めなければ `asarUnpack` で外に出す。
 - 予備 1: 同じことをする `.cmd` のファイルをインストール先に置く（AI のアプリが環境変数を渡せないとき）。
 - 予備 2: アプリを `--mcp` の引数で起動し、Electron の main が stdio を受ける（窓のアプリで標準入出力が使えるかの確かめが要る）。
-- 第 7 段階の最初に、本命が Claude Code で動くかを確かめて決める。
+- **確かめた結果（2026-10-14・第 7 段階の最初）: 本命で決めた。予備 1・2 は作らない。**
+  - 開発版の `electron.exe` に `ELECTRON_RUN_AS_NODE=1` を付けて入口の js を動かすと、SDK の客から initialize・道具の一覧・道具の呼び出しが通った。
+    標準出力に JSON 以外は出なかった（起動から initialize まで約 1.9 秒）。
+  - Claude Code 2.1.263 から（`claude -p` と一時の `--mcp-config`）: 設定の `env` に書いた環境変数が入口に届いた。
+    入口が受け取る AI のアプリの名前（`clientInfo.name`）は `claude-code`（`title` は `Claude Code`）。
+  - インストールした形（`electron-builder --dir`）の `MockImageMaker.exe` で、asar の中（`resources\app.asar\…`）の入口の js と SDK を、そのまま読めた。
+    `asarUnpack` も、1 本にまとめる作業も要らない。入口の場所は `<インストール先>\resources\app.asar\mcp-server.js`。
 
 ### 7-3. 名前付きパイプと合言葉
 
@@ -426,6 +432,17 @@ props: {
 - 確かめが要ること: AI のアプリを閉じたとき、AI のアプリが起動したプロセスが、Windows の「ジョブ」の仕組みでまとめて終わらされることがある。
   入口が起動したアプリまで一緒に終わると、人が後から窓を出して使っていても終わってしまう。
   第 7 段階の最初に確かめ、終わってしまうなら、ジョブの外で起動する方法（WMI の `Win32_Process.Create` など）に変える。
+- **確かめた結果（2026-10-14）: 入口は、アプリを `detached: true`・`stdio: 'ignore'` で起動する（二段起動も WMI も使わない）。**
+  - Claude Code（`claude -p`）が起動した入口から孫のプロセスを起動し、次の 3 つの場合に孫が残るかを見た。
+    | 起動のしかた | Claude Code が普通に終わる | Claude Code を強制終了 | 入口だけ終わる |
+    |---|---|---|---|
+    | `detached: false` | 孫も終わった | 孫も終わった | 孫も終わった |
+    | `detached: true` | 孫は残った | 孫は残った | 孫は残った |
+  - `detached: false` で孫が終わるのは、入口（Node）が、自分の起動した子を「閉じたら中を全部終わらせる」ジョブに入れるため。`detached: true` ならそのジョブに入らない。
+  - 残った孫は、Claude のデスクトップアプリの側のジョブには入ったままだった。そのジョブは「閉じても中を終わらせない」設定（KILL_ON_JOB_CLOSE なし・抜け出しは許す）だった。
+    Claude のデスクトップアプリそのものを閉じたときに裏のアプリが残るかは、セッションの中からは確かめられないので、インストールした版で手で確かめる（14 章）。
+  - `ELECTRON_RUN_AS_NODE` を外して起動すると Electron として立ち上がり、窓を出さないまま動き、後で `show()` すると窓が見えた。
+    起動の `windowsHide` は付けない（付けても見えたが、Windows は最初の窓の出し方を起動のときの指定で決めることがあるので、念のため付けない）。
 
 ### 7-5. アプリの状態と終わる時
 
@@ -740,14 +757,15 @@ props: {
 
 ### 12-1. Claude Code（インストールした版）
 
-PowerShell で 1 回だけ実行する（`<インストール先>` は、アプリを入れたフォルダ）。
+PowerShell で 1 回だけ実行する。インストール先は `%LOCALAPPDATA%\Programs\mockimagemaker`
+（管理者の権限なしで入れる 1 クリックのインストーラは、package.json の `name` のフォルダに入れる。2026-10-14 に electron-builder の作りで確かめた）。
 
 ```powershell
-claude mcp add --scope user mockimagemaker --env ELECTRON_RUN_AS_NODE=1 -- "<インストール先>\MockImageMaker.exe" "<インストール先>\resources\app.asar.unpacked\mcp-server.js"
+claude mcp add --scope user mockimagemaker --env ELECTRON_RUN_AS_NODE=1 -- "$env:LOCALAPPDATA\Programs\mockimagemaker\MockImageMaker.exe" "$env:LOCALAPPDATA\Programs\mockimagemaker\resources\app.asar\mcp-server.js"
 ```
 
 - `--scope user` にすると、どのフォルダで Claude Code を起動しても使える。
-- 入口の js の場所（`app.asar.unpacked` の中か、asar の中か）は、7-2 の確かめで決まる。決まったら、この文を直す。
+- 入口の js は asar の中のまま読める（7-2 の確かめ）。インストールした版で、この文のとおりに登録して動くかは、第 7 段階の終わりに確かめる。
 - 道具は、Claude Code では `mcp__mockimagemaker__create_design` のような名前で見える。毎回の許可を省くときは、Claude Code の設定の `permissions.allow` に足す。
 - 登録の文を、アプリの中の案内に出してコピーできるようにするかは、第 7 段階で聞く（16 章）。
 
@@ -759,8 +777,8 @@ MCP の設定の JSON に、次のように書く（書く場所はそれぞれ�
 {
   "mcpServers": {
     "mockimagemaker": {
-      "command": "<インストール先>\\MockImageMaker.exe",
-      "args": ["<インストール先>\\resources\\app.asar.unpacked\\mcp-server.js"],
+      "command": "C:\\Users\\<ユーザー名>\\AppData\\Local\\Programs\\mockimagemaker\\MockImageMaker.exe",
+      "args": ["C:\\Users\\<ユーザー名>\\AppData\\Local\\Programs\\mockimagemaker\\resources\\app.asar\\mcp-server.js"],
       "env": { "ELECTRON_RUN_AS_NODE": "1" }
     }
   }
@@ -801,7 +819,7 @@ claude mcp add --scope local mockimagemaker-dev -- node mcp-server.js --dev
 | AI の窓口 | `test/ai.test.js`（jsdom。`test/harness.js` の `bootApp` で起動し、窓口の関数を呼ぶ。返事は JSON の文字で比べる） | 1 回の頼み＝1 回の変更・途中で失敗したら戻る・断るとき（8-4）・元に戻すの決まり（8-2）・「AI が直す前の状態」の行が接続ごと・画面設計ごとに 1 回・並べ方の位置（9-3）・名前と赤い番号での指し方・返事の大きさ |
 | 入口 | `test/mcp.test.js`（公式の SDK の Client で入口につなぎ、アプリの代わりの身代わりのパイプを置く） | 道具の一覧と入力の形・頼みと返事の受け渡し・合言葉が違うとき・`protocol` が違うとき・時間切れ |
 | 裏の起動と窓 | `tools/check-mcp.js`（`tools/check-electron.js` と同じ形。保存先は `.devdata/check-mcp`） | 入口からの起動・裏で動く・書いた中身が保存される・AI が切れて 30 秒で終わる・2 つ目の起動で窓を出す（テストでは別の窓を画面に出さない決まりなので、窓を出したかは印で確かめる） |
-| Claude Code での確かめ | 手で行う | インストーラで入れた版を Claude Code に登録し、架空の業務で 4 つの場面を試す。Claude Code を閉じたときに、裏のアプリと、窓を出したアプリが一緒に終わらないか（7-4） |
+| Claude Code での確かめ | 手で行う | インストーラで入れた版を Claude Code に登録し、架空の業務で 4 つの場面を試す。Claude Code を閉じたときに、裏のアプリと、窓を出したアプリが一緒に終わらないか（7-4。Claude のデスクトップアプリそのものを閉じたときも、窓を出したアプリが残るか） |
 
 今までのテスト（`npm test`・`tools/check-electron.js`・`tools/check-export.js`）も、各段階で通ることを確かめる。
 

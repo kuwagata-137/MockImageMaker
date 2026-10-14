@@ -527,3 +527,19 @@ Claude の案と違った点:
 - 決めたこと: 今の開発計画（AI 設計基盤の第 7〜11 段階）がすべて終わり、デバッグが終わったときに初めてリリースする。それまでは mock_v1.00.html・
   APP_VERSION '1.00'・package.json の 1.0.0 のまま作業する。CLAUDE.md の「運用」・開発ロードマップ・設計書 15 章の「第 7 段階を v1.01 とする」を直した。
 - 第 7 段階では、AI の入口をインストールした版で確かめるためにインストーラを作る。版は 1.0.0 のまま。
+
+■ 2026-10-14 第 7 段階の確かめの段（入口の起動・パイプ・裏の起動・ジョブ）
+使い捨ての道具は .devdata/probe/ に置いた（Git に入れない）。結果に合わせて、設計書の 7-2・7-4・12 章を直した。
+| 確かめ | 結果 |
+|---|---|
+| P1 開発版の electron.exe を ELECTRON_RUN_AS_NODE=1 で入口として動かす | OK。SDK の客から initialize・道具の一覧・呼び出しが通る。標準出力に JSON 以外が出ない。起動から initialize まで約 1.9 秒 |
+| P2 Claude Code 2.1.263 から（claude -p・一時の --mcp-config・--strict-mcp-config） | OK。設定の env が届く。clientInfo.name は claude-code（title は Claude Code） |
+| P3 インストールした形（electron-builder --dir）の MockImageMaker.exe で asar の中の入口 | OK。asar の中の入口と SDK をそのまま読める（asarUnpack も 1 本にまとめる作業も要らない） |
+| P4 名前付きパイプ | OK。往復・相手がいないと ENOENT・同じ名前で EADDRINUSE・5MB の 1 行が約 0.17 秒・切れたことが分かる |
+| P5 ELECTRON_RUN_AS_NODE を外し detached で Electron として起動 | OK。窓を出さずに動き、後で show() すると見える（windowsHide の有無にかかわらず） |
+| P6 Claude Code が終わったときに孫が残るか | detached:false は 3 つの場合（普通に終わる・強制終了・入口だけ終わる）のどれでも孫が終わった。detached:true はどれでも残った |
+- P6 の理由: 入口（Node・libuv）は、detached でない子を「閉じたら中を全部終わらせる」ジョブに入れる。detached ならそのジョブに入らない。
+  残った孫は Claude のデスクトップアプリの側のジョブに入ったままだったが、そのジョブは「閉じても中を終わらせない」設定（KILL_ON_JOB_CLOSE なし・BREAKAWAY_OK あり）だった。
+  → 入口は detached:true・stdio:'ignore' で起動する。二段起動と WMI は使わない。デスクトップアプリそのものを閉じたときは、インストールした版で手で確かめる。
+- この PC の claude の CLI は、ログインの期限が切れていて（Failed to authenticate: OAuth session expired）、モデルを呼べなかった。MCP のつなぎ込みまでは動くので、
+  P2・P6 は、入口がつながった時点で自分で孫を起動する形にして、モデルを呼ばずに確かめた。Claude Code で 4 つの場面を試すときは、ユーザーにログインし直してもらう。
