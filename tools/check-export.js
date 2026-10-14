@@ -203,9 +203,9 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
     await page.waitForFunction(() => /置き換えました/.test(document.querySelector('#toast').textContent), { timeout: 15000 });
     await sleep(800); // designs.json への書き込みを待つ
     const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).designs.find((d) => d.id === 'd1');
-    check('直した HTML を取り込むと置き換わり、前の中身が改訂の記録に残る', saved.description === 'ベンダーが直した説明。'
+    check('直した HTML を取り込むと置き換わり、前の中身が改訂履歴に残る', saved.description === 'ベンダーが直した説明。'
       && saved.revisions.length === 1 && saved.revisions[0].note === '取り込む前の状態' && saved.revisions[0].snapshot.description === '取引先と顧客の連絡先を管理する。',
-    `説明「${saved.description}」・改訂の記録 ${saved.revisions.map((r) => r.note).join('・')}`);
+    `説明「${saved.description}」・改訂履歴 ${saved.revisions.map((r) => r.note).join('・')}`);
   } finally {
     await page.evaluate(() => window.close()).catch(() => {});
     browser.disconnect();

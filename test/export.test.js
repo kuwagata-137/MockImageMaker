@@ -230,7 +230,7 @@ test('PDF: 表紙・つながりの図・項目の一覧表・画面の順のペ
   assert.equal(pages.length, 5, '表紙・図・表・画面 2 つ');
   assert.equal(pages[0].querySelector('.cv-title').textContent, '顧客管理');
   assert.match(pages[0].textContent, /全 5 ページ/);
-  assert.match(pages[0].textContent, /まだ改訂の記録はありません/);
+  assert.match(pages[0].textContent, /まだ改訂履歴はありません/);
   assert.deepEqual([...pages[0].querySelectorAll('.cv-list tbody tr')].map((tr) => [...tr.cells].map((c) => c.textContent)),
     [['つながりの図', '', '2'], ['データベースの項目の一覧表', '', '3'], ['1　詳細', 'パソコン', '4'], ['2　新規登録', 'パソコン', '5']]);
   assert.equal(pages[1].querySelector('.pg-head h2').textContent, 'つながりの図');
@@ -437,7 +437,7 @@ async function editedVendorHtml(t, edit) {
   return { text: written[0], app, api };
 }
 
-test('取り込み: 一覧にある画面設計なら確かめの窓（今と取り込む中身の数）。置き換えると、前の中身は改訂の記録に残り、元に戻すでも戻る', async (t) => {
+test('取り込み: 一覧にある画面設計なら確かめの窓（今と取り込む中身の数）。置き換えると、前の中身は改訂履歴に残り、元に戻すでも戻る', async (t) => {
   const { text, app, api } = await editedVendorHtml(t, (v) => {
     const d = v.currentDesign();
     v.actions.addScreen(d.id, 'blank', d.screens[1].id);
@@ -459,7 +459,7 @@ test('取り込み: 一覧にある画面設計なら確かめの窓（今と取
   assert.equal(d.revisions.length, 1);
   assert.deepEqual(plain([d.revisions[0].kind, d.revisions[0].note, d.revisions[0].no]), ['import', '取り込む前の状態', null]);
   assert.equal(d.revisions[0].snapshot.description, '取引先と顧客の連絡先を管理する。', '前の中身の写し');
-  assert.equal(d.revisions[0].snapshot.revisions, undefined, '写しに改訂の記録は入れない');
+  assert.equal(d.revisions[0].snapshot.revisions, undefined, '写しに改訂履歴は入れない');
   assert.equal(api.revisionLabel(d), '版なし', '自動で残した行は「最新の版」に数えない');
   assert.equal(d.items.find((it) => it.id === 'i4').link.lost, false, '一覧にある元とつながったまま');
   api.store.undo();

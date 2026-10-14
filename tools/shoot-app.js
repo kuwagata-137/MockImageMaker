@@ -685,7 +685,7 @@ async function shootExport(browser) {
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForFunction(() => !document.querySelector('.modal'));
   await shot(page, '81_書き出し_取り込んだ後の一覧');
-  console.log('取り込んだ後:', await page.evaluate(() => { const d = window.__test__.store.state.designs.find((x) => x.id === 'd1'); return `説明「${d.description}」・画面 ${d.screens.length} つ・改訂の記録 ${d.revisions.map((r) => r.note).join('・')}`; }));
+  console.log('取り込んだ後:', await page.evaluate(() => { const d = window.__test__.store.state.designs.find((x) => x.id === 'd1'); return `説明「${d.description}」・画面 ${d.screens.length} つ・改訂履歴 ${d.revisions.map((r) => r.note).join('・')}`; }));
   await page.close();
 }
 
