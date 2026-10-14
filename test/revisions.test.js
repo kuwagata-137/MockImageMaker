@@ -572,3 +572,86 @@ test('保存: ブラウザで保存できなかったときの赤い帯に、改
   }
   assert.match($(app, '#banner').textContent, /改訂履歴の古い版を消すと、空きが増えます/);
 });
+
+// ── 見直しで見つかった不具合（2026-10-14）──
+test('元に戻すの履歴: 版の写しは写さずに同じものを指す（版が増えても、1 回の操作と履歴が重くならない）。写しは凍らせ、保存データには入る', async (t) => {
+  const { app, api } = await bootSample(t);
+  api.actions.addRevision('d1');
+  api.actions.addRevision('d1');
+  [40, 48, 56].forEach((x) => api.actions.movePart('d1', 's1', 'p1', { x, y: 64, w: 320, h: 64 }));
+  const snaps = d1(api).revisions.map((r) => r.snapshot);
+  assert.ok(snaps.every((s) => Object.isFrozen(s) && Object.isFrozen(s.screens[0].parts[0])), '写しは凍らせる');
+  const stack = api.store.undoStack;
+  assert.ok(stack.length >= 3);
+  stack.forEach((s) => s.designs.find((x) => x.id === 'd1').revisions.forEach((r, i) => assert.equal(r.snapshot, snaps[i], '履歴の写しは同じものを指す')));
+  api.store.undo();
+  assert.equal(d1(api).screens[0].parts.find((p) => p.id === 'p1').x, 48);
+  assert.equal(d1(api).revisions[1].snapshot, snaps[1]);
+  api.store.redo();
+  assert.equal(d1(api).screens[0].parts.find((p) => p.id === 'p1').x, 56);
+  const saved = JSON.parse(app.window.localStorage.getItem(STORAGE_KEY)).designs.find((d) => d.id === 'd1');
+  assert.equal(saved.revisions.length, 2);
+  assert.equal(saved.revisions[0].snapshot.screens[0].parts.length, 4, '保存データには写しが入る');
+  assert.equal(saved.revisions[0].snapshot.screens[0].parts[0].x, 32);
+});
+
+test('違い: 項目を一覧表から消した後に残った部品と、スマホの画面の高さで、変えていないのに「変」にしない', async (t) => {
+  const { api } = await bootSample(t);
+  api.actions.deleteItem('d1', 'i2'); // 顧客名の部品は、消したときの中身で残る
+  api.actions.updateScreen('d1', 's1', { device: 'phone' });
+  const tp = api.actions.addPart('d1', 's1', 'table', { x: 0, y: 560 });
+  api.actions.updatePart('d1', 's1', tp, { view: { rows: 8 } });
+  const id = api.actions.addRevision('d1');
+  const res = api.designDiff(api.designFromSnapshot(d1(api), findRev(api, id)), d1(api), api.store.state);
+  assert.deepEqual(plain(res.rows), []);
+});
+const findRev = (api, id) => d1(api).revisions.find((r) => r.id === id);
+
+test('違い: 画面に置いた項目を一覧表から消すと「データベースの項目」に削除の行。置き方が変わった項目の名前の変更も出る', async (t) => {
+  const { api } = await bootSample(t);
+  const id = api.actions.addRevision('d1');
+  api.actions.deleteItem('d1', 'i2'); // 置いていた項目を消す
+  api.actions.updateItem('d1', 'i5', { label: '備考欄' }); // 置いていなかった項目の名前を変えて、画面に置く
+  api.actions.addItemPart('d1', 's1', 'i5', { x: 32, y: 400 });
+  const rows = plain(api.designDiff(api.designFromSnapshot(d1(api), findRev(api, id)), d1(api), api.store.state).rows);
+  const del = rows.find((x) => x.screen === 'データベースの項目' && x.name === '顧客名');
+  assert.ok(del, '消した項目の行');
+  assert.equal(del.change, '削除');
+  assert.match(del.text, /画面に置いた部品は、消したときの中身で残っている/);
+  const part = rows.find((x) => x.screen === '新規登録' && x.name === '顧客名');
+  assert.match(part.text, /データベースの項目の一覧表から消した/, '残った部品の行に、項目を消したことを書く');
+  assert.ok(!/そのほかの設定/.test(part.text));
+  const ren = rows.find((x) => x.screen === 'データベースの項目' && x.name === '備考欄');
+  assert.ok(ren, '置き方が変わった項目も、項目どうしで比べる');
+  assert.match(ren.text, /項目名：備考 → 備考欄/);
+  assert.ok(rows.some((x) => x.screen === '新規登録' && x.change === '追加' && x.name === '備考欄'));
+});
+
+test('違い: 画面の順番を変えると「画面の順番」の行', async (t) => {
+  const { api } = await bootSample(t);
+  const s2 = api.actions.addScreen('d1', 'blank', 's1');
+  const id = api.actions.addRevision('d1');
+  api.actions.moveScreen('d1', s2, 0);
+  const rows = plain(api.designDiff(api.designFromSnapshot(d1(api), findRev(api, id)), d1(api), api.store.state).rows);
+  const row = rows.find((x) => x.change === '画面の順番');
+  assert.ok(row);
+  assert.equal(row.screen, '画面設計');
+  assert.match(row.text, /新規登録・.+ → .+・新規登録/);
+});
+
+test('前の版に戻す: ほかの画面設計が取り込んでいる項目がその版にないときは、確かめの窓で知らせる', async (t) => {
+  const state = sampleState();
+  state.designs.push(design('d3', '受注管理', 'kintone', { items: [item('e1', '備考', 'text2', { link: { designId: 'd1', itemId: 'i5', designName: '顧客管理', lost: false } })] }));
+  state.designs[0].items = state.designs[0].items.filter((x) => x.id !== 'i5');
+  const snap = JSON.parse(JSON.stringify(state.designs[0]));
+  delete snap.revisions;
+  state.designs[0].items.push(item('i5', '備考', 'text2'));
+  state.designs[0].revisions = [{ id: 'r1', kind: 'revision', no: 1, date: '2026-10-02T03:00:00.000Z', note: '', snapshot: snap, changes: null, baseNo: null }];
+  const { app, api } = await bootSample(t, { state });
+  api.openDesign('d1');
+  const done = api.restoreRevisionWithConfirm('r1');
+  await tick();
+  assert.match($(app, '.modal').textContent, /「受注管理」が取り込んでいる項目「備考」は、この版にない/);
+  click($(app, '.modal [data-dlg="cancel"]'));
+  await done;
+});
