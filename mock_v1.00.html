@@ -895,24 +895,92 @@ const TPL_GAP = 24; // 項目の行の間
 // データベースの項目がまだないときに、入力・詳細・進み具合へ置く見本の項目
 const TPL_SAMPLE_ITEMS = [['text1', '項目名 1'], ['date', '項目名 2'], ['dropdown', '項目名 3']];
 
+// ── 並べ方（第 7 段階。設計書の 9-3）──
+// 行と列だけを決めれば、位置と大きさを決まりどおりに決める。ひな形と AI の並べ方（layout）の両方がこれを使う（置き方の決まりを 1 か所にするため）
+const LAYOUT_COL_W = 400; // 列の幅
+const LAYOUT_SPAN_W = TPL_COL2 + LAYOUT_COL_W - TPL_LEFT; // 2 列の幅いっぱい（848）
+const LAYOUT_TWO_COL_MIN = TPL_COL2 + LAYOUT_COL_W + TPL_LEFT; // 2 列で置ける画面の幅（912。パソコンだけ）
+const LAYOUT_ALIGN_GAP = 32; // align の行（ボタンの行）の部品の間と、前の行との間
+const isAlignRow = (row) => isObj(row) && !Array.isArray(row) && Array.isArray(row.parts);
+// 並べ方から位置と大きさを決める（純関数）。rows の 1 つは、部品の並び（配列）か { align: 'left'・'center'・'right', parts: [...] }。
+// sizeOf(entry) は、その部品の種類と最初の大きさ { type, w, h } を返す。entry.span が 2 なら 2 列の幅いっぱいに広げる。
+// 戻り値 { placed: [{ entry, type, x, y, w, h }]（置く順）, nextY（次に置ける y。最後の行のいちばん下＋24）}
+function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
+  const cols = columns >= 2 && width >= LAYOUT_TWO_COL_MIN ? 2 : 1;
+  const maxW = Math.floor((width - TPL_LEFT * 2) / GRID) * GRID; // 画面の幅から左右 32 ずつ引いた幅
+  const placed = [];
+  let y = startY;
+  const sized = (entry) => {
+    const s = sizeOf(entry);
+    const w = entry && entry.span === 2 ? Math.min(LAYOUT_SPAN_W, maxW) : Math.min(s.w, maxW);
+    return { entry, type: s.type, w, h: s.h };
+  };
+  // 1 行分を y に置き、次の行の y へ進める
+  const putLine = (line) => {
+    if (!line.length) return;
+    line.forEach((p) => placed.push({ ...p, y }));
+    y += Math.max(...line.map((p) => p.h)) + TPL_GAP;
+  };
+  rows.forEach((row) => {
+    if (isAlignRow(row)) {
+      if (y !== startY) y += LAYOUT_ALIGN_GAP - TPL_GAP;
+      layoutAlignLines(row.parts.map(sized), maxW).forEach((line) => {
+        const total = line.reduce((n, p) => n + p.w, 0) + LAYOUT_ALIGN_GAP * (line.length - 1);
+        let x = row.align === 'right' ? width - TPL_LEFT - total
+          : row.align === 'center' ? Math.floor((width - total) / 2 / GRID) * GRID : TPL_LEFT;
+        putLine(line.map((p) => { const q = { ...p, x }; x += p.w + LAYOUT_ALIGN_GAP; return q; }));
+      });
+      return;
+    }
+    let line = [];
+    (Array.isArray(row) ? row : []).forEach((entry) => {
+      const p = sized(entry);
+      // 1 列のとき・列の幅に入らない部品は、1 行を 1 つで使う
+      if (cols === 1 || p.w > LAYOUT_COL_W) { putLine(line); putLine([{ ...p, x: TPL_LEFT }]); line = []; return; }
+      if (line.length >= cols) { putLine(line); line = []; }
+      line.push({ ...p, x: line.length ? TPL_COL2 : TPL_LEFT });
+    });
+    putLine(line);
+  });
+  return { placed, nextY: y };
+}
+// align の行の部品を、画面の幅に入る分ずつの行に分ける
+function layoutAlignLines(parts, maxW) {
+  const lines = [];
+  let line = [];
+  let w = 0;
+  parts.forEach((p) => {
+    if (line.length && w + LAYOUT_ALIGN_GAP + p.w > maxW) { lines.push(line); line = []; }
+    w = line.length ? w + LAYOUT_ALIGN_GAP + p.w : p.w;
+    line.push(p);
+  });
+  if (line.length) lines.push(line);
+  return lines;
+}
+// 部品の最初の大きさ（並べ方の sizeOf に使う）
+const defaultPartSize = (type) => ({ type, w: partType(type).w, h: partType(type).h });
+
+// 画面に部品を 1 つ置く（commit はしない）。下の端が画面からはみ出すときは、画面を下へ伸ばす（部品が上へずれないように）。
+// spec: { type, x, y, w, h, itemId, tableKind, label, props, view }。戻り値は置いた部品
+function placePartIn(sc, design, { type, x, y, w, h, itemId = null, tableKind = 'subtable', label, props, view }) {
+  const t = partType(type);
+  const bottom = y + (h || t.h) + TPL_LEFT;
+  if (bottom > sc.height) sc.height = snapHeight(Math.ceil(bottom / GRID) * GRID, sc.device);
+  const p = createPartData(type, sc, { x, y }, itemId, { tableKind, design });
+  if (label != null) p.label = label;
+  if (props) p.props = { ...p.props, ...props };
+  if (view) p.view = type === 'table' ? normalizeTableView({ ...p.view, ...view }) : { ...p.view, ...view };
+  Object.assign(p, fitRect({ ...p, w: w || p.w, h: h || p.h }, sc));
+  sc.parts.push(p);
+  return p;
+}
+
 // ひな形から画面を作る（commit はしない）。戻り値 { screen, items（データベースの項目の一覧表に新しく足す項目）}。
 // 入力・詳細・進み具合には、データベースの項目の一覧表の項目を上から順に 2 列で並べ、テーブルの項目はその下に 1 つずつ置く
 function screenFromTemplate(design, templateId, name) {
   const sc = createScreenData(name);
   const items = [];
-  // 部品を置く。下の端が画面からはみ出すときは、画面を下へ伸ばす（部品が上へずれないように）
-  const put = (type, x, y, { itemId = null, tableKind = 'subtable', w, h, label, props, view } = {}) => {
-    const t = partType(type);
-    const bottom = y + (h || t.h) + TPL_LEFT;
-    if (bottom > sc.height) sc.height = snapHeight(Math.ceil(bottom / GRID) * GRID, sc.device);
-    const p = createPartData(type, sc, { x, y }, itemId, { tableKind, design });
-    if (label != null) p.label = label;
-    if (props) p.props = { ...p.props, ...props };
-    if (view) p.view = type === 'table' ? normalizeTableView({ ...p.view, ...view }) : { ...p.view, ...view };
-    Object.assign(p, fitRect({ ...p, w: w || p.w, h: h || p.h }, sc));
-    sc.parts.push(p);
-    return p;
-  };
+  const put = (type, x, y, opts = {}) => placePartIn(sc, design, { type, x, y, ...opts });
   const button = (x, y, label, style = 'primary') => put('button', x, y, { label, props: { style } });
   const status = () => {
     let it = design.items.find((x) => x.type === 'status') || items.find((x) => x.type === 'status');
@@ -923,33 +991,27 @@ function screenFromTemplate(design, templateId, name) {
     const it = status();
     put(type, x, y, { itemId: it.id, view: { current: it.props.states[1] || it.props.states[0] || '' } });
   };
-  // 項目を 2 列で並べ、次に置ける y を返す
-  const flowItems = (y0) => {
+  // 項目を 2 列で並べ（並べ方の決まり layoutPlacements で置く）、テーブルの項目はその下に 1 つずつ、最後に buttons の行を置く
+  const flowItems = (y0, buttons = []) => {
     let inputs = design.items.filter((it) => isInputType(it.type));
     const tables = design.items.filter((it) => it.type === 'table');
     if (!inputs.length && !tables.length) {
       inputs = TPL_SAMPLE_ITEMS.map(([type, n]) => createItemData(type, n));
       items.push(...inputs);
     }
-    let y = y0;
-    let rowH = 0;
-    inputs.forEach((it, i) => {
-      const p = put(partTypeOfItem(it.type), i % 2 ? TPL_COL2 : TPL_LEFT, y, { itemId: it.id });
-      rowH = Math.max(rowH, p.h);
-      if (i % 2) { y += rowH + TPL_GAP; rowH = 0; }
-    });
-    if (rowH) y += rowH + TPL_GAP;
-    tables.forEach((it) => { y += put('table', TPL_LEFT, y, { itemId: it.id }).h + TPL_GAP; });
-    return y;
+    const rows = [];
+    for (let i = 0; i < inputs.length; i += 2) rows.push(inputs.slice(i, i + 2).map((it) => ({ item: it })));
+    tables.forEach((it) => rows.push([{ item: it }]));
+    if (buttons.length) rows.push({ align: 'left', parts: buttons.map(([label, style]) => ({ type: 'button', label, props: { style } })) });
+    const sizeOf = (e) => defaultPartSize(e.item ? partTypeOfItem(e.item.type) : e.type);
+    const { placed } = layoutPlacements({ rows, columns: 2 }, { width: sc.width, startY: y0, sizeOf });
+    placed.forEach((pl) => put(pl.type, pl.x, pl.y, { itemId: pl.entry.item ? pl.entry.item.id : null, w: pl.w, h: pl.h, label: pl.entry.label, props: pl.entry.props }));
   };
   const right = (w) => sc.width - TPL_LEFT - w;
   switch (templateId) {
-    case 'input': {
-      const y = flowItems(64);
-      button(TPL_LEFT, y + GRID, '保存');
-      button(TPL_LEFT + 128, y + GRID, 'キャンセル', 'normal');
+    case 'input':
+      flowItems(64, [['保存', 'primary'], ['キャンセル', 'normal']]);
       break;
-    }
     case 'detail':
       button(right(96 + 32 + 96), 56, '編集');
       button(right(96), 56, '削除', 'normal');
@@ -980,9 +1042,7 @@ function screenFromTemplate(design, templateId, name) {
     case 'steps': {
       putStatus('steps', TPL_LEFT, 64);
       putStatus('status', right(PART_TYPES.status.w), 64);
-      const y = flowItems(136);
-      button(TPL_LEFT, y + GRID, '承認する');
-      button(TPL_LEFT + 128, y + GRID, '差し戻す', 'normal');
+      flowItems(136, [['承認する', 'primary'], ['差し戻す', 'normal']]);
       break;
     }
     default: break; // 白紙は帯だけ
@@ -2661,6 +2721,15 @@ const actions = {
 
   // ── 部品の操作 ──
   // at は置く位置（画面の左上から）。帯の下に置き、同じ位置に部品があればずらす。戻り値は新しい部品の id
+  // 決めた位置に部品をまとめて置く（並べ方 layoutPlacements の結果など）。specs は placePartIn の spec の並び。戻り値は置いた部品の id の並び
+  placeParts(designId, screenId, specs) {
+    const ids = [];
+    mutateDesign(designId, (d) => {
+      const sc = d.screens.find((x) => x.id === screenId);
+      if (sc) specs.forEach((spec) => ids.push(placePartIn(sc, d, spec).id));
+    });
+    return ids;
+  },
   addPart(designId, screenId, type, at) {
     const sc = findScreen(designId, screenId);
     const t = partType(type);
@@ -7724,7 +7793,7 @@ function exposeForTest() {
     paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
-    revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs,
+    revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     ready: true,
   });
