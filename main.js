@@ -33,7 +33,7 @@ if (!app.isPackaged) app.setPath('userData', process.env.MIM_USER_DATA || path.j
 
 let mainWin = null;
 let storage = null;
-let quitReady = false;
+let quitWaiting = false; // 終わる前の待ち（受け口を止める・保存を待つ）の途中か
 let automation = null;
 
 // ── メニュー ───────────────────────────────────────────────
@@ -234,16 +234,17 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
   // 待つのは will-quit（窓が全部閉じたあと）で、before-quit ではない。メニューの「ファイル > 終了」（app.quit()）では、
   // before-quit の時点でまだ窓が開いていて、右の欄の打ちかけの文字の保存（ページの beforeunload で送る）が届く前に
   // 待ち終わってしまい、書きかけのまま終わるため。窓の × のときは、窓が閉じてから app.quit() になるので、どちらでも同じ
-  // AI の受け口は先に止める（automation.json を消し、つながりを閉じる）
+  // AI の受け口は先に止める（automation.json を消し、つながりを閉じる）。
+  // 待ち終わったら app.exit(0) で終わる（app.quit() をもう一度呼ぶと、will-quit を止めた直後〔数ミリ秒〕のときは Electron が受け付けず、
+  // 窓のないアプリが残り続けた。2026-10-14。will-quit は窓が全部閉じた後に来るので、すぐ終わってよい）
   app.on('will-quit', (e) => {
-    if (quitReady || !storage) return;
+    if (!storage) return;
     e.preventDefault();
+    if (quitWaiting) return; // 待っている間にもう一度終わろうとしたときは、待ち終わるのを待つ
+    quitWaiting = true;
     Promise.resolve(automation && automation.stop())
       .catch(() => {})
       .then(() => storage.whenIdle())
-      .finally(() => {
-        quitReady = true;
-        app.quit();
-      });
+      .finally(() => app.exit(0));
   });
 }
