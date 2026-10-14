@@ -39,6 +39,11 @@
       "automation-protocol.js",
       "automation.js",
       "automation-main.js",
+      "automation-client.js",
+      "mcp-server.js",
+      "mcp-tools.js",
+      "mcp-schemas.js",
+      "mcp-guide.js",
       "package.json"
     ],
     "win": {
