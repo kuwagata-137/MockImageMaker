@@ -7747,6 +7747,7 @@ function onKeyDown(e) {
 }
 
 function onStoreChange() {
+  if (aiView.writing) return; // AI の変更を入れている間は描き直さない（aiWrite が知らせを決めた後に、ここを呼んで 1 回だけ描き直す）
   aiNoteStoreChange(); // 人が直したら、AI が直した知らせ（紫の帯）を閉じる
   if (ui.view === 'home') renderHome();
   else updateEditor({ keepSide: keepSideOnNotify });
@@ -8073,27 +8074,41 @@ async function aiWrite(ctx, opts, run) {
   if (d && opts.expect != null && opts.expect !== '' && str(opts.expect) !== d.updatedAt) {
     throw new AiRefusal('stale', `「${d.name}」は、読んだ後にアプリで直されました。読み直してから頼んでください（今の更新の印: ${d.updatedAt}）。`);
   }
-  const tx = { ctx, design: d, warnings: [], createdDesign: null, noBeforeRow: !!opts.noBeforeRow };
+  // tx.afterMap は、中身が変わったときの、直した後の画面設計ごとの JSON（aiHistoryMode と aiAfterWrite で使う。2 回作らないため）
+  const tx = { ctx, design: d, warnings: [], createdDesign: null, noBeforeRow: !!opts.noBeforeRow, afterMap: null };
   const beforeMap = new Map(S.designs.map((x) => [x.id, designJsonWithRefs(x)]));
-  // 「AI が直す前の状態」の行は、直す前に作っておき、中身が変わったときだけ入れる（8-3）
-  const row = d ? Object.assign(revisionRow(d, 'ai', { note: `${aiClientLabel(ctx.client)} が直す前の状態` }), { aiSession: ctx.session }) : null;
+  // 「AI が直す前の状態」の行は、直す前に作っておき、中身が変わったときだけ入れる（8-3）。
+  // その接続の行がもうあるときは作らない（写しを作るのは重いため）
+  const row = d && !tx.noBeforeRow && !aiHasBeforeRow(d, ctx.session)
+    ? Object.assign(revisionRow(d, 'ai', { note: `${aiClientLabel(ctx.client)} が直す前の状態` }), { aiSession: ctx.session }) : null;
   const rowAt = d ? d.revisions.length : 0;
-  const beforeContent = d ? designContent(d) : null;
+  const beforeContent = row ? designContent(d) : null;
   const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
   const seen = aiViewBefore(S); // 知らせ（紫・オレンジの帯と光らせ方）のため、直す前の様子を控える
   let mode = true;
   let out;
   let changed;
-  aiView.writing = true;
+  aiView.writing = true; // この間の store の知らせでは描き直さない（下の onStoreChange で 1 回だけ描き直す）
   try {
     ({ changed } = store.batch(() => {
       out = run(tx);
-      if (d && !tx.noBeforeRow) aiAddBeforeRow(tx, d.id, row, rowAt, beforeContent);
-    }, { history: () => (mode = aiHistoryMode(tx, beforeMap)) }));
+      if (row) aiAddBeforeRow(tx, d.id, row, rowAt, beforeContent);
+    }, {
+      history: () => {
+        tx.afterMap = new Map(store.state.designs.map((x) => [x.id, designJsonWithRefs(x)]));
+        return (mode = aiHistoryMode(tx, beforeMap));
+      },
+    }));
   } finally {
     aiView.writing = false;
   }
-  if (changed) aiAfterWrite(tx, mode, hadHistory, beforeMap, seen);
+  if (changed) {
+    try {
+      aiAfterWrite(tx, mode, hadHistory, beforeMap, seen);
+    } finally {
+      onStoreChange(); // 知らせ（帯・光らせ方・カードの印）を決めた後に、1 回だけ描き直す
+    }
+  }
   try {
     await store.whenSaved();
   } catch (e) {
@@ -8106,11 +8121,11 @@ async function aiWrite(ctx, opts, run) {
 // 元に戻すで行が消えたら、次の変更でまた入る）
 function aiAddBeforeRow(tx, designId, row, at, beforeContent) {
   const d = findDesign(store.state, designId);
-  if (!d || designContent(d) === beforeContent) return;
-  if (d.revisions.some((r) => isObj(r) && r.kind === 'ai' && r.aiSession === row.aiSession)) return;
+  if (!d || designContent(d) === beforeContent || aiHasBeforeRow(d, row.aiSession)) return;
   d.revisions.splice(Math.min(at, d.revisions.length), 0, row);
   trimAiRows(d);
 }
+const aiHasBeforeRow = (d, session) => d.revisions.some((r) => isObj(r) && r.kind === 'ai' && r.aiSession === session);
 // 「AI が直す前の状態」の行は、画面設計ごとに新しい方から 10 行まで残し、11 行目ができたら古い行から消す
 // （人の付けた版の行と、ほかの自動の行は消さない。行は古い順に並んでいる）
 const AI_ROWS_MAX = 10;
@@ -8129,7 +8144,7 @@ function aiHistoryMode(tx, beforeMap) {
   const allowed = aiImportersOf(S, open);
   const inside = S.designs.every((x) => {
     const old = beforeMap.get(x.id);
-    return old !== undefined && (old === designJsonWithRefs(x) || allowed.has(x.id));
+    return old !== undefined && (old === tx.afterMap.get(x.id) || allowed.has(x.id));
   });
   return inside ? true : 'clear';
 }
@@ -9013,7 +9028,7 @@ const aiView = {
   warn: null, // オレンジの帯（元に戻すの履歴を消した）{ designId, name, label, created, openChanged }
   cleared: null, // 履歴を消した画面設計の名前（その後に Ctrl+Z を押したときの知らせに使う）
   undoMark: null, // 紫の帯を出したときの元に戻すの履歴 { len, top }。変わったら人が直した（帯を閉じる）
-  writing: false, // AI の変更を入れている間（その間の描き直しでは、人が直したとみなさない）
+  writing: false, // AI の変更を入れている間（その間の store の知らせでは描き直さず、人が直したともみなさない）
   glow: new Map(), // 画面の id → 光らせ始めた時刻
   // 画面の id → 光らせる部品と吹き出し（aiScreenMarks の形）。開いている画面は、その 1 回の頼みで変わった分。
   // まだ開いていない画面は、開くまでに AI が変えた分を足していく（札は帯の diff の合計で付ける）
@@ -9136,23 +9151,23 @@ function aiViewBefore(S) {
   if (!open) return { open: null };
   const keep = aiView.band && aiView.band.kind === 'edited' && aiView.band.designId === openId;
   const snap = designSnapshot(open);
-  return { open: openId, content: designContent(open), json: designJsonWithRefs(open), snap, base: keep ? aiView.band.base : snap };
+  return { open: openId, content: designContent(open), snap, base: keep ? aiView.band.base : snap };
 }
-// AI が直した後の知らせ（aiWrite で、中身が変わったときに呼ぶ）。mode は元に戻すの履歴の扱い（true か 'clear'）
+// AI が直した後の知らせ（aiWrite で、中身が変わったときに呼ぶ。描き直しは呼ぶ側）。mode は元に戻すの履歴の扱い（true か 'clear'）
 function aiAfterWrite(tx, mode, hadHistory, beforeMap, seen) {
   const S = store.state;
   const label = aiClientLabel(tx.ctx.client);
   const target = findDesign(S, tx.createdDesign || (tx.design && tx.design.id));
   const created = !!tx.createdDesign;
   // 一覧の画面のカードの印（一覧の画面に出すときに光らせる）
-  S.designs.filter((x) => beforeMap.get(x.id) !== designJsonWithRefs(x)).forEach((x) => {
+  S.designs.filter((x) => beforeMap.get(x.id) !== tx.afterMap.get(x.id)).forEach((x) => {
     const was = aiView.cards.get(x.id);
     aiView.cards.set(x.id, { kind: x.id === tx.createdDesign || (was && was.kind === 'created') ? 'created' : 'edited', at: ui.view === 'home' ? Date.now() : null });
   });
   const open = seen.open ? findDesign(S, seen.open) : null;
   const openChanged = !!open && designContent(open) !== seen.content;
   if (openChanged) aiNoteOpenEdited(open, seen, label, mode === true);
-  else if (open && designJsonWithRefs(open) !== seen.json) toast(`${label} が「${open.name}」を改訂しました（${revisionLabel(open)}）。`); // 改訂履歴に版を足しただけ
+  else if (open && tx.afterMap.get(open.id) !== beforeMap.get(open.id)) toast(`${label} が「${open.name}」を改訂しました（${revisionLabel(open)}）。`); // 改訂履歴に版を足しただけ
   // 元に戻すの履歴を消したら、前に出した紫の帯（開いている画面設計）の「元に戻す」は出さない（押しても戻らないため）
   if (mode === 'clear' && aiView.band && aiView.band.kind === 'edited') aiView.band.undoable = false;
   if (mode === 'clear' && hadHistory) {
@@ -9162,14 +9177,12 @@ function aiAfterWrite(tx, mode, hadHistory, beforeMap, seen) {
     aiView.band = { kind: created ? 'created' : 'other', designId: target.id, name: target.name, label };
   }
   aiView.undoMark = { len: store.undoStack.length, top: store.undoStack[store.undoStack.length - 1] };
-  if (ui.view === 'home') renderHome();
-  else updateEditor({ keepSide: true });
 }
 // 開いている画面設計を AI が直したとき: 紫の帯（件数は最初に直す前と今の違い）と、この 1 回で変わった部品を光らせる
 function aiNoteOpenEdited(open, seen, label, undoable) {
   const diff = designDiff(seen.base, open, store.state);
   aiView.band = { kind: 'edited', designId: open.id, name: open.name, label, base: seen.base, diff, undoable };
-  const now = designDiff(seen.snap, open, store.state);
+  const now = seen.base === seen.snap ? diff : designDiff(seen.snap, open, store.state); // 最初の頼みでは、2 つの違いは同じ
   open.screens.forEach((s) => {
     const m = aiScreenMarks(now, s); // この 1 回の頼みで変わった部品と吹き出し
     if (!aiHasMarks(m)) return;

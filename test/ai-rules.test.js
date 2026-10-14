@@ -243,3 +243,25 @@ test('保存に失敗したときは、save_failed を返す', async () => {
   assert.match(r.error.message, /ファイルへの保存に失敗しました/);
   app.close();
 });
+
+test('重さ: 書く頼み 1 回で、描き直しは 1 回・違いの計算（designDiff）は最初の頼みで 1 回。「AI が直す前の状態」の行がもうあれば、写しの行（revisionRow）を作らない', async () => {
+  const { app, T, call } = await boot();
+  T.openDesign('d1');
+  const win = app.window;
+  const count = {};
+  ['revisionRow', 'updateEditor', 'designDiff'].forEach((name) => {
+    const orig = win[name];
+    count[name] = 0;
+    win[name] = function (...a) { count[name]++; return orig.apply(this, a); };
+  });
+  const reset = () => Object.keys(count).forEach((k) => { count[k] = 0; });
+  assert.equal((await call(...desc('1 回目'))).ok, true);
+  assert.deepEqual({ ...count }, { revisionRow: 1, updateEditor: 1, designDiff: 1 });
+  reset();
+  assert.equal((await call(...desc('2 回目'))).ok, true);
+  assert.equal(count.revisionRow, 0, '行がもうあるときは、写しの行を作らない');
+  assert.equal(count.updateEditor, 1);
+  assert.equal(aiRows(T.store.state.designs.find((d) => d.id === 'd1')).length, 1);
+  assert.match(app.document.querySelector('#ai-band').textContent, /変更 1 件/);
+  app.close();
+});
