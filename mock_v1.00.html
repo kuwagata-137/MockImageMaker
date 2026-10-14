@@ -2721,7 +2721,6 @@ const actions = {
   },
 
   // ── 部品の操作 ──
-  // at は置く位置（画面の左上から）。帯の下に置き、同じ位置に部品があればずらす。戻り値は新しい部品の id
   // 決めた位置に部品をまとめて置く（並べ方 layoutPlacements の結果など）。specs は placePartIn の spec の並び。戻り値は置いた部品の id の並び
   placeParts(designId, screenId, specs) {
     const ids = [];
@@ -2731,6 +2730,7 @@ const actions = {
     });
     return ids;
   },
+  // at は置く位置（画面の左上から）。帯の下に置き、同じ位置に部品があればずらす。戻り値は新しい部品の id
   addPart(designId, screenId, type, at) {
     const sc = findScreen(designId, screenId);
     const t = partType(type);
@@ -7954,12 +7954,861 @@ function aiGetCatalog() {
 const AI_FIRST_ROW_Y = 64; // 帯がある画面の並べ方の最初の行（高さ 40 の帯の下に 24 空ける）
 const AI_FIRST_ROW_Y_NOHEADER = 24; // 帯を消した画面の最初の行（Claude が決めた）
 
+// ── 書く道具の共通の流れ（設計書の 8 章）──
+const AI_BUSY_WAIT_MS = 2000; // 人がドラッグ・日本語の変換をしている間に、書く頼みを待つ長さ（8-4）
+// AI のアプリの名前（入口が MCP のつなぎ始めに受け取った名前。「Claude Code が直す前の状態」の行に書く。8-3）
+const AI_CLIENT_NAMES = { 'claude-code': 'Claude Code', 'claude-ai': 'Claude' };
+const aiClientLabel = (client) => AI_CLIENT_NAMES[client] || cleanName(client, 40) || 'AI';
+const aiBad = (message) => new AiRefusal('bad_request', message);
+
+// 書けない状態なら断る（8-4）
+function aiCheckWritable() {
+  if (store.isViewing) {
+    const d = findDesign(store.realState, ui.designId);
+    throw new AiRefusal('viewing', `アプリで「${d ? d.name : '画面設計'}」の前の版を見ているため、今は直せません。アプリの黄色い帯の「見るのをやめる」を押してから、もう一度頼んでください。`);
+  }
+  if (store.blockReason) throw new AiRefusal('blocked', `アプリが保存を止めているため、直せません（理由: ${store.blockReason}）。`);
+  if (isDialogOpen()) throw new AiRefusal('dialog', 'アプリで確かめの窓が開いています。閉じてから、もう一度頼んでください。');
+}
+// 人がドラッグ・日本語の変換をしている間は、2 秒まで待つ。終わらなければ断る
+async function aiWaitIdle() {
+  const t0 = Date.now();
+  while (drag || imeComposing) {
+    if (Date.now() - t0 >= AI_BUSY_WAIT_MS) throw new AiRefusal('busy', 'アプリで人が操作しています。少し待ってから、もう一度頼んでください。');
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
+// 書く道具の共通の流れ。opts は { design（指す画面設計。新しく作る道具は書かない）, expect（読んだときの更新の印）, noBeforeRow }。
+// run(tx) は store.batch の中で actions を呼び、返事の中身を返す（例外を投げると、何も変えずに断る）。
+// tx は { ctx, design（指した画面設計）, warnings（返事に添える注意）, createdDesign（新しく作った画面設計の id）}
+async function aiWrite(ctx, opts, run) {
+  aiCheckWritable();
+  await aiWaitIdle();
+  aiCheckWritable(); // 待っている間に、確かめの窓が開いたかもしれない
+  flushSideField(); // 右の欄の打ちかけの文字は、人の 1 回の変更として先に確定する（8-5）
+  const S = store.state;
+  const d = opts.design === undefined ? null : aiResolveDesign(S, opts.design, { write: true });
+  if (d && opts.expect != null && opts.expect !== '' && str(opts.expect) !== d.updatedAt) {
+    throw new AiRefusal('stale', `「${d.name}」は、読んだ後にアプリで直されました。読み直してから頼んでください（今の更新の印: ${d.updatedAt}）。`);
+  }
+  const tx = { ctx, design: d, warnings: [], createdDesign: null, noBeforeRow: !!opts.noBeforeRow };
+  const beforeMap = new Map(S.designs.map((x) => [x.id, designJsonWithRefs(x)]));
+  // 「AI が直す前の状態」の行は、直す前に作っておき、中身が変わったときだけ入れる（8-3）
+  const row = d ? Object.assign(revisionRow(d, 'ai', { note: `${aiClientLabel(ctx.client)} が直す前の状態` }), { aiSession: ctx.session }) : null;
+  const rowAt = d ? d.revisions.length : 0;
+  const beforeContent = d ? designContent(d) : null;
+  const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
+  let mode = true;
+  let out;
+  const { changed } = store.batch(() => {
+    out = run(tx);
+    if (d && !tx.noBeforeRow) aiAddBeforeRow(tx, d.id, row, rowAt, beforeContent);
+  }, { history: () => (mode = aiHistoryMode(tx, beforeMap)) });
+  if (changed) aiAfterWrite(tx, mode, hadHistory);
+  try {
+    await store.whenSaved();
+  } catch (e) {
+    throw new AiRefusal('save_failed', `変更はアプリに入りましたが、ファイルへの保存に失敗しました（${(e && e.message) || e}）。アプリの赤い帯の案内を確かめてください。`);
+  }
+  const dd = d ? findDesign(store.state, d.id) : null;
+  return { ...out, changed: !!changed, ...(dd ? { updatedAt: dd.updatedAt } : {}), ...(tx.warnings.length ? { warnings: tx.warnings } : {}) };
+}
+// その接続（session）で、その画面設計への最初の変更のときだけ、直す前の中身の行を入れる（行には session を書いておく。
+// 元に戻すで行が消えたら、次の変更でまた入る）
+function aiAddBeforeRow(tx, designId, row, at, beforeContent) {
+  const d = findDesign(store.state, designId);
+  if (!d || designContent(d) === beforeContent) return;
+  if (d.revisions.some((r) => isObj(r) && r.kind === 'ai' && r.aiSession === row.aiSession)) return;
+  d.revisions.splice(Math.min(at, d.revisions.length), 0, row);
+}
+// 元に戻すの履歴の扱い（8-2）。AI の変更が、人が開いている画面設計（と、そこから項目を取り込んでいる画面設計）の中だけなら積む。
+// 開いていない画面設計・新しい画面設計を変えたときは、履歴を消す（履歴は状態まるごとの写しなので、人の Ctrl+Z で AI の変更まで消えないように）
+function aiHistoryMode(tx, beforeMap) {
+  const open = ui.view === 'editor' ? ui.designId : null;
+  if (!open || !tx.design || tx.design.id !== open || tx.createdDesign) return 'clear';
+  const S = store.state;
+  const allowed = new Set([open, ...S.designs.filter((x) => x.items.some((it) => it.link && it.link.designId === open)).map((x) => x.id)]);
+  const inside = S.designs.every((x) => {
+    const old = beforeMap.get(x.id);
+    return old !== undefined && (old === designJsonWithRefs(x) || allowed.has(x.id));
+  });
+  return inside ? true : 'clear';
+}
+// AI が直した後の知らせ（見た目は第 7 段階の後半でモックを見せて決める）
+function aiAfterWrite(tx, mode, hadHistory) {
+  if (mode !== 'clear' || !hadHistory) return;
+  const d = tx.design || findDesign(store.state, tx.createdDesign);
+  toast(`AI が「${d ? d.name : '画面設計'}」を直したので、元に戻すの履歴を消しました。`);
+}
+
+// ops（操作の並び）を 1 つずつ実行する。断るときは、何番目の操作かを文の頭に付ける
+function aiRunOps(ops, fn) {
+  if (!Array.isArray(ops) || !ops.length) throw aiBad('ops（操作の並び）を 1 つ以上書いてください。');
+  return ops.map((op, i) => {
+    if (!isObj(op)) throw aiBad(`ops[${i}]: 操作は { op: …, … } の形で書いてください。`);
+    try {
+      return fn(op, i);
+    } catch (e) {
+      if (e instanceof AiRefusal) e.message = `ops[${i}]（${str(op.op) || 'op なし'}）: ${e.message}`;
+      throw e;
+    }
+  });
+}
+const aiUnknownOp = (op, names) => aiBad(`「${str(op.op)}」という操作はありません（使える操作: ${names.join('・')}）。`);
+const aiArr = (v, what) => {
+  if (!Array.isArray(v)) throw aiBad(`${what}は配列で書いてください。`);
+  return v;
+};
+const aiStrVal = (v, what) => {
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+  throw aiBad(`${what}は文字で書いてください。`);
+};
+const aiNum = (v, what) => {
+  if (typeof v !== 'number' || !Number.isFinite(v)) throw aiBad(`${what}は数で書いてください。`);
+  return v;
+};
+// 名前か id で探し、見つからなければ null（2 つ以上に当たるときは断る）
+function aiFindOrNull(fn) {
+  try {
+    return fn();
+  } catch (e) {
+    if (e instanceof AiRefusal && e.code === 'not_found') return null;
+    throw e;
+  }
+}
+// 並べ替えの位置。before（その前）・after（その後ろ）・index（並べ替えた後の位置。0 がいちばん上）から、
+// actions の toIndex（今の並びで「この位置のものの前」に入れる位置）を作る
+function aiMoveIndex(list, fromId, op, resolve) {
+  const from = list.findIndex((x) => x.id === fromId);
+  if (op.before != null) return list.findIndex((x) => x.id === resolve(op.before).id);
+  if (op.after != null) return list.findIndex((x) => x.id === resolve(op.after).id) + 1;
+  if (op.index != null) {
+    const k = Math.max(0, Math.min(list.length - 1, Math.round(aiNum(op.index, 'index'))));
+    return k > from ? k + 1 : k;
+  }
+  throw aiBad('動かす先を before・after・index のどれかで書いてください。');
+}
+
+// ── 設定（props）を検める ──
+// 選べる値が決まっている欄
+const AI_PROP_ENUMS = {
+  'date.initial': ['none', 'today', 'date'], 'datetime.initial': ['none', 'now'], 'user.initial': ['none', 'me'],
+  'radio.dir': ['h', 'v'], 'checkbox.dir': ['h', 'v'], 'button.style': ['primary', 'normal'],
+  'graph.chart': Object.keys(CHART_NAMES), 'graph.agg': Object.keys(AGG_NAMES),
+  'icon.icon': Object.keys(ICONS), 'icon.color': Object.keys(ICON_COLORS), 'link.to': ['', 'screen', 'url'],
+};
+// 項目を名前か id で書く欄（id に直して入れる）
+const AI_ITEM_REF_PROPS = { 'graph.byItem': 'one', 'graph.aggItem': 'one', 'search.items': 'many', 'filter.items': 'many' };
+// 部品の種類の設定の欄（PART_TYPES の props）を検め、直して返す。知らない欄・形の違う値は、使える欄・値を添えて断る
+function aiProps(type, props, d) {
+  if (props == null) return null;
+  const t = partType(type);
+  if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
+  const out = {};
+  Object.entries(props).forEach(([k, v]) => {
+    if (!t || !own(t.props, k)) throw aiBad(`「${t ? t.name : type}」の設定に「${k}」という欄はありません（使える欄: ${Object.keys(t ? t.props : {}).join('・') || 'なし'}）。`);
+    const def = t.props[k];
+    const key = `${type}.${k}`;
+    if (own(AI_ITEM_REF_PROPS, key)) {
+      out[k] = AI_ITEM_REF_PROPS[key] === 'many' ? aiArr(v, k).map((x) => aiResolveItem(d, x).id) : v ? aiResolveItem(d, v).id : '';
+      return;
+    }
+    if (key === 'link.screenId') {
+      out[k] = v ? aiResolveScreen(d, v).id : '';
+      return;
+    }
+    if (Array.isArray(def)) out[k] = aiArr(v, k).map((x) => aiStrVal(x, `「${k}」の中身`));
+    else if (typeof def === 'boolean') {
+      if (typeof v !== 'boolean') throw aiBad(`「${k}」は true か false で書いてください。`);
+      out[k] = v;
+    } else out[k] = aiStrVal(v, `「${k}」`);
+    if (own(AI_PROP_ENUMS, key) && !AI_PROP_ENUMS[key].includes(out[k])) throw aiBad(`「${k}」に書ける値は ${AI_PROP_ENUMS[key].map((x) => `"${x}"`).join('・')} です。`);
+  });
+  return out;
+}
+// テーブルの列（{ name, type, required, memo, props } の配列）。同じ名前の列は今の列（id）を残して直す
+function aiTableColumns(cur, cols) {
+  if (!Array.isArray(cols) || !cols.length) throw aiBad('columns は列の配列で書いてください（1 つ以上）。');
+  return cols.map((c, i) => {
+    const name = isObj(c) ? cleanName(c.name) : '';
+    if (!name) throw aiBad(`columns[${i}]: 列の名前（name）を書いてください。`);
+    const old = cur.find((x) => x.name === name);
+    const type = c.type == null ? (old ? old.type : 'text1') : str(c.type);
+    if (!isInputType(type)) throw aiBad(`columns[${i}]: 列の種類「${type}」は使えません（入力欄の部品の種類だけ）。`);
+    const col = old && old.type === type ? clone(old) : { ...createColumnData(type, name), ...(old ? { id: old.id } : {}) };
+    if ('required' in c) col.required = !!c.required;
+    if ('memo' in c) col.memo = str(c.memo);
+    if (c.props != null) col.props = keepInitialInOptions(type, { ...col.props, ...aiProps(type, c.props, null) });
+    return normalizeColumn(col);
+  });
+}
+// 項目の設定（edit_items の props）を検め、項目に入れる形で返す
+function aiItemProps(d, item, props) {
+  if (props == null) return null;
+  if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
+  if (item.type === 'table') {
+    Object.keys(props).forEach((k) => { if (k !== 'columns') throw aiBad(`テーブルの項目の設定に「${k}」という欄はありません（使える欄: columns）。`); });
+    return { columns: aiTableColumns(item.props.columns || [], props.columns) };
+  }
+  if (item.type === 'status') {
+    Object.keys(props).forEach((k) => { if (k !== 'states') throw aiBad(`ステータスの項目の設定に「${k}」という欄はありません（使える欄: states）。`); });
+    const states = aiArr(props.states, 'states').map((s) => cleanName(aiStrVal(s, 'states の中身'))).filter(Boolean);
+    if (!states.length) throw aiBad('states にステータスを 1 つ以上書いてください。');
+    return { states };
+  }
+  return keepInitialInOptions(item.type, { ...item.props, ...aiProps(item.type, props, d) });
+}
+// レコード一覧・関連レコード一覧の部品の設定。列は項目名（関連レコード一覧は元のデータベースの項目名）で書く
+function aiTablePartProps(kind, cur, props, d) {
+  if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
+  const allowed = kind === 'related' ? ['columns', 'sort', 'limit', 'db', 'cond'] : ['columns', 'sort', 'perPage'];
+  Object.keys(props).forEach((k) => { if (!allowed.includes(k)) throw aiBad(`${TABLE_KINDS[kind]}の設定に「${k}」という欄はありません（使える欄: ${allowed.join('・')}）。`); });
+  const S = store.state;
+  const next = normalizeTablePartProps(clone(cur || {}));
+  ['sort', 'perPage', 'limit'].forEach((k) => { if (k in props) next[k] = aiStrVal(props[k], k); });
+  if ('db' in props) {
+    const src = aiFindOrNull(() => aiResolveDesign(S, props.db));
+    next.db = src ? { designId: src.id, name: src.name, free: false } : { designId: null, name: cleanName(aiStrVal(props.db, 'db')), free: true };
+  }
+  const src = kind === 'related' ? (next.db.designId ? findDesign(S, next.db.designId) : null) : d;
+  const ref = (design, v, what) => {
+    const name = cleanName(aiStrVal(v, what));
+    const it = design ? aiFindOrNull(() => aiResolveItem(design, name)) : null;
+    if (design === d && !it) throw new AiRefusal('not_found', `${what}の「${name}」という項目は、「${d.name}」にありません。`);
+    return it ? { itemId: it.id, name: it.name } : { itemId: null, name };
+  };
+  if ('cond' in props) {
+    if (!isObj(props.cond)) throw aiBad('cond は { from: 元の項目名, to: この画面設計の項目名 } の形で書いてください。');
+    next.cond = { from: ref(src, props.cond.from, 'cond.from'), to: ref(d, props.cond.to, 'cond.to') };
+  }
+  if ('columns' in props) next.columns = aiArr(props.columns, 'columns').map((n) => ({ id: newId('c'), ref: ref(src, n, 'columns') }));
+  return next;
+}
+// 第 7 段階では、ボタンの移る先（to）はまだ持てない（第 8 段階）。「押したとき」が空なら、そこに書く
+function aiButtonTo(tx, to, props) {
+  if (to == null) return props;
+  const name = isObj(to) ? str(to.screen) : str(to);
+  if (!name) throw aiBad('to は { screen: 画面の名前 } の形で書いてください。');
+  const out = { ...(props || {}) };
+  if (!out.action) out.action = `「${name}」の画面へ移る`;
+  if (!tx.warnings.some((w) => w.startsWith('ボタンの移る先'))) tx.warnings.push('ボタンの移る先（to）は第 8 段階で作るので、今は「押したとき」の文に書きました。');
+  return out;
+}
+
+// ── 書く道具: 画面設計 ──
+async function aiCreateDesign(args, ctx) {
+  const name = cleanName(args.name);
+  if (!name) throw aiBad('画面設計の名前（name）を書いてください。');
+  return aiWrite(ctx, {}, (tx) => {
+    const same = visibleDesigns(store.state).filter((x) => x.name === name);
+    if (same.length) tx.warnings.push(`同じ名前の画面設計がもうあります（${same.map((x) => x.id).join('・')}）。`);
+    const id = actions.createDesign(name, resolveTargetName(str(args.target)));
+    if (args.description != null) actions.updateDesignInfo(id, { description: aiStrVal(args.description, 'description') });
+    tx.createdDesign = id;
+    const d = findDesign(store.state, id);
+    return { id, name: d.name, target: targetLabel(d.target), firstScreen: { id: d.screens[0].id, name: d.screens[0].name }, updatedAt: d.updatedAt };
+  });
+}
+async function aiUpdateDesign(args, ctx) {
+  return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
+    const patch = {};
+    if (args.name !== undefined) {
+      patch.name = cleanName(args.name);
+      if (!patch.name) throw aiBad('画面設計の名前を空にはできません。');
+    }
+    if (args.target !== undefined) patch.target = resolveTargetName(str(args.target));
+    if (args.description !== undefined) patch.description = aiStrVal(args.description == null ? '' : args.description, 'description');
+    if (!Object.keys(patch).length) throw aiBad('直す欄（name・target・description）を 1 つ以上書いてください。');
+    actions.updateDesignInfo(tx.design.id, patch);
+    return { id: tx.design.id };
+  });
+}
+
+// ── 書く道具: データベースの項目 ──
+const AI_ITEM_OPS = ['add', 'update', 'delete', 'move', 'lookup', 'import', 'unlink', 'restore'];
+const aiItemTypes = () => [...Object.keys(PART_TYPES).filter(isInputType), 'table', 'status'];
+async function aiEditItems(args, ctx) {
+  return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => ({ items: aiRunOps(args.ops, (op) => aiItemOp(tx, op)) }));
+}
+function aiItemOp(tx, op) {
+  const id = tx.design.id;
+  const d = () => findDesign(store.state, id);
+  const notLinked = (item) => {
+    if (item.link) throw new AiRefusal('linked', `「${item.name}」は「${item.link.designName}」から取り込んだ項目なので、ここでは直せません。元の画面設計で直すか、unlink でつながりを切ってください。`);
+    return item;
+  };
+  switch (op.op) {
+    case 'add': {
+      const item = aiNewItem(d(), op);
+      mutateDesign(id, (dd) => { dd.items.push(item); });
+      return { op: 'add', id: item.id, name: item.name };
+    }
+    case 'update': {
+      const item = notLinked(aiResolveItem(d(), op.item));
+      const type = op.type == null ? item.type : str(op.type);
+      if (type !== item.type && !(isInputType(type) && isInputType(item.type))) throw aiBad(`項目の種類は、入力欄の部品の種類のあいだだけで変えられます（「${itemTypeName(item.type)}」から「${type}」へは変えられません）。`);
+      const name = op.name === undefined ? null : cleanName(op.name);
+      if (name === '') throw aiBad('項目名を空にはできません。');
+      if (name && name !== item.name && !op.allowSameName && d().items.some((x) => x.name === name)) throw new AiRefusal('same_name', `「${name}」という項目がもうあります。同じ名前にするときは allowSameName: true を付けてください。`);
+      mutateDesign(id, (dd) => {
+        const it = findItem(dd, item.id);
+        if (type !== it.type) changeItemType(dd, it, type);
+        if (name) it.name = name;
+        if ('required' in op) it.required = !!op.required;
+        if ('memo' in op) it.memo = str(op.memo);
+        if (op.props != null) it.props = aiItemProps(dd, it, op.props);
+      });
+      return { op: 'update', id: item.id, name: findItem(d(), item.id).name };
+    }
+    case 'delete': {
+      const item = aiResolveItem(d(), op.item);
+      actions.deleteItem(id, item.id);
+      return { op: 'delete', id: item.id, name: item.name };
+    }
+    case 'move': {
+      const item = aiResolveItem(d(), op.item);
+      actions.moveItem(id, item.id, aiMoveIndex(d().items, item.id, op, (ref) => aiResolveItem(d(), ref)));
+      return { op: 'move', id: item.id, name: item.name, index: d().items.findIndex((x) => x.id === item.id) };
+    }
+    case 'lookup': return aiLookupOp(tx, d, notLinked(aiResolveItem(d(), op.item)), op);
+    case 'import': return aiImportOp(tx, d, op);
+    case 'unlink': {
+      const item = aiResolveItem(d(), op.item);
+      if (!item.link) throw aiBad(`「${item.name}」は取り込んだ項目ではありません。`);
+      actions.unlinkItem(id, item.id);
+      return { op: 'unlink', id: item.id, name: item.name };
+    }
+    case 'restore': {
+      const key = aiKey(op.item);
+      if (findItem(d(), key)) throw aiBad(`項目「${findItem(d(), key).name}」は、もう一覧表にあります。`);
+      if (!actions.restoreItem(id, key)) throw new AiRefusal('not_found', `一覧表から消した項目「${key}」の部品が、どの画面にも残っていません（restore は、消した項目の id で指します）。`);
+      return { op: 'restore', id: key, name: (findItem(d(), key) || { name: '' }).name };
+    }
+    default: throw aiUnknownOp(op, AI_ITEM_OPS);
+  }
+}
+// 新しい項目のデータ（足す前に、種類・名前・設定を検める）
+function aiNewItem(d, op, { name: forced = null } = {}) {
+  const type = str(op.type);
+  if (!aiItemTypes().includes(type)) throw aiBad(`項目の種類「${type}」は使えません（使える種類: ${aiItemTypes().join('・')}）。`);
+  const name = forced != null ? forced : cleanName(op.name);
+  if (!name) throw aiBad('項目名（name）を書いてください。');
+  if (type === 'status' && d.items.some((it) => it.type === 'status')) throw aiBad('ステータスの項目は、画面設計に 1 つだけです（今の項目を update で直してください）。');
+  if (!op.allowSameName && d.items.some((it) => it.name === name)) throw new AiRefusal('same_name', `「${name}」という項目がもうあります。同じ名前でも足すときは allowSameName: true を付けてください。`);
+  const item = createItemData(type, name);
+  item.required = !!op.required;
+  item.memo = str(op.memo);
+  if (op.props != null) item.props = aiItemProps(d, item, op.props);
+  return item;
+}
+// ルックアップ（設計書 5 章。kintone のルックアップと同じ並び）。lookup: { design, key, copies: [{ from, to, create }] } か null（外す）
+function aiLookupOp(tx, d, item, op) {
+  if (!LOOKUP_TYPES.includes(item.type)) throw aiBad(`ルックアップを付けられるのは、テキスト（1行）と数値の項目だけです（「${item.name}」は${itemTypeName(item.type)}）。`);
+  const id = tx.design.id;
+  if (op.lookup === null) {
+    mutateDesign(id, (dd) => { findItem(dd, item.id).lookup = null; });
+    return { op: 'lookup', id: item.id, name: item.name, lookup: null };
+  }
+  const lk = op.lookup;
+  if (!isObj(lk) || lk.design == null || lk.key == null) throw aiBad('lookup は { design: 元のデータベース, key: 探すときに使う元の項目, copies: [{ from, to }] } の形で書いてください（外すときは null）。');
+  const S = store.state;
+  const src = aiFindOrNull(() => aiResolveDesign(S, lk.design));
+  if (src && src.id === id) throw aiBad('ルックアップ元に、同じ画面設計は選べません。');
+  const srcRef = (v, what) => {
+    const n = cleanName(aiStrVal(v, what));
+    const it = src ? aiFindOrNull(() => aiResolveItem(src, n)) : null;
+    if (src && !it) throw new AiRefusal('not_found', `${what}の「${n}」という項目は、「${src.name}」にありません。`);
+    return it ? { itemId: it.id, name: it.name } : { itemId: null, name: n };
+  };
+  const created = [];
+  const copies = (lk.copies == null ? [] : aiArr(lk.copies, 'copies')).map((c, i) => {
+    if (!isObj(c)) throw aiBad(`copies[${i}] は { from, to } の形で書いてください。`);
+    const from = srcRef(c.from, `copies[${i}].from`);
+    const toName = cleanName(aiStrVal(c.to, `copies[${i}].to`));
+    let to = aiFindOrNull(() => aiResolveItem(d(), toName)) || created.find((x) => x.name === toName);
+    if (!to) {
+      if (!c.create) throw new AiRefusal('not_found', `copies[${i}].to の「${toName}」という項目はありません（新しく作るときは create: true を付けてください）。`);
+      const srcItem = src && from.itemId ? findItem(src, from.itemId) : null;
+      to = createItemData(srcItem && isInputType(srcItem.type) ? srcItem.type : 'text1', toName);
+      created.push(to);
+    }
+    return { from, to: { itemId: to.id, name: to.name } };
+  });
+  const lookup = normalizeLookup({ db: src ? { designId: src.id, name: src.name, free: false } : { designId: null, name: cleanName(aiStrVal(lk.design, 'design')), free: true }, key: srcRef(lk.key, 'key'), copies });
+  mutateDesign(id, (dd) => {
+    dd.items.push(...created);
+    findItem(dd, item.id).lookup = lookup;
+  });
+  return { op: 'lookup', id: item.id, name: item.name, createdItems: created.map((x) => ({ id: x.id, name: x.name })) };
+}
+// ほかの画面設計から項目を取り込む（元とつなげたまま。設計書 5 章）
+function aiImportOp(tx, d, op) {
+  const S = store.state;
+  const src = aiResolveDesign(S, op.from);
+  if (src.trashedAt) throw new AiRefusal('trashed', `「${src.name}」はごみ箱にあるため、取り込めません。`);
+  if (src.id === tx.design.id) throw aiBad('同じ画面設計からは取り込めません。');
+  const why = { own: 'この画面設計から取り込まれた項目です', done: 'もう取り込んであります', status: 'ステータスの項目はもうあります' };
+  const ids = aiArr(op.items, 'items').map((ref) => {
+    const it = aiResolveItem(src, ref);
+    const st = importState(d(), src, it);
+    if (why[st]) throw aiBad(`「${it.name}」は取り込めません（${why[st]}）。`);
+    if (st === 'same' && !op.allowSameName) throw new AiRefusal('same_name', `「${it.name}」という項目がもうあります。同じ名前でも取り込むときは allowSameName: true を付けてください。`);
+    return it.id;
+  });
+  const n0 = d().items.length;
+  actions.importItems(tx.design.id, src.id, ids);
+  return { op: 'import', from: src.name, items: d().items.slice(n0).map((x) => ({ id: x.id, name: x.name })) };
+}
+
+// ── 書く道具: 画面 ──
+const AI_SCREEN_OPS = ['update', 'move', 'delete'];
+function aiDevice(v) {
+  const device = v == null ? 'pc' : str(v);
+  if (!own(DEVICES, device)) throw aiBad(`機器（device）は ${Object.keys(DEVICES).map((k) => `"${k}"（${DEVICES[k].label}）`).join('・')} から選んでください。`);
+  return device;
+}
+function aiScreenName(tx, d, v, selfId = null) {
+  const name = cleanName(aiStrVal(v, 'name'));
+  if (!name) throw aiBad('画面の名前を空にはできません。');
+  if (d.screens.some((s) => s.id !== selfId && s.name === name)) tx.warnings.push(`「${d.name}」に「${name}」という画面がもうあります（名前で指すと 2 つに当たります）。`);
+  return name;
+}
+async function aiAddScreen(args, ctx) {
+  return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
+    const id = tx.design.id;
+    const d = () => findDesign(store.state, id);
+    const device = aiDevice(args.device);
+    const after = args.after != null ? aiResolveScreen(d(), args.after).id : d().screens[d().screens.length - 1].id;
+    let sid;
+    if (args.copyOf != null) {
+      sid = actions.duplicateScreen(id, aiResolveScreen(d(), args.copyOf).id);
+      actions.moveScreen(id, sid, d().screens.findIndex((s) => s.id === after) + 1);
+    } else {
+      const tpl = args.template == null ? 'blank' : str(args.template);
+      if (!SCREEN_TEMPLATES.some((t) => t.id === tpl)) throw aiBad(`ひな形（template）は ${SCREEN_TEMPLATES.map((t) => `"${t.id}"（${t.name}）`).join('・')} から選んでください。`);
+      if (device !== 'pc' && tpl !== 'blank') throw aiBad('ひな形の画面はパソコン用です。パソコン以外の機器の画面は、template を "blank" にして、layout で部品を並べてください。');
+      sid = actions.addScreen(id, tpl, after);
+    }
+    const patch = {};
+    if (args.name != null) patch.name = aiScreenName(tx, d(), args.name, sid);
+    if (device !== findScreen(id, sid).device) patch.device = device;
+    if (Object.keys(patch).length) actions.updateScreen(id, sid, patch);
+    const placed = args.layout != null ? aiLayout(tx, id, sid, args.layout, 'append') : { parts: [], createdItems: [] };
+    const sc = findScreen(id, sid);
+    return { screen: { id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height }, ...placed };
+  });
+}
+async function aiEditScreen(args, ctx) {
+  return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => ({ screens: aiRunOps(args.ops, (op) => aiScreenOp(tx, op)) }));
+}
+function aiScreenOp(tx, op) {
+  const id = tx.design.id;
+  const d = () => findDesign(store.state, id);
+  const sc = aiResolveScreen(d(), op.screen);
+  switch (op.op) {
+    case 'update': {
+      const patch = {};
+      if (op.name !== undefined) patch.name = aiScreenName(tx, d(), op.name, sc.id);
+      if (op.device !== undefined) patch.device = aiDevice(op.device);
+      if (op.height !== undefined) patch.height = aiNum(op.height, 'height');
+      if (op.showHeader !== undefined) {
+        if (typeof op.showHeader !== 'boolean') throw aiBad('showHeader は true か false で書いてください。');
+        patch.showHeader = op.showHeader;
+      }
+      if (op.tablePos !== undefined) {
+        if (!['right', 'bottom'].includes(op.tablePos)) throw aiBad('tablePos は "right"（画面の右）か "bottom"（画面の下）です。');
+        patch.tablePos = op.tablePos;
+      }
+      if (!Object.keys(patch).length) throw aiBad('直す欄（name・device・height・showHeader・tablePos）を 1 つ以上書いてください。');
+      actions.updateScreen(id, sc.id, patch);
+      const s = findScreen(id, sc.id);
+      return { op: 'update', id: s.id, name: s.name, device: s.device, width: s.width, height: s.height };
+    }
+    case 'move':
+      actions.moveScreen(id, sc.id, aiMoveIndex(d().screens, sc.id, op, (ref) => aiResolveScreen(d(), ref)));
+      return { op: 'move', id: sc.id, name: sc.name, index: d().screens.findIndex((s) => s.id === sc.id) };
+    case 'delete':
+      if (d().screens.length < 2) throw new AiRefusal('last_screen', '最後の 1 つの画面は消せません。');
+      actions.deleteScreen(id, sc.id);
+      return { op: 'delete', id: sc.id, name: sc.name };
+    default: throw aiUnknownOp(op, AI_SCREEN_OPS);
+  }
+}
+
+// ── 書く道具: 並べ方（設計書の 9-3）──
+// layout（{ columns, rows }）の部品を、並べ方の決まり（layoutPlacements）で置く。mode は append（今の部品の下に足す）か replace（置き直す）。
+// 項目がなく type を書いた部品は、項目を新しく作って置く（部品の箱から入力欄の部品を置いたときと同じ）。戻り値 { parts, createdItems }
+function aiLayout(tx, designId, screenId, layout, mode) {
+  if (!isObj(layout) || !Array.isArray(layout.rows) || !layout.rows.length) throw aiBad('layout は { columns, rows } の形で書き、rows に 1 行以上書いてください。');
+  const columns = layout.columns == null ? 1 : layout.columns;
+  if (columns !== 1 && columns !== 2) throw aiBad('layout.columns は 1 か 2 です。');
+  if (!['append', 'replace'].includes(mode)) throw aiBad('mode は "append"（今の部品の下に足す）か "replace"（部品と吹き出しを全部消して置き直す）です。');
+  if (mode === 'replace') {
+    const s0 = findScreen(designId, screenId);
+    const sel = [...s0.parts.map((p) => ({ k: 'p', id: p.id })), ...s0.callouts.map((c) => ({ k: 'c', id: c.id }))];
+    if (sel.length) actions.deleteMany(designId, screenId, sel);
+  }
+  const d = findDesign(store.state, designId);
+  const sc = findScreen(designId, screenId);
+  const used = new Set(sc.parts.filter((p) => p.itemId && isItemPart(p) && oncePerScreen(partItemType(p))).map((p) => p.itemId));
+  const plan = { created: [], itemPatches: [] };
+  const entry = (e, where) => {
+    try {
+      if (!isObj(e)) throw aiBad('部品は { item・type・label … } の形で書いてください。');
+      return aiLayoutSpec(tx, d, e, used, plan);
+    } catch (err) {
+      if (err instanceof AiRefusal) err.message = `${where}: ${err.message}`;
+      throw err;
+    }
+  };
+  const rows = layout.rows.map((row, ri) => {
+    if (isAlignRow(row)) {
+      const align = row.align == null ? 'left' : row.align;
+      if (!['left', 'center', 'right'].includes(align)) throw aiBad(`rows[${ri}].align は "left"・"center"・"right" です。`);
+      return { align, parts: row.parts.map((e, pi) => entry(e, `rows[${ri}].parts[${pi}]`)) };
+    }
+    if (!Array.isArray(row)) throw aiBad(`rows[${ri}] は部品の並び（配列）か { align, parts } の形で書いてください。`);
+    return row.map((e, pi) => entry(e, `rows[${ri}][${pi}]`));
+  });
+  const firstY = sc.showHeader ? AI_FIRST_ROW_Y : AI_FIRST_ROW_Y_NOHEADER;
+  const startY = sc.parts.length ? Math.ceil((Math.max(...sc.parts.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : firstY;
+  const { placed } = layoutPlacements({ rows, columns }, { width: sc.width, startY, sizeOf: (s) => ({ type: s.type, w: s.w0, h: s.h0 }) });
+  const ids = [];
+  mutateDesign(designId, (dd) => {
+    dd.items.push(...plan.created);
+    plan.itemPatches.forEach(({ itemId, props }) => { findItem(dd, itemId).props = props; });
+    const s = dd.screens.find((x) => x.id === screenId);
+    placed.forEach((pl) => {
+      const e = pl.entry;
+      const p = placePartIn(s, dd, { type: pl.type, x: pl.x, y: pl.y, w: pl.w, h: pl.h, itemId: e.itemId || null, tableKind: e.tableKind, label: e.label, props: e.props, view: e.view });
+      Object.assign(p, e.fields);
+      if (e.unnumbered) p.no = null;
+      ids.push(p.id);
+    });
+  });
+  const dd = findDesign(store.state, designId);
+  const s = findScreen(designId, screenId);
+  const parts = ids.map((pid) => {
+    const p = findPart(s, pid);
+    const r = resolvePart(dd, p);
+    return { id: p.id, no: p.no, type: p.type, label: partTitle(r), item: p.itemId && isItemPart(p) ? r.label : null, x: p.x, y: p.y, w: p.w, h: p.h };
+  });
+  return { parts, createdItems: plan.created.map((it) => ({ id: it.id, name: it.name, type: it.type })) };
+}
+// 並べ方の部品 1 つを、置く形（spec）に直す。spec は { type, w0, h0, span, itemId, tableKind, label, props, view, fields, unnumbered }
+function aiLayoutSpec(tx, d, e, used, plan) {
+  let type = e.type == null ? '' : str(e.type);
+  if (type && !partType(type)) throw aiBad(`部品の種類「${type}」はありません（get_catalog の parts を見てください）。`);
+  const findIt = (ref) => aiFindOrNull(() => aiResolveItem(d, ref)) || plan.created.find((x) => x.id === aiKey(ref) || x.name === cleanName(aiKey(ref))) || null;
+  let item = e.item != null ? findIt(e.item) : null;
+  if (e.item != null && !item) {
+    if (!type) throw new AiRefusal('not_found', `「${aiKey(e.item)}」という項目はありません。新しく作って置くときは type も書いてください。`);
+    item = aiLayoutNewItem(d, type, cleanName(aiKey(e.item)), e, plan);
+  } else if (!item && (isInputType(type) || (type === 'table' && e.tableKind === 'subtable'))) {
+    item = aiLayoutNewItem(d, type, cleanName(str(e.label)) || (type === 'table' ? '明細' : partType(type).label), e, plan);
+  } else if (!item && (type === 'status' || type === 'steps')) {
+    item = d.items.find((it) => it.type === 'status') || plan.created.find((it) => it.type === 'status') || aiLayoutNewItem(d, 'status', 'ステータス', {}, plan);
+  }
+  const spec = { span: e.span === 2 ? 2 : undefined, fields: {}, unnumbered: e.no === null };
+  if (item) {
+    if (item.type === 'status') type = type === 'steps' ? 'steps' : 'status';
+    else if (item.type === 'table') type = 'table';
+    else if (type && type !== item.type) throw aiBad(`項目「${item.name}」の種類は「${itemTypeName(item.type)}」です（type を外すか、合わせてください）。`);
+    else type = item.type;
+    if (oncePerScreen(item.type) && used.has(item.id)) throw new AiRefusal('duplicate_item', `項目「${item.name}」は、この画面にもう置いてあります（1 つの画面に同じ項目は 1 回だけ）。`);
+    used.add(item.id);
+    spec.itemId = item.id;
+    if (e.props != null && !plan.created.includes(item)) {
+      if (item.link) throw new AiRefusal('linked', `「${item.name}」は「${item.link.designName}」から取り込んだ項目なので、設定はここでは直せません。`);
+      plan.itemPatches.push({ itemId: item.id, props: aiItemProps(d, item, e.props) });
+    }
+    if (item.type === 'status') spec.view = { current: aiStatusCurrent(item, e.current) };
+  } else {
+    if (!type) throw aiBad('item（項目名）か type（部品の種類）を書いてください。');
+    if (e.label != null) spec.label = aiStrVal(e.label, 'label');
+    if (type === 'table') {
+      spec.tableKind = e.tableKind == null ? 'records' : str(e.tableKind);
+      if (!['records', 'related'].includes(spec.tableKind)) throw aiBad('表の中身（tableKind）は "subtable"（テーブル）・"records"（レコード一覧）・"related"（関連レコード一覧）です。');
+      if (e.props != null) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), e.props, d);
+    } else spec.props = aiProps(type, e.props, d) || undefined;
+    if (type === 'button') spec.props = aiButtonProps(tx, e, spec.props);
+  }
+  if (e.labelPos != null) {
+    if (!['top', 'left'].includes(e.labelPos)) throw aiBad('labelPos は "top"（入力欄の上）か "left"（入力欄の左）です。');
+    spec.fields.labelPos = e.labelPos;
+  }
+  ['sample', 'placeholder'].forEach((k) => { if (e[k] != null) spec.fields[k] = aiStrVal(e[k], k); });
+  const size = defaultPartSize(type);
+  if (e.rows != null) {
+    if (type !== 'table') throw aiBad('rows（見本の行の数）を書けるのは表だけです。');
+    const n = Math.round(aiNum(e.rows, 'rows'));
+    if (n < 1 || n > 20) throw aiBad('rows は 1〜20 です。');
+    spec.view = { rows: n };
+    size.h = tableHeight(n);
+  }
+  return { ...spec, type, w0: size.w, h0: size.h };
+}
+function aiLayoutNewItem(d, type, name, e, plan) {
+  const itemType = type === 'steps' ? 'status' : type;
+  if (!isItemType(itemType)) throw aiBad(`「${partType(type).name}」はデータベースの項目になりません。item を外してください。`);
+  const item = aiNewItem({ items: [...d.items, ...plan.created] }, { type: itemType, name, required: e.required, memo: e.memo, props: e.props, allowSameName: e.allowSameName });
+  plan.created.push(item);
+  return item;
+}
+// ステータスの印・進み具合の矢印で見本に出すステータス（書かなければ 2 つ目）
+function aiStatusCurrent(item, v) {
+  const states = (item && item.props.states) || [];
+  if (v == null) return states[1] || states[0] || '';
+  const s = cleanName(aiStrVal(v, 'current'));
+  if (!states.includes(s)) throw aiBad(`current に書けるのは、ステータスの並び（${states.join('・')}）のどれかです。`);
+  return s;
+}
+// ボタンの設定。style は見た目の短い書き方、to は移る先（第 7 段階では「押したとき」の文に書く）
+function aiButtonProps(tx, e, props) {
+  let out = props ? { ...props } : undefined;
+  if (e.style != null) {
+    if (!['primary', 'normal'].includes(e.style)) throw aiBad('style は "primary"（目立つ・青）か "normal"（ふつう・白）です。');
+    out = { ...(out || {}), style: e.style };
+  }
+  return e.to != null ? aiButtonTo(tx, e.to, out) : out;
+}
+async function aiLayoutScreen(args, ctx) {
+  return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
+    const sid = aiResolveScreen(tx.design, args.screen).id;
+    const r = aiLayout(tx, tx.design.id, sid, args.layout, args.mode == null ? 'append' : str(args.mode));
+    const sc = findScreen(tx.design.id, sid);
+    return { screen: { id: sc.id, name: sc.name, height: sc.height }, ...r };
+  });
+}
+
+// ── 書く道具: 部品 ──
+const AI_PART_OPS = ['update', 'move', 'move_by', 'delete', 'renumber', 'align', 'table_kind', 'number'];
+const AI_ALIGN = ['left', 'hcenter', 'right', 'top', 'vcenter', 'bottom', 'hdist', 'vdist', 'width', 'height'];
+async function aiEditParts(args, ctx) {
+  return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
+    const sid = aiResolveScreen(tx.design, args.screen).id;
+    return { screen: sid, parts: aiRunOps(args.ops, (op) => aiPartOp(tx, sid, op)) };
+  });
+}
+function aiPartOp(tx, sid, op) {
+  const id = tx.design.id;
+  const d = () => findDesign(store.state, id);
+  const sc = () => findScreen(id, sid);
+  const part = (ref) => aiResolvePart(sc(), ref);
+  const sel = (refs) => aiArr(refs, 'parts').map((r) => ({ k: 'p', id: part(r).id }));
+  const brief = (pid) => {
+    const p = findPart(sc(), pid);
+    return p ? { id: p.id, no: p.no, type: p.type, label: partTitle(resolvePart(d(), p)), x: p.x, y: p.y, w: p.w, h: p.h } : { id: pid };
+  };
+  switch (op.op) {
+    case 'update': {
+      const p = part(op.part);
+      actions.updatePart(id, sid, p.id, aiPartPatch(tx, d(), p, op));
+      return { op: 'update', ...brief(p.id) };
+    }
+    case 'move': {
+      const p = part(op.part);
+      const r = { x: p.x, y: p.y, w: p.w, h: p.h };
+      ['x', 'y', 'w', 'h'].forEach((k) => { if (op[k] !== undefined) r[k] = aiNum(op[k], k); });
+      if (r.y + r.h > sc().height) actions.updateScreen(id, sid, { height: heightToFit(r.y + r.h, sc().device) }); // 下へはみ出すときは画面を伸ばす
+      actions.movePart(id, sid, p.id, r);
+      return { op: 'move', ...brief(p.id) };
+    }
+    case 'move_by': {
+      const s = sel(op.parts);
+      actions.moveMany(id, sid, s, op.dx == null ? 0 : aiNum(op.dx, 'dx'), op.dy == null ? 0 : aiNum(op.dy, 'dy'));
+      return { op: 'move_by', parts: s.map((x) => brief(x.id)) };
+    }
+    case 'delete': {
+      const p = part(op.part);
+      const b = brief(p.id);
+      actions.deletePart(id, sid, p.id);
+      return { op: 'delete', ...b };
+    }
+    case 'renumber':
+      actions.renumberParts(id, sid);
+      return { op: 'renumber', parts: sc().parts.filter((p) => p.no != null).map((p) => ({ id: p.id, no: p.no })) };
+    case 'align': {
+      if (!AI_ALIGN.includes(op.how)) throw aiBad(`how は ${AI_ALIGN.map((x) => `"${x}"`).join('・')} です。`);
+      const s = sel(op.parts);
+      if (s.length < 2) throw aiBad('揃えるときは、部品を 2 つ以上書いてください（最初に書いた部品に合わせます）。');
+      actions.alignMany(id, sid, s, op.how);
+      return { op: 'align', parts: s.map((x) => brief(x.id)) };
+    }
+    case 'table_kind': {
+      const p = part(op.part);
+      if (p.type !== 'table') throw aiBad('表の中身を変えられるのは、表の部品だけです。');
+      if (!own(TABLE_KINDS, op.kind)) throw aiBad('kind は "subtable"（テーブル）・"records"（レコード一覧）・"related"（関連レコード一覧）です。');
+      actions.setTableKind(id, sid, p.id, op.kind);
+      return { op: 'table_kind', ...brief(p.id), tableKind: op.kind };
+    }
+    case 'number': {
+      if (typeof op.on !== 'boolean') throw aiBad('on は true（番号を付ける）か false（外す）です。');
+      const s = sel(op.parts);
+      actions.numberMany(id, sid, s, op.on);
+      return { op: 'number', parts: s.map((x) => brief(x.id)) };
+    }
+    default: throw aiUnknownOp(op, AI_PART_OPS);
+  }
+}
+// 部品を直す欄を、actions.updatePart の patch に直す（項目を指す部品の項目名・必須・メモ・設定は項目に書かれる）
+function aiPartPatch(tx, d, p, op) {
+  const item = p.itemId && isItemPart(p) ? findItem(d, p.itemId) : null;
+  const orphan = !!p.itemId && isItemPart(p) && !item;
+  const itemFields = ['label', 'required', 'memo', 'props'].filter((k) => op[k] !== undefined);
+  if (itemFields.length && item && item.link) throw new AiRefusal('linked', `この部品の項目「${item.name}」は「${item.link.designName}」から取り込んだ項目なので、${itemFields.join('・')} はここでは直せません。`);
+  if (itemFields.length && orphan) throw aiBad(`この部品の項目は一覧表から消してあるので、${itemFields.join('・')} は直せません（edit_items の restore で、項目を一覧表に戻せます）。`);
+  const patch = {};
+  if (op.label !== undefined) {
+    const v = aiStrVal(op.label, 'label');
+    if (item && !cleanName(v)) throw aiBad('項目名を空にはできません。');
+    patch.label = item ? cleanName(v) : v;
+  }
+  if (op.required !== undefined) patch.required = !!op.required;
+  if (op.memo !== undefined) patch.memo = aiStrVal(op.memo, 'memo');
+  if (op.props !== undefined) {
+    if (item) patch.props = aiItemProps(d, item, op.props);
+    else if (p.type === 'table') patch.props = aiTablePartProps(p.tableKind, p.props, op.props, d);
+    else patch.props = aiProps(p.type, op.props, d);
+  }
+  if ((op.style !== undefined || op.to !== undefined) && p.type !== 'button') throw aiBad('style・to を書けるのはボタンだけです。');
+  if (p.type === 'button' && (op.style !== undefined || op.to !== undefined)) {
+    const base = { ...(p.props || {}), ...(patch.props || {}) };
+    patch.props = { ...(patch.props || {}), ...aiButtonProps(tx, op, base) };
+  }
+  if (op.labelPos !== undefined) {
+    if (!['top', 'left'].includes(op.labelPos)) throw aiBad('labelPos は "top"（入力欄の上）か "left"（入力欄の左）です。');
+    patch.labelPos = op.labelPos;
+  }
+  ['sample', 'placeholder'].forEach((k) => { if (op[k] !== undefined) patch[k] = aiStrVal(op[k], k); });
+  if (op.numbered !== undefined) {
+    if (typeof op.numbered !== 'boolean') throw aiBad('numbered は true か false です。');
+    patch.numbered = op.numbered;
+  }
+  if (op.no === null) patch.numbered = false;
+  if (op.rows !== undefined) {
+    if (p.type !== 'table') throw aiBad('rows（見本の行の数）を書けるのは表だけです。');
+    const n = Math.round(aiNum(op.rows, 'rows'));
+    if (n < 1 || n > 20) throw aiBad('rows は 1〜20 です。');
+    patch.view = { rows: n };
+  }
+  if (op.current !== undefined) {
+    if (!['status', 'steps'].includes(p.type) || !item) throw aiBad('current を書けるのは、ステータスの印と進み具合の矢印だけです。');
+    patch.view = { ...(patch.view || {}), current: aiStatusCurrent(item, op.current) };
+  }
+  if (!Object.keys(patch).length) throw aiBad('直す欄を 1 つ以上書いてください（label・required・memo・props・style・to・labelPos・sample・placeholder・numbered・rows・current）。');
+  return patch;
+}
+
+// ── 書く道具: 吹き出し ──
+const AI_CALLOUT_OPS = ['add', 'update', 'move', 'delete'];
+const AI_CALLOUT_OUTSIDE = 24; // 吹き出しを置く既定の位置: つなぐ部品の右の、画面の外 24 ドット（Claude が決めた）
+async function aiEditCallouts(args, ctx) {
+  return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
+    const sid = aiResolveScreen(tx.design, args.screen).id;
+    return { screen: sid, callouts: aiRunOps(args.ops, (op) => aiCalloutOp(tx, sid, op)) };
+  });
+}
+function aiCalloutOp(tx, sid, op) {
+  const id = tx.design.id;
+  const sc = () => findScreen(id, sid);
+  const colorOf = (v) => {
+    if (!own(CALLOUT_COLORS, v)) throw aiBad(`color は ${Object.keys(CALLOUT_COLORS).map((k) => `"${k}"（${CALLOUT_COLORS[k][0]}）`).join('・')} です。`);
+    return v;
+  };
+  const tipOf = (v) => {
+    if (!['dot', 'arrow', 'none'].includes(v)) throw aiBad('tip は "dot"（点）・"arrow"（矢印）・"none"（なし）です。');
+    return v;
+  };
+  const brief = (cid) => {
+    const c = findCallout(sc(), cid);
+    const t = c.target ? findPart(sc(), c.target) : null;
+    return { id: c.id, text: c.text, color: c.color, tip: c.tip, x: c.x, y: c.y, w: c.w, h: c.h, target: t ? { id: t.id, no: t.no } : null };
+  };
+  const rectOf = (c) => {
+    const r = { x: c.x, y: c.y, w: c.w, h: c.h };
+    ['x', 'y', 'w', 'h'].forEach((k) => { if (op[k] !== undefined) r[k] = aiNum(op[k], k); });
+    return r;
+  };
+  switch (op.op) {
+    case 'add': {
+      const text = op.text == null ? '' : aiStrVal(op.text, 'text');
+      if (!text.trim()) throw aiBad('吹き出しの文（text）を書いてください。');
+      const target = op.target == null ? null : aiResolvePart(sc(), op.target);
+      const at = { x: sc().width + AI_CALLOUT_OUTSIDE, y: target ? target.y : AI_FIRST_ROW_Y };
+      if (op.x === undefined && op.y === undefined) while (sc().callouts.some((c) => c.x === at.x && c.y === at.y)) at.y += PALETTE_EXTRA.callout.h + 16;
+      const cid = actions.addCallout(id, sid, rectOf(at), target ? target.id : null);
+      const patch = { text };
+      if (op.color !== undefined) patch.color = colorOf(op.color);
+      if (op.tip !== undefined) patch.tip = tipOf(op.tip);
+      actions.updateCallout(id, sid, cid, patch);
+      if (op.w !== undefined || op.h !== undefined) actions.moveCallout(id, sid, cid, rectOf(findCallout(sc(), cid)));
+      return { op: 'add', ...brief(cid) };
+    }
+    case 'update': {
+      const c = aiResolveCallout(sc(), op.callout);
+      const patch = {};
+      if (op.text !== undefined) patch.text = aiStrVal(op.text, 'text');
+      if (op.color !== undefined) patch.color = colorOf(op.color);
+      if (op.tip !== undefined) patch.tip = tipOf(op.tip);
+      if (op.target !== undefined) patch.target = op.target === null ? null : aiResolvePart(sc(), op.target).id;
+      if (!Object.keys(patch).length) throw aiBad('直す欄（text・color・tip・target）を 1 つ以上書いてください。');
+      actions.updateCallout(id, sid, c.id, patch);
+      return { op: 'update', ...brief(c.id) };
+    }
+    case 'move': {
+      const c = aiResolveCallout(sc(), op.callout);
+      actions.moveCallout(id, sid, c.id, rectOf(c));
+      return { op: 'move', ...brief(c.id) };
+    }
+    case 'delete': {
+      const c = aiResolveCallout(sc(), op.callout);
+      const b = brief(c.id);
+      actions.deleteCallout(id, sid, c.id);
+      return { op: 'delete', ...b };
+    }
+    default: throw aiUnknownOp(op, AI_CALLOUT_OPS);
+  }
+}
+
+// ── 書く道具: 改訂履歴（AI は行を消せない。設計書の 1-4）──
+async function aiAddRevision(args, ctx) {
+  return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
+    const rid = actions.addRevision(tx.design.id, { note: args.note == null ? '' : aiStrVal(args.note, 'note') });
+    const r = findRevision(findDesign(store.state, tx.design.id), rid);
+    return { revision: { id: r.id, no: r.no, title: revisionTitle(r), date: revisionDay(r), changes: Array.isArray(r.changes) ? r.changes.length : null } };
+  });
+}
+// 前の版に戻す。戻す前の中身は「戻す前の状態」の行に残るので、「AI が直す前の状態」の行は足さない
+async function aiRestoreRevision(args, ctx) {
+  return aiWrite(ctx, { design: args.design, expect: args.expect, noBeforeRow: true }, (tx) => {
+    const r = aiResolveRevision(tx.design, args.revision);
+    if (!hasSnapshot(r)) throw new AiRefusal('no_snapshot', `「${revisionTitle(r)}」の行には写しがないため、戻せません（HTML から足した画面設計の行など）。`);
+    actions.restoreRevision(tx.design.id, r.id);
+    const d = findDesign(store.state, tx.design.id);
+    const auto = d.revisions[d.revisions.length - 1];
+    return { restored: { id: r.id, title: revisionTitle(r), date: revisionDay(r) }, beforeRow: { id: auto.id, title: revisionTitle(auto), note: auto.note } };
+  });
+}
+
 // 道具の一覧（名前は入口 mcp-server.js の道具と同じ。read_guide は入口だけで返す）。write は書く道具
 const AI_TOOLS = {
   list_designs: { write: false, run: aiListDesigns },
   get_design: { write: false, run: aiGetDesign },
   get_screen: { write: false, run: aiGetScreen },
   get_catalog: { write: false, run: aiGetCatalog },
+  create_design: { write: true, run: aiCreateDesign },
+  update_design: { write: true, run: aiUpdateDesign },
+  edit_items: { write: true, run: aiEditItems },
+  add_screen: { write: true, run: aiAddScreen },
+  edit_screen: { write: true, run: aiEditScreen },
+  layout_screen: { write: true, run: aiLayoutScreen },
+  edit_parts: { write: true, run: aiEditParts },
+  edit_callouts: { write: true, run: aiEditCallouts },
+  add_revision: { write: true, run: aiAddRevision },
+  restore_revision: { write: true, run: aiRestoreRevision },
 };
 
 // 日本語の変換中と、窓が隠れたとき（AI がつながっている間の × は窓を隠すだけなので、打ちかけの文字をここで確定する）
@@ -8076,7 +8925,7 @@ function exposeForTest() {
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
-    aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing,
+    aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     ready: true,
   });
