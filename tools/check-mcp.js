@@ -3,6 +3,7 @@
 // アプリは窓を出さない（MIM_HEADLESS=1）。入口がアプリを起動するときの文は MIM_APP_CMD で差し替え、メインプロセスの inspector を開ける
 // （窓の × は、check-electron と同じく BrowserWindow.close() を inspector から呼んで再現する。ページの window.close() は close の知らせを通らないため）。
 //  A. 最初の頼みで、アプリを --background で起動する（かかった時間を出す）。画面設計を作って部品を並べると、designs.json に残る。
+//     画面の画像は長い辺が 1568 以下の PNG。書き出し（PDF・PNG・HTML）は MIM_AI_EXPORT_DIR に書き、同じ名前には番号を付ける。
 //     status で、窓が見えていない・裏の起動・ページの準備ができている。2 つ目の起動（--background）では窓を出す印が付かない。
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり、automation.json が消える
 //  B. 次の入口で、アプリをまた起動し、A で作った画面設計が一覧に出る。入口を強制終了しても、5 秒たってアプリが終わる
@@ -118,6 +119,22 @@ async function phaseA() {
   const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).designs.find((d) => d.id === made.id);
   check('A. 作った画面設計と並べた部品が designs.json に残る', !!saved && saved.screens[0].parts.length === 4 && saved.items.length === 3,
     saved ? `部品 ${saved.screens[0].parts.length} つ・項目 ${saved.items.map((i) => i.name).join('・')}` : 'ない');
+  // 画面の画像（PNG。長い辺を 1568 までに縮める）と書き出し（決めたフォルダへ。同じ名前には番号を付ける）
+  const img = await client.callTool({ name: 'get_screen_image', arguments: { design: made.id, screen: made.firstScreen.id } });
+  const im = img.content.find((c) => c.type === 'image');
+  const buf = im ? Buffer.from(im.data, 'base64') : Buffer.alloc(0);
+  const [iw, ih] = buf.length > 24 ? [buf.readUInt32BE(16), buf.readUInt32BE(20)] : [0, 0];
+  check('A. 画面の画像は PNG で、長い辺が 1568 以下', !img.isError && buf.subarray(1, 4).toString() === 'PNG' && Math.max(iw, ih) <= 1568 && Math.max(iw, ih) >= 1500, `${iw} × ${ih}`);
+  const pdf1 = await tool(client, 'export_design', { design: made.id, format: 'pdf' });
+  const pdf2 = await tool(client, 'export_design', { design: made.id, format: 'pdf' });
+  const png = await tool(client, 'export_design', { design: made.id, format: 'png' });
+  const html = await tool(client, 'export_design', { design: made.id, format: 'html' });
+  const names = [pdf1, pdf2, png, html].map((r) => r.files.map((f) => path.basename(f)).join('・'));
+  const head = (f, n) => fs.readFileSync(f).subarray(0, n).toString();
+  check('A. 書き出しは決めたフォルダに書き、同じ名前のファイルには番号を付ける',
+    pdf1.folder === EXPORT_DIR && names[0] === '出張申請（確かめ）.pdf' && names[1] === '出張申請（確かめ） (2).pdf' && head(pdf1.files[0], 4) === '%PDF'
+      && png.files.length === 1 && head(png.files[0], 4).slice(1) === 'PNG' && /mim-embedded/.test(fs.readFileSync(html.files[0], 'utf8')),
+    names.join('、'));
   const st = await status();
   check('A. 窓は見えていない・裏の起動・ページの準備ができている', st.visible === false && st.background === true && st.pageReady === true && st.clients >= 1, JSON.stringify(st));
   const code = await secondLaunch(true);

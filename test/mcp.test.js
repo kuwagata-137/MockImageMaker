@@ -68,7 +68,7 @@ async function startApp(t, dir, onRequest, opts = {}) {
   return { srv, calls };
 }
 
-test('道具は 17 個で、説明は日本語。ページの AI_TOOLS の道具は、どれも入口にある', () => {
+test('道具は 17 個で、説明は日本語。入口の道具は、read_guide のほかはページの AI_TOOLS とぴったり同じ', () => {
   assert.equal(TOOLS.length, 17);
   for (const t of TOOLS) {
     assert.match(t.name, /^[a-z_]+$/, t.name);
@@ -77,12 +77,14 @@ test('道具は 17 個で、説明は日本語。ページの AI_TOOLS の道具
   const html = fs.readFileSync(path.join(REPO, 'mock_v1.00.html'), 'utf8');
   const block = html.match(/const AI_TOOLS = \{([\s\S]*?)\n\};/)[1];
   const page = [...block.matchAll(/^\s+([a-z_]+): \{ write/mg)].map((m) => m[1]);
-  assert.ok(page.length >= 14);
-  const entry = new Set(TOOLS.map((t) => t.name));
-  page.forEach((n) => assert.ok(entry.has(n), `ページの ${n} が入口にない`));
-  // 入口だけにあるのは read_guide（入口の中で返す）と、T6 でページに足す画像・書き出しの道具だけ
-  const extra = [...entry].filter((n) => !page.includes(n)).sort();
-  assert.ok(extra.every((n) => ['export_design', 'get_screen_image', 'read_guide'].includes(n)), extra.join('・'));
+  // 入口だけにあるのは read_guide（入口の中で返す）だけ
+  assert.deepEqual(TOOLS.map((t) => t.name).filter((n) => n !== 'read_guide').sort(), [...page].sort());
+  // 読むだけの道具（readOnlyHint）は、ページで write: false の道具と同じ。ただし export_design はファイルを書くので読むだけにしない
+  const readOnly = [...block.matchAll(/^\s+([a-z_]+): \{ write: false/mg)].map((m) => m[1]).filter((n) => n !== 'export_design').sort();
+  assert.deepEqual(TOOLS.filter((t) => t.readOnly && !t.local).map((t) => t.name).sort(), readOnly);
+  // 時間のかかる道具は、アプリの側（automation-main.js の SLOW_TOOLS。時間切れを 5 分にする）と同じ
+  const { SLOW_TOOLS } = require('../automation-main');
+  assert.deepEqual(TOOLS.filter((t) => t.slow).map((t) => t.name).sort(), [...SLOW_TOOLS].sort());
 });
 
 test('入口の選べる値（機器・表の中身・吹き出しの色と線の先・揃え方）は、ページの値とそろう', async () => {

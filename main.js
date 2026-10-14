@@ -15,7 +15,7 @@ const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const path = require('path');
 const windowStateKeeper = require('electron-window-state');
 const { initStorage } = require('./storage');
-const { initExport } = require('./export');
+const { initExport, createPageRenderer } = require('./export');
 const { initAutomation } = require('./automation-main');
 
 const APP_HTML = 'mock_v1.00.html';
@@ -216,8 +216,9 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
 
   app.whenReady().then(() => {
     storage = initStorage(app, ipcMain);
-    initExport(app, ipcMain, { headless: HEADLESS });
-    automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION });
+    const renderer = createPageRenderer(app); // PDF・PNG を作る（書き出しの窓と AI の書き出しで同じものを使う）
+    initExport(app, ipcMain, { headless: HEADLESS, renderer });
+    automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION, renderer });
     buildAppMenu();
     createMainWindow();
     automation.windowCreated();

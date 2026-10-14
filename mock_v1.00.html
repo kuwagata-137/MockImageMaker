@@ -6653,24 +6653,26 @@ function mapPageBody(d, state, aw, ah) {
 // 画面と吹き出しを囲む範囲で切り取り、一覧表をその外側に 32 ドット空けて置く（右なら上の端を画面の上の端に、下なら左の端を画面の左の端にそろえる）。
 // 戻り値 { html, cw, ch }（縮める前の大きさ）。key は矢印の印の id の頭（ページごとに変える。同じ id が編集の画面にもあると矢印が消えるため）
 // diff（{ info: designDiff の screens の 1 つ, label }）を渡すと、部品・吹き出しの札と、一覧表の札・削除した部品を入れる（第 6 段階）
-function screenComposite(d, s, key, measured, diff = null) {
+// table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）
+function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true } = {}) {
   const Z = CALLOUT_ZONE;
   const zoneW = s.width + Z * 2;
   const zoneH = s.height + Z * 2;
-  const rects = [[Z, Z, Z + s.width, Z + s.height], ...s.callouts.map((c) => [Z + c.x, Z + c.y, Z + c.x + c.w, Z + c.y + c.h])];
+  const shown = withCallouts ? s.callouts : [];
+  const rects = [[Z, Z, Z + s.width, Z + s.height], ...shown.map((c) => [Z + c.x, Z + c.y, Z + c.x + c.w, Z + c.y + c.h])];
   const pad = 8;
   const x0 = Math.max(0, Math.min(...rects.map((r) => r[0])) - pad);
   const y0 = Math.max(0, Math.min(...rects.map((r) => r[1])) - pad);
   const x1 = Math.min(zoneW, Math.max(...rects.map((r) => r[2])) + pad);
   const y1 = Math.min(zoneH, Math.max(...rects.map((r) => r[3])) + pad);
   const [cropW, cropH] = [x1 - x0, y1 - y0];
-  const lines = calloutLinesSvg(s).replace(' id="co-lines"', '').replace(/co-arrow-/g, `${key}-co-arrow-`);
+  const lines = withCallouts ? calloutLinesSvg(s).replace(' id="co-lines"', '').replace(/co-arrow-/g, `${key}-co-arrow-`) : '';
   const info = diff && !diff.info.isNew ? diff.info : null;
-  const boxes = s.callouts.map((c) => `<div class="callout cc-${esc(c.color)}" style="left:${Z + c.x}px;top:${Z + c.y}px;width:${c.w}px;height:${c.h}px">${esc(c.text)}${info ? diffBadge(info.callouts[c.id]) : ''}</div>`).join('');
+  const boxes = shown.map((c) => `<div class="callout cc-${esc(c.color)}" style="left:${Z + c.x}px;top:${Z + c.y}px;width:${c.w}px;height:${c.h}px">${esc(c.text)}${info ? diffBadge(info.callouts[c.id]) : ''}</div>`).join('');
   const zone = `<div class="xp-zone" style="position:absolute;left:0;top:0;width:${cropW}px;height:${cropH}px;overflow:hidden">`
     + `<div style="position:absolute;left:${-x0}px;top:${-y0}px;width:${zoneW}px;height:${zoneH}px">`
     + `<div style="position:absolute;left:${Z}px;top:${Z}px">${screenHtml(d, s, { grid: false, marks: false, diff: info })}</div>${lines}${boxes}</div></div>`;
-  const table = partTableHtml(d, s, { editor: false, diff: info && diff });
+  const table = withTable ? partTableHtml(d, s, { editor: false, diff: info && diff }) : '';
   let [tw, th] = [0, 0];
   if (table && measured) {
     const probe = measureBox(table);
@@ -6798,13 +6800,13 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
 }
 
 // PNG にする文書（画面ごとに 1 つ。ページの枠なし・縮めない・まわりに白の余白）。戻り値 [{ name, html, width, height }]。
-// diffRevId（比べる版の行の id）を渡すと、違いの札と削除した部品を入れる
-function exportPngDocs(d, state, screenIds = null, diffRevId = null) {
+// diffRevId（比べる版の行の id）を渡すと、違いの札と削除した部品を入れる。parts（{ table, callouts }）は screenComposite へ渡す
+function exportPngDocs(d, state, screenIds = null, diffRevId = null, parts = {}) {
   const measured = canMeasure();
   const df = diffRevId ? exportDiff(d, state, diffRevId) : null;
   return d.screens.map((s, i) => ({ s, i })).filter(({ s }) => !screenIds || screenIds.includes(s.id)).map(({ s, i }) => {
     const info = df ? df.result.screens[s.id] : null;
-    const comp = screenComposite(d, s, 'g' + (i + 1), measured, info && { info, label: df.label });
+    const comp = screenComposite(d, s, 'g' + (i + 1), measured, info && { info, label: df.label }, parts);
     const width = comp.cw + PNG_MARGIN * 2;
     const height = comp.ch + PNG_MARGIN * 2;
     const body = `<div class="xp-png" style="width:${width}px;height:${height}px">`
@@ -8795,12 +8797,70 @@ async function aiRestoreRevision(args, ctx) {
   });
 }
 
+// ── 画像と書き出し（main が render の HTML を PNG・PDF にし、決めたフォルダへ書く。ファイルの窓は出さない。設計書の 8-7）──
+const aiDesignBrief = (d) => ({ id: d.id, name: d.name, updatedAt: d.updatedAt });
+// 画面の画像。withTable が true なら、部品の設定の一覧表と吹き出しも写す（書き出しの PNG と同じ形）。false なら画面だけ
+async function aiGetScreenImage(args) {
+  flushSideField(); // 右の欄の打ちかけの文字を入れてから写す（8-5）
+  const S = aiState();
+  const d = aiResolveDesign(S, args.design);
+  const sc = aiResolveScreen(d, args.screen);
+  const full = args.withTable === true;
+  const doc = exportPngDocs(d, S, [sc.id], null, { table: full, callouts: full })[0];
+  return new AiRendered(
+    { design: aiDesignBrief(d), screen: { id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height }, withTable: full },
+    { kind: 'image', html: doc.html, width: doc.width, height: doc.height },
+  );
+}
+const AI_EXPORT_FORMATS = ['pdf', 'html', 'png'];
+// 書き出す。設定は書き出しの窓と同じ（PDF: 用紙・向き・表紙・つながりの図・項目の一覧表、PDF と PNG: 画面、全部: 違いの印を付ける版）
+async function aiExportDesign(args) {
+  flushSideField();
+  const S = aiState();
+  const d = aiResolveDesign(S, args.design);
+  const format = str(args.format);
+  if (!AI_EXPORT_FORMATS.includes(format)) throw aiBad(`format は ${AI_EXPORT_FORMATS.map((x) => `"${x}"`).join('・')} です。`);
+  const screenIds = args.screens == null ? null : aiArr(args.screens, 'screens').map((r) => aiResolveScreen(d, r).id);
+  let diffRevId = null;
+  if (args.diffWith != null) {
+    const r = aiResolveRevision(d, args.diffWith);
+    if (!isVersionRow(r) || !hasSnapshot(r)) throw aiBad('違いの印で比べられるのは、写しのある版の行だけです（自動の行とは比べません）。');
+    diffRevId = r.id;
+  }
+  const base = safeFileName(d.name);
+  const result = { design: aiDesignBrief(d), format, ...(diffRevId ? { diffWith: revisionTitle(findRevision(d, diffRevId)) } : {}) };
+  if (format === 'html') {
+    return new AiRendered(result, { kind: 'files', files: [{ name: `${base}.html`, text: buildStandaloneHtml(d, S, { diffRevId }) }] });
+  }
+  if (format === 'png') {
+    const docs = exportPngDocs(d, S, screenIds, diffRevId);
+    if (!docs.length) throw aiBad('書き出す画面を 1 つ以上選んでください。');
+    return new AiRendered({ ...result, screens: docs.length }, { kind: 'png', files: docs.map(({ name, html, width, height }) => ({ name, html, width, height })) });
+  }
+  const paper = args.paper == null ? 'A4' : str(args.paper);
+  if (!['A4', 'A3', 'slide'].includes(paper)) throw aiBad('paper は "A4"・"A3"・"slide"（16:9 の横）です。');
+  const orient = paper === 'slide' ? 'landscape' : args.orient == null ? 'landscape' : str(args.orient);
+  if (!['landscape', 'portrait'].includes(orient)) throw aiBad('orient は "landscape"（横）か "portrait"（縦）です。');
+  const opts = {
+    paper, orient, screenIds, diffRevId,
+    cover: args.cover !== false, map: args.map !== false && hasMapLinks(d, S), items: args.items !== false && d.items.length > 0,
+  };
+  if (screenIds && !screenIds.length && !opts.cover && !opts.map && !opts.items) throw aiBad('入れるページか、書き出す画面を 1 つ以上選んでください。');
+  const doc = exportDocument(d, S, opts);
+  return new AiRendered(
+    { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items },
+    { kind: 'pdf', files: [{ name: `${base}.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi } }] },
+  );
+}
+
 // 道具の一覧（名前は入口 mcp-server.js の道具と同じ。read_guide は入口だけで返す）。write は書く道具
 const AI_TOOLS = {
   list_designs: { write: false, run: aiListDesigns },
   get_design: { write: false, run: aiGetDesign },
   get_screen: { write: false, run: aiGetScreen },
   get_catalog: { write: false, run: aiGetCatalog },
+  get_screen_image: { write: false, run: aiGetScreenImage },
+  export_design: { write: false, run: aiExportDesign },
   create_design: { write: true, run: aiCreateDesign },
   update_design: { write: true, run: aiUpdateDesign },
   edit_items: { write: true, run: aiEditItems },

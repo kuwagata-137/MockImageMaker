@@ -9,6 +9,7 @@
 'use strict';
 
 const { createAutomationServer } = require('./automation');
+const { createRenderFinisher } = require('./automation-render');
 
 const READY_WAIT_MS = 30000; // ページの準備を待つ時間
 const IDLE_QUIT_MS = 30000; // AI のつながりが 0 で窓が見えていないとき、終わるまでの時間
@@ -17,8 +18,10 @@ const SLOW_TOOLS = new Set(['export_design', 'get_screen_image']);
 
 const fail = (code, message) => ({ ok: false, error: { code, message } });
 
-// background: --background で起動したか。headless: 確かめのための起動（MIM_HEADLESS=1）か
-function initAutomation({ app, ipcMain, getWindow, background = false, headless = false, appVersion }) {
+// background: --background で起動したか。headless: 確かめのための起動（MIM_HEADLESS=1）か。
+// renderer: export.js の createPageRenderer（画面の画像と書き出しを PNG・PDF にする）
+function initAutomation({ app, ipcMain, getWindow, background = false, headless = false, appVersion, renderer }) {
+  const render = createRenderFinisher({ app, renderer, headless });
   // 確かめのときだけ、終わるまでの時間を環境変数で縮められる（インストールした版では読まない）
   const idleMs = (headless || !app.isPackaged) && Number(process.env.MIM_IDLE_QUIT_MS) > 0 ? Number(process.env.MIM_IDLE_QUIT_MS) : IDLE_QUIT_MS;
   let quitting = false;
@@ -86,10 +89,11 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
     const wc = page.wc;
     if (!wc || wc.isDestroyed()) return fail('page_reloaded', 'アプリの窓が閉じました。もう一度頼んでください。');
     const id = ++rid;
-    return new Promise((resolve) => {
+    const res = await new Promise((resolve) => {
       pending.set(id, resolve);
       wc.send('ai:request', { rid: id, tool, args, session, client });
     });
+    return render.finish(res); // 画面の画像・書き出しは、ここで PNG・PDF にする
   }
 
   // ── つながりの数と、終わる時 ──────────────────────────────
