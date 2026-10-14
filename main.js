@@ -183,7 +183,11 @@ function createMainWindow() {
       backgroundThrottling: false,
     },
   });
-  winState.manage(mainWin);
+  // 窓を隠したまま始める起動（--background・確かめの起動）では、窓を初めて出すときに、覚えた最大化・全画面を戻して見張りを始める。
+  // manage() は maximize() を呼び、Electron の maximize() は隠れた窓も画面に出すため（裏の起動なのに窓が出た）。
+  // また、出していない窓の状態で window-state.json を書き換えない（人が最大化して使っていたことを忘れないように）
+  if (HEADLESS || BACKGROUND) mainWin.once('show', () => winState.manage(mainWin));
+  else winState.manage(mainWin);
   // AI がつながっている間の ×（「ファイル > 終了」でないとき）は、終わらずに窓を隠す（設計書 7-5）
   mainWin.on('close', (e) => {
     if (!automation || !automation.shouldHideOnClose()) return;

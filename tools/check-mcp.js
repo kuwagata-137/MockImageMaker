@@ -5,9 +5,11 @@
 //  A. 最初の頼みで、アプリを --background で起動する（かかった時間を出す）。画面設計を作って部品を並べると、designs.json に残る。
 //     画面の画像は長い辺が 1568 以下の PNG。書き出し（PDF・PNG・HTML）は MIM_AI_EXPORT_DIR に書き、同じ名前には番号を付ける。
 //     status で、窓が見えていない・裏の起動・ページの準備ができている。2 つ目の起動（--background）では窓を出す印が付かない。
+//     前に人が窓を最大化して閉じていても（window-state.json の isMaximized）、裏の起動では窓が画面に出ない（status の onScreen）。
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり、automation.json が消える
 //  B. 次の入口で、アプリをまた起動し、A で作った画面設計が一覧に出る。入口を強制終了しても、5 秒たってアプリが終わる
 //  C. 2 つ目の起動（--background なし。人がアプリを起動した）では窓を出す印が付き、入口を閉じても終わらない。AI のつながりがないときの窓の × では終わる
+//  最後に、窓を出さなかった起動では window-state.json を書き換えていない（人が最大化して使っていたことが残る）
 // 保存先は作業フォルダの .devdata/check-mcp（毎回消してから始める）。
 // --packaged のときは、作った版（npm run dist の win-unpacked）の MockImageMaker.exe を ELECTRON_RUN_AS_NODE=1 で入口にし、
 // resources\app.asar\mcp-server.js を渡す（インストールした版と同じ動かし方）。保存先は .devdata/check-mcp-packaged
@@ -33,6 +35,9 @@ const BASE = path.join(ROOT, '.devdata', PACKAGED ? 'check-mcp-packaged' : 'chec
 const USER_DATA = path.join(BASE, 'userData');
 const EXPORT_DIR = path.join(BASE, 'export');
 const STATE_FILE = path.join(USER_DATA, 'data', 'designs.json');
+// 前に人が窓を最大化して閉じた、という状態（electron-window-state の形。どの画面にも収まる位置と大きさ）
+const WINDOW_STATE_FILE = path.join(USER_DATA, 'window-state.json');
+const WINDOW_STATE = { x: 0, y: 0, width: 800, height: 560, isMaximized: true, isFullScreen: false, displayBounds: { x: 0, y: 0, width: 800, height: 560 } };
 const MAIN_PORT = 9337; // メインプロセスの inspector（check-electron・check-export の 9333〜9335 と分ける）
 const IDLE_MS = 5000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -148,6 +153,7 @@ async function phaseA() {
     names.join('、'));
   const st = await status();
   check('A. 窓は見えていない・裏の起動・ページの準備ができている', st.visible === false && st.background === true && st.pageReady === true && st.clients >= 1, JSON.stringify(st));
+  check('A. 前に人が窓を最大化して閉じていても、裏の起動では窓が画面に出ない', st.onScreen === false, `onScreen ${st.onScreen}`);
   const code = await secondLaunch(true);
   const st2 = await status();
   check('A. 2 つ目の起動（--background）はすぐ終わり、窓を出す印は付かない', code === 0 && st2.showRequested === false && alive(info.pid), `終了コード ${code} ／ showRequested ${st2.showRequested}`);
@@ -202,10 +208,13 @@ function removeDir(dir) {
 (async () => {
   removeDir(BASE);
   fs.mkdirSync(USER_DATA, { recursive: true });
+  fs.writeFileSync(WINDOW_STATE_FILE, JSON.stringify(WINDOW_STATE));
   try {
     await phaseA();
     await phaseB();
     await phaseC();
+    const kept = JSON.parse(fs.readFileSync(WINDOW_STATE_FILE, 'utf8'));
+    check('窓を出さなかった起動では、覚えた窓の状態（最大化）を書き換えない', kept.isMaximized === true && kept.width === WINDOW_STATE.width, JSON.stringify(kept));
   } catch (err) {
     check('途中で止まった', false, err.stack || String(err));
   } finally {
