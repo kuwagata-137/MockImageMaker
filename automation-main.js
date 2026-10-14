@@ -28,9 +28,9 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
   const idleMs = (headless || !app.isPackaged) && Number(process.env.MIM_IDLE_QUIT_MS) > 0 ? Number(process.env.MIM_IDLE_QUIT_MS) : IDLE_QUIT_MS;
   let quitting = false;
   let showRequested = false; // 確かめ用: 2 つ目の起動で窓を出すよう頼まれたか（headless では窓を出さないので印だけ残す）
-  // 確かめの起動（headless）は窓を画面に出さないので、窓が見えているかを印で持つ。--background でない起動は、人が使っている窓が
-  // 見えているとみなす（そうしないと、確かめの途中で終わる時計が回って 30 秒で終わる）。× で隠すと見えていないにする
-  let headlessShown = headless && !background;
+  // 窓を出している（show）か隠している（hide・× で隠した）かの印。--background でない起動は、窓を出して始まる。
+  // 確かめの起動（headless）は窓を画面に出さないので、この印だけで見えているかを決める（そうしないと、確かめの途中で終わる時計が回って 30 秒で終わる）
+  let shownFlag = !background;
   let idleTimer = null;
   let rid = 0;
   const pending = new Map(); // rid → resolve
@@ -111,17 +111,25 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
       notifyState();
       reconsiderIdle();
     },
-    onStatus: () => ({ visible: windowVisible(), background, showRequested, pageReady: page.ready, idleTimer: !!idleTimer }),
+    // onScreen: 窓が本当に画面に出ているか（確かめ用。headless でも、覚えた最大化などで窓が出てしまっていないかを見る）
+    onStatus: () => ({ visible: windowVisible(), onScreen: onScreen(), background, showRequested, pageReady: page.ready, idleTimer: !!idleTimer }),
   });
 
   function sendStatus() {
     const wc = currentWc();
     if (wc && page.ready) wc.send('ai:status', { clients: server.clients() });
   }
-  function windowVisible() {
-    if (headless) return headlessShown;
+  function onScreen() {
     const win = getWindow();
     return !!(win && !win.isDestroyed() && win.isVisible());
+  }
+  // Windows の isVisible() は、最小化した窓で false を返す。最小化しているだけの人の窓は見えているとみなす（30 秒で終わらせない）。
+  // × で隠した窓は、最小化したままでも見えていない（印で見分ける）
+  function windowVisible() {
+    if (headless) return shownFlag;
+    const win = getWindow();
+    if (!win || win.isDestroyed()) return false;
+    return win.isVisible() || (shownFlag && win.isMinimized());
   }
   // AI のつながりが 0 で窓が見えていないときだけ時計を回す。時間になっても頼みを実行中なら、もう一回待つ
   function reconsiderIdle() {
@@ -158,7 +166,7 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
     shouldHideOnClose: () => !quitting && server.clientCount() > 0,
     // 窓を出した（shown: true）・隠した（false）ときに呼ぶ（終わる時計とタスクトレイを見直す）
     windowShownOrHidden: (shown) => {
-      if (headless && typeof shown === 'boolean') headlessShown = shown;
+      if (typeof shown === 'boolean') shownFlag = shown;
       reconsiderIdle();
       if (!quitting) notifyState();
     },

@@ -28,17 +28,18 @@ function createRenderFinisher({ app, renderer, headless = false }) {
   async function finish(res) {
     if (!res || res.ok !== true || !res.render) return res;
     const { render, ...rest } = res;
+    const files = []; // 書けたファイル（途中で失敗したときも、失敗の文で知らせる。AI がやり直して「(2)」のファイルを増やさないように）
     try {
       if (render.kind === 'image') {
         const png = await renderer.renderPng({ html: render.html, width: render.width, height: render.height, scale: IMAGE_SCALE, maxSide: IMAGE_MAX_SIDE });
         return { ...rest, image: png.toString('base64'), result: { ...rest.result, image: { width: png.readUInt32BE(16), height: png.readUInt32BE(20) } } };
       }
       const dir = exportDir();
-      const files = [];
       for (const f of render.files || []) files.push(await writeUnique(dir, safeName(f.name, 'export'), await makeFile(render.kind, f)));
       return { ...rest, result: { ...rest.result, files, folder: dir } };
     } catch (err) {
-      return { ok: false, error: { code: 'render_failed', message: `画像・ファイルを作れませんでした（${(err && err.message) || err}）。` } };
+      const written = files.length ? `途中まで書けたファイル（${files.length} 個）は残しています: ${files.join('、')}` : '';
+      return { ok: false, error: { code: 'render_failed', message: `画像・ファイルを作れませんでした（${(err && err.message) || err}）。${written}` } };
     }
   }
 
