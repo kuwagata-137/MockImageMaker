@@ -1465,11 +1465,12 @@ function minScreenHeight(screen) {
 
 // ── 改訂履歴（第 6 段階。CLAUDE.md の「改訂履歴の細かい決めごと」）──
 // 画面設計の revisions の行: { id, kind, no, date, note, schemaVersion, appVersion, snapshot, changes, baseNo }
-//   kind: 'revision'（改訂する。no に版の番号）・'import'（取り込む前の状態）・'restore'（戻す前の状態）。自動の行（import・restore）の no は null。
+//   kind: 'revision'（改訂する。no に版の番号）・'import'（取り込む前の状態）・'restore'（戻す前の状態）・'ai'（AI が直す前の状態。第 7 段階）。
+//     自動の行（import・restore・ai）の no は null。
 //   snapshot: revisions を除いた画面設計の写し。ほかのモックから取り込んだ項目も、そのときの中身のまま写る（後で元が変わっても、前の版の中身は変わらない）。
 //     書き出した HTML には写しを入れないので、HTML から足した画面設計の行には写しがない（見る・戻すができない）。
 //   changes: 改訂したときに、ひとつ前の版（第 baseNo 版）と比べて作った変更内容の一覧（designDiff の rows）。第 1 版と、前の版の写しがないときは null
-const REV_AUTO = { import: '取り込む前の状態', restore: '戻す前の状態' };
+const REV_AUTO = { import: '取り込む前の状態', restore: '戻す前の状態', ai: 'AI が直す前の状態' };
 const isVersionRow = (r) => isObj(r) && r.kind === 'revision' && Number.isInteger(r.no);
 const hasSnapshot = (r) => isObj(r) && isObj(r.snapshot);
 const versionRows = (d) => d.revisions.filter(isVersionRow);
@@ -1487,6 +1488,15 @@ function revisionDate(day) {
   return Number.isNaN(t.getTime()) ? nowIso() : t.toISOString();
 }
 
+// 画面設計の中身（前の版に戻す・取り込んで置き換える・中身を比べるところ）。画面設計に中身の項目を足したら、ここに足す
+// （restoreRevision・replaceWithImported・designContent がこれを使う。3 か所に並べていると、足すときに漏れるため。第 7 段階）
+const DESIGN_CONTENT_KEYS = ['name', 'target', 'description', 'items', 'screens', 'mapPos'];
+// 画面設計の中身だけを抜き出す。copy のときは中身を写す
+function designContentOf(d, copy = false) {
+  const out = {};
+  DESIGN_CONTENT_KEYS.forEach((k) => { out[k] = copy && d[k] !== undefined ? clone(d[k]) : d[k]; });
+  return out;
+}
 // 改訂履歴に残す写し（revisions を除いた画面設計）。凍らせて、元に戻すの履歴・保存では写さずに同じものを指す（stateWithRefs）
 function designSnapshot(d) {
   return deepFreeze(clone({ ...d, revisions: undefined }));
@@ -2369,6 +2379,8 @@ class Store {
     this.undoStack = [];
     this.redoStack = [];
     this.listeners = new Set();
+    this.blockReason = null; // 保存を止めた理由（起動のときに入れる。AI の書く頼みを断る文に使う）
+    this.batching = false;
   }
   subscribe(fn) {
     this.listeners.add(fn);
@@ -2393,6 +2405,7 @@ class Store {
   // 何も変わらなかったときは、履歴に積まない（打ちかけの欄を保存し直しただけで、元に戻すが 1 回空振りし、やり直すが消えないように）
   commit(mutator, { history = true } = {}) {
     if (this.realState) return; // 前の版を見ている間は直せない
+    if (this.batching) { mutator(this.state); return; } // batch の中では、積む・保存・描き直しを batch に任せる
     const before = history ? stateWithRefs(this.state) : null;
     mutator(this.state);
     if (history && stateWithRefs(this.state).json !== before.json) {
@@ -2402,6 +2415,45 @@ class Store {
     }
     this.persist();
     this.notify();
+  }
+  // AI の 1 回の頼み（第 7 段階。設計書の 8-1）。fn の中の何回の commit も、元に戻すの 1 回・保存の 1 回・描き直しの 1 回にまとめる。
+  // fn が例外を投げたら、始める前の中身に戻して投げ直す（保存も描き直しもしない）。fn は待たずに終わる関数にする。
+  // history は true（積む）・false（積まない）・'clear'（元に戻すの履歴を消す）か、それを返す関数（fn の後の中身を受け取る）。
+  // 戻り値 { result（fn の戻り値）, changed（中身が変わったか）}。何も変わらなければ、保存も描き直しもしない
+  batch(fn, { history = true } = {}) {
+    if (this.realState) throw new Error('前の版を見ている間は直せません');
+    if (this.batching) return { result: fn(), changed: null }; // 入れ子は外の batch に任せる
+    const before = stateWithRefs(this.state);
+    let result;
+    this.batching = true;
+    try {
+      result = fn();
+      if (result && typeof result.then === 'function') throw new Error('batch の中では待てません');
+    } catch (e) {
+      this.state = stateFromRefs(before);
+      throw e;
+    } finally {
+      this.batching = false;
+    }
+    const changed = stateWithRefs(this.state).json !== before.json;
+    if (!changed) return { result, changed };
+    const mode = typeof history === 'function' ? history(this.state) : history;
+    if (mode === 'clear') this.clearHistory();
+    else if (mode) {
+      this.undoStack.push(stateFromRefs(before));
+      if (this.undoStack.length > HISTORY_LIMIT) this.undoStack.shift();
+      this.redoStack = [];
+    }
+    this.persist();
+    this.notify();
+    return { result, changed };
+  }
+  // 今までに頼んだ保存が書き終わるのを待つ（AI の頼みの返事を、保存が済んでから返すため）。保存に失敗していたら reject
+  whenSaved() {
+    if (this.lastSaveOk === false) return Promise.reject(new Error('保存に失敗しました'));
+    const a = this.adapter;
+    if (!a || !a.pending) return Promise.resolve();
+    return a.pending.then(() => { if (a.lastError) throw a.lastError; });
   }
   canUndo() { return !this.realState && this.undoStack.length > 0; }
   canRedo() { return !this.realState && this.redoStack.length > 0; }
@@ -2535,7 +2587,7 @@ const actions = {
       if (!hasSnapshot(r)) return;
       const from = designFromSnapshot(d, r);
       d.revisions.push(revisionRow(d, 'restore', { note: `「${revisionTitle(r)}（${revisionDay(r)}）」に戻す前の状態` }));
-      Object.assign(d, { name: from.name, target: from.target, description: from.description, items: from.items, screens: from.screens, mapPos: from.mapPos });
+      Object.assign(d, designContentOf(from));
       addCustomTarget(s, from.target);
       done = true;
     });
@@ -4387,6 +4439,7 @@ function revisionsBodyHtml(d) {
 const REV_AUTO_HINT = {
   import: 'ベンダーが直した HTML を取り込んだときに、置き換える前の中身を自動で残しました',
   restore: '前の版に戻したときに、戻す前の中身を自動で残しました',
+  ai: 'AI（Claude Code など）が画面設計を直したときに、直す前の中身を自動で残しました',
 };
 function revisionTrHtml(r) {
   const ver = isVersionRow(r);
@@ -7124,7 +7177,7 @@ function canonicalJson(v) {
   if (isObj(v)) return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalJson(v[k])).join(',') + '}';
   return JSON.stringify(v === undefined ? null : v);
 }
-const designContent = (d) => canonicalJson({ name: d.name, target: d.target, description: d.description, items: d.items, screens: d.screens, mapPos: d.mapPos });
+const designContent = (d) => canonicalJson(designContentOf(d));
 // 比べるための中身。形を整え、ほかの画面設計を指す控えの名前を今の名前に直してから作る（書き出した HTML の写しと同じ直し方）
 function comparableContent(d, state) {
   const c = normalizeDesign(clone({ ...d, revisions: [] }));
@@ -7154,10 +7207,7 @@ function changedSinceExport(cur, payload) {
 function replaceWithImported(s, incoming) {
   const d = findDesign(s, incoming.id);
   d.revisions.push(revisionRow(d, 'import', { note: REV_AUTO.import }));
-  Object.assign(d, {
-    name: incoming.name, target: incoming.target, description: incoming.description,
-    items: clone(incoming.items), screens: clone(incoming.screens), mapPos: clone(incoming.mapPos), trashedAt: null, updatedAt: nowIso(),
-  });
+  Object.assign(d, designContentOf(incoming, true), { trashedAt: null, updatedAt: nowIso() });
   addCustomTarget(s, incoming.target);
   syncLinkedItems(s); // 一覧にある元の項目とつなぎ直す（元がなければ「元なし」で固定。この画面設計から取り込んだ、ほかの画面設計の項目もそろう）
   d.exchangeHash = shortHash(comparableContent(d, s)); // 取り込んだ中身の印（次に取り込むとき、こちらで変えていないと分かるように）
@@ -7648,6 +7698,7 @@ async function boot() {
   const embedded = document.getElementById(EMBED_ID);
   const created = embedded ? createStandaloneStore(embedded) : await createAppStore();
   store = created.store;
+  store.blockReason = created.blockReason || null;
   if (embedded) {
     if (created.blockReason) showBanner(created.blockReason + (created.failed ? '' : ' この HTML は、新しい版のアプリで開いてください。'));
   } else if (created.blockReason) showBanner(created.blockReason + ' 今のデータを消さないように、保存を止めています。');
@@ -7673,6 +7724,7 @@ function exposeForTest() {
     paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
+    revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     ready: true,
   });
