@@ -11,6 +11,8 @@
 //  4. 起動し直すと、作った画面設計が一覧に出て、3 で打った文字も右の欄に出る。1 で置いた部品・吹き出し・項目・箱の位置と、画面の並びも出る
 //  5. データの形 v1（部品が項目名と設定を持つ形）の designs.json を、v2（データベースの項目に移す形）に直して読める。
 //     直したデータを保存すると、v1 の形のファイルは .bak に残る（保存先は .devdata/check-userData-v1）
+//  6. 1 でメニューバーの ▼ の「改訂する」から第 1 版を作ると、designs.json に版と写しが残り、起動し直しても改訂履歴の窓に出て、
+//     「見る」で第 1 版（3 で文字を打つ前の中身）を開ける（第 6 段階）
 // 窓の × と終了は、メインプロセスを --inspect で起動し、Node の inspector から呼んで再現する。
 // 保存先は作業フォルダの .devdata/check-userData（毎回消してから始める。npm start のデータとは別）。
 'use strict';
@@ -141,6 +143,13 @@ async function firstRun() {
   await page.click(`.sl-more[data-id="${inputId}"]`);
   await page.click('.screen-menu [data-action="screen-up"]');
   await page.click('.sl-item[data-action="select-screen"]');
+  // メニューバーの ▼ の「改訂する」で、第 1 版を作る
+  await page.click('#tb-rev-arrow');
+  await page.click('#rev-menu-root [data-action="add-revision"]');
+  await page.waitForSelector('.modal [name="rv-note"]');
+  await page.type('.modal [name="rv-note"]', '最初の版。');
+  await page.click('.modal [data-dlg="ok"]');
+  await page.waitForFunction(() => !document.querySelector('.modal'));
   const title = await page.$eval('#ed-title', (e) => e.textContent);
 
   const second = launch();
@@ -188,12 +197,21 @@ async function secondRun() {
   const callouts = await page.$$eval('#stage .callout', (els) => els.length);
   const items = await page.$eval('[data-action="open-items"] small', (e) => e.textContent);
   const screens = await page.$$eval('.sl-name', (els) => els.map((e) => e.textContent.replace(/^\d+\s+/, '')));
+  // 改訂履歴の窓に第 1 版が出て、「見る」で第 1 版（文字を打つ前の説明）を開ける
+  await page.click('#toolbar [data-action="open-revisions"]');
+  await page.waitForSelector('.modal .rv-list');
+  const revs = await page.$$eval('.modal .rv-list tbody tr', (els) => els.map((tr) => `${tr.children[0].textContent.trim()}・${tr.children[2].textContent.trim()}`));
+  await page.click('.modal [data-rv="view"]');
+  await page.waitForSelector('#rv-band:not([hidden])');
+  const band = await page.$eval('#rv-band', (e) => e.textContent.replace(/\s+/g, ' ').trim());
+  const viewDesc = await page.$eval('[data-field="design-desc"]', (e) => e.value);
+  await page.click('#rv-band [data-action="rev-stop-view"]');
   await page.click('[data-action="open-map"]');
   const mapBox = await page.$eval('#design-map .mnode', (e) => `${e.style.left}, ${e.style.top}`);
   await page.evaluate(() => window.close());
   browser.disconnect();
   await withTimeout(child.exited, 15000, '起動し直したアプリが閉じない');
-  return { names, name, desc, parts, callouts, items, mapBox, screens };
+  return { names, name, desc, parts, callouts, items, mapBox, screens, revs, band, viewDesc };
 }
 
 // データの形 v1 の designs.json（部品が項目名と設定を持つ。入力欄 2 つとボタン 1 つ）
@@ -262,19 +280,24 @@ async function checkTypingCases() {
   console.log('designs.json の画面の並び:', saved.designs[0].screens.map((s) => `${s.name}（部品 ${s.parts.length} つ）`).join('、'));
   const d0 = saved.designs[0];
   console.log('designs.json の項目・吹き出し・つながりの図の箱の位置:', d0.items.map((it) => it.name).join('、'), '／ 吹き出し', d0.screens[0].callouts.length, 'つ ／', JSON.stringify(d0.mapPos));
+  const rev = d0.revisions[0] || {};
+  console.log('designs.json の改訂履歴:', d0.revisions.map((x) => `${x.kind}・第 ${x.no} 版・${x.note}・写しの画面 ${x.snapshot ? x.snapshot.screens.length : 'なし'} つ`).join('、'));
   const firstOk = r.firstAlive && saved.designs.length === 1 && d0.name === '顧客管理' && d0.screens[0].parts.length === 1
     && d0.items.length === 1 && d0.screens[0].parts[0].itemId === d0.items[0].id && d0.screens[0].callouts.length === 1 && Object.keys(d0.mapPos).length === 1
-    && d0.screens.map((s) => s.name).join() === '画面 1,入力,一覧' && d0.screens[1].parts.some((p) => p.itemId === d0.items[0].id);
+    && d0.screens.map((s) => s.name).join() === '画面 1,入力,一覧' && d0.screens[1].parts.some((p) => p.itemId === d0.items[0].id)
+    && d0.revisions.length === 1 && rev.kind === 'revision' && rev.no === 1 && rev.note === '最初の版。' && !!rev.snapshot && rev.snapshot.screens.length === 3;
   const typedOk = await checkTypingCases();
   const again = await secondRun();
   console.log('起動し直したときの一覧:', again.names.join('、'));
   console.log(`起動し直したときの右の欄: 名前「${again.name}」／ 説明「${again.desc}」 ／ 画面の部品: ${again.parts} つ ／ 吹き出し: ${again.callouts} つ`,
     `／ データベースの項目: ${again.items} ／ つながりの図の箱の位置: ${again.mapBox} ／ 画面の一覧: ${again.screens.join('・')}`);
+  console.log(`起動し直したときの改訂履歴: ${again.revs.join('、')} ／ 見たときの帯「${again.band}」 ／ 第 1 版の説明「${again.viewDesc}」`);
   const want = { name: '顧客管理', description: '' };
   TYPING_CASES.forEach((c) => { want[c.key] += c.text; });
   const [mx, my] = [d0.mapPos[Object.keys(d0.mapPos)[0]].x, d0.mapPos[Object.keys(d0.mapPos)[0]].y];
   const againOk = again.names.join() === want.name && again.name === want.name && again.desc === want.description && again.parts === 1
-    && again.callouts === 1 && again.items === '1 個' && again.mapBox === `${mx}px, ${my}px` && again.screens.join() === '画面 1,入力,一覧';
+    && again.callouts === 1 && again.items === '1 個' && again.mapBox === `${mx}px, ${my}px` && again.screens.join() === '画面 1,入力,一覧'
+    && again.revs.join() === '第 1 版・最初の版。' && /第 1 版（.+）を見ています/.test(again.band) && again.viewDesc === '';
   const m = await migrateRun();
   const md = m.saved.designs[0];
   console.log('v1 の形の designs.json: 一覧', m.names.join('、'), '／ 画面の部品の項目名', m.labels.join('・'), '／ 項目の一覧表', m.rows.join('・'));
