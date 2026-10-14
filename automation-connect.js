@@ -8,12 +8,16 @@ const path = require('path');
 
 const SERVER_NAME = 'mockimagemaker';
 
+// 場所は、動いている OS でなく、渡された場所の形でつなぐ（ドライブ名か \\ で始まれば Windows の「\」、ほかは「/」）。
+// CI（Linux）のテストで Windows の場所を渡したときに「/」でつながれて崩れたため
+const joinLike = (base, ...parts) => (/^[A-Za-z]:[\\/]|^\\\\/.test(String(base)) ? path.win32 : path.posix).join(base, ...parts);
+
 // packaged: インストールした版か。execPath・resourcesPath: Electron の process の値。root: 作業フォルダ（main.js のあるフォルダ）
 function mcpServerEntry({ packaged, execPath, resourcesPath, root }) {
   if (packaged) {
-    return { name: SERVER_NAME, command: execPath, args: [path.join(resourcesPath, 'app.asar', 'mcp-server.js')], env: { ELECTRON_RUN_AS_NODE: '1' } };
+    return { name: SERVER_NAME, command: execPath, args: [joinLike(resourcesPath, 'app.asar', 'mcp-server.js')], env: { ELECTRON_RUN_AS_NODE: '1' } };
   }
-  return { name: `${SERVER_NAME}-dev`, command: 'node', args: [path.join(root, 'mcp-server.js')], env: {} };
+  return { name: `${SERVER_NAME}-dev`, command: 'node', args: [joinLike(root, 'mcp-server.js')], env: {} };
 }
 
 // PowerShell の文字（' で囲み、中の ' は '' にする）

@@ -82,3 +82,11 @@ test('「AI とつなぐ」の登録の文: 開発版は別の名前（mockimage
   assert.deepEqual(JSON.parse(info.json), { mcpServers: { 'mockimagemaker-dev': { command: 'node', args: ['C:\\work\\MockImageMaker\\mcp-server.js'] } } });
   assert.equal(claudeAddCommand(mcpServerEntry({ packaged: false, root: 'D:\\a b' })), "claude mcp add --scope user mockimagemaker-dev node 'D:\\a b\\mcp-server.js'");
 });
+
+test('「AI とつなぐ」の登録の文: 場所は、動いている OS でなく、渡された場所の形（Windows は「\\」・ほかは「/」）でつなぐ', () => {
+  // CI（Linux）で Windows の場所を渡しても、Windows（手元）で Linux の場所を渡しても崩れない
+  assert.deepEqual(mcpServerEntry({ packaged: false, root: '/home/u/MockImageMaker' }).args, ['/home/u/MockImageMaker/mcp-server.js']);
+  assert.deepEqual(mcpServerEntry({ packaged: true, execPath: '/opt/mim/MockImageMaker', resourcesPath: '/opt/mim/resources' }).args, ['/opt/mim/resources/app.asar/mcp-server.js']);
+  assert.deepEqual(mcpServerEntry({ packaged: false, root: 'C:/work/MockImageMaker' }).args, ['C:\\work\\MockImageMaker\\mcp-server.js']);
+  assert.deepEqual(mcpServerEntry({ packaged: false, root: '\\\\server\\share\\MockImageMaker' }).args, ['\\\\server\\share\\MockImageMaker\\mcp-server.js']);
+});
