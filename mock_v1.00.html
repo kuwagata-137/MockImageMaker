@@ -1336,9 +1336,14 @@ function createColumnData(type, name) {
   return { id: newId('c'), name, type, required: false, memo: '', props: clone(partType(type).props) };
 }
 
+// 新しくステータスの項目を作るときの見本の操作（画像 q57。ユーザーが決めた）。[名前, 前, 次] は DEFAULT_STATES の並びの番号。操作する人と条件は空
+const SAMPLE_ACTIONS = [['申請する', 0, 1], ['承認する', 1, 2], ['差し戻す', 1, 0], ['完了にする', 2, 3]];
+const sampleActions = (states) => SAMPLE_ACTIONS.filter(([, f, t]) => states[f] && states[t])
+  .map(([name, f, t]) => ({ id: newId('a'), name, from: states[f].id, to: states[t].id, role: '', cond: '' }));
 function createItemData(type, name) {
   const t = partType(type);
-  const props = type === 'table' ? { columns: defaultColumns() } : type === 'status' ? { states: normalizeStates(DEFAULT_STATES), actions: [] } : clone(t.props);
+  const states = type === 'status' ? normalizeStates(DEFAULT_STATES) : null;
+  const props = type === 'table' ? { columns: defaultColumns() } : type === 'status' ? { states, actions: sampleActions(states) } : clone(t.props);
   const defName = type === 'table' ? '明細' : type === 'status' ? 'ステータス' : t.label;
   return { id: newId('i'), name: name == null ? defName : name, type, required: false, memo: '', props, lookup: null, link: null };
 }
@@ -1572,6 +1577,7 @@ function describePartLines(p, ctx = null) {
       break;
     case 'status': case 'steps':
       eqIf('ステータス', stateNames(pr.states).join(p.type === 'steps' ? ' → ' : '／'));
+      eq.push(...actionLines(pr));
       break;
     case 'tabs':
       eqIf('タブ', list(pr.tabs));
@@ -1584,6 +1590,13 @@ function describePartLines(p, ctx = null) {
   return { short: short.join('・'), eq, memo: v(p.memo) };
 }
 
+// 操作の行「操作「承認する」＝承認待ちから承認済みへ（上長）・条件」。「＝」の前を操作ごとに変えて、改訂履歴の違いで操作ごとに前と後を出す
+function actionLines(pr) {
+  const states = Array.isArray(pr.states) ? pr.states : [];
+  const nm = (id) => stateNameOf(states, id) || '（なし）';
+  return (Array.isArray(pr.actions) ? pr.actions : []).filter(isObj)
+    .map((a) => `操作「${String(a.name || '').trim()}」＝${nm(a.from)}から${nm(a.to)}へ${str(a.role).trim() ? `（${a.role.trim()}）` : ''}${str(a.cond).trim() ? `・${a.cond.trim()}` : ''}`);
+}
 const itemNameIn = (ctx, id) => { const it = ctx && id ? findItem(ctx.design, id) : null; return it ? it.name : ''; };
 
 // データベースの項目の一覧表の「設定」の列の文（部品の設定の一覧表と同じ書き方）。表（テーブル）は列の名前も書く
@@ -2780,6 +2793,24 @@ const findDesign = (state, id) => state.designs.find((d) => d.id === id) || null
 // 画面設計を書き換えた後は、ほかの画面設計が取り込んでいる項目（つなげたまま）も同じ commit の中でそろえる
 // （元に戻すで、元と取り込んだ側が一緒に戻るように）。取り込んだ側の更新日時は変えない
 // 更新日時は、画面設計の中身が変わったときだけ変える（何も変わらない操作を、元に戻すの履歴に積まないため）
+// 直せるステータスの項目（取り込んだ項目・前の版を見ている間は null）
+function editableStatusItem(designId, itemId) {
+  const it = store.isViewing ? null : findItem(findDesign(store.state, designId), itemId);
+  return it && it.type === 'status' && !it.link ? it : null;
+}
+// 操作の前と次は、並びにあるステータスの id か ''。前と次が同じ操作（自分への矢印）は作らない
+const validProcessAction = (a, ids) => [a.from, a.to].every((v) => v === '' || ids.includes(v)) && !(a.from && a.from === a.to);
+// ステータスの項目の states か actions の中の 1 つを、toIndex（動かした後の位置）へ動かす。動かないときは false
+function moveInList(designId, itemId, key, id, toIndex) {
+  const list = findItem(findDesign(store.state, designId), itemId).props[key];
+  const from = list.findIndex((x) => x.id === id);
+  if (from < 0 || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= list.length || toIndex === from) return false;
+  return mutateDesign(designId, (d) => {
+    const arr = findItem(d, itemId).props[key];
+    const [x] = arr.splice(from, 1);
+    arr.splice(toIndex, 0, x);
+  });
+}
 function mutateDesign(id, fn, { touch = true } = {}) {
   if (store.isViewing || !findDesign(store.state, id)) return false;
   store.commit((s) => {
@@ -3172,6 +3203,75 @@ const actions = {
   },
   renumberParts(designId, screenId) {
     return mutateScreen(designId, screenId, (sc) => { sc.parts = renumberedParts(sc.parts); });
+  },
+
+  // ── ステータスと操作（第 8 段階。画像 q52 の案A）──
+  // ステータスの項目（itemId）のステータスと操作を直す。取り込んだ項目は直さない（元の画面設計で直す）。断ったときは null・false を返し、履歴に積まない
+  addState(designId, itemId, name) {
+    const it = editableStatusItem(designId, itemId);
+    const n = cleanName(name);
+    if (!it || !n || it.props.states.some((s) => s.name === n)) return null;
+    const id = newId('t');
+    mutateDesign(designId, (d) => { findItem(d, itemId).props.states.push({ id, name: n }); });
+    return id;
+  },
+  renameState(designId, itemId, stateId, name) {
+    const it = editableStatusItem(designId, itemId);
+    const n = cleanName(name);
+    if (!it || !n || !it.props.states.some((s) => s.id === stateId) || it.props.states.some((s) => s.name === n && s.id !== stateId)) return false;
+    return mutateDesign(designId, (d) => { findItem(d, itemId).props.states.find((s) => s.id === stateId).name = n; });
+  },
+  // toIndex は動かした後の位置（0 がいちばん上）
+  moveState(designId, itemId, stateId, toIndex) {
+    const it = editableStatusItem(designId, itemId);
+    return !!it && moveInList(designId, itemId, 'states', stateId, toIndex);
+  },
+  // ステータスを消す（最後の 1 つは消せない）。そのステータスを使う操作も消え、見本で出していた部品は「なし」になる（取り込んだ側も）
+  deleteState(designId, itemId, stateId) {
+    const it = editableStatusItem(designId, itemId);
+    if (!it || it.props.states.length < 2 || !it.props.states.some((s) => s.id === stateId)) return false;
+    return mutateDesign(designId, (d) => {
+      const item = findItem(d, itemId);
+      const before = stateIdsOf(item);
+      item.props.states = item.props.states.filter((s) => s.id !== stateId);
+      item.props.actions = item.props.actions.filter((a) => a.from !== stateId && a.to !== stateId);
+      clearGoneStates(d, item, before);
+    });
+  },
+  // 操作を足す。spec は { name, from, to, role, cond }（from・to はステータスの id）。書かなければ「新しい操作」・1 つ目 → 2 つ目。戻り値は操作の id
+  addProcessAction(designId, itemId, spec = {}) {
+    const it = editableStatusItem(designId, itemId);
+    if (!it) return null;
+    const ids = stateIdsOf(it);
+    const a = {
+      id: newId('a'), name: cleanName(spec.name) || '新しい操作',
+      from: 'from' in spec ? str(spec.from) : ids[0] || '', to: 'to' in spec ? str(spec.to) : ids[1] || '',
+      role: str(spec.role).trim(), cond: str(spec.cond).trim(),
+    };
+    if (!validProcessAction(a, ids)) return null;
+    mutateDesign(designId, (d) => { findItem(d, itemId).props.actions.push(a); });
+    return a.id;
+  },
+  // 操作を直す。patch は { name, from, to, role, cond } のどれか。名前を空にしたときは今の名前のまま。前と次を同じにはしない
+  updateProcessAction(designId, itemId, actionId, patch) {
+    const it = editableStatusItem(designId, itemId);
+    const cur = it ? it.props.actions.find((a) => a.id === actionId) : null;
+    if (!cur || !isObj(patch)) return false;
+    const next = { ...cur };
+    if ('name' in patch) next.name = cleanName(patch.name) || cur.name;
+    ['from', 'to'].forEach((k) => { if (k in patch) next[k] = str(patch[k]); });
+    ['role', 'cond'].forEach((k) => { if (k in patch) next[k] = str(patch[k]).trim(); });
+    if (!validProcessAction(next, stateIdsOf(it))) return false;
+    return mutateDesign(designId, (d) => { Object.assign(findItem(d, itemId).props.actions.find((a) => a.id === actionId), next); });
+  },
+  moveProcessAction(designId, itemId, actionId, toIndex) {
+    const it = editableStatusItem(designId, itemId);
+    return !!it && moveInList(designId, itemId, 'actions', actionId, toIndex);
+  },
+  deleteProcessAction(designId, itemId, actionId) {
+    const it = editableStatusItem(designId, itemId);
+    if (!it || !it.props.actions.some((a) => a.id === actionId)) return false;
+    return mutateDesign(designId, (d) => { const item = findItem(d, itemId); item.props.actions = item.props.actions.filter((a) => a.id !== actionId); });
   },
 
   // ── データベースの項目の操作 ──
@@ -8676,6 +8776,7 @@ function aiNewItem(d, op, { name: forced = null } = {}) {
   if (type === 'status' && d.items.some((it) => it.type === 'status')) throw aiBad('ステータスの項目は、画面設計に 1 つだけです（今の項目を update で直してください）。');
   if (!op.allowSameName && d.items.some((it) => it.name === name)) throw new AiRefusal('same_name', `「${name}」という項目がもうあります。同じ名前でも足すときは allowSameName: true を付けてください。`);
   const item = createItemData(type, name);
+  if (type === 'status') item.props.actions = []; // AI が作るステータスの項目には、見本の操作を入れない（edit_process で渡した操作だけにする）
   item.required = !!op.required;
   item.memo = str(op.memo);
   if (op.props != null) item.props = aiItemProps(d, item, op.props);
