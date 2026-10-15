@@ -652,6 +652,14 @@ props: {
   `col` を省けば自動で付ける。`ref` の `design` はこのシステムに入っている画面設計、`screen`・`state` はその中で名前か id で引く）。今ある作業の `id` を書くと、書かなかった kind・memo・ref・src を残す。
   矢印は `{ from, to, label? }`（端は id → key → 文字の順に探す）。自分への矢印・同じ向きの 2 本目は断る。返事は作業の key → id の対応と、付けた列。
 - `get_view_image`: `view: 'swimlane'` のときは `system` が要り、ほかの図のときは `design` が要る（取り違えは `bad_request`）。
+- 見直しで決めたこと（2026-10-15）:
+  - `set_swimlane`: 矢印の `id` を書けばその矢印を使い、書かなければ同じ「元 → 先」の今の矢印の id を使い回す（中身が同じなら `changed: false`）。`edges` を省くと、両端の作業が残っている今の矢印を残す
+    （外した矢印は warnings。`[]` のときだけ全部消す）。label を省けば今の文字のまま。id のある作業は col を省けば今の列のまま。`get_system` の返事の形（作業の `roleId`・`ref` の `{ id, name }`・矢印の `id`）も受け取る。
+    返事は作業の `key`・`id`・`col` と矢印の数 `edgesTotal` だけ。端が 2 つに当たったときの候補は `{ key, text, index }`（今ある作業には `id` も）。
+  - `get_system`: 説明は最初のページ（cursor なし）にだけ入れる。
+  - `add_to_system`・`remove_from_system`: 任意の `expect`（システムの更新の印）。`add_to_system` の返事は、`updatedAt` がシステムの印、`design: { id, name, updatedAt }` が入れた画面設計の印。`remove_from_system` はごみ箱の画面設計を `trashed` で断る。
+  - `create_design` に `system` を書いたときの返事に `system: { id, name, updatedAt }`。`update_system` でほかのシステムと同じ名前にしたときは warnings。
+  - 中身が変わらない頼みは `changed: false`（更新の印・履歴・「AI が直す前の状態」の行・帯を出さない）。`restore_revision` が作業の指す先を外してシステムを変えたときも、システムに「AI が直す前の状態」の行を残す。
 
 `read_material` の返し方（Claude の案）:
 
