@@ -405,6 +405,7 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 /* ── データベースの項目の一覧表（真ん中。画像 q19）── */
 .db-view{position:absolute;inset:0;overflow:auto;padding:22px 26px 40px}
 .itable{background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px 18px;max-width:1240px;position:relative}
+.itable.wide{max-width:none}
 .itable-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .itable-head h3{font-size:16px;color:#0f172a}
 .itable-head .hint{margin-left:4px}
@@ -4585,6 +4586,10 @@ function currentPart() {
 // 右の設定の欄が今出している中身。画面では選んでいる部品（項目と合わせた形）、
 // データベースの項目の一覧表では選んでいる項目を部品と同じ形（label＝項目名・item）にしたもの
 function currentSubject() {
+  if (ui.panel === 'process') {
+    const st = currentDesign().items.find((x) => x.type === 'status');
+    return st ? { ...st, label: st.name, item: st } : null;
+  }
   if (ui.panel !== 'items') return currentPart();
   const it = findItem(currentDesign(), ui.itemId);
   return it ? { ...it, label: it.name, item: it } : null;
@@ -4695,9 +4700,10 @@ function updateEditor({ keepSide = false } = {}) {
   $('#zoom-badge').hidden = !onScreen;
   $('#db-view').hidden = onScreen;
   $('#side-box').hidden = !onScreen || store.isViewing; // 前の版を見ている間は、部品の箱を出さない
-  $('#side-panel').hidden = ui.panel === 'map';
+  $('#side-panel').hidden = ui.panel === 'map' || ui.panel === 'flow';
   if (onScreen) renderStage();
   else if (ui.panel === 'map') renderMapView(d);
+  else if (ui.panel === 'process' || ui.panel === 'flow') renderDiagramView(d, ui.panel);
   else renderItemsView(d);
   renderPalette(d);
   if (!keepSide) renderSettings(d);
@@ -4744,7 +4750,11 @@ function screenListHtml(d) {
   const entry = `<button class="db-entry${ui.panel === 'items' ? ' active' : ''}" data-action="open-items" title="データベースの項目の一覧表を開きます">
       <span class="ic">▦</span><span><b>データベースの項目</b><small>${d.items.length} 個</small></span></button>
     <button class="db-entry${ui.panel === 'map' ? ' active' : ''}" data-action="open-map" title="この画面設計と、直接つながる画面設計の図を開きます">
-      <span class="ic">⇄</span><span><b>つながりの図</b><small>${linked > 0 ? `${linked} つとつながっている` : 'つながりなし'}</small></span></button>`;
+      <span class="ic">⇄</span><span><b>つながりの図</b><small>${linked > 0 ? `${linked} つとつながっている` : 'つながりなし'}</small></span></button>
+    <button class="db-entry${ui.panel === 'process' ? ' active' : ''}" data-action="open-process" title="ステータスと、ステータスを進める操作の図を開きます">
+      <span class="ic">◎</span><span><b>ステータスの移り方</b><small>${processEntryNote(d)}</small></span></button>
+    <button class="db-entry${ui.panel === 'flow' ? ' active' : ''}" data-action="open-flow" title="ボタンとリンクの文字で移る先の画面を描いた図を開きます">
+      <span class="ic">⇢</span><span><b>画面の移り方</b><small>${flowEntryNote(store.state, d)}</small></span></button>`;
   // 縮小画像にマウスを乗せると右上に「…」が出る（画像 q31）。縮小画像はドラッグで並べ替える。いちばん下に「＋ 画面を足す」（画像 q29）。
   // AI が直した画面の「AI」の印は、前の版を見ている間は出さない（前の版の縮小画像には付けない）
   const aiDot = (s) => (!store.isViewing && aiView.unseen.has(s.id) ? '<span class="ai-dot" title="AI が直した画面です。開くと、直した部品を光らせます">AI</span>' : '');
@@ -4757,6 +4767,21 @@ function screenListHtml(d) {
       <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-haspopup="menu" aria-expanded="${ui.screenMenu === s.id}" aria-label="「${esc(s.name)}」の画面の操作" title="名前を変える・複製・並べ替え・消す">…</button>
     </div>`).join('')
     + '<button class="sl-add" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します">＋ 画面を足す</button>';
+}
+
+// 左の一覧の入口に書く数。ステータスの移り方は操作の数、画面の移り方は、ある画面を指す移る先（ボタン・リンクの文字）の数
+function processEntryNote(d) {
+  const it = d.items.find((x) => x.type === 'status');
+  if (!it) return 'ステータスなし';
+  return it.props.actions.length ? `操作 ${it.props.actions.length} つ` : '操作なし';
+}
+function flowEntryNote(state, d) {
+  const n = d.screens.reduce((sum, s) => sum + s.parts.filter((p) => {
+    const t = moveTargetOf(p, d.id);
+    const owner = t && (t.designId === d.id ? d : flowOwner(state, t.designId));
+    return !!owner && owner.screens.some((x) => x.id === t.screenId);
+  }).length, 0);
+  return n ? `移る先 ${n} 本` : '移る先なし';
 }
 
 // 画面の一覧の「…」のメニュー（画像 q31）。一覧の枠の外まではみ出せるように、窓に対して置く
@@ -4961,12 +4986,31 @@ function renderStage() {
 // 編集の画面のつながりの図（この画面設計と、直接つながる画面設計だけ）
 function renderMapView(d) {
   const el = $('#db-view');
-  const keep = $('#design-map') ? keepScroll(['#db-view', '#design-map']) : () => {};
+  const keep = el.dataset.view === 'map' && $('#design-map') ? keepScroll(['#db-view', '#design-map']) : () => {};
+  el.dataset.view = 'map';
   el.innerHTML = `<div class="itable"><div class="itable-head"><h3>つながりの図（${esc(d.name)}）</h3></div>
     <p class="map-note">「${esc(d.name)}」と、直接つながる画面設計を描きます。箱をドラッグで動かすと、その位置を覚えます。
       ${standalone ? 'ほかの画面設計は、この HTML に入っていないので開けません（書き出したときの写しで描いています）。'
     : 'ほかの画面設計の箱を押すと、その画面設計を開きます。全部の画面設計の図は、最初の画面の「つながりの図」で見られます。'}</p>${mapLegendHtml()}
     <div class="map-canvas" id="design-map">${mapHtml(store.state, d.id, d.mapPos || {})}</div></div>`;
+  keep();
+}
+
+// ステータスの移り方の図・画面の移り方の図（真ん中。q54 の案B・q55 の案A・q58）。表の幅の上限は外す（ほかの画面設計の箱が切れないように）
+const VIEW_NOTES = {
+  process: () => 'ステータスを箱、ステータスを進める操作を矢印で描きます。矢印には操作の名前と操作する人、2 行目に条件を書きます。'
+    + 'ステータスと操作は、右の欄で直します。箱をドラッグで動かすと、その位置を覚えます。',
+  flow: () => '画面を箱、ボタン・リンクの文字で移る先を矢印で描きます。画面の箱を押すと、その画面を開きます。'
+    + `ほかの画面設計の画面は灰色の点線の箱です（${standalone ? 'この HTML に入っていないので開けません' : '押すと、その画面設計を開きます'}）。箱をドラッグで動かすと、その位置を覚えます。`,
+};
+function renderDiagramView(d, view) {
+  const el = $('#db-view');
+  const keep = el.dataset.view === view && $('#design-map') ? keepScroll(['#db-view', '#design-map']) : () => {};
+  el.dataset.view = view;
+  el.innerHTML = `<div class="itable wide"><div class="itable-head"><h3>${VIEW_TITLES[view]}（${esc(d.name)}）</h3></div>
+    <p class="map-note">${VIEW_NOTES[view]()}</p>
+    <div class="map-head">${VIEW_LEGENDS[view]}<span class="spacer"></span><button class="btn small" data-action="view-reset" data-view="${view}" title="ドラッグで動かした箱を、自動で並べた位置に戻します">自動で並べ直す</button></div>
+    <div class="map-canvas" id="design-map">${viewHtml(view, store.state, d, d[VIEW_POS[view]] || {})}</div></div>`;
   keep();
 }
 
@@ -5411,12 +5455,13 @@ function renderPalette(d) {
 // 同じものを描き直すときは、スクロールの位置を保つ
 function renderSettings(d) {
   const el = $('#side-settings');
-  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ui.panel === 'map' ? 'map' : ui.sel.length > 1 ? 'multi' : ui.partId || ui.calloutId || 'screen:' + ui.screenId;
+  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ['map', 'process', 'flow'].includes(ui.panel) ? ui.panel : ui.sel.length > 1 ? 'multi' : ui.partId || ui.calloutId || 'screen:' + ui.screenId;
   const top = el.dataset.key === key ? el.scrollTop : 0;
   const p = currentSubject();
   const co = ui.panel === 'screen' ? findCallout(currentScreen(), ui.calloutId) : null;
   if (ui.panel === 'screen' && ui.sel.length > 1) el.innerHTML = multiSettingsHtml(d);
-  else if (ui.panel === 'map') el.innerHTML = '';
+  else if (ui.panel === 'map' || ui.panel === 'flow') el.innerHTML = '';
+  else if (ui.panel === 'process') el.innerHTML = processSettingsHtml(d, p);
   else if (ui.panel === 'items') el.innerHTML = p ? itemSettingsHtml(d, p) : itemsHintHtml(d);
   else if (p) el.innerHTML = partSettingsHtml(p);
   else if (co) el.innerHTML = calloutSettingsHtml(co);
@@ -5468,6 +5513,8 @@ const NUM = { type: 'number' };
 
 const fieldCtx = () => ({ design: currentDesign(), state: store.state });
 
+// 右の欄に、部品でなく項目を出しているか（データベースの項目の一覧表と、ステータスの移り方の図。項目を直す）
+const itemOnSide = () => ui.panel === 'items' || ui.panel === 'process';
 // 一覧表の「設定」に出る文の欄。番号を外した部品は、一覧表に出ないことを書く
 function pfOutHtml(p, { forItem = false } = {}) {
   if (!forItem && p.no == null) return '<div class="pf-out"><b>一覧表の「設定」に出る文</b><div>（番号を外しているので、一覧表には出ません）</div></div>';
@@ -5476,7 +5523,7 @@ function pfOutHtml(p, { forItem = false } = {}) {
 // 右の欄に出す「設定」の文。データベースの項目の一覧表で選んだ項目は、一覧表と同じ describeItem で作る（表の項目もテーブルとして書くため）
 function subjectSettingText(p) {
   if (!p) return '';
-  return ui.panel === 'items' && p.item ? describeItem(p.item, fieldCtx()) : describePart(p, fieldCtx());
+  return itemOnSide() && p.item ? describeItem(p.item, fieldCtx()) : describePart(p, fieldCtx());
 }
 
 // 選んだ部品の設定の欄。入力欄の部品は、上に「項目の設定（どの画面でも同じ）」、下に「この画面だけの設定」を出す（画像 q20）。
@@ -5700,6 +5747,18 @@ function itemSettingsHtml(d, p) {
     ${linked ? linkBannerHtml(p.item) : ''}
     ${itemSectionHtml(d, p, { withType: true, locked: linked, note: linked ? '元のモックの中身' : 'どの画面でも同じ' })}
     <div class="pf-del"><button class="btn small danger-text" data-action="delete-item" data-id="${esc(p.id)}">この項目を消す</button></div>`;
+}
+
+// ステータスの移り方の図を出している間の右の欄（q54。図を見ながらステータスと操作を直す）。項目を消すボタンは出さない（データベースの項目の一覧表で消す）
+function processSettingsHtml(d, p) {
+  const head = `<div class="panel-title">ステータスと操作（${esc(d.name)}）</div>`;
+  if (!p) {
+    return head + '<p class="hint">ステータスの項目がまだありません。画面を開き、右の部品の箱の「進み具合の画面用」から「ステータスの印」か「進み具合の矢印」を置くと作られます。</p>';
+  }
+  const linked = !!p.item.link;
+  return `${head}<p class="hint" style="margin-bottom:8px">ここで直すと、図とステータスの印・進み具合の矢印がすぐ変わります。</p>
+    ${linked ? linkBannerHtml(p.item) : ''}
+    ${itemSectionHtml(d, p, { withType: true, locked: linked, note: linked ? '元のモックの中身' : 'どの画面でも同じ' })}`;
 }
 
 function itemsHintHtml(d) {
@@ -6012,7 +6071,7 @@ function onPartFieldChange(el) {
   const patch = key.startsWith('props.') ? { props: { [key.slice(6)]: value } } : key.startsWith('view.') ? { view: { [key.slice(5)]: value } } : { [key]: value };
   if (key === 'props.designId') patch.props.screenId = ''; // 移る先の画面設計を選び直したら、画面は選び直す（画像 q53 の案A）
   // データベースの項目の一覧表では項目を、画面では部品を書き換える（部品の項目名と設定は、部品が指す項目に書く）
-  const apply = () => (ui.panel === 'items' ? actions.updateItem(ui.designId, p.id, patch) : actions.updatePart(ui.designId, s.id, p.id, patch));
+  const apply = () => (itemOnSide() ? actions.updateItem(ui.designId, p.id, patch) : actions.updatePart(ui.designId, s.id, p.id, patch));
   if (!isTextInput(el)) { apply(); return; }
   commitKeepSide(apply);
   const now = currentSubject();
@@ -6841,12 +6900,14 @@ function openItemsPanel() {
   Object.assign(ui, { panel: 'items', sel: [] });
   updateEditor();
 }
-function openMapPanel() {
+// 真ん中に図を出す（panel は 'map'・'process'・'flow'）
+function openViewPanel(panel) {
   flushSideField();
-  if (ui.panel === 'map') return;
-  Object.assign(ui, { panel: 'map', sel: [], addItemMenu: false });
+  if (ui.panel === panel) return;
+  Object.assign(ui, { panel, sel: [], addItemMenu: false });
   updateEditor();
 }
+function openMapPanel() { openViewPanel('map'); }
 
 function selectItem(id) {
   flushSideField();
@@ -7000,12 +7061,21 @@ function dragItemSort(ev) {
   row.classList.add(after ? 'drop-after' : 'drop-before');
 }
 
-// つながりの図の箱のドラッグ。動かさずに放したときは、その画面設計を開く（編集中の画面設計の箱と、一覧にないデータベースは開かない）
+// 図の箱のドラッグ（つながりの図・ステータスの移り方の図・画面の移り方の図。どの図かは data-view）。動かさずに放したときは、
+// つながりの図はその画面設計を開き（編集中の画面設計の箱と、一覧にないデータベースは開かない）、画面の移り方の図はその画面を開く
 function startMapDrag(ev, el) {
   ev.preventDefault();
   flushSideField();
   const inner = el.closest('.map-inner');
-  drag = { kind: 'map', el, inner, key: el.dataset.node, sx: ev.clientX, sy: ev.clientY, x0: parseFloat(el.style.left) || 0, y0: parseFloat(el.style.top) || 0, moved: false, focus: inner.dataset.focus || null };
+  drag = { kind: 'map', el, inner, view: inner.dataset.view || 'map', key: el.dataset.node, sx: ev.clientX, sy: ev.clientY,
+    x0: parseFloat(el.style.left) || 0, y0: parseFloat(el.style.top) || 0, moved: false, focus: inner.dataset.focus || null };
+}
+// ドラッグの間に描き直す線（ほかの箱は今の位置のまま）。矢印の印の id の頭は、図を描いたときと同じにする
+function viewEdgesSvg(view, focus, pos, w, h) {
+  if (view === 'map') return mapEdgesSvg(mapModel(store.state, focus), pos, w, h);
+  const d = findDesign(store.state, focus);
+  const model = view === 'process' ? processModel(d) : flowModel(store.state, d);
+  return mapEdgesSvg(model, pos, w, h, { ...VIEW_DRAW[view], idPrefix: view === 'process' ? 'proc' : 'flow' });
 }
 function dragMap(ev) {
   if (store.isViewing) return; // 前の版を見ている間は、箱を動かさない（押して開くのはできる）
@@ -7021,19 +7091,29 @@ function dragMap(ev) {
   const st = drag.inner.style;
   st.width = Math.max(parseFloat(st.width), drag.x + MAP_W + 60) + 'px';
   st.height = Math.max(parseFloat(st.height), drag.y + MAP_H + 76) + 'px';
-  // 線も描き直す（ほかの箱は今の位置のまま）
-  const model = mapModel(store.state, drag.focus);
+  // 線も描き直す
   const pos = {};
   drag.inner.querySelectorAll('.mnode').forEach((n) => { pos[n.dataset.node] = { x: parseFloat(n.style.left) || 0, y: parseFloat(n.style.top) || 0, h: parseFloat(n.style.height) || MAP_H }; });
   const svg = drag.inner.querySelector('svg');
-  if (svg) svg.outerHTML = mapEdgesSvg(model, pos, parseFloat(drag.inner.style.width), parseFloat(drag.inner.style.height));
+  if (svg) svg.outerHTML = viewEdgesSvg(drag.view, drag.focus, pos, parseFloat(drag.inner.style.width), parseFloat(drag.inner.style.height));
 }
 function endMapDrag(done) {
   document.body.classList.remove('map-dragging');
-  if (done.moved && (done.x !== done.x0 || done.y !== done.y0)) { actions.setMapPos(done.focus, done.key, { x: done.x, y: done.y }); return; }
-  if (!done.key.startsWith('d:') || done.key === 'd:' + done.focus) return;
+  if (done.moved && (done.x !== done.x0 || done.y !== done.y0)) { actions.setViewPos(done.focus, done.view, done.key, { x: done.x, y: done.y }); return; }
+  if (done.view === 'flow') { openFlowNode(done.key); return; }
+  if (done.view !== 'map' || !done.key.startsWith('d:') || done.key === 'd:' + done.focus) return;
   if (!findDesign(store.state, done.key.slice(2))) return; // 単体で開いた HTML の、ほかの画面設計の箱（この HTML にない）は開かない
   openDesign(done.key.slice(2));
+}
+
+// 画面の移り方の図の箱を押したとき: この画面設計の画面はその画面を、ほかの画面設計の画面はその画面設計のその画面を開く
+function openFlowNode(key) {
+  if (key.startsWith('s:')) { openScreen(key.slice(2)); return; }
+  const [designId, screenId] = key.slice(2).split('/');
+  const d = findDesign(store.state, designId);
+  if (!d || d.trashedAt || !d.screens.some((s) => s.id === screenId)) return; // 単体で開いた HTML の、ほかの画面設計の画面（この HTML にない）は開かない
+  openDesign(designId);
+  openScreen(screenId);
 }
 
 function onDragMove(ev) {
@@ -7537,7 +7617,7 @@ const pngDocHtml = (title, body) => '<!DOCTYPE html>\n<html lang="ja">\n<head>\n
 const VIEW_TITLES = { map: 'つながりの図', process: 'ステータスの移り方', flow: '画面の移り方' };
 const VIEW_LEGENDS = {
   map: '<span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>',
-  process: '<span><i></i>操作（並びの先へ進む）</span><span><i class="b"></i>操作（並びの前へ戻る）</span>',
+  process: '<span><i></i>先へ進む操作</span><span><i class="b"></i>前へ戻る操作（差し戻しなど）</span>',
   flow: '<span><i></i>ボタン</span><span><i class="g"></i>リンクの文字</span><span><i class="x"></i>ほかの画面設計の画面</span>',
 };
 // 図の HTML（mapHtml・viewHtml）の、箱と線と矢印の文字のある所（まわりに 16 の余白）。戻り値 { x0, y0, cw, ch }。箱がなければ null。
@@ -8262,6 +8342,8 @@ function runCommand(cmd) {
   switch (cmd) {
     case 'openItems': openItemsPanel(); return true;
     case 'openMap': openMapPanel(); return true;
+    case 'openProcess': openViewPanel('process'); return true;
+    case 'openFlow': openViewPanel('flow'); return true;
     case 'addItemMenu':
       if (ui.panel !== 'items') Object.assign(ui, { panel: 'items', partId: null });
       ui.addItemMenu = !ui.addItemMenu;
@@ -8297,7 +8379,7 @@ function runCommand(cmd) {
 }
 
 // 前の版を見ている間にも使える命令（見る・選ぶ・移る・拡大縮小と、今の中身に戻ってから行う命令）
-const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'importHtml', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'prevScreen', 'nextScreen',
+const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'importHtml', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'openProcess', 'openFlow', 'prevScreen', 'nextScreen',
   'zoomIn', 'zoomOut', 'zoomReset', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart', 'aiConnect'];
 
 // 揃える命令（メニューバー・右の欄・アプリのメニュー）と、alignedRects の how
@@ -8325,7 +8407,7 @@ const ACTION_COMMANDS = {
   undo: 'undo', redo: 'redo', home: 'goHome', export: 'exportDialog', 'import-html': 'importHtml', 'save-html': 'saveHtml', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
-  'open-items': 'openItems', 'open-map': 'openMap', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
+  'open-items': 'openItems', 'open-map': 'openMap', 'open-process': 'openProcess', 'open-flow': 'openFlow', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
   'select-all': 'selectAll', 'number-on': 'numberOn', 'number-off': 'numberOff', 'delete-many': 'deletePart',
   'add-screen': 'addScreen', 'duplicate-screen': 'duplicateScreen', 'delete-screen': 'deleteScreen',
   'add-revision': 'addRevision', 'open-revisions': 'openRevisions', 'ai-connect': 'aiConnect',
@@ -8353,7 +8435,10 @@ function onEditorClick(action, btn) {
       return true;
     case 'open-items': openItemsPanel(); return true;
     case 'open-map': openMapPanel(); return true;
+    case 'open-process': openViewPanel('process'); return true;
+    case 'open-flow': openViewPanel('flow'); return true;
     case 'map-reset': actions.resetMapPos(ui.designId); return true;
+    case 'view-reset': actions.resetViewPos(ui.designId, btn.dataset.view); return true;
     case 'select-screen':
       flushSideField();
       if (btn.dataset.id === ui.screenId && ui.panel === 'screen') return true; // mousedown で切り替えた後の click
@@ -10330,6 +10415,8 @@ async function copyAiText(btn, text) {
 }
 
 // ── 11. 起動 ──────────────────────────────────────────────────────────────────
+// 編集の画面で、押した時点で切り替えるもの（部品・画面・項目を選ぶ、左の一覧のいちばん上の入口）。前の版を見ている間も押せる
+const EDITOR_PICK_ACTIONS = ['select-part', 'select-screen', 'select-item', 'open-items', 'open-map', 'open-process', 'open-flow'].map((a) => `[data-action="${a}"]`).join(', ');
 function bindGlobalEvents() {
   const app = appEl();
   app.addEventListener('click', onAppClick);
@@ -10353,7 +10440,7 @@ function bindGlobalEvents() {
     if (ui.screenMenu) closeScreenMenu();
     // 前の版を見ている間は、置く・並べ替えるのドラッグを始めない（押して切り替える・選ぶだけ）
     if (store.isViewing) {
-      const pick = e.target.closest('[data-action="select-part"], [data-action="select-screen"], [data-action="select-item"], [data-action="open-items"], [data-action="open-map"]');
+      const pick = e.target.closest(EDITOR_PICK_ACTIONS);
       if (pick) onEditorClick(pick.dataset.action, pick);
       return;
     }
@@ -10374,7 +10461,7 @@ function bindGlobalEvents() {
     // 一覧表の行と画面の一覧は、押した時点で切り替える。右の欄で打ちかけの文字があると、離れたときの保存で
     // 一覧表と画面の一覧が描き直され、押した行・ボタンが click の前に消えて、1 回目の押しが効かないため
     if (e.target.closest('.del-x')) return;
-    const sel = e.target.closest('[data-action="select-part"], [data-action="select-screen"], [data-action="select-item"], [data-action="open-items"], [data-action="open-map"]');
+    const sel = e.target.closest(EDITOR_PICK_ACTIONS);
     if (sel) onEditorClick(sel.dataset.action, sel);
   });
   document.addEventListener('keydown', onKeyDown);
