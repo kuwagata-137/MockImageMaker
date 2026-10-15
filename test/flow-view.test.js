@@ -193,3 +193,11 @@ test('前の版を見ている間: 2 つの図は見られるが、箱は動か�
   assert.equal(api.ui.panel, 'process', '前の版を見ている間も命令で開ける');
   assert.equal(api.store.isViewing, true);
 });
+
+// ── 見直し（第 8 段階）で見つけた不具合 ──
+test('左の一覧の「画面の移り方」の数: 自分の画面を指す移る先は数えない（図にも描かず、書き出しの窓でも「移る先がない」と同じ）', async (t) => {
+  const { a1, A, put, entry, api, d } = await boot(t);
+  put(A, a1, 'button', { to: 'screen', screenId: a1 }, '自分へ');
+  assert.match(entry('open-flow').textContent, /移る先なし/);
+  assert.equal(api.hasFlowPage(d(A), api.store.state), false);
+});

@@ -203,3 +203,47 @@ test('ボタンの移る先の欄: なし・画面・URL。画面を選ぶと、
   assert.deepEqual(opts('[data-pf="props.designId"]'), ['この画面設計（顧客管理）', '経費精算', '売上管理']);
   void C;
 });
+
+// ── 見直し（第 8 段階）で見つけた不具合 ──
+test('進み具合の矢印の「今のステータス（見本）」には「（なし）」がある（空のときは「（なし）」を選んだ形）。ステータスの印は、空のとき並びの 1 つ目を描くので、選択肢は並びだけ', async (t) => {
+  const { add, api, idOf, side } = await bootEditor(t);
+  const sp = add('steps');
+  api.selectPart(sp.id);
+  const sel = () => side('select[data-pf="view.current"]');
+  assert.deepEqual(plain([sel().options[0].value, sel().options[0].textContent]), ['', '（なし）']);
+  setValue(sel(), '');
+  assert.equal(api.currentScreen().parts.find((p) => p.id === sp.id).view.current, '');
+  assert.equal(sel().value, '');
+  setValue(sel(), idOf('申請'));
+  assert.equal(api.currentScreen().parts.find((p) => p.id === sp.id).view.current, idOf('申請'));
+  const st = add('status');
+  api.selectPart(st.id);
+  assert.equal(sel().options[0].textContent, '申請');
+});
+
+test('ステータスの名前を直すと、同じ右の欄の「見本で出すステータス」の選ぶ欄の名前もすぐ変わる', async (t) => {
+  const { add, api, idOf, side } = await bootEditor(t);
+  const st = add('status');
+  api.selectPart(st.id);
+  const first = idOf('申請');
+  setValue(side(`[data-ps="${first}"]`), '下書き');
+  assert.equal(side(`select[data-pf="view.current"] option[value="${first}"]`).textContent, '下書き');
+});
+
+test('ステータスと操作の名前の欄を空にして打ち直している途中に、ほかの窓へ移っても、欄を元の名前に戻さない', async (t) => {
+  const { app, add, api, item, idOf } = await bootEditor(t);
+  const st = add('status');
+  api.selectPart(st.id);
+  const inp = $(app, `#side-settings [data-ps="${idOf('完了')}"]`);
+  inp.focus();
+  inp.value = '';
+  app.window.dispatchEvent(new app.window.Event('blur'));
+  assert.equal(inp.value, '', 'ステータスの名前の欄');
+  assert.equal(item().props.states[3].name, '完了');
+  const name = $(app, `#side-settings [data-pa="${item().props.actions[0].id}"][data-k="name"]`);
+  name.focus();
+  name.value = '';
+  app.window.dispatchEvent(new app.window.Event('blur'));
+  assert.equal(name.value, '', '操作の名前の欄');
+  assert.equal(item().props.actions[0].name, '申請する');
+});

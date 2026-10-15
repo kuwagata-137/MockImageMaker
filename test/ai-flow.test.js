@@ -300,3 +300,10 @@ test('edit_screen の delete: ほかの画面設計の移る先も外れると�
   assert.ok(r.warnings.some((w) => /「受注管理」1 個・「出張申請」1 個/.test(w)), JSON.stringify(r.warnings));
   app.close();
 });
+
+test('get_view_image: ごみ箱にある画面設計のつながりの図は、箱のない画像を返さずに断る（ステータスの移り方・画面の移り方は描ける）', async () => {
+  const { app, call } = await boot();
+  ng(await call('get_view_image', { design: '出張申請', view: 'map' }), 'trashed');
+  ok(await call('get_view_image', { design: '出張申請', view: 'screenflow' }));
+  app.close();
+});

@@ -264,3 +264,17 @@ test('書き出す HTML: ごみ箱にある画面設計は screenPeers に「ご
   assert.deepEqual(opts, ['この画面設計（出張申請）', '経費精算（ごみ箱にあります）']);
   assert.ok(a1);
 });
+
+test('画面の移り方の図: 単体で開いた HTML では、ほかの画面設計の箱の説明に「開けません」と書く', async (t) => {
+  const { api, A, B, a2, b1, put } = await bootTwo(t);
+  put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
+  const html = api.buildStandaloneHtml(api.store.state.designs.find((x) => x.id === A), api.store.state);
+  const app2 = bootApp({ html, url: 'https://localhost/vendor/a.html' });
+  t.after(() => app2.close());
+  const api2 = await app2.api();
+  const box = app2.document.createElement('div');
+  box.innerHTML = api2.viewHtml('flow', api2.store.state, api2.currentDesign());
+  assert.match(box.querySelector('.mnode.ext').title, /開けません/);
+  box.innerHTML = api.viewHtml('flow', api.store.state, api.store.state.designs.find((x) => x.id === A));
+  assert.match(box.querySelector('.mnode.ext').title, /押すと「経費精算」を開きます/);
+});

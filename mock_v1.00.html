@@ -4384,7 +4384,9 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
     const body = view === 'process' ? `<b>${n.order + 1}　${esc(n.name)}</b><div class="mt"><span>出ていく操作 ${n.outs} つ</span></div>`
       : n.ext ? `<b>${esc(n.name)}</b><div class="mt"><span>「${esc(n.ext)}」の画面</span></div>`
         : `<b>${esc(n.name)}</b><div class="mt"><span class="dev">${esc(dev)}</span><span>部品 ${n.screen.parts.length} 個</span></div>`;
-    const title = view === 'process' ? 'ドラッグで動かせます' : n.ext ? `ドラッグで動かせます。押すと「${esc(n.ext)}」を開きます` : 'ドラッグで動かせます。押すと、この画面を開きます';
+    const title = view === 'process' ? 'ドラッグで動かせます'
+      : !n.ext ? 'ドラッグで動かせます。押すと、この画面を開きます'
+        : findDesign(state, n.designId) ? `ドラッグで動かせます。押すと「${esc(n.ext)}」を開きます` : 'ドラッグで動かせます（この HTML に入っていない画面設計なので、開けません）';
     return `<div class="mnode${n.ext ? ' ext' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${p.h}px" title="${title}">${body}</div>`;
   }).join('');
   // ステータスの移り方の図は、箱の右に矢印の文字と、箱の右を回る線の分の幅を取る
@@ -4795,6 +4797,7 @@ function processEntryNote(d) {
 function flowEntryNote(state, d) {
   const n = d.screens.reduce((sum, s) => sum + s.parts.filter((p) => {
     const t = moveTargetOf(p, d.id);
+    if (t && t.designId === d.id && t.screenId === s.id) return false; // 自分の画面への矢印は図に描かない
     const owner = t && (t.designId === d.id ? d : flowOwner(state, t.designId));
     return !!owner && owner.screens.some((x) => x.id === t.screenId);
   }).length, 0);
@@ -5607,7 +5610,8 @@ function itemPartSettingsHtml(p, t) {
     : '';
   const states = (p.props && p.props.states) || [];
   const here = p.type === 'status' || p.type === 'steps'
-    ? pfSelect('view.current', p.type === 'steps' ? '今のステータス（見本）' : '見本で出すステータス', resolveStateRef(states, (p.view || {}).current), states.map((s) => [s.id, s.name]))
+    ? pfSelect('view.current', p.type === 'steps' ? '今のステータス（見本）' : '見本で出すステータス', resolveStateRef(states, (p.view || {}).current),
+      [...(p.type === 'steps' ? [['', '（なし）']] : []), ...states.map((s) => [s.id, s.name])])
       + (p.type === 'status' ? pfCheck('view.showWord', '「ステータス」の文字を付ける', !(p.view && p.view.showWord === false)) : '')
     : pfSeg('labelPos', '項目名の位置', p.labelPos, [['top', '上'], ['left', '左']]) + sample;
   return `
@@ -6123,7 +6127,7 @@ function onStateFieldChange(el) {
   if (it.props.states.some((x) => x.name === n && x.id !== s.id)) { back(`「${n}」というステータスがもうあります。`); return; }
   commitKeepSide(() => actions.renameState(ui.designId, it.id, s.id, n));
   el.value = n;
-  document.querySelectorAll('#side-settings select[data-pa] option').forEach((o) => { if (o.value === s.id) o.textContent = n; });
+  document.querySelectorAll('#side-settings select[data-pa] option, #side-settings select[data-pf="view.current"] option').forEach((o) => { if (o.value === s.id) o.textContent = n; });
   refreshPfOut();
 }
 // 操作のカードの欄（data-pa・data-k）。名前は空にしない。前と次を同じにはしない（欄を元に戻して知らせる）
@@ -6444,7 +6448,9 @@ function flushSideField() {
   // 作る先の「その他」に打ちかけの名前（欄を離れたときの change で決まる）
   if (el.classList.contains('target-other')) { el.dispatchEvent(new Event('change')); return; }
   if (!el.dataset.pf && !el.dataset.lk && !el.dataset.ps && !el.dataset.pa && !el.dataset.tb && !el.dataset.fl && !el.dataset.co && !TEXT_FIELDS.includes(el.dataset.field)) return;
-  if ((el.dataset.field === 'design-name' || el.dataset.field === 'screen-name') && !cleanName(el.value)) return; // 名前を消して打ち直している途中は待つ
+  // 名前を消して打ち直している途中は待つ（画面設計・画面・ステータス・操作の名前）
+  const nameField = el.dataset.field === 'design-name' || el.dataset.field === 'screen-name' || el.dataset.ps || (el.dataset.pa && el.dataset.k === 'name');
+  if (nameField && !cleanName(el.value)) return;
   onSidePanelChange({ target: el });
 }
 
@@ -10144,6 +10150,7 @@ async function aiGetViewImage(args) {
   const key = str(args.view);
   if (!own(AI_VIEWS, key)) throw aiBad(`view は ${Object.keys(AI_VIEWS).map((x) => `"${x}"`).join('・')} です。`);
   const view = AI_VIEWS[key];
+  if (view === 'map' && d.trashedAt) throw new AiRefusal('trashed', `「${d.name}」はごみ箱にあるので、つながりの図には出ません（ステータスの移り方と画面の移り方の図は描けます）。`);
   if (view === 'process' && !aiStatusItem(d)) throw aiBad(`「${d.name}」にはステータスの項目がないので、ステータスの移り方の図はありません（edit_process の set_states でステータスを書くと描けます）。`);
   const doc = viewImageDoc(d, S, view);
   return new AiRendered(
@@ -10621,7 +10628,7 @@ function exposeForTest() {
   Object.assign(window.__test__, {
     store, ui, actions, runCommand, openDesign, goHome, migrate, normalizeState, snapHeight, changeDevice,
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
-    PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, minScreenHeight, selectPart, currentScreen,
+    PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, hasFlowPage, minScreenHeight, selectPart, currentScreen,
     currentDesign, currentPart, openScreen, openItemsPanel, selectItem, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
     exportDocument, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport,
     paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
