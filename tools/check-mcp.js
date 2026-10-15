@@ -4,6 +4,7 @@
 // （窓の × は、check-electron と同じく BrowserWindow.close() を inspector から呼んで再現する。ページの window.close() は close の知らせを通らないため）。
 //  A. 最初の頼みで、アプリを --background で起動する（かかった時間を出す）。画面設計を作って部品を並べると、designs.json に残る。
 //     画面の画像は長い辺が 1568 以下の PNG。書き出し（PDF・PNG・HTML）は MIM_AI_EXPORT_DIR に書き、同じ名前には番号を付ける。
+//     道具は 20 個。edit_process でステータスと操作を書き、移る先を持つボタンを並べると、get_flow で読め、get_view_image は PNG（長い辺が 1568 以下。第 8 段階）。
 //     status で、窓が見えていない・裏の起動・ページの準備ができている。2 つ目の起動（--background）では窓を出す印が付かない。
 //     前に人が窓を最大化して閉じていても（window-state.json の isMaximized）、裏の起動では窓が画面に出ない（status の onScreen）。
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり、automation.json が消える
@@ -151,6 +152,29 @@ async function phaseA() {
     pdf1.folder === EXPORT_DIR && names[0] === '出張申請（確かめ）.pdf' && names[1] === '出張申請（確かめ） (2).pdf' && head(pdf1.files[0], 4) === '%PDF'
       && png.files.length === 1 && head(png.files[0], 4).slice(1) === 'PNG' && /mim-embedded/.test(fs.readFileSync(html.files[0], 'utf8')),
     names.join('、'));
+  // 第 8 段階の道具（ステータスの移り方と画面の移り方）
+  const tl = await client.listTools();
+  check('A. 道具は 20 個（edit_process・get_flow・get_view_image を含む）',
+    tl.tools.length === 20 && ['edit_process', 'get_flow', 'get_view_image'].every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
+  await tool(client, 'edit_process', { design: made.id, ops: [
+    { op: 'set_states', states: ['申請', '承認待ち', '完了'] },
+    { op: 'add_action', name: '申請する', from: '申請', to: '承認待ち', role: '申請者' },
+    { op: 'add_action', name: '承認する', from: '承認待ち', to: '完了', role: '上長' },
+  ] });
+  await tool(client, 'add_screen', { design: made.id, name: '一覧' });
+  await tool(client, 'layout_screen', { design: made.id, screen: '一覧', layout: { columns: 1, rows: [{ align: 'right', parts: [{ type: 'button', label: '＋ 新規申請', style: 'primary', to: made.firstScreen.id }] }] } });
+  const flow = await tool(client, 'get_flow', { design: made.id });
+  const moves = (flow.moves || []).filter((m) => m.to); // 移る先のないボタンは to: null で並ぶ
+  check('A. edit_process で書いたステータスと操作、ボタンの移る先を get_flow で読める',
+    flow.status && flow.status.states.length === 3 && flow.actions.length === 2 && moves.length === 1 && moves[0].to.screenId === made.firstScreen.id,
+    `ステータス ${flow.status ? flow.status.states.length : 0}・操作 ${(flow.actions || []).length}・移る先のあるボタン ${moves.length}`);
+  for (const view of ['process', 'screenflow']) {
+    const vi = await client.callTool({ name: 'get_view_image', arguments: { design: made.id, view } });
+    const vim = vi.content.find((c) => c.type === 'image');
+    const vb = vim ? Buffer.from(vim.data, 'base64') : Buffer.alloc(0);
+    const [vw, vh] = vb.length > 24 ? [vb.readUInt32BE(16), vb.readUInt32BE(20)] : [0, 0];
+    check(`A. get_view_image（${view}）は PNG で、長い辺が 1568 以下`, !vi.isError && vb.subarray(1, 4).toString() === 'PNG' && Math.max(vw, vh) <= 1568 && vw >= 400, `${vw} × ${vh}`);
+  }
   const st = await status();
   check('A. 窓は見えていない・裏の起動・ページの準備ができている', st.visible === false && st.background === true && st.pageReady === true && st.clients >= 1, JSON.stringify(st));
   check('A. 前に人が窓を最大化して閉じていても、裏の起動では窓が画面に出ない', st.onScreen === false, `onScreen ${st.onScreen}`);
