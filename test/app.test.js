@@ -83,7 +83,7 @@ test('一覧: 更新の新しい順に並び、名前で探せる', async (t) =>
   setValue($(app, '#home-search'), '管理', 'input');
   assert.deepEqual(cardNames(app), ['問い合わせ管理', '顧客管理アプリ']);
   setValue($(app, '#home-search'), '日報', 'input');
-  assert.match($(app, '#home-cards').textContent, /「日報」を名前に含む画面設計はありません/);
+  assert.match($(app, '#home-cards').textContent, /「日報」に当たる画面設計はありません/);
   assert.equal(ids.length, 3);
 });
 

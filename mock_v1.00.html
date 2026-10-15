@@ -47,9 +47,11 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .home-scroll{flex:1;overflow:auto}
 .home{max-width:1120px;margin:0 auto;padding:22px 24px 40px}
 .home.wide{max-width:none}
-.home-head{display:flex;align-items:center;gap:10px}
-.home-head h1{font-size:22px;font-weight:700;color:#0f172a}
-.search{display:flex;align-items:center;gap:6px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;padding:0 10px;width:240px}
+.home-head{display:flex;align-items:flex-start;gap:10px}
+.home-head h1{font-size:22px;line-height:34px;font-weight:700;color:#0f172a;white-space:nowrap}
+/* 見出しの右の、名前で探す欄とボタン。窓が狭いときは、右に寄せたまま折り返す */
+.home-tools{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px}
+.search{display:flex;align-items:center;gap:6px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;padding:0 10px;width:200px}
 .search input{border:none;outline:none;padding:7px 0;width:100%;background:transparent}
 .search:focus-within{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.25)}
 .home-note{color:#64748b;font-size:12px;margin:8px 0 16px}
@@ -77,6 +79,33 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .trash-name{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .trash-date{color:#64748b;font-size:12px;margin-left:auto;white-space:nowrap}
 .trash-empty,.trash-note{color:#64748b;font-size:12px;padding:8px 0}
+.trash-sub{font-size:12px;font-weight:700;color:#334155;margin:10px 0 0}
+.trash-meta{color:#64748b;font-size:12px;white-space:nowrap}
+/* システムのまとまり（第 9 段階。画像 q61 の案B）: 左にシステムの名前の一覧、右に選んだまとまりのカード */
+.sys-two{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;align-items:start}
+.sys-list{background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:8px;position:sticky;top:12px;max-height:calc(100vh - 80px);overflow:auto}
+.sys-list .sys-item{display:flex;width:100%;align-items:center;gap:8px;border:2px solid transparent;border-radius:8px;padding:9px 10px;background:none;text-align:left;cursor:pointer;font-size:13.5px}
+.sys-list .sys-item:hover{background:#f1f5f9}
+.sys-list .sys-item .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sys-list .sys-item small{margin-left:auto;color:#64748b;font-size:11.5px;white-space:nowrap;flex-shrink:0}
+.sys-list .sys-item.on{border-color:#2563eb;background:#eff6ff;color:#1d4ed8;font-weight:700}
+.sys-list .sys-item.drop-on{border-color:#2563eb;background:#dbeafe}
+.sys-list hr{border:none;border-top:1px dashed #cbd5e1;margin:6px 4px}
+.sys-list .sys-new{display:block;width:100%;border:none;background:none;text-align:left;padding:9px 10px;border-radius:8px;cursor:pointer;color:#2563eb;font-size:13.5px;white-space:nowrap}
+.sys-list .sys-new:hover{background:#eff6ff}
+.sys-block{border:1px solid #cbd5e1;border-radius:12px;background:#fff;padding:14px 16px 16px;min-width:0}
+.sys-block.lone{background:#f8fafc;border-style:dashed}
+.sys-block.drop-on{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.3);background:#eff6ff}
+.sys-block .empty{padding:20px 4px}
+.sys-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.sys-head h2{font-size:17px;color:#0f172a;min-width:0;overflow-wrap:anywhere}
+.sys-head .meta{font-size:12.5px;color:#64748b;white-space:nowrap}
+.sys-desc{font-size:12.5px;color:#475569;margin:-6px 0 12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.sys-pop-wrap{position:relative;display:inline-flex}
+.card.shared{border:2px solid #15803d}
+.share-tag{display:inline-block;border:1px solid #86efac;background:#f0fdf4;color:#166534;font-size:11.5px;border-radius:6px;padding:1px 7px;margin:0 0 4px;cursor:pointer;white-space:nowrap}
+.share-tag:hover{background:#dcfce7}
+.sys-temp .home-head h1{white-space:normal;min-width:0;overflow-wrap:anywhere}
 
 /* 縮小画像（画面を同じ HTML で描いて縮める） */
 .thumb{position:relative;overflow:hidden;background:#fff;border:1px solid #cbd5e1;flex-shrink:0}
@@ -428,6 +457,33 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 .pop-menu button{border:none;background:none;text-align:left;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;gap:8px;align-items:center}
 .pop-menu button:hover{background:#f1f5f9}
 .pop-menu button i{font-style:normal;width:18px;text-align:center;color:#1d3f6e}
+/* 最初の画面のシステムのまとまりの「＋ 画面設計を入れる ▾」「…」のメニュー（第 9 段階。画像 q46） */
+.pop-menu.sys-pop{right:0;top:calc(100% + 4px);min-width:260px}
+.pop-menu.sys-pop button{flex-direction:column;align-items:flex-start;gap:1px}
+.pop-menu.sys-pop b{font-weight:400;font-size:13px;color:#0f172a}
+.pop-menu.sys-pop small{font-size:11px;color:#64748b}
+.pop-menu.sys-pop button.danger{color:#dc2626}
+/* 今ある画面設計を入れる窓・複製して入れる窓（第 9 段階。画像 q47） */
+.pick-lead{color:#475569;margin-bottom:12px}
+.pick-bar{display:flex;gap:10px;margin-bottom:12px}
+.pick-bar .pick-search{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:7px;padding:6px 10px}
+.pick-bar .pick-search:focus,.pick-bar .pick-sys:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.25)}
+.pick-bar .pick-sys{width:220px;border:1px solid #cbd5e1;border-radius:7px;padding:6px 8px;background:#fff}
+.pick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-height:min(460px,calc(100vh - 330px));overflow:auto;padding:3px}
+.pick-card{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:2px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:0 0 10px;text-align:left;cursor:pointer;overflow:hidden}
+.pick-card:hover{border-color:#94a3b8}
+.pick-card .th{position:relative;height:104px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:6px}
+.pick-card .bd{display:flex;align-items:center;gap:6px;padding:0 12px;min-width:0}
+.pick-card .bd b{font-size:14px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pick-card small{display:block;padding:0 12px;color:#64748b;font-size:11.5px;line-height:1.5;overflow-wrap:anywhere}
+.pick-card .pick-ck{position:absolute;right:8px;top:8px;width:24px;height:24px;border-radius:50%;background:#2563eb;color:#fff;font-size:13px;font-weight:700;display:none;align-items:center;justify-content:center}
+.pick-card.sel{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb}
+.pick-card.sel .pick-ck{display:flex}
+.pick-card.off{cursor:default;opacity:.5}
+.pick-card.off:hover{border-color:#cbd5e1}
+.pick-card .pick-in{position:absolute;left:8px;top:8px;background:#fff;border:1px solid #cbd5e1;border-radius:5px;padding:0 6px;font-size:11px;color:#64748b;white-space:nowrap}
+.pick-none{color:#64748b;font-size:12.5px;padding:14px 4px}
+.pick-note{margin-top:12px;border:1px solid #86efac;background:#f0fdf4;color:#166534;border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.7}
 body.sorting,body.sorting *{cursor:grabbing!important}
 /* 部品や項目に付ける小さな札（編集の画面だけ。ルックアップの札は書き出しにも出す） */
 .tag{display:inline-block;font-size:10.5px;font-weight:700;border-radius:4px;padding:0 5px;white-space:nowrap;line-height:1.6;vertical-align:middle}
@@ -739,7 +795,8 @@ body.xp-doc .pg+.pg{break-before:page}
 //   3. 保存                  … LocalStorageAdapter（ブラウザ）・FileAdapter（Electron）・BlockedAdapter（保存を止める）
 //   4. 元に戻す              … Store（commit・undo・redo・persist・subscribe）と、画面設計・画面・部品の操作（actions）
 //   5. 共通の部品            … 文字の置き換え・日時・お知らせ・小さな窓・作る先の選び方・画面と部品の描き方・一覧表・縮小画像
-//   6. 一覧の画面            … カード・名前で探す・新規作成・名前の変更・複製・ごみ箱
+//   6. 一覧の画面            … カード・名前で探す・新規作成・名前の変更・複製・ごみ箱・システムのまとまり（左のシステムの一覧・
+//                              入れる窓。第 9 段階）・システムの画面（第 9 段階）
 //   7. 編集の画面            … メニューバー・画面の一覧・画面（帯・マス目・高さ）・部品の箱・設定の欄・拡大縮小・ハンド・
 //                              部品のドラッグ（置く・動かす・大きさ）・コピーと貼り付け
 //   8. 書き出しと取り込み    … 書き出しの窓（PDF・HTML・PNG）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面）・
@@ -2696,6 +2753,10 @@ function loneDesigns(state) {
   const used = new Set(state.systems.filter((y) => !y.trashedAt).flatMap((y) => y.designIds));
   return state.designs.filter((d) => !d.trashedAt && !used.has(d.id));
 }
+// ごみ箱のシステム（ごみ箱へ移した日時の新しい順）
+function trashedSystems(state) {
+  return state.systems.filter((y) => y.trashedAt).sort(byNewest('trashedAt'));
+}
 // 画面設計・画面・ステータスを消したとき、それを指していた作業の指す先を外す（作業の文は残す。どのシステムの分も。システムの更新日時は変えない）。
 // screenId も stateId も渡さないとき（画面設計を完全に削除したとき）は、指す先を全部外す。画面とステータスの id は画面設計の中だけで
 // 重ならないものなので、同じ画面設計を指す作業だけを見る
@@ -3152,6 +3213,23 @@ const actions = {
   copyDesignIntoSystem(sysId, designId) {
     if (!editableSystem(sysId)) return null;
     return actions.duplicateDesign(designId, { systemId: sysId });
+  },
+  // いくつかの画面設計をまとめて入れる・複製して入れる（最初の画面の入れる窓。T5）。1 回の変更なので、元に戻す 1 回で戻る。
+  // 戻り値は、入れた画面設計の id の並び（複製は新しい画面設計の id の並び）
+  addDesignsToSystem(sysId, designIds) {
+    if (!editableSystem(sysId) || !Array.isArray(designIds)) return [];
+    const done = [];
+    store.batch(() => designIds.forEach((id) => { if (actions.addDesignToSystem(sysId, id)) done.push(id); }));
+    return done;
+  },
+  copyDesignsIntoSystem(sysId, designIds) {
+    if (!editableSystem(sysId) || !Array.isArray(designIds)) return [];
+    const done = [];
+    store.batch(() => designIds.forEach((id) => {
+      const copy = actions.copyDesignIntoSystem(sysId, id);
+      if (copy) done.push(copy);
+    }));
+    return done;
   },
   // システムから外す（画面設計は残る）
   removeDesignFromSystem(sysId, designId) {
@@ -4385,10 +4463,14 @@ function thumbHtml(design, screen, boxW, boxH) {
 // ── 6. 一覧の画面 ─────────────────────────────────────────────────────────────
 // 画面の状態（保存しない）
 const ui = {
-  view: 'home', // 'home'（一覧）か 'editor'（編集）か 'system'（システムの画面。第 9 段階の T5 で作る）
+  view: 'home', // 'home'（一覧）か 'editor'（編集）か 'system'（システムの画面。第 9 段階）
   systemId: null, // 開いているシステムの id（ui.view が 'system' のとき。AI の元に戻すの履歴の決め方〔q66〕も見る）
   query: '', // 名前で探す欄の文字
   menuFor: null, // 「…」の小さなメニューを開いているカードの画面設計の id
+  // 最初の画面の左の一覧で人が選んだまとまり（システムの id か 'lone'〔システムに入っていない〕。null は選んでいない〔いちばん上を出す〕。
+  // アプリを閉じるまで覚える。一覧へ戻ったときもそのまま。第 9 段階）
+  homeGroup: null,
+  sysMenu: null, // 最初の画面のシステムのまとまりで開いているメニュー（'add:システムの id'〔＋ 画面設計を入れる〕か 'more:システムの id'〔…〕）
   trashOpen: false,
   designId: null,
   screenId: null,
@@ -4435,20 +4517,22 @@ function renderHome() {
     <main class="home-scroll">
       <section class="home${ui.homeMap ? ' wide' : ''}">
         <div class="home-head">
-          <h1>画面設計</h1>
-          <span class="spacer"></span>
+          <h1>システムと画面設計</h1>
+          <div class="home-tools">
           ${ui.homeMap ? '' : `<label class="search"><span aria-hidden="true">🔍</span><input type="search" id="home-search" placeholder="名前で探す" aria-label="名前で探す" value="${esc(ui.query)}"></label>`}
           <button class="btn${ui.homeMap ? '' : ' on'}" data-action="home-cards" aria-pressed="${!ui.homeMap}">▦ カードで並べる</button>
           <button class="btn${ui.homeMap ? ' on' : ''}" data-action="home-map" aria-pressed="${ui.homeMap}">⇄ つながりの図</button>
-          <button class="btn" data-action="import-html" title="このアプリで書き出した HTML（ベンダーが直して返したものなど）を取り込みます。HTML ファイルをこの画面へ落としても取り込めます">⇩ HTML を取り込む</button>
-          <button class="btn primary" data-action="new">＋ 新規作成</button>
+          <button class="btn" data-action="import-html" title="このアプリで書き出した HTML（ベンダーが直して返したものなど）を取り込みます。HTML ファイルをこの画面へ落としても取り込めます（システムのまとまりの上へ落とすと、そのシステムに入れます）">⇩ HTML を取り込む</button>
+          <button class="btn" data-action="new" title="新しい画面設計を作って開きます">＋ 新しい画面設計</button>
+          <button class="btn primary" data-action="new-system" title="いくつかの画面設計をまとめる入れ物（システム）を作ります">＋ 新しいシステム</button>
+          </div>
         </div>
         ${ui.homeMap ? `
         <p class="home-note">画面設計 1 つを、データベース 1 つ（箱）として描きます。箱を押すと、その画面設計を開きます。ドラッグで動かすと、その位置を覚えます。</p>
         ${mapLegendHtml()}
         <div class="map-canvas" id="home-map">${mapHtml(store.state, null, store.state.settings.mapPos || {})}</div>` : `
-        <p class="home-note">更新の新しい順に並べています。カードを押すと開きます。「…」から名前の変更・複製・書き出し・削除ができます。書き出した HTML は、この画面へ落としても取り込めます。</p>
-        <div class="cards" id="home-cards">${renderCards()}</div>
+        <p class="home-note">システムごとに、入っている画面設計を並べています。カードを押すと画面設計を、「開く」を押すとシステムの画面を開きます。1 つの画面設計を、2 つ以上のシステムに入れられます（緑の枠）。</p>
+        <div id="home-cards">${renderHomeGroups()}</div>
         <div class="trash" id="home-trash">${renderTrash()}</div>`}
       </section>
     </main>`;
@@ -4918,11 +5002,105 @@ function swimAutoCols(steps, edges) {
   return out;
 }
 
-function renderCards() {
-  const list = visibleDesigns(store.state, ui.query);
-  if (list.length) return list.map(renderCard).join('');
-  if (!visibleDesigns(store.state).length) return '<p class="empty">まだ画面設計がありません。「＋ 新規作成」から始めましょう。</p>';
-  return `<p class="empty">「${esc(cleanName(ui.query))}」を名前に含む画面設計はありません。</p>`;
+// ── 最初の画面のシステムのまとまり（第 9 段階の T5。画像 q61 の案B・q45〜q47。AI設計基盤_設計書.md の 5-6）──
+// 左にシステムの名前の一覧（作った順。その下に「システムに入っていない」）、右に選んだまとまりのカード。選んだまとまり（ui.homeGroup）は保存しない
+const LONE_GROUP = 'lone';
+// 左の一覧に出すまとまり [{ id（システムの id か 'lone'）, system（「システムに入っていない」は null）, name, designs（右に出す画面設計）}]。
+// システムのカードは designIds の順、「システムに入っていない」は更新の新しい順（どちらもごみ箱の画面設計は除く）。
+// 名前で探しているときは、名前が当たるシステム（カードは全部）と、名前の当たる画面設計を持つまとまりだけにする
+function homeGroups(state, query = '') {
+  const q = cleanName(query).toLowerCase();
+  const hit = (name) => !q || name.toLowerCase().includes(q);
+  const groups = state.systems.filter((y) => !y.trashedAt).map((y) => {
+    const all = designsOfSystem(state, y);
+    return { id: y.id, system: y, name: y.name, designs: hit(y.name) ? all : all.filter((d) => hit(d.name)) };
+  });
+  groups.push({ id: LONE_GROUP, system: null, name: 'システムに入っていない', designs: loneDesigns(state).filter((d) => hit(d.name)).sort(byNewest('updatedAt')) });
+  return q ? groups.filter((g) => (g.system && hit(g.name)) || g.designs.length) : groups;
+}
+// 右に出すまとまり。選んでいたまとまり（人が選んだもの）が並びになければ、いちばん上のまとまり。
+// いちばん上を出したことは覚えない（システムがない間に「システムに入っていない」を出していて、後からシステムができたときに、いちばん上のシステムを出すため）。
+// 選んでいたシステムがなくなったら（探していないとき）、選んでいないことにする。探している間は、選んでいたまとまりを覚えておく
+function pickHomeGroup(groups) {
+  const keep = groups.find((g) => g.id === ui.homeGroup);
+  if (keep) return keep;
+  if (ui.homeGroup && !cleanName(ui.query)) ui.homeGroup = null;
+  return groups[0] || null;
+}
+// 最初の画面の右に出しているシステム（「システムに入っていない」・つながりの図のときは null）。新しい画面設計の窓の「入れるシステム」の最初の値
+function homeSystem() {
+  if (ui.homeMap) return null;
+  const g = pickHomeGroup(homeGroups(store.state, ui.query));
+  return g && g.system ? g.system : null;
+}
+
+function renderHomeGroups() {
+  const groups = homeGroups(store.state, ui.query);
+  if (!groups.length) return `<p class="empty">「${esc(cleanName(ui.query))}」に当たる画面設計はありません。</p>`;
+  const cur = pickHomeGroup(groups);
+  return `<div class="sys-two">${sysListHtml(groups, cur)}${sysBlockHtml(cur)}</div>`;
+}
+// 左の一覧。システムの名前の行は、HTML ファイルを落とす先にもなる（data-drop-sys）
+function sysListHtml(groups, cur) {
+  const row = (g) => `<button class="sys-item${g === cur ? ' on' : ''}" data-action="home-group" data-group="${esc(g.id)}"${g.system ? ` data-drop-sys="${esc(g.id)}"` : ''}
+    aria-pressed="${g === cur}" title="${esc(g.name)}"><span class="nm">${esc(g.name)}</span><small>${g.designs.length} つ</small></button>`;
+  const systems = groups.filter((g) => g.system);
+  const lone = groups.find((g) => !g.system);
+  return `<nav class="sys-list" aria-label="システムの一覧">${systems.map(row).join('')}${systems.length && lone ? '<hr>' : ''}${lone ? row(lone) : ''}<hr>
+    <button class="sys-new" data-action="new-system" title="いくつかの画面設計をまとめる入れ物（システム）を作ります">＋ 新しいシステム</button></nav>`;
+}
+// 右のまとまり。システムのまとまりは、HTML ファイルを落とす先にもなる（data-drop-sys）
+function sysBlockHtml(g) {
+  const S = store.state;
+  if (!g.system) {
+    const empty = visibleDesigns(S).length ? 'システムに入っていない画面設計はありません。' : 'まだ画面設計がありません。「＋ 新しい画面設計」から始めましょう。';
+    return `<section class="sys-block lone" aria-label="システムに入っていない画面設計">
+      <div class="sys-head"><h2>システムに入っていない</h2><span class="meta">画面設計 ${g.designs.length} つ</span></div>
+      ${g.designs.length ? `<div class="cards">${g.designs.map((d) => renderCard(d)).join('')}</div>` : `<p class="empty">${empty}</p>`}
+    </section>`;
+  }
+  const y = g.system;
+  const id = esc(y.id);
+  const open = (kind) => ui.sysMenu === `${kind}:${y.id}`;
+  return `<section class="sys-block" data-drop-sys="${id}" aria-label="${esc(y.name)}">
+    <div class="sys-head">
+      <h2>${esc(y.name)}</h2><span class="meta">画面設計 ${designsOfSystem(S, y).length} つ・役割 ${y.roles.length} つ</span><span class="spacer"></span>
+      <button class="btn small primary" data-action="open-system" data-id="${id}" title="「${esc(y.name)}」のシステムの画面を開きます">開く</button>
+      <span class="sys-pop-wrap"><button class="btn small" data-action="sys-add-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('add')}">＋ 画面設計を入れる ▾</button>${open('add') ? sysAddMenuHtml(y) : ''}</span>
+      <span class="sys-pop-wrap"><button class="btn small" data-action="sys-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('more')}" aria-label="「${esc(y.name)}」の操作" title="名前と説明を変える・ごみ箱へ移す">…</button>${open('more') ? sysMoreMenuHtml(y) : ''}</span>
+    </div>
+    ${y.description ? `<p class="sys-desc">${esc(y.description)}</p>` : ''}
+    ${g.designs.length ? `<div class="cards">${g.designs.map((d) => renderCard(d, { sys: y })).join('')}</div>` : '<p class="empty">まだ画面設計が入っていません。「＋ 画面設計を入れる」から入れます。</p>'}
+  </section>`;
+}
+// 「＋ 画面設計を入れる ▾」のメニュー（画像 q46）
+function sysAddMenuHtml(y) {
+  const id = esc(y.id);
+  return `<div class="pop-menu sys-pop" role="menu">
+    <button role="menuitem" data-action="sys-add-new" data-id="${id}"><b>新しい画面設計を作る</b></button>
+    <button role="menuitem" data-action="sys-add-same" data-id="${id}"><b>今ある画面設計を入れる</b><small>同じもの。編集内容は常に自動で同期する</small></button>
+    <button role="menuitem" data-action="sys-add-copy" data-id="${id}"><b>今ある画面設計を複製して入れる</b><small>別のもの。新しい id。同期しない</small></button>
+  </div>`;
+}
+function sysMoreMenuHtml(y) {
+  const id = esc(y.id);
+  return `<div class="pop-menu sys-pop" role="menu">
+    <button role="menuitem" data-action="sys-edit" data-id="${id}">名前と説明を変える…</button>
+    <button role="menuitem" class="danger" data-action="sys-trash" data-id="${id}">ごみ箱へ移す</button>
+  </div>`;
+}
+// システムのまとまりの「＋ 画面設計を入れる ▾」・「…」のメニューを開く・閉じる（ui.sysMenu は 'add:システムの id' か 'more:システムの id'）
+function toggleSysMenu(kind, id) {
+  const key = `${kind}:${id}`;
+  Object.assign(ui, { sysMenu: ui.sysMenu === key ? null : key, menuFor: null });
+  refreshCards();
+  const first = ui.sysMenu && $('.sys-pop [role="menuitem"]');
+  if (first) first.focus(); // キーボードでも選べるように
+}
+function closeSysMenu() {
+  if (!ui.sysMenu) return;
+  ui.sysMenu = null;
+  refreshCards();
 }
 
 // カードの「最新の版」。自動で残した行（取り込む前の状態・戻す前の状態）は数えない
@@ -4931,39 +5109,57 @@ function revisionLabel(d) {
   return r ? `第 ${r.no} 版` : '版なし';
 }
 
-function renderCard(d) {
+// sys は、カードを出しているシステムのまとまり（「システムに入っていない」では null）。「…」のメニューの「このシステムから外す」と複製の入れ先に使う。
+// ごみ箱にないシステム 2 つ以上に入っている画面設計（共通の画面設計）は、緑の枠と札。札は押すとお知らせで使っているシステムの名前を出す
+// （カードを開くボタンの中に置くので、ボタンではなく data-action を付けた span にする）
+function renderCard(d, { sys = null } = {}) {
   const ai = aiCardMark(d.id); // AI が作った・直したカード（一覧の画面から画面設計を開くまで、紫の枠と札。q50c）
+  const users = systemsOf(store.state, d.id);
+  const shared = users.length > 1;
   return `
-    <article class="card${ai ? ' ai-mark' + aiGlowClass(ai.at) : ''}" data-id="${esc(d.id)}"${ai ? aiGlowStyle(ai.at) : ''}>
+    <article class="card${shared ? ' shared' : ''}${ai ? ' ai-mark' + aiGlowClass(ai.at) : ''}" data-id="${esc(d.id)}"${ai ? aiGlowStyle(ai.at) : ''}>
       ${ai ? `<span class="ai-card-tag">${ai.kind === 'created' ? 'AI が作った' : 'AI が直した'}</span>` : ''}
       <button class="card-open" data-action="open" data-id="${esc(d.id)}" title="「${esc(d.name)}」を開く">
         <div class="card-thumb">${thumbHtml(d, d.screens[0], 240, 136)}</div>
         <div class="card-body">
           <h2 class="card-name">${esc(d.name)}</h2>
           <div class="card-meta">${targetChip(d.target)}<span>画面 ${d.screens.length} つ・${revisionLabel(d)}</span></div>
+          ${shared ? `<span class="share-tag" data-action="share-tag" data-id="${esc(d.id)}" title="${esc(users.map((y) => y.name).join('・'))}で使っています">${users.length} つのシステムで使っている</span>` : ''}
           <div class="card-date">更新 ${fmtDateTime(d.updatedAt)}</div>
         </div>
       </button>
-      <button class="card-more" data-action="card-menu" data-id="${esc(d.id)}" aria-label="「${esc(d.name)}」の操作" title="名前の変更・複製・書き出し・削除">…</button>
-      ${ui.menuFor === d.id ? cardMenuHtml(d) : ''}
+      <button class="card-more" data-action="card-menu" data-id="${esc(d.id)}" aria-label="「${esc(d.name)}」の操作" title="${sys ? '名前の変更・複製・書き出し・このシステムから外す・削除' : '名前の変更・複製・書き出し・削除'}">…</button>
+      ${ui.menuFor === d.id ? cardMenuHtml(d, sys) : ''}
     </article>`;
 }
 
-function cardMenuHtml(d) {
+function cardMenuHtml(d, sys = null) {
   const id = esc(d.id);
+  const inSys = sys ? ` data-sys="${esc(sys.id)}"` : '';
   return `
     <div class="card-menu" role="menu">
       <button role="menuitem" data-action="rename" data-id="${id}">名前の変更</button>
-      <button role="menuitem" data-action="duplicate" data-id="${id}">複製</button>
+      <button role="menuitem" data-action="duplicate" data-id="${id}"${inSys}>複製</button>
       <button role="menuitem" data-action="export-design" data-id="${id}">書き出す…</button>
+      ${sys ? `<button role="menuitem" data-action="remove-from-system" data-id="${id}"${inSys}>このシステムから外す</button>` : ''}
       <button role="menuitem" class="danger" data-action="trash" data-id="${id}">削除（ごみ箱へ移す）</button>
     </div>`;
 }
 
+// ごみ箱。システム（第 9 段階）もあるときは、「システム」と「画面設計」の小見出しで分ける。数はシステムと画面設計の合計
 function renderTrash() {
-  const list = trashedDesigns(store.state);
-  const head = `<button class="trash-toggle" data-action="toggle-trash" aria-expanded="${ui.trashOpen}">${ui.trashOpen ? '▾' : '▸'} ごみ箱（${list.length}）</button>`;
+  const S = store.state;
+  const systems = trashedSystems(S);
+  const list = trashedDesigns(S);
+  const head = `<button class="trash-toggle" data-action="toggle-trash" aria-expanded="${ui.trashOpen}">${ui.trashOpen ? '▾' : '▸'} ごみ箱（${systems.length + list.length}）</button>`;
   if (!ui.trashOpen) return head;
+  const sysRows = systems.map((y) => `
+    <div class="trash-row sys" data-id="${esc(y.id)}">
+      <span class="trash-name">${esc(y.name)}</span><span class="trash-meta">画面設計 ${designsOfSystem(S, y).length} つ</span>
+      <span class="trash-date">ごみ箱へ移した日時 ${fmtDateTime(y.trashedAt)}</span>
+      <button class="btn small" data-action="restore-system" data-id="${esc(y.id)}">戻す</button>
+      <button class="btn small danger-text" data-action="delete-system-forever" data-id="${esc(y.id)}">完全に削除</button>
+    </div>`).join('');
   const rows = list.map((d) => `
     <div class="trash-row" data-id="${esc(d.id)}">
       <span class="trash-name">${esc(d.name)}</span>${targetChip(d.target)}
@@ -4971,25 +5167,35 @@ function renderTrash() {
       <button class="btn small" data-action="restore" data-id="${esc(d.id)}">戻す</button>
       <button class="btn small danger-text" data-action="delete-forever" data-id="${esc(d.id)}">完全に削除</button>
     </div>`).join('');
+  const body = systems.length
+    ? `<h3 class="trash-sub">システム</h3>${sysRows}<h3 class="trash-sub">画面設計</h3>${rows || '<p class="trash-empty">ごみ箱に画面設計はありません。</p>'}`
+    : rows || '<p class="trash-empty">ごみ箱は空です。</p>';
   return head + `
     <div class="trash-list">
-      ${rows || '<p class="trash-empty">ごみ箱は空です。</p>'}
+      ${body}
       <p class="trash-note">「戻す」を押すと一覧に戻ります。「完全に削除」を押すと、元に戻せません。</p>
     </div>`;
 }
 
+// 左の一覧と右のまとまりを描き直す（名前で探す欄・ごみ箱はそのまま）
 function refreshCards() {
   const el = $('#home-cards');
-  if (el) el.innerHTML = renderCards();
+  if (el) el.innerHTML = renderHomeGroups();
 }
 
-function openNewDesignDialog() {
+// 新しい画面設計の窓。システム（第 9 段階）があるときは「入れるシステム」を選ぶ欄を出す（最初の値は systemId。null なら「（入れない）」）
+function openNewDesignDialog({ systemId = null } = {}) {
+  const systems = store.state.systems.filter((y) => !y.trashedAt);
+  const opt = (v, label) => `<option value="${esc(v)}"${v === (systemId || '') ? ' selected' : ''}>${esc(label)}</option>`;
+  const sysField = systems.length
+    ? `<label class="field"><span>入れるシステム</span><select name="system">${opt('', '（入れない）')}${systems.map((y) => opt(y.id, y.name)).join('')}</select></label>` : '';
   return showDialog({
     title: '新しい画面設計',
     okLabel: '作成して開く',
     body: `
       <label class="field"><span>名前（業務アプリの名前）</span><input type="text" name="name" maxlength="${NAME_MAX}" placeholder="例: 顧客管理アプリ"></label>
       <div class="field"><span>作る先</span>${targetPickerHtml(store.state, 'kintone')}</div>
+      ${sysField}
       <p class="hint">白紙の画面を 1 つ入れて開きます。説明は、開いたあとに右の欄で書けます。</p>`,
     init: (m) => {
       bindTargetPicker(m);
@@ -5000,9 +5206,149 @@ function openNewDesignDialog() {
       if (!name) return { error: '名前を書いてください。' };
       const target = readTargetPicker(m);
       if (!target) return { error: '「その他」を選んだときは、作る先の名前を書いてください。' };
-      return { name, target };
+      const sel = $('[name=system]', m);
+      return { name, target, systemId: sel && sel.value ? sel.value : null };
     },
   });
+}
+// 「＋ 新しい画面設計」（見出し・アプリのメニュー）と、システムのまとまりのメニューの「新しい画面設計を作る」（systemId）。作ったら編集の画面を開く
+async function newDesignWithDialog(systemId) {
+  const first = systemId !== undefined ? systemId : (homeSystem() || {}).id || null;
+  const r = await openNewDesignDialog({ systemId: first });
+  if (!r) return;
+  const id = actions.createDesign(r.name, r.target, { systemId: r.systemId });
+  if (id) openDesign(id);
+}
+
+// システムの名前と説明の窓（「＋ 新しいシステム」と「名前と説明を変える」）。戻り値 { name, description } か null
+function openSystemDialog({ title, okLabel, name = '', description = '', hint = '' }) {
+  return showDialog({
+    title,
+    okLabel,
+    body: `
+      <label class="field"><span>名前（システムの名前）</span><input type="text" name="name" maxlength="${NAME_MAX}" value="${esc(name)}" placeholder="例: 出張申請システム"></label>
+      <label class="field"><span>説明</span><textarea name="description" rows="4" placeholder="例: 出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム">${esc(description)}</textarea></label>
+      ${hint ? `<p class="hint">${esc(hint)}</p>` : ''}`,
+    init: (m) => {
+      const input = $('[name=name]', m);
+      input.focus();
+      input.select();
+    },
+    collect: (m) => {
+      const n = cleanName($('[name=name]', m).value);
+      if (!n) return { error: '名前を書いてください。' };
+      return { name: n, description: $('[name=description]', m).value.trim() };
+    },
+  });
+}
+// 「＋ 新しいシステム」。同じ名前のシステムがあっても作れる（画面設計と同じ）。作ったら、最初の画面の左の一覧でそのシステムを選ぶ
+// （探している文字とつながりの図は外す。作ったシステムが見えるように）
+async function newSystemWithDialog() {
+  const r = await openSystemDialog({ title: '新しいシステム', okLabel: '作る', hint: 'システムは、いくつかの画面設計をまとめる入れ物です。説明は後からでも書けます。' });
+  if (!r) return;
+  const id = actions.createSystem(r);
+  if (!id) return;
+  Object.assign(ui, { homeGroup: id, query: '', homeMap: false, menuFor: null, sysMenu: null });
+  if (ui.view === 'home') renderHome();
+  toast(`「${r.name}」を作りました。「＋ 画面設計を入れる」から画面設計を入れます。`);
+}
+
+// 「今ある画面設計を入れる」「今ある画面設計を複製して入れる」の窓（画像 q47。手本は「画面を足す」の窓と、ほかのモックから項目を取り込む窓）。
+// mode は 'same'（同じ画面設計のまま入れる）か 'copy'（複製して入れる）。いくつでも選べる（札の右上に ✓）。ごみ箱の画面設計は出さない。
+// 'same' では、このシステムにもう入っている画面設計を薄くして選べなくする。戻り値は選んだ画面設計の id の並び（札の並びの順。キャンセルは null）
+function openPickDesignsDialog(y, mode) {
+  const S = store.state;
+  const same = mode === 'same';
+  const list = visibleDesigns(S);
+  const cards = list.map((d) => {
+    const users = systemsOf(S, d.id);
+    const off = same && y.designIds.includes(d.id);
+    return `<button type="button" class="pick-card${off ? ' off' : ''}" data-pick="${esc(d.id)}" data-sys="${esc(users.map((x) => x.id).join(' '))}" aria-pressed="false"${off ? ' disabled' : ''}>
+      <div class="th">${thumbHtml(d, d.screens[0], 236, 92)}${off ? '<span class="pick-in">このシステムに入っている</span>' : ''}<span class="pick-ck" aria-hidden="true">✓</span></div>
+      <div class="bd"><b>${esc(d.name)}</b>${targetChip(d.target)}</div>
+      <small class="where">${esc(users.map((x) => x.name).join('・') || 'システムに入っていない')}・画面 ${d.screens.length}・項目 ${d.items.length}</small>
+      <small class="date">更新 ${esc(fmtDateTime(d.updatedAt).slice(0, 10))}</small>
+    </button>`;
+  }).join('');
+  const opt = (v, label) => `<option value="${esc(v)}">${esc(label)}</option>`;
+  const lead = same
+    ? `ほかのシステムにある画面設計を選んで、${esc(y.name)}にも並べます。選んだ画面設計の編集内容は、常に自動で同期します。`
+    : `画面設計を選んで複製し、複製を${esc(y.name)}に入れます。複製は別のもので、元の画面設計とは同期しません。`;
+  return showDialog({
+    title: `${same ? '今ある画面設計を入れる' : '今ある画面設計を複製して入れる'}（${y.name}）`,
+    okLabel: same ? '入れる' : '複製して入れる',
+    width: 920,
+    body: `<p class="pick-lead">${lead}</p>
+      <div class="pick-bar"><input type="search" class="pick-search" placeholder="名前で探す" aria-label="名前で探す">
+        <select class="pick-sys" aria-label="システムで絞る">${opt('all', 'すべてのシステム')}${S.systems.filter((x) => !x.trashedAt).map((x) => opt('y:' + x.id, x.name)).join('')}${opt(LONE_GROUP, 'システムに入っていない')}</select></div>
+      <div class="pick-grid">${cards}</div>
+      <p class="pick-none" hidden>${list.length ? '当たる画面設計はありません。' : 'まだ画面設計がありません。'}</p>
+      <p class="pick-note"></p>`,
+    init: (m) => bindPickDesigns(m, y, same),
+    collect: (m) => {
+      const ids = [...m.querySelectorAll('.pick-card.sel')].map((b) => b.dataset.pick);
+      return ids.length ? ids : { error: same ? '入れる画面設計を選んでください。' : '複製する画面設計を選んでください。' };
+    },
+  });
+}
+// 入れる窓の札を選ぶ・名前とシステムで絞る（絞って見えなくなった札も、選んだままにする）。何も選んでいないときは、肯定のボタンを押せなくする
+function bindPickDesigns(m, y, same) {
+  const okBtn = $('[data-dlg="ok"]', m);
+  const search = $('.pick-search', m);
+  const filter = $('.pick-sys', m);
+  const all = [...m.querySelectorAll('.pick-card')];
+  const designOf = (b) => findDesign(store.state, b.dataset.pick);
+  const refresh = () => {
+    const q = cleanName(search.value).toLowerCase();
+    const f = filter.value;
+    let shown = 0;
+    all.forEach((b) => {
+      const sys = b.dataset.sys ? b.dataset.sys.split(' ') : [];
+      const inFilter = f === 'all' || (f === LONE_GROUP ? !sys.length : sys.includes(f.slice(2)));
+      b.hidden = !(inFilter && (!q || designOf(b).name.toLowerCase().includes(q)));
+      if (!b.hidden) shown++;
+    });
+    $('.pick-none', m).hidden = shown > 0;
+    const picked = all.filter((b) => b.classList.contains('sel')).map(designOf);
+    okBtn.disabled = !picked.length;
+    $('.pick-note', m).textContent = pickNoteText(y, picked, same);
+  };
+  all.forEach((b) => b.addEventListener('click', () => {
+    if (b.disabled) return;
+    const on = !b.classList.contains('sel');
+    b.classList.toggle('sel', on);
+    b.setAttribute('aria-pressed', String(on));
+    refresh();
+  }));
+  search.addEventListener('input', refresh);
+  filter.addEventListener('change', refresh);
+  refresh();
+  search.focus();
+}
+// 入れる窓の下の緑の枠の文。入れると 2 つ以上のシステムに入る画面設計には、カードに「N つのシステムで使っている」の札が付くことを書く
+function pickNoteText(y, picked, same) {
+  if (!picked.length) return same ? '入れる画面設計を選んでください（いくつでも選べます）。' : '複製する画面設計を選んでください（いくつでも選べます）。';
+  const names = picked.slice(0, 5).map((d) => d.name).join('・') + (picked.length > 5 ? ' ほか' : '');
+  const head = `選んでいるもの：${names}（${picked.length} つ）。`;
+  if (!same) return `${head}選んだ画面設計を複製して、${y.name}に入れます。複製は別のもので、元を直しても変わりません。`;
+  const counts = picked.map((d) => systemsOf(store.state, d.id).filter((x) => x.id !== y.id).length + 1);
+  const shared = counts.filter((n) => n > 1);
+  let tail = `${y.name}に並びます。`;
+  if (shared.length && shared.length === counts.length && shared.every((n) => n === shared[0])) tail = `${y.name}にも並び、カードに「${shared[0]} つのシステムで使っている」の札が付きます。`;
+  else if (shared.length) tail = `${y.name}にも並び、ほかのシステムでも使っている画面設計のカードに、「2 つのシステムで使っている」などの札が付きます。`;
+  return `${head}${tail}別のものとして使いたいときは、「＋ 画面設計を入れる」の「複製して入れる」を使います。`;
+}
+// 入れる窓・複製して入れる窓を出して入れる（どちらも 1 回の変更。元に戻す 1 回で戻る）
+async function pickDesignsIntoSystem(sysId, mode) {
+  const y = findSystem(store.state, sysId);
+  if (!y || y.trashedAt) return;
+  const ids = await openPickDesignsDialog(y, mode);
+  if (!ids) return;
+  const done = mode === 'same' ? actions.addDesignsToSystem(y.id, ids) : actions.copyDesignsIntoSystem(y.id, ids);
+  if (!done.length) return;
+  const one = done.length === 1 ? findDesign(store.state, done[0]) : null;
+  if (one) toast(`「${one.name}」を${y.name}に入れました。`);
+  else toast(mode === 'same' ? `${done.length} つの画面設計を${y.name}に入れました。` : `${done.length} つの画面設計を複製して、${y.name}に入れました。`);
 }
 
 // d は名前を変える画面設計か画面（name を持つもの）。label は欄の名前
@@ -5035,42 +5381,61 @@ function openDeleteForeverDialog(d) {
     body: `<p>「${esc(d.name)}」を完全に削除します。</p><p class="warn">完全に削除すると、元に戻せません（「元に戻す」でも戻りません）。</p>${note}`,
   });
 }
+// システムの完全な削除の確かめ（入っていた画面設計は残る。戻せないので、元に戻すの履歴も消える）
+function openDeleteSystemDialog(y) {
+  return showDialog({
+    title: '完全に削除',
+    okLabel: '完全に削除',
+    okClass: 'danger',
+    body: `<p>「${esc(y.name)}」を完全に削除します。システムの役割とスイムレーン図が消えます。入っていた画面設計は消えません。元に戻せません（元に戻す〔Ctrl+Z〕の履歴も消えます）。</p>`,
+  });
+}
 
-// 項目を取り込まれているモックをごみ箱へ移すときの確かめ（画像 q21 の右下）
-function openTrashImportedDialog(d, importers) {
+// 画面設計をごみ箱へ移すときの確かめ（画像 q21 の右下・AI設計基盤_設計書.md の 5-6）。ごみ箱にないシステムに入っている（systems）か、
+// ほかの画面設計が項目を取り込んでいる（importers）ときに出す。両方のときは 1 つの窓に 2 つの段落で書く
+function openTrashDesignDialog(d, { systems = [], importers = [] } = {}) {
+  const sysNote = systems.length
+    ? `<p style="margin-top:6px">「${esc(d.name)}」は、${esc(systems.map((y) => y.name).join('・'))}で使っています。ごみ箱へ移すと、どのシステムからも見えなくなります。ごみ箱から戻すと、元のシステムに戻ります。</p>`
+    : '';
+  const importNote = importers.length
+    ? `<p class="warn">このモックの項目を、ほかの ${importers.length} つの画面設計（${esc(importers.map((x) => x.name).join('・'))}）が取り込んでいます。
+      ごみ箱の中にある間は、つながったままです。完全に削除すると、取り込んだ側の項目は、そのときの中身で固定されます。</p>`
+    : '';
   return showDialog({
     title: `「${d.name}」をごみ箱に移しますか？`,
     okLabel: 'ごみ箱へ移す',
     okClass: 'danger',
-    body: `<p>ごみ箱からいつでも戻せます。</p>
-      <p class="warn">このモックの項目を、ほかの ${importers.length} つの画面設計（${esc(importers.map((x) => x.name).join('・'))}）が取り込んでいます。
-      ごみ箱の中にある間は、つながったままです。完全に削除すると、取り込んだ側の項目は、そのときの中身で固定されます。</p>`,
+    body: `<p>ごみ箱からいつでも戻せます。</p>${sysNote}${importNote}`,
   });
 }
 
-async function onHomeAction(action, id) {
-  const d = id ? findDesign(store.state, id) : null;
+// 最初の画面で押したもの（runCommand で受けないもの）。btn は押した要素
+async function onHomeAction(action, id, btn) {
   switch (action) {
-    case 'new': {
-      const r = await openNewDesignDialog();
-      if (r) openDesign(actions.createDesign(r.name, r.target));
-      return;
-    }
     case 'open': openDesign(id); return;
-    case 'card-menu': ui.menuFor = ui.menuFor === id ? null : id; refreshCards(); return;
-    case 'home-map': case 'home-cards': ui.homeMap = action === 'home-map'; renderHome(); return;
+    case 'card-menu': Object.assign(ui, { menuFor: ui.menuFor === id ? null : id, sysMenu: null }); refreshCards(); return;
+    case 'home-map': case 'home-cards': Object.assign(ui, { homeMap: action === 'home-map', menuFor: null, sysMenu: null }); renderHome(); return;
     case 'map-reset': actions.resetMapPos(null); return;
     case 'toggle-trash': ui.trashOpen = !ui.trashOpen; $('#home-trash').innerHTML = renderTrash(); return;
+    case 'home-group': Object.assign(ui, { homeGroup: btn.dataset.group, menuFor: null, sysMenu: null }); refreshCards(); return;
   }
+  if (SYSTEM_HOME_ACTIONS.includes(action)) {
+    const y = findSystem(store.state, id);
+    if (y) await onSystemAction(action, y);
+    return;
+  }
+  const d = id ? findDesign(store.state, id) : null;
   if (!d) return;
   if (ui.menuFor) {
     ui.menuFor = null;
     refreshCards();
   }
-  await onDesignAction(action, d);
+  await onDesignAction(action, d, btn);
 }
 
-async function onDesignAction(action, d) {
+async function onDesignAction(action, d, btn = null) {
+  // カードを出しているシステムのまとまり（「…」のメニューの複製・このシステムから外す）
+  const inSys = btn && btn.dataset.sys ? findSystem(store.state, btn.dataset.sys) : null;
   switch (action) {
     case 'export-design':
       await openExportDialog(d.id);
@@ -5081,12 +5446,20 @@ async function onDesignAction(action, d) {
       return;
     }
     case 'duplicate':
-      actions.duplicateDesign(d.id);
-      toast(`「${d.name} のコピー」を作りました。`);
+      // システムのまとまりのカードから複製したときは、そのシステムにだけ入れる（設計書の 5-6）
+      actions.duplicateDesign(d.id, { systemId: inSys ? inSys.id : null });
+      toast(inSys ? `「${d.name} のコピー」を作り、${inSys.name}に入れました。` : `「${d.name} のコピー」を作りました。`);
+      return;
+    case 'remove-from-system':
+      if (inSys && actions.removeDesignFromSystem(inSys.id, d.id)) toast(`「${d.name}」を${inSys.name}から外しました。画面設計は残っています。`);
+      return;
+    case 'share-tag':
+      toast(`「${d.name}」は、${systemsOf(store.state, d.id).map((y) => y.name).join('・')}で使っています。`);
       return;
     case 'trash': {
       const importers = designsImporting(store.state, d.id);
-      if (importers.length && !(await openTrashImportedDialog(d, importers))) return;
+      const systems = systemsOf(store.state, d.id);
+      if ((importers.length || systems.length) && !(await openTrashDesignDialog(d, { systems, importers }))) return;
       actions.trashDesign(d.id);
       toast(`「${d.name}」をごみ箱へ移しました。戻すときは、下の「ごみ箱」か「元に戻す」（Ctrl+Z）を使います。`);
       return;
@@ -5101,6 +5474,61 @@ async function onDesignAction(action, d) {
         toast(`「${d.name}」を完全に削除しました。`);
       }
   }
+}
+
+// システムのまとまり・ごみ箱のシステムの行で押したもの
+const SYSTEM_HOME_ACTIONS = ['open-system', 'sys-add-menu', 'sys-menu', 'sys-add-new', 'sys-add-same', 'sys-add-copy', 'sys-edit', 'sys-trash', 'restore-system', 'delete-system-forever'];
+async function onSystemAction(action, y) {
+  if (action === 'sys-add-menu' || action === 'sys-menu') { toggleSysMenu(action === 'sys-menu' ? 'more' : 'add', y.id); return; }
+  closeSysMenu();
+  switch (action) {
+    case 'open-system': openSystem(y.id); return;
+    case 'sys-add-new': await newDesignWithDialog(y.id); return;
+    case 'sys-add-same': case 'sys-add-copy': await pickDesignsIntoSystem(y.id, action === 'sys-add-same' ? 'same' : 'copy'); return;
+    case 'sys-edit': {
+      const r = await openSystemDialog({ title: '名前と説明を変える', okLabel: '変える', name: y.name, description: y.description });
+      if (r) actions.updateSystem(y.id, r);
+      return;
+    }
+    // ごみ箱へ移すのは確かめない（画面設計と同じ。元に戻すで戻せる）
+    case 'sys-trash':
+      if (actions.trashSystem(y.id)) toast(`「${y.name}」をごみ箱へ移しました。入っていた画面設計は残っています。`);
+      return;
+    case 'restore-system':
+      if (actions.restoreSystem(y.id)) toast(`「${y.name}」を一覧に戻しました。`);
+      return;
+    case 'delete-system-forever':
+      if (!(await openDeleteSystemDialog(y))) return;
+      if (actions.deleteSystemForever(y.id)) toast(`「${y.name}」を完全に削除しました。`);
+  }
+}
+
+// ── システムの画面（第 9 段階。T5 では、画面の切り替えの土台と仮の画面だけ。中身は T6a・T6b で作り直す）──
+// ui.view を 'system'、ui.systemId を開くシステムにする。画面設計を開くときと同じく、元に戻すの履歴を空にし、AI の知らせを片付ける
+// （AI の元に戻すの履歴の決め方〔q66〕は、この 2 つの値で決まる）。ごみ箱のシステムは開かない
+function openSystem(id) {
+  leaveViewing();
+  const y = findSystem(store.state, id);
+  if (!y || y.trashedAt) return;
+  aiForgetView(ui.view === 'home');
+  Object.assign(ui, { view: 'system', systemId: id, designId: null, screenId: null, menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
+  store.clearHistory();
+  renderSystem();
+}
+// システムの画面を描く（仮）。開いているシステムがごみ箱に入った・消えたときは一覧へ戻る
+function renderSystem() {
+  const y = findSystem(store.state, ui.systemId);
+  if (!y || y.trashedAt) { goHome(); return; }
+  appEl().innerHTML = `
+    <header class="brandbar"><span class="brand">モックイメージメーカー</span><span class="brand-design" id="sys-title">${esc(y.name)}（システム）</span>${aiChipSlotHtml()}</header>
+    <div id="ai-bands"></div>
+    <main class="home-scroll">
+      <section class="home sys-temp">
+        <div class="home-head"><button class="btn" data-action="home" title="システムと画面設計の一覧へ戻ります">← 一覧へ</button><h1>${esc(y.name)}</h1></div>
+        <p class="home-note">システムの画面は次に作ります。</p>
+      </section>
+    </main>`;
+  renderAiChrome();
 }
 
 // ── 7. 編集の画面 ─────────────────────────────────────────────────────────────
@@ -5136,7 +5564,7 @@ function openDesign(id) {
   const d = findDesign(store.state, id);
   if (!d) return;
   aiForgetView(ui.view === 'home');
-  Object.assign(ui, { view: 'editor', designId: id, screenId: d.screens[0].id, prevScreenId: null, screenMenu: null, zoom: 1, mode: 'select', menuFor: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
+  Object.assign(ui, { view: 'editor', designId: id, systemId: null, screenId: d.screens[0].id, prevScreenId: null, screenMenu: null, zoom: 1, mode: 'select', menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
   store.clearHistory();
   mountEditor();
 }
@@ -5144,7 +5572,8 @@ function openDesign(id) {
 function goHome() {
   leaveViewing();
   aiForgetView(false);
-  Object.assign(ui, { view: 'home', designId: null, screenId: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
+  // 左の一覧で選んでいたまとまり（ui.homeGroup）は、そのまま残す（第 9 段階）
+  Object.assign(ui, { view: 'home', designId: null, systemId: null, screenId: null, menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
   store.clearHistory();
   renderHome();
 }
@@ -8899,25 +9328,41 @@ async function pickHtmlText() {
 async function pickAndImportHtml() {
   const text = await pickHtmlText();
   if (text == null) return null;
-  if (ui.view === 'editor') goHome();
+  if (ui.view !== 'home') goHome();
   return importHtmlText(text);
 }
 // ファイルを落としたとき。最初の画面なら取り込み、ほかではページが置き換わらないように既定の動きを止めるだけ
 const hasFiles = (e) => !!e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
 const canDropImport = () => !standalone && ui.view === 'home' && !isDialogOpen();
+// 落とす先のシステム（第 9 段階）。右のシステムのまとまりか、左の一覧のシステムの名前の上（data-drop-sys）。ほかの所は null
+function dropSystemEl(e) {
+  const el = e.target && e.target.closest ? e.target.closest('[data-drop-sys]') : null;
+  return el && findSystem(store.state, el.dataset.dropSys) ? el : null;
+}
+// 落とす先の上にいる間は、そのまとまりの枠を青くする（el が null なら、青い枠を消す）
+function markDropSystem(el) {
+  document.querySelectorAll('.drop-on').forEach((x) => { if (x !== el) x.classList.remove('drop-on'); });
+  if (el) el.classList.add('drop-on');
+}
 function onFileDragOver(e) {
   if (!hasFiles(e)) return;
   e.preventDefault();
-  e.dataTransfer.dropEffect = canDropImport() ? 'copy' : 'none';
-  document.body.classList.toggle('file-over', canDropImport());
+  const ok = canDropImport();
+  e.dataTransfer.dropEffect = ok ? 'copy' : 'none';
+  document.body.classList.toggle('file-over', ok);
+  markDropSystem(ok ? dropSystemEl(e) : null);
 }
+// システムの上に落としたときは、新しく足す画面設計をそのシステムに入れる（同じ画面設計を置き換えるときは、入っているシステムを変えない）
 function onFileDrop(e) {
   if (!hasFiles(e)) return;
   e.preventDefault();
   document.body.classList.remove('file-over');
+  const target = dropSystemEl(e);
+  markDropSystem(null);
   if (!canDropImport()) return;
+  const opts = { systemId: target ? target.dataset.dropSys : null };
   const files = [...e.dataTransfer.files];
-  (async () => { for (const f of files) await importHtmlFile(f); })().catch(reportPageError); // いくつか落としたときは、順に取り込む
+  (async () => { for (const f of files) await importHtmlFile(f, opts); })().catch(reportPageError); // いくつか落としたときは、順に取り込む
 }
 
 // ── 9. 命令（runCommand）──────────────────────────────────────────────────────
@@ -8947,7 +9392,13 @@ function runCommand(cmd) {
       (cmd === 'addRevision' ? openAddRevisionDialog() : openRevisionsDialog()).catch(reportPageError);
       return true;
     case 'goHome':
-      if (ui.view === 'editor' && !standalone) goHome();
+      if (ui.view !== 'home' && !standalone) goHome();
+      return true;
+    // 新しい画面設計・新しいシステム（第 9 段階）。編集の画面・システムの画面からは、一覧へ戻ってから窓を出す
+    case 'newDesign': case 'newSystem':
+      if (standalone) return true;
+      if (ui.view !== 'home') goHome();
+      (cmd === 'newDesign' ? newDesignWithDialog() : newSystemWithDialog()).catch(reportPageError);
       return true;
     // 書き出しと取り込み（第 5 段階）。単体で開いた HTML では、書き出しの窓と取り込みは出さず、HTML を保存し直すだけ（q37）
     case 'exportDialog':
@@ -9004,7 +9455,7 @@ function runCommand(cmd) {
 }
 
 // 前の版を見ている間にも使える命令（見る・選ぶ・移る・拡大縮小と、今の中身に戻ってから行う命令）
-const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'importHtml', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'openProcess', 'openFlow', 'prevScreen', 'nextScreen',
+const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'importHtml', 'newDesign', 'newSystem', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'openProcess', 'openFlow', 'prevScreen', 'nextScreen',
   'zoomIn', 'zoomOut', 'zoomReset', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart', 'aiConnect'];
 
 // 揃える命令（メニューバー・右の欄・アプリのメニュー）と、alignedRects の how
@@ -9036,6 +9487,7 @@ const ACTION_COMMANDS = {
   'select-all': 'selectAll', 'number-on': 'numberOn', 'number-off': 'numberOff', 'delete-many': 'deletePart',
   'add-screen': 'addScreen', 'duplicate-screen': 'duplicateScreen', 'delete-screen': 'deleteScreen',
   'add-revision': 'addRevision', 'open-revisions': 'openRevisions', 'ai-connect': 'aiConnect',
+  new: 'newDesign', 'new-system': 'newSystem',
   ...Object.fromEntries([...ALIGN_BUTTONS, ...SIZE_BUTTONS].map(([cmd, action]) => [action, cmd])),
 };
 
@@ -9118,6 +9570,7 @@ function onAppClick(e) {
     ui.menuFor = null;
     refreshCards();
   }
+  if (ui.sysMenu && !e.target.closest('.sys-pop, [data-action="sys-add-menu"], [data-action="sys-menu"]')) closeSysMenu();
   if (ui.screenMenu && !e.target.closest('.screen-menu, .sl-more')) closeScreenMenu();
   if (ui.revMenu && !e.target.closest('.rv-menu, .rv-arrow')) closeRevMenu();
   if (ui.addItemMenu && !e.target.closest('.pop-menu, [data-action="add-item-menu"]')) {
@@ -9130,7 +9583,7 @@ function onAppClick(e) {
   if (ACTION_COMMANDS[action]) { runCommand(ACTION_COMMANDS[action]); return; }
   if (onAiClick(action, btn)) return;
   if (ui.view === 'editor' && onEditorClick(action, btn)) return;
-  onHomeAction(action, id).catch(reportPageError);
+  onHomeAction(action, id, btn).catch(reportPageError);
 }
 
 function reportPageError(e) {
@@ -9184,6 +9637,13 @@ function onKeyDown(e) {
   }
   if (isDialogOpen()) return;
   if (e.key === 'Escape' && ui.menuFor) { ui.menuFor = null; refreshCards(); return; }
+  if (e.key === 'Escape' && ui.sysMenu) {
+    const [kind, id] = ui.sysMenu.split(':');
+    closeSysMenu();
+    const opener = [...document.querySelectorAll(`[data-action="${kind === 'more' ? 'sys-menu' : 'sys-add-menu'}"]`)].find((b) => b.dataset.id === id);
+    if (opener) opener.focus();
+    return;
+  }
   if (e.key === 'Escape' && ui.revMenu) { closeRevMenu(); return; }
   if (e.key === 'Escape' && ui.screenMenu) {
     const id = ui.screenMenu;
@@ -9211,7 +9671,7 @@ function onStoreChange() {
   aiNoteStoreChange(); // 人が直したら、AI が直した知らせ（紫の帯）を閉じる
   if (ui.view === 'home') renderHome();
   else if (ui.view === 'editor') updateEditor({ keepSide: keepSideOnNotify });
-  // 'system'（システムの画面）は、第 9 段階の T5 で描き直しを足す
+  else if (ui.view === 'system') renderSystem(); // 開いているシステムがごみ箱に入った・消えたときは一覧へ戻る
   refreshStandaloneBar();
 }
 
@@ -11188,10 +11648,11 @@ function aiBandHtml() {
     text = `${who} が「${esc(b.name)}」を直しました（変更 ${b.diff.rows.length} 件）。直した部品を紫の枠で光らせています。`;
     btns = '<button class="btn small" data-action="ai-show-changes">変更内容を見る</button>' + undoBtn;
   } else if (b.kind === 'system') {
-    // システム（第 9 段階）は、光らせる部品がないので、帯の文と件数だけ。「開く」はシステムの画面（T5）を作るときに足す
-    const open = ui.view === 'editor' ? currentDesign() : null;
+    // システム（第 9 段階）は、光らせる部品がないので、帯の文と件数と「開く」（そのシステムの画面。もう開いていれば出さない）
+    const here = ui.view === 'system' && ui.systemId === b.systemId;
+    const open = ui.view === 'editor' ? currentDesign() : ui.view === 'system' && !here ? findSystem(store.state, ui.systemId) : null;
     text = `${who} が「${esc(b.name)}」を${b.created ? '作りました' : `直しました（変更 ${b.count} 件）`}。${open ? `開いている「${esc(open.name)}」は変わっていません。` : ''}`;
-    btns = undoBtn;
+    btns = (here ? '' : `<button class="btn small" data-action="ai-open-system" data-id="${esc(b.systemId)}">${open ? `「${esc(b.name)}」を開く` : '開く'}</button>`) + undoBtn;
   } else {
     const open = ui.view === 'editor' ? currentDesign() : null;
     text = `${who} が「${esc(b.name)}」を${b.kind === 'created' ? '作りました' : '直しました'}。${open ? `開いている「${esc(open.name)}」は変わっていません。` : ''}`;
@@ -11208,8 +11669,12 @@ function aiWarnHtml() {
   // システム（第 9 段階）の「AI が直す前の状態」の行は、システムの画面の「履歴」にある
   if (!w.created) text += `<br>AI の変更を戻すときは、「${esc(w.name)}」の${w.systemId ? '履歴' : '改訂履歴'}の「${esc(w.label)} が直す前の状態」から戻せます。`;
   let btn;
-  if (w.systemId) btn = ''; // システムの画面と「履歴」（T5・T6）を作るときに、「開く」「履歴を開く」を足す
-  else if (w.created) btn = `<button class="btn small" data-action="ai-open-design" data-id="${esc(w.designId)}">「${esc(w.name)}」を開く</button>`;
+  // システムは、作ったときは「開く」、直したときは「履歴を開く」（そのシステムの画面を開く。履歴の入口を開くのは、システムの画面の「履歴」〔T6a〕を作るときに足す）
+  if (w.systemId) {
+    btn = w.created
+      ? `<button class="btn small" data-action="ai-open-system" data-id="${esc(w.systemId)}">「${esc(w.name)}」を開く</button>`
+      : `<button class="btn small" data-action="ai-open-system-history" data-id="${esc(w.systemId)}">「${esc(w.name)}」の履歴を開く</button>`;
+  } else if (w.created) btn = `<button class="btn small" data-action="ai-open-design" data-id="${esc(w.designId)}">「${esc(w.name)}」を開く</button>`;
   else btn = `<button class="btn small" data-action="ai-open-revisions" data-id="${esc(w.designId)}">「${esc(w.name)}」の改訂履歴を開く</button>`;
   return `<div class="ai-band warn" id="ai-warn" role="status"><span class="ic">⚠</span><span>${text}</span><span class="spacer"></span>${btn}${aiCloseBtn('ai-warn-close')}</div>`;
 }
@@ -11362,7 +11827,7 @@ function aiCloseBand() {
   aiView.glowMarks.clear();
   aiView.unseen.clear();
 }
-// 一覧の画面と編集の画面を行き来したときに、知らせを片付ける。一覧の画面から画面設計を開くときは、カードの印も消す（q50c）
+// 一覧の画面・編集の画面・システムの画面を行き来したときに、知らせを片付ける。一覧の画面から画面設計・システムを開くときは、カードの印も消す（q50c）
 function aiForgetView(leavingHome) {
   aiCloseBand();
   Object.assign(aiView, { warn: null, cleared: null });
@@ -11374,7 +11839,13 @@ function onAiClick(action, btn) {
     case 'ai-band-close':
       aiCloseBand();
       if (ui.view === 'home') renderHome();
+      else if (ui.view === 'system') renderSystem();
       else updateEditor({ keepSide: true });
+      return true;
+    // システムの画面を開く（第 9 段階。もう開いていれば何もしない。「履歴を開く」で履歴の入口を開くのは T6a で足す）
+    case 'ai-open-system': case 'ai-open-system-history':
+      flushSideField();
+      if (!(ui.view === 'system' && ui.systemId === btn.dataset.id)) openSystem(btn.dataset.id);
       return true;
     case 'ai-warn-close':
       aiView.warn = null;
@@ -11530,7 +12001,11 @@ function bindGlobalEvents() {
   // ファイルを落としたとき（最初の画面なら HTML を取り込む。ほかの画面では、ページが置き換わらないように止める）
   document.addEventListener('dragover', onFileDragOver);
   document.addEventListener('drop', onFileDrop);
-  document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) document.body.classList.remove('file-over'); });
+  document.addEventListener('dragleave', (e) => {
+    if (e.relatedTarget) return;
+    document.body.classList.remove('file-over');
+    markDropSystem(null);
+  });
 }
 
 async function boot() {
@@ -11570,6 +12045,7 @@ function exposeForTest() {
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
     changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
     SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
+    trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,
     SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
