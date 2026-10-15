@@ -2301,7 +2301,8 @@ function mapLayout(model, hOf = () => MAP_H) {
   const forward = mapForwardEdges(model);
   const rank = mapRanks(model, forward);
   const linked = new Set(model.edges.flatMap((e) => [e.from, e.to]));
-  const byName = [...model.nodes].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  // 箱の並びの初めは名前の順。order のある箱（画面の移り方の図の画面）は、その順で先に並べる
+  const byName = [...model.nodes].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || a.name.localeCompare(b.name, 'ja'));
   const cols = new Map();
   byName.filter((n) => linked.has(n.key)).forEach((n) => {
     const c = rank.get(n.key);
@@ -2377,7 +2378,9 @@ function mapForwardEdges(model) {
     return false;
   };
   const kept = [];
-  [...model.edges].sort((a, b) => MAP_EDGE_ORDER[a.kind] - MAP_EDGE_ORDER[b.kind]).forEach((e) => {
+  // order のある矢印（画面の移り方の図。画面の並びで前へ進む矢印が 0）は、その順で先に足す
+  const rankOf = (e) => (e.order != null ? e.order : MAP_EDGE_ORDER[e.kind]);
+  [...model.edges].sort((a, b) => rankOf(a) - rankOf(b)).forEach((e) => {
     if (reaches(e.to, e.from)) return;
     out.get(e.from).push(e.to);
     kept.push(e);
@@ -3136,27 +3139,34 @@ const actions = {
     return out;
   },
 
-  // ── つながりの図 ──
-  // 動かした箱の位置を覚える。designId が null なら最初の画面の図（設定に持つ）、あれば編集の画面のその画面設計の図（画面設計に持つ。更新日時は変えない）
-  setMapPos(designId, key, pos) {
+  // ── つながりの図・ステータスの移り方の図・画面の移り方の図 ──
+  // 動かした箱の位置を覚える。view は 'map'・'process'・'flow'（VIEW_POS の欄に覚える。画面設計の更新日時は変えない）。
+  // つながりの図で designId が null なら、最初の画面の図（設定に持つ）
+  setViewPos(designId, view, key, pos) {
+    const field = VIEW_POS[view];
+    if (!field) return false;
     const p = { x: Math.max(0, snapGrid(pos.x)), y: Math.max(0, snapGrid(pos.y)) };
-    if (!designId) {
+    if (!designId && view === 'map') {
       store.commit((s) => { s.settings.mapPos = { ...s.settings.mapPos, [key]: p }; });
       return true;
     }
-    return mutateDesign(designId, (d) => { d.mapPos = { ...d.mapPos, [key]: p }; }, { touch: false });
+    return mutateDesign(designId, (d) => { d[field] = { ...d[field], [key]: p }; }, { touch: false });
   },
   // 覚えた位置を消して、自動で並べ直す
-  resetMapPos(designId) {
-    if (!designId) {
+  resetViewPos(designId, view) {
+    const field = VIEW_POS[view];
+    if (!field) return false;
+    if (!designId && view === 'map') {
       if (!Object.keys(store.state.settings.mapPos || {}).length) return false;
       store.commit((s) => { s.settings.mapPos = {}; });
       return true;
     }
     const d = findDesign(store.state, designId);
-    if (!d || !Object.keys(d.mapPos || {}).length) return false;
-    return mutateDesign(designId, (dd) => { dd.mapPos = {}; }, { touch: false });
+    if (!d || !Object.keys(d[field] || {}).length) return false;
+    return mutateDesign(designId, (dd) => { dd[field] = {}; }, { touch: false });
   },
+  setMapPos(designId, key, pos) { return actions.setViewPos(designId, 'map', key, pos); },
+  resetMapPos(designId) { return actions.resetViewPos(designId, 'map'); },
 
   // ── 吹き出し ──
   // at は吹き出しの左上（画面の左上から）。target はつなぐ部品の id。戻り値は新しい吹き出しの id
@@ -4032,8 +4042,8 @@ function keepScroll(selectors) {
   });
 }
 
-// つながりの図の HTML。focusId（編集の画面の画面設計）があればその画面設計の図。saved は覚えた箱の位置
-function mapHtml(state, focusId, saved) {
+// つながりの図の HTML。focusId（編集の画面の画面設計）があればその画面設計の図。saved は覚えた箱の位置。o.idPrefix は矢印の印の id の頭（書き出し）
+function mapHtml(state, focusId, saved, o = {}) {
   const model = mapModel(state, focusId);
   if (!model.nodes.length) return '<p class="map-empty">まだ画面設計がありません。</p>';
   const roles = (k) => {
@@ -4059,7 +4069,7 @@ function mapHtml(state, focusId, saved) {
   }).join('');
   const w = Math.max(860, ...Object.values(pos).map((p) => p.x + MAP_W + 40));
   const h = Math.max(420, ...Object.values(pos).map((p) => p.y + p.h + 60));
-  return `<div class="map-inner" id="map-inner" style="width:${w}px;height:${h}px" data-focus="${esc(focusId || '')}">${mapEdgesSvg(model, pos, w, h)}${nodes}</div>`;
+  return `<div class="map-inner" id="map-inner" style="width:${w}px;height:${h}px" data-focus="${esc(focusId || '')}">${mapEdgesSvg(model, pos, w, h, { idPrefix: o.idPrefix })}${nodes}</div>`;
 }
 // 箱の位置。覚えた位置の箱はそこに置き、自動で並べる箱が覚えた箱と重なるときは、重ならない所まで 1 段ずつ下へずらす
 // （覚えた箱を数に入れずに並べると、後から足した画面設計の箱が、動かした箱とぴったり重なることがあるため）
@@ -4080,34 +4090,70 @@ function mapPlace(model, saved, auto, hOf) {
   return pos;
 }
 // 矢印の線。箱の左右（重なって並ぶときは上下）の縁から、相手の箱へ曲線で引き、真ん中に文字を書く。
-// 同じ縁に何本も付くときは、縁に沿ってずらす（mapPorts）。同じ 2 つの箱の間の矢印（行きと帰りなど）は、文字を線の外側に書く
-function mapEdgesSvg(model, pos, w, h) {
+// 同じ縁に何本も付くときは、縁に沿ってずらす（mapPorts）。同じ 2 つの箱の間の矢印（行きと帰りなど）は、文字を線の外側に書く。
+// o は図ごとの描き方（第 8 段階。渡さなければ、つながりの図の描き方）: idPrefix（矢印の印の id の頭）・style（線の色・太さ・点線・印の名前 mark）・
+// label（文字の行）・flat（どの行も太字で線の色）・lanes（ほかの箱を避けて同じ高さを通る線を、2 本目から 28 ずつずらす）・
+// vertical（上下に並ぶ箱の間の線の文字を線の横に書き、間にほかの箱があれば箱の右を回す。ステータスの移り方の図）
+const mapEdgeStyle = (e) => (e.kind === 'link' ? { col: '#16a34a', w: 2, dash: '6 4', mark: 'g', light: true } : { col: '#1d3f6e', w: 2.5, mark: 'n' });
+const mapEdgeLabel = (e) => (e.kind === 'link' ? [`取り込み: ${e.labels.join('・')}`]
+  : e.kind === 'related' ? ['関連レコード一覧', e.labels.join('・')]
+    : e.labels.join('\n').split('\n').slice(0, 3));
+const mapMarker = (id, col) => `
+    <marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${col}"/></marker>`;
+function mapEdgesSvg(model, pos, w, h, o = {}) {
+  const idp = o.idPrefix || 'map';
+  const styleOf = o.style || mapEdgeStyle;
+  const labelOf = o.label || mapEdgeLabel;
   const box = (k) => ({ ...pos[k], w: MAP_W, h: pos[k].h || MAP_H });
   const pairOf = (e) => [e.from, e.to].sort().join('|');
   const pairs = new Map();
   model.edges.forEach((e) => pairs.set(pairOf(e), [...(pairs.get(pairOf(e)) || []), e]));
-  const ports = mapPorts(model, pos);
+  // ほかの箱は、役目の行（編集の画面の図）の分も含めた高さで避ける
+  const othersOf = (e) => model.nodes.filter((n) => n.key !== e.from && n.key !== e.to).map((n) => ({ ...pos[n.key], w: MAP_W, h: pos[n.key].h || MAP_H }));
+  const vertical = (e) => !!o.vertical && ['t', 'b'].includes(mapSides(box(e.from), box(e.to))[0]);
+  // 上下に並ぶ箱の間で、間にほかの箱がある線は、箱の右を回す（短い線ほど内側）。縁の位置の割り振り（mapPorts）には数えない
+  const around = new Map();
+  model.edges.filter((e) => vertical(e) && procBracket(box(e.from), box(e.to), othersOf(e), 0))
+    .sort((p, q) => Math.abs(box(p.from).y - box(p.to).y) - Math.abs(box(q.from).y - box(q.to).y))
+    .forEach((e, k) => around.set(e, procBracket(box(e.from), box(e.to), othersOf(e), k)));
+  const outer = Math.max(0, ...[...around.values()].map((g) => g.mx)); // いちばん外を回る線。回る線の文字は、その右に書く
+  const ports = mapPorts(around.size ? { ...model, edges: model.edges.filter((e) => !around.has(e)) } : model, pos);
+  const lanes = new Map();
+  const marks = new Map();
+  const labels = [];
   const paths = model.edges.map((e, i) => {
     const same = pairs.get(pairOf(e));
     const outside = same.length > 1 ? (same.indexOf(e) < (same.length - 1) / 2 ? -1 : 1) : 0;
-    // ほかの箱は、役目の行（編集の画面の図）の分も含めた高さで避ける
-    const others = model.nodes.filter((n) => n.key !== e.from && n.key !== e.to).map((n) => ({ ...pos[n.key], w: MAP_W, h: pos[n.key].h || MAP_H }));
-    const g = mapEdgeGeometry(box(e.from), box(e.to), ports.get(e), others);
-    const link = e.kind === 'link';
-    const col = link ? '#16a34a' : '#1d3f6e';
-    const label = link ? [`取り込み: ${e.labels.join('・')}`]
-      : e.kind === 'related' ? ['関連レコード一覧', e.labels.join('・')]
-        : e.labels.join('\n').split('\n').slice(0, 3);
+    const others = othersOf(e);
+    const [a, b] = [box(e.from), box(e.to)];
+    const vert = vertical(e);
+    let g = around.get(e) || mapEdgeGeometry(a, b, ports.get(e), others);
+    if (o.lanes && g.detour && !vert) {
+      const key = Math.round(g.my);
+      const k = lanes.get(key) || 0;
+      lanes.set(key, k + 1);
+      if (k) g = mapEdgeGeometry(a, b, ports.get(e), others, (g.my > a.y + MAP_H / 2 ? 1 : -1) * 28 * k);
+    }
+    const st = styleOf(e);
+    marks.set(st.mark, st.col);
+    const label = labelOf(e);
     const lh = 16 + (label.length - 1) * 15;
-    const [mx, my] = [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)];
     const tw = Math.min(MAP_COL - MAP_W - 8, Math.max(...label.map((s) => s.length)) * 12 + 12);
-    const text = label.map((s, j) => `<text x="${(mx - tw / 2 + 6).toFixed(1)}" y="${(my + 4 + j * 15 - (label.length - 1) * 7.5).toFixed(1)}" font-size="${j ? 11 : 12}" font-weight="${j || link ? 400 : 700}" fill="${j ? '#475569' : col}">${esc(s)}</text>`).join('');
-    return `<path d="${g.d}" fill="none" stroke="${col}" stroke-width="${link ? 2 : 2.5}"${link ? ' stroke-dasharray="6 4"' : ''} marker-end="url(#map-arrow-${link ? 'g' : 'n'})"/>
+    const [mx, my] = !vert ? [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)]
+      : g.detour ? [outer + 8 + tw / 2, g.my] : [g.mx + (outside || 1) * (tw / 2 + 12), g.my];
+    const text = label.map((s, j) => `<text x="${(mx - tw / 2 + 6).toFixed(1)}" y="${(my + 4 + j * 15 - (label.length - 1) * 7.5).toFixed(1)}" font-size="${j ? 11 : 12}" font-weight="${(j && !o.flat) || st.light ? 400 : 700}" fill="${j && !o.flat ? '#475569' : st.col}">${esc(s)}</text>`).join('');
+    const line = `<path d="${g.d}" fill="none" stroke="${st.col}" stroke-width="${st.w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''} marker-end="url(#${idp}-arrow-${st.mark})"/>`;
+    const tag = `
       <rect x="${(mx - tw / 2).toFixed(1)}" y="${(my - 9 - (label.length - 1) * 7.5).toFixed(1)}" width="${tw}" height="${16 + (label.length - 1) * 15}" rx="4" fill="#fff" opacity=".92"/>${text}`;
-  }).join('');
-  return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>
-    <marker id="map-arrow-n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d3f6e"/></marker>
-    <marker id="map-arrow-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker>
+    // つながりの図は今までどおり線と文字を交互に書く。ほかの図は、文字が後の線に隠れないように、線を全部書いてから文字を書く
+    if (!o.style) return line + tag;
+    labels.push(tag);
+    return line;
+  }).join('') + labels.join('');
+  // つながりの図は、使わない色の印も今までどおり入れる
+  const defs = o.style ? [...marks].map(([mk, col]) => mapMarker(`${idp}-arrow-${mk}`, col)).join('')
+    : mapMarker(`${idp}-arrow-n`, '#1d3f6e') + mapMarker(`${idp}-arrow-g`, '#16a34a');
+  return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>${defs}
     </defs>${paths}</svg>`;
 }
 // 箱のどちらの縁（l・r・t・b）から線を出すか
@@ -4136,8 +4182,9 @@ function mapPorts(model, pos) {
   });
   return out;
 }
-// 1 本の矢印の形。d は線の道のり、(mx, my) は文字を書く真ん中。detour は、ほかの箱を避けて隙間を通したか
-function mapEdgeGeometry(a, b, port, others) {
+// 1 本の矢印の形。d は線の道のり、(mx, my) は文字を書く真ん中。detour は、ほかの箱を避けて隙間を通したか。
+// shift は、隙間を通す線の高さをずらす量（同じ高さを通る線が重ならないように。画面の移り方の図）
+function mapEdgeGeometry(a, b, port, others, shift = 0) {
   const f = (n) => n.toFixed(1);
   const [sa] = mapSides(a, b);
   const horiz = sa === 'l' || sa === 'r';
@@ -4153,7 +4200,8 @@ function mapEdgeGeometry(a, b, port, others) {
   const c2 = horiz ? [x2 - s * off, y2] : [x2, y2 - s * off];
   const way = horiz ? mapDetour([x1, y1], c1, c2, [x2, y2], others) : null;
   if (!way) return { detour: false, mx: (x1 + x2) / 2, my: (y1 + y2) / 2, d: `M${f(x1)},${f(y1)} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(x2)},${f(y2)}` };
-  const { xa, xb, yd } = way;
+  const { xa, xb } = way;
+  const yd = way.yd + shift;
   const [ma, mb] = [(x1 + xa) / 2, (xb + x2) / 2];
   return { detour: true, mx: (xa + xb) / 2, my: yd,
     d: `M${f(x1)},${f(y1)} C${f(ma)},${f(y1)} ${f(ma)},${f(yd)} ${f(xa)},${f(yd)} L${f(xb)},${f(yd)} C${f(mb)},${f(yd)} ${f(mb)},${f(y2)} ${f(x2)},${f(y2)}` };
@@ -4178,6 +4226,127 @@ function mapDetour(p0, p1, p2, p3, others) {
   const ys = [Math.min(...list.map((b) => b.y)) - 24, Math.max(...list.map((b) => b.y + b.h)) + 24];
   const yd = ys.sort((m, n) => Math.abs(m - mid) - Math.abs(n - mid)).find(free);
   return yd == null ? null : { xa, xb, yd };
+}
+// ── ステータスの移り方の図と画面の移り方の図（第 8 段階。画像 q54 の案B・q55 の案A・q58）──
+// どちらも、つながりの図と同じ形のモデル { nodes: [{ key, name, ... }], edges: [{ from, to, kind, labels }] } を作り、
+// 箱の置き方（mapPlace）と線（mapEdgesSvg）は、つながりの図の関数を使い回す。箱の位置は画面設計の processPos・flowPos に覚える
+const PROC_ROW = 150; // ステータスの移り方の図の段の高さ（箱の高さ 64 ＋ 矢印の文字を書く間 86）
+const PROC_X = 240; // 箱の左の端（箱の左に、矢印の文字を書く間を空ける）
+const VIEW_POS = { map: 'mapPos', process: 'processPos', flow: 'flowPos' };
+const VIEW_DRAW = {
+  process: { style: (e) => (e.kind === 'back' ? { col: '#ea580c', w: 2, dash: '6 4', mark: 'o' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels.slice(0, 2), vertical: true },
+  flow: { style: (e) => (e.kind === 'link' ? { col: '#16a34a', w: 2, dash: '3 4', mark: 'g' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels.slice(0, 3), flat: true, lanes: true },
+};
+// ステータスの移り方の図。箱＝ステータス（並びの順。order）、矢印＝操作（前と次の両方があるものだけ。並びで前へ戻る操作は kind 'back'）。
+// 矢印の文字は「操作の名前（操作する人）」と、2 行目に条件。outs は、そのステータスから出ていく操作の数
+function processModel(d) {
+  const it = (d.items || []).find((x) => x.type === 'status');
+  if (!it) return { nodes: [], edges: [], item: null };
+  const states = it.props.states;
+  const at = (id) => states.findIndex((s) => s.id === id);
+  const drawn = it.props.actions.filter((a) => at(a.from) >= 0 && at(a.to) >= 0 && a.from !== a.to);
+  return {
+    item: it,
+    nodes: states.map((s, i) => ({ key: 't:' + s.id, name: s.name, order: i, outs: drawn.filter((a) => a.from === s.id).length })),
+    edges: drawn.map((a) => ({
+      from: 't:' + a.from, to: 't:' + a.to, kind: at(a.to) < at(a.from) ? 'back' : 'next', action: a.id,
+      labels: [a.name + (a.role ? `（${a.role}）` : ''), ...(a.cond ? [a.cond] : [])],
+    })),
+  };
+}
+// ステータスの移り方の図の自動の位置。ステータスの並びの順に上から下へ（q54 の案B。右の欄のステータスの並びと同じ向き）
+function processLayout(model) {
+  return Object.fromEntries(model.nodes.map((n) => [n.key, { x: PROC_X, y: 40 + n.order * PROC_ROW }]));
+}
+// 上下に並ぶ箱の間の線（ステータスの移り方の図）。間にほかの箱がなければ null（ふつうの線）。あれば、両方の箱の右の縁から出て、
+// 間の箱の右を回る（lane 本目は 28 ずつ外を回る。隣でないステータスへの操作）
+function procBracket(a, b, others, lane) {
+  const [top, bottom] = a.y < b.y ? [a.y + a.h, b.y] : [b.y + b.h, a.y];
+  const hits = others.filter((o) => o.y < bottom && o.y + o.h > top && o.x < Math.max(a.x + a.w, b.x + b.w) && o.x + o.w > Math.min(a.x, b.x));
+  if (!hits.length) return null;
+  const f = (n) => n.toFixed(1);
+  const xd = Math.max(a.x + a.w, b.x + b.w, ...hits.map((o) => o.x + o.w)) + 28 + lane * 28;
+  const dy = 20 + (lane % 3) * 10;
+  const [x1, y1, x2, y2] = [a.x + a.w, a.y + dy, b.x + b.w, b.y + dy];
+  const s = Math.sign(y2 - y1);
+  return { detour: true, mx: xd, my: (y1 + y2) / 2,
+    d: `M${f(x1)},${f(y1)} L${f(xd - 12)},${f(y1)} Q${f(xd)},${f(y1)} ${f(xd)},${f(y1 + s * 12)} L${f(xd)},${f(y2 - s * 12)} Q${f(xd)},${f(y2)} ${f(xd - 12)},${f(y2)} L${f(x2)},${f(y2)}` };
+}
+// 移る先の画面設計（画面の移り方の図の、ほかの画面設計の箱）。ごみ箱の画面設計は描かない。単体で開いた HTML では screenPeers から引く
+function flowOwner(state, designId) {
+  const x = findDesign(state, designId);
+  if (x) return x.trashedAt ? null : x;
+  return (standalone && standalone.screenPeers.find((p) => p.id === designId)) || null;
+}
+// ほかの画面設計から、この画面設計の画面へ移ってくるボタン・リンクの文字（q58: 来る元も描く）。[{ owner, from（相手の画面）, to, type, label }]
+function flowIncoming(state, d) {
+  const out = [];
+  state.designs.filter((x) => x.id !== d.id && !x.trashedAt).forEach((x) => x.screens.forEach((s) => s.parts.forEach((p) => {
+    const t = moveTargetOf(p, x.id);
+    if (t && t.designId === d.id) out.push({ owner: x, from: s, to: t.screenId, type: p.type, label: partTitle(p) });
+  })));
+  if (standalone) {
+    standalone.screenPeers.filter((peer) => !findDesign(state, peer.id)).forEach((peer) => peer.refs.forEach((r) => {
+      const from = peer.screens.find((s) => s.id === r.from);
+      if (from) out.push({ owner: peer, from, to: r.to, type: r.type, label: r.label });
+    }));
+  }
+  return out;
+}
+// 画面の移り方の図。箱＝この画面設計の画面（並びの順。order）と、行き先・来る元のほかの画面設計の画面（ext に画面設計の名前）。
+// 矢印＝ボタン（kind 'button'）とリンクの文字（'link'）。同じ 2 つの画面の間の同じ種類の矢印は 1 本にまとめ、文字は部品の名前を並べる。
+// 自分の画面への矢印と、見つからない画面への矢印は描かない。order は列を決める順（画面の並びで前へ進む矢印 0・ほかの画面設計 1・戻る矢印 2）
+function flowModel(state, d) {
+  const index = new Map(d.screens.map((s, i) => [s.id, i]));
+  const nodes = new Map(d.screens.map((s, i) => ['s:' + s.id, { key: 's:' + s.id, name: s.name, order: i, screen: s }]));
+  const extKey = (owner, s) => {
+    const k = `x:${owner.id}/${s.id}`;
+    if (!nodes.has(k)) nodes.set(k, { key: k, name: s.name, ext: owner.name, designId: owner.id });
+    return k;
+  };
+  const edges = new Map();
+  const add = (from, to, kind, label, order) => {
+    if (from === to) return;
+    const k = `${from}|${to}|${kind}`;
+    if (!edges.has(k)) edges.set(k, { from, to, kind, labels: [], order });
+    if (label && !edges.get(k).labels.includes(label)) edges.get(k).labels.push(label);
+  };
+  d.screens.forEach((s) => s.parts.forEach((p) => {
+    const t = moveTargetOf(p, d.id);
+    if (!t) return;
+    if (t.designId === d.id) {
+      if (index.has(t.screenId)) add('s:' + s.id, 's:' + t.screenId, p.type, partTitle(p), index.get(t.screenId) > index.get(s.id) ? 0 : 2);
+      return;
+    }
+    const owner = flowOwner(state, t.designId);
+    const ts = owner ? owner.screens.find((x) => x.id === t.screenId) : null;
+    if (ts) add('s:' + s.id, extKey(owner, ts), p.type, partTitle(p), 1);
+  }));
+  flowIncoming(state, d).forEach((r) => { if (index.has(r.to)) add(extKey(r.owner, r.from), 's:' + r.to, r.type, r.label, 1); });
+  return { nodes: [...nodes.values()], edges: [...edges.values()] };
+}
+// ステータスの移り方の図・画面の移り方の図の HTML（編集の画面・書き出し・AI の画像で使う）。saved は覚えた箱の位置。
+// o: idPrefix（矢印の印の id の頭。書き出しでは編集の画面と重ならない頭にする）・bare（id="map-inner" を付けない）
+function viewHtml(view, state, d, saved = {}, o = {}) {
+  const model = view === 'process' ? processModel(d) : flowModel(state, d);
+  if (!model.nodes.length) return `<p class="map-empty">${view === 'process' ? 'ステータスの項目がまだありません（部品の箱から「ステータスの印」か「進み具合の矢印」を置くと作られます）。' : '画面がありません。'}</p>`;
+  const hOf = () => MAP_H;
+  const pos = mapPlace(model, saved || {}, view === 'process' ? processLayout(model) : mapLayout(model, hOf), hOf);
+  const nodes = model.nodes.map((n) => {
+    const p = pos[n.key];
+    const dev = n.screen && DEVICES[n.screen.device] ? DEVICES[n.screen.device].label : '';
+    const body = view === 'process' ? `<b>${n.order + 1}　${esc(n.name)}</b><div class="mt"><span>出ていく操作 ${n.outs} つ</span></div>`
+      : n.ext ? `<b>${esc(n.name)}</b><div class="mt"><span>「${esc(n.ext)}」の画面</span></div>`
+        : `<b>${esc(n.name)}</b><div class="mt"><span class="dev">${esc(dev)}</span><span>部品 ${n.screen.parts.length} 個</span></div>`;
+    const title = view === 'process' ? 'ドラッグで動かせます' : n.ext ? `ドラッグで動かせます。押すと「${esc(n.ext)}」を開きます` : 'ドラッグで動かせます。押すと、この画面を開きます';
+    return `<div class="mnode${n.ext ? ' ext' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${p.h}px" title="${title}">${body}</div>`;
+  }).join('');
+  // ステータスの移り方の図は、箱の右に矢印の文字と、箱の右を回る線の分の幅を取る
+  const extra = view === 'process' ? 260 + model.edges.length * 28 : 40;
+  const w = Math.max(view === 'process' ? 600 : 860, ...Object.values(pos).map((p) => p.x + MAP_W + extra));
+  const h = Math.max(view === 'process' ? 300 : 420, ...Object.values(pos).map((p) => p.y + p.h + 60));
+  const svg = mapEdgesSvg(model, pos, w, h, { ...VIEW_DRAW[view], idPrefix: o.idPrefix || (view === 'process' ? 'proc' : 'flow') });
+  return `<div class="map-inner"${o.bare ? '' : ' id="map-inner"'} style="width:${w}px;height:${h}px" data-view="${view}" data-focus="${esc(d.id)}">${svg}${nodes}</div>`;
 }
 function mapLegendHtml() {
   return `<div class="map-head"><span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>
@@ -7006,7 +7175,7 @@ const hasMapLinks = (d, state) => mapModel(state, d.id).nodes.length > 1;
 function mapPageBody(d, state, aw, ah) {
   const legend = '<div class="xp-legend"><span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span></div>';
   // 矢印の印の id は、編集の画面の図と重ならない名前にする（同じ id があると矢印が消えるため）
-  const html = mapHtml(state, d.id, d.mapPos || {}).replace(/map-arrow-/g, 'xp-map-arrow-').replace(' id="map-inner"', '');
+  const html = mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xp-map' }).replace(' id="map-inner"', '');
   const boxes = [...html.matchAll(/class="mnode[^"]*"[^>]*style="left:(-?[\d.]+)px;top:(-?[\d.]+)px;width:([\d.]+)px;height:([\d.]+)px"/g)].map((m) => m.slice(1).map(Number));
   const m = html.match(/class="map-inner"[^>]*style="width:([\d.]+)px;height:([\d.]+)px"/);
   if (!m || !boxes.length) return legend + html;
@@ -9772,7 +9941,7 @@ function exposeForTest() {
   Object.assign(window.__test__, {
     store, ui, actions, runCommand, openDesign, goHome, migrate, normalizeState, snapHeight, changeDevice,
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
-    PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, minScreenHeight, selectPart, currentScreen,
+    PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, minScreenHeight, selectPart, currentScreen,
     currentDesign, currentPart, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
     exportDocument, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport,
     paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,

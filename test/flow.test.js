@@ -172,3 +172,71 @@ test('書き出す HTML: 移る先のほかの画面設計と、入ってくる�
   assert.equal(api2.tableRows(sc, d2, api2.store.state).find((r) => r.id === out).setting, '移る先＝経費精算 ／ 精算の入力の画面');
   assert.deepEqual(plain(api2.standaloneInfo().screenPeers), plain(payload.screenPeers));
 });
+
+// ── 画面の移り方の図（T5。画像 q55 の案A・q58）──
+test('画面の移り方の図: 箱はこの画面設計の画面と、行き先・来る元のほかの画面設計の画面。同じ 2 つの画面の間の同じ種類の矢印は 1 本にまとめる', async (t) => {
+  const { api, A, B, a1, a2, b1, b2, d, put } = await bootTwo(t);
+  const C = api.actions.createDesign('顧客管理', 'kintone');
+  const c1 = d(C).screens[0].id;
+  put(A, a1, 'button', { to: 'screen', screenId: a2 }, '詳細を見る');
+  put(A, a2, 'button', { to: 'screen', screenId: a1 }, '承認する');
+  put(A, a2, 'button', { to: 'screen', screenId: a1 }, '差し戻す');
+  put(A, a2, 'button', { to: 'screen', screenId: a2 }, '自分へ'); // 自分の画面への矢印は描かない
+  put(A, a2, 'link', { to: 'screen', designId: B, screenId: b1 }, '経費精算を入力する');
+  put(B, b2, 'link', { to: 'screen', designId: A, screenId: a1 }, '出張申請の一覧へ戻る');
+  put(C, c1, 'button', { to: 'screen', designId: A, screenId: a2 }, '出張を見る');
+  put(A, a1, 'button', { to: 'screen', screenId: 's-nai' }, 'ない画面へ');
+  api.actions.trashDesign(C); // ごみ箱の画面設計からの矢印は描かない
+  const m = api.flowModel(api.store.state, d(A));
+  assert.deepEqual(plain(m.nodes.map((n) => [n.key, n.name, n.ext || ''])), [
+    ['s:' + a1, '一覧', ''], ['s:' + a2, '詳細', ''],
+    ['x:' + B + '/' + b1, '精算の入力', '経費精算'], ['x:' + B + '/' + b2, '一覧', '経費精算'],
+  ]);
+  assert.deepEqual(plain(m.edges.map((e) => [e.from, e.to, e.kind, e.labels])), [
+    ['s:' + a1, 's:' + a2, 'button', ['詳細を見る']],
+    ['s:' + a2, 's:' + a1, 'button', ['承認する', '差し戻す']],
+    ['s:' + a2, 'x:' + B + '/' + b1, 'link', ['経費精算を入力する']],
+    ['x:' + B + '/' + b2, 's:' + a1, 'link', ['出張申請の一覧へ戻る']],
+  ]);
+  // 並べ方: 移る先の順に左から右（行きと帰りの輪は、画面の並びで前へ進む矢印で列を決める）
+  const pos = api.mapLayout(m);
+  assert.ok(pos['s:' + a1].x < pos['s:' + a2].x && pos['s:' + a2].x < pos['x:' + B + '/' + b1].x);
+});
+
+test('画面の移り方の図: つながりのない画面は、画面の並びの順に並べる', async (t) => {
+  const { api, A, a2, d } = await bootTwo(t);
+  const a3 = api.actions.addScreen(A, 'blank', a2);
+  api.actions.updateScreen(A, a3, { name: 'あ' });
+  const m = api.flowModel(api.store.state, d(A));
+  const pos = api.mapLayout(m);
+  const keys = Object.keys(pos).sort((p, q) => pos[p].x - pos[q].x);
+  assert.deepEqual(plain(keys), plain(d(A).screens.map((s) => 's:' + s.id)), '名前の順ではなく、画面の並びの順');
+});
+
+test('画面の移り方の図の HTML: ほかの画面設計の画面は灰色の点線の箱（ext）で「「経費精算」の画面」。矢印の印の id は flow', async (t) => {
+  const { app, api, A, B, a2, b1, d, put } = await bootTwo(t);
+  put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
+  const box = app.document.createElement('div');
+  box.innerHTML = api.viewHtml('flow', api.store.state, d(A));
+  const ext = box.querySelector('.mnode.ext');
+  assert.equal(ext.dataset.node, 'x:' + B + '/' + b1);
+  assert.match(ext.textContent, /精算の入力「経費精算」の画面/);
+  assert.match(box.querySelector('.mnode:not(.ext)').textContent, /一覧パソコン部品 0 個/);
+  assert.match(box.querySelector('svg path[marker-end]').getAttribute('marker-end'), /^url\(#flow-arrow-/);
+  assert.equal(box.querySelector('.map-inner').dataset.view, 'flow');
+});
+
+test('画面の移り方の図: 単体で開いた HTML では、ほかの画面設計の画面を screenPeers から描く（行き先も来る元も）', async (t) => {
+  const { api, A, B, a1, a2, b1, b2, put } = await bootTwo(t);
+  put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
+  put(B, b2, 'link', { to: 'screen', designId: A, screenId: a1 }, '戻る');
+  const html = api.buildStandaloneHtml(api.store.state.designs.find((x) => x.id === A), api.store.state);
+  const app2 = bootApp({ html, url: 'https://localhost/vendor/a.html' });
+  t.after(() => app2.close());
+  const api2 = await app2.api();
+  const m = api2.flowModel(api2.store.state, api2.currentDesign());
+  assert.deepEqual(plain(m.edges.map((e) => [e.from, e.to, e.labels])), [
+    ['s:' + a2, 'x:' + B + '/' + b1, ['精算する']],
+    ['x:' + B + '/' + b2, 's:' + a1, ['戻る']],
+  ]);
+});

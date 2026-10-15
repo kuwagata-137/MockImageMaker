@@ -240,3 +240,59 @@ test('設定の文と違いの文: 操作は「操作「確かめる」＝確認
   const texts = diff.rows.map((x) => x.text).join('\n');
   assert.match(texts, /操作「確かめる」：確認待ちから確認済みへ（上長） → 確認待ちから完了へ（上長）/);
 });
+
+// ── ステータスの移り方の図（T5。画像 q54 の案B: 上から下へ）──
+test('ステータスの移り方の図: 箱はステータスの並びの順に上から下へ、矢印は操作（戻る操作は back）。前か次のない操作は描かない', async (t) => {
+  const { api, d } = await boot(t, withActions([
+    { id: 'a-1', name: '確かめる', from: '確認待ち', to: '確認済み', role: '上長' },
+    { id: 'a-2', name: '戻す', from: '確認済み', to: '受付', cond: '不備があるとき' },
+    { id: 'a-3', name: '途中', from: '受付', to: '' },
+    { id: 'a-4', name: '一気に終える', from: '受付', to: '完了' },
+  ]));
+  const m = api.processModel(d('d-order'));
+  const st = statusOf(d('d-order')).props.states;
+  assert.deepEqual(plain(m.nodes.map((n) => [n.name, n.outs])), [['受付', 1], ['確認待ち', 1], ['確認済み', 1], ['完了', 0]]);
+  assert.deepEqual(plain(m.edges.map((e) => [e.from, e.to, e.kind, e.labels])), [
+    ['t:' + st[1].id, 't:' + st[2].id, 'next', ['確かめる（上長）']],
+    ['t:' + st[2].id, 't:' + st[0].id, 'back', ['戻す', '不備があるとき']],
+    ['t:' + st[0].id, 't:' + st[3].id, 'next', ['一気に終える']],
+  ]);
+  const pos = api.processLayout(m);
+  assert.deepEqual(plain(st.map((s) => pos['t:' + s.id])), [{ x: 240, y: 40 }, { x: 240, y: 190 }, { x: 240, y: 340 }, { x: 240, y: 490 }]);
+  assert.deepEqual(plain(api.processModel({ items: [] })), { nodes: [], edges: [], item: null }, 'ステータスの項目がなければ空');
+});
+
+test('ステータスの移り方の図の HTML: 箱と矢印。間の箱をまたぐ矢印は、箱の右を回る。矢印の印の id は proc（書き出しでは頭を変えられる）', async (t) => {
+  const { api, d, app } = await boot(t, withActions([
+    { id: 'a-1', name: '確かめる', from: '確認待ち', to: '確認済み' },
+    { id: 'a-4', name: '一気に終える', from: '受付', to: '完了' },
+  ]));
+  const html = api.viewHtml('process', api.store.state, d('d-order'));
+  const box = app.document.createElement('div');
+  box.innerHTML = html;
+  assert.deepEqual(plain([...box.querySelectorAll('.mnode')].map((n) => n.querySelector('b').textContent)), ['1　受付', '2　確認待ち', '3　確認済み', '4　完了']);
+  assert.equal(box.querySelector('.map-inner').dataset.view, 'process');
+  const paths = [...box.querySelectorAll('svg path[marker-end]')];
+  assert.equal(paths.length, 2);
+  assert.match(paths[0].getAttribute('marker-end'), /^url\(#proc-arrow-/);
+  const xs = (p) => (p.getAttribute('d').match(/-?[\d.]+/g) || []).map(Number).filter((_, i) => i % 2 === 0);
+  assert.ok(Math.max(...xs(paths[1])) >= 240 + 200 + 28, '受付 → 完了 は、間の箱の右を回る');
+  assert.ok(Math.max(...xs(paths[0])) < 240 + 200, '隣のステータスへの矢印は、まっすぐ下へ');
+  const xp = api.viewHtml('process', api.store.state, d('d-order'), {}, { idPrefix: 'xp-proc', bare: true });
+  assert.ok(!/id="map-inner"|[#"]proc-arrow-/.test(xp) && /url\(#xp-proc-arrow-/.test(xp), '書き出しでは id="map-inner" を付けず、印の id の頭を変える');
+  assert.match(api.viewHtml('process', api.store.state, { items: [] }), /ステータスの項目がまだありません/);
+});
+
+test('図の箱の位置を覚える: processPos・flowPos に覚え、更新日時は変えない。自動で並べ直すで消す', async (t) => {
+  const { api, d } = await boot(t);
+  const before = d('d-order').updatedAt;
+  assert.equal(api.actions.setViewPos('d-order', 'process', 't:x', { x: 43, y: 81 }), true);
+  assert.equal(api.actions.setViewPos('d-order', 'flow', 's:y', { x: -5, y: 10 }), true);
+  assert.deepEqual(plain([d('d-order').processPos, d('d-order').flowPos]), [{ 't:x': { x: 40, y: 80 } }, { 's:y': { x: 0, y: 8 } }]);
+  assert.equal(d('d-order').updatedAt, before);
+  assert.equal(api.actions.setViewPos('d-order', 'nai', 'k', { x: 0, y: 0 }), false);
+  assert.equal(api.actions.resetViewPos('d-order', 'process'), true);
+  assert.deepEqual(plain(d('d-order').processPos), {});
+  assert.equal(api.actions.resetViewPos('d-order', 'process'), false, '覚えた位置がなければ false');
+  assert.deepEqual(plain(d('d-order').flowPos), { 's:y': { x: 0, y: 8 } });
+});
