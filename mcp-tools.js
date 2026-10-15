@@ -49,10 +49,12 @@ const TOOLS = [
     { query: z.string().optional().describe('名前に含まれる文字'), trashed: z.boolean().optional().describe('ごみ箱にあるシステムも出す'), cursor: S.cursor }),
   read('get_system', 'システムの中身',
     'システムの中身を返す: 名前・説明・役割（レーン）・入れている画面設計の並び（ほかのシステムと共通なら sharedWith）・スイムレーンの作業（役割・列・種類・文字・指す先の画面設計と画面とステータス）と矢印・' +
-    '履歴の行・更新の印 updatedAt。多いときは、役割・画面設計・作業・矢印 の順に分けて nextCursor を付ける。',
+    '履歴の行・更新の印 updatedAt。多いときは、役割・画面設計・作業・矢印 の順に分けて nextCursor を付ける（説明は最初のページだけに入れる）。' +
+    '作業（steps）と矢印（edges）は、そのまま set_swimlane に渡せる形で返す。',
     { system: S.system, cursor: S.cursor }),
   write('create_design', '画面設計を作る',
-    '新しい画面設計を作る（白紙の画面が 1 つ入る）。作った画面設計の id と、最初の画面の id を返す。system を書くと、作ってすぐそのシステムに入れる。',
+    '新しい画面設計を作る（白紙の画面が 1 つ入る）。作った画面設計の id と、最初の画面の id を返す。system を書くと、作ってすぐそのシステムに入れる' +
+    '（システムの更新の印も変わる。返事の system.updatedAt を、次にそのシステムを直す道具の expect に渡す）。',
     {
       name: z.string().describe('画面設計の名前（業務アプリの名前。例 "顧客管理"）'), target: z.string().optional().describe('作る先（"kintone"・"Salesforce"・"Claude で作るアプリ" か、ほかの名前）'),
       description: z.string().optional().describe('説明'), system: S.system.optional().describe('作ってすぐ入れるシステムの id か名前'),
@@ -96,14 +98,16 @@ const TOOLS = [
     { system: S.system, expect: S.expect, name: z.string().optional(), description: z.string().optional(), ops: roleOps.optional() }),
   write('add_to_system', '画面設計をシステムに入れる',
     '今ある画面設計をシステムに入れる。mode "same"（既定）は同じ画面設計を入れる（ほかのシステムと共通になり、どちらから直しても同じものが変わる）。' +
-    '"copy" は複製して、このシステムにだけ入れる（別の画面設計になる）。入れた画面設計の id を返す。',
-    { system: S.system, design: S.design, mode: z.enum(['same', 'copy']).optional().describe('既定は "same"') }),
+    '"copy" は複製して、このシステムにだけ入れる（別の画面設計になる）。返事の updatedAt はシステムの更新の印、design は入れた画面設計の id・名前・更新の印。',
+    { system: S.system, expect: S.expect, design: S.design, mode: z.enum(['same', 'copy']).optional().describe('既定は "same"') }),
   write('remove_from_system', '画面設計をシステムから外す',
-    '画面設計をシステムから外す。画面設計は消えずに残る（ほかのシステムか、どのシステムにも入っていない所に出る）。',
-    { system: S.system, design: S.design }),
+    '画面設計をシステムから外す。画面設計は消えずに残る（ほかのシステムか、どのシステムにも入っていない所に出る）。ごみ箱にある画面設計は外せない（人に一覧へ戻してもらう）。',
+    { system: S.system, expect: S.expect, design: S.design }),
   write('set_swimlane', 'スイムレーンを書く',
     'システムのスイムレーン（役割ごとのレーンに作業の箱を並べ、矢印でつないだ業務の流れ）をまとめて置き換える。作業の役割は、先に update_system で足しておく。' +
-    '矢印の from・to は、作業の key（この頼みの中の名前）か id か文字で書く。col を省いた作業は、矢印の順からアプリが列を付ける。返事は作業の key と id の対応と、付けた列。',
+    '矢印の from・to は、作業の key（この頼みの中の名前）か id か文字で書く。get_system で読んだ steps・edges は、そのまま渡せる（今と同じ中身なら何も変わらない）。' +
+    '今ある作業は id を書く（col を省くと今の列のまま）。col を省いた新しい作業は、矢印の順からアプリが列を付ける。矢印は、同じ「元 → 先」の今の矢印の id を使い回す。' +
+    'edges を省くと、今の矢印のうち両端の作業が残っているものを残す（[] で全部消す）。返事は作業の key・id・col と、矢印の数 edgesTotal。',
     { system: S.system, expect: S.expect, steps: swimSteps, edges: swimEdges.optional() }),
   write('add_revision', '改訂する',
     '改訂する: 次の版の番号（第◯版）と今日の日付の行を改訂履歴に足し、今の中身の写しを残す。note は変えた内容（PDF の表紙の改訂履歴に出る）。',

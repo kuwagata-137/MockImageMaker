@@ -8,6 +8,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { bootApp } = require('./harness');
 const { systemState, system, swStep, OLD, STORAGE_KEY, plain } = require('./ai-fixtures');
+const { TOOLS } = require('../mcp-tools');
+const { INSTRUCTIONS, GUIDES } = require('../mcp-guide');
 
 async function boot(state = systemState()) {
   const app = bootApp({ localStorage: { [STORAGE_KEY]: JSON.stringify(state) } });
@@ -324,7 +326,7 @@ test('set_swimlane: 作業と矢印をまとめて置き換える。key と id �
   assert.deepEqual([steps[0].ref, steps[4].memo], [{ designId: null, screenId: null, stateId: null }, '理由を書く']);
   const sid = (i) => steps[i].id;
   assert.deepEqual(y.swimlane.edges.map((e) => [e.from, e.to, e.label]), [[sid(0), 'w2', ''], ['w2', sid(2), '出す'], [sid(2), sid(3), '承認'], [sid(2), 'w2', '差し戻し']]);
-  assert.deepEqual(r.edges.map((e) => [e.from, e.to]), y.swimlane.edges.map((e) => [e.from, e.to]));
+  assert.equal(r.edgesTotal, y.swimlane.edges.length);
   assert.equal(r.updatedAt, y.updatedAt);
   // ref: null で指す先を外す・空にする
   ok(await call('set_swimlane', { system: 'y1', steps: [{ id: 'w2', role: '営業', text: 'x', ref: null }] }));
@@ -369,7 +371,7 @@ test('add_to_system: same は同じ画面設計を入れ（ほかのシステム
   const { app, T, call, sys, d } = await boot();
   const n0 = T.store.state.designs.length;
   const r = ok(await call('add_to_system', { system: '請求管理システム', design: '受注管理' }));
-  assert.deepEqual([r.design, r.mode], [{ id: 'd2', name: '受注管理' }, 'same']);
+  assert.deepEqual([r.design, r.mode], [{ id: 'd2', name: '受注管理', updatedAt: OLD }, 'same']);
   assert.deepEqual(sys('y2').designIds, ['d1', 'd2']);
   const again = ok(await call('add_to_system', { system: 'y2', design: 'd2' }));
   assert.deepEqual([again.changed, again.alreadyIn], [false, true]);
@@ -394,7 +396,7 @@ test('add_to_system: same は同じ画面設計を入れ（ほかのシステム
 test('create_design の system: 作ってすぐそのシステムに入れる（システムにも直す前の行が残る）。ごみ箱・ないシステムは断り、画面設計も作らない', async () => {
   const { app, T, call, sys } = await boot();
   const r = ok(await call('create_design', { name: '請求書', system: '請求管理システム' }));
-  assert.deepEqual(r.system, { id: 'y2', name: '請求管理システム' });
+  assert.deepEqual(r.system, { id: 'y2', name: '請求管理システム', updatedAt: sys('y2').updatedAt });
   assert.deepEqual(sys('y2').designIds, ['d1', r.id]);
   const d = T.store.state.designs.find((x) => x.id === r.id);
   assert.equal(r.updatedAt, d.updatedAt, '更新の印は作った画面設計のもの');
@@ -461,5 +463,250 @@ test('システムの履歴の写しは、比べる JSON と元に戻すの履�
     ['名前', '', '', 'task', ['d1'], 1]);
   assert.deepEqual(plain(T.migrate(plain(m)).state), plain(m), '2 回通しても同じ');
   assert.deepEqual(plain(m.systems[1].revisions), []);
+  app.close();
+});
+
+// ── 第 9 段階の見直し（T9）──
+const swimInput = TOOLS.find((x) => x.name === 'set_swimlane').input;
+const issues = (p) => (p.success ? [] : p.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
+
+test('set_swimlane: get_system で読んだ作業と矢印をそのまま渡すと、入口の形も通り、何も変わらない（矢印の id を使い回す。更新の印・元に戻す・直す前の行・帯を出さない）', async () => {
+  const st = systemState();
+  st.systems[0].swimlane.edges[0].color = 'red'; // 知らない欄
+  const { app, T, call, sys } = await boot(st);
+  T.ui.view = 'system';
+  T.ui.systemId = 'y1';
+  const g = ok(await call('get_system', { system: 'y1' }));
+  assert.deepEqual(issues(swimInput.safeParse({ system: 'y1', expect: g.updatedAt, steps: g.steps, edges: g.edges })), []);
+  const before = sys('y1');
+  const u0 = T.store.undoStack.length;
+  const r = ok(await call('set_swimlane', { system: 'y1', expect: g.updatedAt, steps: g.steps, edges: g.edges }));
+  assert.equal(r.changed, false);
+  assert.deepEqual(sys('y1'), before);
+  assert.deepEqual([T.store.undoStack.length, aiRows(sys('y1')).length, T.aiView.band], [u0, 0, null]);
+  // 矢印の id を書かなくても、同じ「元 → 先」の今の矢印の id と知らない欄を使い回す。label を省くと今の文字のまま、'' で消す
+  ok(await call('set_swimlane', { system: 'y1', steps: g.steps, edges: [{ from: 'w1', to: 'w2', label: '出す' }, { from: 'w2', to: 'w3', label: '確かめてもらう' }] }));
+  assert.deepEqual(sys('y1').swimlane.edges, [{ id: 'e1', from: 'w1', to: 'w2', label: '出す', color: 'red' }, { id: 'e2', from: 'w2', to: 'w3', label: '確かめてもらう' }]);
+  ok(await call('set_swimlane', { system: 'y1', steps: g.steps, edges: [{ from: 'w1', to: 'w2' }, { from: 'w2', to: 'w3', label: '' }] }));
+  assert.deepEqual(sys('y1').swimlane.edges.map((e) => [e.id, e.label]), [['e1', '出す'], ['e2', '']]);
+  // id を書くと、その矢印の id のまま元・先を付け替える
+  ok(await call('set_swimlane', { system: 'y1', steps: g.steps, edges: [{ id: 'e2', from: 'w1', to: 'w3' }] }));
+  assert.deepEqual(sys('y1').swimlane.edges, [{ id: 'e2', from: 'w1', to: 'w3', label: '' }]);
+  const e = ng(await call('set_swimlane', { system: 'y1', steps: g.steps, edges: [{ id: 'e-nai', from: 'w1', to: 'w2' }] }), 'not_found');
+  assert.match(e.message, /^edges\[0\]: 「e-nai」という矢印は/);
+  ng(await call('set_swimlane', { system: 'y1', steps: g.steps, edges: [{ id: 'e2', from: 'w1', to: 'w2' }, { id: 'e2', from: 'w2', to: 'w3' }] }), 'bad_request');
+  app.close();
+});
+
+test('set_swimlane: 今ある作業を id で送り col を省くと、今の列を残す（人が動かした列を付け直さない）', async () => {
+  const { app, T, call, sys } = await boot();
+  T.actions.moveStep('y1', 'w3', { col: 5 });
+  const g = ok(await call('get_system', { system: 'y1' }));
+  const r = ok(await call('set_swimlane', { system: 'y1', expect: g.updatedAt, steps: g.steps.map((w) => ({ id: w.id, role: w.role, text: w.text })), edges: g.edges.map(({ from, to }) => ({ from, to })) }));
+  assert.deepEqual(sys('y1').swimlane.steps.map((w) => [w.id, w.col]), [['w1', 0], ['w2', 1], ['w3', 5]]);
+  assert.equal(r.changed, false);
+  app.close();
+});
+
+test('set_swimlane: edges を省くと、今の矢印のうち両端の作業が残っているものを残す（外した数を知らせる）。[] を書いたときだけ全部消す', async () => {
+  const { app, call, sys } = await boot();
+  const r = ok(await call('set_swimlane', { system: 'y1', steps: [{ id: 'w1', role: '営業', text: '始まり' }, { id: 'w2', role: '営業', text: '顧客を登録する（直した）' }] }));
+  assert.deepEqual(sys('y1').swimlane.edges, [{ id: 'e1', from: 'w1', to: 'w2', label: '' }]);
+  assert.match(r.warnings.join('\n'), /edges を省いたので、今の矢印を残しました。両端の作業がなくなった矢印 1 本は外しました/);
+  assert.equal(r.edgesTotal, 1);
+  ok(await call('set_swimlane', { system: 'y1', steps: [{ id: 'w1', role: '営業', text: '始まり' }, { id: 'w2', role: '営業', text: '顧客を登録する（直した）' }], edges: [] }));
+  assert.deepEqual(sys('y1').swimlane.edges, []);
+  app.close();
+});
+
+test('set_swimlane: get_system の形も受け取る（作業の roleId・ref の { id, name }・矢印の id）。role と roleId が別の役割なら断る。今と同じ指す先は、システムから外した画面設計でもそのまま残す', async () => {
+  const { app, call, sys } = await boot();
+  const p = swimInput.safeParse({ system: 'y1', steps: [{ roleId: 'l2', role: null, text: 'x', ref: { design: { id: 'd1', name: '顧客管理' }, screen: { id: 's2' }, state: null } }], edges: [{ id: 'e1', from: 'x', to: 'x' }] });
+  assert.deepEqual(issues(p), []);
+  ok(await call('set_swimlane', { system: 'y1', steps: [
+    { id: 'w2', roleId: 'l2', text: '顧客を登録する', ref: { design: { id: 'd1', name: '顧客管理' }, screen: { id: 's2', name: '一覧' }, state: null } },
+    { key: 'n', roleId: 'l1', role: '営業', text: '新しい作業', ref: { design: { id: 'd2', name: '受注管理' }, screen: null, state: null } },
+  ], edges: [] }));
+  const steps = sys('y1').swimlane.steps;
+  assert.deepEqual(steps.map((w) => [w.roleId, w.ref]), [['l2', { designId: 'd1', screenId: 's2', stateId: null }], ['l1', { designId: 'd2', screenId: null, stateId: null }]]);
+  const mismatch = ng(await call('set_swimlane', { system: 'y1', steps: [{ role: '営業', roleId: 'l2', text: 'x' }] }), 'bad_request');
+  assert.match(mismatch.message, /role.*roleId.*別の役割/);
+  ng(await call('set_swimlane', { system: 'y1', steps: [{ roleId: 'l-nai', text: 'x' }] }), 'not_found');
+  ng(await call('set_swimlane', { system: 'y1', steps: [{ text: 'x' }] }), 'bad_request');
+  // システムから外した画面設計・ない画面を指す作業も、get_system で読んだまま送り直せる（指す先はそのまま）
+  const { app: app2, call: call2, sys: sys2 } = await boot();
+  ok(await call2('remove_from_system', { system: 'y1', design: '顧客管理' }));
+  const g = ok(await call2('get_system', { system: 'y1' }));
+  const r = ok(await call2('set_swimlane', { system: 'y1', expect: g.updatedAt, steps: g.steps, edges: g.edges }));
+  assert.equal(r.changed, false);
+  assert.deepEqual(sys2('y1').swimlane.steps[1].ref, { designId: 'd1', screenId: 's1', stateId: 't1' });
+  const add = ng(await call2('set_swimlane', { system: 'y1', steps: [{ role: '営業', text: '新しい作業', ref: { design: '顧客管理' } }] }), 'bad_request');
+  assert.match(add.message, /先に add_to_system でこのシステムに入れてください/);
+  app.close();
+  app2.close();
+});
+
+test('set_swimlane: 返事の作業は key・id・col だけ、矢印は数だけ（作業が多くても目安の 24,000 字に収まる）', async () => {
+  const { app, call } = await boot();
+  const steps = Array.from({ length: 150 }, (_, i) => ({ key: `k${i}`, role: i % 2 ? '上長' : '営業', text: `顧客の連絡先を確かめて受注の見込みを書く ${i}` }));
+  const edges = steps.slice(1).map((s, i) => ({ from: `k${i}`, to: s.key, label: '次へ' }));
+  const r = ok(await call('set_swimlane', { system: 'y1', steps, edges }));
+  assert.deepEqual(Object.keys(r.steps[0]), ['key', 'id', 'col']);
+  assert.equal(r.edgesTotal, 149);
+  assert.equal(r.edges, undefined);
+  assert.ok(JSON.stringify(r).length <= 24000, `${JSON.stringify(r).length} 字`);
+  app.close();
+});
+
+test('set_swimlane: 矢印の端が 2 つに当たったときの候補は、新しい作業には id を出さず、key・文字・steps の何番目か（0 から）を出す', async () => {
+  const { app, call } = await boot();
+  const amb = ng(await call('set_swimlane', { system: 'y1', steps: [{ role: '営業', text: '確かめる' }, { id: 'w3', role: '上長', text: '確かめる' }, { key: 'z', role: '営業', text: '終わり' }], edges: [{ from: '確かめる', to: 'z' }] }), 'ambiguous');
+  assert.deepEqual(amb.candidates, [{ key: '確かめる', text: '確かめる', index: 0 }, { key: '確かめる', id: 'w3', text: '確かめる', index: 1 }]);
+  app.close();
+});
+
+test('ステータスの並びを書き直す・ステータスの項目を消すと、作業の指す先のステータスも外れる（set_states・edit_items の props.states・delete）。システムに直す前の行を残して知らせる', async () => {
+  {
+    const { app, call, sys } = await boot();
+    const r = ok(await call('edit_process', { design: 'd1', ops: [{ op: 'set_states', states: ['申請', '承認済み'] }] }));
+    assert.deepEqual([stepOf(sys('y1'), 'w2').ref.stateId, stepOf(sys('y1'), 'w3').ref], ['t1', { designId: 'd1', screenId: 's2', stateId: null }]);
+    assert.ok(r.warnings.some((w) => /システム「営業管理システム」/.test(w)), JSON.stringify(r.warnings));
+    assert.equal(aiRows(sys('y1')).length, 1);
+    assert.equal(stepOf(aiRows(sys('y1'))[0].snapshot, 'w3').ref.stateId, 't2');
+    app.close();
+  }
+  {
+    const { app, call, sys } = await boot();
+    ok(await call('edit_items', { design: 'd1', ops: [{ op: 'update', item: 'ステータス', props: { states: ['申請'] } }] }));
+    assert.equal(stepOf(sys('y1'), 'w3').ref.stateId, null);
+    app.close();
+  }
+  {
+    const { app, call, sys } = await boot();
+    ok(await call('edit_items', { design: 'd1', ops: [{ op: 'delete', item: 'ステータス' }] }));
+    assert.deepEqual(sys('y1').swimlane.steps.map((w) => w.ref.stateId), [null, null, null]);
+    app.close();
+  }
+});
+
+test('restore_revision で画面が減って作業の指す先が外れたときも、システムに直す前の行を残して知らせる（画面設計には「戻す前の状態」の行だけ）', async () => {
+  const { app, T, call, sys, d } = await boot();
+  const rv = T.actions.addRevision('d1', { note: '最初' });
+  const sc = T.actions.addScreen('d1', 'blank');
+  T.actions.updateStep('y1', 'w1', { ref: { designId: 'd1', screenId: sc, stateId: null } });
+  const r = ok(await call('restore_revision', { design: 'd1', revision: rv }));
+  assert.deepEqual(stepOf(sys('y1'), 'w1').ref, { designId: 'd1', screenId: null, stateId: null });
+  assert.ok(r.warnings.some((w) => /システム「営業管理システム」/.test(w)), JSON.stringify(r.warnings));
+  assert.equal(stepOf(aiRows(sys('y1'))[0].snapshot, 'w1').ref.screenId, sc);
+  assert.deepEqual(d('d1').revisions.map((x) => x.kind), ['revision', 'restore'], '画面設計には「AI が直す前の状態」の行を足さない');
+  app.close();
+});
+
+test('get_system: 説明は最初のページ（cursor なし）にだけ入れる（説明が長くても、続きのページは目安の 24,000 字に収まる）', async () => {
+  const st = systemState();
+  const y = st.systems[0];
+  y.description = 'あ'.repeat(30000);
+  y.swimlane.steps = Array.from({ length: 200 }, (_, i) => swStep(`wx${i}`, 'l1', i, 'task', `顧客の連絡先を確かめて受注の見込みを書く作業の見本 ${i}`));
+  const { app, call } = await boot(st);
+  const first = ok(await call('get_system', { system: 'y1' }));
+  assert.equal(first.description, 'あ'.repeat(30000));
+  let cursor = first.nextCursor;
+  let n = first.steps.length;
+  assert.ok(cursor);
+  while (cursor) {
+    const r = ok(await call('get_system', { system: 'y1', cursor }));
+    assert.equal(r.description, undefined);
+    assert.ok(JSON.stringify(r).length <= 24000, `${JSON.stringify(r).length} 字`);
+    n += r.steps.length;
+    cursor = r.nextCursor;
+  }
+  assert.equal(n, 200);
+  app.close();
+});
+
+test('add_to_system・remove_from_system は expect を受け取る（読んだ後に直されていれば stale）。入口の形も通る。expect の欄がない道具のことも手引きに書く', async () => {
+  const { app, T, call } = await boot();
+  for (const name of ['add_to_system', 'remove_from_system']) {
+    assert.deepEqual(issues(TOOLS.find((x) => x.name === name).input.safeParse({ system: 'y1', design: 'd1', expect: OLD })), [], name);
+  }
+  T.actions.updateSystem('y2', { description: '人が直した' });
+  ng(await call('add_to_system', { system: 'y2', design: '受注管理', expect: OLD }), 'stale');
+  ng(await call('remove_from_system', { system: 'y2', design: '顧客管理', expect: OLD }), 'stale');
+  const at = T.store.state.systems.find((y) => y.id === 'y2').updatedAt;
+  const r = ok(await call('add_to_system', { system: 'y2', design: '受注管理', expect: at }));
+  ok(await call('remove_from_system', { system: 'y2', design: '受注管理', expect: r.updatedAt }));
+  assert.match(INSTRUCTIONS, /expect の欄がある書く道具には/);
+  app.close();
+});
+
+test('返事の更新の印: create_design に system を書くと system.updatedAt（システムの新しい印）を返す。add_to_system は、システムの印と、入れた画面設計の印を分けて返す', async () => {
+  const { app, T, call, sys, d } = await boot();
+  const c = ok(await call('create_design', { name: '見積管理', system: '営業管理システム' }));
+  assert.deepEqual(c.system, { id: 'y1', name: '営業管理システム', updatedAt: sys('y1').updatedAt });
+  assert.notEqual(c.system.updatedAt, OLD);
+  ok(await call('set_swimlane', { system: 'y1', expect: c.system.updatedAt, steps: [] }));
+  const same = ok(await call('add_to_system', { system: 'y2', design: '受注管理' }));
+  assert.deepEqual([same.updatedAt, same.design], [sys('y2').updatedAt, { id: 'd2', name: '受注管理', updatedAt: d('d2').updatedAt }]);
+  const copy = ok(await call('add_to_system', { system: 'y2', design: '顧客管理', mode: 'copy' }));
+  const made = T.store.state.designs.find((x) => x.id === copy.design.id);
+  assert.deepEqual([copy.updatedAt, copy.design.updatedAt], [sys('y2').updatedAt, made.updatedAt]);
+  assert.match(GUIDES.overview.text, /create_design に system を書くと、システムの更新の印も変わる/);
+  app.close();
+});
+
+test('中身が変わらない頼み（役割を足して同じ頼みで消す・項目を足して消す）は、変わらなかったものとして扱う（更新の印・元に戻す・直す前の行・帯を出さない）', async () => {
+  const { app, T, call, sys, d } = await boot();
+  T.ui.view = 'system';
+  T.ui.systemId = 'y1';
+  T.actions.updateDesignInfo('d2', { description: '人の変更' });
+  const u0 = T.store.undoStack.length;
+  const r = ok(await call('update_system', { system: 'y1', ops: [{ op: 'add', name: '経理' }, { op: 'delete', role: '経理' }] }));
+  assert.deepEqual([r.changed, r.updatedAt, sys('y1').updatedAt, aiRows(sys('y1')).length], [false, OLD, OLD, 0]);
+  assert.deepEqual([T.store.undoStack.length, T.aiView.band, T.aiView.warn], [u0, null, null]);
+  const r2 = ok(await call('edit_items', { design: 'd1', ops: [{ op: 'add', type: 'text1', name: 'メモ' }, { op: 'delete', item: 'メモ' }] }));
+  assert.deepEqual([r2.changed, d('d1').updatedAt, d('d1').revisions.length], [false, OLD, 0]);
+  assert.equal(T.store.undoStack.length, u0, '元に戻すの履歴も消さない');
+  app.close();
+});
+
+test('人がシステムの画面を開いているときに、画面設計の道具がそのシステムを変えたら、帯にそのことを書く（作業の指す先が外れた・作った画面設計を入れた）', async () => {
+  const note = '開いている「営業管理システム」のスイムレーン図の作業の指す先も外れました（履歴に「Claude Code が直す前の状態」を残しました）。';
+  {
+    const { app, T, call } = await boot();
+    T.openSystem('y1');
+    T.actions.updateSystem('y1', { description: '人の変更' });
+    ok(await call('edit_screen', { design: 'd1', ops: [{ op: 'delete', screen: '新規登録' }] }));
+    assert.ok(app.document.querySelector('#ai-warn').textContent.includes(note), app.document.querySelector('#ai-warn').textContent);
+    app.close();
+  }
+  {
+    const { app, T, call } = await boot();
+    T.openSystem('y1');
+    ok(await call('edit_screen', { design: 'd1', ops: [{ op: 'delete', screen: '新規登録' }] }));
+    assert.ok(app.document.querySelector('#ai-band').textContent.includes(note), app.document.querySelector('#ai-band').textContent);
+    ok(await call('create_design', { name: '見積管理', system: 'y1' }));
+    assert.ok(app.document.querySelector('#ai-band').textContent.includes('開いている「営業管理システム」に「見積管理」を入れました（履歴に「Claude Code が直す前の状態」を残しました）。'),
+      app.document.querySelector('#ai-band').textContent);
+    app.close();
+  }
+  {
+    const { app, T, call } = await boot();
+    T.openSystem('y2');
+    ok(await call('edit_screen', { design: 'd1', ops: [{ op: 'delete', screen: '新規登録' }] }));
+    assert.ok(!app.document.querySelector('#ai-band').textContent.includes('開いている'), '開いているシステムが変わらなければ書かない');
+    app.close();
+  }
+});
+
+test('細かいもの: update_system でほかのシステムと同じ名前にすると知らせる。remove_from_system は、ごみ箱の画面設計を trashed で断る', async () => {
+  const st = systemState();
+  st.systems[1].designIds.push('d3');
+  const { app, call, sys } = await boot(st);
+  const r = ok(await call('update_system', { system: 'y2', name: '営業管理システム' }));
+  assert.match(r.warnings[0], /同じ名前のシステムがもうあります（y1）/);
+  assert.equal(ok(await call('update_system', { system: 'y2', name: '営業管理システム', description: 'x' })).warnings, undefined, '名前が変わらなければ知らせない');
+  const t = ng(await call('remove_from_system', { system: 'y2', design: '出張申請' }), 'trashed');
+  assert.match(t.message, /「出張申請」はごみ箱にあるため/);
+  assert.deepEqual(sys('y2').designIds, ['d1', 'd3']);
   app.close();
 });

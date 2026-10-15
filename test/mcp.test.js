@@ -173,6 +173,26 @@ test('入力の形に合わない頼み（知らない欄・知らない操作�
   assert.equal(calls.length, 0);
 });
 
+test('get_system の返事の作業と矢印は、そのまま set_swimlane の入力の形に通ってアプリに届く。add_to_system・remove_from_system の expect も通る（第 9 段階の見直し）', async (t) => {
+  const { systemState, STORAGE_KEY } = require('./ai-fixtures');
+  const app = bootApp({ localStorage: { [STORAGE_KEY]: JSON.stringify(systemState()) } });
+  const T = await app.api();
+  const g = JSON.parse(JSON.stringify(await T.aiDispatch('get_system', { system: 'y1' }, {}))).result;
+  app.close();
+  const dir = makeDir(t);
+  const { calls } = await startApp(t, dir, () => ({ ok: true, result: {} }));
+  const client = await openEntry(t, dir);
+  const args = { system: 'y1', expect: g.updatedAt, steps: g.steps, edges: g.edges };
+  const r = await call(client, 'set_swimlane', args);
+  assert.equal(r.isError, undefined, textOf(r));
+  assert.deepEqual(calls[0].args, args);
+  for (const name of ['add_to_system', 'remove_from_system']) {
+    const x = await call(client, name, { system: 'y1', design: 'd1', expect: g.updatedAt });
+    assert.equal(x.isError, undefined, textOf(x));
+  }
+  assert.equal(calls.length, 3);
+});
+
 test('合言葉が違うと、つなげないまま時間内に断る', async (t) => {
   const dir = makeDir(t);
   const { srv } = await startApp(t, dir, () => ({ ok: true, result: {} }));

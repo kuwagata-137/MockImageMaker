@@ -11564,6 +11564,10 @@ async function aiWrite(ctx, opts, run) {
   const tx = { ctx, design: d, system: y, warnings: [], createdDesign: null, createdSystem: null, noBeforeRow: !!opts.noBeforeRow, afterMap: null, afterSys: null };
   const beforeMap = new Map(S.designs.map((x) => [x.id, designJsonWithRefs(x)]));
   const beforeSys = new Map(S.systems.map((x) => [x.id, systemContent(x)]));
+  const beforeTimes = {
+    designs: new Map(S.designs.map((x) => [x.id, { json: beforeMap.get(x.id), at: x.updatedAt }])),
+    systems: new Map(S.systems.map((x) => [x.id, { json: systemJsonWithRefs(x), at: x.updatedAt }])),
+  };
   // 「AI が直す前の状態」の行は、直す前に作っておき、中身が変わったときだけ入れる（8-3）
   const before = d && !tx.noBeforeRow ? aiBeforeRow(ctx, d) : null;
   const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
@@ -11575,8 +11579,10 @@ async function aiWrite(ctx, opts, run) {
   try {
     ({ changed } = store.batch(() => {
       out = run(tx);
+      aiKeepTimesOfUnchanged(beforeTimes);
       if (before) aiAddBeforeRow(before);
-      if (!tx.noBeforeRow) aiAddSystemBeforeRows(tx, beforeSys);
+      // noBeforeRow（前の版に戻す。画面設計には「戻す前の状態」の行が残る）でも、作業の指す先が外れたシステムには直す前の行を残す
+      aiAddSystemBeforeRows(tx, beforeSys);
     }, {
       history: () => {
         tx.afterMap = new Map(store.state.designs.map((x) => [x.id, designJsonWithRefs(x)]));
@@ -11601,6 +11607,20 @@ async function aiWrite(ctx, opts, run) {
   }
   const now = d ? findDesign(store.state, d.id) : y ? findSystem(store.state, y.id) : null;
   return { ...out, changed: !!changed, ...(now ? { updatedAt: now.updatedAt } : {}), ...(tx.warnings.length ? { warnings: tx.warnings } : {}) };
+}
+// 頼みの中で直して元に戻した（役割を足して同じ頼みで消すなど）ため、更新日時のほかは頼みの前と同じ画面設計とシステムは、更新日時も頼みの前に戻す。
+// 中身が何も変わらなければ、変わらなかった頼みになる（更新の印・元に戻すの履歴・直す前の行・帯を出さない。第 9 段階の見直しで決めた）。
+// before は頼みの前の { designs, systems }（どちらも id → { json（更新日時も入る JSON）, at（更新日時）}）
+function aiKeepTimesOfUnchanged(before) {
+  const keep = (x, json, olds) => {
+    const old = olds.get(x.id);
+    if (!old || old.at === x.updatedAt) return;
+    const now = x.updatedAt;
+    x.updatedAt = old.at;
+    if (json(x) !== old.json) x.updatedAt = now;
+  };
+  store.state.designs.forEach((d) => keep(d, designJsonWithRefs, before.designs));
+  store.state.systems.forEach((y) => keep(y, systemJsonWithRefs, before.systems));
 }
 // 読んだ後に人が直していたら断る（8-5）。x は指した画面設計かシステム
 function aiCheckExpect(x, expect) {
@@ -11871,9 +11891,10 @@ async function aiCreateDesign(args, ctx) {
     if (args.description != null) actions.updateDesignInfo(id, { description: aiStrVal(args.description, 'description') });
     tx.createdDesign = id;
     const d = findDesign(store.state, id);
+    // system を書いたときは、システムの更新の印も変わる（入れたため）。返事の system.updatedAt を、次にシステムを直す道具の expect に使う
     return {
       id, name: d.name, target: targetLabel(d.target), firstScreen: { id: d.screens[0].id, name: d.screens[0].name }, updatedAt: d.updatedAt,
-      ...(y ? { system: { id: y.id, name: y.name } } : {}),
+      ...(y ? { system: aiSystemBrief(findSystem(store.state, y.id)) } : {}),
     };
   });
 }
@@ -12682,7 +12703,8 @@ function aiStepRef(S, ref) {
   const one = (id, name) => (id ? { id, name } : null);
   return { design: one(ref.designId, n.design), screen: one(ref.screenId, n.screen), state: one(ref.stateId, n.state) };
 }
-// システムの中身。多いときは、役割・画面設計・作業・矢印 の順に分ける（aiPageInto）
+// システムの中身。多いときは、役割・画面設計・作業・矢印 の順に分ける（aiPageInto）。説明は最初のページ（cursor なし）にだけ入れる
+// （説明が長いと、どのページも大きくなるため）
 function aiGetSystem(args) {
   const S = aiState();
   const y = aiResolveSystem(S, args.system);
@@ -12699,7 +12721,7 @@ function aiGetSystem(args) {
   }));
   const edges = y.swimlane.edges.map((e) => ({ id: e.id, from: e.from, to: e.to, label: e.label }));
   const out = {
-    id: y.id, name: y.name, description: y.description, updatedAt: y.updatedAt, ...(y.trashedAt ? { trashed: true } : {}),
+    id: y.id, name: y.name, ...(args.cursor ? {} : { description: y.description }), updatedAt: y.updatedAt, ...(y.trashedAt ? { trashed: true } : {}),
     roles: [], rolesTotal: roles.length, designs: [], designsTotal: designs.length, steps: [], stepsTotal: steps.length, edges: [], edgesTotal: edges.length,
     revisions: y.revisions.filter(isObj).map((r) => ({ id: r.id, kind: r.kind, title: revisionTitle(r), date: r.date ? revisionDay(r) : null, note: str(r.note) })),
     nextCursor: null,
@@ -12731,6 +12753,9 @@ async function aiUpdateSystem(args, ctx) {
     }
     if (args.description !== undefined) patch.description = args.description == null ? '' : aiStrVal(args.description, 'description');
     if (!Object.keys(patch).length && args.ops == null) throw aiBad('直す欄（name・description）か、役割の操作（ops）を 1 つ以上書いてください。');
+    // ほかのシステムと同じ名前に変えるときは、create_system と同じく知らせる（変えることはできる）
+    const same = patch.name && patch.name !== tx.system.name ? store.state.systems.filter((x) => !x.trashedAt && x.id !== id && x.name === patch.name) : [];
+    if (same.length) tx.warnings.push(`同じ名前のシステムがもうあります（${same.map((x) => x.id).join('・')}）。`);
     if (Object.keys(patch).length) actions.updateSystem(id, patch);
     const ops = args.ops == null ? [] : aiRunOps(args.ops, (op) => aiRoleOp(tx, op));
     const y = findSystem(store.state, id);
@@ -12793,25 +12818,28 @@ const AI_ADD_MODES = ['same', 'copy'];
 async function aiAddToSystem(args, ctx) {
   const mode = args.mode == null ? 'same' : str(args.mode);
   if (!AI_ADD_MODES.includes(mode)) throw aiBad('mode は "same"（同じ画面設計を入れる。ほかのシステムと共通になる）か "copy"（複製して、このシステムにだけ入れる）です。');
-  return aiWrite(ctx, { system: args.system }, (tx) => {
+  return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
     const id = tx.system.id;
     const src = aiResolveDesign(store.state, args.design);
     if (src.trashedAt) throw new AiRefusal('trashed', `「${src.name}」はごみ箱にあるため、システムに入れられません。アプリのごみ箱から一覧に戻してから、もう一度頼んでください。`);
+    // 返事の updatedAt（aiWrite が付ける）はシステムの更新の印。入れた画面設計の更新の印は design.updatedAt
     if (mode === 'copy') {
       const c = findDesign(store.state, actions.copyDesignIntoSystem(id, src.id));
-      return { design: { id: c.id, name: c.name }, mode, copiedFrom: { id: src.id, name: src.name } };
+      return { design: aiDesignBrief(c), mode, copiedFrom: { id: src.id, name: src.name } };
     }
     const already = findSystem(store.state, id).designIds.includes(src.id);
     if (!already) actions.addDesignToSystem(id, src.id);
-    return { design: { id: src.id, name: src.name }, mode, ...(already ? { alreadyIn: true } : {}) };
+    return { design: aiDesignBrief(findDesign(store.state, src.id)), mode, ...(already ? { alreadyIn: true } : {}) };
   });
 }
-// システムから外す（画面設計は残る。作業の指す先もそのまま）
+// システムから外す（画面設計は残る。作業の指す先もそのまま）。ごみ箱の画面設計は外せない（人の画面でも、ごみ箱の画面設計はシステムに出ないため。
+// 一覧に戻してから外す）
 async function aiRemoveFromSystem(args, ctx) {
-  return aiWrite(ctx, { system: args.system }, (tx) => {
+  return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
     const y = findSystem(store.state, tx.system.id);
     const inside = y.designIds.map((id) => findDesign(store.state, id)).filter(Boolean);
     const d = aiPick(inside, args.design, `「${y.name}」に入っている画面設計`);
+    if (d.trashedAt) throw new AiRefusal('trashed', `「${d.name}」はごみ箱にあるため、システムから外せません。アプリのごみ箱から一覧に戻してから、もう一度頼んでください。`);
     const refs = y.swimlane.steps.filter((w) => w.ref.designId === d.id).length;
     actions.removeDesignFromSystem(y.id, d.id);
     if (refs) tx.warnings.push(`スイムレーンの作業 ${refs} つが、この画面設計を指しています（指す先はそのまま残します。画面設計は消えていません）。`);
@@ -12819,24 +12847,48 @@ async function aiRemoveFromSystem(args, ctx) {
   });
 }
 
-// スイムレーンをまとめて置き換える。作業は { key, id, role, kind, text, memo, col, ref }、矢印は { from, to, label }。
-// 今ある作業の id を書いた作業は、その id と、書かなかった欄（種類・メモ・指す先）と BDM の箱（src）を残す。列を書かない作業は swimAutoCols で付ける
+// スイムレーンをまとめて置き換える。作業は { key, id, role, roleId, kind, text, memo, col, ref }、矢印は { id, from, to, label }（get_system の返事の形も受け取る）。
+// 今ある作業の id を書いた作業は、その id と、書かなかった欄（種類・メモ・指す先・列）と BDM の箱（src）を残す。列を書かない新しい作業は swimAutoCols で付ける。
+// edges を省くと、今の矢印のうち両端の作業が残っているものを残す（[] を書いたときだけ全部消す）。
+// 返事は作業の key・id・列と、矢印の数（作業が多くても返事が大きくならないように）
 async function aiSetSwimlane(args, ctx) {
   return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
     const y = findSystem(store.state, tx.system.id);
-    const specs = aiArr(args.steps, 'steps').map((w, i) => aiAt(`steps[${i}]`, () => aiSwimStep(y, w)));
+    const specs = aiArr(args.steps, 'steps').map((w, i) => aiAt(`steps[${i}]`, () => aiSwimStep(y, w, i)));
     aiCheckSwimSpecs(specs);
-    const edges = (args.edges == null ? [] : aiArr(args.edges, 'edges')).map((e, i) => aiAt(`edges[${i}]`, () => aiSwimEdge(specs, e)));
-    edges.forEach((e, i) => {
-      if (edges.findIndex((x) => x.from === e.from && x.to === e.to) !== i) throw aiBad(`edges[${i}]: 同じ 2 つの作業の間に、同じ向きの矢印が 2 本あります（1 本にしてください）。`);
-    });
+    const edges = args.edges == null ? aiKeptSwimEdges(tx, y, specs) : aiSwimEdges(y, specs, aiArr(args.edges, 'edges'));
     actions.setSwimlane(y.id, { steps: swimAutoCols(specs.map((s) => s.step), edges), edges });
     const now = findSystem(store.state, y.id).swimlane;
-    return {
-      steps: specs.map((s, i) => ({ key: s.key, id: s.step.id, text: s.step.text, role: s.role, col: now.steps[i].col })),
-      edges: now.edges.map((e) => ({ id: e.id, from: e.from, to: e.to, label: e.label })),
-    };
+    return { steps: specs.map((s, i) => ({ key: s.key, id: s.step.id, col: now.steps[i].col })), edgesTotal: now.edges.length };
   });
+}
+// edges を省いたとき: 今の矢印のうち、両端の作業が残っているもの。外した矢印があれば知らせる
+function aiKeptSwimEdges(tx, y, specs) {
+  const ids = new Set(specs.map((s) => s.step.id));
+  const kept = y.swimlane.edges.filter((e) => ids.has(e.from) && ids.has(e.to)).map(clone);
+  const dropped = y.swimlane.edges.length - kept.length;
+  if (dropped) tx.warnings.push(`edges を省いたので、今の矢印を残しました。両端の作業がなくなった矢印 ${dropped} 本は外しました。`);
+  return kept;
+}
+// 書いた矢印の並び。id（今ある矢印の id）を書いた矢印は、その矢印の id と知らない欄を残す。id を書かない矢印は、今のスイムレーンに
+// 同じ「元 → 先」の矢印があれば、その id と知らない欄を使い回す（同じ中身を送り直しても、矢印の id が変わらないように）
+function aiSwimEdges(y, specs, list) {
+  const ends = list.map((e, i) => aiAt(`edges[${i}]`, () => aiSwimEdgeEnds(y, specs, e)));
+  const named = ends.filter((x) => x.old).map((x) => x.old.id);
+  const twice = named.find((id, i) => named.indexOf(id) !== i);
+  if (twice) throw aiBad(`edges に同じ矢印の id「${twice}」が 2 回あります。`);
+  const used = new Set(named);
+  const edges = ends.map((x) => {
+    const same = x.old ? null : y.swimlane.edges.find((e) => e.from === x.from && e.to === x.to && !used.has(e.id));
+    const old = x.old || same;
+    if (same) used.add(same.id);
+    const label = x.label === undefined ? (old ? old.label : '') : x.label;
+    return { ...(old ? clone(old) : {}), id: old ? old.id : newId('e'), from: x.from, to: x.to, label };
+  });
+  edges.forEach((e, i) => {
+    if (edges.findIndex((x) => x.from === e.from && x.to === e.to) !== i) throw aiBad(`edges[${i}]: 同じ 2 つの作業の間に、同じ向きの矢印が 2 本あります（1 本にしてください）。`);
+  });
+  return edges;
 }
 // 断るときに、どの作業・矢印かを文の頭に付ける
 function aiAt(at, fn) {
@@ -12847,20 +12899,39 @@ function aiAt(at, fn) {
     throw e;
   }
 }
-// 作業 1 つ。戻り値 { key（矢印から指す名前。書かなければ文字）, explicitKey, step（setSwimlane に渡す作業）, role（役割の名前）}
-function aiSwimStep(y, w) {
+// 作業 1 つ（index は steps の何番目か）。戻り値 { key（矢印から指す名前。書かなければ文字）, explicitKey, step（setSwimlane に渡す作業）,
+// index, isNew（新しい作業か。新しい作業の id はこの頼みの中だけのもの）}。
+// 今ある作業で、col を省けば今の列を残す（人が動かした列を付け直さない）。ref が今と同じ指す先なら、検めずにそのまま残す
+// （get_system で読んだ作業を、そのまま送り直せるように。システムから外した画面設計や、もうない画面を指していても）
+function aiSwimStep(y, w, index) {
   if (!isObj(w)) throw aiBad('作業は { role, text, … } の形で書いてください。');
   const old = w.id == null ? null : findStep(y, aiKey(w.id));
   if (w.id != null && !old) throw new AiRefusal('not_found', `「${aiKey(w.id)}」という作業は「${y.name}」のスイムレーンにありません（id には今ある作業の id だけを書けます。新しい作業は id を書きません）。`);
-  const role = aiSwimRole(y, w.role);
+  const role = aiSwimStepRole(y, w);
   const kind = w.kind == null ? (old ? old.kind : 'task') : str(w.kind);
   if (!SWIM_KINDS.includes(kind)) throw aiBad(`kind（作業の種類）は ${SWIM_KINDS.map((k) => `"${k}"（${SWIM_KIND_NAMES[k]}）`).join('・')} です。`);
   if (typeof w.text !== 'string') throw aiBad('text（作業の文）を書いてください。');
-  if (w.col != null && !isSwimCol(w.col)) throw aiBad('col（列）は 0 以上の整数で書いてください（0 がいちばん左）。省くと、矢印の順からアプリが付けます。');
+  if (w.col != null && !isSwimCol(w.col)) throw aiBad('col（列）は 0 以上の整数で書いてください（0 がいちばん左）。省くと、今ある作業は今の列のまま、新しい作業は矢印の順からアプリが付けます。');
   const memo = w.memo !== undefined ? (w.memo == null ? '' : aiStrVal(w.memo, 'memo')) : old ? old.memo : '';
-  const ref = w.ref !== undefined ? aiSwimRef(y, w.ref) : old ? clone(old.ref) : aiSwimRef(y, null);
-  const step = { ...(old ? clone(old) : {}), id: old ? old.id : newId('w'), roleId: role.id, col: w.col == null ? null : w.col, kind, text: w.text.trim(), memo, ref };
-  return { key: w.key == null ? step.text : aiKey(w.key), explicitKey: w.key != null, step, role: role.name };
+  const keepRef = w.ref === undefined || (old && aiSameStepRef(old.ref, w.ref));
+  const ref = keepRef ? (old ? clone(old.ref) : aiSwimRef(y, null)) : aiSwimRef(y, w.ref);
+  const col = w.col == null ? (old ? old.col : null) : w.col;
+  const step = { ...(old ? clone(old) : {}), id: old ? old.id : newId('w'), roleId: role.id, col, kind, text: w.text.trim(), memo, ref };
+  return { key: w.key == null ? step.text : aiKey(w.key), explicitKey: w.key != null, step, index, isNew: !old };
+}
+// 作業の役割。role（名前か id）か roleId（get_system の steps[].roleId）で指す。両方を書いたときは同じ役割を指すこと
+function aiSwimStepRole(y, w) {
+  const byId = w.roleId == null ? null : y.roles.find((r) => r.id === aiKey(w.roleId)) || null;
+  if (w.roleId != null && !byId) {
+    throw new AiRefusal('not_found', `roleId の「${aiKey(w.roleId)}」という役割は「${y.name}」にありません（今の役割: ${y.roles.map((r) => `${r.name}〔${r.id}〕`).join('・') || 'なし'}）。`);
+  }
+  if (w.role == null) {
+    if (!byId) throw aiBad('role（役割の名前か id）か roleId を書いてください。');
+    return byId;
+  }
+  const r = aiSwimRole(y, w.role);
+  if (byId && byId.id !== r.id) throw aiBad(`role（「${r.name}」）と roleId（「${byId.name}」）が別の役割を指しています。どちらか 1 つにしてください。`);
+  return r;
 }
 function aiSwimRole(y, ref) {
   try {
@@ -12870,29 +12941,43 @@ function aiSwimRole(y, ref) {
     throw e;
   }
 }
-// 作業の指す先。design はこのシステムに入っている画面設計、screen・state はその画面設計の中で引く。null は指す先なし
+// ref の欄の値。get_system の返事の形（{ id, name }）なら id を使う（id がなければ name）
+const aiRefField = (v) => (isObj(v) ? (v.id != null ? v.id : v.name) : v);
+// 書いた ref が、今の作業の指す先と同じか（id で書いたときだけ同じとみなす。名前で書いたときは aiSwimRef で検める）
+function aiSameStepRef(cur, v) {
+  if (v === null) return !cur.designId && !cur.screenId && !cur.stateId;
+  if (!isObj(v)) return false;
+  const id = (x) => {
+    const k = aiRefField(x);
+    return k == null || k === '' ? null : aiKey(k);
+  };
+  return id(v.design) === cur.designId && id(v.screen) === cur.screenId && id(v.state) === cur.stateId;
+}
+// 作業の指す先。design はこのシステムに入っている画面設計、screen・state はその画面設計の中で引く。null は指す先なし。
+// 欄は id か名前か、get_system の返事の形（{ id, name }）で書ける
 function aiSwimRef(y, v) {
   const none = { designId: null, screenId: null, stateId: null };
   if (v === null) return none;
   if (!isObj(v)) throw aiBad('ref は { design, screen, state } の形か null で書いてください。');
-  if (v.design == null) {
-    if (v.screen != null || v.state != null) throw aiBad('ref の screen・state は、design（このシステムに入っている画面設計）と一緒に書いてください。');
+  const [design, screenRef, stateRef] = [v.design, v.screen, v.state].map(aiRefField);
+  if (design == null) {
+    if (screenRef != null || stateRef != null) throw aiBad('ref の screen・state は、design（このシステムに入っている画面設計）と一緒に書いてください。');
     return none;
   }
-  const d = aiPickOrList(designsOfSystem(store.state, y), v.design, `「${y.name}」に入っている画面設計`);
-  const screen = v.screen == null ? null : aiPickOrList(d.screens, v.screen, `「${d.name}」の画面`);
+  const d = aiPickOrList(designsOfSystem(store.state, y), design, `「${y.name}」に入っている画面設計`, '。このシステムに入っていない画面設計は、先に add_to_system でこのシステムに入れてください');
+  const screen = screenRef == null ? null : aiPickOrList(d.screens, screenRef, `「${d.name}」の画面`);
   const it = aiStatusItem(d);
-  if (v.state != null && !it) throw aiBad(`「${d.name}」にはステータスの項目がないので、ref の state は書けません。`);
-  const state = v.state == null ? null : aiPickOrList(it.props.states, v.state, `「${d.name}」のステータス`);
+  if (stateRef != null && !it) throw aiBad(`「${d.name}」にはステータスの項目がないので、ref の state は書けません。`);
+  const state = stateRef == null ? null : aiPickOrList(it.props.states, stateRef, `「${d.name}」のステータス`);
   return { designId: d.id, screenId: screen ? screen.id : null, stateId: state ? state.id : null };
 }
-// 見つからないときは bad_request にして、書けるもの（id と名前）を候補に付ける
-function aiPickOrList(list, ref, what) {
+// 見つからないときは bad_request にして、書けるもの（id と名前）を候補に付ける。hint は、書けるものの後に足す文
+function aiPickOrList(list, ref, what, hint = '') {
   try {
     return aiPick(list, ref, what);
   } catch (e) {
     if (!(e instanceof AiRefusal) || e.code !== 'not_found') throw e;
-    throw new AiRefusal('bad_request', `${e.message}（書けるもの: ${list.map((x) => x.name).join('・') || 'なし'}）`, { candidates: list.map((x) => ({ id: x.id, name: x.name })) });
+    throw new AiRefusal('bad_request', `${e.message}（書けるもの: ${list.map((x) => x.name).join('・') || 'なし'}${hint}）`, { candidates: list.map((x) => ({ id: x.id, name: x.name })) });
   }
 }
 // 作業の id と、書いた key が重ならないか
@@ -12903,14 +12988,18 @@ function aiCheckSwimSpecs(specs) {
   const key = dup(specs.filter((s) => s.explicitKey).map((s) => s.key));
   if (key) throw aiBad(`steps に同じ key「${key}」が 2 回あります（key は矢印から作業を指すための名前なので、1 つずつ別にしてください）。`);
 }
-// 矢印 1 本。from・to は、作業の id・key・文字の順に探す
-function aiSwimEdge(specs, e) {
+// 矢印 1 本の元・先と文字。戻り値 { old（id で指した今の矢印か null）, from, to（作業の id）, label（省いたときは undefined）}。
+// from・to は、作業の id・key・文字の順に探す
+function aiSwimEdgeEnds(y, specs, e) {
   if (!isObj(e)) throw aiBad('矢印は { from, to, label } の形で書いてください。');
+  const old = e.id == null ? null : y.swimlane.edges.find((x) => x.id === aiKey(e.id)) || null;
+  if (e.id != null && !old) throw new AiRefusal('not_found', `「${aiKey(e.id)}」という矢印は「${y.name}」のスイムレーンにありません（id には今ある矢印の id だけを書けます。新しい矢印は id を書きません）。`);
   const from = aiSwimEnd(specs, e.from, 'from');
   const to = aiSwimEnd(specs, e.to, 'to');
   if (from === to) throw aiBad(`作業「${from.step.text}」から自分への矢印は作れません。`);
-  return { id: newId('e'), from: from.step.id, to: to.step.id, label: e.label == null ? '' : aiStrVal(e.label, 'label').trim() };
+  return { old, from: from.step.id, to: to.step.id, label: e.label === undefined ? undefined : e.label == null ? '' : aiStrVal(e.label, 'label').trim() };
 }
+// 2 つ以上に当たるときの候補は、key・文字・steps の何番目か（index。0 から）。今ある作業だけ id も付ける（新しい作業の id は、この頼みの中だけのもの）
 function aiSwimEnd(specs, ref, what) {
   const key = aiKey(ref);
   if (!key) throw aiBad(`${what}（矢印の元・先）を、作業の key か id か文字で書いてください。`);
@@ -12920,8 +13009,8 @@ function aiSwimEnd(specs, ref, what) {
   if (!hits.length) hits = specs.filter((s) => s.step.text === key);
   if (hits.length === 1) return hits[0];
   if (hits.length > 1) {
-    throw new AiRefusal('ambiguous', `${what} の「${key}」に当たる作業が ${hits.length} つあります。作業に key を付けて、key で指してください。`,
-      { candidates: hits.map((s) => ({ key: s.key, id: s.step.id, text: s.step.text })) });
+    throw new AiRefusal('ambiguous', `${what} の「${key}」に当たる作業が ${hits.length} つあります。作業に key を付けて、key で指してください（候補の index は steps の何番目か〔0 から〕）。`,
+      { candidates: hits.map((s) => ({ key: s.key, ...(s.isNew ? {} : { id: s.step.id }), text: s.step.text, index: s.index })) });
   }
   throw aiBad(`${what} の「${key}」という作業は steps にありません（矢印の元と先は、steps に書いた作業の key か id か文字で書きます）。`);
 }
@@ -13129,7 +13218,7 @@ function aiBandHtml() {
     btns = (here ? '' : `<button class="btn small" data-action="ai-open-system" data-id="${esc(b.systemId)}">${open ? `「${esc(b.name)}」を開く` : '開く'}</button>`) + undoBtn;
   } else {
     const open = ui.view === 'editor' ? currentDesign() : null;
-    text = `${who} が「${esc(b.name)}」を${b.kind === 'created' ? '作りました' : '直しました'}。${open ? `開いている「${esc(open.name)}」は変わっていません。` : ''}`;
+    text = `${who} が「${esc(b.name)}」を${b.kind === 'created' ? '作りました' : '直しました'}。${open ? `開いている「${esc(open.name)}」は変わっていません。` : ''}${esc(b.sysNote || '')}`;
     btns = `<button class="btn small" data-action="ai-open-design" data-id="${esc(b.designId)}">${open ? `「${esc(b.name)}」を開く` : '開く'}</button>`;
   }
   return `<div class="ai-band" id="ai-band" role="status"><span class="ic">✦</span><span>${text}</span><span class="spacer"></span>${btns}${aiCloseBtn('ai-band-close')}</div>`;
@@ -13141,6 +13230,7 @@ function aiWarnHtml() {
   const open = ui.view === 'editor' ? currentDesign() : ui.view === 'system' ? findSystem(store.state, ui.systemId) : null;
   let text = `<b>${esc(w.label)}</b> が「${esc(w.name)}」を${w.created ? '作った' : '直した'}ので、元に戻す（Ctrl+Z）の履歴を消しました。`;
   if (open && !w.openChanged && !(ui.view === 'system' && open.id === w.systemId)) text += `開いている「${esc(open.name)}」は変わっていません。`;
+  if (w.sysNote) text += esc(w.sysNote); // 画面設計の道具が、開いているシステムも変えたとき
   // システム（第 9 段階）の「AI が直す前の状態」の行は、システムの画面の「履歴」にある
   if (!w.created) text += `<br>AI の変更を戻すときは、「${esc(w.name)}」の${w.systemId ? '履歴' : '改訂履歴'}の「${esc(w.label)} が直す前の状態」から戻せます。`;
   let btn;
@@ -13231,20 +13321,29 @@ function aiAfterWrite(tx, mode, hadHistory, beforeMap, seen) {
   // システムの画面で開いているシステムが変わったか（オレンジの帯の「開いている…は変わっていません」に使う。第 9 段階）
   const openSys = ui.view === 'system' ? findSystem(S, ui.systemId) : null;
   const openSysChanged = !!openSys && systemContent(openSys) !== seen.systems.get(openSys.id);
+  // 画面設計の道具が、開いているシステムを変えたとき（作業の指す先が外れた・作った画面設計を入れた）は、帯にその 1 文を足す
+  const sysNote = !sys && openSysChanged ? aiOpenSystemNote(openSys, target, tx, label) : '';
   if (openChanged) aiNoteOpenEdited(open, seen, label, mode === true);
   else if (open && tx.afterMap.get(open.id) !== beforeMap.get(open.id)) toast(`${label} が「${open.name}」を改訂しました（${revisionLabel(open)}）。`); // 改訂履歴に版を足しただけ
   // 元に戻すの履歴を消したら、前に出した紫の帯の「元に戻す」は出さない（押しても戻らないため）
   if (mode === 'clear' && aiView.band && (aiView.band.kind === 'edited' || aiView.band.kind === 'system')) aiView.band.undoable = false;
   const what = sys || target;
   if (mode === 'clear' && hadHistory) {
-    aiView.warn = what ? { designId: target ? target.id : null, systemId: sys ? sys.id : null, name: what.name, label, created, openChanged: openChanged || openSysChanged } : null;
+    aiView.warn = what ? { designId: target ? target.id : null, systemId: sys ? sys.id : null, name: what.name, label, created, openChanged: openChanged || openSysChanged, sysNote } : null;
     aiView.cleared = what ? what.name : '画面設計';
   } else if (sys) {
     aiNoteSystemEdited(sys, seen, label, created, mode === true);
   } else if (!openChanged && target && target.id !== seen.open) {
-    aiView.band = { kind: created ? 'created' : 'other', designId: target.id, name: target.name, label };
+    aiView.band = { kind: created ? 'created' : 'other', designId: target.id, name: target.name, label, sysNote };
   }
   aiView.undoMark = { len: store.undoStack.length, top: store.undoStack[store.undoStack.length - 1] };
+}
+// 人がシステムの画面で開いているシステム y を、画面設計の道具が変えたときの帯の 1 文（エスケープの前の文字）。
+// 作った画面設計をそのシステムに入れたとき（create_design の system）と、作業の指す先が外れたとき（画面・ステータスを消したなど）
+function aiOpenSystemNote(y, target, tx, label) {
+  const row = `（履歴に「${label} が直す前の状態」を残しました）`;
+  if (tx.createdDesign && target && y.designIds.includes(target.id)) return `開いている「${y.name}」に「${target.name}」を入れました${row}。`;
+  return `開いている「${y.name}」のスイムレーン図の作業の指す先も外れました${row}。`;
 }
 // AI がシステムを直した・作ったとき: 紫の帯（kind 'system'）。件数は、同じシステムの帯を出してから最初に直す前（base）と今の違い。
 // AI が続けて直したら、件数を足して出し直す。undoable は「元に戻す」を出すか（q66 で元に戻すの 1 回分として積んだとき）
