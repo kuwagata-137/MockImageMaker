@@ -848,23 +848,28 @@ function duplicateDesignData(d, now = nowIso()) {
   // 改訂履歴は写さない（部品の id を付け直すので、前の版の写しと突き合わせられないため。Claude が決めた）
   copy.revisions = [];
   // 項目の id は画面設計の中だけで重ならなければよいので、そのまま写す（部品・ルックアップが指す id を付け直さなくて済むため）。
-  // 画面と部品の id は付け直し、それを指す吹き出しのつなぐ部品と、リンクの文字の移る先も付け直す
+  // 画面と部品の id は付け直し、それを指す吹き出しのつなぐ部品と、ボタン・リンクの文字の移る先も付け直す
   const screenIds = new Map(d.screens.map((s) => [s.id, newId('s')]));
-  copy.screens = d.screens.map((s) => copyScreenData(s, { name: s.name, id: screenIds.get(s.id), screenIds }));
+  copy.screens = d.screens.map((s) => copyScreenData(s, { name: s.name, id: screenIds.get(s.id), screenIds, designId: d.id }));
   // 編集の画面のつながりの図で覚えた「この画面設計」の箱の位置は、複製の箱の鍵で覚え直す
   if (isObj(copy.mapPos) && copy.mapPos['d:' + d.id]) {
     copy.mapPos['d:' + copy.id] = copy.mapPos['d:' + d.id];
     delete copy.mapPos['d:' + d.id];
   }
+  // 画面の移り方の図で覚えた画面の箱の位置も、複製の画面の鍵で覚え直す（ほかの画面設計の画面の箱はそのまま）
+  if (isObj(copy.flowPos)) {
+    copy.flowPos = Object.fromEntries(Object.entries(copy.flowPos).map(([k, v]) => [k.startsWith('s:') && screenIds.has(k.slice(2)) ? 's:' + screenIds.get(k.slice(2)) : k, v]));
+  }
   return copy;
 }
 
 // ── 画面を足す・複製する（第 4 段階。画像 q29・q30）──
-// 画面 1 つの写し。画面・部品・吹き出しの id を付け直し、吹き出しのつなぐ部品とリンクの文字の移る先も付け直す。
+// 画面 1 つの写し。画面・部品・吹き出しの id を付け直し、吹き出しのつなぐ部品とボタン・リンクの文字の移る先も付け直す。
 // 部品は同じ項目を指したまま（ほかの画面へ貼るときと同じ。1 つの画面に同じ項目は 1 回だけだが、別の画面には置ける）。
-// screenIds（元の画面の id → 新しい id）を渡したとき（画面設計の複製）は、移る先をそれで付け直し、ないものは外す。
-// 渡さないとき（画面の複製）は、自分の画面を指す移る先だけを新しい画面に付け直し、ほかの画面を指すものはそのままにする
-function copyScreenData(src, { name, id = newId('s'), screenIds = null }) {
+// screenIds（元の画面の id → 新しい id）を渡したとき（画面設計の複製）は、この画面設計の画面を指す移る先をそれで付け直し、ないものは外す。
+// 渡さないとき（画面の複製）は、自分の画面を指す移る先だけを新しい画面に付け直し、ほかの画面を指すものはそのままにする。
+// ほかの画面設計の画面を指す移る先は、どちらでもそのまま写す（designId は元の画面設計の id。'' はこの画面設計）
+function copyScreenData(src, { name, id = newId('s'), screenIds = null, designId = '' }) {
   const copy = clone(src);
   copy.id = id;
   copy.name = name;
@@ -872,9 +877,10 @@ function copyScreenData(src, { name, id = newId('s'), screenIds = null }) {
   copy.parts.forEach((p) => { partIds.set(p.id, newId('p')); p.id = partIds.get(p.id); });
   copy.callouts = (copy.callouts || []).map((c) => ({ ...c, id: newId('k'), target: c.target ? partIds.get(c.target) || null : null }));
   copy.parts.forEach((p) => {
-    if (p.type !== 'link' || !isObj(p.props) || !p.props.screenId) return;
+    if (!hasMoveTarget(p) || !p.props.screenId || (p.props.designId && p.props.designId !== designId)) return;
     const to = p.props.screenId;
     p.props.screenId = screenIds ? screenIds.get(to) || '' : to === src.id ? id : to;
+    if (screenIds) p.props.designId = ''; // 画面設計の複製では、元の画面設計を名指ししていた移る先も「この画面設計」にする
   });
   return copy;
 }
@@ -909,12 +915,84 @@ function insertScreenAfter(design, screen, afterId) {
   design.screens.splice(i < 0 ? design.screens.length : i + 1, 0, screen);
 }
 
-// リンクの文字で、移る先がその画面のもの
-// （移る先を「URL を書く」に変えた後も screenId は残るので、移る先が画面のものだけを見る）
-const linksToScreen = (p, screenId) => p.type === 'link' && isObj(p.props) && p.props.to === 'screen' && !!screenId && p.props.screenId === screenId;
-// ほかの画面にある、その画面を移る先にしているリンクの文字の数（画面を消す確かめの窓に書く）
-const linksInto = (design, screenId) => design.screens.filter((s) => s.id !== screenId)
-  .reduce((n, s) => n + s.parts.filter((p) => linksToScreen(p, screenId)).length, 0);
+// ── 移る先（ボタンとリンクの文字。第 8 段階で、ボタンにも持たせ、ほかの画面設計の画面も指せるようにした）──
+// 部品の props: to（''・'screen'・'url'）・designId（移る先の画面設計。'' はこの画面設計）・screenId・url。
+// 移る先を「URL を書く」に変えた後も designId・screenId は残るので、移る先が画面のものだけを見る
+const MOVE_PART_TYPES = ['button', 'link'];
+const hasMoveTarget = (p) => MOVE_PART_TYPES.includes(p.type) && isObj(p.props);
+// 部品の移る先の画面 { designId, screenId }（inDesignId は部品のある画面設計）。移る先が画面でないときは null
+function moveTargetOf(p, inDesignId) {
+  if (!hasMoveTarget(p) || p.props.to !== 'screen' || !p.props.screenId) return null;
+  return { designId: p.props.designId || inDesignId, screenId: p.props.screenId };
+}
+const targetsScreen = (p, inDesignId, designId, screenId) => {
+  const t = moveTargetOf(p, inDesignId);
+  return !!t && t.designId === designId && t.screenId === screenId;
+};
+// その画面を移る先にしているボタンとリンクの文字の数を、画面設計ごとに数える（画面を消す確かめの窓に書く。消す画面の中の部品は数えない）。
+// 戻り値 [{ design, count }]。この画面設計が先、ほかは名前の順。ごみ箱の画面設計の分も数える（消すと、その移る先も外れるため）
+function screenRefsInto(state, designId, screenId) {
+  return state.designs
+    .map((d) => ({ design: d, count: d.screens.filter((s) => !(d.id === designId && s.id === screenId))
+      .reduce((n, s) => n + s.parts.filter((p) => targetsScreen(p, d.id, designId, screenId)).length, 0) }))
+    .filter((x) => x.count)
+    .sort((a, b) => (b.design.id === designId) - (a.design.id === designId) || a.design.name.localeCompare(b.design.name, 'ja'));
+}
+// その画面を指す移る先を外す（画面を消したとき。どの画面設計の分も）。外した画面設計の id の並びを返す
+function clearScreenRefs(state, designId, screenId) {
+  const hit = [];
+  state.designs.forEach((d) => d.screens.forEach((s) => s.parts.forEach((p) => {
+    if (!targetsScreen(p, d.id, designId, screenId)) return;
+    p.props.screenId = '';
+    if (!hit.includes(d.id)) hit.push(d.id);
+  })));
+  return hit;
+}
+// 完全に削除した画面設計を名指ししていた移る先を、画面設計も画面も外す
+function clearDesignRefs(state, designId) {
+  state.designs.forEach((d) => d.screens.forEach((s) => s.parts.forEach((p) => {
+    if (hasMoveTarget(p) && p.props.designId === designId) Object.assign(p.props, { designId: '', screenId: '' });
+  })));
+}
+// 移る先の画面設計の名前と画面（{ name, screens }）。単体で開いた HTML では、書き出したときに入れた screenPeers から引く
+function screenOwner(state, designId) {
+  return findDesign(state, designId) || (standalone && standalone.screenPeers.find((p) => p.id === designId)) || null;
+}
+// 設定の文の「移る先＝」。この画面設計の画面は「一覧の画面」、ほかの画面設計の画面は「経費精算 ／ 一覧の画面」、見つからなければ「（ない画面）」
+function moveTargetText(ctx, pr) {
+  if (pr.to === 'url') return String(pr.url == null ? '' : pr.url).trim();
+  if (pr.to !== 'screen' || !pr.screenId || !ctx) return '';
+  const own = !pr.designId || pr.designId === ctx.design.id;
+  const owner = own ? ctx.design : screenOwner(ctx.state, pr.designId);
+  const s = owner ? owner.screens.find((x) => x.id === pr.screenId) : null;
+  if (!s) return '（ない画面）';
+  return (own ? '' : `${owner.name} ／ `) + `${s.name}の画面`;
+}
+// 書き出す HTML に入れる、移る先のほかの画面設計（この画面設計のボタン・リンクの文字が指す画面設計と、この画面設計の画面を指す
+// ボタン・リンクの文字のある画面設計〔ごみ箱にないもの〕）。名前・画面の名前と、入ってくる移る先（from: 相手の画面・to: この画面設計の画面）だけを入れる。
+// つながりの図の peers とは分ける（つながりの図に箱を増やさないため）
+function screenPeersOf(d, state) {
+  const ids = new Set();
+  d.screens.forEach((s) => s.parts.forEach((p) => { const t = moveTargetOf(p, d.id); if (t && t.designId !== d.id) ids.add(t.designId); }));
+  const refs = new Map();
+  state.designs.filter((x) => x.id !== d.id && !x.trashedAt).forEach((x) => x.screens.forEach((s) => s.parts.forEach((p) => {
+    const t = moveTargetOf(p, x.id);
+    if (!t || t.designId !== d.id) return;
+    ids.add(x.id);
+    refs.set(x.id, [...(refs.get(x.id) || []), { from: s.id, to: t.screenId, type: p.type, label: partTitle(p) }]);
+  })));
+  return [...ids].map((id) => findDesign(state, id)).filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ja'))
+    .map((x) => ({ id: x.id, name: x.name, screens: x.screens.map((s) => ({ id: s.id, name: s.name })), refs: refs.get(x.id) || [] }));
+}
+function normalizeScreenPeers(raw) {
+  return (Array.isArray(raw) ? raw : []).filter((p) => isObj(p) && str(p.id)).map((p) => ({
+    id: str(p.id),
+    name: cleanName(p.name) || '名前なし',
+    screens: (Array.isArray(p.screens) ? p.screens : []).filter((s) => isObj(s) && str(s.id)).map((s) => ({ id: str(s.id), name: str(s.name) })),
+    refs: (Array.isArray(p.refs) ? p.refs : []).filter(isObj).map((r) => ({ from: str(r.from), to: str(r.to), type: r.type === 'button' ? 'button' : 'link', label: str(r.label) })),
+  }));
+}
 
 // ひな形（画像 q30）。note は「画面を足す」の窓の札に書く短い説明
 const SCREEN_TEMPLATES = [
@@ -1457,6 +1535,7 @@ function describePartLines(p, ctx = null) {
       eqIf('単位', v(pr.unit));
       break;
     case 'button':
+      eqIf('移る先', moveTargetText(ctx, pr));
       eqIf('押したとき', v(pr.action));
       break;
     case 'table':
@@ -1498,7 +1577,7 @@ function describePartLines(p, ctx = null) {
       eqIf('タブ', list(pr.tabs));
       break;
     case 'link':
-      eqIf('移る先', pr.to === 'url' ? v(pr.url) : pr.to === 'screen' ? screenNameIn(ctx, pr.screenId) : '');
+      eqIf('移る先', moveTargetText(ctx, pr));
       break;
   }
   if (ctx) eq.push(...lookupLines(ctx, p));
@@ -1506,7 +1585,6 @@ function describePartLines(p, ctx = null) {
 }
 
 const itemNameIn = (ctx, id) => { const it = ctx && id ? findItem(ctx.design, id) : null; return it ? it.name : ''; };
-const screenNameIn = (ctx, id) => { const s = ctx && id ? ctx.design.screens.find((x) => x.id === id) : null; return s ? `${s.name}の画面` : ''; };
 
 // データベースの項目の一覧表の「設定」の列の文（部品の設定の一覧表と同じ書き方）。表（テーブル）は列の名前も書く
 function describeItem(item, ctx = null) {
@@ -2760,6 +2838,7 @@ const actions = {
     store.clearHistory();
     store.commit((s) => {
       s.designs = s.designs.filter((d) => d.id !== id);
+      clearDesignRefs(s, id); // この画面設計の画面を指していた移る先は外す（更新日時は変えない）
       syncLinkedItems(s); // この画面設計から取り込んでいた項目は、今の中身で固定する
     }, { history: false });
     return true;
@@ -2846,7 +2925,7 @@ const actions = {
     const d = findDesign(store.state, designId);
     const src = findScreen(designId, screenId);
     if (!src) return null;
-    const copy = copyScreenData(src, { name: copyScreenName(d, src.name) });
+    const copy = copyScreenData(src, { name: copyScreenName(d, src.name), designId });
     mutateDesign(designId, (dd) => { insertScreenAfter(dd, copy, screenId); });
     return copy.id;
   },
@@ -2860,13 +2939,15 @@ const actions = {
       dd.screens.splice(toIndex > from ? toIndex - 1 : toIndex, 0, s);
     });
   },
-  // 画面を消す（最後の 1 つは消せない）。データベースの項目は一覧表に残す。ほかの画面のリンクの文字がこの画面を指していれば、移る先を外す
+  // 画面を消す（最後の 1 つは消せない）。データベースの項目は一覧表に残す。ボタン・リンクの文字がこの画面を指していれば、移る先を外す
+  // （ほかの画面設計の分も同じ 1 回の変更で外し、外した画面設計の更新日時も変える）
   deleteScreen(designId, screenId) {
     const d = findDesign(store.state, designId);
     if (!d || d.screens.length < 2 || !findScreen(designId, screenId)) return false;
-    return mutateDesign(designId, (dd) => {
-      dd.screens = dd.screens.filter((s) => s.id !== screenId);
-      dd.screens.forEach((s) => s.parts.forEach((p) => { if (linksToScreen(p, screenId)) p.props.screenId = ''; }));
+    return mutateDesign(designId, (dd, s) => {
+      dd.screens = dd.screens.filter((x) => x.id !== screenId);
+      const now = nowIso();
+      clearScreenRefs(s, designId, screenId).filter((id) => id !== designId).forEach((id) => { findDesign(s, id).updatedAt = now; });
     });
   },
 
@@ -3002,7 +3083,7 @@ const actions = {
     const map = {};
     const out = [];
     (entries.parts || []).forEach(({ part: src, item: srcItem }) => {
-      const r = preparePartCopy(d, work, newItems, src, { x: src.x + dx, y: src.y + dy }, srcItem);
+      const r = preparePartCopy(d, work, newItems, src, { x: src.x + dx, y: src.y + dy }, srcItem, entries.designId);
       if (!r) return;
       map[src.id] = r.part.id;
       work.parts.push(r.part);
@@ -3250,11 +3331,16 @@ function mutatePart(designId, screenId, partId, fn) {
 }
 
 // 貼り付ける部品 1 つの下ごしらえ（commit はしない）。sc は貼り付ける先の画面（ここまでに貼り付けた部品を足した写し）、
-// pendingItems はここまでに作った項目。戻り値 { part, item（新しく足す項目。なければ null）}
-function preparePartCopy(d, sc, pendingItems, src, at, srcItem) {
+// pendingItems はここまでに作った項目。srcDesignId はコピーした画面設計。戻り値 { part, item（新しく足す項目。なければ null）}
+function preparePartCopy(d, sc, pendingItems, src, at, srcItem, srcDesignId = '') {
   if (!isObj(src)) return null;
   const p = { ...clone(src), id: newId('p'), ...fitRect({ ...src, ...freeSpot(sc, fitRect({ ...src, ...at }, sc)) }, sc) };
   p.no = src.no != null ? nextPartNo(sc) : null;
+  // ほかの画面設計へ貼るときは、移る先の画面設計を名指しし直す（コピーした画面設計の画面 → その画面設計を名指し、貼る先の画面設計の画面 → 「この画面設計」）
+  if (hasMoveTarget(p) && p.props.screenId && srcDesignId && srcDesignId !== d.id) {
+    const to = p.props.designId || srcDesignId;
+    p.props.designId = to === d.id ? '' : to;
+  }
   let newItem = null;
   const find = (id) => findItem(d, id) || pendingItems.find((it) => it.id === id) || null;
   if (!p.itemId || !isItemPart(p)) return { part: p, item: null };
@@ -4469,7 +4555,11 @@ async function deleteScreenWithConfirm(screenId) {
   const s = findScreen(d.id, screenId);
   if (!s) return;
   if (d.screens.length < 2) { toast('最後の 1 つの画面は消せません。'); return; }
-  const links = linksInto(d, screenId);
+  const refs = screenRefsInto(store.state, d.id, screenId);
+  const links = refs.reduce((n, r) => n + r.count, 0);
+  // ほかの画面設計の分があるときだけ、画面設計ごとの数を添える（画像 q60）
+  const by = refs.some((r) => r.design.id !== d.id)
+    ? '（' + refs.map((r) => `${r.design.id === d.id ? 'この画面設計' : `「${esc(r.design.name)}」`}から ${r.count} 個`).join('・') + '）' : '';
   const what = [s.parts.length ? `部品 ${s.parts.length} 個` : '', s.callouts.length ? `吹き出し ${s.callouts.length} 個` : ''].filter(Boolean).join('と');
   const ok = await showDialog({
     title: `「${s.name}」の画面を消しますか`,
@@ -4477,7 +4567,7 @@ async function deleteScreenWithConfirm(screenId) {
     okClass: 'danger',
     body: `<p>${what ? `この画面の${what}が消えます。` : 'この画面には、部品も吹き出しもありません。'}</p>
       <p>データベースの項目は、項目の一覧表に残ります（ほかの画面に置いた部品もそのままです）。</p>
-      ${links ? `<p class="warn">ほかの画面のリンクの文字 ${links} 個が、この画面を移る先にしています。移る先は外れます。</p>` : ''}
+      ${links ? `<p class="warn">ボタンとリンクの文字 ${links} 個が、この画面を移る先にしています${by}。移る先は外れます。</p>` : ''}
       <p style="color:#64748b;font-size:12px;margin-top:6px">消した後でも、元に戻す（Ctrl+Z）で戻せます。</p>`,
   });
   if (!ok) return;
@@ -6583,14 +6673,14 @@ function onDragEnd(ev) {
 }
 
 // ── コピー・貼り付け・複製・削除・矢印のキーで動かす（選んだものをまとめて）──
-// コピーしたものは { parts: [{ part（部品の写し）, item（指している項目の写し。ほかの画面設計へ貼り付けるときに使う）}], callouts: [吹き出しの写し] }
+// コピーしたものは { designId（コピーした画面設計）, parts: [{ part（部品の写し）, item（指している項目の写し。ほかの画面設計へ貼り付けるときに使う）}], callouts: [吹き出しの写し] }
 function selectionEntries() {
   const s = currentScreen();
   const d = currentDesign();
   const parts = ui.sel.filter((x) => x.k === 'p').map((x) => findPart(s, x.id)).filter(Boolean)
     .map((p) => { const item = findItem(d, p.itemId); return { part: clone(p), item: item ? clone(item) : null }; });
   const callouts = ui.sel.filter((x) => x.k === 'c').map((x) => findCallout(s, x.id)).filter(Boolean).map(clone);
-  return { parts, callouts };
+  return { designId: d.id, parts, callouts };
 }
 function copyPart() {
   const entries = selectionEntries();
@@ -6607,7 +6697,7 @@ function pastePart() {
   const out = actions.insertCopies(ui.designId, currentScreen().id, ui.clipboard, PART_GAP, PART_GAP);
   if (!out.length) return;
   const shift = (o) => ({ ...o, x: o.x + PART_GAP, y: o.y + PART_GAP });
-  ui.clipboard = { parts: ui.clipboard.parts.map((e) => ({ ...e, part: shift(e.part) })), callouts: ui.clipboard.callouts.map(shift) };
+  ui.clipboard = { ...ui.clipboard, parts: ui.clipboard.parts.map((e) => ({ ...e, part: shift(e.part) })), callouts: ui.clipboard.callouts.map(shift) };
   setSelection(out);
 }
 
@@ -7076,6 +7166,7 @@ function embedPayload(d, state, { diffRevId = null } = {}) {
     baseHash: shortHash(comparableContent(d, state)), // 書き出したときの中身の印（取り込むときに、こちらでも変えたかを見る）
     data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: d.target && !builtinTarget(d.target) ? [d.target] : [], mapPos: {} }, designs: [copy] },
     peers: peersOf(d, state),
+    screenPeers: screenPeersOf(d, state), // 移る先のほかの画面設計の名前と画面（第 8 段階）
     ...(diffSnap ? { diffBase: { title: revisionTitle(r), day: revisionDay(r), snapshot: diffSnap } } : {}),
   };
 }
@@ -7088,6 +7179,7 @@ function resavePayload(d, state) {
     // 作る先の自由な名前は、この画面設計の作る先だけを入れる（「その他」に試しに書いた名前を、取り込む側の選択肢に増やさないため）
     data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: d.target && !builtinTarget(d.target) ? [d.target] : [], mapPos: {} }, designs: [copy] },
     peers: standalone.peers,
+    screenPeers: standalone.screenPeers,
     ...(standalone.diffBase ? { diffBase: standalone.diffBase.raw } : {}), // 違いの札の元にする版も、そのまま持ち回る
   };
 }
@@ -7155,7 +7247,7 @@ function createStandaloneStore(el) {
     return fail('この HTML に入っている画面設計のデータを読めませんでした（' + (e.message || e) + '）。');
   }
   if (!isObj(payload) || payload.format !== EMBED_FORMAT) return fail('この HTML に入っている画面設計のデータの形が分かりません。');
-  standalone = { designId: null, peers: normalizePeers(payload.peers), exportedAt: str(payload.exportedAt), baseUpdatedAt: str(payload.baseUpdatedAt), baseHash: str(payload.baseHash), savedJson: '', savedOnce: false };
+  standalone = { designId: null, peers: normalizePeers(payload.peers), screenPeers: normalizeScreenPeers(payload.screenPeers), exportedAt: str(payload.exportedAt), baseUpdatedAt: str(payload.baseUpdatedAt), baseHash: str(payload.baseHash), savedJson: '', savedOnce: false };
   let migrated;
   try {
     migrated = migrate(payload.data);
