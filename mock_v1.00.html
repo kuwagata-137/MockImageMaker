@@ -2418,6 +2418,20 @@ function syncLinkedItems(state) {
     if (!changed) return;
   }
 }
+// その画面設計と、そこから項目を取り込んでいる画面設計（取り込んだ項目をさらに取り込んだものも。syncLinkedItems がそろえる範囲）の id。
+// 取り込みのつながりをたどって集める（輪になっていても、集めた画面設計はもう一度たどらないので止まる）
+function designAndImporters(S, rootId) {
+  const ids = new Set([rootId]);
+  for (let grew = true; grew;) {
+    grew = false;
+    S.designs.forEach((x) => {
+      if (ids.has(x.id) || !x.items.some((it) => it.link && ids.has(it.link.designId))) return;
+      ids.add(x.id);
+      grew = true;
+    });
+  }
+  return ids;
+}
 
 // 取り込む窓で、元の項目 it がこの画面設計 d から見てどうなっているか。
 // 'own'＝この画面設計の項目を取り込んだもの、'done'＝取り込み済み、'status'＝ステータスの項目で、この画面設計にもうある
@@ -2733,14 +2747,21 @@ function normalizeStep(src) {
     src: isObj(src.src) ? src.src : null, // ビジネスダイアグラムメーカーから読んだ箱の { id, x, y, w, h }（書き戻すとき、同じ箱・同じ位置に戻すため）
   };
 }
-// スイムレーン。作業の id の重なりを直してから、端の作業がない矢印と、自分への矢印を外す
+// スイムレーン。作業の id の重なりを直してから、端の作業がない矢印と、自分への矢印と、同じ向きの 2 本目の矢印（1 本目を残す）を外す
 function normalizeSwimlane(src) {
   const sw = isObj(src) ? src : {};
   const steps = uniqueIds((Array.isArray(sw.steps) ? sw.steps : []).filter(isObj).map(normalizeStep), 'w');
   const stepIds = new Set(steps.map((w) => w.id));
+  const pairs = new Set();
+  const firstOfPair = (e) => {
+    const k = `${e.from}\n${e.to}`;
+    if (pairs.has(k)) return false;
+    pairs.add(k);
+    return true;
+  };
   const edges = uniqueIds((Array.isArray(sw.edges) ? sw.edges : []).filter(isObj)
     .map((e) => ({ ...e, id: str(e.id) || newId('e'), from: str(e.from), to: str(e.to), label: str(e.label) }))
-    .filter((e) => stepIds.has(e.from) && stepIds.has(e.to) && e.from !== e.to), 'e');
+    .filter((e) => stepIds.has(e.from) && stepIds.has(e.to) && e.from !== e.to && firstOfPair(e)), 'e');
   return { ...sw, steps, edges };
 }
 // システム 1 つを読み込める形に直す。designIds は state にある画面設計（ごみ箱のものも含む）の id だけを、重ねずに残す。知らない欄は残す
@@ -2761,7 +2782,8 @@ function normalizeSystem(raw, designIds) {
     swimlane: normalizeSwimlane(y.swimlane),
     materials: (Array.isArray(y.materials) ? y.materials : []).filter(isObj),
     notes: isObj(y.notes) ? y.notes : {},
-    revisions: (Array.isArray(y.revisions) ? y.revisions : []).filter(isObj).map(normalizeSystemRevision),
+    // 履歴の行の id が重なっていれば、2 つ目からは新しい id にする（どの行に戻すかを id で決めるため）
+    revisions: uniqueIds((Array.isArray(y.revisions) ? y.revisions : []).filter(isObj).map(normalizeSystemRevision), 'r'),
   };
 }
 
@@ -2800,19 +2822,36 @@ function systemRevisionRow(y, kind, { note = '', date = nowIso(), content = null
   const snapshot = deepFreeze(content ? clone(content) : clone(systemContentOf(y)));
   return { id: newId('r'), kind, date, note, snapshot };
 }
-// 戻すときの中身（写しを今の形に直し、今ない画面設計〔完全に削除したもの〕を外す。ごみ箱の画面設計は残す）
+// 戻すときの中身（写しを今の形に直し、今ない画面設計〔完全に削除したもの〕を外す。ごみ箱の画面設計は残す）。
+// 作業の指す先も今の中身で検め、ないものを外す（dropMissingStepRef）
 function systemFromSnapshot(snap, state) {
   const c = systemContentFrom(clone(snap));
   c.designIds = c.designIds.filter((id) => findDesign(state, id));
+  c.swimlane.steps.forEach((w) => dropMissingStepRef(state, w.ref));
   return systemContentOf(c);
 }
+// 履歴の行のうち、その種類（kind）の行を新しい方から max 行まで残し、古い行から消す（ほかの種類の行は消さない。行は古い順に並んでいる）。
+// x は画面設計かシステム
+function trimRevisionRows(x, kind, max) {
+  const rows = x.revisions.filter((r) => isObj(r) && r.kind === kind);
+  if (rows.length <= max) return;
+  const drop = new Set(rows.slice(0, rows.length - max));
+  for (let i = x.revisions.length - 1; i >= 0; i--) if (drop.has(x.revisions[i])) x.revisions.splice(i, 1);
+}
+// システムの「戻す前の状態」の行は、システムごとに新しい方から 10 行まで（「AI が直す前の状態」の行とは別に数える。Claude が決めた）
+const SYSTEM_RESTORE_ROWS_MAX = 10;
 
 const findSystem = (state, id) => state.systems.find((y) => y.id === id) || null;
 const findStep = (y, id) => y.swimlane.steps.find((w) => w.id === id) || null;
 const isSwimCol = (v) => Number.isInteger(v) && v >= 0; // 操作で受け取る列（読み込むときの swimCol と違い、整数でなければ断る）
-// 画面設計をシステムに入れる（state を書き換える）。システムが見つからない・もう入っているときは何もしない。入れたシステムの更新日時を変える
+// 画面設計を入れられるシステム（ごみ箱のシステムは、見つからないときと同じく null）
+const liveSystem = (state, id) => {
+  const y = findSystem(state, id);
+  return y && !y.trashedAt ? y : null;
+};
+// 画面設計をシステムに入れる（state を書き換える）。システムが見つからない・ごみ箱にある・もう入っているときは何もしない。入れたシステムの更新日時を変える
 function putIntoSystem(state, sysId, designId) {
-  const y = findSystem(state, sysId);
+  const y = liveSystem(state, sysId);
   if (!y || y.designIds.includes(designId)) return;
   y.designIds.push(designId);
   y.updatedAt = nowIso();
@@ -2845,6 +2884,24 @@ function clearStepRefs(state, designId, { screenId = null, stateId = null } = {}
     if (screenId && w.ref.screenId === screenId) w.ref.screenId = null;
     if (stateId && w.ref.stateId === stateId) w.ref.stateId = null;
   }));
+}
+// 作業の指す先（ref を書き換える）のうち、今の state にないものを外す。ない画面設計なら 3 つとも、ない画面・ステータスなら、その欄だけ null にする
+function dropMissingStepRef(state, ref) {
+  if (!ref.designId) return;
+  const d = findDesign(state, ref.designId);
+  if (!d) {
+    Object.assign(ref, { designId: null, screenId: null, stateId: null });
+    return;
+  }
+  if (ref.screenId && !d.screens.some((s) => s.id === ref.screenId)) ref.screenId = null;
+  if (ref.stateId && !stateIdsOf(d.items.find((it) => it.type === 'status')).includes(ref.stateId)) ref.stateId = null;
+}
+// 画面設計を書き換えた後に、その画面設計（designIds。id 1 つか id の Set）を指す作業の指す先のうち、もうない画面・ステータスを外す
+// （どのシステムの分も。システムの更新日時は変えない）。指す先がなくなる操作（画面・ステータス・ステータスの項目を消す・並びを書き直す・
+// 前の版に戻す・取り込みで置き換えるなど）では、どれでも外す（第 9 段階の見直しで決めた）。読み込みのときは外さない
+function clearDanglingStepRefs(state, designIds) {
+  const ids = designIds instanceof Set ? designIds : new Set([designIds]);
+  state.systems.forEach((y) => y.swimlane.steps.forEach((w) => { if (ids.has(w.ref.designId)) dropMissingStepRef(state, w.ref); }));
 }
 
 function normalizeState(raw, schemaVersion) {
@@ -3160,6 +3217,7 @@ function moveInList(designId, itemId, key, id, toIndex) {
     arr.splice(toIndex, 0, x);
   });
 }
+// 画面設計を書き換えた後は、その画面設計と、項目をそろえた画面設計を指す作業の指す先のうち、もうない画面・ステータスを外す（clearDanglingStepRefs）
 function mutateDesign(id, fn, { touch = true } = {}) {
   if (store.isViewing || !findDesign(store.state, id)) return false;
   store.commit((s) => {
@@ -3168,6 +3226,7 @@ function mutateDesign(id, fn, { touch = true } = {}) {
     fn(d, s);
     if (touch && designJsonWithRefs(d) !== before) d.updatedAt = nowIso();
     syncLinkedItems(s);
+    clearDanglingStepRefs(s, designAndImporters(s, id));
   });
   return true;
 }
@@ -3189,10 +3248,10 @@ function mutateSystem(id, fn, { touch = true } = {}) {
 }
 
 const actions = {
-  // systemId を渡すと、作った画面設計をそのシステムに入れる（同じ 1 回の変更で）。ないシステムを渡したときは作らない
+  // systemId を渡すと、作った画面設計をそのシステムに入れる（同じ 1 回の変更で）。ない・ごみ箱にあるシステムを渡したときは作らない
   createDesign(name, target, { systemId = null } = {}) {
     const n = cleanName(name);
-    if (!n || (systemId && !findSystem(store.state, systemId))) return null;
+    if (!n || (systemId && !liveSystem(store.state, systemId))) return null;
     const d = createDesignData(n, target);
     store.commit((s) => {
       addCustomTarget(s, target);
@@ -3217,10 +3276,11 @@ const actions = {
       if ('description' in patch) d.description = String(patch.description);
     });
   },
-  // systemId を渡すと、複製をそのシステムにだけ入れる（同じ 1 回の変更で。設計書の 5-6）。渡さなければ、どのシステムにも入れない
+  // systemId を渡すと、複製をそのシステムにだけ入れる（同じ 1 回の変更で。設計書の 5-6）。渡さなければ、どのシステムにも入れない。
+  // ない・ごみ箱にあるシステムを渡したときは複製しない
   duplicateDesign(id, { systemId = null } = {}) {
     const src = findDesign(store.state, id);
-    if (!src || (systemId && !findSystem(store.state, systemId))) return null;
+    if (!src || (systemId && !liveSystem(store.state, systemId))) return null;
     const copy = duplicateDesignData(src);
     store.commit((s) => {
       s.designs.push(copy);
@@ -3280,11 +3340,12 @@ const actions = {
     store.commit((s) => { s.systems = s.systems.filter((y) => y.id !== id); }, { history: false });
     return true;
   },
-  // 今ある画面設計を、同じ画面設計のまま入れる（案B。ほかのシステムにも入っていてよい）。もう入っている・ごみ箱の画面設計は入れない
+  // 今ある画面設計を、同じ画面設計のまま入れる（案B。ほかのシステムにも入っていてよい）。もう入っている・ごみ箱の画面設計は入れない。
+  // ごみ箱のシステムにも入れない
   addDesignToSystem(sysId, designId) {
     const y = editableSystem(sysId);
     const d = findDesign(store.state, designId);
-    if (!y || !d || d.trashedAt || y.designIds.includes(designId)) return false;
+    if (!y || y.trashedAt || !d || d.trashedAt || y.designIds.includes(designId)) return false;
     return mutateSystem(sysId, (yy) => { yy.designIds.push(designId); });
   },
   // 今ある画面設計を複製して、そのシステムにだけ入れる（別の画面設計になり、同期しない）。戻り値は新しい画面設計の id
@@ -3451,7 +3512,8 @@ const actions = {
   },
   // システムの履歴の行（AI が直す前の状態・戻す前の状態）の中身に戻す（q65。人がシステムの画面の「履歴」から戻す。AI の道具はない）。
   // 今の中身を「戻す前の状態」の行に残してから、写しの中身（名前・説明・役割・スイムレーン・画面設計の並び）で置き換える。
-  // 写しにあって今ない画面設計は外す。1 回の変更なので、元に戻す 1 回で戻る。戻した行がない・写しがないときは false
+  // 写しにあって今ない画面設計は外し、作業の指す先も今の中身で検める（systemFromSnapshot）。1 回の変更なので、元に戻す 1 回で戻る。
+  // 「戻す前の状態」の行は新しい方から 10 行まで。戻した行がない・写しがないときは false
   restoreSystemRevision(sysId, rowId) {
     const y = editableSystem(sysId);
     const r = y && rowId ? y.revisions.find((x) => isObj(x) && x.id === rowId) : null;
@@ -3460,6 +3522,7 @@ const actions = {
     return mutateSystem(sysId, (yy, s) => {
       const from = systemFromSnapshot(r.snapshot, s);
       yy.revisions.push(systemRevisionRow(yy, 'restore', { note: `「${title}（${revisionDay(r)}）」に戻す前の状態` }));
+      trimRevisionRows(yy, 'restore', SYSTEM_RESTORE_ROWS_MAX);
       Object.assign(yy, from);
     });
   },
@@ -10614,6 +10677,7 @@ function replaceWithImported(s, incoming) {
   Object.assign(d, designContentOf(incoming, true), { trashedAt: null, updatedAt: nowIso() });
   addCustomTarget(s, incoming.target);
   syncLinkedItems(s); // 一覧にある元の項目とつなぎ直す（元がなければ「元なし」で固定。この画面設計から取り込んだ、ほかの画面設計の項目もそろう）
+  clearDanglingStepRefs(s, designAndImporters(s, d.id)); // なくなった画面・ステータスを指していた作業の指す先を外す
   d.exchangeHash = shortHash(comparableContent(d, s)); // 取り込んだ中身の印（次に取り込むとき、こちらで変えていないと分かるように）
 }
 // 置き換えても中身が変わらないか（つながった項目は、一覧にある元にそろえてから比べる。
@@ -11561,12 +11625,7 @@ const aiHasBeforeRow = (d, session) => d.revisions.some((r) => isObj(r) && r.kin
 // 「AI が直す前の状態」の行は、画面設計ごとに新しい方から 10 行まで残し、11 行目ができたら古い行から消す
 // （人の付けた版の行と、ほかの自動の行は消さない。行は古い順に並んでいる）
 const AI_ROWS_MAX = 10;
-function trimAiRows(d) {
-  const aiRows = d.revisions.filter((r) => isObj(r) && r.kind === 'ai');
-  if (aiRows.length <= AI_ROWS_MAX) return;
-  const drop = new Set(aiRows.slice(0, aiRows.length - AI_ROWS_MAX));
-  for (let i = d.revisions.length - 1; i >= 0; i--) if (drop.has(d.revisions[i])) d.revisions.splice(i, 1);
-}
+const trimAiRows = (d) => trimRevisionRows(d, 'ai', AI_ROWS_MAX);
 // システムの「AI が直す前の状態」の行（q65）。この頼みで中身が変わった、前からあるシステムに、その接続（session）で最初の 1 回だけ入れる
 // （AI がシステムを直したときのほか、画面設計の道具で作業の指す先が外れたとき・作った画面設計をシステムに入れたときも）。
 // 写しは直す前の中身の JSON（beforeSys）から作るので、行がもうあるシステムでは写しを作らない。
@@ -11588,7 +11647,7 @@ function aiAddSystemBeforeRows(tx, beforeSys) {
       + `それぞれの履歴の「${aiClientLabel(ctx.client)} が直す前の状態」から戻せます。`);
   }
 }
-// 元に戻すの履歴の扱い（8-2）。AI の変更が、人が開いている画面設計（と、そこから項目を取り込んでいる画面設計。aiImportersOf）の中だけなら積む。
+// 元に戻すの履歴の扱い（8-2）。AI の変更が、人が開いている画面設計（と、そこから項目を取り込んでいる画面設計。designAndImporters）の中だけなら積む。
 // 開いていない画面設計・新しい画面設計を変えたときは、履歴を消す（履歴は状態まるごとの写しなので、人の Ctrl+Z で AI の変更まで消えないように）。
 // 画面設計の道具で、作業の指す先が外れてシステムも変わったときは、人の操作（画面・ステータスを消す）と同じく、画面設計の変更に含める。
 // システムの道具は aiSystemHistoryMode で決める（q66）
@@ -11597,7 +11656,7 @@ function aiHistoryMode(tx, beforeMap, beforeSys) {
   const open = ui.view === 'editor' ? ui.designId : null;
   if (!open || !tx.design || tx.design.id !== open || tx.createdDesign) return 'clear';
   const S = store.state;
-  const allowed = aiImportersOf(S, open);
+  const allowed = designAndImporters(S, open);
   const inside = S.designs.every((x) => {
     const old = beforeMap.get(x.id);
     return old !== undefined && (old === tx.afterMap.get(x.id) || allowed.has(x.id));
@@ -11613,20 +11672,6 @@ function aiSystemHistoryMode(tx, beforeMap, beforeSys) {
   const designsSame = S.designs.length === beforeMap.size && S.designs.every((x) => beforeMap.get(x.id) === tx.afterMap.get(x.id));
   const othersSame = S.systems.length === beforeSys.size && S.systems.every((y) => y.id === open || beforeSys.get(y.id) === tx.afterSys.get(y.id));
   return designsSame && othersSame ? true : 'clear';
-}
-// その画面設計と、そこから項目を取り込んでいる画面設計（取り込んだ項目をさらに取り込んだものも。syncLinkedItems がそろえる範囲）の id。
-// 取り込みのつながりをたどって集める（輪になっていても、集めた画面設計はもう一度たどらないので止まる）
-function aiImportersOf(S, rootId) {
-  const ids = new Set([rootId]);
-  for (let grew = true; grew;) {
-    grew = false;
-    S.designs.forEach((x) => {
-      if (ids.has(x.id) || !x.items.some((it) => it.link && ids.has(it.link.designId))) return;
-      ids.add(x.id);
-      grew = true;
-    });
-  }
-  return ids;
 }
 // ops（操作の並び）を 1 つずつ実行する。断るときは、何番目の操作かを文の頭に付ける
 function aiRunOps(ops, fn) {

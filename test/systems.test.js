@@ -454,3 +454,121 @@ test('HTML の取り込み: 新しく足すとき（一覧にない・別の画�
   assert.equal((await api.importHtmlText(html)).status, 'added');
   assert.deepEqual(ids(api.systemsOf(S(), a)), []);
 });
+
+// ── 第 9 段階の見直し（T9）──
+test('指す先（画面・ステータス）がなくなる操作では、どれでも作業の指す先を外す（ステータスの項目を消す・並びを書き直す・前の版に戻す）。同じ画面設計を指す作業だけ。システムの更新日時は変えず、元に戻すで一緒に戻る', async (t) => {
+  const { api, sys, stepOf } = await boot(t, sampleState());
+  assert.equal(api.actions.deleteItem('d-trip', 'i-st'), true);
+  assert.deepEqual(plain(stepOf('y-trip', 'w-2').ref), { designId: 'd-trip', screenId: 's-form', stateId: null });
+  assert.deepEqual(plain(stepOf('y-trip', 'w-3').ref), { designId: 'd-trip', screenId: 's-list', stateId: null });
+  assert.deepEqual(plain(stepOf('y-exp', 'w-2').ref), { designId: 'd-emp', screenId: 's-form', stateId: 't-b' }, 'ほかの画面設計を指す作業はそのまま');
+  assert.deepEqual(plain([sys('y-trip').updatedAt, sys('y-exp').updatedAt]), [OLD, OLD], 'システムの更新日時は変えない');
+  api.store.undo();
+  assert.deepEqual(plain([stepOf('y-trip', 'w-2').ref.stateId, stepOf('y-trip', 'w-3').ref.stateId]), ['t-a', 't-b'], '元に戻すで一緒に戻る');
+  // ステータスの並びを名前の並びで書き直す（右の欄の「ステータスの並び」）
+  assert.equal(api.actions.updateItem('d-trip', 'i-st', { props: { states: ['申請', '完了'] } }), true);
+  assert.deepEqual(plain([stepOf('y-trip', 'w-2').ref.stateId, stepOf('y-trip', 'w-3').ref.stateId]), ['t-a', null]);
+  api.store.undo();
+  // 前の版に戻して、画面が減る
+  const rv = api.actions.addRevision('d-trip', { note: '最初' });
+  const sc = api.actions.addScreen('d-trip', 'blank');
+  api.actions.updateStep('y-trip', 'w-4', { ref: { designId: 'd-trip', screenId: sc, stateId: 't-c' } });
+  assert.equal(api.actions.restoreRevision('d-trip', rv), true);
+  assert.deepEqual(plain(stepOf('y-trip', 'w-4').ref), { designId: 'd-trip', screenId: null, stateId: 't-c' });
+  api.store.undo();
+  assert.equal(stepOf('y-trip', 'w-4').ref.screenId, sc);
+});
+
+test('HTML の取り込みで置き換えて画面が減ると、なくなった画面を指していた作業の指す先を外す', async (t) => {
+  const { app, api, S, d, stepOf } = await boot(t, sampleState());
+  const html = api.buildStandaloneHtml(d('d-trip'), S());
+  const sc = api.actions.addScreen('d-trip', 'blank');
+  api.actions.updateStep('y-trip', 'w-4', { ref: { designId: 'd-trip', screenId: sc, stateId: null } });
+  const done = api.importHtmlText(html);
+  await tick();
+  click(app.document.querySelector('[data-dlg="ok"]'));
+  assert.equal((await done).status, 'replaced');
+  assert.deepEqual(plain(stepOf('y-trip', 'w-4').ref), { designId: 'd-trip', screenId: null, stateId: null });
+  assert.equal(stepOf('y-trip', 'w-2').ref.screenId, 's-form', '残った画面を指す作業はそのまま');
+});
+
+test('取り込んだステータスの項目: 元の画面設計でステータスを消すと、取り込んだ側のステータスを指す作業の指す先も外れる', async (t) => {
+  const st = sampleState();
+  const src = st.designs[0].items[0];
+  st.designs.push(design('d-sub', '出張の報告', { items: [{ ...plain(src), id: 'o-st', link: { designId: 'd-trip', itemId: 'i-st', designName: '出張申請', lost: false } }] }));
+  st.systems[0].designIds.push('d-sub');
+  st.systems[0].swimlane.steps.push(step('w-5', 'l-app', 4, 'task', '報告する', { designId: 'd-sub', screenId: 's-d-sub', stateId: 't-b' }));
+  const { api, stepOf } = await boot(t, st);
+  assert.equal(api.actions.deleteState('d-trip', 'i-st', 't-b'), true);
+  assert.deepEqual(plain(stepOf('y-trip', 'w-5').ref), { designId: 'd-sub', screenId: 's-d-sub', stateId: null });
+});
+
+test('システムの履歴の行に戻すとき、作業の指す先を今の中身で検める（ない画面設計なら 3 つとも外し、ない画面・ステータスはその欄だけ外す）', async (t) => {
+  const st = sampleState();
+  const y = st.systems[0];
+  const swim = plain(y.swimlane);
+  swim.steps[0].ref = { designId: 'd-emp', screenId: 's-d-emp', stateId: null };
+  y.revisions = [{ id: 'r-1', kind: 'ai', date: OLD, note: 'Claude Code が直す前の状態', aiSession: 's-0',
+    snapshot: { name: y.name, description: '', roles: plain(y.roles), swimlane: swim, designIds: ['d-trip', 'd-emp'] } }];
+  const { api, sys, stepOf } = await boot(t, st);
+  api.actions.deleteDesignForever('d-emp');
+  api.actions.deleteScreen('d-trip', 's-form');
+  api.actions.deleteState('d-trip', 'i-st', 't-b');
+  assert.equal(api.actions.restoreSystemRevision('y-trip', 'r-1'), true);
+  assert.deepEqual(plain(sys('y-trip').designIds), ['d-trip']);
+  assert.deepEqual(plain(stepOf('y-trip', 'w-1').ref), NO_REF, '完全に削除した画面設計は指さない');
+  assert.deepEqual(plain(stepOf('y-trip', 'w-2').ref), { designId: 'd-trip', screenId: null, stateId: 't-a' });
+  assert.deepEqual(plain(stepOf('y-trip', 'w-3').ref), { designId: 'd-trip', screenId: 's-list', stateId: null });
+});
+
+test('「戻す前の状態」の行も、システムごとに新しい方から 10 行まで（「AI が直す前の状態」の行とは別に数える）', async (t) => {
+  const st = sampleState();
+  const y = st.systems[0];
+  y.revisions = [{ id: 'r-ai', kind: 'ai', date: OLD, note: 'Claude Code が直す前の状態', aiSession: 's-0',
+    snapshot: { name: y.name, description: '', roles: plain(y.roles), swimlane: plain(y.swimlane), designIds: plain(y.designIds) } }];
+  const { api, sys } = await boot(t, st);
+  for (let i = 0; i < 12; i++) {
+    api.actions.renameRole('y-trip', 'l-app', `申請者 ${i}`);
+    api.actions.restoreSystemRevision('y-trip', 'r-ai');
+  }
+  const rows = sys('y-trip').revisions;
+  assert.deepEqual(plain(rows.map((r) => r.kind)), ['ai', ...Array(10).fill('restore')]);
+  assert.deepEqual(plain(rows.slice(1).map((r) => r.snapshot.roles[0].name)), Array.from({ length: 10 }, (_, i) => `申請者 ${i + 2}`), '古い行から消す');
+});
+
+test('同じ向きの 2 本目の矢印は、読み込みと setSwimlane で外す。システムの履歴の行の id が重なっていれば、2 つ目からは新しい id にする（2 つ目の行にも戻せる）', async (t) => {
+  const st = sampleState();
+  const y = st.systems[0];
+  y.swimlane.edges.push(edge('e-5', 'w-1', 'w-2', '2 本目'));
+  const row = { id: 'r-1', kind: 'ai', date: OLD, note: 'n', snapshot: { name: y.name, description: '', roles: plain(y.roles), swimlane: plain(y.swimlane), designIds: plain(y.designIds) } };
+  y.revisions = [row, { ...plain(row), snapshot: { ...plain(row.snapshot), name: '2 つ目の名前' } }];
+  const { api, sys } = await boot(t, st);
+  assert.deepEqual(ids(sys('y-trip').swimlane.edges), ['e-1', 'e-2', 'e-3', 'e-4'], '読み込み: 同じ向きの 2 本目は外す（1 本目を残す）');
+  assert.equal(sys('y-trip').revisions[1].snapshot.swimlane.edges.length, 4, '履歴の行の写しも同じに直す');
+  const revIds = ids(sys('y-trip').revisions);
+  assert.equal(revIds[0], 'r-1');
+  assert.match(revIds[1], /^r-/);
+  assert.notEqual(revIds[1], 'r-1');
+  assert.deepEqual(plain(api.migrate(plain(api.store.state)).state), plain(api.store.state), '2 回通しても同じ');
+  assert.equal(api.actions.restoreSystemRevision('y-trip', revIds[1]), true);
+  assert.equal(sys('y-trip').name, '2 つ目の名前');
+  assert.equal(api.actions.setSwimlane('y-trip', { steps: plain(sys('y-trip').swimlane.steps), edges: [edge('e-a', 'w-1', 'w-2'), edge('e-b', 'w-1', 'w-2', '2 本目')] }), true);
+  assert.deepEqual(plain(sys('y-trip').swimlane.edges.map((e) => [e.id, e.from, e.to])), [['e-a', 'w-1', 'w-2']], 'setSwimlane: 同じ向きの 2 本目は外す');
+});
+
+test('ごみ箱のシステムには、画面設計を入れない（作る・複製する・入れる・取り込む。見つからないときと同じ扱い）', async (t) => {
+  const st = sampleState();
+  st.systems.push(system('y-old', '古いシステム', [], { trashedAt: OLD }));
+  const { api, S, sys, d } = await boot(t, st);
+  const n = S().designs.length;
+  assert.equal(api.actions.createDesign('出張の報告', 'kintone', { systemId: 'y-old' }), null);
+  assert.equal(api.actions.duplicateDesign('d-emp', { systemId: 'y-old' }), null);
+  assert.equal(api.actions.copyDesignIntoSystem('y-old', 'd-emp'), null);
+  assert.equal(api.actions.addDesignToSystem('y-old', 'd-emp'), false);
+  assert.deepEqual(plain(api.actions.addDesignsToSystem('y-old', ['d-emp'])), []);
+  assert.equal(S().designs.length, n, '画面設計も作らない');
+  const html = api.buildStandaloneHtml(d('d-emp'), S());
+  api.actions.deleteDesignForever('d-emp');
+  assert.equal((await api.importHtmlText(html, { systemId: 'y-old' })).status, 'added', '取り込みは、画面設計だけ足す');
+  assert.deepEqual(plain([sys('y-old').designIds, sys('y-old').updatedAt]), [[], OLD]);
+});
