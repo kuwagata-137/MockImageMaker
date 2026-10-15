@@ -883,9 +883,10 @@ claude mcp add --scope user mockimagemaker-dev node 'C:\<作業フォルダ>\mcp
 4 つの場面で 17 個の道具を呼び、窓を出さない裏の起動・保存・終わる時を確かめた（`tools/check-mcp.js --packaged`）。Claude Code（モデル）から試すこと
 （この PC の claude のログインの期限が切れていた）と、インストーラで入れた版で試すことは、ユーザーに頼んだ（`開発記録.txt`）。
 
-第 8 段階の終わりの確かめ（2026-10-15）: `npm test`（テスト 397 個）・`tools/check-electron.js`（版 2 の designs.json を版 3 に直して読む・.bak は版 2 のまま）・
+第 8 段階の終わりの確かめ（2026-10-15）: `npm test`（テスト 398 個）・`tools/check-electron.js`（版 2 の designs.json を版 3 に直して読む・.bak は版 2 のまま）・
 `tools/check-export.js`（ステータスの移り方と画面の移り方のページで 7 ページ）・`tools/check-mcp.js`（20 個の道具。edit_process・get_flow・get_view_image）がすべて OK。
-Claude Code（モデル）から試すことは、この PC の claude のログインの期限がまた切れていたので、ユーザーにログインし直してもらってから行う（`開発記録.txt`）。
+Claude Code（`claude -p`）から 4 つの場面（頼んだ画面を作る・資料から下書き・今ある画面設計を直す・読んで答える）を試し、すべてできた。
+AI が迷ったのは、まだない画面を to に書いた 1 か所だけで、手引きと断る文を直した（`開発記録.txt`）。
 
 この順にした理由:
 

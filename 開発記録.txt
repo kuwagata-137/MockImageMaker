@@ -699,11 +699,24 @@ Claude が決めたこと（理由）:
 - 画面の移り方の図は、表の幅の上限 1240 だと、ほかの画面設計の箱が切れる（図の画面では上限を外した。窓が狭いときは図の枠の中で横に送る）。
 - ステータスの図で、まっすぐな縦の線の右の文字の下地が、外を回る線を隠した → 回る線の内側の位置の下限を、まっすぐな線の文字の右にした（mapEdgesSvg の reach）。
 確かめ:
-- npm test（397 個）・tools/check-electron.js（版 2 の designs.json〔版 2 のアプリで作った見本〕を版 3 に直して保存し、.bak は版 2 のまま、起動し直しても同じ中身）・
+- npm test（398 個）・tools/check-electron.js（版 2 の designs.json〔版 2 のアプリで作った見本〕を版 3 に直して保存し、.bak は版 2 のまま、起動し直しても同じ中身）・
   tools/check-export.js（顧客管理に操作と移る先を足し、PDF は 7 ページ・違いの印は 8 ページ）・tools/check-mcp.js（道具 20 個・edit_process・get_flow・get_view_image）がすべて OK。
-- claude -p（.devdata/claude-e2e/run.js。開発版の入口・--tools ""・--allowedTools mcp__mockimagemaker・--strict-mcp-config・--no-session-persistence・--setting-sources user）は、
-  MCP にはつながったが「Failed to authenticate: OAuth session expired and could not be refreshed」でモデルを呼べなかった（ログインはしない決まり）。
-  ユーザーにログインし直してもらってから、4 つの場面を試す。
+- Claude Code（claude -p。.devdata/claude-e2e/run.js。開発版の入口・--tools ""・--allowedTools mcp__mockimagemaker・--strict-mcp-config・--no-session-persistence・
+  --setting-sources user）から 4 つの場面を試し、すべてできた（モデル claude-opus-5。ユーザーの Claude Code の設定は変えていない）。
+  - 初めは「Failed to authenticate: OAuth session expired and could not be refreshed」でモデルを呼べなかった。原因は 2 つ。
+    ① 確かめの道具が、この確かめを動かしている Claude のセッション（デスクトップアプリの中）の環境変数（CLAUDE_CODE_*・ANTHROPIC_BASE_URL など）を
+      claude にそのまま渡していた → CLAUDE・ANTHROPIC で始まる環境変数を外して起動するように直した。
+    ② この PC の claude（.local\bin\claude.exe）自体がログインしていなかった（claude auth status が loggedIn: false。ログインの情報のファイルも古いまま）
+      → ユーザーが、ふつうの PowerShell の窓で claude auth login を打った（Claude はログインしない）。
+  - ① 出張申請を作る（道具 24 回・199 秒）: 項目 7 つ・画面 3 つ・ステータス 4 つと操作 4 つ・ボタンの移る先を作り、2 つの図の画像で確かめて自分で直し、第 1 版を残した。
+    断られたのは 1 回: 「申請の入力」の画面を作るときに、まだない「詳細」の画面を to に書いた（その後、先に「詳細」を作ってやり直した）。
+    → 手引きの「よくある進め方」と to の書き方に「to に書けるのは、もうある画面だけ。要る画面を先に add_screen で作ってから並べる」と足し、
+      ない画面を to に書いたときの断る文に、今の画面の名前と「先に add_screen で作ってから」を添えた（aiMoveScreen。テストを先に足した）。
+  - ② 資料から会議室予約を下書き（道具 24 回・234 秒・断られた頼み 0）: 手引きを直した後は、画面を先に全部作ってから部品を並べた。
+    資料になく自分で決めたこと（会議室の選択肢・時刻をテキストにしたこと・差し戻すの操作など）を、人に確かめるよう伝えた。
+  - ③ 「差し戻す」の移る先を直す（道具 8 回・47 秒）: get_flow で読み、edit_parts の to で直し、画面の移り方の図の画像で確かめた。
+    移る先のないボタンと気になる移る先（「下書き保存」→ 詳細）は、頼みどおり直さずに知らせた。
+  - ④ 2 つを読んで説明する（get_flow 2 回・36 秒）: ステータスの移り方と画面の移り方を表で説明し、移る先のないボタンと、差し戻された予約を直す画面への道がないことを挙げた。
 見直しで見つけて直した不具合（見直しのエージェント 3 つ。データの形と図／右の欄・図の画面・書き出し／AI の窓口と入口。どれも、失敗するテストを先に足して直した）:
 - AI: edit_parts の props で移る先の designId・screenId を片方だけ書くと、画面をこの画面設計の中で探し、ほかの画面設計の画面を指していた移る先が壊れた。
   → 書かなかった方は、部品の今の移る先に合わせる。画面設計を変えて画面を書かなかったときは、画面を外す（右の欄で画面設計を選び直したときと同じ）。
