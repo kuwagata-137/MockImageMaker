@@ -1,10 +1,10 @@
-// mcp-tools.js — AI の入口（mcp-server.js）が出す MCP の道具の一覧（第 7 段階。設計書の 9-2）
+// mcp-tools.js — AI の入口（mcp-server.js）が出す MCP の道具の一覧（第 7 段階。第 8 段階で 3 つ足した。設計書の 9-2）
 // 名前・日本語の説明・入力の形（mcp-schemas.js）・読むだけか・時間がかかるか、を決める。道具の中身はページの「AI の窓口」にある。
 // read_guide だけは入口の中で返す（local。アプリが動いていなくても読めるように）。
 // slow の道具は、アプリの側（automation-main.js の SLOW_TOOLS）でも時間切れを 5 分にしている。2 か所を同じにする。
 'use strict';
 
-const { z, obj, S, layout, itemOps, screenOps, partOps, calloutOps } = require('./mcp-schemas');
+const { z, obj, S, layout, itemOps, screenOps, partOps, calloutOps, processOps } = require('./mcp-schemas');
 const { GUIDE_TOPICS } = require('./mcp-guide');
 
 const read = (name, title, description, shape, extra = {}) => ({ name, title, description, input: obj(shape), readOnly: true, ...extra });
@@ -27,6 +27,15 @@ const TOOLS = [
   read('get_screen_image', '画面の画像',
     '画面の画像（PNG。長い辺を 1568 ドットまでに縮める）を返す。作った画面の見た目を確かめるときに使う。',
     { design: S.design, screen: S.screen, withTable: z.boolean().optional().describe('部品の設定の一覧表と吹き出しも写す（既定は写さない）') }, { slow: true }),
+  read('get_flow', 'ステータスの移り方と画面の移り方',
+    'ステータスの移り方（ステータスの並びと、ステータスを進める操作。前のステータス・次のステータス・操作する人・条件）と、' +
+    '画面の移り方（ボタン・リンクの文字ごとの移る先と、ほかの画面設計から移ってくるもの）を表の形で返す。' +
+    '多いときは、操作・移る先・移ってくるもの の順に分けて nextCursor を付ける（全部の数は actionsTotal・movesTotal・incomingTotal）。',
+    { design: S.design, cursor: S.cursor }),
+  read('get_view_image', '図の画像',
+    '図の画像（PNG。長い辺を 1568 ドットまでに縮める）を返す。view: "map"（つながりの図。ルックアップと取り込みでつながる画面設計）・' +
+    '"process"（ステータスの移り方の図）・"screenflow"（画面の移り方の図）。作った移り方を見て確かめるときに使う。',
+    { design: S.design, view: z.enum(['map', 'process', 'screenflow']).describe('図の種類') }, { slow: true }),
   read('get_catalog', '部品のカタログ',
     '部品の種類（type・名前・最初の大きさ・設定の欄と値の形）・項目の種類・ひな形・機器・作る先・吹き出しの色・並べ方の数を返す。',
     {}),
@@ -60,6 +69,10 @@ const TOOLS = [
   write('edit_callouts', '吹き出しを直す',
     '吹き出しを足す・直す・動かす・消す（ops に並べて 1 回で行う）。',
     { design: S.design, screen: S.screen, expect: S.expect, ops: calloutOps }),
+  write('edit_process', 'ステータスと操作を直す',
+    'ステータスの移り方（kintone のプロセス管理に当たる）を直す: ステータスの並び（申請 → 承認待ち → 承認済み など）と、ステータスを進める操作' +
+    '（例「承認する」: 承認待ち → 承認済み。操作する人・条件つき）を足す・直す・消す・並べ替える（ops に並べて 1 回で行う）。ステータスと操作は id か名前で指す。',
+    { design: S.design, expect: S.expect, ops: processOps }),
   write('add_revision', '改訂する',
     '改訂する: 次の版の番号（第◯版）と今日の日付の行を改訂履歴に足し、今の中身の写しを残す。note は変えた内容（PDF の表紙の改訂履歴に出る）。',
     { design: S.design, expect: S.expect, note: z.string().optional().describe('変えた内容') }),

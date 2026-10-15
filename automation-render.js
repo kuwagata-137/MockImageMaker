@@ -1,4 +1,4 @@
-// automation-render.js — AI の画面の画像と書き出し（get_screen_image・export_design）の、main の側の仕上げ（第 7 段階の T6）
+// automation-render.js — AI の画面の画像・図の画像と書き出し（get_screen_image・get_view_image・export_design）の、main の側の仕上げ（第 7 段階の T6）
 // ページの AI の窓口は、ファイルに書かず、印刷用の HTML（render）を返す。ここでそれを PNG・PDF にする。
 //  - 画面の画像（render.kind 'image'）: PNG（長い辺を 1568 ピクセルまでに縮める）にして、返事の image（base64）に入れる
 //  - 書き出し（'pdf'・'png'・'files'）: 決めたフォルダ（ドキュメント\モックイメージメーカー\AI の書き出し）に書き、場所を返事の files に入れる。

@@ -26,6 +26,9 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
 - 吹き出し: 部品に線でつなぐ説明の箱。画面の外の余白にも置ける。
 - 改訂履歴: 「改訂する」（add_revision）で版の番号（第 1 版・第 2 版…）と、そのときの写しを残す。前の版に戻せる（restore_revision）。
 - ルックアップ: ほかの画面設計（データベース）のレコードから値を引いて入れる項目の設定。取り込み: ほかの画面設計の項目を、元とつなげたまま足すこと。
+- ステータスの移り方: ステータス（申請・承認待ち・承認済み など）の並びと、ステータスを進める操作（例「承認する」: 承認待ち → 承認済み。操作する人・条件つき）。
+  kintone のプロセス管理に当たる。画面設計に 1 つだけあるステータスの項目が持つ。edit_process で書き、get_flow と get_view_image（view "process"）で読む。
+- 画面の移り方: ボタン・リンクの文字を押したときに移る先（この画面設計の画面・ほかの画面設計の画面・URL）。部品の to で書き、get_flow と get_view_image（view "screenflow"）で読む。
 
 ## 指し方
 - 画面設計は id か名前、画面は id か名前（その画面設計の中で）、部品は id か赤い番号（その画面の中で）、項目は id か項目名、吹き出しは id で指します。
@@ -33,9 +36,10 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
 
 ## よくある進め方
 1. 頼まれた画面を作る: create_design（今ある画面設計に足すときは list_designs で探す）→ edit_items で項目を足す → add_screen（ひな形か layout で部品を並べる）→ get_screen_image で見て確かめる → 要るなら layout_screen・edit_parts で直す。
+   申請と承認のようにステータスのある業務は、edit_process でステータスと操作を書く。ボタンとリンクの文字には to で移る先を付け、get_view_image で 2 つの移り方の図を見て確かめる。
 2. 資料から下書きする: 資料から項目と画面を読み取り、1 と同じ順に作る。読み取ったこと・自分で決めたことを人に伝え、確かめてもらう。
 3. 今ある画面設計を直す: get_design・get_screen で中身と updatedAt を読む → edit_* に expect を付けて直す → 区切りで add_revision（改訂する）。
-4. 読んで答える: list_designs・get_design・get_screen・get_screen_image で読んで答える。
+4. 読んで答える: list_designs・get_design・get_screen・get_screen_image・get_flow・get_view_image で読んで答える。
 
 ## 書くときの決まり
 - 道具の 1 回の呼び出し＝1 回の変更です。ops に操作を並べると、まとめて 1 回で行います。途中の操作で断られたら、何も変わりません。
@@ -86,8 +90,9 @@ const LAYOUT = `# 部品の並べ方（layout）
 - label（見出し・ボタン・説明の文字などの文字）・sample（見本の値）・placeholder（薄い字）・labelPos（"top" 入力欄の上・"left" 入力欄の左）・props（設定の欄。get_catalog の parts[].props）。
 - 表: tableKind（"subtable" テーブル・"records" レコード一覧・"related" 関連レコード一覧）・rows（見本の行の数 1〜20）。
 - ステータスの印（status）・進み具合の矢印（steps）: current（見本で出すステータス）。ステータスの項目がなければ「ステータス」の項目を作る。
-- ボタン: style（"primary" 目立つ・"normal" ふつう）・to（移る先の画面。{ "screen": "一覧" }）。
-  ボタンの移る先は今の版ではまだ持てないので、ボタンの「押したとき」の文（props.action）が空なら「「一覧」の画面へ移る」と書きます。`;
+- ボタン: style（"primary" 目立つ・"normal" ふつう）。
+- ボタンとリンクの文字: to（移る先）。この画面設計の画面は "一覧" か { "screen": "一覧" }、ほかの画面設計の画面は { "design": "経費精算", "screen": "精算の入力" }、
+  URL は { "url": "https://…" }、なしは null。移る先は画面の移り方の図の矢印になります。ボタンの「押したとき」の文（props.action）には、移る以外のこと（保存する・確かめるなど）を書きます。`;
 
 const CATALOG = `# 部品のカタログ
 
@@ -95,7 +100,7 @@ const CATALOG = `# 部品のカタログ
 - parts[].type: 部品の種類（layout の type・edit_items の type に書く）。parts[].props: 設定の欄の説明と値の形。parts[].itemProps: 項目だけにある設定の欄。
 - parts[].item が「データベースの項目になる」の部品（入力欄）は、置くと項目を指す。項目名・必須・設定は項目が持つ（edit_items で直す）。
 - 表（type "table"）は tableKind で 3 種類に分かれる: "subtable"（テーブル。行を足せる明細。データベースの項目になる）・"records"（レコード一覧。このデータベースのレコードを並べる）・"related"（関連レコード一覧。ほかのデータベースのレコードを条件で並べる）。
-- ステータスの印（status）と進み具合の矢印（steps）は、画面設計に 1 つだけあるステータスの項目を指す（並びは edit_items で、その項目の props.states に書く）。
+- ステータスの印（status）と進み具合の矢印（steps）は、画面設計に 1 つだけあるステータスの項目を指す。ステータスの並びと、ステータスを進める操作は edit_process で書く（edit_items の props.states でも並びだけは書ける）。
 - itemTypes: edit_items の add に書ける項目の種類。templates: add_screen の template に書けるひな形。devices: 機器。targets: 作る先。callout: 吹き出しの色（color）と線の先（tip）。layout: 並べ方の数（read_guide の "layout"）。
 - maxScreenHeight: AI の頼みで伸ばせる画面の高さの上限（20000 ドット）。edit_screen の height・edit_parts の move・並べ方で、これを超えて画面を伸ばす頼みは断られる。`;
 
