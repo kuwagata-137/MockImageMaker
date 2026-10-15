@@ -753,7 +753,7 @@ const APP_SCRIPT = document.currentScript ? document.currentScript.textContent :
 //   createdAt, updatedAt, trashedAt, revisions, items, screens: [ { id, name, device, width, height,
 //   showHeader, tablePos, parts, callouts } ], mapPos, processPos, flowPos } ] }
 // items（データベースの項目の一覧表）と parts の 1 つずつの形は、下の「項目」「部品」に書いた。callouts（吹き出し）は第 3 段階の後半で使う。
-// systems（システムのまとまり）は第 9 段階で中身を決める入れ物（第 8 段階では読み込んだものをそのまま残すだけ）。
+// systems（システム。いくつかの画面設計をまとめる入れ物）の形は、下の「システム」に書いた（第 8 段階で入れ物を足し、第 9 段階で中身を作った）。
 // 倍率・モード・開いている画面・選んでいる部品・コピーした部品は保存しない（下の ui に持つ）。
 // データの形の版: 1＝部品が項目名と設定を持つ（第 3 段階の前半まで）。2＝項目は画面設計の items に持ち、入力欄の部品は itemId で項目を指す。
 // 3＝ステータスに id（{ id, name }）と操作（actions）を持ち、ボタンにも移る先を持つ。図の位置（processPos・flowPos）と systems を足した（第 8 段階）。
@@ -2545,16 +2545,126 @@ function normalizeMapPos(src) {
   return out;
 }
 
+// ── システム（第 9 段階。AI設計基盤_設計書.md の 5-3・5-6）──
+// いくつかの画面設計をまとめる入れ物（例: 出張申請システム）。{ id（y-）, name, description, createdAt, updatedAt, trashedAt,
+//   designIds（入れている画面設計の id。並び順が表示の順）, roles: [{ id（l-）, name, memo }]（並び順がスイムレーンのレーンの順）,
+//   swimlane: { steps: [{ id（w-）, roleId, col, kind, text, memo, ref: { designId, screenId, stateId }, src }], edges: [{ id（e-）, from, to, label }] },
+//   materials（資料）, notes（設計ノート。中身は第 10 段階）}。
+// 1 つの画面設計を 2 つ以上のシステムに入れられる（案B）。どのシステムに入っているかは、システムの designIds だけに持つ（画面設計の側には持たない）。
+// 画面設計をごみ箱へ移しても designIds からは外さない（戻したときに元のシステムに戻るように）。完全に削除したときに、全部のシステムから外す
+const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end']; // 始まり・作業・システムへの入力・判断・書類・終わり
+
+function createSystemData({ name, description = '' } = {}, now = nowIso()) {
+  return {
+    id: newId('y'), name, description, createdAt: now, updatedAt: now, trashedAt: null,
+    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: {},
+  };
+}
+// 作業の指す先（この作業で使う画面設計・画面・ステータス）。ないものは null。知らない欄は残す
+function normalizeStepRef(src) {
+  const r = isObj(src) ? src : {};
+  return { ...r, designId: str(r.designId) || null, screenId: str(r.screenId) || null, stateId: str(r.stateId) || null };
+}
+// 読み込んだ列を 0 以上の整数に直す（小数は丸める。数でない・負のときは null）
+function swimCol(v) {
+  const n = typeof v === 'number' || (typeof v === 'string' && v.trim()) ? Math.round(Number(v)) : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+// 作業。役割が見つからない作業も消さずに残す（描くときに外す）。知らない種類は「作業」
+function normalizeStep(src) {
+  return {
+    ...src,
+    id: str(src.id) || newId('w'),
+    roleId: str(src.roleId),
+    col: swimCol(src.col) ?? 0,
+    kind: SWIM_KINDS.includes(src.kind) ? src.kind : 'task',
+    text: str(src.text),
+    memo: str(src.memo),
+    ref: normalizeStepRef(src.ref),
+    src: isObj(src.src) ? src.src : null, // ビジネスダイアグラムメーカーから読んだ箱の { id, x, y, w, h }（書き戻すとき、同じ箱・同じ位置に戻すため）
+  };
+}
+// スイムレーン。作業の id の重なりを直してから、端の作業がない矢印と、自分への矢印を外す
+function normalizeSwimlane(src) {
+  const sw = isObj(src) ? src : {};
+  const steps = uniqueIds((Array.isArray(sw.steps) ? sw.steps : []).filter(isObj).map(normalizeStep), 'w');
+  const stepIds = new Set(steps.map((w) => w.id));
+  const edges = uniqueIds((Array.isArray(sw.edges) ? sw.edges : []).filter(isObj)
+    .map((e) => ({ ...e, id: str(e.id) || newId('e'), from: str(e.from), to: str(e.to), label: str(e.label) }))
+    .filter((e) => stepIds.has(e.from) && stepIds.has(e.to) && e.from !== e.to), 'e');
+  return { ...sw, steps, edges };
+}
+// システム 1 つを読み込める形に直す。designIds は state にある画面設計（ごみ箱のものも含む）の id だけを、重ねずに残す。知らない欄は残す
+function normalizeSystem(raw, designIds) {
+  const y = isObj(raw) ? raw : {};
+  const known = designIds instanceof Set ? designIds : new Set(designIds || []);
+  const createdAt = str(y.createdAt) || null;
+  return {
+    ...y,
+    id: str(y.id) || newId('y'),
+    name: cleanName(y.name) || '名前なし',
+    description: str(y.description),
+    createdAt,
+    updatedAt: str(y.updatedAt) || createdAt,
+    trashedAt: str(y.trashedAt) || null,
+    designIds: [...new Set((Array.isArray(y.designIds) ? y.designIds : []).filter((id) => typeof id === 'string' && known.has(id)))],
+    roles: uniqueIds((Array.isArray(y.roles) ? y.roles : []).filter(isObj)
+      .map((r) => ({ ...r, id: str(r.id) || newId('l'), name: cleanName(r.name) || '名前なし', memo: str(r.memo) })), 'l'),
+    swimlane: normalizeSwimlane(y.swimlane),
+    materials: (Array.isArray(y.materials) ? y.materials : []).filter(isObj),
+    notes: isObj(y.notes) ? y.notes : {},
+  };
+}
+
+const findSystem = (state, id) => state.systems.find((y) => y.id === id) || null;
+const findStep = (y, id) => y.swimlane.steps.find((w) => w.id === id) || null;
+const isSwimCol = (v) => Number.isInteger(v) && v >= 0; // 操作で受け取る列（読み込むときの swimCol と違い、整数でなければ断る）
+// 画面設計をシステムに入れる（state を書き換える）。システムが見つからない・もう入っているときは何もしない。入れたシステムの更新日時を変える
+function putIntoSystem(state, sysId, designId) {
+  const y = findSystem(state, sysId);
+  if (!y || y.designIds.includes(designId)) return;
+  y.designIds.push(designId);
+  y.updatedAt = nowIso();
+}
+// その画面設計を入れているシステム（ごみ箱のシステムは除く）
+function systemsOf(state, designId) {
+  return state.systems.filter((y) => !y.trashedAt && y.designIds.includes(designId));
+}
+// システムに入れている画面設計（designIds の順。ごみ箱の画面設計は除く）。sys はシステムか、その id
+function designsOfSystem(state, sys) {
+  const y = typeof sys === 'string' ? findSystem(state, sys) : sys;
+  return y ? y.designIds.map((id) => findDesign(state, id)).filter((d) => d && !d.trashedAt) : [];
+}
+// どのシステムにも入っていない画面設計（ごみ箱の画面設計は除く。ごみ箱のシステムにだけ入っているものは、入っていないとみなす）
+function loneDesigns(state) {
+  const used = new Set(state.systems.filter((y) => !y.trashedAt).flatMap((y) => y.designIds));
+  return state.designs.filter((d) => !d.trashedAt && !used.has(d.id));
+}
+// 画面設計・画面・ステータスを消したとき、それを指していた作業の指す先を外す（作業の文は残す。どのシステムの分も。システムの更新日時は変えない）。
+// screenId も stateId も渡さないとき（画面設計を完全に削除したとき）は、指す先を全部外す。画面とステータスの id は画面設計の中だけで
+// 重ならないものなので、同じ画面設計を指す作業だけを見る
+function clearStepRefs(state, designId, { screenId = null, stateId = null } = {}) {
+  state.systems.forEach((y) => y.swimlane.steps.forEach((w) => {
+    if (w.ref.designId !== designId) return;
+    if (!screenId && !stateId) Object.assign(w.ref, { designId: null, screenId: null, stateId: null });
+    if (screenId && w.ref.screenId === screenId) w.ref.screenId = null;
+    if (stateId && w.ref.stateId === stateId) w.ref.stateId = null;
+  }));
+}
+
 function normalizeState(raw, schemaVersion) {
   const settings = isObj(raw.settings) ? raw.settings : {};
   const customs = Array.isArray(settings.customTargets) ? settings.customTargets : [];
+  const designs = uniqueIds((Array.isArray(raw.designs) ? raw.designs : []).filter(isObj).map(normalizeDesign), 'd');
+  const designIds = new Set(designs.map((d) => d.id));
   const state = {
     ...raw,
     schemaVersion,
     // mapPos は最初の画面の「全部の画面設計のつながりの図」の箱の位置
     settings: { ...settings, customTargets: [...new Set(customs.filter((t) => typeof t === 'string' && t.trim()))], mapPos: normalizeMapPos(settings.mapPos) },
-    systems: Array.isArray(raw.systems) ? raw.systems : [], // システムのまとまり（中身は第 9 段階で直す。今は読んだまま残す）
-    designs: uniqueIds((Array.isArray(raw.designs) ? raw.designs : []).filter(isObj).map(normalizeDesign), 'd'),
+    // システム（第 9 段階）。画面設計を直した後に直す（designIds を、ある画面設計の id だけにするため）
+    systems: uniqueIds((Array.isArray(raw.systems) ? raw.systems : []).filter(isObj).map((y) => normalizeSystem(y, designIds)), 'y'),
+    designs,
   };
   syncLinkedItems(state);
   return state;
@@ -2863,15 +2973,32 @@ function mutateDesign(id, fn, { touch = true } = {}) {
   });
   return true;
 }
+// ── システムの操作（第 9 段階）──
+// 直せるシステム（前の版を見ている間・見つからないときは null）
+const editableSystem = (id) => (store.isViewing ? null : findSystem(store.state, id));
+// システムを書き換える（mutateDesign と同じ形）。前の版を見ている間・見つからないときは false。
+// 更新日時は、システムの中身が変わったときだけ変える（touch: false なら変えない）
+function mutateSystem(id, fn, { touch = true } = {}) {
+  if (!editableSystem(id)) return false;
+  store.commit((s) => {
+    const y = findSystem(s, id);
+    const before = touch ? JSON.stringify(y) : '';
+    fn(y, s);
+    if (touch && JSON.stringify(y) !== before) y.updatedAt = nowIso();
+  });
+  return true;
+}
 
 const actions = {
-  createDesign(name, target) {
+  // systemId を渡すと、作った画面設計をそのシステムに入れる（同じ 1 回の変更で）。ないシステムを渡したときは作らない
+  createDesign(name, target, { systemId = null } = {}) {
     const n = cleanName(name);
-    if (!n) return null;
+    if (!n || (systemId && !findSystem(store.state, systemId))) return null;
     const d = createDesignData(n, target);
     store.commit((s) => {
       addCustomTarget(s, target);
       s.designs.push(d);
+      if (systemId) putIntoSystem(s, systemId, d.id);
     });
     return d.id;
   },
@@ -2891,11 +3018,15 @@ const actions = {
       if ('description' in patch) d.description = String(patch.description);
     });
   },
-  duplicateDesign(id) {
+  // systemId を渡すと、複製をそのシステムにだけ入れる（同じ 1 回の変更で。設計書の 5-6）。渡さなければ、どのシステムにも入れない
+  duplicateDesign(id, { systemId = null } = {}) {
     const src = findDesign(store.state, id);
-    if (!src) return null;
+    if (!src || (systemId && !findSystem(store.state, systemId))) return null;
     const copy = duplicateDesignData(src);
-    store.commit((s) => { s.designs.push(copy); });
+    store.commit((s) => {
+      s.designs.push(copy);
+      if (systemId) putIntoSystem(s, systemId, copy.id);
+    });
     return copy.id;
   },
   trashDesign(id) {
@@ -2911,9 +3042,180 @@ const actions = {
     store.commit((s) => {
       s.designs = s.designs.filter((d) => d.id !== id);
       clearDesignRefs(s, id); // この画面設計の画面を指していた移る先は外す（更新日時は変えない）
+      // 全部のシステムから外し、この画面設計を指していた作業の指す先を外す（作業の文は残す。システムの更新日時は変えない。設計書の 5-6）
+      s.systems.forEach((y) => { y.designIds = y.designIds.filter((x) => x !== id); });
+      clearStepRefs(s, id);
       syncLinkedItems(s); // この画面設計から取り込んでいた項目は、今の中身で固定する
     }, { history: false });
     return true;
+  },
+
+  // ── システム（第 9 段階。AI設計基盤_設計書.md の 5-3・5-6）──
+  // 断ったとき（名前が空・見つからない・同じ名前の役割・動かない など）は null・false を返し、履歴に積まない
+  // 作ったシステムの id を返す
+  createSystem({ name, description = '' } = {}) {
+    const n = cleanName(name);
+    if (!n || store.isViewing) return null;
+    const y = createSystemData({ name: n, description: str(description) });
+    store.commit((s) => { s.systems.push(y); });
+    return y.id;
+  },
+  // patch は { name, description } のどれか。名前を空にしたときは今の名前のまま
+  updateSystem(id, patch = {}) {
+    if (!isObj(patch)) return false;
+    return mutateSystem(id, (y) => {
+      if ('name' in patch) y.name = cleanName(patch.name) || y.name;
+      if ('description' in patch) y.description = str(patch.description);
+    });
+  },
+  trashSystem(id) {
+    return mutateSystem(id, (y) => { y.trashedAt = nowIso(); }, { touch: false });
+  },
+  restoreSystem(id) {
+    return mutateSystem(id, (y) => { y.trashedAt = null; }, { touch: false });
+  },
+  // システムだけを消す（入れていた画面設計は残る）。戻せないので、画面設計の完全な削除と同じく、元に戻すの履歴も空にする
+  deleteSystemForever(id) {
+    if (!editableSystem(id)) return false;
+    store.clearHistory();
+    store.commit((s) => { s.systems = s.systems.filter((y) => y.id !== id); }, { history: false });
+    return true;
+  },
+  // 今ある画面設計を、同じ画面設計のまま入れる（案B。ほかのシステムにも入っていてよい）。もう入っている・ごみ箱の画面設計は入れない
+  addDesignToSystem(sysId, designId) {
+    const y = editableSystem(sysId);
+    const d = findDesign(store.state, designId);
+    if (!y || !d || d.trashedAt || y.designIds.includes(designId)) return false;
+    return mutateSystem(sysId, (yy) => { yy.designIds.push(designId); });
+  },
+  // 今ある画面設計を複製して、そのシステムにだけ入れる（別の画面設計になり、同期しない）。戻り値は新しい画面設計の id
+  copyDesignIntoSystem(sysId, designId) {
+    if (!editableSystem(sysId)) return null;
+    return actions.duplicateDesign(designId, { systemId: sysId });
+  },
+  // システムから外す（画面設計は残る）
+  removeDesignFromSystem(sysId, designId) {
+    const y = editableSystem(sysId);
+    if (!y || !y.designIds.includes(designId)) return false;
+    return mutateSystem(sysId, (yy) => { yy.designIds = yy.designIds.filter((x) => x !== designId); });
+  },
+  // 並べ替える。toIndex は、ごみ箱の画面設計を除いた並び（designsOfSystem。画面に出す並び）での、動かした後の位置。
+  // ごみ箱の画面設計は designIds の同じ場所に残す（戻したときに、元の辺りに出るように）
+  moveDesignInSystem(sysId, designId, toIndex) {
+    const y = editableSystem(sysId);
+    const shown = y ? designsOfSystem(store.state, y).map((d) => d.id) : [];
+    const from = shown.indexOf(designId);
+    if (from < 0 || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= shown.length || toIndex === from) return false;
+    const next = [...shown];
+    next.splice(toIndex, 0, ...next.splice(from, 1));
+    return mutateSystem(sysId, (yy) => {
+      let k = 0;
+      yy.designIds = yy.designIds.map((id) => (shown.includes(id) ? next[k++] : id));
+    });
+  },
+  // 役割（スイムレーンのレーン）。名前は空にしない・同じシステムの中で同じ名前にしない。戻り値は役割の id
+  addRole(sysId, name) {
+    const y = editableSystem(sysId);
+    const n = cleanName(name);
+    if (!y || !n || y.roles.some((r) => r.name === n)) return null;
+    const id = newId('l');
+    mutateSystem(sysId, (yy) => { yy.roles.push({ id, name: n, memo: '' }); });
+    return id;
+  },
+  renameRole(sysId, roleId, name) {
+    const y = editableSystem(sysId);
+    const n = cleanName(name);
+    if (!y || !n || !y.roles.some((r) => r.id === roleId) || y.roles.some((r) => r.name === n && r.id !== roleId)) return false;
+    return mutateSystem(sysId, (yy) => { yy.roles.find((r) => r.id === roleId).name = n; });
+  },
+  // toIndex は動かした後の位置（0 がいちばん上のレーン）
+  moveRole(sysId, roleId, toIndex) {
+    const y = editableSystem(sysId);
+    const from = y ? y.roles.findIndex((r) => r.id === roleId) : -1;
+    if (from < 0 || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= y.roles.length || toIndex === from) return false;
+    return mutateSystem(sysId, (yy) => { yy.roles.splice(toIndex, 0, ...yy.roles.splice(from, 1)); });
+  },
+  // 役割を消す。その役割の作業と、その作業につながる矢印も一緒に消す（1 回の変更なので、元に戻す 1 回で戻る）
+  deleteRole(sysId, roleId) {
+    const y = editableSystem(sysId);
+    if (!y || !y.roles.some((r) => r.id === roleId)) return false;
+    return mutateSystem(sysId, (yy) => {
+      const gone = new Set(yy.swimlane.steps.filter((w) => w.roleId === roleId).map((w) => w.id));
+      yy.roles = yy.roles.filter((r) => r.id !== roleId);
+      yy.swimlane.steps = yy.swimlane.steps.filter((w) => !gone.has(w.id));
+      yy.swimlane.edges = yy.swimlane.edges.filter((e) => !gone.has(e.from) && !gone.has(e.to));
+    });
+  },
+  // スイムレーンをまとめて置き換える（読み込むときと同じに直す: 知らない種類は「作業」・端のない矢印と自分への矢印は外す）
+  setSwimlane(sysId, sw = {}) {
+    if (!editableSystem(sysId) || !isObj(sw)) return false;
+    const next = normalizeSwimlane(clone({ steps: Array.isArray(sw.steps) ? sw.steps : [], edges: Array.isArray(sw.edges) ? sw.edges : [] }));
+    return mutateSystem(sysId, (yy) => { yy.swimlane = { ...yy.swimlane, steps: next.steps, edges: next.edges }; });
+  },
+  // 作業を足す。spec は { roleId, col, kind, text, memo, ref }。役割はこのシステムにあるもの。列を書かなければ、いちばん右の作業の次の列。
+  // 種類を書かなければ「作業」。役割が見つからない・知らない種類・列が 0 以上の整数でないときは null。戻り値は作業の id
+  addStep(sysId, spec = {}) {
+    const y = editableSystem(sysId);
+    if (!y || !isObj(spec) || !y.roles.some((r) => r.id === spec.roleId)) return null;
+    if ((spec.kind != null && !SWIM_KINDS.includes(spec.kind)) || (spec.col != null && !isSwimCol(spec.col))) return null;
+    const w = normalizeStep({
+      roleId: spec.roleId,
+      col: spec.col != null ? spec.col : y.swimlane.steps.reduce((m, x) => Math.max(m, x.col + 1), 0),
+      kind: spec.kind || 'task', text: str(spec.text).trim(), memo: str(spec.memo), ref: clone(spec.ref || {}),
+    });
+    mutateSystem(sysId, (yy) => { yy.swimlane.steps.push(w); });
+    return w.id;
+  },
+  // 作業を直す。patch は { kind, text, memo, ref } のどれか（ref は丸ごと置き換える）。役割と列は moveStep で変える
+  updateStep(sysId, stepId, patch = {}) {
+    const y = editableSystem(sysId);
+    if (!y || !isObj(patch) || !findStep(y, stepId) || ('kind' in patch && !SWIM_KINDS.includes(patch.kind))) return false;
+    return mutateSystem(sysId, (yy) => {
+      const w = findStep(yy, stepId);
+      if ('kind' in patch) w.kind = patch.kind;
+      if ('text' in patch) w.text = str(patch.text).trim();
+      if ('memo' in patch) w.memo = str(patch.memo);
+      if ('ref' in patch) w.ref = normalizeStepRef(clone(patch.ref || {}));
+    });
+  },
+  // 作業を動かす。to は { roleId, col } のどれか（役割はこのシステムにあるもの、列は 0 以上の整数）
+  moveStep(sysId, stepId, to = {}) {
+    const y = editableSystem(sysId);
+    if (!y || !isObj(to) || !findStep(y, stepId)) return false;
+    if (('roleId' in to && !y.roles.some((r) => r.id === to.roleId)) || ('col' in to && !isSwimCol(to.col))) return false;
+    return mutateSystem(sysId, (yy) => {
+      const w = findStep(yy, stepId);
+      if ('roleId' in to) w.roleId = to.roleId;
+      if ('col' in to) w.col = to.col;
+    });
+  },
+  // 作業を消す。つながる矢印も消す
+  deleteStep(sysId, stepId) {
+    const y = editableSystem(sysId);
+    if (!y || !findStep(y, stepId)) return false;
+    return mutateSystem(sysId, (yy) => {
+      yy.swimlane.steps = yy.swimlane.steps.filter((w) => w.id !== stepId);
+      yy.swimlane.edges = yy.swimlane.edges.filter((e) => e.from !== stepId && e.to !== stepId);
+    });
+  },
+  // 矢印を足す。同じ向きの同じ 2 つの作業の間に 2 本目は作らない（逆向きは作れる）・自分への矢印は作らない。戻り値は矢印の id
+  addEdge(sysId, from, to, label = '') {
+    const y = editableSystem(sysId);
+    if (!y || from === to || !findStep(y, from) || !findStep(y, to) || y.swimlane.edges.some((e) => e.from === from && e.to === to)) return null;
+    const e = { id: newId('e'), from, to, label: str(label).trim() };
+    mutateSystem(sysId, (yy) => { yy.swimlane.edges.push(e); });
+    return e.id;
+  },
+  // 矢印の文（例: 差し戻し）を直す
+  updateEdge(sysId, edgeId, label) {
+    const y = editableSystem(sysId);
+    if (!y || !y.swimlane.edges.some((e) => e.id === edgeId)) return false;
+    return mutateSystem(sysId, (yy) => { yy.swimlane.edges.find((e) => e.id === edgeId).label = str(label).trim(); });
+  },
+  deleteEdge(sysId, edgeId) {
+    const y = editableSystem(sysId);
+    if (!y || !y.swimlane.edges.some((e) => e.id === edgeId)) return false;
+    return mutateSystem(sysId, (yy) => { yy.swimlane.edges = yy.swimlane.edges.filter((e) => e.id !== edgeId); });
   },
   // ── 改訂履歴（第 6 段階）──
   // 改訂する。今の中身の写しと、ひとつ前の版からの変更内容の一覧を、次の番号の版として残す。戻り値は足した行の id
@@ -3012,7 +3314,7 @@ const actions = {
     });
   },
   // 画面を消す（最後の 1 つは消せない）。データベースの項目は一覧表に残す。ボタン・リンクの文字がこの画面を指していれば、移る先を外す
-  // （ほかの画面設計の分も同じ 1 回の変更で外し、外した画面設計の更新日時も変える）
+  // （ほかの画面設計の分も同じ 1 回の変更で外し、外した画面設計の更新日時も変える）。システムの作業がこの画面を指していれば、指す先の画面を外す
   deleteScreen(designId, screenId) {
     const d = findDesign(store.state, designId);
     if (!d || d.screens.length < 2 || !findScreen(designId, screenId)) return false;
@@ -3020,6 +3322,7 @@ const actions = {
       dd.screens = dd.screens.filter((x) => x.id !== screenId);
       const now = nowIso();
       clearScreenRefs(s, designId, screenId).filter((id) => id !== designId).forEach((id) => { findDesign(s, id).updatedAt = now; });
+      clearStepRefs(s, designId, { screenId });
     });
   },
 
@@ -3274,16 +3577,18 @@ const actions = {
     const it = editableStatusItem(designId, itemId);
     return !!it && moveInList(designId, itemId, 'states', stateId, toIndex);
   },
-  // ステータスを消す（最後の 1 つは消せない）。そのステータスを使う操作も消え、見本で出していた部品は「なし」になる（取り込んだ側も）
+  // ステータスを消す（最後の 1 つは消せない）。そのステータスを使う操作も消え、見本で出していた部品は「なし」になる（取り込んだ側も）。
+  // システムの作業がこの画面設計のこのステータスを指していれば、指す先のステータスを外す
   deleteState(designId, itemId, stateId) {
     const it = editableStatusItem(designId, itemId);
     if (!it || it.props.states.length < 2 || !it.props.states.some((s) => s.id === stateId)) return false;
-    return mutateDesign(designId, (d) => {
+    return mutateDesign(designId, (d, s) => {
       const item = findItem(d, itemId);
       const before = stateIdsOf(item);
-      item.props.states = item.props.states.filter((s) => s.id !== stateId);
+      item.props.states = item.props.states.filter((x) => x.id !== stateId);
       item.props.actions = item.props.actions.filter((a) => a.from !== stateId && a.to !== stateId);
       clearGoneStates(d, item, before);
+      clearStepRefs(s, designId, { stateId });
     });
   },
   // 操作を足す。spec は { name, from, to, role, cond }（from・to はステータスの id）。書かなければ「新しい操作」・1 つ目 → 2 つ目。戻り値は操作の id
@@ -8281,8 +8586,10 @@ function openImportConfirmDialog(cur, inc, payload) {
     collect: (m) => (m.querySelector('[name="imp-how"]:checked') || {}).value || 'replace',
   });
 }
-// 書き出した HTML の文字を取り込む。戻り値 { status: 'added'|'replaced'|'copied'|'same'|'canceled'|'error', designId?, error? }
-async function importHtmlText(text) {
+// 書き出した HTML の文字を取り込む。戻り値 { status: 'added'|'replaced'|'copied'|'same'|'canceled'|'error', designId?, error? }。
+// systemId を渡すと、新しく足すとき（一覧にない・別の画面設計として足す）だけ、そのシステムに入れる（システムのまとまりの上にファイルを落としたとき。
+// 置き換え・中身が同じときは、入っているシステムを変えない。設計書の 5-6）
+async function importHtmlText(text, { systemId = null } = {}) {
   const r = parseExportedHtml(text);
   if (r.error) { toast(r.error); return { status: 'error', error: r.error }; }
   const { payload, design: incoming } = r;
@@ -8295,6 +8602,7 @@ async function importHtmlText(text) {
       syncLinkedItems(s);
       const d = findDesign(s, incoming.id);
       d.exchangeHash = shortHash(comparableContent(d, s));
+      if (systemId) putIntoSystem(s, systemId, d.id);
     });
     toast(`「${incoming.name}」を一覧に足しました。`);
     return { status: 'added', designId: incoming.id };
@@ -8318,6 +8626,7 @@ async function importHtmlText(text) {
       s.designs.push(copy);
       addCustomTarget(s, copy.target);
       syncLinkedItems(s);
+      if (systemId) putIntoSystem(s, systemId, copy.id);
     });
     toast(`「${copy.name}」として一覧に足しました。`);
     return { status: 'copied', designId: copy.id };
@@ -8332,10 +8641,11 @@ const readFileText = (file) => (typeof file.text === 'function' ? file.text() : 
   fr.onerror = () => reject(fr.error);
   fr.readAsText(file);
 }));
-async function importHtmlFile(file) {
+// opts は importHtmlText と同じ（{ systemId }）
+async function importHtmlFile(file, opts = {}) {
   if (!file) return null;
   if (file.size > IMPORT_MAX_CHARS) { toast('ファイルが大きすぎます（50MB まで）。'); return { status: 'error' }; }
-  return importHtmlText(await readFileText(file));
+  return importHtmlText(await readFileText(file), opts);
 }
 // 取り込む HTML を選んで、その文字を返す（キャンセル・読めないときは null）。デスクトップは main の開く窓（アプリのメニューからも開けるように）、
 // ブラウザは隠した input
@@ -10645,6 +10955,7 @@ function exposeForTest() {
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
     changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
+    SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
