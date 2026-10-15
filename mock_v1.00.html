@@ -8758,6 +8758,15 @@ function aiResolveDesign(S, ref, { write = false } = {}) {
   return d;
 }
 const aiResolveScreen = (d, ref) => aiPick(d.screens, ref, `「${d.name}」の画面`);
+// 移る先の画面（to・props.screenId）。ない画面には、先に作るよう添えて断る（これから作る画面を書いて断られることがあったため）
+function aiMoveScreen(owner, ref) {
+  try {
+    return aiResolveScreen(owner, ref);
+  } catch (e) {
+    if (e instanceof AiRefusal && e.code === 'not_found') e.message += `移る先にできるのは、もうある画面だけです（今の画面: ${owner.screens.map((s) => s.name).join('・')}）。これから作る画面は、先に add_screen で作ってから to に書いてください。`;
+    throw e;
+  }
+}
 const aiResolveItem = (d, ref) => aiPick(d.items, ref, `「${d.name}」のデータベースの項目`, { candidate: (it) => ({ id: it.id, name: it.name, type: it.type }) });
 // 部品は id か赤い番号（数でも、数字の文字でも）
 function aiResolvePart(sc, ref) {
@@ -9232,7 +9241,7 @@ function aiProps(type, props, d, cur = null) {
       return;
     }
     if (moves && k === 'screenId') {
-      out[k] = v ? aiResolveScreen(owner, v).id : '';
+      out[k] = v ? aiMoveScreen(owner, v).id : '';
       return;
     }
     if (Array.isArray(def)) out[k] = aiArr(v, k).map((x) => aiStrVal(x, `「${k}」の中身`));
@@ -9329,7 +9338,7 @@ function aiMoveTarget(d, to) {
   if (to.screen == null) throw aiBad(form);
   const owner = to.design == null ? d : aiResolveDesign(store.state, to.design);
   if (owner.trashedAt) throw new AiRefusal('trashed', `「${owner.name}」はごみ箱にあるため、その画面を移る先にはできません。`);
-  return { to: 'screen', designId: owner.id === d.id ? '' : owner.id, screenId: aiResolveScreen(owner, to.screen).id };
+  return { to: 'screen', designId: owner.id === d.id ? '' : owner.id, screenId: aiMoveScreen(owner, to.screen).id };
 }
 const AI_TO_PARTS = 'to（移る先）を書けるのは、ボタンとリンクの文字だけです。';
 

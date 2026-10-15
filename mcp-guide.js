@@ -37,6 +37,7 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
 ## よくある進め方
 1. 頼まれた画面を作る: create_design（今ある画面設計に足すときは list_designs で探す）→ edit_items で項目を足す → add_screen（ひな形か layout で部品を並べる）→ get_screen_image で見て確かめる → 要るなら layout_screen・edit_parts で直す。
    申請と承認のようにステータスのある業務は、edit_process でステータスと操作を書く。ボタンとリンクの文字には to で移る先を付け、get_view_image で 2 つの移り方の図を見て確かめる。
+   移る先を付けるときは、要る画面を先に全部 add_screen で作ってから、layout_screen で部品を並べる（to に書けるのは、もうある画面だけ）。
 2. 資料から下書きする: 資料から項目と画面を読み取り、1 と同じ順に作る。読み取ったこと・自分で決めたことを人に伝え、確かめてもらう。
 3. 今ある画面設計を直す: get_design・get_screen で中身と updatedAt を読む → edit_* に expect を付けて直す → 区切りで add_revision（改訂する）。
 4. 読んで答える: list_designs・get_design・get_screen・get_screen_image・get_flow・get_view_image で読んで答える。
@@ -92,7 +93,7 @@ const LAYOUT = `# 部品の並べ方（layout）
 - ステータスの印（status）・進み具合の矢印（steps）: current（見本で出すステータス）。ステータスの項目がなければ「ステータス」の項目を作る。
 - ボタン: style（"primary" 目立つ・"normal" ふつう）。
 - ボタンとリンクの文字: to（移る先）。この画面設計の画面は "一覧" か { "screen": "一覧" }、ほかの画面設計の画面は { "design": "経費精算", "screen": "精算の入力" }、
-  URL は { "url": "https://…" }、なしは null。移る先は画面の移り方の図の矢印になります。ボタンの「押したとき」の文（props.action）には、移る以外のこと（保存する・確かめるなど）を書きます。`;
+  URL は { "url": "https://…" }、なしは null。to に書けるのは、もうある画面だけです（これから作る画面は、先に add_screen で作る）。移る先は画面の移り方の図の矢印になります。ボタンの「押したとき」の文（props.action）には、移る以外のこと（保存する・確かめるなど）を書きます。`;
 
 const CATALOG = `# 部品のカタログ
 

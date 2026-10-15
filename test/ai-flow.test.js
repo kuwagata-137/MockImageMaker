@@ -307,3 +307,11 @@ test('get_view_image: ごみ箱にある画面設計のつながりの図は、�
   ok(await call('get_view_image', { design: '出張申請', view: 'screenflow' }));
   app.close();
 });
+
+test('to: まだない画面を移る先に書くと、「先に add_screen で作ってから」と添えて断る（Claude Code から試したとき、AI がこれから作る画面を書いて断られた）', async () => {
+  const { app, call } = await boot();
+  const e = ng(await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'button', label: '詳細へ', to: '詳細' }]] } }), 'not_found');
+  assert.match(e.message, /「詳細」という「顧客管理」の画面は見つかりません/);
+  assert.match(e.message, /先に add_screen で作って/);
+  app.close();
+});
