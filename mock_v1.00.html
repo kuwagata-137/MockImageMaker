@@ -706,7 +706,7 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .pop-menu button:disabled{opacity:.45;cursor:default;background:none}
 .rv-band{display:flex;align-items:center;gap:12px;background:#fef3c7;border-bottom:2px solid #f59e0b;padding:7px 16px;font-size:13.5px;color:#78350f;flex-shrink:0}
 .rv-band .ic{font-size:18px}
-/* AI の見た目（第 7 段階。CLAUDE.md の「AI の見た目の細かい決めごと」・画像 q48〜q51）。AI の色は紫（#7c3aed） */
+/* AI の見た目（第 7 段階。仕様_細かい決めごと.md の「AI の見た目の細かい決めごと」・画像 q48〜q51）。AI の色は紫（#7c3aed） */
 .ai-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #c4b5fd;background:#f5f3ff;color:#5b21b6;border-radius:999px;padding:2px 11px 2px 9px;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;font-family:inherit}
 .ai-chip:hover{background:#ede9fe}
 .ai-chip .dot{width:8px;height:8px;border-radius:50%;background:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.18);flex-shrink:0}
@@ -1346,7 +1346,7 @@ function screenFromTemplate(design, templateId, name) {
 //   項目を一覧表から消した後に画面に残った入力欄の部品は、消したときの項目名と設定を label・required・memo・props に写して持ち、
 //   orphan: { itemId }（消した項目の id）を付ける（ユーザーの指示。消したときの中身で固定する）。
 // 部品の中身を描くときは、resolvePart で項目と合わせた形（label・required・memo・props がそろった形）にしてから使う。
-// 見た目と最初の大きさは CLAUDE.md の「部品の細かい決めごと」（画像 q15）のとおり。
+// 見た目と最初の大きさは 仕様_細かい決めごと.md の「部品の細かい決めごと」（画像 q15）のとおり。
 const PART_MIN = 16; // 部品のいちばん小さい幅と高さ
 const PART_GAP = 16; // 貼り付け・複製・押して置いたときに、重ならないようにずらす幅
 const BAND_H = 40; // 画面の帯の高さ（.screen-band と同じ）。部品を置くときは帯の下に置く
@@ -1802,7 +1802,7 @@ function partTitle(p) {
 // 部品の設定の一覧表の行（番号の付いた部品だけを番号の順に）。design を渡すと、部品が指す項目の中身で書く
 function tableRows(screen, design = null, state = null) {
   const ctx = design && state ? { design, state } : null;
-  // 表の部品は、表の行の下に、列ごとの行を枝番（3-1・3-2）で並べる（CLAUDE.md の「部品の細かい決めごと（後半）」）
+  // 表の部品は、表の行の下に、列ごとの行を枝番（3-1・3-2）で並べる（仕様_細かい決めごと.md の「部品の細かい決めごと（後半）」）
   return screen.parts
     .filter((p) => p.no != null)
     .sort((a, b) => a.no - b.no)
@@ -1822,7 +1822,7 @@ function minScreenHeight(screen) {
   return bottom <= min ? min : min + Math.ceil((bottom - min) / GRID) * GRID;
 }
 
-// ── 改訂履歴（第 6 段階。CLAUDE.md の「改訂履歴の細かい決めごと」）──
+// ── 改訂履歴（第 6 段階。仕様_細かい決めごと.md の「改訂履歴の細かい決めごと」）──
 // 画面設計の revisions の行: { id, kind, no, date, note, schemaVersion, appVersion, snapshot, changes, baseNo }
 //   kind: 'revision'（改訂する。no に版の番号）・'import'（取り込む前の状態）・'restore'（戻す前の状態）・'ai'（AI が直す前の状態。第 7 段階）。
 //     自動の行（import・restore・ai）の no は null。
@@ -7435,7 +7435,7 @@ function renderDiagramView(d, view) {
   keep();
 }
 
-// ── 改訂履歴（第 6 段階。CLAUDE.md の「改訂履歴の細かい決めごと」・画像 q40c〜q44）──
+// ── 改訂履歴（第 6 段階。仕様_細かい決めごと.md の「改訂履歴の細かい決めごと」・画像 q40c〜q44）──
 // 見ている前の版の行（見ていないときは null）。本当の中身（store.realState）の行から引く
 const realState = () => store.realState || store.state;
 function viewingRevision() {
@@ -8190,7 +8190,7 @@ function itemsHintHtml(d) {
     <p class="hint" style="margin-top:8px">表の行を押すと、ここにその項目の設定が出ます。画面に置くときは、左の一覧で画面を選び、右の部品の箱のいちばん上の「データベースの項目」から画面へドラッグします。</p>`;
 }
 
-// 部品の種類ごとの欄（CLAUDE.md の「部品の細かい決めごと」）
+// 部品の種類ごとの欄（仕様_細かい決めごと.md の「部品の細かい決めごと」）
 function partTypeFieldsHtml(p) {
   const pr = p.props;
   // 選択肢の部品だけで使う欄（ほかの種類では作らない）
@@ -13152,7 +13152,7 @@ function bindAiEvents() {
   window.aiAPI.ready();
 }
 
-// ── AI の見た目（CLAUDE.md の「AI の見た目の細かい決めごと」・画像 q48〜q51）──
+// ── AI の見た目（仕様_細かい決めごと.md の「AI の見た目の細かい決めごと」・画像 q48〜q51）──
 // 紫の札（AI がつながっている）・紫の帯（AI が直した・作った）・オレンジの帯（元に戻すの履歴を消した）・直した部品を光らせる・
 // 画面の一覧の「AI」の印・一覧の画面のカードの札・「AI とつなぐ」の窓。どれも保存しない
 const AI_GLOW_MS = 2000; // 紫の枠で光らせる長さ（2 回光る）
