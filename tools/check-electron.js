@@ -13,6 +13,10 @@
 //     直したデータを保存すると、v1 の形のファイルは .bak に残る（保存先は .devdata/check-userData-v1）
 //  6. 1 でメニューバーの ▼ の「改訂する」から第 1 版を作ると、designs.json に版と写しが残り、起動し直しても改訂履歴の窓に出て、
 //     「見る」で第 1 版（3 で文字を打つ前の中身）を開ける（第 6 段階）
+//  7. データの形 v2（ステータスが名前の並び・見本で出すステータスが名前・ボタンに移る先がない形）の designs.json を、v3 に直して読める（第 8 段階）。
+//     見本は版 2 のアプリで作った test/fixtures/v2-state.json。左の一覧の「ステータスの移り方」で操作を 1 つ足して保存させると、
+//     designs.json は v3（ステータスに id・見本で出すステータスは id・ボタンとリンクの文字に移る先の欄）になり、.bak は v2 のまま。
+//     起動し直しても同じ中身で読める（保存先は .devdata/check-userData-v2）
 // 窓の × と終了は、メインプロセスを --inspect で起動し、Node の inspector から呼んで再現する。
 // 保存先は作業フォルダの .devdata/check-userData（毎回消してから始める。npm start のデータとは別）。
 'use strict';
@@ -28,6 +32,9 @@ const USER_DATA = path.join(ROOT, '.devdata', 'check-userData');
 const STATE_FILE = path.join(USER_DATA, 'data', 'designs.json');
 const USER_DATA_V1 = path.join(ROOT, '.devdata', 'check-userData-v1');
 const STATE_FILE_V1 = path.join(USER_DATA_V1, 'data', 'designs.json');
+const USER_DATA_V2 = path.join(ROOT, '.devdata', 'check-userData-v2');
+const STATE_FILE_V2 = path.join(USER_DATA_V2, 'data', 'designs.json');
+const V2_STATE = require('../test/fixtures/v2-state.json').state; // 版 2 のアプリで作った見本（架空の受注管理・経費精算・出張申請）
 const PORT = 9333; // ページ（renderer）の remote debugging
 const MAIN_PORT = 9334; // メインプロセスの inspector（窓の × と終了で使う）
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -257,6 +264,41 @@ async function migrateRun() {
   return { names, labels, rows, saved, bakVersion: bak.schemaVersion };
 }
 
+// v2 の形の designs.json で起動し、受注管理を開いて、ステータスの見え方と左の一覧の数を読む。add なら「ステータスの移り方」で操作を 1 つ足して（保存させるため）閉じる
+async function v2Run({ add }) {
+  const child = launch([`--remote-debugging-port=${PORT}`], USER_DATA_V2);
+  const browser = await connect();
+  const page = await appPage(browser);
+  await page.click('.card-open[data-id="d-order"]');
+  await page.waitForSelector('#stage .pstatus');
+  const badge = await page.$eval('#stage .pstatus .pbadge', (e) => e.textContent);
+  const notes = await page.$$eval('#screen-list .db-entry small', (els) => els.map((e) => e.textContent));
+  await page.click('[data-action="open-process"]');
+  await page.waitForSelector('#side-settings [data-ps]');
+  const states = await page.$$eval('#side-settings [data-ps]', (els) => els.map((e) => e.value));
+  if (add) {
+    await page.click('#side-settings [data-action="pa-add"]');
+    await page.waitForSelector('#side-settings .pa-card');
+  }
+  const cards = await page.$$eval('#side-settings .pa-card', (els) => els.length);
+  await sleep(500);
+  await page.evaluate(() => window.close());
+  browser.disconnect();
+  await withTimeout(child.exited, 15000, 'v2 の形を読んだアプリが閉じない');
+  return { badge, notes, states, cards };
+}
+async function migrateV2() {
+  fs.rmSync(USER_DATA_V2, { recursive: true, force: true });
+  fs.mkdirSync(path.dirname(STATE_FILE_V2), { recursive: true });
+  fs.writeFileSync(STATE_FILE_V2, JSON.stringify(V2_STATE), 'utf8');
+  const first = await v2Run({ add: true });
+  const saved = JSON.parse(fs.readFileSync(STATE_FILE_V2, 'utf8'));
+  const bak = JSON.parse(fs.readFileSync(STATE_FILE_V2 + '.bak', 'utf8'));
+  const again = await v2Run({ add: false });
+  const after = JSON.parse(fs.readFileSync(STATE_FILE_V2, 'utf8'));
+  return { first, again, saved, after, bakVersion: bak.schemaVersion };
+}
+
 async function checkTypingCases() {
   let ok = true;
   for (const c of TYPING_CASES) {
@@ -303,10 +345,28 @@ async function checkTypingCases() {
   console.log('v1 の形の designs.json: 一覧', m.names.join('、'), '／ 画面の部品の項目名', m.labels.join('・'), '／ 項目の一覧表', m.rows.join('・'));
   console.log('項目を 1 つ足して保存した後: 形の版', m.saved.schemaVersion, '／ 項目', md.items.map((it) => `${it.name}（${it.type}${it.required ? '・必須' : ''}）`).join('、'),
     '／ 部品が指す項目', md.screens[0].parts.map((p) => (p.itemId ? md.items.find((it) => it.id === p.itemId).name : `なし（${p.label}）`)).join('・'), '／ .bak の形の版', m.bakVersion);
-  const migrateOk = m.labels.join() === '顧客名,区分' && m.rows.join() === '顧客名,区分' && m.saved.schemaVersion === 2 && md.items.length === 3
+  const migrateOk = m.labels.join() === '顧客名,区分' && m.rows.join() === '顧客名,区分' && m.saved.schemaVersion === 3 && md.items.length === 3
     && md.screens[0].parts[0].itemId === md.items[0].id && md.screens[0].parts[1].itemId === md.items[1].id && !md.screens[0].parts[2].itemId
     && md.items[0].required === true && md.items[1].props.options.join() === '法人,個人' && m.bakVersion === 1;
-  const ok = firstOk && typedOk && againOk && migrateOk;
+  const v = await migrateV2();
+  const od = v.saved.designs.find((d) => d.id === 'd-order');
+  const st = od.items.find((it) => it.id === 'i-st');
+  const part = (id) => od.screens.flatMap((s) => s.parts).find((p) => p.id === id);
+  const idOf = (n) => (st.props.states.find((s) => s.name === n) || {}).id;
+  console.log('v2 の形の designs.json: ステータスの印', v.first.badge, '／ 左の一覧', v.first.notes.join('・'), '／ ステータス', v.first.states.join('・'), '／ 操作を足した後のカード', v.first.cards);
+  console.log('保存した後: 形の版', v.saved.schemaVersion, '／ ステータス', JSON.stringify(st.props.states), '／ 操作', st.props.actions.length,
+    '／ 見本で出すステータス', JSON.stringify(part('p-st1').view.current), '／ リンクの文字', JSON.stringify(part('p-l1').props), '／ ボタン', JSON.stringify(part('p-b1').props),
+    '／ .bak の形の版', v.bakVersion);
+  console.log('起動し直したとき: ステータスの印', v.again.badge, '／ ステータス', v.again.states.join('・'), '／ 操作のカード', v.again.cards,
+    '／ 閉じた後の designs.json は同じか', JSON.stringify(v.after.designs) === JSON.stringify(v.saved.designs));
+  const v2Ok = v.first.badge === '確認待ち' && v.first.states.join() === '受付,確認待ち,確認済み,完了' && v.first.cards === 1
+    && v.first.notes.includes('操作なし') && v.first.notes.includes('移る先 1 本')
+    && v.saved.schemaVersion === 3 && st.props.states.every((s) => /^t-/.test(s.id)) && st.props.actions.length === 1
+    && part('p-st1').view.current === idOf('確認待ち') && part('p-l1').props.designId === '' && part('p-l1').props.screenId === 's-detail'
+    && part('p-b1').props.to === '' && part('p-b1').props.action === '新規登録の画面を開く' && Array.isArray(v.saved.systems)
+    && v.bakVersion === 2 && v.again.badge === '確認待ち' && v.again.states.join() === v.first.states.join() && v.again.cards === 1
+    && JSON.stringify(v.after.designs) === JSON.stringify(v.saved.designs);
+  const ok = firstOk && typedOk && againOk && migrateOk && v2Ok;
   console.log(ok ? 'OK' : 'NG');
   process.exit(ok ? 0 : 1);
 })().catch((e) => {
