@@ -252,3 +252,51 @@ test('to: ボタンとリンクの文字の移る先を、この画面設計の�
   ng(await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'heading', label: '見出し', to: '新規登録' }]] } }), 'bad_request');
   app.close();
 });
+
+// ── 見直し（第 8 段階）で見つけた不具合 ──
+test('props の designId・screenId: 片方だけ書いても、もう片方は部品の今の移る先に合わせる（画面は今の画面設計の中で探す・画面設計を変えたら画面は外す）', async () => {
+  const st = flowState();
+  st.designs[1].screens.push(screen('s-d2b', '受注の入力'));
+  const { app, call, d } = await boot(st);
+  const l1 = () => d('d1').screens[1].parts.find((p) => p.id === 'l1').props;
+  const upd = (props) => call('edit_parts', { design: 'd1', screen: '一覧', ops: [{ op: 'update', part: 'l1', props }] });
+  ok(await upd({ screenId: '受注の入力' }));
+  assert.deepEqual([l1().designId, l1().screenId], ['d2', 's-d2b']);
+  ok(await upd({ designId: '受注管理' })); // 同じ画面設計なら画面はそのまま
+  assert.deepEqual([l1().designId, l1().screenId], ['d2', 's-d2b']);
+  ok(await upd({ designId: '顧客管理' })); // 画面設計を変えたら、画面は（選んでください）に戻る
+  assert.deepEqual([l1().designId, l1().screenId], ['', '']);
+  ok(await upd({ screenId: '新規登録' }));
+  assert.deepEqual([l1().designId, l1().screenId], ['', 's1']);
+  ng(await upd({ screenId: '受注の入力' }), 'not_found');
+  app.close();
+});
+
+test('edit_items・layout_screen: ステータスの並び（states）の同じ名前・空の名前を断り、なくなったステータスを使う操作を消したら知らせる', async () => {
+  const { app, call, d } = await boot();
+  ng(await call('edit_items', { design: 'd1', ops: [{ op: 'update', item: 'ステータス', props: { states: ['申請', '申請', '承認待ち'] } }] }), 'bad_request');
+  ng(await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ item: 'ステータス', props: { states: ['申請', '申請'] } }]] } }), 'bad_request');
+  assert.equal(statusOf(d('d1')).props.states.length, 3);
+  const r = ok(await call('edit_items', { design: 'd1', ops: [{ op: 'update', item: 'ステータス', props: { states: ['申請', '承認済み'] } }] }));
+  assert.deepEqual(statusOf(d('d1')).props.actions, []);
+  assert.match(r.warnings[0], /「申請する」・「承認する」/);
+  app.close();
+});
+
+test('edit_screen の delete: ほかの画面設計の移る先も外れるときは、その画面設計にも「AI が直す前の状態」の行を残し、返事で知らせる', async () => {
+  const st = flowState();
+  st.designs[2].screens[0].parts.push(movePart('l8', 'link', 32, 64, 1, '申請へ', { to: 'screen', designId: 'd1', screenId: 's1' }));
+  const { app, call, d } = await boot(st);
+  const r = ok(await call('edit_screen', { design: 'd1', ops: [{ op: 'delete', screen: '新規登録' }] }));
+  const linkIn = (design, id) => design.screens.flatMap((s) => s.parts).find((p) => p.id === id);
+  ['d2', 'd3'].forEach((id) => {
+    const x = d(id);
+    assert.equal(linkIn(x, id === 'd2' ? 'l9' : 'l8').props.screenId, '');
+    const row = x.revisions.find((rv) => rv.kind === 'ai');
+    assert.ok(row, `${x.name} に直す前の行がない`);
+    assert.equal(row.note, 'Claude Code が直す前の状態');
+    assert.equal(linkIn(row.snapshot, id === 'd2' ? 'l9' : 'l8').props.screenId, 's1');
+  });
+  assert.ok(r.warnings.some((w) => /「受注管理」1 個・「出張申請」1 個/.test(w)), JSON.stringify(r.warnings));
+  app.close();
+});

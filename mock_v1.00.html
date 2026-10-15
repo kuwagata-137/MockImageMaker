@@ -9042,12 +9042,8 @@ async function aiWrite(ctx, opts, run) {
   // tx.afterMap は、中身が変わったときの、直した後の画面設計ごとの JSON（aiHistoryMode と aiAfterWrite で使う。2 回作らないため）
   const tx = { ctx, design: d, warnings: [], createdDesign: null, noBeforeRow: !!opts.noBeforeRow, afterMap: null };
   const beforeMap = new Map(S.designs.map((x) => [x.id, designJsonWithRefs(x)]));
-  // 「AI が直す前の状態」の行は、直す前に作っておき、中身が変わったときだけ入れる（8-3）。
-  // その接続の行がもうあるときは作らない（写しを作るのは重いため）
-  const row = d && !tx.noBeforeRow && !aiHasBeforeRow(d, ctx.session)
-    ? Object.assign(revisionRow(d, 'ai', { note: `${aiClientLabel(ctx.client)} が直す前の状態` }), { aiSession: ctx.session }) : null;
-  const rowAt = d ? d.revisions.length : 0;
-  const beforeContent = row ? designContent(d) : null;
+  // 「AI が直す前の状態」の行は、直す前に作っておき、中身が変わったときだけ入れる（8-3）
+  const before = d && !tx.noBeforeRow ? aiBeforeRow(ctx, d) : null;
   const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
   const seen = aiViewBefore(S); // 知らせ（紫・オレンジの帯と光らせ方）のため、直す前の様子を控える
   let mode = true;
@@ -9057,7 +9053,7 @@ async function aiWrite(ctx, opts, run) {
   try {
     ({ changed } = store.batch(() => {
       out = run(tx);
-      if (row) aiAddBeforeRow(tx, d.id, row, rowAt, beforeContent);
+      if (before) aiAddBeforeRow(before);
     }, {
       history: () => {
         tx.afterMap = new Map(store.state.designs.map((x) => [x.id, designJsonWithRefs(x)]));
@@ -9082,11 +9078,17 @@ async function aiWrite(ctx, opts, run) {
   const dd = d ? findDesign(store.state, d.id) : null;
   return { ...out, changed: !!changed, ...(dd ? { updatedAt: dd.updatedAt } : {}), ...(tx.warnings.length ? { warnings: tx.warnings } : {}) };
 }
+// 「AI が直す前の状態」の行を、直す前に作っておく。その接続の行がもうあるときは作らない（写しを作るのは重いため）
+function aiBeforeRow(ctx, d) {
+  if (aiHasBeforeRow(d, ctx.session)) return null;
+  const row = Object.assign(revisionRow(d, 'ai', { note: `${aiClientLabel(ctx.client)} が直す前の状態` }), { aiSession: ctx.session });
+  return { designId: d.id, row, at: d.revisions.length, content: designContent(d) };
+}
 // その接続（session）で、その画面設計への最初の変更のときだけ、直す前の中身の行を入れる（行には session を書いておく。
 // 元に戻すで行が消えたら、次の変更でまた入る）
-function aiAddBeforeRow(tx, designId, row, at, beforeContent) {
+function aiAddBeforeRow({ designId, row, at, content }) {
   const d = findDesign(store.state, designId);
-  if (!d || designContent(d) === beforeContent || aiHasBeforeRow(d, row.aiSession)) return;
+  if (!d || designContent(d) === content || aiHasBeforeRow(d, row.aiSession)) return;
   d.revisions.splice(Math.min(at, d.revisions.length), 0, row);
   trimAiRows(d);
 }
@@ -9186,16 +9188,18 @@ const AI_PROP_ENUMS = {
 };
 // 項目を名前か id で書く欄（id に直して入れる）
 const AI_ITEM_REF_PROPS = { 'graph.byItem': 'one', 'graph.aggItem': 'one', 'search.items': 'many', 'filter.items': 'many' };
-// 部品の種類の設定の欄（PART_TYPES の props）を検め、直して返す。知らない欄・形の違う値は、使える欄・値を添えて断る
-function aiProps(type, props, d) {
+// 部品の種類の設定の欄（PART_TYPES の props）を検め、直して返す。知らない欄・形の違う値は、使える欄・値を添えて断る。
+// cur は直す部品の今の props（新しい部品は書かない。移る先の designId・screenId を片方だけ書いたとき、もう片方を今の移る先に合わせるため）
+function aiProps(type, props, d, cur = null) {
   if (props == null) return null;
   const t = partType(type);
   if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
   const out = {};
-  // ボタン・リンクの文字の移る先の画面設計（designId を書いたとき）。移る画面（screenId）は、その画面設計の中で探す
-  const moves = MOVE_PART_TYPES.includes(type);
-  const owner = moves && props.designId != null && props.designId !== '' ? aiResolveDesign(store.state, props.designId) : d;
-  if (owner && owner.trashedAt) throw new AiRefusal('trashed', `「${owner.name}」はごみ箱にあるため、その画面を移る先にはできません。`);
+  // ボタン・リンクの文字の移る先の画面設計。designId を書かなければ、部品が今指している画面設計。移る画面（screenId）は、その画面設計の中で探す
+  const moves = MOVE_PART_TYPES.includes(type) && ('designId' in props || 'screenId' in props);
+  const curOwner = moves ? aiCurrentMoveOwner(d, cur) : null;
+  const owner = !moves ? d : 'designId' in props ? (props.designId == null || props.designId === '' ? d : aiResolveDesign(store.state, props.designId)) : curOwner;
+  if (moves && owner.trashedAt) throw new AiRefusal('trashed', `「${owner.name}」はごみ箱にあるため、その画面を移る先にはできません。`);
   Object.entries(props).forEach(([k, v]) => {
     if (!t || !own(t.props, k)) throw aiBad(`「${t ? t.name : type}」の設定に「${k}」という欄はありません（使える欄: ${Object.keys(t ? t.props : {}).join('・') || 'なし'}）。`);
     const def = t.props[k];
@@ -9219,7 +9223,17 @@ function aiProps(type, props, d) {
     } else out[k] = aiStrVal(v, `「${k}」`);
     if (own(AI_PROP_ENUMS, key) && !AI_PROP_ENUMS[key].includes(out[k])) throw aiBad(`「${k}」に書ける値は ${AI_PROP_ENUMS[key].map((x) => `"${x}"`).join('・')} です。`);
   });
+  // 画面設計を選び直して、画面を書かなかったときは、画面を外す（右の欄で画面設計を選び直すと、画面が「（選んでください）」に戻るのと同じ）
+  if (moves && !('screenId' in props) && owner !== curOwner) out.screenId = '';
   return out;
+}
+// 部品が今指している移る先の画面設計（designId が '' か自分なら、この画面設計）。指している画面設計がもうないときは断る
+function aiCurrentMoveOwner(d, cur) {
+  const id = cur && cur.designId;
+  if (!id || id === d.id) return d;
+  const owner = findDesign(store.state, id);
+  if (!owner) throw new AiRefusal('not_found', '部品が今指している移る先の画面設計が、もうありません。designId も書いてください。');
+  return owner;
 }
 // テーブルの列（{ name, type, required, memo, props } の配列）。同じ名前の列は今の列（id）を残して直す
 function aiTableColumns(cur, cols) {
@@ -9237,8 +9251,8 @@ function aiTableColumns(cur, cols) {
     return normalizeColumn(col);
   });
 }
-// 項目の設定（edit_items の props）を検め、項目に入れる形で返す
-function aiItemProps(d, item, props) {
+// 項目の設定（edit_items の props）を検め、項目に入れる形で返す。tx があれば、なくなったステータスを使っていた操作を消したことを知らせる
+function aiItemProps(d, item, props, tx = null) {
   if (props == null) return null;
   if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
   if (item.type === 'table') {
@@ -9248,9 +9262,9 @@ function aiItemProps(d, item, props) {
   if (item.type === 'status') {
     if ('actions' in props) throw aiBad('ステータスの操作（actions）は、edit_process で直してください（edit_items で書けるのは states だけです）。');
     Object.keys(props).forEach((k) => { if (k !== 'states') throw aiBad(`ステータスの項目の設定に「${k}」という欄はありません（使える欄: states）。`); });
-    const states = aiArr(props.states, 'states').map((s) => cleanName(aiStrVal(s, 'states の中身'))).filter(Boolean);
-    if (!states.length) throw aiBad('states にステータスを 1 つ以上書いてください。');
-    return statePropsFromNames(item.props, states).props; // 同じ名前のステータスは今の id を残す
+    const { props: next, removed } = statePropsFromNames(item.props, aiStateNameList(props.states)); // 同じ名前のステータスは今の id を残す
+    if (tx) aiRemovedNote(tx, removed);
+    return next;
   }
   return keepInitialInOptions(item.type, { ...item.props, ...aiProps(item.type, props, d) });
 }
@@ -9363,7 +9377,7 @@ function aiItemOp(tx, op) {
         if ('memo' in op) it.memo = str(op.memo);
         if (op.props != null) {
           const before = stateIdsOf(it);
-          it.props = aiItemProps(dd, it, op.props);
+          it.props = aiItemProps(dd, it, op.props, tx);
           clearGoneStates(dd, it, before);
         }
       });
@@ -9540,10 +9554,21 @@ function aiScreenOp(tx, op) {
     case 'move':
       actions.moveScreen(id, sc.id, aiMoveIndex(d().screens, sc.id, op, (ref) => aiResolveScreen(d(), ref)));
       return { op: 'move', id: sc.id, name: sc.name, index: d().screens.findIndex((s) => s.id === sc.id) };
-    case 'delete':
+    case 'delete': {
       if (d().screens.length < 2) throw new AiRefusal('last_screen', '最後の 1 つの画面は消せません。');
+      // ほかの画面設計のボタン・リンクの文字がこの画面を移る先にしていれば、それも外れる（人が消すときと同じ。ごみ箱の画面設計の分も）。
+      // その画面設計にも「AI が直す前の状態」の行を残し（そこから戻せるように）、返事で知らせる
+      const others = screenRefsInto(store.state, id, sc.id).filter((x) => x.design.id !== id);
+      const befores = others.map((x) => aiBeforeRow(tx.ctx, x.design)).filter(Boolean);
       actions.deleteScreen(id, sc.id);
+      befores.forEach(aiAddBeforeRow);
+      if (others.length) {
+        const n = others.reduce((m, x) => m + x.count, 0);
+        tx.warnings.push(`ほかの画面設計のボタンとリンクの文字 ${n} 個が、この画面を移る先にしていたので、移る先を外しました（${others.map((x) => `「${x.design.name}」${x.count} 個`).join('・')}）。`
+          + `それぞれの改訂履歴の「${aiClientLabel(tx.ctx.client)} が直す前の状態」から戻せます。`);
+      }
       return { op: 'delete', id: sc.id, name: sc.name };
+    }
     default: throw aiUnknownOp(op, AI_SCREEN_OPS);
   }
 }
@@ -9641,7 +9666,7 @@ function aiLayoutSpec(tx, d, e, used, plan) {
     spec.itemId = item.id;
     if (e.props != null && !plan.created.includes(item)) {
       if (item.link) throw new AiRefusal('linked', `「${item.name}」は「${item.link.designName}」から取り込んだ項目なので、設定はここでは直せません。`);
-      plan.itemPatches.push({ itemId: item.id, props: aiItemProps(d, item, e.props) });
+      plan.itemPatches.push({ itemId: item.id, props: aiItemProps(d, item, e.props, tx) });
     }
     if (item.type === 'status') spec.view = { current: aiStatusCurrent(item, e.current) };
   } else {
@@ -9796,9 +9821,9 @@ function aiPartPatch(tx, d, p, op) {
   if (op.required !== undefined) patch.required = !!op.required;
   if (op.memo !== undefined) patch.memo = aiStrVal(op.memo, 'memo');
   if (op.props !== undefined) {
-    if (item) patch.props = aiItemProps(d, item, op.props);
+    if (item) patch.props = aiItemProps(d, item, op.props, tx);
     else if (p.type === 'table') patch.props = aiTablePartProps(p.tableKind, p.props, op.props, d);
-    else patch.props = aiProps(p.type, op.props, d);
+    else patch.props = aiProps(p.type, op.props, d, p.props);
   }
   if (op.style !== undefined && p.type !== 'button') throw aiBad('style を書けるのはボタンだけです。');
   if (op.to !== undefined && !MOVE_PART_TYPES.includes(p.type)) throw aiBad(AI_TO_PARTS);
