@@ -485,6 +485,16 @@ body.sorting,body.sorting *{cursor:grabbing!important}
 .mnode.ext b{color:#475569}
 .mnode.cur{background:#eff6ff;border:2.5px solid #2563eb}
 .mnode.cur b{color:#1d4ed8}
+/* スイムレーン図（第 9 段階。画像 q62・q63）: 左に役割の名前の列、作業の箱は文字を真ん中に 2 行まで。箱の形は種類で変える
+   （始まり・終わり＝角の丸い箱、システムへの入力＝左右が二重線、判断＝ひし形、書類＝下が波） */
+.swim-lab{position:absolute;left:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 10px;font-weight:700;font-size:13px;line-height:1.4;color:#0f172a;overflow:hidden}
+.mnode.sw{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:4px 12px}
+.mnode.sw b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;max-width:100%;font-size:13px;line-height:17px;white-space:normal}
+.mnode.sw .ref{display:block;max-width:100%;font-size:10.5px;line-height:15px;color:#1d4ed8;background:#eff6ff;border-radius:4px;padding:0 5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mnode.k-start,.mnode.k-end{border-radius:32px;background:#f0fdf4;border-color:#15803d}
+.mnode.k-input{border-left:6px double #1d3f6e;border-right:6px double #1d3f6e}
+.mnode.k-decision{padding:4px 32px;border:none;box-shadow:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 64' preserveAspectRatio='none'%3E%3Cpolygon points='100,2 198,32 100,62 2,32' fill='%23fffbeb' stroke='%23b45309' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") no-repeat center/100% 100%}
+.mnode.k-doc{padding-bottom:12px;border:none;box-shadow:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 64' preserveAspectRatio='none'%3E%3Cpath d='M2,2 H198 V52 C150,40 120,66 100,56 C70,44 40,66 2,54 Z' fill='%23fff' stroke='%231d3f6e' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") no-repeat center/100% 100%}
 body.map-dragging,body.map-dragging *{cursor:grabbing!important}
 .tb-pick{display:flex;flex-wrap:wrap;gap:4px}
 .tb-pick .pal-item{width:auto;flex:0 0 auto;cursor:pointer}
@@ -2553,6 +2563,7 @@ function normalizeMapPos(src) {
 // 1 つの画面設計を 2 つ以上のシステムに入れられる（案B）。どのシステムに入っているかは、システムの designIds だけに持つ（画面設計の側には持たない）。
 // 画面設計をごみ箱へ移しても designIds からは外さない（戻したときに元のシステムに戻るように）。完全に削除したときに、全部のシステムから外す
 const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end']; // 始まり・作業・システムへの入力・判断・書類・終わり
+const SWIM_KIND_NAMES = { start: '始まり', task: '作業', input: 'システムへの入力', decision: '判断', doc: '書類', end: '終わり' };
 
 function createSystemData({ name, description = '' } = {}, now = nowIso()) {
   return {
@@ -4436,7 +4447,8 @@ function mapPlace(model, saved, auto, hOf) {
 // 同じ縁に何本も付くときは、縁に沿ってずらす（mapPorts）。同じ 2 つの箱の間の矢印（行きと帰りなど）は、文字を線の外側に書く。
 // o は図ごとの描き方（第 8 段階。渡さなければ、つながりの図の描き方）: idPrefix（矢印の印の id の頭）・style（線の色・太さ・点線・印の名前 mark）・
 // label（文字の行）・flat（どの行も太字で線の色）・lanes（ほかの箱を避けて同じ高さを通る線を、2 本目から 28 ずつずらす）・
-// vertical（上下に並ぶ箱の間の線の文字を線の横に書き、間にほかの箱があれば箱の右を回す。ステータスの移り方の図）
+// vertical（上下に並ぶ箱の間の線の文字を線の横に書き、間にほかの箱があれば箱の右を回す。ステータスの移り方の図）・
+// under（線の下に描く SVG の文字。スイムレーン図の帯。第 9 段階）。文字の行がない（どの行も空の）矢印は、文字も文字の下地も描かない
 const mapEdgeStyle = (e) => (e.kind === 'link' ? { col: '#16a34a', w: 2, dash: '6 4', mark: 'g', light: true } : { col: '#1d3f6e', w: 2.5, mark: 'n' });
 const mapEdgeLabel = (e) => (e.kind === 'link' ? [`取り込み: ${e.labels.join('・')}`]
   : e.kind === 'related' ? ['関連レコード一覧', e.labels.join('・')]
@@ -4459,7 +4471,9 @@ function mapEdgesSvg(model, pos, w, h, o = {}) {
     const same = pairs.get(pairOf(e));
     return same.length > 1 ? (same.indexOf(e) < (same.length - 1) / 2 ? -1 : 1) : 0;
   };
-  const labelWidth = (label) => Math.min(MAP_COL - MAP_W - 8, Math.max(...label.map((s) => s.length)) * 12 + 12);
+  // 文字の行がないときに Math.max() が -Infinity になり、文字の下地の rect が壊れていた（第 9 段階）
+  const hasText = (label) => label.some((s) => s);
+  const labelWidth = (label) => (hasText(label) ? Math.min(MAP_COL - MAP_W - 8, Math.max(...label.map((s) => s.length)) * 12 + 12) : 0);
   // 上下に並ぶ箱の間で、間にほかの箱がある線は、箱の右を回す（短い線ほど内側）。縁の位置の割り振り（mapPorts）には数えない
   const aroundEdges = model.edges.filter((e) => vertical(e) && procBracket(box(e.from), box(e.to), othersOf(e), 0));
   const ports = mapPorts(aroundEdges.length ? { ...model, edges: model.edges.filter((e) => !aroundEdges.includes(e)) } : model, pos);
@@ -4487,13 +4501,14 @@ function mapEdgesSvg(model, pos, w, h, o = {}) {
     }
     const st = styleOf(e);
     marks.set(st.mark, st.col);
+    const line = `<path d="${g.d}" fill="none" stroke="${st.col}" stroke-width="${st.w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''} marker-end="url(#${idp}-arrow-${st.mark})"/>`;
     const label = labelOf(e);
+    if (!hasText(label)) return line; // 文字のない矢印（スイムレーン図の矢印の多く）は、線だけ
     const lh = 16 + (label.length - 1) * 15;
     const tw = labelWidth(label);
     const [mx, my] = !vert ? [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)]
       : g.detour ? [outer + 8 + tw / 2, g.my] : [g.mx + (outside || 1) * (tw / 2 + 12), g.my];
     const text = label.map((s, j) => `<text x="${(mx - tw / 2 + 6).toFixed(1)}" y="${(my + 4 + j * 15 - (label.length - 1) * 7.5).toFixed(1)}" font-size="${j ? 11 : 12}" font-weight="${(j && !o.flat) || st.light ? 400 : 700}" fill="${j && !o.flat ? '#475569' : st.col}">${esc(s)}</text>`).join('');
-    const line = `<path d="${g.d}" fill="none" stroke="${st.col}" stroke-width="${st.w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''} marker-end="url(#${idp}-arrow-${st.mark})"/>`;
     const tag = `
       <rect x="${(mx - tw / 2).toFixed(1)}" y="${(my - 9 - (label.length - 1) * 7.5).toFixed(1)}" width="${tw}" height="${16 + (label.length - 1) * 15}" rx="4" fill="#fff" opacity=".92"/>${text}`;
     // つながりの図は今までどおり線と文字を交互に書く。ほかの図は、文字が後の線に隠れないように、線を全部書いてから文字を書く
@@ -4505,7 +4520,7 @@ function mapEdgesSvg(model, pos, w, h, o = {}) {
   const defs = o.style ? [...marks].map(([mk, col]) => mapMarker(`${idp}-arrow-${mk}`, col)).join('')
     : mapMarker(`${idp}-arrow-n`, '#1d3f6e') + mapMarker(`${idp}-arrow-g`, '#16a34a');
   return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>${defs}
-    </defs>${paths}</svg>`;
+    </defs>${o.under || ''}${paths}</svg>`;
 }
 // 箱のどちらの縁（l・r・t・b）から線を出すか
 function mapSides(a, b) {
@@ -4587,6 +4602,8 @@ const VIEW_POS = { map: 'mapPos', process: 'processPos', flow: 'flowPos' };
 const VIEW_DRAW = {
   process: { style: (e) => (e.kind === 'back' ? { col: '#ea580c', w: 2, dash: '6 4', mark: 'o' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels.slice(0, 2), vertical: true },
   flow: { style: (e) => (e.kind === 'link' ? { col: '#16a34a', w: 2, dash: '3 4', mark: 'g' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels.slice(0, 3), flat: true, lanes: true },
+  // スイムレーン図（第 9 段階）: 流れは紺の実線、戻る流れ（差し戻しなど。列が左へ戻る矢印）は橙の点線
+  swimlane: { style: (e) => (e.kind === 'back' ? { col: '#ea580c', w: 2, dash: '6 4', mark: 'o' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels, flat: true },
 };
 // ステータスの移り方の図。箱＝ステータス（並びの順。order）、矢印＝操作（前と次の両方があるものだけ。並びで前へ戻る操作は kind 'back'）。
 // 矢印の文字は「操作の名前（操作する人）」と、2 行目に条件。outs は、そのステータスから出ていく操作の数
@@ -4704,6 +4721,130 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
 function mapLegendHtml() {
   return `<div class="map-head"><span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>
     <span class="spacer"></span><button class="btn small" data-action="map-reset" title="ドラッグで動かした箱を、自動で並べた位置に戻します">自動で並べ直す</button></div>`;
+}
+
+// ── スイムレーン図（第 9 段階。AI設計基盤_設計書.md の 5-4。画像 q62・q63）──
+// 役割（申請者・上長など）ごとの横の帯（レーン）に、作業の箱を左から列で並べ、矢印でつないだ業務の流れの図。帯の並びは役割の並び。
+// 作業の位置は、作業が持つ役割（帯）と列だけで決まる（ドラッグで動かした位置は覚えない。帯と列に吸い付く）。
+// 箱の大きさは、ほかの図と同じ 200 × 64（mapEdgesSvg が箱の大きさを決め打ちしているため）。帯は SVG の rect で描く（diagramCrop が拾うように）
+const SWIM_LABEL_W = 136; // 左の、役割の名前の列の幅
+const SWIM_COL = 240; // 列の幅（箱 200 ＋ 矢印の間 40）
+const SWIM_X0 = SWIM_LABEL_W + 24; // 列 0 の箱の左の端
+const SWIM_PAD = 24; // 帯の上と下の余白
+const SWIM_GAP = 16; // 同じ帯の同じ列に積んだ箱の間
+// 作業の指す先の名前 { design, screen, state }（指していないものは null）。画面とステータスは、指す画面設計の中から引く
+// （id は画面設計の中だけで重ならないので、画面設計と組で引く）。画面設計を指していなければ、画面とステータスも引かない
+function swimRefNames(state, ref) {
+  const out = { design: null, screen: null, state: null };
+  if (!ref || !ref.designId) return out;
+  const d = findDesign(state, ref.designId);
+  out.design = d ? d.name : '（ない画面設計）';
+  if (ref.screenId) {
+    const s = d && d.screens.find((x) => x.id === ref.screenId);
+    out.screen = s ? s.name : '（ない画面）';
+  }
+  if (ref.stateId) {
+    const it = d && d.items.find((x) => x.type === 'status');
+    const st = it && it.props.states.find((x) => x.id === ref.stateId);
+    out.state = st ? st.name : '（ないステータス）';
+  }
+  return out;
+}
+// スイムレーン図のモデル。箱 { key: 'w:作業の id', step, laneIndex（帯の番号）, col, ref（指す先の名前）}。役割が見つからない作業は描かない。
+// 矢印 { from, to, kind, labels, edge } は両端の箱があるものだけ。先の作業の列が元の作業の列より小さい矢印は kind 'back'（差し戻しなど）
+function swimlaneModel(state, sys) {
+  const laneOf = new Map(sys.roles.map((r, i) => [r.id, i]));
+  const steps = sys.swimlane.steps.filter((w) => laneOf.has(w.roleId));
+  const colOf = new Map(steps.map((w) => [w.id, w.col]));
+  return {
+    nodes: steps.map((w) => ({ key: 'w:' + w.id, step: w, laneIndex: laneOf.get(w.roleId), col: w.col, ref: swimRefNames(state, w.ref) })),
+    edges: sys.swimlane.edges.filter((e) => colOf.has(e.from) && colOf.has(e.to) && e.from !== e.to).map((e) => ({
+      from: 'w:' + e.from, to: 'w:' + e.to, kind: colOf.get(e.to) < colOf.get(e.from) ? 'back' : 'next', labels: e.label ? [e.label] : [], edge: e,
+    })),
+  };
+}
+// スイムレーン図の位置。帯は役割の順に上から。同じ帯の同じ列に作業が 2 つ以上あれば、作業の並びの順に縦に積む（段の間 80）。
+// 帯の高さ＝上下の余白 24 ＋ 段の数 × 64 ＋ 段の間 16（作業のない帯も 1 段分）。戻り値 { pos, lanes: [{ role, y, h }], w, h }。数はどれも 8 の倍数
+function swimlaneLayout(model, sys) {
+  const rows = sys.roles.map(() => 1);
+  const used = new Map(); // '帯|列' → その枠に積んだ箱の数
+  const rowOf = new Map();
+  model.nodes.forEach((n) => {
+    const k = n.laneIndex + '|' + n.col;
+    const r = used.get(k) || 0;
+    used.set(k, r + 1);
+    rowOf.set(n.key, r);
+    rows[n.laneIndex] = Math.max(rows[n.laneIndex], r + 1);
+  });
+  let y = 0;
+  const lanes = sys.roles.map((role, i) => {
+    const lane = { role, y, h: SWIM_PAD * 2 + rows[i] * MAP_H + (rows[i] - 1) * SWIM_GAP };
+    y += lane.h;
+    return lane;
+  });
+  const pos = Object.fromEntries(model.nodes.map((n) => [n.key, {
+    x: SWIM_X0 + n.col * SWIM_COL, y: lanes[n.laneIndex].y + SWIM_PAD + rowOf.get(n.key) * (MAP_H + SWIM_GAP), h: MAP_H,
+  }]));
+  const w = Math.max(600, ...Object.values(pos).map((p) => p.x + MAP_W + 40));
+  return { pos, lanes, w, h: y };
+}
+// 作業の箱の札の文字（指す先が画面ならその画面、なければステータス、画面設計だけならその画面設計）と、マウスを乗せたときの文
+function swimRefTag(ref) {
+  if (ref.screen) return '画面: ' + ref.screen;
+  if (ref.state) return 'ステータス: ' + ref.state;
+  return ref.design ? '画面設計: ' + ref.design : '';
+}
+function swimStepTitle(n) {
+  const w = n.step;
+  return [`${SWIM_KIND_NAMES[w.kind]}: ${w.text || '（文字なし）'}`,
+    n.ref.design && '画面設計: ' + n.ref.design, n.ref.screen && '画面: ' + n.ref.screen, n.ref.state && 'ステータス: ' + n.ref.state,
+    w.memo && 'メモ: ' + w.memo].filter(Boolean).join('\n');
+}
+// スイムレーン図の HTML（システムの画面・AI の画像で使う）。o: idPrefix（矢印の印の id の頭）・bare（id="map-inner" を付けない）。
+// 役割がないときは案内の文、作業がないときは帯だけ
+function swimlaneHtml(state, sys, o = {}) {
+  if (!sys.roles.length) return '<p class="map-empty">役割がまだありません。役割（申請者・上長など）を足すと、役割ごとの横の帯ができ、作業の箱を並べられます。</p>';
+  const model = swimlaneModel(state, sys);
+  const { pos, lanes, w, h } = swimlaneLayout(model, sys);
+  // 帯（白と薄い灰を交互に）と、左の名前の列。rect の属性は x・y・width・height の順（diagramCrop が拾う形）
+  const bands = lanes.map((l, i) => `<rect x="0" y="${l.y}" width="${w}" height="${l.h}" fill="${i % 2 ? '#f8fafc' : '#fff'}" stroke="#cbd5e1"/>`
+    + `<rect x="0" y="${l.y}" width="${SWIM_LABEL_W}" height="${l.h}" fill="#e8eef6" stroke="#cbd5e1"/>`).join('');
+  const labs = lanes.map((l) => `<div class="swim-lab" style="top:${l.y}px;width:${SWIM_LABEL_W}px;height:${l.h}px"${l.role.memo ? ` title="${esc(l.role.memo)}"` : ''}>${esc(l.role.name)}</div>`).join('');
+  const nodes = model.nodes.map((n) => {
+    const p = pos[n.key];
+    const tag = swimRefTag(n.ref);
+    return `<div class="mnode sw k-${n.step.kind}" data-node="${esc(n.key)}" title="${esc(swimStepTitle(n))}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${MAP_H}px">`
+      + `<b>${esc(n.step.text || SWIM_KIND_NAMES[n.step.kind])}</b>${tag ? `<span class="ref">${esc(tag)}</span>` : ''}</div>`;
+  }).join('');
+  const svg = mapEdgesSvg(model, pos, w, h, { ...VIEW_DRAW.swimlane, idPrefix: o.idPrefix || 'swim', under: bands });
+  return `<div class="map-inner swim-inner"${o.bare ? '' : ' id="map-inner"'} data-view="swimlane" data-focus="${esc(sys.id)}" style="width:${w}px;height:${h}px">${svg}${labs}${nodes}</div>`;
+}
+// 列を書かなかった作業（col が null か undefined）に、矢印の順から列を付けた写しを返す（AI がスイムレーン図を組み立てるときに使う）。
+// 列はつながりの図と同じく、矢印の元から何段目か（mapForwardEdges で輪を閉じる矢印〔差し戻しなど〕を外し、mapRanks で決める）。
+// 列を書いた作業はそのまま動かさず、列のない作業は、前の作業（矢印の元）のいちばん右の列の次にする。前の作業がなく、列を書いた
+// 次の作業があれば、そのすぐ左の列。矢印のない作業は、作業の並びの順に、列のある作業のいちばん右の次の列（作業を足す addStep と同じ）
+function swimAutoCols(steps, edges) {
+  const out = steps.map((w) => ({ ...w }));
+  const byId = new Map(out.map((w) => [w.id, w]));
+  const model = {
+    nodes: out.map((w) => ({ key: w.id })),
+    edges: edges.filter((e) => isObj(e) && byId.has(e.from) && byId.has(e.to) && e.from !== e.to).map((e) => ({ from: e.from, to: e.to, order: 0 })),
+  };
+  const forward = mapForwardEdges(model);
+  const rank = mapRanks(model, forward);
+  const open = (w) => w.col == null;
+  const colOf = (w) => Number(w.col) || 0;
+  const linked = new Set(forward.flatMap((e) => [e.from, e.to]));
+  // 矢印の元を先に決める（mapRanks の段は、矢印の先ほど大きい）
+  out.filter((w) => linked.has(w.id) && open(w)).sort((a, b) => rank.get(a.id) - rank.get(b.id)).forEach((w) => {
+    const prev = forward.filter((e) => e.to === w.id).map((e) => byId.get(e.from));
+    const fixedNext = forward.filter((e) => e.from === w.id).map((e) => byId.get(e.to)).filter((x) => !open(x));
+    w.col = prev.length ? Math.max(...prev.map(colOf)) + 1 : fixedNext.length ? Math.max(0, Math.min(...fixedNext.map(colOf)) - 1) : rank.get(w.id);
+  });
+  out.filter((w) => !linked.has(w.id) && open(w)).forEach((w) => {
+    w.col = Math.max(-1, ...out.filter((x) => !open(x)).map(colOf)) + 1;
+  });
+  return out;
 }
 
 function renderCards() {
@@ -8003,15 +8144,17 @@ function exportPngDocs(d, state, screenIds = null, diffRevId = null, parts = {})
 const pngDocHtml = (title, body) => '<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="UTF-8">\n<title>' + esc(title) + '</title>\n<style>' + APP_STYLE
   + '\nhtml,body{margin:0;background:#fff}\n</style>\n</head>\n<body class="xp-doc">\n' + body + '\n</body>\n</html>\n';
 
-// 図の凡例（AI の図の画像。第 8 段階）
-const VIEW_TITLES = { map: 'つながりの図', process: 'ステータスの移り方', flow: '画面の移り方' };
+// 図の凡例（AI の図の画像。第 8 段階。スイムレーン図は第 9 段階）
+const VIEW_TITLES = { map: 'つながりの図', process: 'ステータスの移り方', flow: '画面の移り方', swimlane: 'スイムレーン図' };
 const VIEW_LEGENDS = {
   map: '<span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>',
   process: '<span><i></i>先へ進む操作</span><span><i class="b"></i>前へ戻る操作（差し戻しなど）</span>',
   flow: '<span><i></i>ボタン</span><span><i class="g"></i>リンクの文字</span><span><i class="x"></i>ほかの画面設計の画面</span>',
+  swimlane: '<span><i></i>流れ</span><span><i class="b"></i>戻る流れ（差し戻しなど）</span>'
+    + '<span>箱の形: 角の丸い箱＝始まり・終わり／ひし形＝判断／左右が二重線＝システムへの入力／下が波＝書類</span>',
 };
-// 図の HTML（mapHtml・viewHtml）の、箱と線と矢印の文字のある所（まわりに 16 の余白）。戻り値 { x0, y0, cw, ch }。箱がなければ null。
-// 線は曲げる点まで数える（線の形より少し広くなるが、切れない）
+// 図の HTML（mapHtml・viewHtml・swimlaneHtml）の、箱と線と矢印の文字と帯（スイムレーン図）のある所（まわりに 16 の余白）。
+// 戻り値 { x0, y0, cw, ch }。箱も帯もなければ null。線は曲げる点まで数える（線の形より少し広くなるが、切れない）
 function diagramCrop(html) {
   const xs = [];
   const ys = [];
@@ -8021,8 +8164,9 @@ function diagramCrop(html) {
     ys.push(y, y + h);
   });
   rects(/class="mnode[^"]*"[^>]*style="left:(-?[\d.]+)px;top:(-?[\d.]+)px;width:([\d.]+)px;height:([\d.]+)px"/g);
-  if (!xs.length) return null;
+  // SVG の rect（矢印の文字の下地と、スイムレーン図の帯）。ほかの図では、箱がなければ rect もない
   rects(/<rect x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"/g);
+  if (!xs.length) return null;
   [...html.matchAll(/<path d="([^"]+)"[^>]*marker-end=/g)].forEach((m) => {
     const n = (m[1].match(/-?[\d.]+/g) || []).map(Number);
     for (let i = 0; i + 1 < n.length; i += 2) {
@@ -8030,7 +8174,7 @@ function diagramCrop(html) {
       ys.push(n[i + 1]);
     }
   });
-  const m = html.match(/class="map-inner"[^>]*style="width:([\d.]+)px;height:([\d.]+)px"/);
+  const m = html.match(/class="map-inner[^"]*"[^>]*style="width:([\d.]+)px;height:([\d.]+)px"/); // スイムレーン図は class="map-inner swim-inner"
   const [mw, mh] = m ? [Number(m[1]), Number(m[2])] : [Infinity, Infinity];
   const pad = 16;
   const [x0, y0] = [Math.max(0, Math.min(...xs) - pad), Math.max(0, Math.min(...ys) - pad)];
@@ -8043,15 +8187,27 @@ function viewImageDoc(d, state, view) {
   const model = view === 'map' ? mapModel(state, d.id) : view === 'process' ? processModel(d) : flowModel(state, d);
   const html = view === 'map' ? mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xi-map' }).replace(' id="map-inner"', '')
     : viewHtml(view, state, d, d[VIEW_POS[view]] || {}, { idPrefix: 'xi-' + view, bare: true });
+  return diagramImageDoc(`${d.name} ／ ${VIEW_TITLES[view]}`, VIEW_LEGENDS[view], html, { boxes: model.nodes.length, arrows: model.edges.length });
+}
+// スイムレーン図の画像の文書（AI の get_view_image。第 9 段階）。題はシステムの名前。戻り値は viewImageDoc と同じ形。
+// 凡例が長い（箱の形の意味まで書く）ので、凡例が 1 行に収まるように、画像の幅を 880 + 余白より狭くしない
+function swimlaneImageDoc(state, sys) {
+  const model = swimlaneModel(state, sys);
+  const html = swimlaneHtml(state, sys, { idPrefix: 'xi-swim', bare: true });
+  return diagramImageDoc(`${sys.name} ／ ${VIEW_TITLES.swimlane}`, VIEW_LEGENDS.swimlane, html, { boxes: model.nodes.length, arrows: model.edges.length }, 880);
+}
+// 図の画像の文書の骨組み（ページの枠なし・縮めない・上に凡例・まわりに白の余白）。図の HTML の箱のある所（diagramCrop）を切り出す。
+// 箱がなければ（案内の文だけのとき）480 × 120 を切り出す。minW は図の部分の幅の下限。counts（{ boxes, arrows }）は戻り値にそのまま入れる
+function diagramImageDoc(title, legend, html, counts, minW = 480) {
   const c = diagramCrop(html) || { x0: 0, y0: 0, cw: 480, ch: 120 };
   const LEGEND_H = 28;
-  const width = Math.max(c.cw, 480) + PNG_MARGIN * 2;
+  const width = Math.max(c.cw, minW) + PNG_MARGIN * 2;
   const height = c.ch + LEGEND_H + PNG_MARGIN * 2;
   const body = `<div class="xp-png" style="width:${width}px;height:${height}px">`
-    + `<div class="xp-legend" style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN}px">${VIEW_LEGENDS[view]}</div>`
+    + `<div class="xp-legend" style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN}px">${legend}</div>`
     + `<div style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN + LEGEND_H}px;width:${c.cw}px;height:${c.ch}px;overflow:hidden">`
     + `<div style="position:absolute;left:${-c.x0}px;top:${-c.y0}px">${html}</div></div></div>`;
-  return { html: pngDocHtml(`${d.name} ／ ${VIEW_TITLES[view]}`, body), width, height, boxes: model.nodes.length, arrows: model.edges.length };
+  return { html: pngDocHtml(title, body), width, height, ...counts };
 }
 
 // ── 書き出す HTML（単体で開いて編集できる HTML。q37）──
@@ -10956,6 +11112,7 @@ function exposeForTest() {
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
     changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
     SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
+    swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
