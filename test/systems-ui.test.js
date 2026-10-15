@@ -547,7 +547,7 @@ test('「開く」でシステムの画面（ui.view が system）を開き、�
   assert.deepEqual([api.ui.view, api.ui.systemId], ['system', 'y-exp']);
   assert.equal(api.store.canUndo(), false);
   assert.match($('.brandbar').textContent, /経費精算システム/);
-  assert.match($('#app').textContent, /システムの画面は次に作ります/);
+  assert.ok($('#sys-view'), 'システムの画面（中身は test/system-screen.test.js）');
   assert.ok($('#ai-bands'));
   // システムの画面で中身が変わったら描き直す
   api.actions.updateSystem('y-exp', { name: '経費精算システム（改）' });

@@ -583,6 +583,40 @@ body.map-dragging,body.map-dragging *{cursor:grabbing!important}
 .pa-card .field{margin-bottom:6px}
 .pa-card .field input{font-size:12px;padding:4px 6px}
 .pa-card .field>span{font-size:11px}
+/* ── システムの画面（第 9 段階。画像 q62 の案A・q64 の案A・q65）── 編集の画面と同じ形: 上にメニューバー、左に入口 4 つと画面設計のカード、
+   真ん中に押した入口の中身、右に案内。左の欄（.screen-list）と右の欄（.side-panel）の幅は編集の画面と同じ */
+.brand-design small{font-size:11px;color:#94a3b8;margin-left:2px}
+.sys-entry>span:last-child{min-width:0}
+.sys-entry small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sys-dwrap{padding-bottom:8px}
+.sys-dwrap.drop-before::before{top:-5px}
+.sys-dwrap.drop-after::after{bottom:2px}
+.sys-dcard{display:block;width:100%;border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:6px;text-align:left;cursor:pointer}
+.sys-dcard:hover{border-color:#94a3b8;box-shadow:0 2px 8px rgba(15,23,42,.08)}
+.sys-dcard.shared{border:2px solid #15803d;padding:5px}
+.sys-dthumb{display:flex;justify-content:center;background:#f8fafc;border-radius:4px}
+.sys-dcard b{display:block;margin-top:5px;font-size:12.5px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sys-dcard .share-tag{margin:4px 0 0}
+body.screen-sorting .sys-dcard.dragging{opacity:.4}
+.sys-dempty{color:#64748b;font-size:12px;line-height:1.6;margin-bottom:8px}
+.sys-add{width:100%;justify-content:center}
+.pop-menu.sys-pop.sys-fixed{position:fixed;right:auto;z-index:30}
+.sys-empty{color:#64748b;font-size:13px;line-height:1.7;margin:6px 0 12px}
+.sys-sum{margin-top:2px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:12.5px;color:#475569}
+.sys-role{gap:6px;margin-bottom:6px}
+.sys-role input[data-sy="role-name"]{flex:1 1 0}
+.sys-role input[data-sy="role-memo"]{flex:1.4 1 0}
+.sys-role input::placeholder{color:#94a3b8}
+.sys-role .cnt{width:66px;flex-shrink:0;text-align:right;font-size:11.5px;color:#64748b;white-space:nowrap}
+.sys-swim{max-height:max(240px,calc(100vh - 300px))}
+.swim-zoom{position:relative;overflow:hidden}
+.mnode.sw.sel{outline:3px solid #2563eb;outline-offset:3px}
+.sys-hist td{vertical-align:middle}
+.sys-hist td .btn{white-space:nowrap}
+.sys-hist .h-ai{color:#7c3aed;font-weight:700}
+.sys-hist .h-auto{color:#64748b}
+#sys-side .hint+.hint{margin-top:8px}
+.sys-step{border:1px solid #e2e8f0;border-radius:7px;background:#f8fafc;padding:8px 10px;margin-bottom:10px;font-size:12.5px;line-height:1.6;overflow-wrap:anywhere}
 /* ── 書き出しと取り込み（第 5 段階）───────────────────────────── */
 /* 書き出しの窓（画像 q33） */
 .xp-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
@@ -2717,6 +2751,8 @@ function systemContentFrom(raw) {
 function normalizeSystemRevision(r) {
   return { ...r, id: str(r.id) || newId('r'), kind: str(r.kind), date: str(r.date) || null, note: str(r.note), snapshot: isObj(r.snapshot) ? systemContentFrom(r.snapshot) : null };
 }
+// 履歴の行の名前。AI が直す前の状態なら AI の名前の入った文（「Claude Code が直す前の状態」）、ほかは種類の名前（「戻す前の状態」）
+const systemRevisionTitle = (r) => (r.kind === 'ai' && r.note ? r.note : revisionTitle(r));
 // 履歴の行。content を渡すと、それを写しにする（AI が直す前の中身。渡さなければ今の中身）
 function systemRevisionRow(y, kind, { note = '', date = nowIso(), content = null } = {}) {
   const snapshot = deepFreeze(content ? clone(content) : clone(systemContentOf(y)));
@@ -3368,8 +3404,7 @@ const actions = {
     const y = editableSystem(sysId);
     const r = y && rowId ? y.revisions.find((x) => isObj(x) && x.id === rowId) : null;
     if (!hasSnapshot(r)) return false;
-    // 行の名前は、AI が直す前の状態なら AI の名前の入った文（「Claude Code が直す前の状態」）、ほかは種類の名前（「戻す前の状態」）
-    const title = r.kind === 'ai' && r.note ? r.note : revisionTitle(r);
+    const title = systemRevisionTitle(r);
     return mutateSystem(sysId, (yy, s) => {
       const from = systemFromSnapshot(r.snapshot, s);
       yy.revisions.push(systemRevisionRow(yy, 'restore', { note: `「${title}（${revisionDay(r)}）」に戻す前の状態` }));
@@ -4470,7 +4505,14 @@ const ui = {
   // 最初の画面の左の一覧で人が選んだまとまり（システムの id か 'lone'〔システムに入っていない〕。null は選んでいない〔いちばん上を出す〕。
   // アプリを閉じるまで覚える。一覧へ戻ったときもそのまま。第 9 段階）
   homeGroup: null,
-  sysMenu: null, // 最初の画面のシステムのまとまりで開いているメニュー（'add:システムの id'〔＋ 画面設計を入れる〕か 'more:システムの id'〔…〕）
+  sysMenu: null, // 最初の画面のシステムのまとまりで開いているメニュー（'add:システムの id'〔＋ 画面設計を入れる〕か 'more:システムの id'〔…〕）。システムの画面の「＋ 画面設計を入れる ▾」も同じ
+  // システムの画面（第 9 段階の T6a）。どれも保存しない
+  sysPanel: 'swimlane', // 真ん中に出している入口: 'overview'（概要）・'roles'（役割）・'swimlane'（スイムレーン図）・'history'（履歴）
+  sysPanels: {}, // システムの id → そのシステムで最後に開いた入口（アプリを閉じるまで覚える）
+  sysZoom: 1, // スイムレーン図の倍率
+  stepSel: null, // スイムレーン図で選んでいる作業の id
+  sysDesignMenu: null, // 左の画面設計のカードで「…」のメニューを開いている画面設計の id
+  editorFrom: null, // 編集の画面の「← システムへ」で戻るシステムの id（システムの画面から開いたとき。最初の画面から開いたときは null）
   trashOpen: false,
   designId: null,
   screenId: null,
@@ -4955,7 +4997,8 @@ function swimStepTitle(n) {
     n.ref.design && '画面設計: ' + n.ref.design, n.ref.screen && '画面: ' + n.ref.screen, n.ref.state && 'ステータス: ' + n.ref.state,
     w.memo && 'メモ: ' + w.memo].filter(Boolean).join('\n');
 }
-// スイムレーン図の HTML（システムの画面・AI の画像で使う）。o: idPrefix（矢印の印の id の頭）・bare（id="map-inner" を付けない）。
+// スイムレーン図の HTML（システムの画面・AI の画像で使う）。o: idPrefix（矢印の印の id の頭）・bare（id="map-inner" を付けない）・
+// zoom（システムの画面の倍率。図を transform で縮め、縮めた大きさの枠 .swim-zoom で包む〔スクロールの範囲を縮めた大きさにするため〕）。
 // 役割がないときは案内の文、作業がないときは帯だけ
 function swimlaneHtml(state, sys, o = {}) {
   if (!sys.roles.length) return '<p class="map-empty">役割がまだありません。役割（申請者・上長など）を足すと、役割ごとの横の帯ができ、作業の箱を並べられます。</p>';
@@ -4972,7 +5015,9 @@ function swimlaneHtml(state, sys, o = {}) {
       + `<b>${esc(n.step.text || SWIM_KIND_NAMES[n.step.kind])}</b>${tag ? `<span class="ref">${esc(tag)}</span>` : ''}</div>`;
   }).join('');
   const svg = mapEdgesSvg(model, pos, w, h, { ...VIEW_DRAW.swimlane, idPrefix: o.idPrefix || 'swim', under: bands });
-  return `<div class="map-inner swim-inner"${o.bare ? '' : ' id="map-inner"'} data-view="swimlane" data-focus="${esc(sys.id)}" style="width:${w}px;height:${h}px">${svg}${labs}${nodes}</div>`;
+  const z = o.zoom || null;
+  const inner = `<div class="map-inner swim-inner"${o.bare ? '' : ' id="map-inner"'} data-view="swimlane" data-focus="${esc(sys.id)}" style="width:${w}px;height:${h}px${z ? `;transform:scale(${z});transform-origin:0 0` : ''}">${svg}${labs}${nodes}</div>`;
+  return z ? `<div class="swim-zoom" style="width:${Math.round(w * z)}px;height:${Math.round(h * z)}px">${inner}</div>` : inner;
 }
 // 列を書かなかった作業（col が null か undefined）に、矢印の順から列を付けた写しを返す（AI がスイムレーン図を組み立てるときに使う）。
 // 列はつながりの図と同じく、矢印の元から何段目か（mapForwardEdges で輪を閉じる矢印〔差し戻しなど〕を外し、mapRanks で決める）。
@@ -5073,10 +5118,10 @@ function sysBlockHtml(g) {
     ${g.designs.length ? `<div class="cards">${g.designs.map((d) => renderCard(d, { sys: y })).join('')}</div>` : '<p class="empty">まだ画面設計が入っていません。「＋ 画面設計を入れる」から入れます。</p>'}
   </section>`;
 }
-// 「＋ 画面設計を入れる ▾」のメニュー（画像 q46）
-function sysAddMenuHtml(y) {
+// 「＋ 画面設計を入れる ▾」のメニュー（画像 q46）。cls はシステムの画面で足すクラス（' sys-fixed'。窓に対して置く）
+function sysAddMenuHtml(y, cls = '') {
   const id = esc(y.id);
-  return `<div class="pop-menu sys-pop" role="menu">
+  return `<div class="pop-menu sys-pop${cls}" role="menu">
     <button role="menuitem" data-action="sys-add-new" data-id="${id}"><b>新しい画面設計を作る</b></button>
     <button role="menuitem" data-action="sys-add-same" data-id="${id}"><b>今ある画面設計を入れる</b><small>同じもの。編集内容は常に自動で同期する</small></button>
     <button role="menuitem" data-action="sys-add-copy" data-id="${id}"><b>今ある画面設計を複製して入れる</b><small>別のもの。新しい id。同期しない</small></button>
@@ -5089,19 +5134,21 @@ function sysMoreMenuHtml(y) {
     <button role="menuitem" class="danger" data-action="sys-trash" data-id="${id}">ごみ箱へ移す</button>
   </div>`;
 }
-// システムのまとまりの「＋ 画面設計を入れる ▾」・「…」のメニューを開く・閉じる（ui.sysMenu は 'add:システムの id' か 'more:システムの id'）
+// システムのまとまりの「＋ 画面設計を入れる ▾」・「…」のメニューを開く・閉じる（ui.sysMenu は 'add:システムの id' か 'more:システムの id'）。
+// システムの画面の左の「＋ 画面設計を入れる ▾」も同じメニュー（システムの画面では、左の一覧とメニューを描き直す）
 function toggleSysMenu(kind, id) {
   const key = `${kind}:${id}`;
-  Object.assign(ui, { sysMenu: ui.sysMenu === key ? null : key, menuFor: null });
-  refreshCards();
+  Object.assign(ui, { sysMenu: ui.sysMenu === key ? null : key, menuFor: null, sysDesignMenu: null });
+  refreshSysMenuOwner();
   const first = ui.sysMenu && $('.sys-pop [role="menuitem"]');
   if (first) first.focus(); // キーボードでも選べるように
 }
 function closeSysMenu() {
   if (!ui.sysMenu) return;
   ui.sysMenu = null;
-  refreshCards();
+  refreshSysMenuOwner();
 }
+const refreshSysMenuOwner = () => (ui.view === 'system' ? refreshSysList() : refreshCards());
 
 // カードの「最新の版」。自動で残した行（取り込む前の状態・戻す前の状態）は数えない
 function revisionLabel(d) {
@@ -5503,32 +5550,532 @@ async function onSystemAction(action, y) {
   }
 }
 
-// ── システムの画面（第 9 段階。T5 では、画面の切り替えの土台と仮の画面だけ。中身は T6a・T6b で作り直す）──
+// ── システムの画面（第 9 段階の T6a。画像 q62 の案A・q64 の案A・q65・q66）──
+// 編集の画面と同じ形: 上にメニューバー（一覧へ・元に戻す・やり直す・拡大・縮小）、左に入口 4 つ（概要・役割・スイムレーン図・履歴）と
+// 入っている画面設計のカード、真ん中に押した入口の中身（ui.sysPanel）、右に入口ごとの案内。
+// スイムレーン図の上の操作（足す・つなぐ・ドラッグ）と、右の欄の作業の設定は T6b で作る（T6a では、箱を押して選ぶだけ）
+const SYS_PANELS = ['overview', 'roles', 'swimlane', 'history'];
 // ui.view を 'system'、ui.systemId を開くシステムにする。画面設計を開くときと同じく、元に戻すの履歴を空にし、AI の知らせを片付ける
-// （AI の元に戻すの履歴の決め方〔q66〕は、この 2 つの値で決まる）。ごみ箱のシステムは開かない
-function openSystem(id) {
+// （AI の元に戻すの履歴の決め方〔q66〕は、この 2 つの値で決まる）。ごみ箱のシステムは開かない。
+// 入口は panel か、同じアプリの間にそのシステムで最後に開いた入口（ui.sysPanels。保存しない）。初めて開くシステムはスイムレーン図
+function openSystem(id, { panel = null } = {}) {
   leaveViewing();
   const y = findSystem(store.state, id);
   if (!y || y.trashedAt) return;
   aiForgetView(ui.view === 'home');
-  Object.assign(ui, { view: 'system', systemId: id, designId: null, screenId: null, menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
+  const p = SYS_PANELS.includes(panel) ? panel : ui.sysPanels[id] || 'swimlane';
+  Object.assign(ui, {
+    view: 'system', systemId: id, designId: null, screenId: null, menuFor: null, sysMenu: null, sysDesignMenu: null, stepSel: null, editorFrom: null,
+    previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false, sysPanel: p,
+  });
+  ui.sysPanels[id] = p;
   store.clearHistory();
+  mountSystem();
   renderSystem();
 }
-// システムの画面を描く（仮）。開いているシステムがごみ箱に入った・消えたときは一覧へ戻る
-function renderSystem() {
+// 入口を切り替える（左の入口・「役割を足す」・オレンジの帯の「履歴を開く」）
+function openSystemPanel(panel) {
+  if (!SYS_PANELS.includes(panel) || ui.view !== 'system') return;
+  Object.assign(ui, { sysPanel: panel, sysMenu: null, sysDesignMenu: null });
+  ui.sysPanels[ui.systemId] = panel;
+  renderSystem();
+}
+
+function mountSystem() {
+  appEl().innerHTML = `
+    <header class="brandbar"><span class="brand">モックイメージメーカー</span><span class="brand-design" id="sys-title"></span>${aiChipSlotHtml()}</header>
+    <div id="toolbar">${sysToolbarHtml()}</div>
+    <div id="ai-bands"></div>
+    <div id="sys-menu-root"></div>
+    <div class="editor-body" id="sys-body">
+      <aside class="screen-list" id="sys-list" aria-label="システムの入口と画面設計の一覧"></aside>
+      <div class="canvas-area"><div class="db-view" id="sys-view"></div></div>
+      <aside class="side-panel" id="sys-side-panel" aria-label="案内"><div class="side-settings" id="sys-side"></div></aside>
+    </div>`;
+}
+// メニューバー（編集の画面と同じ見た目。組はファイル・履歴・表示だけ）。拡大縮小は、スイムレーン図を出しているときだけ押せる
+function sysToolbarHtml() {
+  const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
+  return [
+    group('ファイル', '<button class="bigbtn" data-action="home" title="システムと画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>'),
+    group('履歴', `<div class="stack">
+      <button class="tbtn" data-action="undo" id="sys-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
+      <button class="tbtn" data-action="redo" id="sys-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
+    group('表示', `<div class="stack">
+      <button class="tbtn" data-action="zoom-in" data-sys-zoom title="スイムレーン図を拡大（Ctrl+＋）">＋ 拡大</button>
+      <button class="tbtn" data-action="zoom-out" data-sys-zoom title="スイムレーン図を縮小（Ctrl+－）">－ 縮小</button></div>
+      <button class="tbtn zoom-label" data-action="zoom-reset" data-sys-zoom id="sys-zoom-label" title="100% に戻します（Ctrl+0）">100%</button>`),
+  ].join('');
+}
+// メニューバーのボタンは描き直さず、押せる・押せないと倍率の文字だけを変える（真ん中の欄を離れたときの保存で描き直すと、押したボタンが click の前に消えるため）
+function updateSysToolbar() {
+  $('#sys-undo').disabled = !store.canUndo();
+  $('#sys-redo').disabled = !store.canRedo();
+  const zoomable = sysZoomable();
+  document.querySelectorAll('#toolbar [data-sys-zoom]').forEach((b) => { b.disabled = !zoomable; });
+  $('#sys-zoom-label').textContent = Math.round(ui.sysZoom * 100) + '%';
+}
+// 拡大縮小できるとき（スイムレーン図を出していて、役割が 1 つ以上ある）
+function sysZoomable() {
+  const y = ui.view === 'system' ? findSystem(store.state, ui.systemId) : null;
+  return !!y && ui.sysPanel === 'swimlane' && y.roles.length > 0;
+}
+
+// システムの画面を描く（中身が変わったとき・AI の帯を閉じたとき・開いたとき）。開いているシステムがごみ箱に入った・消えたときは一覧へ戻る。
+// keepMain: 真ん中の欄の文字を書き換えたときは、真ん中を描き直さない（次に押した欄が作り直されて、文字が打てなくなるため。編集の画面の keepSide と同じ）
+function renderSystem({ keepMain = false } = {}) {
   const y = findSystem(store.state, ui.systemId);
   if (!y || y.trashedAt) { goHome(); return; }
-  appEl().innerHTML = `
-    <header class="brandbar"><span class="brand">モックイメージメーカー</span><span class="brand-design" id="sys-title">${esc(y.name)}（システム）</span>${aiChipSlotHtml()}</header>
-    <div id="ai-bands"></div>
-    <main class="home-scroll">
-      <section class="home sys-temp">
-        <div class="home-head"><button class="btn" data-action="home" title="システムと画面設計の一覧へ戻ります">← 一覧へ</button><h1>${esc(y.name)}</h1></div>
-        <p class="home-note">システムの画面は次に作ります。</p>
-      </section>
-    </main>`;
+  if (!$('#sys-body')) { mountSystem(); keepMain = false; }
+  if (ui.stepSel && !findStep(y, ui.stepSel)) ui.stepSel = null;
+  $('#sys-title').innerHTML = `${esc(y.name)}<small>（システム）</small>`;
+  updateSysToolbar();
+  refreshSysList();
+  if (keepMain) document.querySelectorAll('#sys-view [data-sys-name]').forEach((el) => { el.textContent = y.name; });
+  else renderSysMain(y);
+  $('#sys-side').innerHTML = sysSideHtml(y);
   renderAiChrome();
+}
+// 左の一覧と、開いているメニューを描き直す
+function refreshSysList() {
+  const y = findSystem(store.state, ui.systemId);
+  const el = $('#sys-list');
+  if (!y || !el) return;
+  const keep = keepScroll(['#sys-list']);
+  el.innerHTML = sysScreenListHtml(y);
+  keep();
+  renderSysMenus();
+}
+
+// ── システムの画面の左の欄: 入口 4 つ（編集の画面の「データベースの項目」の札と同じ形）と、入っている画面設計のカード ──
+function sysScreenListHtml(y) {
+  const designs = designsOfSystem(store.state, y);
+  const entry = (panel, ic, label, note, title) => `<button class="db-entry sys-entry${ui.sysPanel === panel ? ' active' : ''}" data-action="sys-panel" data-panel="${panel}" aria-pressed="${ui.sysPanel === panel}" title="${title}">
+      <span class="ic">${ic}</span><span><b>${label}</b><small>${esc(note)}</small></span></button>`;
+  const steps = y.swimlane.steps.length;
+  return entry('overview', '✎', '概要', '名前と説明', 'システムの名前と説明を開きます')
+    + entry('roles', '👥', '役割', y.roles.length ? `${y.roles.length} つ` : 'まだありません', '役割（申請者・上長など。スイムレーン図の横の帯）を開きます')
+    + entry('swimlane', '⇶', 'スイムレーン図', steps ? `作業 ${steps} つ` : '作業なし', '役割ごとの帯に作業の箱を並べた、業務の流れの図を開きます')
+    + entry('history', '◷', '履歴', sysHistoryNote(y), 'AI がこのシステムを直す前の中身（自動で残した行）を開きます')
+    + `<div class="sl-sep"></div><div class="panel-title sys-dhead">${designs.length ? `画面設計 ${designs.length} つ` : '画面設計'}</div>`
+    + (designs.length ? designs.map(sysDesignCardHtml).join('') : '<p class="sys-dempty">まだ画面設計が入っていません。</p>')
+    + `<button class="btn small sys-add" data-action="sys-add-menu" data-id="${esc(y.id)}" aria-haspopup="menu" aria-expanded="${ui.sysMenu === 'add:' + y.id}">＋ 画面設計を入れる ▾</button>`;
+}
+// 履歴の入口の小さな字。AI が直す前の状態の行があればその数、なければ戻す前の状態などの行の数
+function sysHistoryNote(y) {
+  const rows = y.revisions.filter(isObj);
+  const ai = rows.filter((r) => r.kind === 'ai').length;
+  if (ai) return `AI が直す前の状態 ${ai}`;
+  return rows.length ? `戻す前の状態 ${rows.length}` : 'まだありません';
+}
+// 画面設計のカード（縮小画像・名前。ごみ箱にないシステム 2 つ以上に入っている共通の画面設計は、緑の枠と札）。押すと開き、ドラッグで並べ替える。
+// マウスを乗せると右上に「…」（開く・上へ動かす・下へ動かす・このシステムから外す）
+function sysDesignCardHtml(d) {
+  const users = systemsOf(store.state, d.id);
+  const shared = users.length > 1;
+  const id = esc(d.id);
+  return `<div class="sl-wrap sys-dwrap" data-id="${id}">
+    <button class="sys-dcard${shared ? ' shared' : ''}" data-action="sys-open-design" data-id="${id}" title="「${esc(d.name)}」を開きます（ドラッグで並べ替えます）">
+      <div class="sys-dthumb">${thumbHtml(d, d.screens[0], 152, 86)}</div><b>${esc(d.name)}</b>
+      ${shared ? `<span class="share-tag" data-action="share-tag" data-id="${id}" title="${esc(users.map((x) => x.name).join('・'))}で使っています">${users.length} つのシステムで使っている</span>` : ''}
+    </button>
+    <button class="sl-more${ui.sysDesignMenu === d.id ? ' open' : ''}" data-action="sys-design-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${ui.sysDesignMenu === d.id}" aria-label="「${esc(d.name)}」の操作" title="開く・並べ替え・このシステムから外す">…</button>
+  </div>`;
+}
+// 左の欄のメニュー（カードの「…」と「＋ 画面設計を入れる ▾」）。左の欄の外まではみ出せるように、窓に対して置く。窓の下からはみ出すときは上に開く
+function renderSysMenus() {
+  const root = $('#sys-menu-root');
+  if (!root) return;
+  const y = findSystem(store.state, ui.systemId);
+  const shown = y ? designsOfSystem(store.state, y) : [];
+  if (ui.sysDesignMenu && !shown.some((d) => d.id === ui.sysDesignMenu)) ui.sysDesignMenu = null;
+  const anchor = ui.sysDesignMenu ? [...document.querySelectorAll('#sys-list .sl-more')].find((b) => b.dataset.id === ui.sysDesignMenu)
+    : y && ui.sysMenu === `add:${y.id}` ? $('#sys-list .sys-add') : null;
+  if (!anchor) { root.innerHTML = ''; return; }
+  root.innerHTML = ui.sysDesignMenu ? sysDesignMenuHtml(shown, ui.sysDesignMenu) : sysAddMenuHtml(y, ' sys-fixed');
+  const menu = root.firstElementChild;
+  const r = anchor.getBoundingClientRect();
+  menu.style.left = Math.round(r.left) + 'px';
+  menu.style.top = Math.round(r.bottom + 4) + 'px';
+  if (r.bottom + 4 + menu.offsetHeight > window.innerHeight - 8) menu.style.top = Math.max(8, Math.round(r.top - 4 - menu.offsetHeight)) + 'px';
+}
+function sysDesignMenuHtml(shown, designId) {
+  const i = shown.findIndex((d) => d.id === designId);
+  const id = esc(designId);
+  return `<div class="screen-menu sys-dmenu" role="menu">
+    <button role="menuitem" data-action="sys-dm-open" data-id="${id}">開く</button>
+    <hr>
+    <button role="menuitem" data-action="sys-dm-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ動かす</button>
+    <button role="menuitem" data-action="sys-dm-down" data-id="${id}"${i === shown.length - 1 ? ' disabled' : ''}>下へ動かす</button>
+    <hr>
+    <button role="menuitem" data-action="sys-dm-remove" data-id="${id}">このシステムから外す</button>
+  </div>`;
+}
+function toggleSysDesignMenu(id) {
+  Object.assign(ui, { sysDesignMenu: ui.sysDesignMenu === id ? null : id, sysMenu: null });
+  refreshSysList();
+  const first = ui.sysDesignMenu && $('#sys-menu-root [role="menuitem"]:not(:disabled)');
+  if (first) first.focus(); // キーボードでも選べるように
+}
+function closeSysDesignMenu() {
+  if (!ui.sysDesignMenu) return;
+  ui.sysDesignMenu = null;
+  refreshSysList();
+}
+// カードの「…」のメニューで押したもの
+function onSysDesignMenu(y, action, designId) {
+  const d = findDesign(store.state, designId);
+  const i = designsOfSystem(store.state, y).findIndex((x) => x.id === designId);
+  if (!d || i < 0) return;
+  switch (action) {
+    case 'sys-dm-open': openDesign(d.id); return;
+    case 'sys-dm-up': actions.moveDesignInSystem(y.id, d.id, i - 1); return;
+    case 'sys-dm-down': actions.moveDesignInSystem(y.id, d.id, i + 1); return;
+    case 'sys-dm-remove':
+      if (actions.removeDesignFromSystem(y.id, d.id)) toast(`「${d.name}」を${y.name}から外しました。画面設計は残っています。`);
+  }
+}
+// カードのドラッグで並べ替える（編集の画面の画面の一覧と同じ作り。放したカードの上半分なら前、下半分なら後ろ。「＋ 画面設計を入れる」の上ならいちばん下）。
+// 少し動かすまでは並べ替えを始めない（押して開くだけのとき）。並べ替えた直後の click では開かない（sysSortEndedAt）
+let sysSortEndedAt = 0;
+function startSysDesignSort(ev, designId) {
+  drag = { kind: 'sys-design-sort', id: designId, sx: ev.clientX, sy: ev.clientY, moved: false, to: null };
+}
+function dragSysDesignSort(ev) {
+  if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
+  if (!drag.moved) {
+    drag.moved = true;
+    closeSysMenu();
+    closeSysDesignMenu();
+    document.body.classList.add('screen-sorting');
+  }
+  const list = $('#sys-list');
+  if (!list) return;
+  list.querySelectorAll('.drop-before, .drop-after').forEach((w) => w.classList.remove('drop-before', 'drop-after'));
+  list.querySelectorAll('.sys-dcard').forEach((b) => b.classList.toggle('dragging', b.dataset.id === drag.id));
+  const hit = ev.target && ev.target.closest ? ev.target : null;
+  const wraps = [...list.querySelectorAll('.sys-dwrap[data-id]')];
+  if (hit && hit.closest('#sys-list .sys-add') && wraps.length) {
+    drag.to = wraps.length;
+    wraps[wraps.length - 1].classList.add('drop-after');
+    return;
+  }
+  const wrap = hit ? hit.closest('#sys-list .sys-dwrap[data-id]') : null;
+  if (!wrap) { drag.to = null; return; }
+  const r = wrap.getBoundingClientRect();
+  const after = ev.clientY > r.top + r.height / 2;
+  drag.to = wraps.indexOf(wrap) + (after ? 1 : 0);
+  wrap.classList.add(after ? 'drop-after' : 'drop-before');
+}
+// done.to は「この位置のカードの前に入れる」位置。moveDesignInSystem には、動かした後の位置を渡す
+function endSysDesignSort(done) {
+  if (!done.moved) return;
+  sysSortEndedAt = Date.now();
+  const from = designsOfSystem(store.state, ui.systemId).findIndex((d) => d.id === done.id);
+  const to = done.to == null || from < 0 ? null : done.to > from ? done.to - 1 : done.to;
+  if (to == null || !actions.moveDesignInSystem(ui.systemId, done.id, to)) refreshSysList();
+}
+
+// ── システムの画面の真ん中（押した入口の中身）──
+const SYS_MAIN = { overview: sysOverviewHtml, roles: sysRolesHtml, swimlane: sysSwimlaneHtml, history: sysHistoryHtml };
+// 同じ入口を描き直すときは、スクロールの位置と、打っている欄のフォーカスを戻す（AI が書いたときなど）
+function renderSysMain(y) {
+  const el = $('#sys-view');
+  const key = y.id + ':' + ui.sysPanel;
+  const same = el.dataset.key === key;
+  const keep = same ? keepScroll(['#sys-view', '#sys-swim']) : () => {};
+  const focus = same ? keepSysFocus() : () => {};
+  el.dataset.key = key;
+  el.innerHTML = SYS_MAIN[ui.sysPanel](y);
+  markStepSel();
+  keep();
+  focus();
+}
+// 打っている欄（data-sy）を控え、描き直した後に同じ欄へフォーカスを戻す関数を返す。
+// 名前を空にして打ち直している途中の欄は、空のまま戻す（flushSideField が待っている間に、描き直しで元の名前に戻さないため）
+function keepSysFocus() {
+  const el = document.activeElement;
+  if (!el || !el.dataset || !el.dataset.sy || !el.closest('#sys-view')) return () => {};
+  const { sy, role = '' } = el.dataset;
+  const empty = (sy === 'name' || sy === 'role-name') && !cleanName(el.value);
+  const [a, b] = [el.selectionStart, el.selectionEnd];
+  return () => {
+    const now = [...document.querySelectorAll(`#sys-view [data-sy="${sy}"]`)].find((x) => (x.dataset.role || '') === role);
+    if (!now) return;
+    if (empty) now.value = '';
+    now.focus();
+    if (a != null) now.setSelectionRange(Math.min(a, now.value.length), Math.min(b, now.value.length));
+  };
+}
+// 見出し（名前の所は、名前を直したときに描き直さずに書き換える。data-sys-name）
+const sysHead = (title, y) => `<div class="itable-head"><h3>${title}（<span data-sys-name>${esc(y.name)}</span>）</h3></div>`;
+// 数の文（0 は「役割なし」など）
+const sysCount = (n, label, unit) => (n ? `${label} ${n} ${unit}` : `${label}なし`);
+// 今ある（ごみ箱にない）画面設計の数。写しの並びには、完全に削除した画面設計も残っている
+const sysLiveDesigns = (ids) => ids.filter((id) => { const d = findDesign(store.state, id); return d && !d.trashedAt; }).length;
+// システムの中身（今の中身か、履歴の行の写し）の数の文「役割 3 つ・作業 8 つ・矢印 8 本・画面設計 2 つ」（履歴の行・戻す確かめの窓）
+function sysContentCounts(c) {
+  return [sysCount(c.roles.length, '役割', 'つ'), sysCount(c.swimlane.steps.length, '作業', 'つ'), sysCount(c.swimlane.edges.length, '矢印', '本'),
+    sysCount(sysLiveDesigns(c.designIds), '画面設計', 'つ')].join('・');
+}
+
+// 概要: 名前（1 行）と説明（複数行）の欄と、数の要約。欄は欄を離れたとき（change）に保存する（onSystemFieldChange）
+function sysOverviewHtml(y) {
+  const sum = [sysCount(designsOfSystem(store.state, y).length, '画面設計', 'つ'), sysCount(y.roles.length, '役割', 'つ'),
+    sysCount(y.swimlane.steps.length, '作業', 'つ'), sysCount(y.swimlane.edges.length, '矢印', '本')].join('・');
+  return `<div class="itable" style="max-width:760px">${sysHead('概要', y)}
+    <p class="map-note">システムの名前と、何をするシステムか（業務の目的・範囲・登場する人など）を書きます。欄を離れると保存します。</p>
+    <label class="field"><span>名前</span><input type="text" data-sy="name" maxlength="${NAME_MAX}" value="${esc(y.name)}" placeholder="例: 出張申請システム"></label>
+    <label class="field"><span>説明</span><textarea data-sy="desc" style="height:160px" placeholder="例: 出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム">${esc(y.description)}</textarea></label>
+    <p class="sys-sum">${esc(sum)}</p></div>`;
+}
+
+// 役割（画像 q64 の案A）: 1 行に 1 つ（番号・名前・メモ・作業の数・↑↓✕）。並びがスイムレーン図の帯の順。ステータスの並び（第 8 段階）と同じ形
+function sysRolesHtml(y) {
+  const n = y.roles.length;
+  const btn = (action, id, label, text, off) => `<button class="del-x" data-action="${action}" data-id="${esc(id)}" title="${label}" aria-label="${label}"${off ? ' disabled' : ''}>${text}</button>`;
+  const rows = y.roles.map((r, i) => {
+    const what = `役割「${esc(r.name)}」`;
+    const k = y.swimlane.steps.filter((w) => w.roleId === r.id).length;
+    return `<div class="ps-row sys-role" data-id="${esc(r.id)}"><span class="no">${i + 1}</span>
+      <input type="text" data-sy="role-name" data-role="${esc(r.id)}" maxlength="${NAME_MAX}" value="${esc(r.name)}" aria-label="${i + 1} つ目の役割の名前">
+      <input type="text" data-sy="role-memo" data-role="${esc(r.id)}" value="${esc(r.memo)}" placeholder="この役割の人・部署など" aria-label="${what}のメモ">
+      <span class="cnt">${k ? `作業 ${k} つ` : '作業なし'}</span>
+      ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を消す`, '✕', false)}</div>`;
+  }).join('');
+  return `<div class="itable" style="max-width:760px">${sysHead('役割', y)}
+    <p class="map-note">役割は、スイムレーン図の横の帯になります。上から順に帯を並べます。ステータスの操作の「操作する人」に同じ名前を書くと、同じ役割として扱います。</p>
+    ${rows || '<p class="sys-empty">まだ役割がありません。「＋ 役割を足す」で、申請者・上長などの役割を足します。</p>'}
+    <button class="lk-add" data-action="sys-role-add">＋ 役割を足す</button></div>`;
+}
+// 足す役割の名前（「役割 1」「役割 2」…の空いている番号）
+function freeRoleName(y) {
+  const taken = new Set(y.roles.map((r) => r.name));
+  let k = 1;
+  while (taken.has(`役割 ${k}`)) k++;
+  return `役割 ${k}`;
+}
+// 役割を足し、その名前の欄にフォーカスを置いて文字を選ぶ（すぐ打てるように）
+function addRoleAndFocus(sysId) {
+  const y = findSystem(store.state, sysId);
+  const id = y ? actions.addRole(y.id, freeRoleName(y)) : null;
+  const el = id && [...document.querySelectorAll('#sys-view [data-sy="role-name"]')].find((x) => x.dataset.role === id);
+  if (!el) return;
+  el.focus();
+  el.select();
+}
+// 役割を消す。作業の箱のある役割は確かめの窓（一緒に消える作業の箱と矢印の数。最初はキャンセル）、作業の箱のない役割は確かめずに消す
+async function deleteRoleWithConfirm(sysId, roleId) {
+  const y = findSystem(store.state, sysId);
+  const r = y && y.roles.find((x) => x.id === roleId);
+  if (!r) return;
+  const gone = new Set(y.swimlane.steps.filter((w) => w.roleId === r.id).map((w) => w.id));
+  if (gone.size) {
+    const edges = y.swimlane.edges.filter((e) => gone.has(e.from) || gone.has(e.to)).length;
+    const what = `<b>作業の箱 ${gone.size} つ</b>${edges ? `と、その箱につながる<b>矢印 ${edges} 本</b>` : ''}`;
+    const ok = await showDialog({
+      title: `役割「${r.name}」を消しますか？`,
+      okLabel: '消す',
+      okClass: 'danger',
+      body: `<p>役割「${esc(r.name)}」の帯に入っている${what}も一緒に消えます。</p><p class="hint" style="margin-top:8px">消した後でも、元に戻す（Ctrl+Z）で戻せます。</p>`,
+    });
+    if (!ok) return;
+  }
+  actions.deleteRole(sysId, roleId);
+}
+
+// スイムレーン図（見るだけ。T3 の swimlaneHtml を ui.sysZoom の倍率で描く。横と縦にスクロールする）。役割がないときは案内と「役割を足す」
+function sysSwimlaneHtml(y) {
+  if (!y.roles.length) {
+    return `<div class="itable" style="max-width:760px">${sysHead('スイムレーン図', y)}
+      <p class="sys-empty">まず「役割」で、申請者・上長などの役割を足します。役割ごとに横の帯ができます。</p>
+      <button class="btn small primary" data-action="sys-role-first" title="役割の入口へ移り、役割を 1 つ足します">役割を足す</button></div>`;
+  }
+  return `<div class="itable wide">${sysHead('スイムレーン図', y)}
+    <p class="map-note">役割ごとの横の帯に、作業の箱を左から順に並べ、矢印でつないだ業務の流れの図です。箱を押すと選べます。</p>
+    <div class="map-head">${VIEW_LEGENDS.swimlane}</div>
+    <div class="map-canvas sys-swim" id="sys-swim">${swimlaneHtml(store.state, y, { zoom: ui.sysZoom })}</div></div>`;
+}
+// 選んでいる作業の箱に、選んだ印を付ける
+function markStepSel() {
+  if (!ui.stepSel) return;
+  const n = [...document.querySelectorAll('#sys-swim .mnode.sw')].find((x) => x.dataset.node === 'w:' + ui.stepSel);
+  if (n) n.classList.add('sel');
+}
+// 作業を選ぶ（null で選ぶのをやめる）。右の欄も描き直す（右の欄の作業の設定は T6b）
+function selectStep(id) {
+  const next = id || null;
+  if (ui.stepSel === next) return;
+  ui.stepSel = next;
+  document.querySelectorAll('#sys-swim .mnode.sel').forEach((n) => n.classList.remove('sel'));
+  markStepSel();
+  const y = findSystem(store.state, ui.systemId);
+  if (y && $('#sys-side')) $('#sys-side').innerHTML = sysSideHtml(y);
+}
+// スイムレーン図の上で押したとき: 作業の箱を押すと選ぶ。何もない所を押すと、選ぶのをやめる（data-action のある所は、それぞれの受け口へ）
+function onSysSwimClick(e) {
+  if (!e.target.closest || !e.target.closest('#sys-swim') || e.target.closest('[data-action]')) return false;
+  const node = e.target.closest('.mnode.sw');
+  selectStep(node ? node.dataset.node.slice(2) : null);
+  return true;
+}
+// スイムレーン図の拡大縮小（ui.sysZoom）。見えている所の真ん中を動かさずに倍率を変える
+function zoomSwimlane(cmd) {
+  const before = ui.sysZoom;
+  const zoom = cmd === 'zoomReset' ? 1 : nextZoom(cmd === 'zoomIn' ? 1 : -1, before);
+  if (zoom === before) return;
+  ui.sysZoom = zoom;
+  const box = $('#sys-swim');
+  const y = findSystem(store.state, ui.systemId);
+  if (box && y) {
+    const cx = (box.scrollLeft + box.clientWidth / 2) / before;
+    const cy = (box.scrollTop + box.clientHeight / 2) / before;
+    box.innerHTML = swimlaneHtml(store.state, y, { zoom });
+    markStepSel();
+    box.scrollLeft = Math.max(0, cx * zoom - box.clientWidth / 2);
+    box.scrollTop = Math.max(0, cy * zoom - box.clientHeight / 2);
+  }
+  updateSysToolbar();
+}
+
+// 履歴（画像 q65）: AI が直す前の状態・戻す前の状態の行（新しい行が上）と「この状態に戻す…」
+function sysHistoryHtml(y) {
+  const rows = y.revisions.filter(isObj).slice().reverse();
+  const table = rows.length
+    ? `<table><thead><tr><th>日時</th><th>行</th><th>そのときの中身</th><th></th></tr></thead><tbody>${rows.map(sysHistoryRowHtml).join('')}</tbody></table>`
+    : '<p class="sys-empty">まだ履歴はありません。AI がこのシステムを直すと、直す前の中身がここに残ります。</p>';
+  return `<div class="itable sys-hist" style="max-width:980px">${sysHead('履歴', y)}
+    <p class="map-note">AI がこのシステム（説明・役割・スイムレーン図・画面設計の並び）を直す前の中身を、自動で残しています（新しい方から ${AI_ROWS_MAX} 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。</p>
+    ${table}</div>`;
+}
+// 行の名前は、AI の行は紫（「Claude Code が直す前の状態」）、戻す前の状態は灰色（マウスを乗せると、どの行に戻す前かを出す）
+function sysHistoryRowHtml(r) {
+  const ai = r.kind === 'ai';
+  const snap = hasSnapshot(r);
+  return `<tr data-id="${esc(r.id)}"><td>${esc(fmtDateTime(r.date))}</td>
+    <td><span class="${ai ? 'h-ai' : 'h-auto'}"${!ai && r.note ? ` title="${esc(r.note)}"` : ''}>${esc(systemRevisionTitle(r))}</span></td>
+    <td>${snap ? esc(sysContentCounts(r.snapshot)) : '（中身の写しがありません）'}</td>
+    <td><button class="btn small" data-action="sys-rev-restore" data-id="${esc(r.id)}"${snap ? '' : ' disabled'}>この状態に戻す…</button></td></tr>`;
+}
+// 履歴の行の中身に戻す（確かめの窓。最初はキャンセル。画面設計の「前の版に戻す」と同じ）。写しにあって今ない画面設計は入らないことも書く
+async function restoreSystemRevisionWithConfirm(sysId, rowId) {
+  const y = findSystem(store.state, sysId);
+  const r = y && y.revisions.find((x) => isObj(x) && x.id === rowId);
+  if (!hasSnapshot(r)) return;
+  const lost = r.snapshot.designIds.filter((id) => !findDesign(store.state, id)).length;
+  const title = `${fmtDateTime(r.date)} の ${systemRevisionTitle(r)}`;
+  const ok = await showDialog({
+    title: `「${title}」に戻しますか？`,
+    okLabel: '戻す',
+    okClass: 'danger',
+    body: `<p>今の中身（${esc(sysContentCounts(y))}）は「戻す前の状態」として履歴に残ります。元に戻す（Ctrl+Z）でも戻せます。</p>`
+      + (lost ? `<p style="margin-top:8px">写しにある画面設計のうち ${lost} つは、もうないので入りません。</p>` : ''),
+  });
+  if (ok && actions.restoreSystemRevision(sysId, rowId)) toast(`「${title}」の中身に戻しました。`);
+}
+
+// 右の欄: 入口ごとの案内の文。スイムレーン図では、選んだ作業の名前と種類（作業の設定は T6b で作る）
+function sysSideHtml(y) {
+  const hint = (t) => `<p class="hint">${t}</p>`;
+  switch (ui.sysPanel) {
+    case 'overview': return hint('名前と説明は、欄を離れると保存します。名前は、最初の画面のシステムの一覧にも出ます。');
+    case 'roles': return hint('役割を直すと、スイムレーン図の帯がすぐ変わります。')
+      + hint('作業の箱が入っている役割を消すと、その箱と、箱につながる矢印も一緒に消えます（元に戻す〔Ctrl+Z〕で戻せます）。');
+    case 'history': return hint('「この状態に戻す…」を押すと、今の中身を「戻す前の状態」として残してから、その行の中身に置き換えます。');
+    default: return `<div class="panel-title">作業の設定</div>${sysStepNoteHtml(y)}${hint('作業の箱を押すと、ここで直せます（次に作ります）。')}`;
+  }
+}
+function sysStepNoteHtml(y) {
+  const w = ui.stepSel ? findStep(y, ui.stepSel) : null;
+  if (!w) return '';
+  const role = y.roles.find((r) => r.id === w.roleId);
+  const ref = swimRefTag(swimRefNames(store.state, w.ref));
+  return `<div class="sys-step"><b>${esc(w.text || SWIM_KIND_NAMES[w.kind])}</b><br>${esc(SWIM_KIND_NAMES[w.kind])}・${esc(role ? role.name : '（役割なし）')}${ref ? `<br>${esc(ref)}` : ''}</div>`;
+}
+
+// ── システムの画面の受け口 ──
+// 真ん中の欄の変更（data-sy。文字は、欄を離れたときか Enter を押したときに保存する。真ん中は描き直さない）。
+// 名前は空にしない。役割の名前は空にしない・同じシステムの中で同じ名前にしない（欄を元に戻して知らせる。ステータスの並びと同じ）
+function onSystemFieldChange(el) {
+  const y = editableSystem(ui.systemId);
+  if (!y) return;
+  const k = el.dataset.sy;
+  if (k === 'name') {
+    const n = cleanName(el.value);
+    if (!n) { el.value = y.name; toast('名前を空にはできません。'); return; }
+    if (n !== y.name) commitKeepSide(() => actions.updateSystem(y.id, { name: n }));
+    return;
+  }
+  if (k === 'desc') {
+    if (el.value !== y.description) commitKeepSide(() => actions.updateSystem(y.id, { description: el.value }));
+    return;
+  }
+  const r = y.roles.find((x) => x.id === el.dataset.role);
+  if (!r) return;
+  if (k === 'role-memo') {
+    const v = el.value.trim();
+    if (v !== r.memo) commitKeepSide(() => actions.setRoleMemo(y.id, r.id, v));
+    return;
+  }
+  if (k !== 'role-name') return;
+  const n = cleanName(el.value);
+  if (n === r.name) { el.value = r.name; return; }
+  const back = (msg) => { el.value = r.name; toast(msg); };
+  if (!n) { back('役割の名前を空にはできません。'); return; }
+  if (y.roles.some((x) => x.name === n && x.id !== r.id)) { back(`「${n}」という役割がもうあります。`); return; }
+  commitKeepSide(() => actions.renameRole(y.id, r.id, n));
+  el.value = n;
+}
+// システムの画面で押したもの（命令〔runCommand〕と AI の帯のほか）。扱わないものは false
+// （最初の画面と同じ受け口へ流す: 「＋ 画面設計を入れる ▾」のメニュー・共通の画面設計の札など）
+function onSystemScreenClick(action, btn) {
+  if (!action.startsWith('sys-') || ['sys-add-menu', 'sys-add-new', 'sys-add-same', 'sys-add-copy'].includes(action)) return false;
+  flushSideField(); // 真ん中の欄の打ちかけの文字を先に保存する
+  const y = findSystem(store.state, ui.systemId);
+  if (!y) return true;
+  const id = btn.dataset.id;
+  switch (action) {
+    case 'sys-panel': openSystemPanel(btn.dataset.panel); return true;
+    case 'sys-open-design':
+      if (Date.now() - sysSortEndedAt < 400) return true; // ドラッグで並べ替えた直後の click では開かない
+      if (findDesign(store.state, id)) openDesign(id);
+      return true;
+    case 'sys-design-menu': toggleSysDesignMenu(id); return true;
+    case 'sys-dm-open': case 'sys-dm-up': case 'sys-dm-down': case 'sys-dm-remove':
+      closeSysDesignMenu();
+      onSysDesignMenu(y, action, id);
+      return true;
+    case 'sys-role-add': addRoleAndFocus(y.id); return true;
+    case 'sys-role-first': openSystemPanel('roles'); addRoleAndFocus(y.id); return true;
+    case 'sys-role-up': case 'sys-role-down': {
+      const i = y.roles.findIndex((r) => r.id === id);
+      if (i >= 0) actions.moveRole(y.id, id, action === 'sys-role-up' ? i - 1 : i + 1);
+      return true;
+    }
+    case 'sys-role-del': deleteRoleWithConfirm(y.id, id).catch(reportPageError); return true;
+    case 'sys-rev-restore': restoreSystemRevisionWithConfirm(y.id, id).catch(reportPageError); return true;
+  }
+  return false;
+}
+// システムの画面で押した時点（mousedown）の動き。左の欄とメニューのボタンは、押した時点で真ん中の欄を離れない
+// （離れると打ちかけの文字の保存で左の欄が描き直され、押したボタンが click の前に消えるため。打ちかけの文字は、押したときの処理の初めに保存する）。
+// 画面設計のカードは、そのままドラッグすると並べ替える
+function onSystemMouseDown(e) {
+  if (e.button !== 0) return;
+  if (e.target.closest('#sys-list button, #sys-menu-root button')) e.preventDefault();
+  const card = e.target.closest('#sys-list .sys-dcard');
+  if (card) startSysDesignSort(e, card.dataset.id);
+}
+// システムの画面の命令。拡大縮小はスイムレーン図を出しているときだけ。編集の画面だけの命令（画面を足すなど）は何もしない（false）
+function runSystemCommand(cmd) {
+  if (cmd !== 'zoomIn' && cmd !== 'zoomOut' && cmd !== 'zoomReset') return false;
+  if (sysZoomable()) zoomSwimlane(cmd);
+  return true;
+}
+// 編集の画面の「← システムへ」で戻るシステム（ごみ箱に入った・消えたときは null。そのときは最初の画面へ戻る）
+function editorBackSystem() {
+  const y = ui.editorFrom ? findSystem(store.state, ui.editorFrom) : null;
+  return y && !y.trashedAt ? y : null;
 }
 
 // ── 7. 編集の画面 ─────────────────────────────────────────────────────────────
@@ -5560,11 +6107,14 @@ function currentSubject() {
 }
 
 function openDesign(id) {
+  // 「← システムへ」で戻る先（第 9 段階）: システムの画面から開いたときはそのシステム。編集の画面からほかの画面設計を開いたときは、前の戻る先のまま。
+  // 最初の画面から開いたときは戻る先なし（「← 一覧へ」）。openDesign が ui.systemId を消すので、先に控える
+  const from = ui.view === 'system' ? ui.systemId : ui.view === 'editor' ? ui.editorFrom : null;
   leaveViewing();
   const d = findDesign(store.state, id);
   if (!d) return;
   aiForgetView(ui.view === 'home');
-  Object.assign(ui, { view: 'editor', designId: id, systemId: null, screenId: d.screens[0].id, prevScreenId: null, screenMenu: null, zoom: 1, mode: 'select', menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
+  Object.assign(ui, { view: 'editor', designId: id, systemId: null, editorFrom: from, sysDesignMenu: null, stepSel: null, screenId: d.screens[0].id, prevScreenId: null, screenMenu: null, zoom: 1, mode: 'select', menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
   store.clearHistory();
   mountEditor();
 }
@@ -5573,7 +6123,7 @@ function goHome() {
   leaveViewing();
   aiForgetView(false);
   // 左の一覧で選んでいたまとまり（ui.homeGroup）は、そのまま残す（第 9 段階）
-  Object.assign(ui, { view: 'home', designId: null, systemId: null, screenId: null, menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
+  Object.assign(ui, { view: 'home', designId: null, systemId: null, editorFrom: null, sysDesignMenu: null, stepSel: null, screenId: null, menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
   store.clearHistory();
   renderHome();
 }
@@ -5609,7 +6159,7 @@ function toolbarHtml() {
   return [
     group('ファイル', (standalone
       ? '<button class="bigbtn" data-action="save-html" title="直した中身を HTML ファイルに保存します（Ctrl+S）"><span class="ico">💾</span>HTML を<br>保存</button>'
-      : `<button class="bigbtn" data-action="home" title="画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>
+      : `<button class="bigbtn" data-action="home" id="tb-home" title="画面設計の一覧へ戻ります"><span class="ico">←</span><span id="tb-home-label">一覧へ</span></button>
       <button class="bigbtn" data-action="export" title="PDF・HTML・PNG に書き出します"><span class="ico">⇪</span>書き出す</button>`)
       // 改訂履歴のボタンと、その下の ▼（改訂する・改訂履歴のメニュー。改訂の機能が増えたら、このメニューに足す。q40c）
       + `<div class="rv-split" id="tb-rev"><button class="bigbtn rv-main" data-action="open-revisions" title="改訂履歴の窓を開きます（版の一覧・前の版を見る・前の版に戻す）"><span class="ico">◷</span>改訂<br>履歴</button>
@@ -5707,6 +6257,17 @@ function updateToolbarState() {
   }
   $('#tb-rev-arrow').classList.toggle('open', ui.revMenu);
   $('#tb-rev-arrow').setAttribute('aria-expanded', String(ui.revMenu));
+  updateHomeButton();
+}
+// 「← 一覧へ」は、システムの画面から開いたときは「← システムへ」（第 9 段階）。文字が変わるときだけ書き換える
+// （右の欄を離れたときの保存で描き直しても、押した文字の要素が click の前に消えないように）
+function updateHomeButton() {
+  const label = $('#tb-home-label');
+  if (!label) return; // 単体で開いた HTML には「一覧へ」がない
+  const back = editorBackSystem();
+  const text = back ? 'システムへ' : '一覧へ';
+  if (label.textContent !== text) label.textContent = text;
+  $('#tb-home').title = back ? `${back.name}の画面へ戻ります` : '画面設計の一覧へ戻ります';
 }
 const VIEW_OK_ACTIONS = ['home', 'zoom-in', 'zoom-out', 'zoom-reset', 'mode-select', 'mode-hand'];
 
@@ -6996,6 +7557,7 @@ function commitKeepSide(fn) {
 
 // 右の欄の変更（文字は、欄を離れたときか Enter を押したときに保存する）
 function onSidePanelChange(e) {
+  if (e.target.dataset.sy) { onSystemFieldChange(e.target); return; } // システムの画面の真ん中の欄（第 9 段階）
   if (e.target.dataset.co) { onCalloutFieldChange(e.target); return; }
   if (e.target.dataset.tb) { onTableFieldChange(e.target); return; }
   if (e.target.dataset.fl) { onFilterFieldChange(e.target); return; }
@@ -7385,17 +7947,19 @@ function readPartField(el) {
   return el.tagName === 'TEXTAREA' ? el.value : el.value.trim();
 }
 
-// 右の欄で打ちかけの文字（まだ change が起きていない）を保存する。
+// 右の欄（システムの画面では真ん中の欄。第 9 段階）で打ちかけの文字（まだ change が起きていない）を保存する。
 // 右の欄を作り直す操作（高さのドラッグ・部品を選ぶ）・命令・窓を離れる前に呼ぶ（呼ばないと、作り直しで打った文字が消える）
 const TEXT_FIELDS = ['design-name', 'screen-name', 'design-desc'];
 function flushSideField() {
   const el = document.activeElement;
-  if (ui.view !== 'editor' || !el || !el.closest || !el.closest('#side-settings') || !isTextInput(el)) return;
+  const where = ui.view === 'editor' ? '#side-settings' : ui.view === 'system' ? '#sys-view' : null;
+  if (!where || !el || !el.closest || !el.closest(where) || !isTextInput(el)) return;
   // 作る先の「その他」に打ちかけの名前（欄を離れたときの change で決まる）
   if (el.classList.contains('target-other')) { el.dispatchEvent(new Event('change')); return; }
-  if (!el.dataset.pf && !el.dataset.lk && !el.dataset.ps && !el.dataset.pa && !el.dataset.tb && !el.dataset.fl && !el.dataset.co && !TEXT_FIELDS.includes(el.dataset.field)) return;
-  // 名前を消して打ち直している途中は待つ（画面設計・画面・ステータス・操作の名前）
-  const nameField = el.dataset.field === 'design-name' || el.dataset.field === 'screen-name' || el.dataset.ps || (el.dataset.pa && el.dataset.k === 'name');
+  if (!el.dataset.sy && !el.dataset.pf && !el.dataset.lk && !el.dataset.ps && !el.dataset.pa && !el.dataset.tb && !el.dataset.fl && !el.dataset.co && !TEXT_FIELDS.includes(el.dataset.field)) return;
+  // 名前を消して打ち直している途中は待つ（画面設計・画面・ステータス・操作・システム・役割の名前）
+  const nameField = el.dataset.field === 'design-name' || el.dataset.field === 'screen-name' || el.dataset.ps || (el.dataset.pa && el.dataset.k === 'name')
+    || el.dataset.sy === 'name' || el.dataset.sy === 'role-name';
   if (nameField && !cleanName(el.value)) return;
   onSidePanelChange({ target: el });
 }
@@ -7433,13 +7997,14 @@ function applyZoom() {
   $('#zoom-badge').textContent = label;
 }
 
-function nextZoom(dir) {
+// cur は今の倍率（編集の画面は ui.zoom、システムの画面のスイムレーン図は ui.sysZoom）
+function nextZoom(dir, cur = ui.zoom) {
   if (dir > 0) {
-    const up = ZOOM_STEPS.find((z) => z >= ui.zoom + 0.01);
-    return up == null ? ui.zoom : up;
+    const up = ZOOM_STEPS.find((z) => z >= cur + 0.01);
+    return up == null ? cur : up;
   }
-  const down = [...ZOOM_STEPS].reverse().find((z) => z <= ui.zoom - 0.01);
-  return down == null ? ui.zoom : down;
+  const down = [...ZOOM_STEPS].reverse().find((z) => z <= cur - 0.01);
+  return down == null ? cur : down;
 }
 
 // 窓の中の点（vx, vy）が指している画面の位置を動かさずに、倍率を変える
@@ -8093,6 +8658,7 @@ function onDragMove(ev) {
   if (drag.kind === 'band') { dragBand(ev); return; }
   if (drag.kind === 'item-sort') { dragItemSort(ev); return; }
   if (drag.kind === 'screen-sort') { dragScreenSort(ev); return; }
+  if (drag.kind === 'sys-design-sort') { dragSysDesignSort(ev); return; }
   if (drag.kind === 'co-move' || drag.kind === 'co-size') { dragCallout(ev); return; }
   if (drag.kind === 'co-link') { dragCalloutLink(ev); return; }
   if (drag.kind === 'move' || drag.kind === 'size') { dragPart(ev); return; }
@@ -8145,6 +8711,7 @@ function onDragEnd(ev) {
     if (done.moved && (done.to == null || !actions.moveScreen(ui.designId, done.id, done.to))) refreshScreenList();
     return;
   }
+  if (done.kind === 'sys-design-sort') { endSysDesignSort(done); return; }
   if (done.kind === 'place') { if (done.moved) dropPlace(done, ev); return; }
   if (done.kind === 'move' || done.kind === 'size') {
     const r = done.rect;
@@ -9372,6 +9939,7 @@ function runCommand(cmd) {
   flushSideField();
   closeScreenMenu();
   closeRevMenu();
+  closeSysDesignMenu();
   if (store.isViewing && !VIEW_OK_COMMANDS.includes(cmd)) {
     toast('前の版を見ている間は、直せません。上の黄色い帯の「見るのをやめる」で、今の中身に戻ってください。');
     return true;
@@ -9391,8 +9959,11 @@ function runCommand(cmd) {
       if (ui.view !== 'editor') { toast('改訂する画面設計を開いてから選んでください。'); return true; }
       (cmd === 'addRevision' ? openAddRevisionDialog() : openRevisionsDialog()).catch(reportPageError);
       return true;
+    // システムの画面から開いた画面設計では「← システムへ」（そのシステムがごみ箱に入った・消えたときは最初の画面へ。第 9 段階）
     case 'goHome':
-      if (ui.view !== 'home' && !standalone) goHome();
+      if (ui.view === 'home' || standalone) return true;
+      if (ui.view === 'editor' && editorBackSystem()) openSystem(ui.editorFrom);
+      else goHome();
       return true;
     // 新しい画面設計・新しいシステム（第 9 段階）。編集の画面・システムの画面からは、一覧へ戻ってから窓を出す
     case 'newDesign': case 'newSystem':
@@ -9414,6 +9985,7 @@ function runCommand(cmd) {
       if (standalone) saveStandalone().catch(reportPageError);
       return true;
   }
+  if (ui.view === 'system') return runSystemCommand(cmd);
   if (ui.view !== 'editor') return false;
   switch (cmd) {
     case 'openItems': openItemsPanel(); return true;
@@ -9571,18 +10143,21 @@ function onAppClick(e) {
     refreshCards();
   }
   if (ui.sysMenu && !e.target.closest('.sys-pop, [data-action="sys-add-menu"], [data-action="sys-menu"]')) closeSysMenu();
+  if (ui.sysDesignMenu && !e.target.closest('.sys-dmenu, [data-action="sys-design-menu"]')) closeSysDesignMenu();
   if (ui.screenMenu && !e.target.closest('.screen-menu, .sl-more')) closeScreenMenu();
   if (ui.revMenu && !e.target.closest('.rv-menu, .rv-arrow')) closeRevMenu();
   if (ui.addItemMenu && !e.target.closest('.pop-menu, [data-action="add-item-menu"]')) {
     ui.addItemMenu = false;
     renderItemsView(currentDesign());
   }
+  if (ui.view === 'system' && onSysSwimClick(e)) return;
   const btn = e.target.closest('[data-action]');
   if (!btn || btn.disabled) return;
   const { action, id } = btn.dataset;
   if (ACTION_COMMANDS[action]) { runCommand(ACTION_COMMANDS[action]); return; }
   if (onAiClick(action, btn)) return;
   if (ui.view === 'editor' && onEditorClick(action, btn)) return;
+  if (ui.view === 'system' && onSystemScreenClick(action, btn)) return;
   onHomeAction(action, id, btn).catch(reportPageError);
 }
 
@@ -9645,6 +10220,14 @@ function onKeyDown(e) {
     return;
   }
   if (e.key === 'Escape' && ui.revMenu) { closeRevMenu(); return; }
+  // システムの画面のカードの「…」のメニュー（第 9 段階）
+  if (e.key === 'Escape' && ui.sysDesignMenu) {
+    const id = ui.sysDesignMenu;
+    closeSysDesignMenu();
+    const more = [...document.querySelectorAll('#sys-list .sl-more')].find((b) => b.dataset.id === id);
+    if (more) more.focus();
+    return;
+  }
   if (e.key === 'Escape' && ui.screenMenu) {
     const id = ui.screenMenu;
     closeScreenMenu();
@@ -9657,11 +10240,14 @@ function onKeyDown(e) {
     const partCmd = editorKeyCommand(e);
     if (partCmd) { e.preventDefault(); runCommand(partCmd); return; }
   }
+  // システムの画面のスイムレーン図で選んだ作業の箱は、Esc で選ぶのをやめる
+  if (ui.view === 'system' && e.key === 'Escape' && ui.stepSel && !inField) { selectStep(null); return; }
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
   const cmd = keyCommand(e);
   if (!cmd) return;
   if ((cmd === 'undo' || cmd === 'redo') && inField) return;
-  if (cmd.startsWith('zoom') && ui.view !== 'editor') return;
+  // 拡大縮小のキーは、編集の画面と、システムの画面のスイムレーン図だけ（ほかではブラウザに任せる）
+  if (cmd.startsWith('zoom') && ui.view !== 'editor' && !sysZoomable()) return;
   e.preventDefault();
   runCommand(cmd);
 }
@@ -9671,7 +10257,7 @@ function onStoreChange() {
   aiNoteStoreChange(); // 人が直したら、AI が直した知らせ（紫の帯）を閉じる
   if (ui.view === 'home') renderHome();
   else if (ui.view === 'editor') updateEditor({ keepSide: keepSideOnNotify });
-  else if (ui.view === 'system') renderSystem(); // 開いているシステムがごみ箱に入った・消えたときは一覧へ戻る
+  else if (ui.view === 'system') renderSystem({ keepMain: keepSideOnNotify }); // 開いているシステムがごみ箱に入った・消えたときは一覧へ戻る
   refreshStandaloneBar();
 }
 
@@ -11663,13 +12249,14 @@ function aiBandHtml() {
 function aiWarnHtml() {
   const w = aiView.warn;
   if (!w) return '';
-  const open = ui.view === 'editor' ? currentDesign() : null;
+  // 開いている画面設計か、開いているシステム（システムの画面。第 9 段階）
+  const open = ui.view === 'editor' ? currentDesign() : ui.view === 'system' ? findSystem(store.state, ui.systemId) : null;
   let text = `<b>${esc(w.label)}</b> が「${esc(w.name)}」を${w.created ? '作った' : '直した'}ので、元に戻す（Ctrl+Z）の履歴を消しました。`;
-  if (open && !w.openChanged) text += `開いている「${esc(open.name)}」は変わっていません。`;
+  if (open && !w.openChanged && !(ui.view === 'system' && open.id === w.systemId)) text += `開いている「${esc(open.name)}」は変わっていません。`;
   // システム（第 9 段階）の「AI が直す前の状態」の行は、システムの画面の「履歴」にある
   if (!w.created) text += `<br>AI の変更を戻すときは、「${esc(w.name)}」の${w.systemId ? '履歴' : '改訂履歴'}の「${esc(w.label)} が直す前の状態」から戻せます。`;
   let btn;
-  // システムは、作ったときは「開く」、直したときは「履歴を開く」（そのシステムの画面を開く。履歴の入口を開くのは、システムの画面の「履歴」〔T6a〕を作るときに足す）
+  // システムは、作ったときは「開く」、直したときは「履歴を開く」（そのシステムの画面の「履歴」の入口を開く。onAiClick）
   if (w.systemId) {
     btn = w.created
       ? `<button class="btn small" data-action="ai-open-system" data-id="${esc(w.systemId)}">「${esc(w.name)}」を開く</button>`
@@ -11753,13 +12340,16 @@ function aiAfterWrite(tx, mode, hadHistory, beforeMap, seen) {
   });
   const open = seen.open ? findDesign(S, seen.open) : null;
   const openChanged = !!open && designContent(open) !== seen.content;
+  // システムの画面で開いているシステムが変わったか（オレンジの帯の「開いている…は変わっていません」に使う。第 9 段階）
+  const openSys = ui.view === 'system' ? findSystem(S, ui.systemId) : null;
+  const openSysChanged = !!openSys && systemContent(openSys) !== seen.systems.get(openSys.id);
   if (openChanged) aiNoteOpenEdited(open, seen, label, mode === true);
   else if (open && tx.afterMap.get(open.id) !== beforeMap.get(open.id)) toast(`${label} が「${open.name}」を改訂しました（${revisionLabel(open)}）。`); // 改訂履歴に版を足しただけ
   // 元に戻すの履歴を消したら、前に出した紫の帯の「元に戻す」は出さない（押しても戻らないため）
   if (mode === 'clear' && aiView.band && (aiView.band.kind === 'edited' || aiView.band.kind === 'system')) aiView.band.undoable = false;
   const what = sys || target;
   if (mode === 'clear' && hadHistory) {
-    aiView.warn = what ? { designId: target ? target.id : null, systemId: sys ? sys.id : null, name: what.name, label, created, openChanged } : null;
+    aiView.warn = what ? { designId: target ? target.id : null, systemId: sys ? sys.id : null, name: what.name, label, created, openChanged: openChanged || openSysChanged } : null;
     aiView.cleared = what ? what.name : '画面設計';
   } else if (sys) {
     aiNoteSystemEdited(sys, seen, label, created, mode === true);
@@ -11842,11 +12432,14 @@ function onAiClick(action, btn) {
       else if (ui.view === 'system') renderSystem();
       else updateEditor({ keepSide: true });
       return true;
-    // システムの画面を開く（第 9 段階。もう開いていれば何もしない。「履歴を開く」で履歴の入口を開くのは T6a で足す）
-    case 'ai-open-system': case 'ai-open-system-history':
+    // システムの画面を開く（第 9 段階）。「履歴を開く」は履歴の入口を開く。もう開いていれば開き直さない（「履歴を開く」は入口だけを履歴にする）
+    case 'ai-open-system': case 'ai-open-system-history': {
       flushSideField();
-      if (!(ui.view === 'system' && ui.systemId === btn.dataset.id)) openSystem(btn.dataset.id);
+      const panel = action === 'ai-open-system-history' ? 'history' : null;
+      if (!(ui.view === 'system' && ui.systemId === btn.dataset.id)) openSystem(btn.dataset.id, { panel });
+      else if (panel) openSystemPanel(panel);
       return true;
+    }
     case 'ai-warn-close':
       aiView.warn = null;
       renderAiChrome();
@@ -11947,11 +12540,13 @@ function bindGlobalEvents() {
     refreshCards();
   });
   app.addEventListener('change', (e) => {
-    if (e.target.closest('#side-panel') && !e.target.closest('.target-picker')) onSidePanelChange(e);
+    if (e.target.closest('#side-panel, #sys-view') && !e.target.closest('.target-picker')) onSidePanelChange(e);
   });
   app.addEventListener('mousedown', (e) => {
+    // スイムレーン図の箱は、つながりの図などのドラッグでは動かさない（押して選ぶだけ。図の上の操作は T6b）
     const node = e.button === 0 ? e.target.closest('.mnode') : null;
-    if (node) { startMapDrag(e, node); return; }
+    if (node && !node.closest('[data-view="swimlane"]')) { startMapDrag(e, node); return; }
+    if (ui.view === 'system') { onSystemMouseDown(e); return; }
     if (ui.view !== 'editor' || e.button !== 0) return;
     // 「…」・「＋ 画面を足す」・「…」のメニューの項目は、押した時点で右の欄を離れない（離れると打ちかけの文字の保存で画面の一覧が描き直され、
     // 押したボタンが click の前に消えて、1 回目の押しが効かないため）。打ちかけの文字は、押したときの処理の初めに保存する
@@ -11986,9 +12581,16 @@ function bindGlobalEvents() {
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('mousemove', onDragMove);
   document.addEventListener('mouseup', onDragEnd);
-  window.addEventListener('resize', () => { if (ui.view === 'editor') { syncZoomSpacer(); closeScreenMenu(); closeRevMenu(); } }); // メニューの位置がボタンからずれるので閉じる
-  // 画面の一覧を送ったときは、「…」のメニューを閉じる（「…」から離れるため。scroll は泡立たないので、捕まえる側で受ける）
-  document.addEventListener('scroll', (e) => { if (e.target && e.target.id === 'screen-list') closeScreenMenu(); }, true);
+  // メニューの位置がボタンからずれるので閉じる
+  window.addEventListener('resize', () => {
+    if (ui.view === 'editor') { syncZoomSpacer(); closeScreenMenu(); closeRevMenu(); }
+    if (ui.view === 'system') { closeSysMenu(); closeSysDesignMenu(); }
+  });
+  // 画面の一覧（システムの画面では左の欄）を送ったときは、「…」のメニューを閉じる（「…」から離れるため。scroll は泡立たないので、捕まえる側で受ける）
+  document.addEventListener('scroll', (e) => {
+    if (e.target && e.target.id === 'screen-list') closeScreenMenu();
+    if (e.target && e.target.id === 'sys-list') { closeSysMenu(); closeSysDesignMenu(); }
+  }, true);
   window.addEventListener('blur', flushSideField);
   // 閉じる前に、打ちかけの文字を保存する。単体で開いた HTML で保存していない変更があれば、閉じるのを止める（ブラウザの確かめが出る）
   window.addEventListener('beforeunload', (e) => {
@@ -12046,6 +12648,7 @@ function exposeForTest() {
     changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
     SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
+    openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
     swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,
     SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
