@@ -130,6 +130,8 @@ function buildAppMenu() {
       submenu: [
         commandItem('データベースの項目を開く', 'openItems'),
         commandItem('つながりの図を開く', 'openMap'),
+        commandItem('ステータスの移り方を開く', 'openProcess'),
+        commandItem('画面の移り方を開く', 'openFlow'),
         { type: 'separator' },
         commandItem('項目を足す', 'addItemMenu'),
         commandItem('ほかのモックから取り込む', 'importItems'),

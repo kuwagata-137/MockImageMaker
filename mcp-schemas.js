@@ -26,7 +26,12 @@ const S = {
   expect: opt(z.string().describe('読んだときの更新の印（get_design などの updatedAt）。今の印と違えば断る（人がアプリで直した後に上書きしないため）。省くと確かめない')),
   cursor: opt(z.string().describe('続きを読むときに、前の返事の nextCursor を書く')),
   props: z.record(z.any()).describe('設定の欄 { 欄の名前: 値 }。使える欄と値の形は get_catalog の parts[].props'),
-  to: z.union([z.string(), obj({ screen: z.string() })]).describe('ボタンの移る先の画面（{ "screen": "一覧" }）。今の版では、ボタンの「押したとき」の文に書く'),
+  to: z.union([
+    z.string(),
+    obj({ screen: z.union([z.string(), z.number()]).describe('画面の id か名前'), design: opt(z.union([z.string(), z.number()]).describe('ほかの画面設計の画面のとき、その画面設計の id か名前')) }),
+    obj({ url: z.string() }),
+    z.null(),
+  ]).describe('ボタン・リンクの文字の移る先: この画面設計の画面（"一覧" か { "screen": "一覧" }）・ほかの画面設計の画面（{ "design": "経費精算", "screen": "精算の入力" }）・URL（{ "url": "https://…" }）・null（なし）'),
   labelPos: z.enum(['top', 'left']).describe('項目名の位置: "top"（入力欄の上）・"left"（入力欄の左）'),
   rows: z.number().int().min(1).max(20).describe('表の見本の行の数（1〜20）'),
   current: z.string().describe('ステータスの印・進み具合の矢印で、見本に出すステータス'),
@@ -128,9 +133,28 @@ const calloutOps = z.discriminatedUnion('op', [
   op('delete', { callout: z.string() }, '吹き出しを消す'),
 ]);
 
+// ── ステータスと操作（edit_process。第 8 段階）──
+const stateRef = (what) => ref(`${what}（ステータスの id か名前）`);
+const actionRef = ref('操作の id か名前（同じ名前の操作が 2 つ以上あるときは id）');
+const processOps = z.discriminatedUnion('op', [
+  op('set_states', { states: z.array(z.string()).min(1).describe('ステータスの名前の並び（上から順に進む）') },
+    'ステータスの並びをまとめて書く（同じ名前のステータスは今のものを残す。なくなったステータスを使う操作は消える。ステータスの項目がなければ作る）'),
+  op('add_state', { name: z.string(), ...where }, 'ステータスを足す（既定はいちばん下。ステータスの項目がなければ作る）'),
+  op('rename_state', { state: stateRef('名前を変えるステータス'), name: z.string() }, 'ステータスの名前を変える'),
+  op('move_state', { state: stateRef('動かすステータス'), ...where }, 'ステータスを並べ替える（before・after・index のどれか）'),
+  op('delete_state', { state: stateRef('消すステータス') }, 'ステータスを消す（そのステータスを使う操作も消える。最後の 1 つは消せない）'),
+  op('add_action', {
+    name: z.string().describe('操作の名前（例 "承認する"）'), from: stateRef('前のステータス'), to: stateRef('次のステータス'),
+    role: opt(z.string().describe('操作する人（例 "上長"）')), cond: opt(z.string().describe('条件（例 "金額が 10 万円まで"）')),
+  }, '操作（ステータスを進めるボタン）を足す（いちばん下）'),
+  op('update_action', { action: actionRef, name: opt(z.string()), from: opt(stateRef('前のステータス')), to: opt(stateRef('次のステータス')), role: opt(z.string()), cond: opt(z.string()) }, '操作を直す'),
+  op('move_action', { action: actionRef, ...where }, '操作を並べ替える（before・after・index のどれか）'),
+  op('delete_action', { action: actionRef }, '操作を消す'),
+]);
+
 const opsOf = (union) => z.array(union).min(1).describe('操作の並び（まとめて 1 回の変更になる）');
 
 module.exports = {
-  z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps),
+  z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps), processOps: opsOf(processOps),
   DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT,
 };

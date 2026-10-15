@@ -55,7 +55,7 @@ test('データの形 v1 → v2: 入力欄の部品 1 つから項目を 1 つ�
     ] }],
   });
   assert.equal(blockReason, null);
-  assert.equal(state.schemaVersion, 2);
+  assert.equal(state.schemaVersion, 3, '版 1 は、今の形（版 3）まで直す');
   const d = state.designs[0];
   assert.deepEqual(plain(d.items.map((it) => it.name)), ['顧客名', '区分', '顧客名'], '画面の順、画面の中は上から下の順。同じ名前でもまとめない');
   const [i1, i2, i3] = d.items;

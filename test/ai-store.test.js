@@ -192,7 +192,7 @@ test('改訂履歴の自動の行 ai は「AI が直す前の状態」と出て�
 
 test('DESIGN_CONTENT_KEYS で、画面設計の中身だけを抜き出す（copy のときは写す）', async () => {
   const { app, T } = await bootSample();
-  assert.deepEqual(plain(T.DESIGN_CONTENT_KEYS), ['name', 'target', 'description', 'items', 'screens', 'mapPos']);
+  assert.deepEqual(plain(T.DESIGN_CONTENT_KEYS), ['name', 'target', 'description', 'items', 'screens', 'mapPos', 'processPos', 'flowPos']);
   const d1 = T.store.state.designs.find((d) => d.id === 'd1');
   const same = T.designContentOf(d1);
   assert.equal(same.items, d1.items);

@@ -1,0 +1,256 @@
+{
+ "note": "版 2 のアプリ（コミット ca73fed の mock_v1.00.html）で作った。.devdata/stage8/make-v2-fixtures.js",
+ "payload": {
+  "format": "mockimagemaker-design",
+  "schemaVersion": 2,
+  "appVersion": "1.00",
+  "exportedAt": "2026-10-15T00:20:10.767Z",
+  "baseUpdatedAt": "2026-10-15T00:20:10.758Z",
+  "baseHash": "c12731ea7af44b18",
+  "data": {
+   "schemaVersion": 2,
+   "settings": {
+    "customTargets": [],
+    "mapPos": {}
+   },
+   "designs": [
+    {
+     "id": "d-order",
+     "name": "受注管理",
+     "target": "kintone",
+     "description": "受注を受け付けて確かめる",
+     "createdAt": "2026-10-01T09:00:00.000Z",
+     "updatedAt": "2026-10-15T00:20:10.758Z",
+     "trashedAt": null,
+     "revisions": [
+      {
+       "id": "r-2b58dcc8-c5c8-47b3-9a86-9c761f51415a",
+       "kind": "revision",
+       "no": 1,
+       "date": "2026-10-15T00:20:10.757Z",
+       "note": "最初の版",
+       "schemaVersion": 2,
+       "appVersion": "1.00",
+       "changes": null,
+       "baseNo": null
+      }
+     ],
+     "items": [
+      {
+       "id": "i-name",
+       "name": "顧客名",
+       "type": "text1",
+       "required": false,
+       "memo": "",
+       "props": {
+        "maxLen": "",
+        "initial": ""
+       },
+       "lookup": null,
+       "link": null
+      },
+      {
+       "id": "i-st",
+       "name": "ステータス",
+       "type": "status",
+       "required": false,
+       "memo": "",
+       "props": {
+        "states": [
+         "受付",
+         "確認待ち",
+         "確認済み",
+         "完了"
+        ]
+       },
+       "lookup": null,
+       "link": null
+      }
+     ],
+     "screens": [
+      {
+       "id": "s-list",
+       "name": "一覧",
+       "device": "pc",
+       "width": 1280,
+       "height": 800,
+       "showHeader": true,
+       "tablePos": "right",
+       "callouts": [],
+       "parts": [
+        {
+         "id": "p-l1",
+         "type": "link",
+         "x": 40,
+         "y": 64,
+         "w": 200,
+         "h": 24,
+         "no": 1,
+         "labelPos": "top",
+         "sample": "",
+         "placeholder": "",
+         "label": "詳細を開く",
+         "props": {
+          "to": "screen",
+          "screenId": "s-detail",
+          "url": ""
+         },
+         "required": false,
+         "memo": ""
+        },
+        {
+         "id": "p-b1",
+         "type": "button",
+         "x": 40,
+         "y": 104,
+         "w": 120,
+         "h": 40,
+         "no": 2,
+         "labelPos": "top",
+         "sample": "",
+         "placeholder": "",
+         "label": "＋ 新規登録",
+         "props": {
+          "style": "primary",
+          "action": "新規登録の画面を開く"
+         },
+         "required": false,
+         "memo": ""
+        },
+        {
+         "id": "p-st1",
+         "type": "status",
+         "x": 40,
+         "y": 160,
+         "w": 160,
+         "h": 32,
+         "no": 3,
+         "labelPos": "top",
+         "sample": "",
+         "placeholder": "",
+         "itemId": "i-st",
+         "view": {
+          "current": "確認待ち",
+          "showWord": true
+         }
+        }
+       ]
+      },
+      {
+       "id": "s-detail",
+       "name": "詳細",
+       "device": "pc",
+       "width": 1280,
+       "height": 800,
+       "showHeader": true,
+       "tablePos": "right",
+       "callouts": [],
+       "parts": [
+        {
+         "id": "p-sp1",
+         "type": "steps",
+         "x": 40,
+         "y": 64,
+         "w": 560,
+         "h": 40,
+         "no": 1,
+         "labelPos": "top",
+         "sample": "",
+         "placeholder": "",
+         "itemId": "i-st",
+         "view": {
+          "current": "確認済み",
+          "showWord": true
+         }
+        },
+        {
+         "id": "p-st2",
+         "type": "status",
+         "x": 40,
+         "y": 120,
+         "w": 160,
+         "h": 32,
+         "no": 2,
+         "labelPos": "top",
+         "sample": "",
+         "placeholder": "",
+         "itemId": "i-st",
+         "view": {
+          "current": "古い名前",
+          "showWord": true
+         }
+        },
+        {
+         "id": "p-t1",
+         "type": "text1",
+         "x": 40,
+         "y": 168,
+         "w": 320,
+         "h": 64,
+         "no": 3,
+         "labelPos": "top",
+         "sample": "",
+         "placeholder": "",
+         "itemId": "i-name"
+        },
+        {
+         "id": "p-sp2",
+         "type": "steps",
+         "x": 40,
+         "y": 248,
+         "w": 560,
+         "h": 40,
+         "no": 4,
+         "labelPos": "top",
+         "sample": "",
+         "placeholder": "",
+         "itemId": "i-gone",
+         "label": "旧ステータス",
+         "required": false,
+         "memo": "",
+         "props": {
+          "states": [
+           "下書き",
+           "提出"
+          ]
+         },
+         "view": {
+          "current": "提出",
+          "showWord": true
+         },
+         "lookup": null,
+         "link": null
+        }
+       ]
+      }
+     ],
+     "mapPos": {}
+    }
+   ]
+  },
+  "peers": [
+   {
+    "id": "d-exp",
+    "name": "経費精算",
+    "target": "kintone",
+    "itemCount": 1,
+    "screenCount": 1,
+    "items": [
+     {
+      "id": "i-bst",
+      "name": "ステータス",
+      "type": "status",
+      "lookup": null,
+      "link": {
+       "designId": "d-order",
+       "itemId": "i-st",
+       "designName": "受注管理",
+       "lost": false
+      }
+     }
+    ],
+    "related": []
+   }
+  ]
+ }
+}

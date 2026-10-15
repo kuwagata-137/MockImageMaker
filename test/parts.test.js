@@ -467,7 +467,7 @@ test('後半の部品: 最初の大きさ・赤い番号・見た目。表はテ
   const [table, , , , , status, steps] = parts();
   assert.equal(table.tableKind, 'subtable');
   assert.equal(status.itemId, steps.itemId, 'ステータスの印と進み具合の矢印は同じ項目');
-  assert.deepEqual(plain(status.props.states), ['申請', '承認待ち', '承認済み', '完了']);
+  assert.deepEqual(plain(status.props.states.map((s) => s.name)), ['申請', '承認待ち', '承認済み', '完了']);
   const el = (p, sel) => partEl(p.id).querySelector(sel);
   assert.equal(el(placed[0], '.ptbl').querySelectorAll('th').length, 3, 'テーブルの最初の列は 3 つ');
   assert.equal(el(placed[0], '.ptbl-ops').children.length, 3, '行ごとに ＋ − を描く');
@@ -639,16 +639,24 @@ test('ステータス: 並びは項目に 1 つ。並びを直すと、ステー
   const st = add('status');
   const sp = add('steps');
   api.selectPart(sp.id);
-  setValue($(app, '#side-settings [data-pf="props.states"]'), '受付\n対応中\n完了');
+  // ステータスの並びは、右の欄のステータスの行で直す（第 8 段階。画像 q52 の案A）。完了を消し、残りの 3 つの名前を変える
+  const item = () => api.currentDesign().items.find((it) => it.type === 'status');
+  const stateId = (n) => item().props.states.find((s) => s.name === n).id;
+  api.actions.deleteState(api.currentDesign().id, item().id, stateId('完了'));
+  [['申請', '受付'], ['承認待ち', '対応中'], ['承認済み', '完了']].forEach(([from, to]) => setValue($(app, `#side-settings [data-ps="${stateId(from)}"]`), to));
   assert.deepEqual(plain([...partEl(sp.id).querySelectorAll('.psteps span')].map((e) => e.textContent)), ['受付', '対応中', '完了']);
-  setValue($(app, '#side-settings [data-pf="view.current"]'), '完了');
+  // 見本で出すステータスの選ぶ欄の値は、ステータスの id（データの形の版 3）
+  setValue($(app, '#side-settings [data-pf="view.current"]'), stateId('完了'));
   assert.equal(partEl(sp.id).querySelectorAll('.psteps .done').length, 2);
   api.selectPart(st.id);
-  setValue($(app, '#side-settings [data-pf="view.current"]'), '対応中');
+  setValue($(app, '#side-settings [data-pf="view.current"]'), stateId('対応中'));
   check($(app, '#side-settings [data-pf="view.showWord"]'), false);
   assert.equal(partEl(st.id).querySelector('.pstatus').textContent.trim(), '対応中');
   const rows = $$(app, '.ptable tbody tr').map((r) => r.children[3].textContent);
-  assert.deepEqual(plain(rows), ['ステータス＝受付／対応中／完了', 'ステータス＝受付 → 対応中 → 完了']);
+  assert.equal(rows.length, 2);
+  assert.match(rows[0], /^ステータス＝受付／対応中／完了/);
+  assert.match(rows[1], /^ステータス＝受付 → 対応中 → 完了/);
+  assert.match(rows[0], /操作「承認する」＝対応中から完了へ/, '見本の操作も、名前を変えたステータスで書く');
   assert.equal(api.currentDesign().items.length, 1);
 });
 

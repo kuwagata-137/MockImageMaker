@@ -405,6 +405,7 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 /* ── データベースの項目の一覧表（真ん中。画像 q19）── */
 .db-view{position:absolute;inset:0;overflow:auto;padding:22px 26px 40px}
 .itable{background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px 18px;max-width:1240px;position:relative}
+.itable.wide{max-width:none}
 .itable-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .itable-head h3{font-size:16px;color:#0f172a}
 .itable-head .hint{margin-left:4px}
@@ -498,6 +499,24 @@ body.map-dragging,body.map-dragging *{cursor:grabbing!important}
 .lk-pair{display:flex;align-items:center;gap:4px;margin-bottom:5px;font-size:12px}
 .lk-pair select,.lk-pair input{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:6px;padding:4px 5px;background:#fff;font-size:12px}
 .lk-add{border:none;background:none;color:#2563eb;cursor:pointer;font-size:12px;padding:2px 0 6px}
+.lk-add:disabled,.del-x:disabled{color:#cbd5e1;cursor:default;background:none}
+/* ステータスと操作の欄（第 8 段階。画像 q52 の案A）*/
+.pf-sub{font-size:12px;font-weight:700;color:#1d3f6e;margin:8px 0 5px;white-space:nowrap}
+.pf-sub small{font-weight:400;color:#64748b;font-size:10.5px}
+.ps-row{display:flex;align-items:center;gap:3px;margin-bottom:5px}
+.ps-row .no{width:16px;text-align:center;font-size:11px;color:#64748b;flex-shrink:0}
+.ps-row input{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;font-size:12.5px;background:#fff}
+.pa-card{border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;padding:7px 8px 2px;margin-bottom:7px}
+.pa-top{display:flex;align-items:center;gap:3px;margin-bottom:6px}
+.pa-top input{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;font-size:12.5px;font-weight:700;background:#fff}
+.pa-move{display:flex;align-items:center;gap:4px;margin-bottom:6px;font-size:12px}
+.pa-move select{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:6px;padding:3px 4px;font-size:12px;background:#fff}
+.pa-move .ar{color:#1d3f6e;font-weight:700}
+.pa-move .ar.back{color:#ea580c}
+.pa-card .row2{gap:6px}
+.pa-card .field{margin-bottom:6px}
+.pa-card .field input{font-size:12px;padding:4px 6px}
+.pa-card .field>span{font-size:11px}
 /* ── 書き出しと取り込み（第 5 段階）───────────────────────────── */
 /* 書き出しの窓（画像 q33） */
 .xp-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
@@ -670,8 +689,14 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .xp-legend i{display:inline-block;width:30px;height:0;border-top:2.5px solid #1d3f6e;vertical-align:middle;margin-right:5px}
 .xp-legend i.d{border-top:2.5px dashed #16a34a}
 .xp-legend i.x{width:16px;height:12px;border:1.5px dashed #94a3b8;border-radius:3px}
+.map-head i.b,.xp-legend i.b{border-top:2px dashed #ea580c}
+.map-head i.g,.xp-legend i.g{border-top:2.5px dotted #16a34a}
 .xp-fit{display:flex;justify-content:center;align-items:flex-start}
 .xp-fit .mnode,.xp-png .mnode{cursor:default}
+.xp-proc{display:flex;gap:32px;align-items:flex-start}
+.xp-proc-tbl{flex:none}
+.xp-proc.stack{display:block}
+.xp-proc.stack .xp-proc-tbl{margin-top:16px}
 .xp-stage{margin:0 auto;position:relative}
 .xp-stage .screen{box-shadow:none;outline:1px solid #94a3b8}
 .xp-stage .callout{box-shadow:none;cursor:default}
@@ -724,13 +749,15 @@ const APP_VERSION = '1.00';
 const APP_SCRIPT = document.currentScript ? document.currentScript.textContent : '';
 
 // ── 2. データの形（純関数）────────────────────────────────────────────────────
-// { schemaVersion, settings: { customTargets }, designs: [ { id, name, target, description,
+// { schemaVersion, settings: { customTargets, mapPos }, systems, designs: [ { id, name, target, description,
 //   createdAt, updatedAt, trashedAt, revisions, items, screens: [ { id, name, device, width, height,
-//   showHeader, tablePos, parts, callouts } ] } ] }
+//   showHeader, tablePos, parts, callouts } ], mapPos, processPos, flowPos } ] }
 // items（データベースの項目の一覧表）と parts の 1 つずつの形は、下の「項目」「部品」に書いた。callouts（吹き出し）は第 3 段階の後半で使う。
+// systems（システムのまとまり）は第 9 段階で中身を決める入れ物（第 8 段階では読み込んだものをそのまま残すだけ）。
 // 倍率・モード・開いている画面・選んでいる部品・コピーした部品は保存しない（下の ui に持つ）。
 // データの形の版: 1＝部品が項目名と設定を持つ（第 3 段階の前半まで）。2＝項目は画面設計の items に持ち、入力欄の部品は itemId で項目を指す。
-const SCHEMA_VERSION = 2;
+// 3＝ステータスに id（{ id, name }）と操作（actions）を持ち、ボタンにも移る先を持つ。図の位置（processPos・flowPos）と systems を足した（第 8 段階）。
+const SCHEMA_VERSION = 3;
 const STORAGE_KEY = 'mockimagemaker.v1';
 const HISTORY_LIMIT = 50;
 const GRID = 8;
@@ -772,7 +799,7 @@ function cleanName(s, max = NAME_MAX) {
 }
 
 function createInitialState() {
-  return { schemaVersion: SCHEMA_VERSION, settings: { customTargets: [], mapPos: {} }, designs: [] };
+  return { schemaVersion: SCHEMA_VERSION, settings: { customTargets: [], mapPos: {} }, systems: [], designs: [] };
 }
 
 function createScreenData(name, device = 'pc') {
@@ -783,7 +810,7 @@ function createScreenData(name, device = 'pc') {
 function createDesignData(name, target, now = nowIso()) {
   return {
     id: newId('d'), name, target, description: '', createdAt: now, updatedAt: now,
-    trashedAt: null, revisions: [], items: [], screens: [createScreenData(FIRST_SCREEN_NAME)], mapPos: {},
+    trashedAt: null, revisions: [], items: [], screens: [createScreenData(FIRST_SCREEN_NAME)], mapPos: {}, processPos: {}, flowPos: {},
   };
 }
 
@@ -846,23 +873,28 @@ function duplicateDesignData(d, now = nowIso()) {
   // 改訂履歴は写さない（部品の id を付け直すので、前の版の写しと突き合わせられないため。Claude が決めた）
   copy.revisions = [];
   // 項目の id は画面設計の中だけで重ならなければよいので、そのまま写す（部品・ルックアップが指す id を付け直さなくて済むため）。
-  // 画面と部品の id は付け直し、それを指す吹き出しのつなぐ部品と、リンクの文字の移る先も付け直す
+  // 画面と部品の id は付け直し、それを指す吹き出しのつなぐ部品と、ボタン・リンクの文字の移る先も付け直す
   const screenIds = new Map(d.screens.map((s) => [s.id, newId('s')]));
-  copy.screens = d.screens.map((s) => copyScreenData(s, { name: s.name, id: screenIds.get(s.id), screenIds }));
+  copy.screens = d.screens.map((s) => copyScreenData(s, { name: s.name, id: screenIds.get(s.id), screenIds, designId: d.id }));
   // 編集の画面のつながりの図で覚えた「この画面設計」の箱の位置は、複製の箱の鍵で覚え直す
   if (isObj(copy.mapPos) && copy.mapPos['d:' + d.id]) {
     copy.mapPos['d:' + copy.id] = copy.mapPos['d:' + d.id];
     delete copy.mapPos['d:' + d.id];
   }
+  // 画面の移り方の図で覚えた画面の箱の位置も、複製の画面の鍵で覚え直す（ほかの画面設計の画面の箱はそのまま）
+  if (isObj(copy.flowPos)) {
+    copy.flowPos = Object.fromEntries(Object.entries(copy.flowPos).map(([k, v]) => [k.startsWith('s:') && screenIds.has(k.slice(2)) ? 's:' + screenIds.get(k.slice(2)) : k, v]));
+  }
   return copy;
 }
 
 // ── 画面を足す・複製する（第 4 段階。画像 q29・q30）──
-// 画面 1 つの写し。画面・部品・吹き出しの id を付け直し、吹き出しのつなぐ部品とリンクの文字の移る先も付け直す。
+// 画面 1 つの写し。画面・部品・吹き出しの id を付け直し、吹き出しのつなぐ部品とボタン・リンクの文字の移る先も付け直す。
 // 部品は同じ項目を指したまま（ほかの画面へ貼るときと同じ。1 つの画面に同じ項目は 1 回だけだが、別の画面には置ける）。
-// screenIds（元の画面の id → 新しい id）を渡したとき（画面設計の複製）は、移る先をそれで付け直し、ないものは外す。
-// 渡さないとき（画面の複製）は、自分の画面を指す移る先だけを新しい画面に付け直し、ほかの画面を指すものはそのままにする
-function copyScreenData(src, { name, id = newId('s'), screenIds = null }) {
+// screenIds（元の画面の id → 新しい id）を渡したとき（画面設計の複製）は、この画面設計の画面を指す移る先をそれで付け直し、ないものは外す。
+// 渡さないとき（画面の複製）は、自分の画面を指す移る先だけを新しい画面に付け直し、ほかの画面を指すものはそのままにする。
+// ほかの画面設計の画面を指す移る先は、どちらでもそのまま写す（designId は元の画面設計の id。'' はこの画面設計）
+function copyScreenData(src, { name, id = newId('s'), screenIds = null, designId = '' }) {
   const copy = clone(src);
   copy.id = id;
   copy.name = name;
@@ -870,9 +902,10 @@ function copyScreenData(src, { name, id = newId('s'), screenIds = null }) {
   copy.parts.forEach((p) => { partIds.set(p.id, newId('p')); p.id = partIds.get(p.id); });
   copy.callouts = (copy.callouts || []).map((c) => ({ ...c, id: newId('k'), target: c.target ? partIds.get(c.target) || null : null }));
   copy.parts.forEach((p) => {
-    if (p.type !== 'link' || !isObj(p.props) || !p.props.screenId) return;
+    if (!hasMoveTarget(p) || !p.props.screenId || (p.props.designId && p.props.designId !== designId)) return;
     const to = p.props.screenId;
     p.props.screenId = screenIds ? screenIds.get(to) || '' : to === src.id ? id : to;
+    if (screenIds) p.props.designId = ''; // 画面設計の複製では、元の画面設計を名指ししていた移る先も「この画面設計」にする
   });
   return copy;
 }
@@ -907,12 +940,86 @@ function insertScreenAfter(design, screen, afterId) {
   design.screens.splice(i < 0 ? design.screens.length : i + 1, 0, screen);
 }
 
-// リンクの文字で、移る先がその画面のもの
-// （移る先を「URL を書く」に変えた後も screenId は残るので、移る先が画面のものだけを見る）
-const linksToScreen = (p, screenId) => p.type === 'link' && isObj(p.props) && p.props.to === 'screen' && !!screenId && p.props.screenId === screenId;
-// ほかの画面にある、その画面を移る先にしているリンクの文字の数（画面を消す確かめの窓に書く）
-const linksInto = (design, screenId) => design.screens.filter((s) => s.id !== screenId)
-  .reduce((n, s) => n + s.parts.filter((p) => linksToScreen(p, screenId)).length, 0);
+// ── 移る先（ボタンとリンクの文字。第 8 段階で、ボタンにも持たせ、ほかの画面設計の画面も指せるようにした）──
+// 部品の props: to（''・'screen'・'url'）・designId（移る先の画面設計。'' はこの画面設計）・screenId・url。
+// 移る先を「URL を書く」に変えた後も designId・screenId は残るので、移る先が画面のものだけを見る
+const MOVE_PART_TYPES = ['button', 'link'];
+const hasMoveTarget = (p) => MOVE_PART_TYPES.includes(p.type) && isObj(p.props);
+// 部品の移る先の画面 { designId, screenId }（inDesignId は部品のある画面設計）。移る先が画面でないときは null
+function moveTargetOf(p, inDesignId) {
+  if (!hasMoveTarget(p) || p.props.to !== 'screen' || !p.props.screenId) return null;
+  return { designId: p.props.designId || inDesignId, screenId: p.props.screenId };
+}
+const targetsScreen = (p, inDesignId, designId, screenId) => {
+  const t = moveTargetOf(p, inDesignId);
+  return !!t && t.designId === designId && t.screenId === screenId;
+};
+// その画面を移る先にしているボタンとリンクの文字の数を、画面設計ごとに数える（画面を消す確かめの窓に書く。消す画面の中の部品は数えない）。
+// 戻り値 [{ design, count }]。この画面設計が先、ほかは名前の順。ごみ箱の画面設計の分も数える（消すと、その移る先も外れるため）
+function screenRefsInto(state, designId, screenId) {
+  return state.designs
+    .map((d) => ({ design: d, count: d.screens.filter((s) => !(d.id === designId && s.id === screenId))
+      .reduce((n, s) => n + s.parts.filter((p) => targetsScreen(p, d.id, designId, screenId)).length, 0) }))
+    .filter((x) => x.count)
+    .sort((a, b) => (b.design.id === designId) - (a.design.id === designId) || a.design.name.localeCompare(b.design.name, 'ja'));
+}
+// その画面を指す移る先を外す（画面を消したとき。どの画面設計の分も）。外した画面設計の id の並びを返す
+function clearScreenRefs(state, designId, screenId) {
+  const hit = [];
+  state.designs.forEach((d) => d.screens.forEach((s) => s.parts.forEach((p) => {
+    if (!targetsScreen(p, d.id, designId, screenId)) return;
+    p.props.screenId = '';
+    if (!hit.includes(d.id)) hit.push(d.id);
+  })));
+  return hit;
+}
+// 完全に削除した画面設計を名指ししていた移る先を、画面設計も画面も外す
+function clearDesignRefs(state, designId) {
+  state.designs.forEach((d) => d.screens.forEach((s) => s.parts.forEach((p) => {
+    if (hasMoveTarget(p) && p.props.designId === designId) Object.assign(p.props, { designId: '', screenId: '' });
+  })));
+}
+// 移る先の画面設計の名前と画面（{ name, screens }）。単体で開いた HTML では、書き出したときに入れた screenPeers から引く
+function screenOwner(state, designId) {
+  return findDesign(state, designId) || (standalone && standalone.screenPeers.find((p) => p.id === designId)) || null;
+}
+// 設定の文の「移る先＝」。この画面設計の画面は「一覧の画面」、ほかの画面設計の画面は「経費精算 ／ 一覧の画面」、見つからなければ「（ない画面）」
+function moveTargetText(ctx, pr) {
+  if (pr.to === 'url') return String(pr.url == null ? '' : pr.url).trim();
+  if (pr.to !== 'screen' || !pr.screenId || !ctx) return '';
+  const own = !pr.designId || pr.designId === ctx.design.id;
+  const owner = own ? ctx.design : screenOwner(ctx.state, pr.designId);
+  const s = owner ? owner.screens.find((x) => x.id === pr.screenId) : null;
+  if (!s) return '（ない画面）';
+  return (own ? '' : `${owner.name} ／ `) + `${s.name}の画面`;
+}
+// 書き出す HTML に入れる、移る先のほかの画面設計（この画面設計のボタン・リンクの文字が指す画面設計と、この画面設計の画面を指す
+// ボタン・リンクの文字のある画面設計〔ごみ箱にないもの〕）。名前・画面の名前と、入ってくる移る先（from: 相手の画面・to: この画面設計の画面）だけを入れる。
+// 指す先の画面設計がごみ箱にあるときは trashed の印を付ける（設定の文には名前を出し、図と移る先の選択肢には出さない。アプリと同じ）。
+// つながりの図の peers とは分ける（つながりの図に箱を増やさないため）
+function screenPeersOf(d, state) {
+  const ids = new Set();
+  d.screens.forEach((s) => s.parts.forEach((p) => { const t = moveTargetOf(p, d.id); if (t && t.designId !== d.id) ids.add(t.designId); }));
+  const refs = new Map();
+  state.designs.filter((x) => x.id !== d.id && !x.trashedAt).forEach((x) => x.screens.forEach((s) => s.parts.forEach((p) => {
+    const t = moveTargetOf(p, x.id);
+    if (!t || t.designId !== d.id) return;
+    ids.add(x.id);
+    refs.set(x.id, [...(refs.get(x.id) || []), { from: s.id, to: t.screenId, type: p.type, label: partTitle(p) }]);
+  })));
+  return [...ids].map((id) => findDesign(state, id)).filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ja'))
+    .map((x) => ({ id: x.id, name: x.name, screens: x.screens.map((s) => ({ id: s.id, name: s.name })), refs: refs.get(x.id) || [], ...(x.trashedAt ? { trashed: true } : {}) }));
+}
+function normalizeScreenPeers(raw) {
+  return (Array.isArray(raw) ? raw : []).filter((p) => isObj(p) && str(p.id)).map((p) => ({
+    id: str(p.id),
+    name: cleanName(p.name) || '名前なし',
+    screens: (Array.isArray(p.screens) ? p.screens : []).filter((s) => isObj(s) && str(s.id)).map((s) => ({ id: str(s.id), name: str(s.name) })),
+    refs: (Array.isArray(p.refs) ? p.refs : []).filter(isObj).map((r) => ({ from: str(r.from), to: str(r.to), type: r.type === 'button' ? 'button' : 'link', label: str(r.label) })),
+    ...(p.trashed === true ? { trashed: true } : {}),
+  }));
+}
 
 // ひな形（画像 q30）。note は「画面を足す」の窓の札に書く短い説明
 const SCREEN_TEMPLATES = [
@@ -1024,7 +1131,7 @@ function screenFromTemplate(design, templateId, name) {
   };
   const putStatus = (type, x, y) => {
     const it = status();
-    put(type, x, y, { itemId: it.id, view: { current: it.props.states[1] || it.props.states[0] || '' } });
+    put(type, x, y, { itemId: it.id, view: { current: defaultStateId(it) } });
   };
   // 項目を 2 列で並べ（並べ方の決まり layoutPlacements で置く）、テーブルの項目はその下に 1 つずつ、最後に buttons の行を置く
   const flowItems = (y0, buttons = []) => {
@@ -1110,7 +1217,8 @@ const PART_TYPES = {
   dropdown: { name: 'ドロップダウン', pal: 'ドロップ\nダウン', icon: '▾', w: 320, h: 64, input: true, ph: '選択してください', label: '項目名', props: { options: ['選択肢 1', '選択肢 2'], initial: '' } },
   radio: { name: 'ラジオボタン', pal: 'ラジオ\nボタン', icon: '◉', w: 320, h: 64, input: true, label: '項目名', props: { options: ['選択肢 1', '選択肢 2'], initial: '', dir: 'h' } },
   checkbox: { name: 'チェックボックス', pal: 'チェック\nボックス', icon: '☑', w: 400, h: 64, input: true, label: '項目名', props: { options: ['選択肢 1', '選択肢 2', '選択肢 3'], initial: [], dir: 'h' } },
-  button: { name: 'ボタン', icon: '▬', w: 96, h: 40, label: 'ボタン', props: { style: 'primary', action: '' } },
+  // ボタンとリンクの文字の移る先: to は ''（なし）・'screen'（画面）・'url'。designId は移る先の画面設計（'' はこの画面設計。第 8 段階）
+  button: { name: 'ボタン', icon: '▬', w: 96, h: 40, label: 'ボタン', props: { style: 'primary', action: '', to: '', designId: '', screenId: '', url: '' } },
   heading: { name: '見出し', icon: 'T', w: 400, h: 32, label: '見出し', noNumber: true, props: {} },
   desc: { name: '説明の文字', icon: 'Aa', w: 400, h: 48, label: '説明の文を書きます。', props: {} },
   divider: { name: '区切り線', icon: '―', w: 336, h: 16, label: '', noNumber: true, props: {} },
@@ -1131,7 +1239,7 @@ const PART_TYPES = {
   // タブの高さは画像 q26 の 36 を、8 ドットのマス目に合わせて 40 にした（Claude が決めた）
   tabs: { name: 'タブ', icon: '⊓', w: 480, h: 40, label: '', props: { tabs: ['基本情報', '明細', '添付ファイル', '履歴'], current: '基本情報' } },
   image: { name: '画像の置き場', pal: '画像の\n置き場', icon: '🖼', w: 240, h: 160, label: '画像', noNumber: true, props: {} },
-  link: { name: 'リンクの文字', pal: 'リンク\nの文字', icon: '🔗', w: 200, h: 24, label: 'リンクの文字', props: { to: '', screenId: '', url: '' } },
+  link: { name: 'リンクの文字', pal: 'リンク\nの文字', icon: '🔗', w: 200, h: 24, label: 'リンクの文字', props: { to: '', designId: '', screenId: '', url: '' } },
   icon: { name: 'アイコン', icon: '⚙', w: 32, h: 32, label: '', noNumber: true, props: { icon: 'gear', color: 'black' } },
 };
 // 部品の箱にだけ並べる、部品ではないもの（吹き出し）。PART_TYPES には入れない（画面の parts には入らないため）
@@ -1255,9 +1363,14 @@ function createColumnData(type, name) {
   return { id: newId('c'), name, type, required: false, memo: '', props: clone(partType(type).props) };
 }
 
+// 新しくステータスの項目を作るときの見本の操作（画像 q57。ユーザーが決めた）。[名前, 前, 次] は DEFAULT_STATES の並びの番号。操作する人と条件は空
+const SAMPLE_ACTIONS = [['申請する', 0, 1], ['承認する', 1, 2], ['差し戻す', 1, 0], ['完了にする', 2, 3]];
+const sampleActions = (states) => SAMPLE_ACTIONS.filter(([, f, t]) => states[f] && states[t])
+  .map(([name, f, t]) => ({ id: newId('a'), name, from: states[f].id, to: states[t].id, role: '', cond: '' }));
 function createItemData(type, name) {
   const t = partType(type);
-  const props = type === 'table' ? { columns: defaultColumns() } : type === 'status' ? { states: [...DEFAULT_STATES] } : clone(t.props);
+  const states = type === 'status' ? normalizeStates(DEFAULT_STATES) : null;
+  const props = type === 'table' ? { columns: defaultColumns() } : type === 'status' ? { states, actions: sampleActions(states) } : clone(t.props);
   const defName = type === 'table' ? '明細' : type === 'status' ? 'ステータス' : t.label;
   return { id: newId('i'), name: name == null ? defName : name, type, required: false, memo: '', props, lookup: null, link: null };
 }
@@ -1454,6 +1567,7 @@ function describePartLines(p, ctx = null) {
       eqIf('単位', v(pr.unit));
       break;
     case 'button':
+      eqIf('移る先', moveTargetText(ctx, pr));
       eqIf('押したとき', v(pr.action));
       break;
     case 'table':
@@ -1489,21 +1603,28 @@ function describePartLines(p, ctx = null) {
       if (v(pr.perPage)) short.push(`1 ページ ${v(pr.perPage)} 件`);
       break;
     case 'status': case 'steps':
-      eqIf('ステータス', (pr.states || []).join(p.type === 'steps' ? ' → ' : '／'));
+      eqIf('ステータス', stateNames(pr.states).join(p.type === 'steps' ? ' → ' : '／'));
+      eq.push(...actionLines(pr));
       break;
     case 'tabs':
       eqIf('タブ', list(pr.tabs));
       break;
     case 'link':
-      eqIf('移る先', pr.to === 'url' ? v(pr.url) : pr.to === 'screen' ? screenNameIn(ctx, pr.screenId) : '');
+      eqIf('移る先', moveTargetText(ctx, pr));
       break;
   }
   if (ctx) eq.push(...lookupLines(ctx, p));
   return { short: short.join('・'), eq, memo: v(p.memo) };
 }
 
+// 操作の行「操作「承認する」＝承認待ちから承認済みへ（上長）・条件」。「＝」の前を操作ごとに変えて、改訂履歴の違いで操作ごとに前と後を出す
+function actionLines(pr) {
+  const states = Array.isArray(pr.states) ? pr.states : [];
+  const nm = (id) => stateNameOf(states, id) || '（なし）';
+  return (Array.isArray(pr.actions) ? pr.actions : []).filter(isObj)
+    .map((a) => `操作「${String(a.name || '').trim()}」＝${nm(a.from)}から${nm(a.to)}へ${str(a.role).trim() ? `（${a.role.trim()}）` : ''}${str(a.cond).trim() ? `・${a.cond.trim()}` : ''}`);
+}
 const itemNameIn = (ctx, id) => { const it = ctx && id ? findItem(ctx.design, id) : null; return it ? it.name : ''; };
-const screenNameIn = (ctx, id) => { const s = ctx && id ? ctx.design.screens.find((x) => x.id === id) : null; return s ? `${s.name}の画面` : ''; };
 
 // データベースの項目の一覧表の「設定」の列の文（部品の設定の一覧表と同じ書き方）。表（テーブル）は列の名前も書く
 function describeItem(item, ctx = null) {
@@ -1585,7 +1706,7 @@ function revisionDate(day) {
 
 // 画面設計の中身（前の版に戻す・取り込んで置き換える・中身を比べるところ）。画面設計に中身の項目を足したら、ここに足す
 // （restoreRevision・replaceWithImported・designContent がこれを使う。3 か所に並べていると、足すときに漏れるため。第 7 段階）
-const DESIGN_CONTENT_KEYS = ['name', 'target', 'description', 'items', 'screens', 'mapPos'];
+const DESIGN_CONTENT_KEYS = ['name', 'target', 'description', 'items', 'screens', 'mapPos', 'processPos', 'flowPos'];
 // 画面設計の中身だけを抜き出す。copy のときは中身を写す
 function designContentOf(d, copy = false) {
   const out = {};
@@ -1651,12 +1772,21 @@ function partFacts(design, raw, state) {
 function settingChanges(a, b) {
   const out = [];
   if (a.short !== b.short) out.push(fromTo('条件', a.short, b.short));
-  const map = (eq) => new Map(eq.map((line) => {
-    const i = line.indexOf('＝');
-    return i < 0 ? [line, ''] : [line.slice(0, i), line.slice(i + 1)];
-  }));
+  // 「＝」より前を鍵にして、前後の行を突き合わせる。同じ鍵の行（同じ名前の操作など）は、鍵ごとに並びの順で突き合わせる
+  const map = (eq) => {
+    const m = new Map();
+    eq.forEach((line) => {
+      const i = line.indexOf('＝');
+      const [k, v] = i < 0 ? [line, ''] : [line.slice(0, i), line.slice(i + 1)];
+      m.set(k, [...(m.get(k) || []), v]);
+    });
+    return m;
+  };
   const [ma, mb] = [map(a.eq), map(b.eq)];
-  [...new Set([...ma.keys(), ...mb.keys()])].forEach((k) => { if (ma.get(k) !== mb.get(k)) out.push(fromTo(k, ma.get(k), mb.get(k))); });
+  [...new Set([...ma.keys(), ...mb.keys()])].forEach((k) => {
+    const [va, vb] = [ma.get(k) || [], mb.get(k) || []];
+    for (let i = 0; i < Math.max(va.length, vb.length); i++) if (va[i] !== vb[i]) out.push(fromTo(k, va[i], vb[i]));
+  });
   if (a.memo !== b.memo) out.push(fromTo('メモ', a.memo, b.memo));
   return out;
 }
@@ -1865,11 +1995,18 @@ function normalizePart(src, items = []) {
     const found = itemType === 'status' ? items.find((it) => it.type === 'status') : null;
     const item = found || normalizeItem({ name: fields.label, type: itemType, required: fields.required, memo: fields.memo, props: fields.props });
     if (!found) items.push(item);
-    return withoutItemFields({ ...common, itemId: item.id });
+    return withStateView(withoutItemFields({ ...common, itemId: item.id }), item.props);
   }
   // 指している項目があれば、項目名と設定は項目のものを使う。なければ（項目を一覧表から消した後）、部品が持っている中身で描く
-  if (items.some((it) => it.id === itemId)) return withoutItemFields({ ...common, itemId });
-  return { ...common, itemId, ...fields, lookup: isInputType(itemType) ? normalizeLookup(p.lookup) : null, link: normalizeLink(p.link) };
+  const target = items.find((it) => it.id === itemId);
+  if (target) return withStateView(withoutItemFields({ ...common, itemId }), target.props);
+  return withStateView({ ...common, itemId, ...fields, lookup: isInputType(itemType) ? normalizeLookup(p.lookup) : null, link: normalizeLink(p.link) }, fields.props);
+}
+// ステータスの印・進み具合の矢印の、見本で出すステータス（view.current）を、ステータスの id にそろえる（データの形の版 2 では名前で持っていた）。
+// 並びにない値は消さずに残す（版 2 で並びの名前を変えた後に残った名前。版 2 の書き出しの印と比べるときに、中身が変わらないように）
+function withStateView(part, props) {
+  if (!part.view || !('current' in part.view) || !isObj(props) || !Array.isArray(props.states)) return part;
+  return { ...part, view: { ...part.view, current: resolveStateRef(props.states, part.view.current) || part.view.current } };
 }
 
 function withoutItemFields(p) {
@@ -1903,10 +2040,106 @@ function normalizeItemProps(type, src) {
   const props = isObj(src) ? { ...src } : {};
   if (type === 'table') return { ...props, columns: (Array.isArray(props.columns) ? props.columns : []).filter(isObj).map(normalizeColumn) };
   if (type === 'status') {
-    const states = Array.isArray(props.states) ? props.states.filter((s) => typeof s === 'string' && s.trim()) : [];
-    return { ...props, states: states.length ? states : [...DEFAULT_STATES] };
+    const states = normalizeStates(props.states);
+    return { ...props, states, actions: normalizeActions(props.actions, states) };
   }
   return keepInitialInOptions(type, normalizeProps(partType(type), props));
+}
+
+// ── ステータスと操作（プロセス管理。データの形の版 3・第 8 段階）──
+// ステータスは { id, name }。操作は { id, name, from, to, role, cond }（from・to はステータスの id。role は操作する人、cond は条件）。
+// データの形の版 2 の文字のステータスには、名前から id を作る（毎回同じ id になるように。改訂履歴の版 2 の写しと今を比べるとき・
+// 版 2 で書き出した HTML を取り込むとき・取り込んだ項目で、同じステータスが同じ id になる）。同じ名前の 2 つ目からは「-2」「-3」を付ける。
+// 版 3 で新しく足すステータスは newId('t')、操作は newId('a')
+function stateIdFromName(name, seen) {
+  const base = 't-' + shortHash(name);
+  let id = base;
+  for (let k = 2; seen.has(id); k++) id = base + '-' + k;
+  return id;
+}
+function normalizeStates(src) {
+  const seen = new Set();
+  const out = [];
+  (Array.isArray(src) ? src : []).forEach((s) => {
+    const obj = isObj(s) ? s : typeof s === 'string' ? { name: s } : null;
+    const name = obj && typeof obj.name === 'string' ? obj.name : '';
+    if (!name.trim()) return;
+    let id = str(obj.id);
+    if (!id || seen.has(id)) id = stateIdFromName(name, seen);
+    seen.add(id);
+    out.push({ ...obj, id, name });
+  });
+  return out.length ? out : normalizeStates(DEFAULT_STATES);
+}
+// 操作の前と次は、ステータスの id か名前で書ける（名前は id に直す）。並びにないものは ''。id がない操作には、中身から id を作る
+function normalizeActions(src, states) {
+  const seen = new Set();
+  return (Array.isArray(src) ? src : []).filter(isObj).map((a, i) => {
+    const name = typeof a.name === 'string' ? a.name : '';
+    let id = str(a.id);
+    if (!id || seen.has(id)) {
+      const base = 'a-' + shortHash([name, str(a.from), str(a.to), i].join('|'));
+      id = base;
+      for (let k = 2; seen.has(id); k++) id = base + '-' + k;
+    }
+    seen.add(id);
+    return { ...a, id, name, from: resolveStateRef(states, a.from), to: resolveStateRef(states, a.to), role: str(a.role), cond: str(a.cond) };
+  });
+}
+// ステータスの id か名前（v）を、並び states の id にする。見つからなければ ''。
+// fromStates（元の並び）を渡すと、元の並びのステータスの名前で当て直す（ほかの画面設計へ貼り付けた部品の見本・項目の一覧表に戻した部品など）
+function resolveStateRef(states, v, fromStates = null) {
+  const list = Array.isArray(states) ? states.filter(isObj) : [];
+  const ref = str(v);
+  if (!ref) return '';
+  // 元の並び（fromStates。ほかの画面設計から貼り付けたときなど）があれば、元のステータスの名前で当て直すのを先にする
+  // （画面設計の複製や版 2 から直した並びは、画面設計をまたいで同じ id なので、名前を変えた後は id で当てると違うステータスになる）
+  const was = Array.isArray(fromStates) ? fromStates.find((s) => isObj(s) && s.id === ref) : null;
+  const again = was ? list.find((s) => s.name === was.name) : null;
+  if (again) return again.id;
+  if (list.some((s) => s.id === ref)) return ref;
+  const byName = list.find((s) => s.name === ref);
+  return byName ? byName.id : '';
+}
+const stateNames = (states) => (Array.isArray(states) ? states : []).map((s) => (isObj(s) ? s.name : String(s)));
+// ステータスの名前（id か名前で指す）。並びになければ ''
+function stateNameOf(states, v) {
+  const id = resolveStateRef(states, v);
+  const s = id ? states.find((x) => x.id === id) : null;
+  return s ? s.name : '';
+}
+// 部品を置いたときに見本で出すステータス（2 つ目。なければ 1 つ目）
+const defaultStateId = (item) => {
+  const states = (item && item.props && item.props.states) || [];
+  return (states[1] || states[0] || {}).id || '';
+};
+const stateIdsOf = (item) => (item && isObj(item.props) && Array.isArray(item.props.states) ? item.props.states.map((s) => s.id) : []);
+// ステータスの並びを名前の並びで置き換えた設定。同じ名前のステータスは今の id を残し、なくなったステータスを使う操作は消す。
+// 戻り値 { props, removed（消した操作）}。名前が 1 つもないときは、今のまま
+function statePropsFromNames(props, names) {
+  const list = (Array.isArray(names) ? names : []).map((n) => String(n == null ? '' : n)).filter((n) => n.trim());
+  if (!list.length) return { props, removed: [] };
+  const pool = [...(props.states || [])];
+  const states = normalizeStates(list.map((n) => {
+    const i = pool.findIndex((s) => s.name === n);
+    return i >= 0 ? pool.splice(i, 1)[0] : { id: newId('t'), name: n };
+  }));
+  const ids = new Set(states.map((s) => s.id));
+  const keep = (v) => !v || ids.has(v);
+  const actions = Array.isArray(props.actions) ? props.actions : [];
+  return {
+    props: { ...props, states, actions: normalizeActions(actions.filter((a) => keep(a.from) && keep(a.to)), states) },
+    removed: actions.filter((a) => !(keep(a.from) && keep(a.to))),
+  };
+}
+// ステータスの項目の並びを変えた後、なくなったステータスを見本で出していた部品を「なし」（''）にする（この画面設計の部品だけ）
+function clearGoneStates(design, item, beforeIds) {
+  const now = new Set(stateIdsOf(item));
+  const gone = beforeIds.filter((id) => !now.has(id));
+  if (!gone.length) return;
+  design.screens.forEach((s) => s.parts.forEach((p) => {
+    if (p.itemId === item.id && p.view && gone.includes(p.view.current)) p.view.current = '';
+  }));
 }
 function normalizeColumn(src) {
   const type = isInputType(src.type) ? src.type : 'text1';
@@ -2034,7 +2267,9 @@ function syncLinkedItems(state) {
       const want = linkedFields(src, srcDesign);
       if (LINKED_FIELDS.every((k) => JSON.stringify(it[k]) === JSON.stringify(want[k]))) return;
       if (want.type !== it.type && isInputType(want.type) && isInputType(it.type)) changeItemType(d, it, want.type);
+      const before = stateIdsOf(it);
       Object.assign(it, want);
+      clearGoneStates(d, it, before); // 元でステータスを消したときは、取り込んだ側でそのステータスを見本で出していた部品も「なし」にする
       changed = true;
     }));
     if (!changed) return;
@@ -2104,7 +2339,8 @@ function mapLayout(model, hOf = () => MAP_H) {
   const forward = mapForwardEdges(model);
   const rank = mapRanks(model, forward);
   const linked = new Set(model.edges.flatMap((e) => [e.from, e.to]));
-  const byName = [...model.nodes].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  // 箱の並びの初めは名前の順。order のある箱（画面の移り方の図の画面）は、その順で先に並べる
+  const byName = [...model.nodes].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || a.name.localeCompare(b.name, 'ja'));
   const cols = new Map();
   byName.filter((n) => linked.has(n.key)).forEach((n) => {
     const c = rank.get(n.key);
@@ -2180,7 +2416,9 @@ function mapForwardEdges(model) {
     return false;
   };
   const kept = [];
-  [...model.edges].sort((a, b) => MAP_EDGE_ORDER[a.kind] - MAP_EDGE_ORDER[b.kind]).forEach((e) => {
+  // order のある矢印（画面の移り方の図。画面の並びで前へ進む矢印が 0）は、その順で先に足す
+  const rankOf = (e) => (e.order != null ? e.order : MAP_EDGE_ORDER[e.kind]);
+  [...model.edges].sort((a, b) => rankOf(a) - rankOf(b)).forEach((e) => {
     if (reaches(e.to, e.from)) return;
     out.get(e.from).push(e.to);
     kept.push(e);
@@ -2277,9 +2515,14 @@ function normalizeDesign(src) {
   const screens = Array.isArray(d.screens) && d.screens.length
     ? uniquePartIds(uniqueIds(d.screens.map((s, i) => normalizeScreen(s, i, items)), 's'))
     : [createScreenData(FIRST_SCREEN_NAME)];
+  const id = str(d.id) || newId('d');
+  // ボタン・リンクの文字の移る先がこの画面設計を指しているときは ''（この画面設計）に直す（複製・取り込みで id が変わっても、自分を指し続けるように）
+  screens.forEach((s) => s.parts.forEach((p) => {
+    if ((p.type === 'button' || p.type === 'link') && isObj(p.props) && p.props.designId === id) p.props.designId = '';
+  }));
   return {
     ...d,
-    id: str(d.id) || newId('d'),
+    id,
     name: cleanName(d.name) || '名前なし',
     target: str(d.target),
     description: str(d.description),
@@ -2290,6 +2533,8 @@ function normalizeDesign(src) {
     items,
     screens,
     mapPos: normalizeMapPos(d.mapPos), // 編集の画面の「この画面設計のつながりの図」の箱の位置
+    processPos: normalizeMapPos(d.processPos), // ステータスの移り方の図の箱の位置（鍵は 't:ステータスの id'）
+    flowPos: normalizeMapPos(d.flowPos), // 画面の移り方の図の箱の位置（鍵は 's:画面の id'、ほかの画面設計の画面は 'x:画面設計の id/画面の id'）
   };
 }
 
@@ -2308,6 +2553,7 @@ function normalizeState(raw, schemaVersion) {
     schemaVersion,
     // mapPos は最初の画面の「全部の画面設計のつながりの図」の箱の位置
     settings: { ...settings, customTargets: [...new Set(customs.filter((t) => typeof t === 'string' && t.trim()))], mapPos: normalizeMapPos(settings.mapPos) },
+    systems: Array.isArray(raw.systems) ? raw.systems : [], // システムのまとまり（中身は第 9 段階で直す。今は読んだまま残す）
     designs: uniqueIds((Array.isArray(raw.designs) ? raw.designs : []).filter(isObj).map(normalizeDesign), 'd'),
   };
   syncLinkedItems(state);
@@ -2331,6 +2577,8 @@ function migrate(raw) {
   // 今の形に直すので、古い形の写しもそこで直るようにする（normalizeDesign の中で直すか、designFromSnapshot に同じ直しを足す）。
   // 1 → 2（項目を画面設計の items へ移す）は normalizePart が受け持つ: 項目を指していない入力欄の部品 1 つから項目を 1 つ作る
   // （同じ項目名の部品が別の画面にあっても 1 つにまとめない。別の項目のつもりの部品を 1 つにしてしまわないため）
+  // 2 → 3（ステータスに id・操作・移る先の欄・図の位置・systems）は normalizeItemProps・normalizePart（withStateView）・normalizeProps・
+  // normalizeDesign・normalizeState が受け持つ。ステータスの id は名前から作るので、版 2 の写しを何度直しても同じ id になる
   return { state: normalizeState(raw, SCHEMA_VERSION), blockReason: null };
 }
 
@@ -2586,6 +2834,24 @@ const findDesign = (state, id) => state.designs.find((d) => d.id === id) || null
 // 画面設計を書き換えた後は、ほかの画面設計が取り込んでいる項目（つなげたまま）も同じ commit の中でそろえる
 // （元に戻すで、元と取り込んだ側が一緒に戻るように）。取り込んだ側の更新日時は変えない
 // 更新日時は、画面設計の中身が変わったときだけ変える（何も変わらない操作を、元に戻すの履歴に積まないため）
+// 直せるステータスの項目（取り込んだ項目・前の版を見ている間は null）
+function editableStatusItem(designId, itemId) {
+  const it = store.isViewing ? null : findItem(findDesign(store.state, designId), itemId);
+  return it && it.type === 'status' && !it.link ? it : null;
+}
+// 操作の前と次は、並びにあるステータスの id か ''。前と次が同じ操作（自分への矢印）は作らない
+const validProcessAction = (a, ids) => [a.from, a.to].every((v) => v === '' || ids.includes(v)) && !(a.from && a.from === a.to);
+// ステータスの項目の states か actions の中の 1 つを、toIndex（動かした後の位置）へ動かす。動かないときは false
+function moveInList(designId, itemId, key, id, toIndex) {
+  const list = findItem(findDesign(store.state, designId), itemId).props[key];
+  const from = list.findIndex((x) => x.id === id);
+  if (from < 0 || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= list.length || toIndex === from) return false;
+  return mutateDesign(designId, (d) => {
+    const arr = findItem(d, itemId).props[key];
+    const [x] = arr.splice(from, 1);
+    arr.splice(toIndex, 0, x);
+  });
+}
 function mutateDesign(id, fn, { touch = true } = {}) {
   if (store.isViewing || !findDesign(store.state, id)) return false;
   store.commit((s) => {
@@ -2644,6 +2910,7 @@ const actions = {
     store.clearHistory();
     store.commit((s) => {
       s.designs = s.designs.filter((d) => d.id !== id);
+      clearDesignRefs(s, id); // この画面設計の画面を指していた移る先は外す（更新日時は変えない）
       syncLinkedItems(s); // この画面設計から取り込んでいた項目は、今の中身で固定する
     }, { history: false });
     return true;
@@ -2730,7 +2997,7 @@ const actions = {
     const d = findDesign(store.state, designId);
     const src = findScreen(designId, screenId);
     if (!src) return null;
-    const copy = copyScreenData(src, { name: copyScreenName(d, src.name) });
+    const copy = copyScreenData(src, { name: copyScreenName(d, src.name), designId });
     mutateDesign(designId, (dd) => { insertScreenAfter(dd, copy, screenId); });
     return copy.id;
   },
@@ -2744,13 +3011,15 @@ const actions = {
       dd.screens.splice(toIndex > from ? toIndex - 1 : toIndex, 0, s);
     });
   },
-  // 画面を消す（最後の 1 つは消せない）。データベースの項目は一覧表に残す。ほかの画面のリンクの文字がこの画面を指していれば、移る先を外す
+  // 画面を消す（最後の 1 つは消せない）。データベースの項目は一覧表に残す。ボタン・リンクの文字がこの画面を指していれば、移る先を外す
+  // （ほかの画面設計の分も同じ 1 回の変更で外し、外した画面設計の更新日時も変える）
   deleteScreen(designId, screenId) {
     const d = findDesign(store.state, designId);
     if (!d || d.screens.length < 2 || !findScreen(designId, screenId)) return false;
-    return mutateDesign(designId, (dd) => {
-      dd.screens = dd.screens.filter((s) => s.id !== screenId);
-      dd.screens.forEach((s) => s.parts.forEach((p) => { if (linksToScreen(p, screenId)) p.props.screenId = ''; }));
+    return mutateDesign(designId, (dd, s) => {
+      dd.screens = dd.screens.filter((x) => x.id !== screenId);
+      const now = nowIso();
+      clearScreenRefs(s, designId, screenId).filter((id) => id !== designId).forEach((id) => { findDesign(s, id).updatedAt = now; });
     });
   },
 
@@ -2777,7 +3046,7 @@ const actions = {
     const itemType = isInputType(type) ? type : type === 'table' ? 'table' : type === 'status' || type === 'steps' ? 'status' : '';
     const item = itemType && !status ? createItemData(itemType) : null;
     const p = createPartData(type, sc, freeSpot(sc, start), (status || item || {}).id || null, { design: d0 });
-    if (p.view && 'current' in p.view) p.view.current = ((status || item).props.states[1] || (status || item).props.states[0] || '');
+    if (p.view && 'current' in p.view) p.view.current = defaultStateId(status || item);
     mutateScreen(designId, screenId, (s, d) => {
       if (item) d.items.push(item);
       s.parts.push(p);
@@ -2801,7 +3070,7 @@ const actions = {
         }
       }
       const item = findItem(d, p.itemId);
-      if (item) { if (!item.link) applyFieldPatch(item, 'name', patch); } // 取り込んだ項目は直せない（元のモックで直す）
+      if (item) { if (!item.link) setItemFields(d, item, patch); } // 取り込んだ項目は直せない（元のモックで直す）
       else if (!p.itemId) applyFieldPatch(p, 'label', patch);
     });
   },
@@ -2886,7 +3155,7 @@ const actions = {
     const map = {};
     const out = [];
     (entries.parts || []).forEach(({ part: src, item: srcItem }) => {
-      const r = preparePartCopy(d, work, newItems, src, { x: src.x + dx, y: src.y + dy }, srcItem);
+      const r = preparePartCopy(d, work, newItems, src, { x: src.x + dx, y: src.y + dy }, srcItem, entries.designId);
       if (!r) return;
       map[src.id] = r.part.id;
       work.parts.push(r.part);
@@ -2908,27 +3177,34 @@ const actions = {
     return out;
   },
 
-  // ── つながりの図 ──
-  // 動かした箱の位置を覚える。designId が null なら最初の画面の図（設定に持つ）、あれば編集の画面のその画面設計の図（画面設計に持つ。更新日時は変えない）
-  setMapPos(designId, key, pos) {
+  // ── つながりの図・ステータスの移り方の図・画面の移り方の図 ──
+  // 動かした箱の位置を覚える。view は 'map'・'process'・'flow'（VIEW_POS の欄に覚える。画面設計の更新日時は変えない）。
+  // つながりの図で designId が null なら、最初の画面の図（設定に持つ）
+  setViewPos(designId, view, key, pos) {
+    const field = VIEW_POS[view];
+    if (!field) return false;
     const p = { x: Math.max(0, snapGrid(pos.x)), y: Math.max(0, snapGrid(pos.y)) };
-    if (!designId) {
+    if (!designId && view === 'map') {
       store.commit((s) => { s.settings.mapPos = { ...s.settings.mapPos, [key]: p }; });
       return true;
     }
-    return mutateDesign(designId, (d) => { d.mapPos = { ...d.mapPos, [key]: p }; }, { touch: false });
+    return mutateDesign(designId, (d) => { d[field] = { ...d[field], [key]: p }; }, { touch: false });
   },
   // 覚えた位置を消して、自動で並べ直す
-  resetMapPos(designId) {
-    if (!designId) {
+  resetViewPos(designId, view) {
+    const field = VIEW_POS[view];
+    if (!field) return false;
+    if (!designId && view === 'map') {
       if (!Object.keys(store.state.settings.mapPos || {}).length) return false;
       store.commit((s) => { s.settings.mapPos = {}; });
       return true;
     }
     const d = findDesign(store.state, designId);
-    if (!d || !Object.keys(d.mapPos || {}).length) return false;
-    return mutateDesign(designId, (dd) => { dd.mapPos = {}; }, { touch: false });
+    if (!d || !Object.keys(d[field] || {}).length) return false;
+    return mutateDesign(designId, (dd) => { dd[field] = {}; }, { touch: false });
   },
+  setMapPos(designId, key, pos) { return actions.setViewPos(designId, 'map', key, pos); },
+  resetMapPos(designId) { return actions.resetViewPos(designId, 'map'); },
 
   // ── 吹き出し ──
   // at は吹き出しの左上（画面の左上から）。target はつなぐ部品の id。戻り値は新しい吹き出しの id
@@ -2977,6 +3253,75 @@ const actions = {
     return mutateScreen(designId, screenId, (sc) => { sc.parts = renumberedParts(sc.parts); });
   },
 
+  // ── ステータスと操作（第 8 段階。画像 q52 の案A）──
+  // ステータスの項目（itemId）のステータスと操作を直す。取り込んだ項目は直さない（元の画面設計で直す）。断ったときは null・false を返し、履歴に積まない
+  addState(designId, itemId, name) {
+    const it = editableStatusItem(designId, itemId);
+    const n = cleanName(name);
+    if (!it || !n || it.props.states.some((s) => s.name === n)) return null;
+    const id = newId('t');
+    mutateDesign(designId, (d) => { findItem(d, itemId).props.states.push({ id, name: n }); });
+    return id;
+  },
+  renameState(designId, itemId, stateId, name) {
+    const it = editableStatusItem(designId, itemId);
+    const n = cleanName(name);
+    if (!it || !n || !it.props.states.some((s) => s.id === stateId) || it.props.states.some((s) => s.name === n && s.id !== stateId)) return false;
+    return mutateDesign(designId, (d) => { findItem(d, itemId).props.states.find((s) => s.id === stateId).name = n; });
+  },
+  // toIndex は動かした後の位置（0 がいちばん上）
+  moveState(designId, itemId, stateId, toIndex) {
+    const it = editableStatusItem(designId, itemId);
+    return !!it && moveInList(designId, itemId, 'states', stateId, toIndex);
+  },
+  // ステータスを消す（最後の 1 つは消せない）。そのステータスを使う操作も消え、見本で出していた部品は「なし」になる（取り込んだ側も）
+  deleteState(designId, itemId, stateId) {
+    const it = editableStatusItem(designId, itemId);
+    if (!it || it.props.states.length < 2 || !it.props.states.some((s) => s.id === stateId)) return false;
+    return mutateDesign(designId, (d) => {
+      const item = findItem(d, itemId);
+      const before = stateIdsOf(item);
+      item.props.states = item.props.states.filter((s) => s.id !== stateId);
+      item.props.actions = item.props.actions.filter((a) => a.from !== stateId && a.to !== stateId);
+      clearGoneStates(d, item, before);
+    });
+  },
+  // 操作を足す。spec は { name, from, to, role, cond }（from・to はステータスの id）。書かなければ「新しい操作」・1 つ目 → 2 つ目。戻り値は操作の id
+  addProcessAction(designId, itemId, spec = {}) {
+    const it = editableStatusItem(designId, itemId);
+    if (!it) return null;
+    const ids = stateIdsOf(it);
+    const a = {
+      id: newId('a'), name: cleanName(spec.name) || '新しい操作',
+      from: 'from' in spec ? str(spec.from) : ids[0] || '', to: 'to' in spec ? str(spec.to) : ids[1] || '',
+      role: str(spec.role).trim(), cond: str(spec.cond).trim(),
+    };
+    if (!validProcessAction(a, ids)) return null;
+    mutateDesign(designId, (d) => { findItem(d, itemId).props.actions.push(a); });
+    return a.id;
+  },
+  // 操作を直す。patch は { name, from, to, role, cond } のどれか。名前を空にしたときは今の名前のまま。前と次を同じにはしない
+  updateProcessAction(designId, itemId, actionId, patch) {
+    const it = editableStatusItem(designId, itemId);
+    const cur = it ? it.props.actions.find((a) => a.id === actionId) : null;
+    if (!cur || !isObj(patch)) return false;
+    const next = { ...cur };
+    if ('name' in patch) next.name = cleanName(patch.name) || cur.name;
+    ['from', 'to'].forEach((k) => { if (k in patch) next[k] = str(patch[k]); });
+    ['role', 'cond'].forEach((k) => { if (k in patch) next[k] = str(patch[k]).trim(); });
+    if (!validProcessAction(next, stateIdsOf(it))) return false;
+    return mutateDesign(designId, (d) => { Object.assign(findItem(d, itemId).props.actions.find((a) => a.id === actionId), next); });
+  },
+  moveProcessAction(designId, itemId, actionId, toIndex) {
+    const it = editableStatusItem(designId, itemId);
+    return !!it && moveInList(designId, itemId, 'actions', actionId, toIndex);
+  },
+  deleteProcessAction(designId, itemId, actionId) {
+    const it = editableStatusItem(designId, itemId);
+    if (!it || !it.props.actions.some((a) => a.id === actionId)) return false;
+    return mutateDesign(designId, (d) => { const item = findItem(d, itemId); item.props.actions = item.props.actions.filter((a) => a.id !== actionId); });
+  },
+
   // ── データベースの項目の操作 ──
   addItem(designId, type) {
     if (!(isInputType(type) || type === 'table') || !findDesign(store.state, designId)) return null;
@@ -2992,7 +3337,7 @@ const actions = {
     return mutateDesign(designId, (d) => {
       const item = findItem(d, itemId);
       if ('type' in patch && patch.type !== item.type) changeItemType(d, item, patch.type);
-      applyFieldPatch(item, 'name', patch);
+      setItemFields(d, item, patch);
     });
   },
   // 項目を並べ替える。toIndex は、今の並びで「この位置の項目の前」に入れる位置（いちばん後ろは項目の数）
@@ -3031,7 +3376,7 @@ const actions = {
         let seen = 0;
         s.parts = s.parts.map((p) => {
           if (p.itemId !== itemId || !isItemPart(p)) return p;
-          if (status) return { ...withoutItemFields(p), itemId: status.id, view: { ...p.view, current: status.props.states.includes((p.view || {}).current) ? p.view.current : status.props.states[1] || status.props.states[0] || '' } };
+          if (status) return { ...withoutItemFields(p), itemId: status.id, view: { ...p.view, current: resolveStateRef(status.props.states, (p.view || {}).current, p.props && p.props.states) || defaultStateId(status) } };
           seen += 1;
           if (seen === 1 || !oncePerScreen(partItemType(p))) return withoutItemFields(p);
           const copyItem = fromPart(p, newId('i'));
@@ -3113,7 +3458,7 @@ const actions = {
     if (!sc || !t || (oncePerScreen(item.type) && itemOnScreen(sc, itemId))) return null;
     const start = fitRect({ x: at.x, y: Math.max(sc.showHeader ? BAND_H : 0, at.y), w: t.w, h: t.h }, sc);
     const p = createPartData(type, sc, freeSpot(sc, start), itemId);
-    if (p.view && 'current' in p.view) p.view.current = item.props.states[1] || item.props.states[0] || '';
+    if (p.view && 'current' in p.view) p.view.current = defaultStateId(item);
     mutateScreen(designId, screenId, (s) => { s.parts.push(p); });
     return p.id;
   },
@@ -3134,19 +3479,26 @@ function mutatePart(designId, screenId, partId, fn) {
 }
 
 // 貼り付ける部品 1 つの下ごしらえ（commit はしない）。sc は貼り付ける先の画面（ここまでに貼り付けた部品を足した写し）、
-// pendingItems はここまでに作った項目。戻り値 { part, item（新しく足す項目。なければ null）}
-function preparePartCopy(d, sc, pendingItems, src, at, srcItem) {
+// pendingItems はここまでに作った項目。srcDesignId はコピーした画面設計。戻り値 { part, item（新しく足す項目。なければ null）}
+function preparePartCopy(d, sc, pendingItems, src, at, srcItem, srcDesignId = '') {
   if (!isObj(src)) return null;
   const p = { ...clone(src), id: newId('p'), ...fitRect({ ...src, ...freeSpot(sc, fitRect({ ...src, ...at }, sc)) }, sc) };
   p.no = src.no != null ? nextPartNo(sc) : null;
+  // ほかの画面設計へ貼るときは、移る先の画面設計を名指しし直す（コピーした画面設計の画面 → その画面設計を名指し、貼る先の画面設計の画面 → 「この画面設計」）
+  if (hasMoveTarget(p) && p.props.screenId && srcDesignId && srcDesignId !== d.id) {
+    const to = p.props.designId || srcDesignId;
+    p.props.designId = to === d.id ? '' : to;
+  }
   let newItem = null;
   const find = (id) => findItem(d, id) || pendingItems.find((it) => it.id === id) || null;
   if (!p.itemId || !isItemPart(p)) return { part: p, item: null };
   // ステータスの印・進み具合の矢印は、貼り付ける先の画面設計にステータスの項目があれば、それを指す（ステータスの並びは画面設計に 1 つだけ）
   const status = partItemType(p) === 'status' ? d.items.find((it) => it.type === 'status') || pendingItems.find((it) => it.type === 'status') : null;
   if (status) {
+    // 見本で出すステータスは、コピーした元の並び（コピーしたときの項目か、項目を消した後に残った部品の並び）の名前で当て直す
+    const fromStates = (isObj(srcItem) && isObj(srcItem.props) && srcItem.props.states) || (src.props && src.props.states) || null;
     withoutItemFieldsInPlace(p).itemId = status.id;
-    if (p.view && !status.props.states.includes(p.view.current)) p.view.current = status.props.states[1] || status.props.states[0] || '';
+    if (p.view) p.view.current = resolveStateRef(status.props.states, p.view.current, fromStates) || defaultStateId(status);
     return { part: p, item: null };
   }
   // 取り込んだ項目の部品を、取り込んだ元の画面設計へ貼り付けるときは、元の項目を指す
@@ -3199,7 +3551,21 @@ function applyFieldPatch(target, nameKey, patch) {
   if ('label' in patch) target[nameKey] = patch.label;
   if ('required' in patch) target.required = !!patch.required;
   if ('memo' in patch) target.memo = patch.memo;
-  if (isObj(patch.props)) target.props = keepInitialInOptions(target.type, { ...target.props, ...patch.props });
+  if (!isObj(patch.props)) return;
+  let props = { ...target.props, ...patch.props };
+  // ステータスの並びを名前の並びで書いたとき（右の欄の「ステータスの並び」）は、同じ名前のステータスの id を残し、なくなったステータスを使う操作を消す
+  const names = patch.props.states;
+  if (Array.isArray(names) && names.every((s) => typeof s === 'string') && isObj(target.props) && Array.isArray(target.props.states)) {
+    const fixed = statePropsFromNames(target.props, names).props;
+    props = { ...props, states: fixed.states, actions: 'actions' in patch.props ? props.actions : fixed.actions };
+  }
+  target.props = keepInitialInOptions(target.type, props);
+}
+// 項目の項目名・必須・メモ・設定を書き換える。ステータスの並びを変えたときは、なくなったステータスを見本で出していた部品を「なし」にする
+function setItemFields(design, item, patch) {
+  const before = stateIdsOf(item);
+  applyFieldPatch(item, 'name', patch);
+  clearGoneStates(design, item, before);
 }
 
 // ── 5. 共通の部品 ─────────────────────────────────────────────────────────────
@@ -3404,15 +3770,18 @@ function partInnerHtml(p, t, marks = false) {
       return `${outNo()}<div class="ppager"><span>‹</span>${nums.map((n, i) => `<span${i === 0 ? ' class="on"' : ''}>${n}</span>`).join('')}<span>›</span>${count}</div>`;
     }
     case 'status': {
+      // 見本で出すステータスがない（「なし」・並びにない）ときは、並びの 1 つ目を出す
       const states = pr.states || [];
-      const cur = p.view && states.includes(p.view.current) ? p.view.current : states[0] || '';
+      const id = resolveStateRef(states, p.view && p.view.current);
+      const at = Math.max(0, states.findIndex((s) => s.id === id));
       const word = p.view && p.view.showWord === false ? '' : `<span>${esc(p.label)}</span>`;
-      return `${outNo()}<div class="pstatus">${word}<span class="pbadge sc${Math.max(0, states.indexOf(cur)) % 5}">${esc(cur)}</span>${marks ? partMarksHtml(p) : ''}</div>`;
+      return `${outNo()}<div class="pstatus">${word}<span class="pbadge sc${at % 5}">${esc(states[at] ? states[at].name : '')}</span>${marks ? partMarksHtml(p) : ''}</div>`;
     }
     case 'steps': {
       const states = pr.states || [];
-      const at = p.view ? states.indexOf(p.view.current) : -1;
-      return `${outNo()}<div class="psteps">${states.map((s, i) => `<span class="${i < at ? 'done' : i === at ? 'on' : ''}">${esc(s)}</span>`).join('')}</div>`;
+      const id = resolveStateRef(states, p.view && p.view.current);
+      const at = id ? states.findIndex((s) => s.id === id) : -1;
+      return `${outNo()}<div class="psteps">${states.map((s, i) => `<span class="${i < at ? 'done' : i === at ? 'on' : ''}">${esc(s.name)}</span>`).join('')}</div>`;
     }
     case 'tabs': {
       const tabs = pr.tabs || [];
@@ -3711,8 +4080,8 @@ function keepScroll(selectors) {
   });
 }
 
-// つながりの図の HTML。focusId（編集の画面の画面設計）があればその画面設計の図。saved は覚えた箱の位置
-function mapHtml(state, focusId, saved) {
+// つながりの図の HTML。focusId（編集の画面の画面設計）があればその画面設計の図。saved は覚えた箱の位置。o.idPrefix は矢印の印の id の頭（書き出し）
+function mapHtml(state, focusId, saved, o = {}) {
   const model = mapModel(state, focusId);
   if (!model.nodes.length) return '<p class="map-empty">まだ画面設計がありません。</p>';
   const roles = (k) => {
@@ -3738,7 +4107,7 @@ function mapHtml(state, focusId, saved) {
   }).join('');
   const w = Math.max(860, ...Object.values(pos).map((p) => p.x + MAP_W + 40));
   const h = Math.max(420, ...Object.values(pos).map((p) => p.y + p.h + 60));
-  return `<div class="map-inner" id="map-inner" style="width:${w}px;height:${h}px" data-focus="${esc(focusId || '')}">${mapEdgesSvg(model, pos, w, h)}${nodes}</div>`;
+  return `<div class="map-inner" id="map-inner" style="width:${w}px;height:${h}px" data-focus="${esc(focusId || '')}">${mapEdgesSvg(model, pos, w, h, { idPrefix: o.idPrefix })}${nodes}</div>`;
 }
 // 箱の位置。覚えた位置の箱はそこに置き、自動で並べる箱が覚えた箱と重なるときは、重ならない所まで 1 段ずつ下へずらす
 // （覚えた箱を数に入れずに並べると、後から足した画面設計の箱が、動かした箱とぴったり重なることがあるため）
@@ -3759,34 +4128,78 @@ function mapPlace(model, saved, auto, hOf) {
   return pos;
 }
 // 矢印の線。箱の左右（重なって並ぶときは上下）の縁から、相手の箱へ曲線で引き、真ん中に文字を書く。
-// 同じ縁に何本も付くときは、縁に沿ってずらす（mapPorts）。同じ 2 つの箱の間の矢印（行きと帰りなど）は、文字を線の外側に書く
-function mapEdgesSvg(model, pos, w, h) {
+// 同じ縁に何本も付くときは、縁に沿ってずらす（mapPorts）。同じ 2 つの箱の間の矢印（行きと帰りなど）は、文字を線の外側に書く。
+// o は図ごとの描き方（第 8 段階。渡さなければ、つながりの図の描き方）: idPrefix（矢印の印の id の頭）・style（線の色・太さ・点線・印の名前 mark）・
+// label（文字の行）・flat（どの行も太字で線の色）・lanes（ほかの箱を避けて同じ高さを通る線を、2 本目から 28 ずつずらす）・
+// vertical（上下に並ぶ箱の間の線の文字を線の横に書き、間にほかの箱があれば箱の右を回す。ステータスの移り方の図）
+const mapEdgeStyle = (e) => (e.kind === 'link' ? { col: '#16a34a', w: 2, dash: '6 4', mark: 'g', light: true } : { col: '#1d3f6e', w: 2.5, mark: 'n' });
+const mapEdgeLabel = (e) => (e.kind === 'link' ? [`取り込み: ${e.labels.join('・')}`]
+  : e.kind === 'related' ? ['関連レコード一覧', e.labels.join('・')]
+    : e.labels.join('\n').split('\n').slice(0, 3));
+const mapMarker = (id, col) => `
+    <marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${col}"/></marker>`;
+function mapEdgesSvg(model, pos, w, h, o = {}) {
+  const idp = o.idPrefix || 'map';
+  const styleOf = o.style || mapEdgeStyle;
+  const labelOf = o.label || mapEdgeLabel;
   const box = (k) => ({ ...pos[k], w: MAP_W, h: pos[k].h || MAP_H });
   const pairOf = (e) => [e.from, e.to].sort().join('|');
   const pairs = new Map();
   model.edges.forEach((e) => pairs.set(pairOf(e), [...(pairs.get(pairOf(e)) || []), e]));
-  const ports = mapPorts(model, pos);
-  const paths = model.edges.map((e, i) => {
+  // ほかの箱は、役目の行（編集の画面の図）の分も含めた高さで避ける
+  const othersOf = (e) => model.nodes.filter((n) => n.key !== e.from && n.key !== e.to).map((n) => ({ ...pos[n.key], w: MAP_W, h: pos[n.key].h || MAP_H }));
+  const vertical = (e) => !!o.vertical && ['t', 'b'].includes(mapSides(box(e.from), box(e.to))[0]);
+  // 同じ 2 つの箱の間に線が 2 本以上あるとき、文字を線の外側（-1 左・上、1 右・下）に書く。1 本なら 0
+  const outsideOf = (e) => {
     const same = pairs.get(pairOf(e));
-    const outside = same.length > 1 ? (same.indexOf(e) < (same.length - 1) / 2 ? -1 : 1) : 0;
-    // ほかの箱は、役目の行（編集の画面の図）の分も含めた高さで避ける
-    const others = model.nodes.filter((n) => n.key !== e.from && n.key !== e.to).map((n) => ({ ...pos[n.key], w: MAP_W, h: pos[n.key].h || MAP_H }));
-    const g = mapEdgeGeometry(box(e.from), box(e.to), ports.get(e), others);
-    const link = e.kind === 'link';
-    const col = link ? '#16a34a' : '#1d3f6e';
-    const label = link ? [`取り込み: ${e.labels.join('・')}`]
-      : e.kind === 'related' ? ['関連レコード一覧', e.labels.join('・')]
-        : e.labels.join('\n').split('\n').slice(0, 3);
+    return same.length > 1 ? (same.indexOf(e) < (same.length - 1) / 2 ? -1 : 1) : 0;
+  };
+  const labelWidth = (label) => Math.min(MAP_COL - MAP_W - 8, Math.max(...label.map((s) => s.length)) * 12 + 12);
+  // 上下に並ぶ箱の間で、間にほかの箱がある線は、箱の右を回す（短い線ほど内側）。縁の位置の割り振り（mapPorts）には数えない
+  const aroundEdges = model.edges.filter((e) => vertical(e) && procBracket(box(e.from), box(e.to), othersOf(e), 0));
+  const ports = mapPorts(aroundEdges.length ? { ...model, edges: model.edges.filter((e) => !aroundEdges.includes(e)) } : model, pos);
+  // 回る線は、まっすぐな縦の線の右に書く文字よりも外を通す（文字の下地が回る線を隠さないように）
+  const reach = Math.max(0, ...model.edges.filter((e) => vertical(e) && !aroundEdges.includes(e) && outsideOf(e) >= 0)
+    .map((e) => mapEdgeGeometry(box(e.from), box(e.to), ports.get(e), othersOf(e)).mx + 12 + labelWidth(labelOf(e)) + 12));
+  const around = new Map();
+  aroundEdges.sort((p, q) => Math.abs(box(p.from).y - box(p.to).y) - Math.abs(box(q.from).y - box(q.to).y))
+    .forEach((e, k) => around.set(e, procBracket(box(e.from), box(e.to), othersOf(e), k, reach)));
+  const outer = Math.max(0, ...[...around.values()].map((g) => g.mx)); // いちばん外を回る線。回る線の文字は、その右に書く
+  const lanes = new Map();
+  const marks = new Map();
+  const labels = [];
+  const paths = model.edges.map((e, i) => {
+    const outside = outsideOf(e);
+    const others = othersOf(e);
+    const [a, b] = [box(e.from), box(e.to)];
+    const vert = vertical(e);
+    let g = around.get(e) || mapEdgeGeometry(a, b, ports.get(e), others);
+    if (o.lanes && g.detour && !vert) {
+      const key = Math.round(g.my);
+      const k = lanes.get(key) || 0;
+      lanes.set(key, k + 1);
+      if (k) g = mapEdgeGeometry(a, b, ports.get(e), others, (g.my > a.y + MAP_H / 2 ? 1 : -1) * 28 * k);
+    }
+    const st = styleOf(e);
+    marks.set(st.mark, st.col);
+    const label = labelOf(e);
     const lh = 16 + (label.length - 1) * 15;
-    const [mx, my] = [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)];
-    const tw = Math.min(MAP_COL - MAP_W - 8, Math.max(...label.map((s) => s.length)) * 12 + 12);
-    const text = label.map((s, j) => `<text x="${(mx - tw / 2 + 6).toFixed(1)}" y="${(my + 4 + j * 15 - (label.length - 1) * 7.5).toFixed(1)}" font-size="${j ? 11 : 12}" font-weight="${j || link ? 400 : 700}" fill="${j ? '#475569' : col}">${esc(s)}</text>`).join('');
-    return `<path d="${g.d}" fill="none" stroke="${col}" stroke-width="${link ? 2 : 2.5}"${link ? ' stroke-dasharray="6 4"' : ''} marker-end="url(#map-arrow-${link ? 'g' : 'n'})"/>
+    const tw = labelWidth(label);
+    const [mx, my] = !vert ? [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)]
+      : g.detour ? [outer + 8 + tw / 2, g.my] : [g.mx + (outside || 1) * (tw / 2 + 12), g.my];
+    const text = label.map((s, j) => `<text x="${(mx - tw / 2 + 6).toFixed(1)}" y="${(my + 4 + j * 15 - (label.length - 1) * 7.5).toFixed(1)}" font-size="${j ? 11 : 12}" font-weight="${(j && !o.flat) || st.light ? 400 : 700}" fill="${j && !o.flat ? '#475569' : st.col}">${esc(s)}</text>`).join('');
+    const line = `<path d="${g.d}" fill="none" stroke="${st.col}" stroke-width="${st.w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''} marker-end="url(#${idp}-arrow-${st.mark})"/>`;
+    const tag = `
       <rect x="${(mx - tw / 2).toFixed(1)}" y="${(my - 9 - (label.length - 1) * 7.5).toFixed(1)}" width="${tw}" height="${16 + (label.length - 1) * 15}" rx="4" fill="#fff" opacity=".92"/>${text}`;
-  }).join('');
-  return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>
-    <marker id="map-arrow-n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d3f6e"/></marker>
-    <marker id="map-arrow-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker>
+    // つながりの図は今までどおり線と文字を交互に書く。ほかの図は、文字が後の線に隠れないように、線を全部書いてから文字を書く
+    if (!o.style) return line + tag;
+    labels.push(tag);
+    return line;
+  }).join('') + labels.join('');
+  // つながりの図は、使わない色の印も今までどおり入れる
+  const defs = o.style ? [...marks].map(([mk, col]) => mapMarker(`${idp}-arrow-${mk}`, col)).join('')
+    : mapMarker(`${idp}-arrow-n`, '#1d3f6e') + mapMarker(`${idp}-arrow-g`, '#16a34a');
+  return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>${defs}
     </defs>${paths}</svg>`;
 }
 // 箱のどちらの縁（l・r・t・b）から線を出すか
@@ -3815,8 +4228,9 @@ function mapPorts(model, pos) {
   });
   return out;
 }
-// 1 本の矢印の形。d は線の道のり、(mx, my) は文字を書く真ん中。detour は、ほかの箱を避けて隙間を通したか
-function mapEdgeGeometry(a, b, port, others) {
+// 1 本の矢印の形。d は線の道のり、(mx, my) は文字を書く真ん中。detour は、ほかの箱を避けて隙間を通したか。
+// shift は、隙間を通す線の高さをずらす量（同じ高さを通る線が重ならないように。画面の移り方の図）
+function mapEdgeGeometry(a, b, port, others, shift = 0) {
   const f = (n) => n.toFixed(1);
   const [sa] = mapSides(a, b);
   const horiz = sa === 'l' || sa === 'r';
@@ -3832,7 +4246,8 @@ function mapEdgeGeometry(a, b, port, others) {
   const c2 = horiz ? [x2 - s * off, y2] : [x2, y2 - s * off];
   const way = horiz ? mapDetour([x1, y1], c1, c2, [x2, y2], others) : null;
   if (!way) return { detour: false, mx: (x1 + x2) / 2, my: (y1 + y2) / 2, d: `M${f(x1)},${f(y1)} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(x2)},${f(y2)}` };
-  const { xa, xb, yd } = way;
+  const { xa, xb } = way;
+  const yd = way.yd + shift;
   const [ma, mb] = [(x1 + xa) / 2, (xb + x2) / 2];
   return { detour: true, mx: (xa + xb) / 2, my: yd,
     d: `M${f(x1)},${f(y1)} C${f(ma)},${f(y1)} ${f(ma)},${f(yd)} ${f(xa)},${f(yd)} L${f(xb)},${f(yd)} C${f(mb)},${f(yd)} ${f(mb)},${f(y2)} ${f(x2)},${f(y2)}` };
@@ -3857,6 +4272,129 @@ function mapDetour(p0, p1, p2, p3, others) {
   const ys = [Math.min(...list.map((b) => b.y)) - 24, Math.max(...list.map((b) => b.y + b.h)) + 24];
   const yd = ys.sort((m, n) => Math.abs(m - mid) - Math.abs(n - mid)).find(free);
   return yd == null ? null : { xa, xb, yd };
+}
+// ── ステータスの移り方の図と画面の移り方の図（第 8 段階。画像 q54 の案B・q55 の案A・q58）──
+// どちらも、つながりの図と同じ形のモデル { nodes: [{ key, name, ... }], edges: [{ from, to, kind, labels }] } を作り、
+// 箱の置き方（mapPlace）と線（mapEdgesSvg）は、つながりの図の関数を使い回す。箱の位置は画面設計の processPos・flowPos に覚える
+const PROC_ROW = 150; // ステータスの移り方の図の段の高さ（箱の高さ 64 ＋ 矢印の文字を書く間 86）
+const PROC_X = 240; // 箱の左の端（箱の左に、矢印の文字を書く間を空ける）
+const VIEW_POS = { map: 'mapPos', process: 'processPos', flow: 'flowPos' };
+const VIEW_DRAW = {
+  process: { style: (e) => (e.kind === 'back' ? { col: '#ea580c', w: 2, dash: '6 4', mark: 'o' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels.slice(0, 2), vertical: true },
+  flow: { style: (e) => (e.kind === 'link' ? { col: '#16a34a', w: 2, dash: '3 4', mark: 'g' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels.slice(0, 3), flat: true, lanes: true },
+};
+// ステータスの移り方の図。箱＝ステータス（並びの順。order）、矢印＝操作（前と次の両方があるものだけ。並びで前へ戻る操作は kind 'back'）。
+// 矢印の文字は「操作の名前（操作する人）」と、2 行目に条件。outs は、そのステータスから出ていく操作の数
+function processModel(d) {
+  const it = (d.items || []).find((x) => x.type === 'status');
+  if (!it) return { nodes: [], edges: [], item: null };
+  const states = it.props.states;
+  const at = (id) => states.findIndex((s) => s.id === id);
+  const drawn = it.props.actions.filter((a) => at(a.from) >= 0 && at(a.to) >= 0 && a.from !== a.to);
+  return {
+    item: it,
+    nodes: states.map((s, i) => ({ key: 't:' + s.id, name: s.name, order: i, outs: drawn.filter((a) => a.from === s.id).length })),
+    edges: drawn.map((a) => ({
+      from: 't:' + a.from, to: 't:' + a.to, kind: at(a.to) < at(a.from) ? 'back' : 'next', action: a.id,
+      labels: [a.name + (a.role ? `（${a.role}）` : ''), ...(a.cond ? [a.cond] : [])],
+    })),
+  };
+}
+// ステータスの移り方の図の自動の位置。ステータスの並びの順に上から下へ（q54 の案B。右の欄のステータスの並びと同じ向き）
+function processLayout(model) {
+  return Object.fromEntries(model.nodes.map((n) => [n.key, { x: PROC_X, y: 40 + n.order * PROC_ROW }]));
+}
+// 上下に並ぶ箱の間の線（ステータスの移り方の図）。間にほかの箱がなければ null（ふつうの線）。あれば、両方の箱の右の縁から出て、
+// 間の箱の右を回る（lane 本目は 28 ずつ外を回る。隣でないステータスへの操作）。minX は回る線のいちばん内側の x の下限（まっすぐな線の文字の右）
+function procBracket(a, b, others, lane, minX = 0) {
+  const [top, bottom] = a.y < b.y ? [a.y + a.h, b.y] : [b.y + b.h, a.y];
+  const hits = others.filter((o) => o.y < bottom && o.y + o.h > top && o.x < Math.max(a.x + a.w, b.x + b.w) && o.x + o.w > Math.min(a.x, b.x));
+  if (!hits.length) return null;
+  const f = (n) => n.toFixed(1);
+  const xd = Math.max(Math.max(a.x + a.w, b.x + b.w, ...hits.map((o) => o.x + o.w)) + 28, minX) + lane * 28;
+  const dy = 20 + (lane % 3) * 10;
+  const [x1, y1, x2, y2] = [a.x + a.w, a.y + dy, b.x + b.w, b.y + dy];
+  const s = Math.sign(y2 - y1);
+  return { detour: true, mx: xd, my: (y1 + y2) / 2,
+    d: `M${f(x1)},${f(y1)} L${f(xd - 12)},${f(y1)} Q${f(xd)},${f(y1)} ${f(xd)},${f(y1 + s * 12)} L${f(xd)},${f(y2 - s * 12)} Q${f(xd)},${f(y2)} ${f(xd - 12)},${f(y2)} L${f(x2)},${f(y2)}` };
+}
+// 移る先の画面設計（画面の移り方の図の、ほかの画面設計の箱）。ごみ箱の画面設計は描かない。単体で開いた HTML では screenPeers から引く
+function flowOwner(state, designId) {
+  const x = findDesign(state, designId);
+  if (x) return x.trashedAt ? null : x;
+  return (standalone && standalone.screenPeers.find((p) => p.id === designId && !p.trashed)) || null;
+}
+// ほかの画面設計から、この画面設計の画面へ移ってくるボタン・リンクの文字（q58: 来る元も描く）。[{ owner, from（相手の画面）, to, type, label }]
+function flowIncoming(state, d) {
+  const out = [];
+  state.designs.filter((x) => x.id !== d.id && !x.trashedAt).forEach((x) => x.screens.forEach((s) => s.parts.forEach((p) => {
+    const t = moveTargetOf(p, x.id);
+    if (t && t.designId === d.id) out.push({ owner: x, from: s, to: t.screenId, type: p.type, label: partTitle(p) });
+  })));
+  if (standalone) {
+    standalone.screenPeers.filter((peer) => !findDesign(state, peer.id)).forEach((peer) => peer.refs.forEach((r) => {
+      const from = peer.screens.find((s) => s.id === r.from);
+      if (from) out.push({ owner: peer, from, to: r.to, type: r.type, label: r.label });
+    }));
+  }
+  return out;
+}
+// 画面の移り方の図。箱＝この画面設計の画面（並びの順。order）と、行き先・来る元のほかの画面設計の画面（ext に画面設計の名前）。
+// 矢印＝ボタン（kind 'button'）とリンクの文字（'link'）。同じ 2 つの画面の間の同じ種類の矢印は 1 本にまとめ、文字は部品の名前を並べる。
+// 自分の画面への矢印と、見つからない画面への矢印は描かない。order は列を決める順（画面の並びで前へ進む矢印 0・ほかの画面設計 1・戻る矢印 2）
+function flowModel(state, d) {
+  const index = new Map(d.screens.map((s, i) => [s.id, i]));
+  const nodes = new Map(d.screens.map((s, i) => ['s:' + s.id, { key: 's:' + s.id, name: s.name, order: i, screen: s }]));
+  const extKey = (owner, s) => {
+    const k = `x:${owner.id}/${s.id}`;
+    if (!nodes.has(k)) nodes.set(k, { key: k, name: s.name, ext: owner.name, designId: owner.id });
+    return k;
+  };
+  const edges = new Map();
+  const add = (from, to, kind, label, order) => {
+    if (from === to) return;
+    const k = `${from}|${to}|${kind}`;
+    if (!edges.has(k)) edges.set(k, { from, to, kind, labels: [], order });
+    if (label && !edges.get(k).labels.includes(label)) edges.get(k).labels.push(label);
+  };
+  d.screens.forEach((s) => s.parts.forEach((p) => {
+    const t = moveTargetOf(p, d.id);
+    if (!t) return;
+    if (t.designId === d.id) {
+      if (index.has(t.screenId)) add('s:' + s.id, 's:' + t.screenId, p.type, partTitle(p), index.get(t.screenId) > index.get(s.id) ? 0 : 2);
+      return;
+    }
+    const owner = flowOwner(state, t.designId);
+    const ts = owner ? owner.screens.find((x) => x.id === t.screenId) : null;
+    if (ts) add('s:' + s.id, extKey(owner, ts), p.type, partTitle(p), 1);
+  }));
+  flowIncoming(state, d).forEach((r) => { if (index.has(r.to)) add(extKey(r.owner, r.from), 's:' + r.to, r.type, r.label, 1); });
+  return { nodes: [...nodes.values()], edges: [...edges.values()] };
+}
+// ステータスの移り方の図・画面の移り方の図の HTML（編集の画面・書き出し・AI の画像で使う）。saved は覚えた箱の位置。
+// o: idPrefix（矢印の印の id の頭。書き出しでは編集の画面と重ならない頭にする）・bare（id="map-inner" を付けない）
+function viewHtml(view, state, d, saved = {}, o = {}) {
+  const model = view === 'process' ? processModel(d) : flowModel(state, d);
+  if (!model.nodes.length) return `<p class="map-empty">${view === 'process' ? 'ステータスの項目がまだありません（部品の箱から「ステータスの印」か「進み具合の矢印」を置くと作られます）。' : '画面がありません。'}</p>`;
+  const hOf = () => MAP_H;
+  const pos = mapPlace(model, saved || {}, view === 'process' ? processLayout(model) : mapLayout(model, hOf), hOf);
+  const nodes = model.nodes.map((n) => {
+    const p = pos[n.key];
+    const dev = n.screen && DEVICES[n.screen.device] ? DEVICES[n.screen.device].label : '';
+    const body = view === 'process' ? `<b>${n.order + 1}　${esc(n.name)}</b><div class="mt"><span>出ていく操作 ${n.outs} つ</span></div>`
+      : n.ext ? `<b>${esc(n.name)}</b><div class="mt"><span>「${esc(n.ext)}」の画面</span></div>`
+        : `<b>${esc(n.name)}</b><div class="mt"><span class="dev">${esc(dev)}</span><span>部品 ${n.screen.parts.length} 個</span></div>`;
+    const title = view === 'process' ? 'ドラッグで動かせます'
+      : !n.ext ? 'ドラッグで動かせます。押すと、この画面を開きます'
+        : findDesign(state, n.designId) ? `ドラッグで動かせます。押すと「${esc(n.ext)}」を開きます` : 'ドラッグで動かせます（この HTML に入っていない画面設計なので、開けません）';
+    return `<div class="mnode${n.ext ? ' ext' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${p.h}px" title="${title}">${body}</div>`;
+  }).join('');
+  // ステータスの移り方の図は、箱の右に矢印の文字と、箱の右を回る線の分の幅を取る
+  const extra = view === 'process' ? 260 + model.edges.length * 28 : 40;
+  const w = Math.max(view === 'process' ? 600 : 860, ...Object.values(pos).map((p) => p.x + MAP_W + extra));
+  const h = Math.max(view === 'process' ? 300 : 420, ...Object.values(pos).map((p) => p.y + p.h + 60));
+  const svg = mapEdgesSvg(model, pos, w, h, { ...VIEW_DRAW[view], idPrefix: o.idPrefix || (view === 'process' ? 'proc' : 'flow') });
+  return `<div class="map-inner"${o.bare ? '' : ' id="map-inner"'} style="width:${w}px;height:${h}px" data-view="${view}" data-focus="${esc(d.id)}">${svg}${nodes}</div>`;
 }
 function mapLegendHtml() {
   return `<div class="map-head"><span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>
@@ -4067,6 +4605,10 @@ function currentPart() {
 // 右の設定の欄が今出している中身。画面では選んでいる部品（項目と合わせた形）、
 // データベースの項目の一覧表では選んでいる項目を部品と同じ形（label＝項目名・item）にしたもの
 function currentSubject() {
+  if (ui.panel === 'process') {
+    const st = currentDesign().items.find((x) => x.type === 'status');
+    return st ? { ...st, label: st.name, item: st } : null;
+  }
   if (ui.panel !== 'items') return currentPart();
   const it = findItem(currentDesign(), ui.itemId);
   return it ? { ...it, label: it.name, item: it } : null;
@@ -4177,9 +4719,10 @@ function updateEditor({ keepSide = false } = {}) {
   $('#zoom-badge').hidden = !onScreen;
   $('#db-view').hidden = onScreen;
   $('#side-box').hidden = !onScreen || store.isViewing; // 前の版を見ている間は、部品の箱を出さない
-  $('#side-panel').hidden = ui.panel === 'map';
+  $('#side-panel').hidden = ui.panel === 'map' || ui.panel === 'flow';
   if (onScreen) renderStage();
   else if (ui.panel === 'map') renderMapView(d);
+  else if (ui.panel === 'process' || ui.panel === 'flow') renderDiagramView(d, ui.panel);
   else renderItemsView(d);
   renderPalette(d);
   if (!keepSide) renderSettings(d);
@@ -4226,7 +4769,11 @@ function screenListHtml(d) {
   const entry = `<button class="db-entry${ui.panel === 'items' ? ' active' : ''}" data-action="open-items" title="データベースの項目の一覧表を開きます">
       <span class="ic">▦</span><span><b>データベースの項目</b><small>${d.items.length} 個</small></span></button>
     <button class="db-entry${ui.panel === 'map' ? ' active' : ''}" data-action="open-map" title="この画面設計と、直接つながる画面設計の図を開きます">
-      <span class="ic">⇄</span><span><b>つながりの図</b><small>${linked > 0 ? `${linked} つとつながっている` : 'つながりなし'}</small></span></button>`;
+      <span class="ic">⇄</span><span><b>つながりの図</b><small>${linked > 0 ? `${linked} つとつながっている` : 'つながりなし'}</small></span></button>
+    <button class="db-entry${ui.panel === 'process' ? ' active' : ''}" data-action="open-process" title="ステータスと、ステータスを進める操作の図を開きます">
+      <span class="ic">◎</span><span><b>ステータスの移り方</b><small>${processEntryNote(d)}</small></span></button>
+    <button class="db-entry${ui.panel === 'flow' ? ' active' : ''}" data-action="open-flow" title="ボタンとリンクの文字で移る先の画面を描いた図を開きます">
+      <span class="ic">⇢</span><span><b>画面の移り方</b><small>${flowEntryNote(store.state, d)}</small></span></button>`;
   // 縮小画像にマウスを乗せると右上に「…」が出る（画像 q31）。縮小画像はドラッグで並べ替える。いちばん下に「＋ 画面を足す」（画像 q29）。
   // AI が直した画面の「AI」の印は、前の版を見ている間は出さない（前の版の縮小画像には付けない）
   const aiDot = (s) => (!store.isViewing && aiView.unseen.has(s.id) ? '<span class="ai-dot" title="AI が直した画面です。開くと、直した部品を光らせます">AI</span>' : '');
@@ -4239,6 +4786,22 @@ function screenListHtml(d) {
       <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-haspopup="menu" aria-expanded="${ui.screenMenu === s.id}" aria-label="「${esc(s.name)}」の画面の操作" title="名前を変える・複製・並べ替え・消す">…</button>
     </div>`).join('')
     + '<button class="sl-add" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します">＋ 画面を足す</button>';
+}
+
+// 左の一覧の入口に書く数。ステータスの移り方は操作の数、画面の移り方は、ある画面を指す移る先（ボタン・リンクの文字）の数
+function processEntryNote(d) {
+  const it = d.items.find((x) => x.type === 'status');
+  if (!it) return 'ステータスなし';
+  return it.props.actions.length ? `操作 ${it.props.actions.length} つ` : '操作なし';
+}
+function flowEntryNote(state, d) {
+  const n = d.screens.reduce((sum, s) => sum + s.parts.filter((p) => {
+    const t = moveTargetOf(p, d.id);
+    if (t && t.designId === d.id && t.screenId === s.id) return false; // 自分の画面への矢印は図に描かない
+    const owner = t && (t.designId === d.id ? d : flowOwner(state, t.designId));
+    return !!owner && owner.screens.some((x) => x.id === t.screenId);
+  }).length, 0);
+  return n ? `移る先 ${n} 本` : '移る先なし';
 }
 
 // 画面の一覧の「…」のメニュー（画像 q31）。一覧の枠の外まではみ出せるように、窓に対して置く
@@ -4334,7 +4897,11 @@ async function deleteScreenWithConfirm(screenId) {
   const s = findScreen(d.id, screenId);
   if (!s) return;
   if (d.screens.length < 2) { toast('最後の 1 つの画面は消せません。'); return; }
-  const links = linksInto(d, screenId);
+  const refs = screenRefsInto(store.state, d.id, screenId);
+  const links = refs.reduce((n, r) => n + r.count, 0);
+  // ほかの画面設計の分があるときだけ、画面設計ごとの数を添える（画像 q60）
+  const by = refs.some((r) => r.design.id !== d.id)
+    ? '（' + refs.map((r) => `${r.design.id === d.id ? 'この画面設計' : `「${esc(r.design.name)}」`}から ${r.count} 個`).join('・') + '）' : '';
   const what = [s.parts.length ? `部品 ${s.parts.length} 個` : '', s.callouts.length ? `吹き出し ${s.callouts.length} 個` : ''].filter(Boolean).join('と');
   const ok = await showDialog({
     title: `「${s.name}」の画面を消しますか`,
@@ -4342,7 +4909,7 @@ async function deleteScreenWithConfirm(screenId) {
     okClass: 'danger',
     body: `<p>${what ? `この画面の${what}が消えます。` : 'この画面には、部品も吹き出しもありません。'}</p>
       <p>データベースの項目は、項目の一覧表に残ります（ほかの画面に置いた部品もそのままです）。</p>
-      ${links ? `<p class="warn">ほかの画面のリンクの文字 ${links} 個が、この画面を移る先にしています。移る先は外れます。</p>` : ''}
+      ${links ? `<p class="warn">ボタンとリンクの文字 ${links} 個が、この画面を移る先にしています${by}。移る先は外れます。</p>` : ''}
       <p style="color:#64748b;font-size:12px;margin-top:6px">消した後でも、元に戻す（Ctrl+Z）で戻せます。</p>`,
   });
   if (!ok) return;
@@ -4439,12 +5006,31 @@ function renderStage() {
 // 編集の画面のつながりの図（この画面設計と、直接つながる画面設計だけ）
 function renderMapView(d) {
   const el = $('#db-view');
-  const keep = $('#design-map') ? keepScroll(['#db-view', '#design-map']) : () => {};
+  const keep = el.dataset.view === 'map' && $('#design-map') ? keepScroll(['#db-view', '#design-map']) : () => {};
+  el.dataset.view = 'map';
   el.innerHTML = `<div class="itable"><div class="itable-head"><h3>つながりの図（${esc(d.name)}）</h3></div>
     <p class="map-note">「${esc(d.name)}」と、直接つながる画面設計を描きます。箱をドラッグで動かすと、その位置を覚えます。
       ${standalone ? 'ほかの画面設計は、この HTML に入っていないので開けません（書き出したときの写しで描いています）。'
     : 'ほかの画面設計の箱を押すと、その画面設計を開きます。全部の画面設計の図は、最初の画面の「つながりの図」で見られます。'}</p>${mapLegendHtml()}
     <div class="map-canvas" id="design-map">${mapHtml(store.state, d.id, d.mapPos || {})}</div></div>`;
+  keep();
+}
+
+// ステータスの移り方の図・画面の移り方の図（真ん中。q54 の案B・q55 の案A・q58）。表の幅の上限は外す（ほかの画面設計の箱が切れないように）
+const VIEW_NOTES = {
+  process: () => 'ステータスを箱、ステータスを進める操作を矢印で描きます。矢印には操作の名前と操作する人、2 行目に条件を書きます。'
+    + 'ステータスと操作は、右の欄で直します。箱をドラッグで動かすと、その位置を覚えます。',
+  flow: () => '画面を箱、ボタン・リンクの文字で移る先を矢印で描きます。画面の箱を押すと、その画面を開きます。'
+    + `ほかの画面設計の画面は灰色の点線の箱です（${standalone ? 'この HTML に入っていないので開けません' : '押すと、その画面設計を開きます'}）。箱をドラッグで動かすと、その位置を覚えます。`,
+};
+function renderDiagramView(d, view) {
+  const el = $('#db-view');
+  const keep = el.dataset.view === view && $('#design-map') ? keepScroll(['#db-view', '#design-map']) : () => {};
+  el.dataset.view = view;
+  el.innerHTML = `<div class="itable wide"><div class="itable-head"><h3>${VIEW_TITLES[view]}（${esc(d.name)}）</h3></div>
+    <p class="map-note">${VIEW_NOTES[view]()}</p>
+    <div class="map-head">${VIEW_LEGENDS[view]}<span class="spacer"></span><button class="btn small" data-action="view-reset" data-view="${view}" title="ドラッグで動かした箱を、自動で並べた位置に戻します">自動で並べ直す</button></div>
+    <div class="map-canvas" id="design-map">${viewHtml(view, store.state, d, d[VIEW_POS[view]] || {})}</div></div>`;
   keep();
 }
 
@@ -4889,12 +5475,13 @@ function renderPalette(d) {
 // 同じものを描き直すときは、スクロールの位置を保つ
 function renderSettings(d) {
   const el = $('#side-settings');
-  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ui.panel === 'map' ? 'map' : ui.sel.length > 1 ? 'multi' : ui.partId || ui.calloutId || 'screen:' + ui.screenId;
+  const key = ui.panel === 'items' ? 'item:' + ui.itemId : ['map', 'process', 'flow'].includes(ui.panel) ? ui.panel : ui.sel.length > 1 ? 'multi' : ui.partId || ui.calloutId || 'screen:' + ui.screenId;
   const top = el.dataset.key === key ? el.scrollTop : 0;
   const p = currentSubject();
   const co = ui.panel === 'screen' ? findCallout(currentScreen(), ui.calloutId) : null;
   if (ui.panel === 'screen' && ui.sel.length > 1) el.innerHTML = multiSettingsHtml(d);
-  else if (ui.panel === 'map') el.innerHTML = '';
+  else if (ui.panel === 'map' || ui.panel === 'flow') el.innerHTML = '';
+  else if (ui.panel === 'process') el.innerHTML = processSettingsHtml(d, p);
   else if (ui.panel === 'items') el.innerHTML = p ? itemSettingsHtml(d, p) : itemsHintHtml(d);
   else if (p) el.innerHTML = partSettingsHtml(p);
   else if (co) el.innerHTML = calloutSettingsHtml(co);
@@ -4946,6 +5533,8 @@ const NUM = { type: 'number' };
 
 const fieldCtx = () => ({ design: currentDesign(), state: store.state });
 
+// 右の欄に、部品でなく項目を出しているか（データベースの項目の一覧表と、ステータスの移り方の図。項目を直す）
+const itemOnSide = () => ui.panel === 'items' || ui.panel === 'process';
 // 一覧表の「設定」に出る文の欄。番号を外した部品は、一覧表に出ないことを書く
 function pfOutHtml(p, { forItem = false } = {}) {
   if (!forItem && p.no == null) return '<div class="pf-out"><b>一覧表の「設定」に出る文</b><div>（番号を外しているので、一覧表には出ません）</div></div>';
@@ -4954,7 +5543,7 @@ function pfOutHtml(p, { forItem = false } = {}) {
 // 右の欄に出す「設定」の文。データベースの項目の一覧表で選んだ項目は、一覧表と同じ describeItem で作る（表の項目もテーブルとして書くため）
 function subjectSettingText(p) {
   if (!p) return '';
-  return ui.panel === 'items' && p.item ? describeItem(p.item, fieldCtx()) : describePart(p, fieldCtx());
+  return itemOnSide() && p.item ? describeItem(p.item, fieldCtx()) : describePart(p, fieldCtx());
 }
 
 // 選んだ部品の設定の欄。入力欄の部品は、上に「項目の設定（どの画面でも同じ）」、下に「この画面だけの設定」を出す（画像 q20）。
@@ -5021,7 +5610,8 @@ function itemPartSettingsHtml(p, t) {
     : '';
   const states = (p.props && p.props.states) || [];
   const here = p.type === 'status' || p.type === 'steps'
-    ? pfSelect('view.current', p.type === 'steps' ? '今のステータス（見本）' : '見本で出すステータス', (p.view || {}).current, states.map((s) => [s, s]))
+    ? pfSelect('view.current', p.type === 'steps' ? '今のステータス（見本）' : '見本で出すステータス', resolveStateRef(states, (p.view || {}).current),
+      [...(p.type === 'steps' ? [['', '（なし）']] : []), ...states.map((s) => [s.id, s.name])])
       + (p.type === 'status' ? pfCheck('view.showWord', '「ステータス」の文字を付ける', !(p.view && p.view.showWord === false)) : '')
     : pfSeg('labelPos', '項目名の位置', p.labelPos, [['top', '上'], ['left', '左']]) + sample;
   return `
@@ -5180,6 +5770,18 @@ function itemSettingsHtml(d, p) {
     <div class="pf-del"><button class="btn small danger-text" data-action="delete-item" data-id="${esc(p.id)}">この項目を消す</button></div>`;
 }
 
+// ステータスの移り方の図を出している間の右の欄（q54。図を見ながらステータスと操作を直す）。項目を消すボタンは出さない（データベースの項目の一覧表で消す）
+function processSettingsHtml(d, p) {
+  const head = `<div class="panel-title">ステータスと操作（${esc(d.name)}）</div>`;
+  if (!p) {
+    return head + '<p class="hint">ステータスの項目がまだありません。画面を開き、右の部品の箱の「進み具合の画面用」から「ステータスの印」か「進み具合の矢印」を置くと作られます。</p>';
+  }
+  const linked = !!p.item.link;
+  return `${head}<p class="hint" style="margin-bottom:8px">ここで直すと、図とステータスの印・進み具合の矢印がすぐ変わります。</p>
+    ${linked ? linkBannerHtml(p.item) : ''}
+    ${itemSectionHtml(d, p, { withType: true, locked: linked, note: linked ? '元のモックの中身' : 'どの画面でも同じ' })}`;
+}
+
 function itemsHintHtml(d) {
   return `
     <div class="panel-title">データベースの項目</div>
@@ -5220,9 +5822,10 @@ function partTypeFieldsHtml(p) {
       return pfText('props.formula', '計算式', pr.formula, { placeholder: '例: 数量×単価' }) + pfText('props.unit', '単位', pr.unit, { placeholder: '例: 円' });
     case 'button':
       return pfSeg('props.style', '見た目', pr.style, [['primary', '目立つ（青）'], ['normal', 'ふつう（白）']])
-        + pfArea('props.action', '押したとき', pr.action);
+        + moveFieldsHtml(p)
+        + pfArea('props.action', '押したとき', pr.action, { hint: '（移る以外にすること）' });
     case 'status': case 'steps':
-      return pfArea('props.states', 'ステータスの並び', (pr.states || []).join('\n'), { hint: '（1 行に 1 つ。上から順に進む）', rows: 4 });
+      return processFieldsHtml(p);
     case 'graph': {
       const items = (currentDesign() || { items: [] }).items.filter((it) => isInputType(it.type)).map((it) => [it.id, it.name]);
       return pfSeg('props.chart', 'グラフの種類', pr.chart, Object.entries(CHART_NAMES).map(([k, n]) => [k, n.replace('グラフ', '')]))
@@ -5246,18 +5849,57 @@ function partTypeFieldsHtml(p) {
     case 'tabs':
       return pfArea('props.tabs', 'タブの名前', (pr.tabs || []).join('\n'), { hint: '（1 行に 1 つ）', rows: 4 })
         + pfSelect('props.current', '選んでいるタブ', pr.current, (pr.tabs || []).map((s) => [s, s]));
-    case 'link': {
-      // 「この画面設計のほかの画面」なので、開いている画面は出さない（読み込んだデータで自分を指しているときだけ残す）
-      const screens = (currentDesign() || { screens: [] }).screens.filter((s) => s.id !== ui.screenId || s.id === pr.screenId).map((s) => [s.id, `${s.name}の画面`]);
-      return pfSelect('props.to', '移る先', pr.to, [['', '（なし）'], ['screen', 'この画面設計のほかの画面'], ['url', 'URL を書く']])
-        + (pr.to === 'screen' ? pfSelect('props.screenId', '移る画面', pr.screenId, [['', '（選んでください）'], ...screens]) : '')
-        + (pr.to === 'url' ? pfText('props.url', 'URL', pr.url, { placeholder: 'https://' }) : '');
-    }
+    case 'link': return moveFieldsHtml(p);
     case 'icon':
       return pfSelect('props.icon', 'アイコンの種類', pr.icon, Object.entries(ICONS).map(([k, v]) => [k, v[0]]))
         + pfSeg('props.color', '色', pr.color, Object.entries(ICON_COLORS).map(([k, v]) => [k, v[0]]));
   }
   return '';
+}
+
+// 移る先の欄（ボタンとリンクの文字。画像 q53 の案A）。「画面」を選ぶと、画面設計（最初は「この画面設計」）と画面の 2 つの選ぶ欄を出す。
+// 画面設計はこの画面設計が先、ほかは名前の順（ごみ箱のものは出さない）。単体で開いた HTML では、書き出したときに入れた screenPeers の画面設計も選べる。
+// この画面設計の画面では、開いている画面は出さない（読み込んだデータで自分を指しているときだけ残す）
+function moveFieldsHtml(p) {
+  const pr = p.props;
+  const d = currentDesign();
+  const to = pfSelect('props.to', '移る先', pr.to, [['', '（なし）'], ['screen', '画面'], ['url', 'URL を書く']]);
+  if (pr.to === 'url') return to + pfText('props.url', 'URL', pr.url, { placeholder: 'https://' });
+  if (pr.to !== 'screen' || !d) return to;
+  const peers = [...visibleDesigns(store.state).filter((x) => x.id !== d.id), ...(standalone ? standalone.screenPeers.filter((x) => !x.trashed && !findDesign(store.state, x.id)) : [])]
+    .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  const designId = pr.designId && pr.designId !== d.id ? pr.designId : '';
+  const owner = designId ? screenOwner(store.state, designId) : d;
+  const designs = [['', `この画面設計（${d.name}）`], ...peers.map((x) => [x.id, x.name])];
+  if (designId && !peers.some((x) => x.id === designId)) designs.push([designId, owner ? `${owner.name}（ごみ箱にあります）` : '（もうない画面設計）']);
+  const screens = owner ? owner.screens.filter((s) => designId || s.id !== ui.screenId || s.id === pr.screenId).map((s) => [s.id, `${s.name}の画面`]) : [];
+  if (pr.screenId && !screens.some(([v]) => v === pr.screenId)) screens.push([pr.screenId, '（ない画面）']);
+  return to + pfSelect('props.designId', '画面設計', designId, designs) + pfSelect('props.screenId', '画面', pr.screenId, [['', '（選んでください）'], ...screens]);
+}
+
+// ステータスと操作の欄（画像 q52 の案A）。ステータスは 1 行に 1 つ（↑↓ で並べ替え・✕ で消す）、操作はカード 1 枚に 1 つ
+// （名前／前のステータス → 次のステータス／操作する人・条件）。欄の data-ps はステータスの id、data-pa は操作の id（data-k は欄の名前）
+function processFieldsHtml(p) {
+  const st = (p.props && p.props.states) || [];
+  const acts = (p.props && p.props.actions) || [];
+  const at = (id) => st.findIndex((s) => s.id === id);
+  const btns = (kind, id, i, n, what, delOff = false) => `<button class="del-x" data-action="${kind}-up" data-id="${esc(id)}" title="上へ" aria-label="${what}を上へ"${i ? '' : ' disabled'}>↑</button>`
+    + `<button class="del-x" data-action="${kind}-down" data-id="${esc(id)}" title="下へ" aria-label="${what}を下へ"${i < n - 1 ? '' : ' disabled'}>↓</button>`
+    + `<button class="del-x" data-action="${kind}-del" data-id="${esc(id)}" title="${delOff ? '最後の 1 つは消せません' : `${what}を消す`}" aria-label="${what}を消す"${delOff ? ' disabled' : ''}>✕</button>`;
+  const rows = st.map((s, i) => `<div class="ps-row"><span class="no">${i + 1}</span><input type="text" data-ps="${esc(s.id)}" value="${esc(s.name)}" aria-label="${i + 1} つ目のステータスの名前">`
+    + `${btns('ps', s.id, i, st.length, `ステータス「${esc(s.name)}」`, st.length < 2)}</div>`).join('');
+  const sel = (a, k, label) => `<select data-pa="${esc(a.id)}" data-k="${k}" aria-label="${label}">${[['', '（なし）'], ...st.map((s) => [s.id, s.name])]
+    .map(([v, l]) => `<option value="${esc(v)}"${a[k] === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  const field = (a, k, label, ph) => `<label class="field"><span>${label}</span><input type="text" data-pa="${esc(a.id)}" data-k="${k}" value="${esc(a[k])}" placeholder="${ph}"></label>`;
+  const cards = acts.map((a, i) => {
+    const back = at(a.from) >= 0 && at(a.to) >= 0 && at(a.to) < at(a.from);
+    return `<div class="pa-card"><div class="pa-top"><input type="text" data-pa="${esc(a.id)}" data-k="name" value="${esc(a.name)}" aria-label="操作の名前">`
+      + `${btns('pa', a.id, i, acts.length, `操作「${esc(a.name)}」`)}</div>`
+      + `<div class="pa-move">${sel(a, 'from', '前のステータス')}<span class="ar${back ? ' back' : ''}" title="${back ? '前へ戻る操作' : '先へ進む操作'}">→</span>${sel(a, 'to', '次のステータス')}</div>`
+      + `<div class="row2">${field(a, 'role', '操作する人', '例: 上長')}${field(a, 'cond', '条件', '（なし）')}</div></div>`;
+  }).join('');
+  return `<div class="pf-sub">ステータス<small>（上から順に進む）</small></div>${rows}<button class="lk-add" data-action="ps-add">＋ ステータスを足す</button>`
+    + `<div class="pf-sub">操作<small>（ステータスを進める操作）</small></div>${cards || '<p class="hint">まだありません。</p>'}<button class="lk-add" data-action="pa-add">＋ 操作を足す</button>`;
 }
 
 // 絞り込みの欄: 絞り込む項目を並べ（↑↓ で並べ替え・✕ で外す）、項目ごとに見本の値を書く
@@ -5412,6 +6054,8 @@ function onSidePanelChange(e) {
   if (e.target.dataset.tb) { onTableFieldChange(e.target); return; }
   if (e.target.dataset.fl) { onFilterFieldChange(e.target); return; }
   if (e.target.dataset.lk) { onLookupFieldChange(e.target); return; }
+  if (e.target.dataset.ps) { onStateFieldChange(e.target); return; }
+  if (e.target.dataset.pa) { onActionFieldChange(e.target); return; }
   if (e.target.dataset.pf) { onPartFieldChange(e.target); return; }
   const field = e.target.dataset.field;
   const d = currentDesign();
@@ -5442,11 +6086,13 @@ function onPartFieldChange(el) {
   if (!p) return;
   const key = el.dataset.pf;
   const value = readPartField(el);
-  const old = key.startsWith('props.') ? p.props[key.slice(6)] : key.startsWith('view.') ? (p.view || {})[key.slice(5)] : key === 'numbered' ? p.no != null : p[key];
+  const old = key === 'props.states' ? stateNames(p.props.states)
+    : key.startsWith('props.') ? p.props[key.slice(6)] : key.startsWith('view.') ? (p.view || {})[key.slice(5)] : key === 'numbered' ? p.no != null : p[key];
   if (JSON.stringify(old) === JSON.stringify(value)) return;
   const patch = key.startsWith('props.') ? { props: { [key.slice(6)]: value } } : key.startsWith('view.') ? { view: { [key.slice(5)]: value } } : { [key]: value };
+  if (key === 'props.designId') patch.props.screenId = ''; // 移る先の画面設計を選び直したら、画面は選び直す（画像 q53 の案A）
   // データベースの項目の一覧表では項目を、画面では部品を書き換える（部品の項目名と設定は、部品が指す項目に書く）
-  const apply = () => (ui.panel === 'items' ? actions.updateItem(ui.designId, p.id, patch) : actions.updatePart(ui.designId, s.id, p.id, patch));
+  const apply = () => (itemOnSide() ? actions.updateItem(ui.designId, p.id, patch) : actions.updatePart(ui.designId, s.id, p.id, patch));
   if (!isTextInput(el)) { apply(); return; }
   commitKeepSide(apply);
   const now = currentSubject();
@@ -5456,6 +6102,105 @@ function onPartFieldChange(el) {
   // 項目名を変えたときは、項目の一覧表と部品の箱の名前も合わせる（右の欄は描き直さない）
   if (key === 'label' && ui.panel === 'items') renderItemsView(currentDesign());
   if (key === 'label') renderPalette(currentDesign());
+}
+
+// 右の欄の「一覧表の「設定」に出る文」だけを描き直す（打っている欄を作り直さないため）
+function refreshPfOut() {
+  const out = $('#pf-out');
+  const now = currentSubject();
+  if (out && now) out.textContent = subjectSettingText(now) || '（まだありません）';
+}
+// 右の欄で選んでいる部品・項目が指す、直せるステータスの項目（取り込んだ項目・前の版を見ている間は null）
+function subjectStatusItem() {
+  const p = currentSubject();
+  return p && p.item && p.item.type === 'status' && !p.item.link && !store.isViewing ? p.item : null;
+}
+// ステータスの名前の欄（data-ps）。同じ名前・空の名前にはしない（欄を元に戻して知らせる）。操作のカードの選ぶ欄の名前も合わせる
+function onStateFieldChange(el) {
+  const it = subjectStatusItem();
+  const s = it && it.props.states.find((x) => x.id === el.dataset.ps);
+  if (!s) return;
+  const n = cleanName(el.value);
+  if (n === s.name) { el.value = s.name; return; }
+  const back = (msg) => { el.value = s.name; toast(msg); };
+  if (!n) { back('ステータスの名前を空にはできません。'); return; }
+  if (it.props.states.some((x) => x.name === n && x.id !== s.id)) { back(`「${n}」というステータスがもうあります。`); return; }
+  commitKeepSide(() => actions.renameState(ui.designId, it.id, s.id, n));
+  el.value = n;
+  document.querySelectorAll('#side-settings select[data-pa] option, #side-settings select[data-pf="view.current"] option').forEach((o) => { if (o.value === s.id) o.textContent = n; });
+  refreshPfOut();
+}
+// 操作のカードの欄（data-pa・data-k）。名前は空にしない。前と次を同じにはしない（欄を元に戻して知らせる）
+function onActionFieldChange(el) {
+  const it = subjectStatusItem();
+  const a = it && it.props.actions.find((x) => x.id === el.dataset.pa);
+  if (!a) return;
+  const k = el.dataset.k;
+  const v = k === 'name' ? cleanName(el.value) : el.tagName === 'SELECT' ? el.value : el.value.trim();
+  const back = (msg) => { el.value = a[k]; toast(msg); };
+  if (k === 'name' && !v) { back('操作の名前を空にはできません。'); return; }
+  if (v === a[k]) return;
+  if ((k === 'from' || k === 'to') && v && v === (k === 'from' ? a.to : a.from)) { back('前のステータスと次のステータスを同じにはできません。'); return; }
+  const apply = () => actions.updateProcessAction(ui.designId, it.id, a.id, { [k]: v });
+  if (!isTextInput(el)) { apply(); return; }
+  commitKeepSide(apply);
+  refreshPfOut();
+}
+// ステータスと操作の欄のボタン（data-action の ps-*・pa-*）
+function onProcessAction(action, id) {
+  const it = subjectStatusItem();
+  if (!it) return;
+  const [kind, verb] = action.split('-');
+  const list = kind === 'ps' ? it.props.states : it.props.actions;
+  const i = list.findIndex((x) => x.id === id);
+  if (verb === 'add') {
+    const newId = kind === 'ps' ? actions.addState(ui.designId, it.id, freeStateName(it)) : actions.addProcessAction(ui.designId, it.id);
+    focusSideField(kind === 'ps' ? `[data-ps="${newId}"]` : `[data-pa="${newId}"][data-k="name"]`);
+    return;
+  }
+  if (i < 0) return;
+  if (verb === 'up' || verb === 'down') {
+    const to = verb === 'up' ? i - 1 : i + 1;
+    if (kind === 'ps') actions.moveState(ui.designId, it.id, id, to);
+    else actions.moveProcessAction(ui.designId, it.id, id, to);
+    return;
+  }
+  if (kind === 'pa') { actions.deleteProcessAction(ui.designId, it.id, id); return; }
+  deleteStateWithConfirm(it, list[i]).catch(reportPageError);
+}
+// 足すステータスの名前（「新しいステータス」、あれば「新しいステータス 2」…）
+function freeStateName(it) {
+  const base = '新しいステータス';
+  const taken = new Set(it.props.states.map((s) => s.name));
+  if (!taken.has(base)) return base;
+  let k = 2;
+  while (taken.has(`${base} ${k}`)) k++;
+  return `${base} ${k}`;
+}
+// 右の欄の欄にフォーカスを置き、文字を選んだ状態にする（足したステータス・操作の名前をすぐ打てるように）
+function focusSideField(sel) {
+  const el = $('#side-settings ' + sel);
+  if (!el) return;
+  el.focus();
+  if (el.select) el.select();
+}
+// ステータスを消す。使う操作があるときだけ確かめの窓を出す（最初はキャンセル。消える操作の名前を書く）。最後の 1 つは消せない
+async function deleteStateWithConfirm(it, s) {
+  if (it.props.states.length < 2) { toast('最後の 1 つのステータスは消せません。'); return; }
+  const used = it.props.actions.filter((a) => a.from === s.id || a.to === s.id);
+  if (used.length) {
+    const shown = currentDesign().screens.reduce((n, sc) => n + sc.parts.filter((p) => p.itemId === it.id && p.view && p.view.current === s.id).length, 0);
+    const ok = await showDialog({
+      title: `ステータス「${s.name}」を消しますか`,
+      okLabel: '消す',
+      okClass: 'danger',
+      body: `<p>このステータスを使う操作 ${used.length} つ（${used.map((a) => `「${esc(a.name)}」`).join('・')}）も消えます。</p>
+        ${shown ? `<p>このステータスを見本で出している部品 ${shown} 個は、ステータスを出さない形になります。</p>` : ''}
+        <p style="color:#64748b;font-size:12px;margin-top:6px">消した後でも、元に戻す（Ctrl+Z）で戻せます。</p>`,
+    });
+    if (!ok) return;
+  }
+  actions.deleteState(ui.designId, it.id, s.id);
 }
 
 const parseOptions = (text) => String(text).split('\n').map((o) => o.trim()).filter(Boolean);
@@ -5702,8 +6447,10 @@ function flushSideField() {
   if (ui.view !== 'editor' || !el || !el.closest || !el.closest('#side-settings') || !isTextInput(el)) return;
   // 作る先の「その他」に打ちかけの名前（欄を離れたときの change で決まる）
   if (el.classList.contains('target-other')) { el.dispatchEvent(new Event('change')); return; }
-  if (!el.dataset.pf && !el.dataset.lk && !el.dataset.tb && !el.dataset.fl && !el.dataset.co && !TEXT_FIELDS.includes(el.dataset.field)) return;
-  if ((el.dataset.field === 'design-name' || el.dataset.field === 'screen-name') && !cleanName(el.value)) return; // 名前を消して打ち直している途中は待つ
+  if (!el.dataset.pf && !el.dataset.lk && !el.dataset.ps && !el.dataset.pa && !el.dataset.tb && !el.dataset.fl && !el.dataset.co && !TEXT_FIELDS.includes(el.dataset.field)) return;
+  // 名前を消して打ち直している途中は待つ（画面設計・画面・ステータス・操作の名前）
+  const nameField = el.dataset.field === 'design-name' || el.dataset.field === 'screen-name' || el.dataset.ps || (el.dataset.pa && el.dataset.k === 'name');
+  if (nameField && !cleanName(el.value)) return;
   onSidePanelChange({ target: el });
 }
 
@@ -6176,12 +6923,14 @@ function openItemsPanel() {
   Object.assign(ui, { panel: 'items', sel: [] });
   updateEditor();
 }
-function openMapPanel() {
+// 真ん中に図を出す（panel は 'map'・'process'・'flow'）
+function openViewPanel(panel) {
   flushSideField();
-  if (ui.panel === 'map') return;
-  Object.assign(ui, { panel: 'map', sel: [], addItemMenu: false });
+  if (ui.panel === panel) return;
+  Object.assign(ui, { panel, sel: [], addItemMenu: false });
   updateEditor();
 }
+function openMapPanel() { openViewPanel('map'); }
 
 function selectItem(id) {
   flushSideField();
@@ -6335,12 +7084,21 @@ function dragItemSort(ev) {
   row.classList.add(after ? 'drop-after' : 'drop-before');
 }
 
-// つながりの図の箱のドラッグ。動かさずに放したときは、その画面設計を開く（編集中の画面設計の箱と、一覧にないデータベースは開かない）
+// 図の箱のドラッグ（つながりの図・ステータスの移り方の図・画面の移り方の図。どの図かは data-view）。動かさずに放したときは、
+// つながりの図はその画面設計を開き（編集中の画面設計の箱と、一覧にないデータベースは開かない）、画面の移り方の図はその画面を開く
 function startMapDrag(ev, el) {
   ev.preventDefault();
   flushSideField();
   const inner = el.closest('.map-inner');
-  drag = { kind: 'map', el, inner, key: el.dataset.node, sx: ev.clientX, sy: ev.clientY, x0: parseFloat(el.style.left) || 0, y0: parseFloat(el.style.top) || 0, moved: false, focus: inner.dataset.focus || null };
+  drag = { kind: 'map', el, inner, view: inner.dataset.view || 'map', key: el.dataset.node, sx: ev.clientX, sy: ev.clientY,
+    x0: parseFloat(el.style.left) || 0, y0: parseFloat(el.style.top) || 0, moved: false, focus: inner.dataset.focus || null };
+}
+// ドラッグの間に描き直す線（ほかの箱は今の位置のまま）。矢印の印の id の頭は、図を描いたときと同じにする
+function viewEdgesSvg(view, focus, pos, w, h) {
+  if (view === 'map') return mapEdgesSvg(mapModel(store.state, focus), pos, w, h);
+  const d = findDesign(store.state, focus);
+  const model = view === 'process' ? processModel(d) : flowModel(store.state, d);
+  return mapEdgesSvg(model, pos, w, h, { ...VIEW_DRAW[view], idPrefix: view === 'process' ? 'proc' : 'flow' });
 }
 function dragMap(ev) {
   if (store.isViewing) return; // 前の版を見ている間は、箱を動かさない（押して開くのはできる）
@@ -6356,19 +7114,29 @@ function dragMap(ev) {
   const st = drag.inner.style;
   st.width = Math.max(parseFloat(st.width), drag.x + MAP_W + 60) + 'px';
   st.height = Math.max(parseFloat(st.height), drag.y + MAP_H + 76) + 'px';
-  // 線も描き直す（ほかの箱は今の位置のまま）
-  const model = mapModel(store.state, drag.focus);
+  // 線も描き直す
   const pos = {};
   drag.inner.querySelectorAll('.mnode').forEach((n) => { pos[n.dataset.node] = { x: parseFloat(n.style.left) || 0, y: parseFloat(n.style.top) || 0, h: parseFloat(n.style.height) || MAP_H }; });
   const svg = drag.inner.querySelector('svg');
-  if (svg) svg.outerHTML = mapEdgesSvg(model, pos, parseFloat(drag.inner.style.width), parseFloat(drag.inner.style.height));
+  if (svg) svg.outerHTML = viewEdgesSvg(drag.view, drag.focus, pos, parseFloat(drag.inner.style.width), parseFloat(drag.inner.style.height));
 }
 function endMapDrag(done) {
   document.body.classList.remove('map-dragging');
-  if (done.moved && (done.x !== done.x0 || done.y !== done.y0)) { actions.setMapPos(done.focus, done.key, { x: done.x, y: done.y }); return; }
-  if (!done.key.startsWith('d:') || done.key === 'd:' + done.focus) return;
+  if (done.moved && (done.x !== done.x0 || done.y !== done.y0)) { actions.setViewPos(done.focus, done.view, done.key, { x: done.x, y: done.y }); return; }
+  if (done.view === 'flow') { openFlowNode(done.key); return; }
+  if (done.view !== 'map' || !done.key.startsWith('d:') || done.key === 'd:' + done.focus) return;
   if (!findDesign(store.state, done.key.slice(2))) return; // 単体で開いた HTML の、ほかの画面設計の箱（この HTML にない）は開かない
   openDesign(done.key.slice(2));
+}
+
+// 画面の移り方の図の箱を押したとき: この画面設計の画面はその画面を、ほかの画面設計の画面はその画面設計のその画面を開く
+function openFlowNode(key) {
+  if (key.startsWith('s:')) { openScreen(key.slice(2)); return; }
+  const [designId, screenId] = key.slice(2).split('/');
+  const d = findDesign(store.state, designId);
+  if (!d || d.trashedAt || !d.screens.some((s) => s.id === screenId)) return; // 単体で開いた HTML の、ほかの画面設計の画面（この HTML にない）は開かない
+  openDesign(designId);
+  openScreen(screenId);
 }
 
 function onDragMove(ev) {
@@ -6447,14 +7215,14 @@ function onDragEnd(ev) {
 }
 
 // ── コピー・貼り付け・複製・削除・矢印のキーで動かす（選んだものをまとめて）──
-// コピーしたものは { parts: [{ part（部品の写し）, item（指している項目の写し。ほかの画面設計へ貼り付けるときに使う）}], callouts: [吹き出しの写し] }
+// コピーしたものは { designId（コピーした画面設計）, parts: [{ part（部品の写し）, item（指している項目の写し。ほかの画面設計へ貼り付けるときに使う）}], callouts: [吹き出しの写し] }
 function selectionEntries() {
   const s = currentScreen();
   const d = currentDesign();
   const parts = ui.sel.filter((x) => x.k === 'p').map((x) => findPart(s, x.id)).filter(Boolean)
     .map((p) => { const item = findItem(d, p.itemId); return { part: clone(p), item: item ? clone(item) : null }; });
   const callouts = ui.sel.filter((x) => x.k === 'c').map((x) => findCallout(s, x.id)).filter(Boolean).map(clone);
-  return { parts, callouts };
+  return { designId: d.id, parts, callouts };
 }
 function copyPart() {
   const entries = selectionEntries();
@@ -6471,7 +7239,7 @@ function pastePart() {
   const out = actions.insertCopies(ui.designId, currentScreen().id, ui.clipboard, PART_GAP, PART_GAP);
   if (!out.length) return;
   const shift = (o) => ({ ...o, x: o.x + PART_GAP, y: o.y + PART_GAP });
-  ui.clipboard = { parts: ui.clipboard.parts.map((e) => ({ ...e, part: shift(e.part) })), callouts: ui.clipboard.callouts.map(shift) };
+  ui.clipboard = { ...ui.clipboard, parts: ui.clipboard.parts.map((e) => ({ ...e, part: shift(e.part) })), callouts: ui.clipboard.callouts.map(shift) };
   setSelection(out);
 }
 
@@ -6564,6 +7332,8 @@ function coverListRows(plan) {
   if (plan.changesPage) rows.push(`<tr class="lead"><td class="nm">${esc(plan.changesTitle)}</td><td class="dev"></td><td class="no">${plan.changesPage}</td></tr>`);
   if (plan.mapPage) rows.push(`<tr class="lead"><td class="nm">つながりの図</td><td class="dev"></td><td class="no">${plan.mapPage}</td></tr>`);
   if (plan.itemsPage) rows.push(`<tr class="lead"><td class="nm">データベースの項目の一覧表</td><td class="dev"></td><td class="no">${plan.itemsPage}</td></tr>`);
+  if (plan.processPage) rows.push(`<tr class="lead"><td class="nm">ステータスの移り方</td><td class="dev"></td><td class="no">${plan.processPage}</td></tr>`);
+  if (plan.flowPage) rows.push(`<tr class="lead"><td class="nm">画面の移り方</td><td class="dev"></td><td class="no">${plan.flowPage}</td></tr>`);
   plan.screens.forEach(({ s, i, page }) => rows.push(`<tr><td class="nm">${i + 1}　${esc(s.name)}</td><td class="dev">${DEVICES[s.device].label}</td><td class="no">${page}</td></tr>`));
   return rows;
 }
@@ -6678,9 +7448,9 @@ function splitItemRows(rows, aw, ah, measured, tableFn = printItemTable) {
 // つながりの図のページ（q35 案A）。凡例だけ出し（案内の文・並べ直すボタンなし）、箱のある所を切り出して本文に収まるように縮める（拡大しない）
 const hasMapLinks = (d, state) => mapModel(state, d.id).nodes.length > 1;
 function mapPageBody(d, state, aw, ah) {
-  const legend = '<div class="xp-legend"><span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span></div>';
+  const legend = `<div class="xp-legend">${VIEW_LEGENDS.map}</div>`;
   // 矢印の印の id は、編集の画面の図と重ならない名前にする（同じ id があると矢印が消えるため）
-  const html = mapHtml(state, d.id, d.mapPos || {}).replace(/map-arrow-/g, 'xp-map-arrow-').replace(' id="map-inner"', '');
+  const html = mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xp-map' }).replace(' id="map-inner"', '');
   const boxes = [...html.matchAll(/class="mnode[^"]*"[^>]*style="left:(-?[\d.]+)px;top:(-?[\d.]+)px;width:([\d.]+)px;height:([\d.]+)px"/g)].map((m) => m.slice(1).map(Number));
   const m = html.match(/class="map-inner"[^>]*style="width:([\d.]+)px;height:([\d.]+)px"/);
   if (!m || !boxes.length) return legend + html;
@@ -6690,11 +7460,56 @@ function mapPageBody(d, state, aw, ah) {
   const y0 = Math.max(0, Math.min(...boxes.map((b) => b[1])) - pad);
   const x1 = Math.min(mw, Math.max(...boxes.map((b) => b[0] + b[2])) + pad);
   const y1 = Math.min(mh, Math.max(...boxes.map((b) => b[1] + b[3])) + pad);
-  const [cw, ch] = [x1 - x0, y1 - y0];
-  const k = Math.min(1, aw / cw, (ah - 28) / ch); // 28 は凡例の分
-  return `${legend}<div class="xp-fit"><div style="width:${Math.floor(cw * k)}px;height:${Math.floor(ch * k)}px;position:relative;overflow:hidden">`
-    + `<div style="width:${cw}px;height:${ch}px;position:relative;zoom:${k.toFixed(4)}">`
-    + `<div style="position:absolute;left:${-x0}px;top:${-y0}px">${html}</div></div></div></div>`;
+  return legend + fitDiagram(html, { x0, y0, cw: x1 - x0, ch: y1 - y0 }, aw, ah - 28); // 28 は凡例の分
+}
+// 図の HTML の切り出す範囲（c: { x0, y0, cw, ch }）を、aw × ah に収まるように縮めて置く（拡大しない）
+function fitDiagram(html, c, aw, ah) {
+  const k = Math.min(1, aw / c.cw, ah / c.ch);
+  return `<div class="xp-fit"><div style="width:${Math.floor(c.cw * k)}px;height:${Math.floor(c.ch * k)}px;position:relative;overflow:hidden">`
+    + `<div style="width:${c.cw}px;height:${c.ch}px;position:relative;zoom:${k.toFixed(4)}">`
+    + `<div style="position:absolute;left:${-c.x0}px;top:${-c.y0}px">${html}</div></div></div></div>`;
+}
+
+// ステータスの移り方のページと画面の移り方のページ（第 8 段階。q59）。操作が 1 つもない・移る先が 1 本もないときは出さない
+const hasProcessPage = (d) => { const it = d.items.find((x) => x.type === 'status'); return !!it && it.props.actions.length > 0; };
+const hasFlowPage = (d, state) => flowModel(state, d).edges.length > 0;
+// 操作の一覧表（番号・操作・前のステータス → 次のステータス・操作する人・条件）
+const ACTION_COLS = '<colgroup><col style="width:8%"><col style="width:22%"><col style="width:32%"><col style="width:16%"><col style="width:22%"></colgroup>';
+const printActionTable = (rows) => `<table class="xp-itable">${ACTION_COLS}<thead><tr><th>番号</th><th>操作</th><th>前のステータス → 次のステータス</th><th>操作する人</th><th>条件</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+function actionRowsHtml(it) {
+  const name = (id) => esc(stateNameOf(it.props.states, id) || '（なし）');
+  return it.props.actions.map((a, i) => `<tr><td>${i + 1}</td><td>${esc(a.name)}</td><td>${name(a.from)} → ${name(a.to)}</td><td>${esc(a.role)}</td><td class="set">${esc(a.cond)}</td></tr>`);
+}
+// ステータスの移り方のページ。上に凡例、左に図（上から下へ。本文の幅の 45% まで縮める）、右に操作の一覧表。
+// 右に置くと表の幅が PROC_TABLE_MIN より狭くなるとき（縦の用紙）は、図（本文の高さの 6 割まで縮める）の下に、本文の幅いっぱいの表を置く。
+// 表が入りきらないときは、続きのページに表だけを出す。戻り値 { sub, body, rest（続きのページごとの表の行） }
+const PROC_TABLE_MIN = 520;
+function processPagePlan(d, state, aw, ah, measured) {
+  const it = d.items.find((x) => x.type === 'status');
+  const html = viewHtml('process', state, d, d.processPos || {}, { idPrefix: 'xp-proc', bare: true });
+  const c = diagramCrop(html);
+  const bh = ah - 28; // 凡例の分
+  const fw = Math.floor(aw * 0.45);
+  const side = c ? Math.floor(aw - c.cw * Math.min(1, fw / c.cw, bh / c.ch) - 32) : aw;
+  const stack = !!c && side < PROC_TABLE_MIN;
+  const fh = stack ? Math.floor(bh * 0.6) : bh;
+  const fig = c ? fitDiagram(html, c, stack ? aw : fw, fh) : '';
+  // 表の 1 ページ目に使える高さ。図の下に置くときは、図の高さと間（16）を引く
+  const th = stack ? bh - Math.floor(c.ch * Math.min(1, aw / c.cw, fh / c.ch)) - 16 : bh;
+  const rows = actionRowsHtml(it);
+  const first = splitItemRows(rows, stack ? aw : side, th, measured, printActionTable)[0] || [];
+  const rest = first.length < rows.length ? splitItemRows(rows.slice(first.length), aw, ah, measured, printActionTable) : [];
+  return {
+    sub: `ステータス ${it.props.states.length} つ・操作 ${it.props.actions.length} つ`,
+    body: `<div class="xp-legend">${VIEW_LEGENDS.process}</div><div class="xp-proc${stack ? ' stack' : ''}">${fig ? `<div>${fig}</div>` : ''}`
+      + `<div class="xp-proc-tbl"${stack ? '' : ` style="width:${side}px"`}>${printActionTable(first)}</div></div>`,
+    rest,
+  };
+}
+function flowPageBody(d, state, aw, ah) {
+  const html = viewHtml('flow', state, d, d.flowPos || {}, { idPrefix: 'xp-flow', bare: true });
+  const c = diagramCrop(html);
+  return `<div class="xp-legend">${VIEW_LEGENDS.flow}</div>${c ? fitDiagram(html, c, aw, ah - 28) : html}`;
 }
 
 // 画面と吹き出しと部品の設定の一覧表を 1 つに組む（q36 案A）。編集の画面と同じ並べ方（画面のまわり 240 ドット）を、
@@ -6783,9 +7598,10 @@ function diffSumHtml(df, info) {
   return `<span class="df-sum">${esc(df.title)}との違い：<b class="n">新 ${c.new}</b>・<b class="c">変 ${c.chg}</b>・<b class="d">削除 ${c.del}</b></span>`;
 }
 
-// PDF の中身を組む。opts { paper, orient, cover, map, items, screenIds（省略するとすべての画面）, diffRevId（比べる版の行の id） }。
+// PDF の中身を組む。opts { paper, orient, cover, map, items, process, flow, screenIds（省略するとすべての画面）, diffRevId（比べる版の行の id） }。
 // 表紙（入りきらなければ「画面の一覧（続き）」）→ 比べた版からの変更内容（違いの印を選んだときだけ）→ つながりの図（つながりがあるときだけ）→
-// 項目の一覧表（項目があるときだけ）→ 選んだ画面。戻り値 { html（印刷用の文書）, P（用紙）, pages（ページの HTML）, total }
+// 項目の一覧表（項目があるときだけ）→ ステータスの移り方（操作があるときだけ）→ 画面の移り方（移る先があるときだけ）→ 選んだ画面。
+// 戻り値 { html（印刷用の文書）, P（用紙）, pages（ページの HTML）, total }
 function exportDocument(d, state, opts, exportedAt = nowIso()) {
   const P = paperSize(opts.paper, opts.orient);
   const measured = canMeasure();
@@ -6796,6 +7612,8 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
   const df = opts.diffRevId ? exportDiff(d, state, opts.diffRevId) : null;
   const changesTitle = df ? `${df.title}からの変更内容` : '';
   const changeChunks = !df ? [] : df.result.rows.length ? splitItemRows(changeRowsHtml(df.result.rows), aw, ah, measured, printChangeTable) : [[]];
+  const proc = opts.process && hasProcessPage(d) ? processPagePlan(d, state, aw, ah, measured) : null;
+  const withFlow = !!opts.flow && hasFlowPage(d, state);
   // ページ番号は、表紙が何ページになるかで変わる。番号の桁で行の高さは変わらないので、仮の番号で 1 回分けてから決め直す
   const numbering = (coverPages) => {
     let n = coverPages;
@@ -6804,7 +7622,10 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
     const mapPage = withMap ? ++n : 0;
     const itemsPage = itemChunks.length ? n + 1 : 0;
     n += itemChunks.length;
-    return { changesPage, changesTitle, mapPage, itemsPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n };
+    const processPage = proc ? n + 1 : 0;
+    n += proc ? 1 + proc.rest.length : 0;
+    const flowPage = withFlow ? ++n : 0;
+    return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n };
   };
   let plan = numbering(opts.cover ? 1 : 0);
   let coverChunks = [];
@@ -6837,6 +7658,15 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
   itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`,
     sub: `項目 ${d.items.length} 個${rows.cut ? '・長い行は途中まで（全文はアプリか HTML で見られます）' : ''}`,
     body: printItemTable(rows), left: left('データベースの項目の一覧表'), right: `${plan.itemsPage + k} / ${total}` })));
+  if (proc) {
+    pages.push(pageFrame({ P, title: 'ステータスの移り方', sub: proc.sub, body: proc.body, left: left('ステータスの移り方'), right: `${plan.processPage} / ${total}` }));
+    proc.rest.forEach((rows, k) => pages.push(pageFrame({ P, title: 'ステータスの移り方（続き）', sub: '操作の一覧表', body: printActionTable(rows),
+      left: left('ステータスの移り方'), right: `${plan.processPage + 1 + k} / ${total}` })));
+  }
+  if (withFlow) {
+    pages.push(pageFrame({ P, title: '画面の移り方', sub: `画面 ${d.screens.length} つ・${flowEntryNote(state, d)}`, body: flowPageBody(d, state, aw, ah),
+      left: left('画面の移り方'), right: `${plan.flowPage} / ${total}` }));
+  }
   plan.screens.forEach(({ s, i, page }) => {
     const info = df ? df.result.screens[s.id] : null;
     const body = screenPageBody(screenComposite(d, s, 'p' + page, measured, info && { info, label: df.label }), aw, ah, measured);
@@ -6859,10 +7689,64 @@ function exportPngDocs(d, state, screenIds = null, diffRevId = null, parts = {})
     const height = comp.ch + PNG_MARGIN * 2;
     const body = `<div class="xp-png" style="width:${width}px;height:${height}px">`
       + `<div class="xp-stage" style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN}px;width:${comp.cw}px;height:${comp.ch}px">${comp.html}</div></div>`;
-    const html = '<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="UTF-8">\n<title>' + esc(`${d.name} ／ ${s.name}`) + '</title>\n<style>' + APP_STYLE
-      + '\nhtml,body{margin:0;background:#fff}\n</style>\n</head>\n<body class="xp-doc">\n' + body + '\n</body>\n</html>\n';
+    const html = pngDocHtml(`${d.name} ／ ${s.name}`, body);
     return { name: `${safeFileName(d.name)}_${pad2(i + 1)}_${safeFileName(s.name, '画面')}.png`, width, height, html };
   });
+}
+
+// PNG にする文書の骨組み（アプリと同じ style・白の背景）
+const pngDocHtml = (title, body) => '<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="UTF-8">\n<title>' + esc(title) + '</title>\n<style>' + APP_STYLE
+  + '\nhtml,body{margin:0;background:#fff}\n</style>\n</head>\n<body class="xp-doc">\n' + body + '\n</body>\n</html>\n';
+
+// 図の凡例（AI の図の画像。第 8 段階）
+const VIEW_TITLES = { map: 'つながりの図', process: 'ステータスの移り方', flow: '画面の移り方' };
+const VIEW_LEGENDS = {
+  map: '<span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>',
+  process: '<span><i></i>先へ進む操作</span><span><i class="b"></i>前へ戻る操作（差し戻しなど）</span>',
+  flow: '<span><i></i>ボタン</span><span><i class="g"></i>リンクの文字</span><span><i class="x"></i>ほかの画面設計の画面</span>',
+};
+// 図の HTML（mapHtml・viewHtml）の、箱と線と矢印の文字のある所（まわりに 16 の余白）。戻り値 { x0, y0, cw, ch }。箱がなければ null。
+// 線は曲げる点まで数える（線の形より少し広くなるが、切れない）
+function diagramCrop(html) {
+  const xs = [];
+  const ys = [];
+  const rects = (re) => [...html.matchAll(re)].forEach((m) => {
+    const [x, y, w, h] = m.slice(1).map(Number);
+    xs.push(x, x + w);
+    ys.push(y, y + h);
+  });
+  rects(/class="mnode[^"]*"[^>]*style="left:(-?[\d.]+)px;top:(-?[\d.]+)px;width:([\d.]+)px;height:([\d.]+)px"/g);
+  if (!xs.length) return null;
+  rects(/<rect x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"/g);
+  [...html.matchAll(/<path d="([^"]+)"[^>]*marker-end=/g)].forEach((m) => {
+    const n = (m[1].match(/-?[\d.]+/g) || []).map(Number);
+    for (let i = 0; i + 1 < n.length; i += 2) {
+      xs.push(n[i]);
+      ys.push(n[i + 1]);
+    }
+  });
+  const m = html.match(/class="map-inner"[^>]*style="width:([\d.]+)px;height:([\d.]+)px"/);
+  const [mw, mh] = m ? [Number(m[1]), Number(m[2])] : [Infinity, Infinity];
+  const pad = 16;
+  const [x0, y0] = [Math.max(0, Math.min(...xs) - pad), Math.max(0, Math.min(...ys) - pad)];
+  const [x1, y1] = [Math.min(mw, Math.max(...xs) + pad), Math.min(mh, Math.max(...ys) + pad)];
+  return { x0, y0, cw: Math.ceil(x1 - x0), ch: Math.ceil(y1 - y0) };
+}
+// 図の画像の文書（AI の get_view_image。ページの枠なし・縮めない・上に凡例・まわりに白の余白）。view は 'map'・'process'・'flow'。
+// 戻り値 { html, width, height, boxes（箱の数）, arrows（矢印の数）}
+function viewImageDoc(d, state, view) {
+  const model = view === 'map' ? mapModel(state, d.id) : view === 'process' ? processModel(d) : flowModel(state, d);
+  const html = view === 'map' ? mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xi-map' }).replace(' id="map-inner"', '')
+    : viewHtml(view, state, d, d[VIEW_POS[view]] || {}, { idPrefix: 'xi-' + view, bare: true });
+  const c = diagramCrop(html) || { x0: 0, y0: 0, cw: 480, ch: 120 };
+  const LEGEND_H = 28;
+  const width = Math.max(c.cw, 480) + PNG_MARGIN * 2;
+  const height = c.ch + LEGEND_H + PNG_MARGIN * 2;
+  const body = `<div class="xp-png" style="width:${width}px;height:${height}px">`
+    + `<div class="xp-legend" style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN}px">${VIEW_LEGENDS[view]}</div>`
+    + `<div style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN + LEGEND_H}px;width:${c.cw}px;height:${c.ch}px;overflow:hidden">`
+    + `<div style="position:absolute;left:${-c.x0}px;top:${-c.y0}px">${html}</div></div></div>`;
+  return { html: pngDocHtml(`${d.name} ／ ${VIEW_TITLES[view]}`, body), width, height, boxes: model.nodes.length, arrows: model.edges.length };
 }
 
 // ── 書き出す HTML（単体で開いて編集できる HTML。q37）──
@@ -6940,6 +7824,7 @@ function embedPayload(d, state, { diffRevId = null } = {}) {
     baseHash: shortHash(comparableContent(d, state)), // 書き出したときの中身の印（取り込むときに、こちらでも変えたかを見る）
     data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: d.target && !builtinTarget(d.target) ? [d.target] : [], mapPos: {} }, designs: [copy] },
     peers: peersOf(d, state),
+    screenPeers: screenPeersOf(d, state), // 移る先のほかの画面設計の名前と画面（第 8 段階）
     ...(diffSnap ? { diffBase: { title: revisionTitle(r), day: revisionDay(r), snapshot: diffSnap } } : {}),
   };
 }
@@ -6952,6 +7837,7 @@ function resavePayload(d, state) {
     // 作る先の自由な名前は、この画面設計の作る先だけを入れる（「その他」に試しに書いた名前を、取り込む側の選択肢に増やさないため）
     data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: d.target && !builtinTarget(d.target) ? [d.target] : [], mapPos: {} }, designs: [copy] },
     peers: standalone.peers,
+    screenPeers: standalone.screenPeers,
     ...(standalone.diffBase ? { diffBase: standalone.diffBase.raw } : {}), // 違いの札の元にする版も、そのまま持ち回る
   };
 }
@@ -7019,7 +7905,7 @@ function createStandaloneStore(el) {
     return fail('この HTML に入っている画面設計のデータを読めませんでした（' + (e.message || e) + '）。');
   }
   if (!isObj(payload) || payload.format !== EMBED_FORMAT) return fail('この HTML に入っている画面設計のデータの形が分かりません。');
-  standalone = { designId: null, peers: normalizePeers(payload.peers), exportedAt: str(payload.exportedAt), baseUpdatedAt: str(payload.baseUpdatedAt), baseHash: str(payload.baseHash), savedJson: '', savedOnce: false };
+  standalone = { designId: null, peers: normalizePeers(payload.peers), screenPeers: normalizeScreenPeers(payload.screenPeers), exportedAt: str(payload.exportedAt), baseUpdatedAt: str(payload.baseUpdatedAt), baseHash: str(payload.baseHash), savedJson: '', savedOnce: false };
   let migrated;
   try {
     migrated = migrate(payload.data);
@@ -7110,7 +7996,7 @@ async function saveStandalone() {
 
 // ── 書き出しの窓（q33）──
 // 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない）
-const exportOpts = { kind: 'pdf', paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, openAfter: true, diff: false };
+const exportOpts = { kind: 'pdf', paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, process: true, flow: true, openAfter: true, diff: false };
 const EXPORT_KINDS = [
   ['pdf', '📄', 'PDF', '印刷して渡す。1 画面＝1 ページ。表紙・つながりの図・項目の一覧表も入れられる'],
   ['html', '🌐', 'HTML', 'ブラウザで開いて、見る・直すことができる。直したものはアプリで取り込める'],
@@ -7145,7 +8031,7 @@ function exportDialogBody(d, desk, kind, hasMap) {
         <div class="field"><span>向き</span>${seg('xp-orient', slide ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
       </div>
       <div class="xp-sub">入れるページ</div>
-      <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', 'つながりの図', hasMap, 'ほかの画面設計とのつながりがないので、出しません')}${page('items', 'データベースの項目の一覧表', d.items.length > 0, '項目がないので、出しません')}</div>
+      <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', 'つながりの図', hasMap, 'ほかの画面設計とのつながりがないので、出しません')}${page('items', 'データベースの項目の一覧表', d.items.length > 0, '項目がないので、出しません')}${page('process', 'ステータスの移り方', hasProcessPage(d), 'ステータスを進める操作がないので、出しません')}${page('flow', '画面の移り方', hasFlowPage(d, store.state), 'ボタン・リンクの文字の移る先がないので、出しません')}</div>
       ${pick}
       ${diffPick('pdf')}
       <label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>書き出したら PDF を開く</span></label>
@@ -7211,9 +8097,10 @@ async function openExportDialog(designId) {
       const r2 = {
         kind: k, screenIds, paper: (box.querySelector('[name="xp-paper"]:checked') || {}).value || 'A4',
         orient: (box.querySelector('[name="xp-orient"]:checked') || {}).value || 'landscape',
-        cover: checked('cover'), map: checked('map'), items: checked('items'), openAfter: !!box.querySelector('[data-xopen]').checked, diffRevId, diffOn,
+        cover: checked('cover'), map: checked('map'), items: checked('items'), process: checked('process'), flow: checked('flow'),
+        openAfter: !!box.querySelector('[data-xopen]').checked, diffRevId, diffOn,
       };
-      if (!screenIds.length && !r2.cover && !r2.map && !r2.items) return { error: '入れるページか、書き出す画面を 1 つ以上選んでください。' };
+      if (!screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((key) => r2[key])) return { error: '入れるページか、書き出す画面を 1 つ以上選んでください。' };
       return r2;
     },
   });
@@ -7225,6 +8112,8 @@ async function openExportDialog(designId) {
     Object.assign(exportOpts, { paper: r.paper, orient: r.paper === 'slide' ? exportOpts.orient : r.orient, cover: r.cover, openAfter: r.openAfter });
     if (hasMap) exportOpts.map = r.map;
     if (d.items.length) exportOpts.items = r.items;
+    if (hasProcessPage(d)) exportOpts.process = r.process;
+    if (hasFlowPage(d, store.state)) exportOpts.flow = r.flow;
   }
   return runExport(d.id, r);
 }
@@ -7233,7 +8122,7 @@ function reportExport(res, what) {
   if (!res.ok) { toast(`${what} を書き出せませんでした（${res.error || 'わからない理由'}）。`); return; }
   toast(res.count > 1 ? `${res.count} 枚の ${what} を書き出しました（${res.dir}）。` : `${what} を書き出しました（${res.path}）。`);
 }
-// 書き出す。r は書き出しの窓の結果（{ kind, screenIds, paper, orient, cover, map, items, openAfter, diffRevId（比べる版。違いの印を付けないときは null） }）
+// 書き出す。r は書き出しの窓の結果（{ kind, screenIds, paper, orient, cover, map, items, process, flow, openAfter, diffRevId（比べる版。違いの印を付けないときは null） }）
 async function runExport(designId, r) {
   const d = findDesign(store.state, designId);
   if (!d) return null;
@@ -7318,12 +8207,38 @@ function shortHash(text) {
   }
   return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
 }
+// データの形の版 2 の形に戻した中身（版 2 のアプリで書き出した HTML・取り込んだときの中身の印と比べるため。第 8 段階）。
+// ステータスは名前の並び、見本で出すステータスは名前に戻し、版 3 で足した欄は空なら外す（中身の入った欄は残すので、そのときは印が合わない）
+function legacyContent(d, state) {
+  const c = normalizeDesign(clone({ ...d, revisions: [] }));
+  refreshRefNames(c, state);
+  const statesOf = (p) => ((findItem(c, p.itemId) || p).props || {}).states;
+  c.screens.forEach((s) => s.parts.forEach((p) => {
+    const states = (p.type === 'status' || p.type === 'steps') && p.view ? statesOf(p) : null;
+    const hit = Array.isArray(states) ? states.find((x) => x.id === p.view.current) : null;
+    if (hit) p.view.current = hit.name;
+    if ((p.type === 'button' || p.type === 'link') && isObj(p.props)) {
+      (p.type === 'button' ? ['to', 'designId', 'screenId', 'url'] : ['designId']).forEach((k) => { if (p.props[k] === '') delete p.props[k]; });
+    }
+  }));
+  const toNames = (props) => {
+    if (!isObj(props) || !Array.isArray(props.states)) return;
+    if (Array.isArray(props.actions) && !props.actions.length) delete props.actions;
+    props.states = props.states.map((s) => (Object.keys(s).every((k) => k === 'id' || k === 'name') ? s.name : s));
+  };
+  c.items.forEach((it) => { if (it.type === 'status') toNames(it.props); });
+  c.screens.forEach((s) => s.parts.forEach((p) => { if (p.type === 'status' || p.type === 'steps') toNames(p.props); }));
+  const out = designContentOf(c);
+  ['processPos', 'flowPos'].forEach((k) => { if (isObj(out[k]) && !Object.keys(out[k]).length) delete out[k]; });
+  return canonicalJson(out);
+}
 // 書き出した後に、こちらでも変えたか。書き出したときの中身の印（baseHash）か、前に取り込んだときの中身の印（画面設計の exchangeHash）と
-// 今の中身が同じなら、変えていない（元に戻すで戻した変更や、2 回目の取り込みも正しく分かるように、更新日時でなく中身で比べる）
+// 今の中身が同じなら、変えていない（元に戻すで戻した変更や、2 回目の取り込みも正しく分かるように、更新日時でなく中身で比べる）。
+// 印は、データの形の版 2 のアプリで作ったものもあるので、版 2 の形に戻した中身の印とも比べる
 function changedSinceExport(cur, payload) {
   const known = [str(payload.baseHash), str(cur.exchangeHash)].filter(Boolean);
   if (!known.length) return !!payload.baseUpdatedAt && String(cur.updatedAt) > String(payload.baseUpdatedAt);
-  return !known.includes(shortHash(comparableContent(cur, store.state)));
+  return !known.includes(shortHash(comparableContent(cur, store.state))) && !known.includes(shortHash(legacyContent(cur, store.state)));
 }
 // 一覧にある画面設計を、取り込む中身で置き換える（state を書き換える）。今の中身は改訂履歴に「取り込む前の状態」として残す
 function replaceWithImported(s, incoming) {
@@ -7515,6 +8430,8 @@ function runCommand(cmd) {
   switch (cmd) {
     case 'openItems': openItemsPanel(); return true;
     case 'openMap': openMapPanel(); return true;
+    case 'openProcess': openViewPanel('process'); return true;
+    case 'openFlow': openViewPanel('flow'); return true;
     case 'addItemMenu':
       if (ui.panel !== 'items') Object.assign(ui, { panel: 'items', partId: null });
       ui.addItemMenu = !ui.addItemMenu;
@@ -7550,7 +8467,7 @@ function runCommand(cmd) {
 }
 
 // 前の版を見ている間にも使える命令（見る・選ぶ・移る・拡大縮小と、今の中身に戻ってから行う命令）
-const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'importHtml', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'prevScreen', 'nextScreen',
+const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'importHtml', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'openProcess', 'openFlow', 'prevScreen', 'nextScreen',
   'zoomIn', 'zoomOut', 'zoomReset', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart', 'aiConnect'];
 
 // 揃える命令（メニューバー・右の欄・アプリのメニュー）と、alignedRects の how
@@ -7578,7 +8495,7 @@ const ACTION_COMMANDS = {
   undo: 'undo', redo: 'redo', home: 'goHome', export: 'exportDialog', 'import-html': 'importHtml', 'save-html': 'saveHtml', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
-  'open-items': 'openItems', 'open-map': 'openMap', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
+  'open-items': 'openItems', 'open-map': 'openMap', 'open-process': 'openProcess', 'open-flow': 'openFlow', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
   'select-all': 'selectAll', 'number-on': 'numberOn', 'number-off': 'numberOff', 'delete-many': 'deletePart',
   'add-screen': 'addScreen', 'duplicate-screen': 'duplicateScreen', 'delete-screen': 'deleteScreen',
   'add-revision': 'addRevision', 'open-revisions': 'openRevisions', 'ai-connect': 'aiConnect',
@@ -7606,7 +8523,10 @@ function onEditorClick(action, btn) {
       return true;
     case 'open-items': openItemsPanel(); return true;
     case 'open-map': openMapPanel(); return true;
+    case 'open-process': openViewPanel('process'); return true;
+    case 'open-flow': openViewPanel('flow'); return true;
     case 'map-reset': actions.resetMapPos(ui.designId); return true;
+    case 'view-reset': actions.resetViewPos(ui.designId, btn.dataset.view); return true;
     case 'select-screen':
       flushSideField();
       if (btn.dataset.id === ui.screenId && ui.panel === 'screen') return true; // mousedown で切り替えた後の click
@@ -7643,6 +8563,9 @@ function onEditorClick(action, btn) {
     case 'open-lookup-key': openLookupKey(btn.dataset.id); return true;
     case 'tb-col': case 'tb-col-up': case 'tb-col-down': case 'tb-col-del': case 'tb-col-add': onTableColumnAction(action, btn.dataset.id); return true;
     case 'fl-up': case 'fl-down': case 'fl-del': onFilterAction(action, Number(btn.dataset.i)); return true;
+    case 'ps-add': case 'ps-up': case 'ps-down': case 'ps-del': case 'pa-add': case 'pa-up': case 'pa-down': case 'pa-del':
+      onProcessAction(action, btn.dataset.id);
+      return true;
     case 'open-link-source': openLinkSource(btn.dataset.id); return true;
     case 'toggle-palette':
       ui.paletteClosed[btn.dataset.id] = !ui.paletteClosed[btn.dataset.id];
@@ -7835,6 +8758,15 @@ function aiResolveDesign(S, ref, { write = false } = {}) {
   return d;
 }
 const aiResolveScreen = (d, ref) => aiPick(d.screens, ref, `「${d.name}」の画面`);
+// 移る先の画面（to・props.screenId）。ない画面には、先に作るよう添えて断る（これから作る画面を書いて断られることがあったため）
+function aiMoveScreen(owner, ref) {
+  try {
+    return aiResolveScreen(owner, ref);
+  } catch (e) {
+    if (e instanceof AiRefusal && e.code === 'not_found') e.message += `移る先にできるのは、もうある画面だけです（今の画面: ${owner.screens.map((s) => s.name).join('・')}）。これから作る画面は、先に add_screen で作ってから to に書いてください。`;
+    throw e;
+  }
+}
 const aiResolveItem = (d, ref) => aiPick(d.items, ref, `「${d.name}」のデータベースの項目`, { candidate: (it) => ({ id: it.id, name: it.name, type: it.type }) });
 // 部品は id か赤い番号（数でも、数字の文字でも）
 function aiResolvePart(sc, ref) {
@@ -7898,7 +8830,7 @@ function aiListDesigns(args) {
 function aiItemSummary(d, it, ctx) {
   const out = { id: it.id, name: it.name, type: it.type, typeName: itemTypeName(it.type), required: !!it.required, setting: describeItem(it, ctx) };
   if (it.type === 'table') out.columns = (it.props.columns || []).map((c) => ({ id: c.id, name: c.name, type: c.type }));
-  if (it.type === 'status') out.states = [...(it.props.states || [])];
+  if (it.type === 'status') Object.assign(out, { states: stateNames(it.props.states), actions: (it.props.actions || []).length }); // 操作の中身は get_flow で読む
   if (it.link) out.importedFrom = { design: it.link.designName || '', lost: !!it.link.lost };
   out.screens = screensWithItem(d, it.id).map((s) => s.name);
   return out;
@@ -7928,11 +8860,8 @@ function aiPartSummary(d, sc, raw, ctx) {
   };
   if (raw.itemId && isItemPart(raw)) out.item = findItem(d, raw.itemId) ? { id: raw.itemId, name: p.label } : { id: raw.itemId, name: p.label, removed: true };
   if (isInputType(raw.type)) Object.assign(out, { labelPos: raw.labelPos, sample: raw.sample || '', placeholder: raw.placeholder || '' });
-  if (raw.type === 'link' && p.props && p.props.to === 'screen') {
-    const to = d.screens.find((s) => s.id === p.props.screenId);
-    out.to = to ? { screen: to.name } : null;
-  }
-  if ((raw.type === 'status' || raw.type === 'steps') && raw.view) out.current = raw.view.current || '';
+  if (hasMoveTarget(raw)) out.to = aiMoveSummary(d, raw, ctx.state);
+  if ((raw.type === 'status' || raw.type === 'steps') && raw.view) out.current = stateNameOf((p.props && p.props.states) || [], raw.view.current);
   return out;
 }
 // 画面の中身。部品・吹き出し・部品の設定の一覧表の行を、この順に 1 つの並びにして、返事全体が目安に収まるように分ける
@@ -7953,18 +8882,82 @@ function aiGetScreen(args) {
     id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height, showHeader: sc.showHeader, tablePos: sc.tablePos,
     parts: [], partsTotal: parts.length, callouts: [], calloutsTotal: callouts.length, table: [], tableTotal: table.length, nextCursor: null,
   };
-  const all = [...parts.map((v) => ['parts', v]), ...callouts.map((v) => ['callouts', v]), ...table.map((v) => ['table', v])];
+  return aiPageInto(out, [['parts', parts], ['callouts', callouts], ['table', table]], args.cursor);
+}
+// いくつかの並びを、この順に 1 つの並びにして、返事全体が目安に収まるように分けて out に入れる（get_screen・get_flow）。
+// groups は [[out の欄の名前, 並び], ...]。ページごとの欄には、その並びの続きの分だけが入る
+function aiPageInto(out, groups, cursor) {
+  const all = groups.flatMap(([k, list]) => list.map((v) => [k, v]));
   const head = JSON.stringify({ ...out, nextCursor: String(all.length) }).length; // 並びの外の文字（いちばん長い nextCursor で数える）
-  const { page, nextCursor } = aiPage(all, args.cursor, AI_REPLY_BUDGET - head, ([, v]) => JSON.stringify(v).length + 1);
+  const { page, nextCursor } = aiPage(all, cursor, AI_REPLY_BUDGET - head, ([, v]) => JSON.stringify(v).length + 1);
   page.forEach(([k, v]) => out[k].push(v));
   out.nextCursor = nextCursor;
   return out;
+}
+
+// ── 読む道具: ステータスの移り方と画面の移り方（第 8 段階）──
+// 部品の移る先（get_screen・get_flow）。なしは null。この画面設計の画面は { screen, screenId }、ほかの画面設計の画面は design・designId も付ける
+// （ごみ箱にあれば trashed）。指す画面が見つからないときは、screen を null にして missing を付ける。URL は { url }
+function aiMoveSummary(d, p, S) {
+  const pr = p.props || {};
+  if (pr.to === 'url') return { url: str(pr.url) };
+  if (pr.to !== 'screen' || !pr.screenId) return null;
+  const self = !pr.designId || pr.designId === d.id;
+  const owner = self ? d : findDesign(S, pr.designId);
+  const s = owner ? owner.screens.find((x) => x.id === pr.screenId) : null;
+  const where = self ? {} : { design: owner ? owner.name : null, designId: pr.designId, ...(owner && owner.trashedAt ? { trashed: true } : {}) };
+  return s ? { ...where, screen: s.name, screenId: s.id } : { ...where, screen: null, screenId: pr.screenId, missing: true };
+}
+const aiStatusItem = (d) => d.items.find((x) => x.type === 'status') || null;
+// ステータスの項目の操作。前と次はステータスの名前で書く（並びにないときは null）
+function aiActionRows(it) {
+  if (!it) return [];
+  const nameOf = (id) => (it.props.states.find((s) => s.id === id) || { name: null }).name;
+  return it.props.actions.map((a) => ({ id: a.id, name: a.name, from: nameOf(a.from), to: nameOf(a.to), role: a.role, cond: a.cond }));
+}
+// ステータスと操作（edit_process の返事）
+function aiProcessSummary(it) {
+  if (!it) return { item: null, states: [], actions: [] };
+  return { item: { id: it.id, name: it.name }, states: it.props.states.map((s) => ({ id: s.id, name: s.name })), actions: aiActionRows(it) };
+}
+// ステータスの移り方（ステータスの並びと操作）と、画面の移り方（ボタン・リンクの文字ごとの移る先と、ほかの画面設計から移ってくるもの）。
+// 多いときは、操作・移る先・移ってくるもの の順に分ける
+function aiGetFlow(args) {
+  const S = aiState();
+  const d = aiResolveDesign(S, args.design);
+  const it = aiStatusItem(d);
+  const status = it ? {
+    item: { id: it.id, name: it.name }, ...(it.link ? { importedFrom: { design: it.link.designName || '', lost: !!it.link.lost } } : {}),
+    states: it.props.states.map((s) => ({ id: s.id, name: s.name })),
+  } : null;
+  const acts = aiActionRows(it);
+  const moves = d.screens.flatMap((s) => s.parts.filter(hasMoveTarget).map((p) => ({
+    screen: s.name, screenId: s.id, part: { id: p.id, no: p.no == null ? null : p.no, type: p.type, label: partTitle(p) },
+    ...(p.type === 'button' && str(p.props.action) ? { whenPressed: str(p.props.action) } : {}), to: aiMoveSummary(d, p, S),
+  })));
+  const incoming = flowIncoming(S, d).map((r) => ({
+    design: r.owner.name, designId: r.owner.id, screen: r.from.name, screenId: r.from.id, part: { type: r.type, label: r.label },
+    to: (d.screens.find((s) => s.id === r.to) || { name: null }).name, toScreenId: r.to,
+  }));
+  const out = {
+    design: aiDesignBrief(d), status, actions: [], actionsTotal: acts.length,
+    screens: d.screens.map((s) => ({ id: s.id, name: s.name, device: s.device })),
+    moves: [], movesTotal: moves.length, incoming: [], incomingTotal: incoming.length, nextCursor: null,
+  };
+  return aiPageInto(out, [['actions', acts], ['moves', moves], ['incoming', incoming]], args.cursor);
 }
 
 // 部品の設定（props）の欄の説明（get_catalog で AI に渡す。値の形と選べる値）
 const AI_TEXT_PROPS = { maxLen: '最大の文字数（数字の文字。例 "50"）', initial: '初期値（文字）' };
 const AI_CHOICE_PROPS = { options: '選択肢（文字の配列）', initial: '初期値（選択肢の 1 つ。なしは ""）' };
 const AI_DIR = '並べ方: "h"（横）・"v"（縦）';
+// ボタン・リンクの文字の移る先の欄（ふつうは props でなく、部品の to で書く。layout と edit_parts の to）
+const AI_MOVE_PROPS = {
+  to: '移る先: ""（なし）・"screen"（画面）・"url"。ふつうは props でなく、部品の to（{ "screen": "一覧" }）で書く',
+  designId: '移る先の画面設計（画面設計の名前か id。"" はこの画面設計）',
+  screenId: '移る画面（画面の名前か id。designId の画面設計の中で。to が "screen" のとき）',
+  url: 'URL（to が "url" のとき）',
+};
 const AI_PROP_NOTES = {
   text1: AI_TEXT_PROPS,
   text2: AI_TEXT_PROPS,
@@ -7977,7 +8970,7 @@ const AI_PROP_NOTES = {
   user: { scope: '選べる人（文。例 "営業部の社員"）', multiple: '複数人を選べる（true・false）', initial: '初期値: "none"（なし）・"me"（使っている人）' },
   file: { accept: '受け付けるファイル（例 "PDF"）', maxCount: 'いちばん多い個数（数字の文字）' },
   calc: { formula: '計算式（文。例 "数量×単価"）', unit: '単位' },
-  button: { style: '見た目: "primary"（目立つ・青）・"normal"（ふつう・白）', action: '押したとき（文。例 "一覧の画面へ移る"）' },
+  button: { style: '見た目: "primary"（目立つ・青）・"normal"（ふつう・白）', action: '押したとき（文。例 "入力を確かめて保存する"）', ...AI_MOVE_PROPS },
   table: {
     columns: 'レコード一覧・関連レコード一覧の列（項目名の配列。関連レコード一覧は元のデータベースの項目名）',
     sort: '並べ順（文）', perPage: '1 ページの件数（数字の文字。レコード一覧）', limit: '最大の件数（数字の文字。関連レコード一覧）',
@@ -7993,13 +8986,13 @@ const AI_PROP_NOTES = {
   filter: { items: '絞り込む項目（項目名か id の配列）', values: '項目ごとの見本の値（items と同じ順の文字の配列）' },
   pager: { perPage: '1 ページの件数（数字の文字）', total: '見本の全部の件数（数字の文字）', showCount: '件数を書く（true・false）' },
   tabs: { tabs: 'タブの名前（文字の配列）', current: '選んでいるタブ（tabs の 1 つ）' },
-  link: { to: '移る先: ""（なし）・"screen"（この画面設計のほかの画面）・"url"', screenId: '移る画面（画面の名前か id。to が "screen" のとき）', url: 'URL（to が "url" のとき）' },
+  link: AI_MOVE_PROPS,
   icon: { icon: `アイコン: ${Object.keys(ICONS).map((k) => `"${k}"（${ICONS[k][0]}）`).join('・')}`, color: `色: ${Object.keys(ICON_COLORS).map((k) => `"${k}"（${ICON_COLORS[k][0]}）`).join('・')}` },
 };
 // 項目の設定（edit_items の props）だけにある欄
 const AI_ITEM_PROP_NOTES = {
   table: { columns: 'テーブルの列（{ name, type, required, props } の配列。type は入力欄の部品の種類。同じ名前の列は今の列を直す）' },
-  status: { states: 'ステータスの並び（文字の配列。上から順に進む。画面設計に 1 つだけ）' },
+  status: { states: 'ステータスの並び（文字の配列。上から順に進む。画面設計に 1 つだけ）。ステータスを進める操作（前のステータス → 次のステータス・操作する人・条件）は edit_process で書く' },
 };
 function aiGetCatalog() {
   const S = aiState();
@@ -8077,12 +9070,8 @@ async function aiWrite(ctx, opts, run) {
   // tx.afterMap は、中身が変わったときの、直した後の画面設計ごとの JSON（aiHistoryMode と aiAfterWrite で使う。2 回作らないため）
   const tx = { ctx, design: d, warnings: [], createdDesign: null, noBeforeRow: !!opts.noBeforeRow, afterMap: null };
   const beforeMap = new Map(S.designs.map((x) => [x.id, designJsonWithRefs(x)]));
-  // 「AI が直す前の状態」の行は、直す前に作っておき、中身が変わったときだけ入れる（8-3）。
-  // その接続の行がもうあるときは作らない（写しを作るのは重いため）
-  const row = d && !tx.noBeforeRow && !aiHasBeforeRow(d, ctx.session)
-    ? Object.assign(revisionRow(d, 'ai', { note: `${aiClientLabel(ctx.client)} が直す前の状態` }), { aiSession: ctx.session }) : null;
-  const rowAt = d ? d.revisions.length : 0;
-  const beforeContent = row ? designContent(d) : null;
+  // 「AI が直す前の状態」の行は、直す前に作っておき、中身が変わったときだけ入れる（8-3）
+  const before = d && !tx.noBeforeRow ? aiBeforeRow(ctx, d) : null;
   const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
   const seen = aiViewBefore(S); // 知らせ（紫・オレンジの帯と光らせ方）のため、直す前の様子を控える
   let mode = true;
@@ -8092,7 +9081,7 @@ async function aiWrite(ctx, opts, run) {
   try {
     ({ changed } = store.batch(() => {
       out = run(tx);
-      if (row) aiAddBeforeRow(tx, d.id, row, rowAt, beforeContent);
+      if (before) aiAddBeforeRow(before);
     }, {
       history: () => {
         tx.afterMap = new Map(store.state.designs.map((x) => [x.id, designJsonWithRefs(x)]));
@@ -8117,11 +9106,17 @@ async function aiWrite(ctx, opts, run) {
   const dd = d ? findDesign(store.state, d.id) : null;
   return { ...out, changed: !!changed, ...(dd ? { updatedAt: dd.updatedAt } : {}), ...(tx.warnings.length ? { warnings: tx.warnings } : {}) };
 }
+// 「AI が直す前の状態」の行を、直す前に作っておく。その接続の行がもうあるときは作らない（写しを作るのは重いため）
+function aiBeforeRow(ctx, d) {
+  if (aiHasBeforeRow(d, ctx.session)) return null;
+  const row = Object.assign(revisionRow(d, 'ai', { note: `${aiClientLabel(ctx.client)} が直す前の状態` }), { aiSession: ctx.session });
+  return { designId: d.id, row, at: d.revisions.length, content: designContent(d) };
+}
 // その接続（session）で、その画面設計への最初の変更のときだけ、直す前の中身の行を入れる（行には session を書いておく。
 // 元に戻すで行が消えたら、次の変更でまた入る）
-function aiAddBeforeRow(tx, designId, row, at, beforeContent) {
+function aiAddBeforeRow({ designId, row, at, content }) {
   const d = findDesign(store.state, designId);
-  if (!d || designContent(d) === beforeContent || aiHasBeforeRow(d, row.aiSession)) return;
+  if (!d || designContent(d) === content || aiHasBeforeRow(d, row.aiSession)) return;
   d.revisions.splice(Math.min(at, d.revisions.length), 0, row);
   trimAiRows(d);
 }
@@ -8217,16 +9212,22 @@ const AI_PROP_ENUMS = {
   'date.initial': ['none', 'today', 'date'], 'datetime.initial': ['none', 'now'], 'user.initial': ['none', 'me'],
   'radio.dir': ['h', 'v'], 'checkbox.dir': ['h', 'v'], 'button.style': ['primary', 'normal'],
   'graph.chart': Object.keys(CHART_NAMES), 'graph.agg': Object.keys(AGG_NAMES),
-  'icon.icon': Object.keys(ICONS), 'icon.color': Object.keys(ICON_COLORS), 'link.to': ['', 'screen', 'url'],
+  'icon.icon': Object.keys(ICONS), 'icon.color': Object.keys(ICON_COLORS), 'link.to': ['', 'screen', 'url'], 'button.to': ['', 'screen', 'url'],
 };
 // 項目を名前か id で書く欄（id に直して入れる）
 const AI_ITEM_REF_PROPS = { 'graph.byItem': 'one', 'graph.aggItem': 'one', 'search.items': 'many', 'filter.items': 'many' };
-// 部品の種類の設定の欄（PART_TYPES の props）を検め、直して返す。知らない欄・形の違う値は、使える欄・値を添えて断る
-function aiProps(type, props, d) {
+// 部品の種類の設定の欄（PART_TYPES の props）を検め、直して返す。知らない欄・形の違う値は、使える欄・値を添えて断る。
+// cur は直す部品の今の props（新しい部品は書かない。移る先の designId・screenId を片方だけ書いたとき、もう片方を今の移る先に合わせるため）
+function aiProps(type, props, d, cur = null) {
   if (props == null) return null;
   const t = partType(type);
   if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
   const out = {};
+  // ボタン・リンクの文字の移る先の画面設計。designId を書かなければ、部品が今指している画面設計。移る画面（screenId）は、その画面設計の中で探す
+  const moves = MOVE_PART_TYPES.includes(type) && ('designId' in props || 'screenId' in props);
+  const curOwner = moves ? aiCurrentMoveOwner(d, cur) : null;
+  const owner = !moves ? d : 'designId' in props ? (props.designId == null || props.designId === '' ? d : aiResolveDesign(store.state, props.designId)) : curOwner;
+  if (moves && owner.trashedAt) throw new AiRefusal('trashed', `「${owner.name}」はごみ箱にあるため、その画面を移る先にはできません。`);
   Object.entries(props).forEach(([k, v]) => {
     if (!t || !own(t.props, k)) throw aiBad(`「${t ? t.name : type}」の設定に「${k}」という欄はありません（使える欄: ${Object.keys(t ? t.props : {}).join('・') || 'なし'}）。`);
     const def = t.props[k];
@@ -8235,8 +9236,12 @@ function aiProps(type, props, d) {
       out[k] = AI_ITEM_REF_PROPS[key] === 'many' ? aiArr(v, k).map((x) => aiResolveItem(d, x).id) : v ? aiResolveItem(d, v).id : '';
       return;
     }
-    if (key === 'link.screenId') {
-      out[k] = v ? aiResolveScreen(d, v).id : '';
+    if (moves && k === 'designId') {
+      out[k] = owner && d && owner.id !== d.id ? owner.id : '';
+      return;
+    }
+    if (moves && k === 'screenId') {
+      out[k] = v ? aiMoveScreen(owner, v).id : '';
       return;
     }
     if (Array.isArray(def)) out[k] = aiArr(v, k).map((x) => aiStrVal(x, `「${k}」の中身`));
@@ -8246,7 +9251,17 @@ function aiProps(type, props, d) {
     } else out[k] = aiStrVal(v, `「${k}」`);
     if (own(AI_PROP_ENUMS, key) && !AI_PROP_ENUMS[key].includes(out[k])) throw aiBad(`「${k}」に書ける値は ${AI_PROP_ENUMS[key].map((x) => `"${x}"`).join('・')} です。`);
   });
+  // 画面設計を選び直して、画面を書かなかったときは、画面を外す（右の欄で画面設計を選び直すと、画面が「（選んでください）」に戻るのと同じ）
+  if (moves && !('screenId' in props) && owner !== curOwner) out.screenId = '';
   return out;
+}
+// 部品が今指している移る先の画面設計（designId が '' か自分なら、この画面設計）。指している画面設計がもうないときは断る
+function aiCurrentMoveOwner(d, cur) {
+  const id = cur && cur.designId;
+  if (!id || id === d.id) return d;
+  const owner = findDesign(store.state, id);
+  if (!owner) throw new AiRefusal('not_found', '部品が今指している移る先の画面設計が、もうありません。designId も書いてください。');
+  return owner;
 }
 // テーブルの列（{ name, type, required, memo, props } の配列）。同じ名前の列は今の列（id）を残して直す
 function aiTableColumns(cur, cols) {
@@ -8264,8 +9279,8 @@ function aiTableColumns(cur, cols) {
     return normalizeColumn(col);
   });
 }
-// 項目の設定（edit_items の props）を検め、項目に入れる形で返す
-function aiItemProps(d, item, props) {
+// 項目の設定（edit_items の props）を検め、項目に入れる形で返す。tx があれば、なくなったステータスを使っていた操作を消したことを知らせる
+function aiItemProps(d, item, props, tx = null) {
   if (props == null) return null;
   if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
   if (item.type === 'table') {
@@ -8273,10 +9288,11 @@ function aiItemProps(d, item, props) {
     return { columns: aiTableColumns(item.props.columns || [], props.columns) };
   }
   if (item.type === 'status') {
+    if ('actions' in props) throw aiBad('ステータスの操作（actions）は、edit_process で直してください（edit_items で書けるのは states だけです）。');
     Object.keys(props).forEach((k) => { if (k !== 'states') throw aiBad(`ステータスの項目の設定に「${k}」という欄はありません（使える欄: states）。`); });
-    const states = aiArr(props.states, 'states').map((s) => cleanName(aiStrVal(s, 'states の中身'))).filter(Boolean);
-    if (!states.length) throw aiBad('states にステータスを 1 つ以上書いてください。');
-    return { states };
+    const { props: next, removed } = statePropsFromNames(item.props, aiStateNameList(props.states)); // 同じ名前のステータスは今の id を残す
+    if (tx) aiRemovedNote(tx, removed);
+    return next;
   }
   return keepInitialInOptions(item.type, { ...item.props, ...aiProps(item.type, props, d) });
 }
@@ -8306,16 +9322,25 @@ function aiTablePartProps(kind, cur, props, d) {
   if ('columns' in props) next.columns = aiArr(props.columns, 'columns').map((n) => ({ id: newId('c'), ref: ref(src, n, 'columns') }));
   return next;
 }
-// 第 7 段階では、ボタンの移る先（to）はまだ持てない（第 8 段階）。「押したとき」が空なら、そこに書く
-function aiButtonTo(tx, to, props) {
-  if (to == null) return props;
-  const name = isObj(to) ? str(to.screen) : str(to);
-  if (!name) throw aiBad('to は { screen: 画面の名前 } の形で書いてください。');
-  const out = { ...(props || {}) };
-  if (!out.action) out.action = `「${name}」の画面へ移る`;
-  if (!tx.warnings.some((w) => w.startsWith('ボタンの移る先'))) tx.warnings.push('ボタンの移る先（to）は第 8 段階で作るので、今は「押したとき」の文に書きました。');
-  return out;
+// 移る先（to。第 8 段階）を、ボタン・リンクの文字の設定（props）の欄に直す。to は 画面の名前か id（この画面設計の画面）・
+// { screen, design }（design を書くと、ほかの画面設計の画面）・{ url }・null（なし）。人の操作と同じく、使わない欄（URL など）は残す
+function aiMoveTarget(d, to) {
+  if (to === null) return { to: '' };
+  if (typeof to === 'string' || typeof to === 'number') return aiMoveTarget(d, { screen: to });
+  const form = 'to は 画面の名前・{ "screen": 画面, "design": 画面設計 }・{ "url": URL }・null（なし）のどれかで書いてください。';
+  if (!isObj(to)) throw aiBad(form);
+  if (to.url != null) {
+    if (to.screen != null || to.design != null) throw aiBad('to には screen か url の片方だけを書いてください。');
+    const url = aiStrVal(to.url, 'to.url').trim();
+    if (!url) throw aiBad('to.url に URL を書いてください。');
+    return { to: 'url', url };
+  }
+  if (to.screen == null) throw aiBad(form);
+  const owner = to.design == null ? d : aiResolveDesign(store.state, to.design);
+  if (owner.trashedAt) throw new AiRefusal('trashed', `「${owner.name}」はごみ箱にあるため、その画面を移る先にはできません。`);
+  return { to: 'screen', designId: owner.id === d.id ? '' : owner.id, screenId: aiMoveScreen(owner, to.screen).id };
 }
+const AI_TO_PARTS = 'to（移る先）を書けるのは、ボタンとリンクの文字だけです。';
 
 // ── 書く道具: 画面設計 ──
 async function aiCreateDesign(args, ctx) {
@@ -8378,7 +9403,11 @@ function aiItemOp(tx, op) {
         if (name) it.name = name;
         if ('required' in op) it.required = !!op.required;
         if ('memo' in op) it.memo = str(op.memo);
-        if (op.props != null) it.props = aiItemProps(dd, it, op.props);
+        if (op.props != null) {
+          const before = stateIdsOf(it);
+          it.props = aiItemProps(dd, it, op.props, tx);
+          clearGoneStates(dd, it, before);
+        }
       });
       return { op: 'update', id: item.id, name: findItem(d(), item.id).name };
     }
@@ -8418,6 +9447,7 @@ function aiNewItem(d, op, { name: forced = null } = {}) {
   if (type === 'status' && d.items.some((it) => it.type === 'status')) throw aiBad('ステータスの項目は、画面設計に 1 つだけです（今の項目を update で直してください）。');
   if (!op.allowSameName && d.items.some((it) => it.name === name)) throw new AiRefusal('same_name', `「${name}」という項目がもうあります。同じ名前でも足すときは allowSameName: true を付けてください。`);
   const item = createItemData(type, name);
+  if (type === 'status') item.props.actions = []; // AI が作るステータスの項目には、見本の操作を入れない（edit_process で渡した操作だけにする）
   item.required = !!op.required;
   item.memo = str(op.memo);
   if (op.props != null) item.props = aiItemProps(d, item, op.props);
@@ -8552,10 +9582,21 @@ function aiScreenOp(tx, op) {
     case 'move':
       actions.moveScreen(id, sc.id, aiMoveIndex(d().screens, sc.id, op, (ref) => aiResolveScreen(d(), ref)));
       return { op: 'move', id: sc.id, name: sc.name, index: d().screens.findIndex((s) => s.id === sc.id) };
-    case 'delete':
+    case 'delete': {
       if (d().screens.length < 2) throw new AiRefusal('last_screen', '最後の 1 つの画面は消せません。');
+      // ほかの画面設計のボタン・リンクの文字がこの画面を移る先にしていれば、それも外れる（人が消すときと同じ。ごみ箱の画面設計の分も）。
+      // その画面設計にも「AI が直す前の状態」の行を残し（そこから戻せるように）、返事で知らせる
+      const others = screenRefsInto(store.state, id, sc.id).filter((x) => x.design.id !== id);
+      const befores = others.map((x) => aiBeforeRow(tx.ctx, x.design)).filter(Boolean);
       actions.deleteScreen(id, sc.id);
+      befores.forEach(aiAddBeforeRow);
+      if (others.length) {
+        const n = others.reduce((m, x) => m + x.count, 0);
+        tx.warnings.push(`ほかの画面設計のボタンとリンクの文字 ${n} 個が、この画面を移る先にしていたので、移る先を外しました（${others.map((x) => `「${x.design.name}」${x.count} 個`).join('・')}）。`
+          + `それぞれの改訂履歴の「${aiClientLabel(tx.ctx.client)} が直す前の状態」から戻せます。`);
+      }
       return { op: 'delete', id: sc.id, name: sc.name };
+    }
     default: throw aiUnknownOp(op, AI_SCREEN_OPS);
   }
 }
@@ -8604,7 +9645,12 @@ function aiLayout(tx, designId, screenId, layout, mode) {
   const ids = [];
   mutateDesign(designId, (dd) => {
     dd.items.push(...plan.created);
-    plan.itemPatches.forEach(({ itemId, props }) => { findItem(dd, itemId).props = props; });
+    plan.itemPatches.forEach(({ itemId, props }) => {
+      const it = findItem(dd, itemId);
+      const before = stateIdsOf(it);
+      it.props = props;
+      clearGoneStates(dd, it, before);
+    });
     const s = dd.screens.find((x) => x.id === screenId);
     placed.forEach((pl) => {
       const e = pl.entry;
@@ -8648,7 +9694,7 @@ function aiLayoutSpec(tx, d, e, used, plan) {
     spec.itemId = item.id;
     if (e.props != null && !plan.created.includes(item)) {
       if (item.link) throw new AiRefusal('linked', `「${item.name}」は「${item.link.designName}」から取り込んだ項目なので、設定はここでは直せません。`);
-      plan.itemPatches.push({ itemId: item.id, props: aiItemProps(d, item, e.props) });
+      plan.itemPatches.push({ itemId: item.id, props: aiItemProps(d, item, e.props, tx) });
     }
     if (item.type === 'status') spec.view = { current: aiStatusCurrent(item, e.current) };
   } else {
@@ -8659,8 +9705,10 @@ function aiLayoutSpec(tx, d, e, used, plan) {
       if (!['records', 'related'].includes(spec.tableKind)) throw aiBad('表の中身（tableKind）は "subtable"（テーブル）・"records"（レコード一覧）・"related"（関連レコード一覧）です。');
       if (e.props != null) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), e.props, d);
     } else spec.props = aiProps(type, e.props, d) || undefined;
-    if (type === 'button') spec.props = aiButtonProps(tx, e, spec.props);
+    if (type === 'button') spec.props = aiButtonProps(e, spec.props);
+    if (e.to !== undefined && MOVE_PART_TYPES.includes(type)) spec.props = { ...(spec.props || {}), ...aiMoveTarget(d, e.to) };
   }
+  if (e.to !== undefined && !MOVE_PART_TYPES.includes(type)) throw aiBad(AI_TO_PARTS);
   if (e.labelPos != null) {
     if (!['top', 'left'].includes(e.labelPos)) throw aiBad('labelPos は "top"（入力欄の上）か "left"（入力欄の左）です。');
     spec.fields.labelPos = e.labelPos;
@@ -8683,22 +9731,22 @@ function aiLayoutNewItem(d, type, name, e, plan) {
   plan.created.push(item);
   return item;
 }
-// ステータスの印・進み具合の矢印で見本に出すステータス（書かなければ 2 つ目）
+// ステータスの印・進み具合の矢印で見本に出すステータス（書かなければ 2 つ目）。名前でも id でも受け、id で持つ
 function aiStatusCurrent(item, v) {
   const states = (item && item.props.states) || [];
-  if (v == null) return states[1] || states[0] || '';
-  const s = cleanName(aiStrVal(v, 'current'));
-  if (!states.includes(s)) throw aiBad(`current に書けるのは、ステータスの並び（${states.join('・')}）のどれかです。`);
-  return s;
+  if (v == null) return defaultStateId(item);
+  const id = resolveStateRef(states, cleanName(aiStrVal(v, 'current')));
+  if (!id) throw aiBad(`current に書けるのは、ステータスの並び（${stateNames(states).join('・')}）のどれかです。`);
+  return id;
 }
-// ボタンの設定。style は見た目の短い書き方、to は移る先（第 7 段階では「押したとき」の文に書く）
-function aiButtonProps(tx, e, props) {
+// ボタンの見た目（style の短い書き方）を設定に入れる
+function aiButtonProps(e, props) {
   let out = props ? { ...props } : undefined;
   if (e.style != null) {
     if (!['primary', 'normal'].includes(e.style)) throw aiBad('style は "primary"（目立つ・青）か "normal"（ふつう・白）です。');
     out = { ...(out || {}), style: e.style };
   }
-  return e.to != null ? aiButtonTo(tx, e.to, out) : out;
+  return out;
 }
 async function aiLayoutScreen(args, ctx) {
   return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
@@ -8801,14 +9849,15 @@ function aiPartPatch(tx, d, p, op) {
   if (op.required !== undefined) patch.required = !!op.required;
   if (op.memo !== undefined) patch.memo = aiStrVal(op.memo, 'memo');
   if (op.props !== undefined) {
-    if (item) patch.props = aiItemProps(d, item, op.props);
+    if (item) patch.props = aiItemProps(d, item, op.props, tx);
     else if (p.type === 'table') patch.props = aiTablePartProps(p.tableKind, p.props, op.props, d);
-    else patch.props = aiProps(p.type, op.props, d);
+    else patch.props = aiProps(p.type, op.props, d, p.props);
   }
-  if ((op.style !== undefined || op.to !== undefined) && p.type !== 'button') throw aiBad('style・to を書けるのはボタンだけです。');
-  if (p.type === 'button' && (op.style !== undefined || op.to !== undefined)) {
+  if (op.style !== undefined && p.type !== 'button') throw aiBad('style を書けるのはボタンだけです。');
+  if (op.to !== undefined && !MOVE_PART_TYPES.includes(p.type)) throw aiBad(AI_TO_PARTS);
+  if (op.style !== undefined || op.to !== undefined) {
     const base = { ...(p.props || {}), ...(patch.props || {}) };
-    patch.props = { ...(patch.props || {}), ...aiButtonProps(tx, op, base) };
+    patch.props = { ...(p.type === 'button' ? aiButtonProps(op, base) : base), ...(op.to !== undefined ? aiMoveTarget(d, op.to) : {}) };
   }
   if (op.labelPos !== undefined) {
     if (!['top', 'left'].includes(op.labelPos)) throw aiBad('labelPos は "top"（入力欄の上）か "left"（入力欄の左）です。');
@@ -8905,6 +9954,163 @@ function aiCalloutOp(tx, sid, op) {
   }
 }
 
+// ── 書く道具: ステータスと操作（第 8 段階。設計書の 9-2）──
+// ステータスの移り方（kintone のプロセス管理に当たる）。ステータスと操作は id か名前で指す。ステータスの項目がなければ set_states・add_state で作る
+// （AI が作るステータスの項目には、見本の操作を入れない）。取り込んだステータスの項目は直せない（元の画面設計で直す）
+const AI_PROCESS_OPS = ['set_states', 'add_state', 'rename_state', 'move_state', 'delete_state', 'add_action', 'update_action', 'move_action', 'delete_action'];
+async function aiEditProcess(args, ctx) {
+  return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
+    const ops = aiRunOps(args.ops, (op) => aiProcessOp(tx, op));
+    return { ops, ...aiProcessSummary(aiStatusItem(findDesign(store.state, tx.design.id))) };
+  });
+}
+// 並べ替えた後の位置（0 がいちばん上）。aiMoveIndex は「この位置のものの前」に入れる位置なので、後ろへ動かすときは 1 つ引く
+function aiFinalIndex(list, fromId, op, resolve) {
+  const t = aiMoveIndex(list, fromId, op, resolve);
+  return t > list.findIndex((x) => x.id === fromId) ? t - 1 : t;
+}
+// set_states のステータスの名前の並び。空の名前・同じ名前は断る
+function aiStateNameList(v) {
+  const names = aiArr(v, 'states').map((s, i) => cleanName(aiStrVal(s, `states[${i}]`)));
+  if (!names.length || names.some((n) => !n)) throw aiBad('states にステータスの名前を 1 つ以上書いてください（空の名前は書けません）。');
+  const dup = names.find((n, i) => names.indexOf(n) !== i);
+  if (dup) throw aiBad(`states に「${dup}」が 2 回あります（ステータスの名前は 1 つずつ別にしてください）。`);
+  return names;
+}
+function aiRemovedNote(tx, removed) {
+  if (removed.length) tx.warnings.push(`なくなったステータスを使っていた操作 ${removed.length} つ（${removed.map((a) => `「${a.name}」`).join('・')}）も消しました。`);
+}
+function aiProcessOp(tx, op) {
+  const id = tx.design.id;
+  const d = () => findDesign(store.state, id);
+  // ステータスの項目（取り込んだ項目は断る）。ないときは、create なら null、そうでなければ断る
+  const statusItem = (create = false) => {
+    const it = aiStatusItem(d());
+    if (it && it.link) throw new AiRefusal('linked', `ステータスの項目「${it.name}」は「${it.link.designName}」から取り込んだ項目なので、ここでは直せません。元の画面設計で直すか、edit_items の unlink でつながりを切ってください。`);
+    if (!it && !create) throw new AiRefusal('not_found', `「${d().name}」にはステータスの項目がありません。先に set_states か add_state でステータスを書いてください。`);
+    return it;
+  };
+  const createItem = (names) => {
+    const item = aiNewItem(d(), { type: 'status', name: 'ステータス', props: { states: names }, allowSameName: true });
+    mutateDesign(id, (dd) => { dd.items.push(item); });
+    return findItem(d(), item.id);
+  };
+  const stateOf = (it, ref) => {
+    try {
+      return aiPick(it.props.states, ref, 'ステータス');
+    } catch (e) {
+      if (e instanceof AiRefusal && e.code === 'not_found') e.message = `「${aiKey(ref)}」というステータスは見つかりません（ステータス: ${stateNames(it.props.states).join('・')}）。`;
+      throw e;
+    }
+  };
+  const actionOf = (it, ref) => aiPick(it.props.actions, ref, '操作', {
+    candidate: (a) => ({ id: a.id, name: a.name, from: stateNameOf(it.props.states, a.from), to: stateNameOf(it.props.states, a.to) }),
+  });
+  const nameArg = (v) => {
+    const n = cleanName(aiStrVal(v == null ? '' : v, 'name'));
+    if (!n) throw aiBad('name（名前）を書いてください。');
+    return n;
+  };
+  const freeName = (it, name, selfId = null) => {
+    if (it.props.states.some((s) => s.name === name && s.id !== selfId)) throw new AiRefusal('same_name', `「${name}」というステータスがもうあります。`);
+  };
+  const textArg = (v, what) => (v == null ? '' : aiStrVal(v, what));
+  const noLoop = (it, from, to) => {
+    if (from && from === to) throw aiBad(`前のステータスと次のステータスが同じ（「${stateNameOf(it.props.states, from)}」）操作は作れません。`);
+  };
+  const statesNow = (it) => findItem(d(), it.id).props.states;
+  const actionsNow = (it) => findItem(d(), it.id).props.actions;
+  switch (op.op) {
+    case 'set_states': {
+      const names = aiStateNameList(op.states);
+      const it = statusItem(true);
+      if (!it) {
+        const made = createItem(names);
+        return { op: 'set_states', states: names, createdItem: { id: made.id, name: made.name } };
+      }
+      const before = stateIdsOf(it);
+      const { props, removed } = statePropsFromNames(it.props, names);
+      mutateDesign(id, (dd) => {
+        const x = findItem(dd, it.id);
+        x.props = props;
+        clearGoneStates(dd, x, before);
+      });
+      aiRemovedNote(tx, removed);
+      return { op: 'set_states', states: names, ...(removed.length ? { removedActions: removed.map((a) => a.name) } : {}) };
+    }
+    case 'add_state': {
+      const name = nameArg(op.name);
+      const it = statusItem(true);
+      if (!it) {
+        const made = createItem([name]);
+        return { op: 'add_state', id: made.props.states[0].id, name, createdItem: { id: made.id, name: made.name } };
+      }
+      freeName(it, name);
+      const sid = actions.addState(id, it.id, name);
+      if (op.before != null || op.after != null || op.index != null) {
+        actions.moveState(id, it.id, sid, aiFinalIndex(statesNow(it), sid, op, (ref) => stateOf(findItem(d(), it.id), ref)));
+      }
+      return { op: 'add_state', id: sid, name };
+    }
+    case 'rename_state': {
+      const it = statusItem();
+      const s = stateOf(it, op.state);
+      const name = nameArg(op.name);
+      freeName(it, name, s.id);
+      actions.renameState(id, it.id, s.id, name);
+      return { op: 'rename_state', id: s.id, name };
+    }
+    case 'move_state': {
+      const it = statusItem();
+      const s = stateOf(it, op.state);
+      actions.moveState(id, it.id, s.id, aiFinalIndex(it.props.states, s.id, op, (ref) => stateOf(it, ref)));
+      return { op: 'move_state', id: s.id, name: s.name, index: statesNow(it).findIndex((x) => x.id === s.id) };
+    }
+    case 'delete_state': {
+      const it = statusItem();
+      const s = stateOf(it, op.state);
+      if (it.props.states.length < 2) throw aiBad(`最後の 1 つのステータス「${s.name}」は消せません。`);
+      const removed = it.props.actions.filter((a) => a.from === s.id || a.to === s.id);
+      actions.deleteState(id, it.id, s.id);
+      aiRemovedNote(tx, removed);
+      return { op: 'delete_state', id: s.id, name: s.name, removedActions: removed.map((a) => a.name) };
+    }
+    case 'add_action': {
+      const it = statusItem();
+      const name = nameArg(op.name);
+      const spec = { name, from: stateOf(it, op.from).id, to: stateOf(it, op.to).id, role: textArg(op.role, 'role'), cond: textArg(op.cond, 'cond') };
+      noLoop(it, spec.from, spec.to);
+      return { op: 'add_action', id: actions.addProcessAction(id, it.id, spec), name };
+    }
+    case 'update_action': {
+      const it = statusItem();
+      const a = actionOf(it, op.action);
+      const patch = {};
+      if (op.name !== undefined) patch.name = nameArg(op.name);
+      if (op.from !== undefined) patch.from = stateOf(it, op.from).id;
+      if (op.to !== undefined) patch.to = stateOf(it, op.to).id;
+      ['role', 'cond'].forEach((k) => { if (op[k] !== undefined) patch[k] = textArg(op[k], k); });
+      if (!Object.keys(patch).length) throw aiBad('直す欄（name・from・to・role・cond）を 1 つ以上書いてください。');
+      noLoop(it, 'from' in patch ? patch.from : a.from, 'to' in patch ? patch.to : a.to);
+      actions.updateProcessAction(id, it.id, a.id, patch);
+      return { op: 'update_action', id: a.id, name: actionsNow(it).find((x) => x.id === a.id).name };
+    }
+    case 'move_action': {
+      const it = statusItem();
+      const a = actionOf(it, op.action);
+      actions.moveProcessAction(id, it.id, a.id, aiFinalIndex(it.props.actions, a.id, op, (ref) => actionOf(it, ref)));
+      return { op: 'move_action', id: a.id, name: a.name, index: actionsNow(it).findIndex((x) => x.id === a.id) };
+    }
+    case 'delete_action': {
+      const it = statusItem();
+      const a = actionOf(it, op.action);
+      actions.deleteProcessAction(id, it.id, a.id);
+      return { op: 'delete_action', id: a.id, name: a.name };
+    }
+    default: throw aiUnknownOp(op, AI_PROCESS_OPS);
+  }
+}
+
 // ── 書く道具: 改訂履歴（AI は行を消せない。設計書の 1-4）──
 async function aiAddRevision(args, ctx) {
   return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
@@ -8944,6 +10150,23 @@ async function aiGetScreenImage(args) {
     { kind: 'image', html: doc.html, width: doc.width, height: doc.height },
   );
 }
+// 図の画像（つながりの図・ステータスの移り方の図・画面の移り方の図。第 8 段階）。view は入口の道具の名前（screenflow）で受ける
+const AI_VIEWS = { map: 'map', process: 'process', screenflow: 'flow' };
+async function aiGetViewImage(args) {
+  aiFlushBeforeRead();
+  const S = aiState();
+  const d = aiResolveDesign(S, args.design);
+  const key = str(args.view);
+  if (!own(AI_VIEWS, key)) throw aiBad(`view は ${Object.keys(AI_VIEWS).map((x) => `"${x}"`).join('・')} です。`);
+  const view = AI_VIEWS[key];
+  if (view === 'map' && d.trashedAt) throw new AiRefusal('trashed', `「${d.name}」はごみ箱にあるので、つながりの図には出ません（ステータスの移り方と画面の移り方の図は描けます）。`);
+  if (view === 'process' && !aiStatusItem(d)) throw aiBad(`「${d.name}」にはステータスの項目がないので、ステータスの移り方の図はありません（edit_process の set_states でステータスを書くと描けます）。`);
+  const doc = viewImageDoc(d, S, view);
+  return new AiRendered(
+    { design: aiDesignBrief(d), view: key, boxes: doc.boxes, arrows: doc.arrows },
+    { kind: 'image', html: doc.html, width: doc.width, height: doc.height },
+  );
+}
 const AI_EXPORT_FORMATS = ['pdf', 'html', 'png'];
 // 書き出す。設定は書き出しの窓と同じ（PDF: 用紙・向き・表紙・つながりの図・項目の一覧表、PDF と PNG: 画面、全部: 違いの印を付ける版）
 async function aiExportDesign(args) {
@@ -8976,11 +10199,12 @@ async function aiExportDesign(args) {
   const opts = {
     paper, orient, screenIds, diffRevId,
     cover: args.cover !== false, map: args.map !== false && hasMapLinks(d, S), items: args.items !== false && d.items.length > 0,
+    process: args.process !== false && hasProcessPage(d), flow: args.flow !== false && hasFlowPage(d, S),
   };
-  if (screenIds && !screenIds.length && !opts.cover && !opts.map && !opts.items) throw aiBad('入れるページか、書き出す画面を 1 つ以上選んでください。');
+  if (screenIds && !screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((k) => opts[k])) throw aiBad('入れるページか、書き出す画面を 1 つ以上選んでください。');
   const doc = exportDocument(d, S, opts);
   return new AiRendered(
-    { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items },
+    { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items, process: opts.process, flow: opts.flow },
     { kind: 'pdf', files: [{ name: `${base}.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi } }] },
   );
 }
@@ -8992,6 +10216,8 @@ const AI_TOOLS = {
   get_screen: { write: false, run: aiGetScreen },
   get_catalog: { write: false, run: aiGetCatalog },
   get_screen_image: { write: false, run: aiGetScreenImage },
+  get_flow: { write: false, run: aiGetFlow },
+  get_view_image: { write: false, run: aiGetViewImage },
   export_design: { write: false, run: aiExportDesign },
   create_design: { write: true, run: aiCreateDesign },
   update_design: { write: true, run: aiUpdateDesign },
@@ -9001,6 +10227,7 @@ const AI_TOOLS = {
   layout_screen: { write: true, run: aiLayoutScreen },
   edit_parts: { write: true, run: aiEditParts },
   edit_callouts: { write: true, run: aiEditCallouts },
+  edit_process: { write: true, run: aiEditProcess },
   add_revision: { write: true, run: aiAddRevision },
   restore_revision: { write: true, run: aiRestoreRevision },
 };
@@ -9312,6 +10539,8 @@ async function copyAiText(btn, text) {
 }
 
 // ── 11. 起動 ──────────────────────────────────────────────────────────────────
+// 編集の画面で、押した時点で切り替えるもの（部品・画面・項目を選ぶ、左の一覧のいちばん上の入口）。前の版を見ている間も押せる
+const EDITOR_PICK_ACTIONS = ['select-part', 'select-screen', 'select-item', 'open-items', 'open-map', 'open-process', 'open-flow'].map((a) => `[data-action="${a}"]`).join(', ');
 function bindGlobalEvents() {
   const app = appEl();
   app.addEventListener('click', onAppClick);
@@ -9335,7 +10564,7 @@ function bindGlobalEvents() {
     if (ui.screenMenu) closeScreenMenu();
     // 前の版を見ている間は、置く・並べ替えるのドラッグを始めない（押して切り替える・選ぶだけ）
     if (store.isViewing) {
-      const pick = e.target.closest('[data-action="select-part"], [data-action="select-screen"], [data-action="select-item"], [data-action="open-items"], [data-action="open-map"]');
+      const pick = e.target.closest(EDITOR_PICK_ACTIONS);
       if (pick) onEditorClick(pick.dataset.action, pick);
       return;
     }
@@ -9356,7 +10585,7 @@ function bindGlobalEvents() {
     // 一覧表の行と画面の一覧は、押した時点で切り替える。右の欄で打ちかけの文字があると、離れたときの保存で
     // 一覧表と画面の一覧が描き直され、押した行・ボタンが click の前に消えて、1 回目の押しが効かないため
     if (e.target.closest('.del-x')) return;
-    const sel = e.target.closest('[data-action="select-part"], [data-action="select-screen"], [data-action="select-item"], [data-action="open-items"], [data-action="open-map"]');
+    const sel = e.target.closest(EDITOR_PICK_ACTIONS);
     if (sel) onEditorClick(sel.dataset.action, sel);
   });
   document.addEventListener('keydown', onKeyDown);
@@ -9408,13 +10637,14 @@ function exposeForTest() {
   Object.assign(window.__test__, {
     store, ui, actions, runCommand, openDesign, goHome, migrate, normalizeState, snapHeight, changeDevice,
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
-    PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, minScreenHeight, selectPart, currentScreen,
-    currentDesign, currentPart, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
+    PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, hasFlowPage, minScreenHeight, selectPart, currentScreen,
+    currentDesign, currentPart, openScreen, openItemsPanel, selectItem, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
     exportDocument, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport,
     paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
+    changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
