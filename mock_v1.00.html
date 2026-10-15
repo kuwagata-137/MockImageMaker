@@ -498,6 +498,24 @@ body.map-dragging,body.map-dragging *{cursor:grabbing!important}
 .lk-pair{display:flex;align-items:center;gap:4px;margin-bottom:5px;font-size:12px}
 .lk-pair select,.lk-pair input{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:6px;padding:4px 5px;background:#fff;font-size:12px}
 .lk-add{border:none;background:none;color:#2563eb;cursor:pointer;font-size:12px;padding:2px 0 6px}
+.lk-add:disabled,.del-x:disabled{color:#cbd5e1;cursor:default;background:none}
+/* ステータスと操作の欄（第 8 段階。画像 q52 の案A）*/
+.pf-sub{font-size:12px;font-weight:700;color:#1d3f6e;margin:8px 0 5px;white-space:nowrap}
+.pf-sub small{font-weight:400;color:#64748b;font-size:10.5px}
+.ps-row{display:flex;align-items:center;gap:3px;margin-bottom:5px}
+.ps-row .no{width:16px;text-align:center;font-size:11px;color:#64748b;flex-shrink:0}
+.ps-row input{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;font-size:12.5px;background:#fff}
+.pa-card{border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;padding:7px 8px 2px;margin-bottom:7px}
+.pa-top{display:flex;align-items:center;gap:3px;margin-bottom:6px}
+.pa-top input{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;font-size:12.5px;font-weight:700;background:#fff}
+.pa-move{display:flex;align-items:center;gap:4px;margin-bottom:6px;font-size:12px}
+.pa-move select{flex:1;min-width:0;border:1px solid #cbd5e1;border-radius:6px;padding:3px 4px;font-size:12px;background:#fff}
+.pa-move .ar{color:#1d3f6e;font-weight:700}
+.pa-move .ar.back{color:#ea580c}
+.pa-card .row2{gap:6px}
+.pa-card .field{margin-bottom:6px}
+.pa-card .field input{font-size:12px;padding:4px 6px}
+.pa-card .field>span{font-size:11px}
 /* ── 書き出しと取り込み（第 5 段階）───────────────────────────── */
 /* 書き出しの窓（画像 q33） */
 .xp-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
@@ -5724,9 +5742,10 @@ function partTypeFieldsHtml(p) {
       return pfText('props.formula', '計算式', pr.formula, { placeholder: '例: 数量×単価' }) + pfText('props.unit', '単位', pr.unit, { placeholder: '例: 円' });
     case 'button':
       return pfSeg('props.style', '見た目', pr.style, [['primary', '目立つ（青）'], ['normal', 'ふつう（白）']])
-        + pfArea('props.action', '押したとき', pr.action);
+        + moveFieldsHtml(p)
+        + pfArea('props.action', '押したとき', pr.action, { hint: '（移る以外にすること）' });
     case 'status': case 'steps':
-      return pfArea('props.states', 'ステータスの並び', stateNames(pr.states).join('\n'), { hint: '（1 行に 1 つ。上から順に進む）', rows: 4 });
+      return processFieldsHtml(p);
     case 'graph': {
       const items = (currentDesign() || { items: [] }).items.filter((it) => isInputType(it.type)).map((it) => [it.id, it.name]);
       return pfSeg('props.chart', 'グラフの種類', pr.chart, Object.entries(CHART_NAMES).map(([k, n]) => [k, n.replace('グラフ', '')]))
@@ -5750,18 +5769,57 @@ function partTypeFieldsHtml(p) {
     case 'tabs':
       return pfArea('props.tabs', 'タブの名前', (pr.tabs || []).join('\n'), { hint: '（1 行に 1 つ）', rows: 4 })
         + pfSelect('props.current', '選んでいるタブ', pr.current, (pr.tabs || []).map((s) => [s, s]));
-    case 'link': {
-      // 「この画面設計のほかの画面」なので、開いている画面は出さない（読み込んだデータで自分を指しているときだけ残す）
-      const screens = (currentDesign() || { screens: [] }).screens.filter((s) => s.id !== ui.screenId || s.id === pr.screenId).map((s) => [s.id, `${s.name}の画面`]);
-      return pfSelect('props.to', '移る先', pr.to, [['', '（なし）'], ['screen', 'この画面設計のほかの画面'], ['url', 'URL を書く']])
-        + (pr.to === 'screen' ? pfSelect('props.screenId', '移る画面', pr.screenId, [['', '（選んでください）'], ...screens]) : '')
-        + (pr.to === 'url' ? pfText('props.url', 'URL', pr.url, { placeholder: 'https://' }) : '');
-    }
+    case 'link': return moveFieldsHtml(p);
     case 'icon':
       return pfSelect('props.icon', 'アイコンの種類', pr.icon, Object.entries(ICONS).map(([k, v]) => [k, v[0]]))
         + pfSeg('props.color', '色', pr.color, Object.entries(ICON_COLORS).map(([k, v]) => [k, v[0]]));
   }
   return '';
+}
+
+// 移る先の欄（ボタンとリンクの文字。画像 q53 の案A）。「画面」を選ぶと、画面設計（最初は「この画面設計」）と画面の 2 つの選ぶ欄を出す。
+// 画面設計はこの画面設計が先、ほかは名前の順（ごみ箱のものは出さない）。単体で開いた HTML では、書き出したときに入れた screenPeers の画面設計も選べる。
+// この画面設計の画面では、開いている画面は出さない（読み込んだデータで自分を指しているときだけ残す）
+function moveFieldsHtml(p) {
+  const pr = p.props;
+  const d = currentDesign();
+  const to = pfSelect('props.to', '移る先', pr.to, [['', '（なし）'], ['screen', '画面'], ['url', 'URL を書く']]);
+  if (pr.to === 'url') return to + pfText('props.url', 'URL', pr.url, { placeholder: 'https://' });
+  if (pr.to !== 'screen' || !d) return to;
+  const peers = [...visibleDesigns(store.state).filter((x) => x.id !== d.id), ...(standalone ? standalone.screenPeers.filter((x) => !findDesign(store.state, x.id)) : [])]
+    .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  const designId = pr.designId && pr.designId !== d.id ? pr.designId : '';
+  const owner = designId ? screenOwner(store.state, designId) : d;
+  const designs = [['', `この画面設計（${d.name}）`], ...peers.map((x) => [x.id, x.name])];
+  if (designId && !peers.some((x) => x.id === designId)) designs.push([designId, owner ? `${owner.name}（ごみ箱にあります）` : '（もうない画面設計）']);
+  const screens = owner ? owner.screens.filter((s) => designId || s.id !== ui.screenId || s.id === pr.screenId).map((s) => [s.id, `${s.name}の画面`]) : [];
+  if (pr.screenId && !screens.some(([v]) => v === pr.screenId)) screens.push([pr.screenId, '（ない画面）']);
+  return to + pfSelect('props.designId', '画面設計', designId, designs) + pfSelect('props.screenId', '画面', pr.screenId, [['', '（選んでください）'], ...screens]);
+}
+
+// ステータスと操作の欄（画像 q52 の案A）。ステータスは 1 行に 1 つ（↑↓ で並べ替え・✕ で消す）、操作はカード 1 枚に 1 つ
+// （名前／前のステータス → 次のステータス／操作する人・条件）。欄の data-ps はステータスの id、data-pa は操作の id（data-k は欄の名前）
+function processFieldsHtml(p) {
+  const st = (p.props && p.props.states) || [];
+  const acts = (p.props && p.props.actions) || [];
+  const at = (id) => st.findIndex((s) => s.id === id);
+  const btns = (kind, id, i, n, what, delOff = false) => `<button class="del-x" data-action="${kind}-up" data-id="${esc(id)}" title="上へ" aria-label="${what}を上へ"${i ? '' : ' disabled'}>↑</button>`
+    + `<button class="del-x" data-action="${kind}-down" data-id="${esc(id)}" title="下へ" aria-label="${what}を下へ"${i < n - 1 ? '' : ' disabled'}>↓</button>`
+    + `<button class="del-x" data-action="${kind}-del" data-id="${esc(id)}" title="${delOff ? '最後の 1 つは消せません' : `${what}を消す`}" aria-label="${what}を消す"${delOff ? ' disabled' : ''}>✕</button>`;
+  const rows = st.map((s, i) => `<div class="ps-row"><span class="no">${i + 1}</span><input type="text" data-ps="${esc(s.id)}" value="${esc(s.name)}" aria-label="${i + 1} つ目のステータスの名前">`
+    + `${btns('ps', s.id, i, st.length, `ステータス「${esc(s.name)}」`, st.length < 2)}</div>`).join('');
+  const sel = (a, k, label) => `<select data-pa="${esc(a.id)}" data-k="${k}" aria-label="${label}">${[['', '（なし）'], ...st.map((s) => [s.id, s.name])]
+    .map(([v, l]) => `<option value="${esc(v)}"${a[k] === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  const field = (a, k, label, ph) => `<label class="field"><span>${label}</span><input type="text" data-pa="${esc(a.id)}" data-k="${k}" value="${esc(a[k])}" placeholder="${ph}"></label>`;
+  const cards = acts.map((a, i) => {
+    const back = at(a.from) >= 0 && at(a.to) >= 0 && at(a.to) < at(a.from);
+    return `<div class="pa-card"><div class="pa-top"><input type="text" data-pa="${esc(a.id)}" data-k="name" value="${esc(a.name)}" aria-label="操作の名前">`
+      + `${btns('pa', a.id, i, acts.length, `操作「${esc(a.name)}」`)}</div>`
+      + `<div class="pa-move">${sel(a, 'from', '前のステータス')}<span class="ar${back ? ' back' : ''}" title="${back ? '前へ戻る操作' : '先へ進む操作'}">→</span>${sel(a, 'to', '次のステータス')}</div>`
+      + `<div class="row2">${field(a, 'role', '操作する人', '例: 上長')}${field(a, 'cond', '条件', '（なし）')}</div></div>`;
+  }).join('');
+  return `<div class="pf-sub">ステータス<small>（上から順に進む）</small></div>${rows}<button class="lk-add" data-action="ps-add">＋ ステータスを足す</button>`
+    + `<div class="pf-sub">操作<small>（ステータスを進める操作）</small></div>${cards || '<p class="hint">まだありません。</p>'}<button class="lk-add" data-action="pa-add">＋ 操作を足す</button>`;
 }
 
 // 絞り込みの欄: 絞り込む項目を並べ（↑↓ で並べ替え・✕ で外す）、項目ごとに見本の値を書く
@@ -5916,6 +5974,8 @@ function onSidePanelChange(e) {
   if (e.target.dataset.tb) { onTableFieldChange(e.target); return; }
   if (e.target.dataset.fl) { onFilterFieldChange(e.target); return; }
   if (e.target.dataset.lk) { onLookupFieldChange(e.target); return; }
+  if (e.target.dataset.ps) { onStateFieldChange(e.target); return; }
+  if (e.target.dataset.pa) { onActionFieldChange(e.target); return; }
   if (e.target.dataset.pf) { onPartFieldChange(e.target); return; }
   const field = e.target.dataset.field;
   const d = currentDesign();
@@ -5950,6 +6010,7 @@ function onPartFieldChange(el) {
     : key.startsWith('props.') ? p.props[key.slice(6)] : key.startsWith('view.') ? (p.view || {})[key.slice(5)] : key === 'numbered' ? p.no != null : p[key];
   if (JSON.stringify(old) === JSON.stringify(value)) return;
   const patch = key.startsWith('props.') ? { props: { [key.slice(6)]: value } } : key.startsWith('view.') ? { view: { [key.slice(5)]: value } } : { [key]: value };
+  if (key === 'props.designId') patch.props.screenId = ''; // 移る先の画面設計を選び直したら、画面は選び直す（画像 q53 の案A）
   // データベースの項目の一覧表では項目を、画面では部品を書き換える（部品の項目名と設定は、部品が指す項目に書く）
   const apply = () => (ui.panel === 'items' ? actions.updateItem(ui.designId, p.id, patch) : actions.updatePart(ui.designId, s.id, p.id, patch));
   if (!isTextInput(el)) { apply(); return; }
@@ -5961,6 +6022,105 @@ function onPartFieldChange(el) {
   // 項目名を変えたときは、項目の一覧表と部品の箱の名前も合わせる（右の欄は描き直さない）
   if (key === 'label' && ui.panel === 'items') renderItemsView(currentDesign());
   if (key === 'label') renderPalette(currentDesign());
+}
+
+// 右の欄の「一覧表の「設定」に出る文」だけを描き直す（打っている欄を作り直さないため）
+function refreshPfOut() {
+  const out = $('#pf-out');
+  const now = currentSubject();
+  if (out && now) out.textContent = subjectSettingText(now) || '（まだありません）';
+}
+// 右の欄で選んでいる部品・項目が指す、直せるステータスの項目（取り込んだ項目・前の版を見ている間は null）
+function subjectStatusItem() {
+  const p = currentSubject();
+  return p && p.item && p.item.type === 'status' && !p.item.link && !store.isViewing ? p.item : null;
+}
+// ステータスの名前の欄（data-ps）。同じ名前・空の名前にはしない（欄を元に戻して知らせる）。操作のカードの選ぶ欄の名前も合わせる
+function onStateFieldChange(el) {
+  const it = subjectStatusItem();
+  const s = it && it.props.states.find((x) => x.id === el.dataset.ps);
+  if (!s) return;
+  const n = cleanName(el.value);
+  if (n === s.name) { el.value = s.name; return; }
+  const back = (msg) => { el.value = s.name; toast(msg); };
+  if (!n) { back('ステータスの名前を空にはできません。'); return; }
+  if (it.props.states.some((x) => x.name === n && x.id !== s.id)) { back(`「${n}」というステータスがもうあります。`); return; }
+  commitKeepSide(() => actions.renameState(ui.designId, it.id, s.id, n));
+  el.value = n;
+  document.querySelectorAll('#side-settings select[data-pa] option').forEach((o) => { if (o.value === s.id) o.textContent = n; });
+  refreshPfOut();
+}
+// 操作のカードの欄（data-pa・data-k）。名前は空にしない。前と次を同じにはしない（欄を元に戻して知らせる）
+function onActionFieldChange(el) {
+  const it = subjectStatusItem();
+  const a = it && it.props.actions.find((x) => x.id === el.dataset.pa);
+  if (!a) return;
+  const k = el.dataset.k;
+  const v = k === 'name' ? cleanName(el.value) : el.tagName === 'SELECT' ? el.value : el.value.trim();
+  const back = (msg) => { el.value = a[k]; toast(msg); };
+  if (k === 'name' && !v) { back('操作の名前を空にはできません。'); return; }
+  if (v === a[k]) return;
+  if ((k === 'from' || k === 'to') && v && v === (k === 'from' ? a.to : a.from)) { back('前のステータスと次のステータスを同じにはできません。'); return; }
+  const apply = () => actions.updateProcessAction(ui.designId, it.id, a.id, { [k]: v });
+  if (!isTextInput(el)) { apply(); return; }
+  commitKeepSide(apply);
+  refreshPfOut();
+}
+// ステータスと操作の欄のボタン（data-action の ps-*・pa-*）
+function onProcessAction(action, id) {
+  const it = subjectStatusItem();
+  if (!it) return;
+  const [kind, verb] = action.split('-');
+  const list = kind === 'ps' ? it.props.states : it.props.actions;
+  const i = list.findIndex((x) => x.id === id);
+  if (verb === 'add') {
+    const newId = kind === 'ps' ? actions.addState(ui.designId, it.id, freeStateName(it)) : actions.addProcessAction(ui.designId, it.id);
+    focusSideField(kind === 'ps' ? `[data-ps="${newId}"]` : `[data-pa="${newId}"][data-k="name"]`);
+    return;
+  }
+  if (i < 0) return;
+  if (verb === 'up' || verb === 'down') {
+    const to = verb === 'up' ? i - 1 : i + 1;
+    if (kind === 'ps') actions.moveState(ui.designId, it.id, id, to);
+    else actions.moveProcessAction(ui.designId, it.id, id, to);
+    return;
+  }
+  if (kind === 'pa') { actions.deleteProcessAction(ui.designId, it.id, id); return; }
+  deleteStateWithConfirm(it, list[i]).catch(reportPageError);
+}
+// 足すステータスの名前（「新しいステータス」、あれば「新しいステータス 2」…）
+function freeStateName(it) {
+  const base = '新しいステータス';
+  const taken = new Set(it.props.states.map((s) => s.name));
+  if (!taken.has(base)) return base;
+  let k = 2;
+  while (taken.has(`${base} ${k}`)) k++;
+  return `${base} ${k}`;
+}
+// 右の欄の欄にフォーカスを置き、文字を選んだ状態にする（足したステータス・操作の名前をすぐ打てるように）
+function focusSideField(sel) {
+  const el = $('#side-settings ' + sel);
+  if (!el) return;
+  el.focus();
+  if (el.select) el.select();
+}
+// ステータスを消す。使う操作があるときだけ確かめの窓を出す（最初はキャンセル。消える操作の名前を書く）。最後の 1 つは消せない
+async function deleteStateWithConfirm(it, s) {
+  if (it.props.states.length < 2) { toast('最後の 1 つのステータスは消せません。'); return; }
+  const used = it.props.actions.filter((a) => a.from === s.id || a.to === s.id);
+  if (used.length) {
+    const shown = currentDesign().screens.reduce((n, sc) => n + sc.parts.filter((p) => p.itemId === it.id && p.view && p.view.current === s.id).length, 0);
+    const ok = await showDialog({
+      title: `ステータス「${s.name}」を消しますか`,
+      okLabel: '消す',
+      okClass: 'danger',
+      body: `<p>このステータスを使う操作 ${used.length} つ（${used.map((a) => `「${esc(a.name)}」`).join('・')}）も消えます。</p>
+        ${shown ? `<p>このステータスを見本で出している部品 ${shown} 個は、ステータスを出さない形になります。</p>` : ''}
+        <p style="color:#64748b;font-size:12px;margin-top:6px">消した後でも、元に戻す（Ctrl+Z）で戻せます。</p>`,
+    });
+    if (!ok) return;
+  }
+  actions.deleteState(ui.designId, it.id, s.id);
 }
 
 const parseOptions = (text) => String(text).split('\n').map((o) => o.trim()).filter(Boolean);
@@ -6207,7 +6367,7 @@ function flushSideField() {
   if (ui.view !== 'editor' || !el || !el.closest || !el.closest('#side-settings') || !isTextInput(el)) return;
   // 作る先の「その他」に打ちかけの名前（欄を離れたときの change で決まる）
   if (el.classList.contains('target-other')) { el.dispatchEvent(new Event('change')); return; }
-  if (!el.dataset.pf && !el.dataset.lk && !el.dataset.tb && !el.dataset.fl && !el.dataset.co && !TEXT_FIELDS.includes(el.dataset.field)) return;
+  if (!el.dataset.pf && !el.dataset.lk && !el.dataset.ps && !el.dataset.pa && !el.dataset.tb && !el.dataset.fl && !el.dataset.co && !TEXT_FIELDS.includes(el.dataset.field)) return;
   if ((el.dataset.field === 'design-name' || el.dataset.field === 'screen-name') && !cleanName(el.value)) return; // 名前を消して打ち直している途中は待つ
   onSidePanelChange({ target: el });
 }
@@ -8230,6 +8390,9 @@ function onEditorClick(action, btn) {
     case 'open-lookup-key': openLookupKey(btn.dataset.id); return true;
     case 'tb-col': case 'tb-col-up': case 'tb-col-down': case 'tb-col-del': case 'tb-col-add': onTableColumnAction(action, btn.dataset.id); return true;
     case 'fl-up': case 'fl-down': case 'fl-del': onFilterAction(action, Number(btn.dataset.i)); return true;
+    case 'ps-add': case 'ps-up': case 'ps-down': case 'ps-del': case 'pa-add': case 'pa-up': case 'pa-down': case 'pa-del':
+      onProcessAction(action, btn.dataset.id);
+      return true;
     case 'open-link-source': openLinkSource(btn.dataset.id); return true;
     case 'toggle-palette':
       ui.paletteClosed[btn.dataset.id] = !ui.paletteClosed[btn.dataset.id];
@@ -10264,7 +10427,7 @@ function exposeForTest() {
     store, ui, actions, runCommand, openDesign, goHome, migrate, normalizeState, snapHeight, changeDevice,
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, minScreenHeight, selectPart, currentScreen,
-    currentDesign, currentPart, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
+    currentDesign, currentPart, openScreen, openItemsPanel, selectItem, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
     exportDocument, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport,
     paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
