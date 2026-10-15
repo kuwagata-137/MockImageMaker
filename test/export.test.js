@@ -323,7 +323,7 @@ test('HTML の書き出し: アプリと同じ骨組みに、画面設計を埋�
   assert.ok(!json.includes('<'), '「<」は逃がしてある');
   const payload = JSON.parse(json);
   assert.equal(payload.format, 'mockimagemaker-design');
-  assert.equal(payload.schemaVersion, 2);
+  assert.equal(payload.schemaVersion, 3);
   assert.equal(payload.baseUpdatedAt, '2026-10-05T00:00:00.000Z');
   assert.deepEqual(payload.data.designs.map((d) => d.id), ['d1']);
   const d = payload.data.designs[0];
@@ -518,7 +518,7 @@ test('取り込み: このアプリの書き出しでない HTML・新しい版�
   const before = JSON.stringify(api.store.state);
   assert.equal((await api.importHtmlText('<!DOCTYPE html><html><body>ほかの HTML</body></html>')).status, 'error');
   assert.match($(app, '#toast').textContent, /モックイメージメーカーで書き出した HTML ではありません/);
-  const newer = html.replace('"format":"mockimagemaker-design","schemaVersion":2', '"format":"mockimagemaker-design","schemaVersion":99');
+  const newer = html.replace('"format":"mockimagemaker-design","schemaVersion":3', '"format":"mockimagemaker-design","schemaVersion":99');
   const r = await api.importHtmlText(newer);
   assert.equal(r.status, 'error');
   assert.match(r.error, /新しい版のアプリで書き出した HTML/);

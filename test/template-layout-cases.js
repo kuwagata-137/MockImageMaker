@@ -21,11 +21,24 @@ const ITEM_SETS = {
 };
 const TEMPLATE_IDS = ['blank', 'input', 'detail', 'list', 'graph', 'agg', 'steps'];
 
-// 足した画面と項目を、id を項目名に置き換えた比べる形にする（乱数の id は消す）
+// 足した画面と項目を、id を項目名に置き換えた比べる形にする（乱数の id は消す）。
+// 見本はデータの形の版 2 で作ったので、版 3 で足した欄は版 2 の形に戻して比べる（見本で出すステータスは id → 名前、ボタンとリンクの文字の空の移る先の欄は外す）
+const V3_EMPTY_PROPS = { button: ['to', 'designId', 'screenId', 'url'], link: ['designId'] };
 function layoutSnapshot(design, screen, itemsBefore) {
   const nameOf = (id) => {
     const it = design.items.find((x) => x.id === id);
     return it ? it.name : null;
+  };
+  const viewOf = (p) => {
+    if (!p.view || !('current' in p.view)) return p.view || null;
+    const it = design.items.find((x) => x.id === p.itemId);
+    const st = it && it.props.states ? it.props.states.find((s) => s.id === p.view.current) : null;
+    return { ...p.view, current: st ? st.name : p.view.current };
+  };
+  const propsOf = (p) => {
+    const out = { ...(p.props || {}) };
+    (V3_EMPTY_PROPS[p.type] || []).forEach((k) => { if (out[k] === '') delete out[k]; });
+    return out;
   };
   const scrub = (v) => {
     if (Array.isArray(v)) return v.map(scrub);
@@ -41,8 +54,8 @@ function layoutSnapshot(design, screen, itemsBefore) {
     height: screen.height,
     parts: screen.parts.map((p) => ({
       type: p.type, x: p.x, y: p.y, w: p.w, h: p.h, no: p.no, label: p.label == null ? null : p.label,
-      tableKind: p.tableKind || null, item: p.itemId ? nameOf(p.itemId) : null, view: p.view || null,
-      props: p.itemId ? null : scrub(p.props || null),
+      tableKind: p.tableKind || null, item: p.itemId ? nameOf(p.itemId) : null, view: viewOf(p),
+      props: p.itemId ? null : scrub(p.props ? propsOf(p) : null),
     })),
     newItems: design.items.slice(itemsBefore).map((it) => ({ name: it.name, type: it.type })),
   };

@@ -467,7 +467,7 @@ test('後半の部品: 最初の大きさ・赤い番号・見た目。表はテ
   const [table, , , , , status, steps] = parts();
   assert.equal(table.tableKind, 'subtable');
   assert.equal(status.itemId, steps.itemId, 'ステータスの印と進み具合の矢印は同じ項目');
-  assert.deepEqual(plain(status.props.states), ['申請', '承認待ち', '承認済み', '完了']);
+  assert.deepEqual(plain(status.props.states.map((s) => s.name)), ['申請', '承認待ち', '承認済み', '完了']);
   const el = (p, sel) => partEl(p.id).querySelector(sel);
   assert.equal(el(placed[0], '.ptbl').querySelectorAll('th').length, 3, 'テーブルの最初の列は 3 つ');
   assert.equal(el(placed[0], '.ptbl-ops').children.length, 3, '行ごとに ＋ − を描く');
@@ -641,10 +641,12 @@ test('ステータス: 並びは項目に 1 つ。並びを直すと、ステー
   api.selectPart(sp.id);
   setValue($(app, '#side-settings [data-pf="props.states"]'), '受付\n対応中\n完了');
   assert.deepEqual(plain([...partEl(sp.id).querySelectorAll('.psteps span')].map((e) => e.textContent)), ['受付', '対応中', '完了']);
-  setValue($(app, '#side-settings [data-pf="view.current"]'), '完了');
+  // 見本で出すステータスの選ぶ欄の値は、ステータスの id（データの形の版 3）
+  const stateId = (n) => api.currentDesign().items.find((it) => it.type === 'status').props.states.find((s) => s.name === n).id;
+  setValue($(app, '#side-settings [data-pf="view.current"]'), stateId('完了'));
   assert.equal(partEl(sp.id).querySelectorAll('.psteps .done').length, 2);
   api.selectPart(st.id);
-  setValue($(app, '#side-settings [data-pf="view.current"]'), '対応中');
+  setValue($(app, '#side-settings [data-pf="view.current"]'), stateId('対応中'));
   check($(app, '#side-settings [data-pf="view.showWord"]'), false);
   assert.equal(partEl(st.id).querySelector('.pstatus').textContent.trim(), '対応中');
   const rows = $$(app, '.ptable tbody tr').map((r) => r.children[3].textContent);

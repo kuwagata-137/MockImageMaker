@@ -73,7 +73,8 @@ test('ひな形の中身: 入力・詳細・進み具合は、項目がなけれ
   const steps = screenOf(api.actions.addScreen(id, 'steps', detail.id));
   const status = design().items.find((it) => it.type === 'status');
   assert.ok(status, 'ステータスの項目がなければ作る');
-  assert.deepEqual(plain(steps.parts.slice(0, 2).map((p) => [p.type, p.itemId, p.view.current])), [['steps', status.id, '承認待ち'], ['status', status.id, '承認待ち']]);
+  const waiting = status.props.states.find((s) => s.name === '承認待ち').id; // 見本で出すステータスは id で持つ（データの形の版 3）
+  assert.deepEqual(plain(steps.parts.slice(0, 2).map((p) => [p.type, p.itemId, p.view.current])), [['steps', status.id, waiting], ['status', status.id, waiting]]);
   assert.deepEqual(plain(steps.parts.slice(-2).map((p) => p.label)), ['承認する', '差し戻す']);
   api.actions.addScreen(id, 'steps', steps.id);
   assert.equal(design().items.filter((it) => it.type === 'status').length, 1, 'ステータスの項目は 1 つだけ');

@@ -109,7 +109,7 @@ test('edit_items: テーブルの列（同じ名前の列は id を残す）・�
   assert.deepEqual(t2.props.columns.map((c) => c.name), ['数量', '単価']);
   assert.equal(t2.props.columns[0].id, qtyId);
   assert.equal(t2.props.columns[1].props.unit, '円');
-  assert.deepEqual(d('d1').items.find((x) => x.type === 'status').props.states, ['受付', '対応中', '完了']);
+  assert.deepEqual(d('d1').items.find((x) => x.type === 'status').props.states.map((s) => s.name), ['受付', '対応中', '完了']);
   ng(await call('edit_items', { design: 'd1', ops: [{ op: 'add', name: '状態 2', type: 'status' }] }), 'bad_request');
   app.close();
 });
@@ -197,7 +197,7 @@ test('layout_screen: 2 列・span・幅の広い部品・ボタンの行（右�
   assert.equal(table.tableKind, 'records');
   assert.deepEqual(table.props.columns.map((c) => c.ref.itemId), ['i1', 'i2']);
   const save = sc.parts.find((p) => p.label === '保存');
-  assert.deepEqual(save.props, { style: 'primary', action: '「一覧」の画面へ移る' });
+  assert.deepEqual(save.props, { style: 'primary', action: '「一覧」の画面へ移る', to: '', designId: '', screenId: '', url: '' });
   assert.match(r.warnings[0], /ボタンの移る先（to）は第 8 段階/);
   app.close();
 });
@@ -208,7 +208,8 @@ test('layout_screen: append は今の部品の下から置く。同じ項目を�
   assert.equal(r.parts[0].y, 152 + 64 + 24); // 今のいちばん下（新規登録の顧客名 152＋64）の下に 24
   const sc = d('d1').screens[0];
   const st = sc.parts.find((p) => p.type === 'status');
-  assert.equal(st.view.current, '承認済み');
+  const states = d('d1').items.find((x) => x.type === 'status').props.states;
+  assert.equal(st.view.current, states.find((s) => s.name === '承認済み').id, '見本で出すステータスは id で持つ');
   const date = sc.parts.find((p) => p.type === 'date');
   assert.deepEqual([date.labelPos, date.sample], ['left', '2026-10-14']);
   assert.ok(d('d1').items.some((x) => x.name === '契約日' && x.type === 'date'));
@@ -260,7 +261,7 @@ test('edit_parts: 表の中身を変える・見本の行の数・ボタンの s
   assert.equal(t.view.rows, 5);
   assert.deepEqual(t.props.columns.map((c) => c.ref.name), ['区分']);
   assert.equal(t.props.perPage, '50');
-  assert.deepEqual(sc.parts.find((p) => p.type === 'button').props, { style: 'normal', action: '「新規登録」の画面へ移る' });
+  assert.deepEqual(sc.parts.find((p) => p.type === 'button').props, { style: 'normal', action: '「新規登録」の画面へ移る', to: '', designId: '', screenId: '', url: '' });
   ok(await call('edit_parts', { design: 'd1', screen: '一覧', ops: [{ op: 'table_kind', part: 1, kind: 'subtable' }] }));
   assert.equal(d('d1').screens[1].parts.find((p) => p.type === 'table').tableKind, 'subtable');
   assert.ok(d('d1').items.some((x) => x.type === 'table'));
