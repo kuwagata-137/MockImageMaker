@@ -1,7 +1,7 @@
 'use strict';
 // 第 9 段階の前半（T6a）: システムの画面（画像 q62 の案A・q64 の案A・q65・q66）のテスト。いちばん上の帯・メニューバー・左の入口と画面設計のカード・
 // 真ん中の概要・役割・スイムレーン図（見るだけ）・履歴・右の欄の案内・編集の画面との行き来（「← システムへ」）・AI が直したときの帯・命令とキー。
-// スイムレーン図の上の操作（足す・つなぐ・ドラッグ）は T6b。画面設計とシステムの名前は架空の業務（出張申請・経費精算・社員マスタなど）だけを使う。
+// スイムレーン図の上の操作（足す・つなぐ・ドラッグ）と右の欄の作業の設定は T6b（test/swimlane-ui.test.js）。画面設計とシステムの名前は架空の業務（出張申請・経費精算・社員マスタなど）だけを使う。
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -98,16 +98,16 @@ async function boot(t, state = sampleState(), sysId = 'y-trip') {
 }
 
 // ── 配置（q62 の案A）──
-test('配置: いちばん上の帯（システムの名前と小さく「（システム）」）・メニューバー（一覧へ・元に戻す・やり直す・拡大・縮小）・左の入口 4 つ・右の欄。最初はスイムレーン図', async (t) => {
+test('配置: いちばん上の帯（システムの名前と小さく「（システム）」）・メニューバー（一覧へ・元に戻す・やり直す・選択・接続・削除・拡大・縮小・全体を表示）・左の入口 4 つ・右の欄。最初はスイムレーン図', async (t) => {
   const { $, $$, api, entries } = await boot(t);
   assert.equal($('.brandbar .brand').textContent, 'モックイメージメーカー');
   assert.equal($('#sys-title').textContent, '出張申請システム（システム）');
   assert.equal($('#sys-title small').textContent, '（システム）');
   // メニューバーは編集の画面と同じ見た目（組と、組の名前）
-  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', '表示']);
+  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', '編集', '表示']);
   assert.match($('#toolbar [data-action="home"]').textContent, /一覧へ/);
   assert.equal($('#toolbar [data-action="home"]').title, 'システムと画面設計の一覧へ戻ります');
-  assert.deepEqual($$('#toolbar .tbtn').map((b) => b.textContent), ['↶ 元に戻す', '↷ やり直す', '＋ 拡大', '－ 縮小', '100%']);
+  assert.deepEqual($$('#toolbar .tbtn').map((b) => b.textContent), ['↶ 元に戻す', '↷ やり直す', '＋ 拡大', '－ 縮小', '⊡ 全体を表示', '100%']);
   assert.equal($('#toolbar [data-action="undo"]').disabled, true);
   assert.equal($('#toolbar [data-action="redo"]').disabled, true);
   // 左の入口（数）。履歴は「AI が直す前の状態」の行の数
@@ -156,7 +156,7 @@ test('入口を押すと真ん中を切り替える。最後に開いた入口�
 
 test('右の欄: 入口ごとの案内の文', async (t) => {
   const { $, entry } = await boot(t);
-  assert.match($('#sys-side').textContent, /作業の箱を押すと、ここで直せます（次に作ります）。/);
+  assert.match($('#sys-side').textContent, /作業の箱か矢印を押すと、ここで直せます。/);
   click(entry('roles'));
   assert.match($('#sys-side').textContent, /役割を直すと、スイムレーン図の帯がすぐ変わります。/);
   click(entry('history'));
@@ -488,7 +488,7 @@ test('スイムレーン図: 見出し・案内の文・凡例・図（帯 3 本
   click(node('w-4'));
   assert.equal(api.ui.stepSel, 'w-4');
   assert.ok(node('w-4').classList.contains('sel'));
-  assert.match($('#sys-side').textContent, /承認する/);
+  assert.equal($('#sys-side [data-sw="text"]').value, '承認する');
   assert.equal(JSON.stringify(api.store.state.systems[0].swimlane), JSON.stringify(sampleState().systems[0].swimlane), '動かさない');
   click($('#sys-swim .swim-inner'));
   assert.equal(api.ui.stepSel, null);
@@ -502,7 +502,7 @@ test('スイムレーン図: 見出し・案内の文・凡例・図（帯 3 本
 test('スイムレーン図の拡大縮小（ui.sysZoom）: メニューバーとキー。スイムレーン図を出しているときだけ押せる', async (t) => {
   const { app, api, $, entry } = await boot(t);
   const zoomBtns = () => [...app.document.querySelectorAll('#toolbar [data-action^="zoom-"]')];
-  assert.deepEqual(zoomBtns().map((b) => b.disabled), [false, false, false]);
+  assert.deepEqual(zoomBtns().map((b) => b.disabled), [false, false, false, false]);
   click($('#toolbar [data-action="zoom-out"]'));
   assert.equal(api.ui.sysZoom, 0.9);
   assert.equal($('#toolbar [data-action="zoom-reset"]').textContent, '90%');
@@ -517,7 +517,7 @@ test('スイムレーン図の拡大縮小（ui.sysZoom）: メニューバー�
   key(app, app.document.body, { key: '=', ctrlKey: true });
   assert.equal(api.ui.sysZoom, 1.1);
   click(entry('roles'));
-  assert.deepEqual(zoomBtns().map((b) => b.disabled), [true, true, true]);
+  assert.deepEqual(zoomBtns().map((b) => b.disabled), [true, true, true, true]);
   key(app, app.document.body, { key: '-', ctrlKey: true });
   assert.equal(api.ui.sysZoom, 1.1, 'スイムレーン図のほかでは変えない');
   click(entry('swimlane'));
