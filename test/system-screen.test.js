@@ -540,7 +540,7 @@ test('スイムレーン図: 役割がないときは案内の文と「役割を
 test('履歴: 日時・行（AI の行は紫・戻す前の状態は灰色）・そのときの中身・「この状態に戻す…」。新しい行が上', async (t) => {
   const { $, $$, entry } = await boot(t);
   click(entry('history'));
-  assert.match($('#sys-view .map-note').textContent, /AI がこのシステム（説明・役割・スイムレーン図・画面設計の並び）を直す前の中身を、自動で残しています（新しい方から 10 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。/);
+  assert.match($('#sys-view .map-note').textContent, /AI がこのシステム（説明・役割・スイムレーン図・画面設計の並び）を直す前の中身を、自動で残しています（新しい方から 10 行まで）。「この状態に戻す…」で戻したときは、戻す前の中身を「戻す前の状態」の行に残します（これも新しい方から 10 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。/);
   assert.deepEqual($$('#sys-view thead th').map((e) => e.textContent), ['日時', '行', 'そのときの中身', '']);
   const rows = $$('#sys-view tbody tr').map((tr) => [...tr.children].map((td) => td.textContent));
   assert.deepEqual(rows, [

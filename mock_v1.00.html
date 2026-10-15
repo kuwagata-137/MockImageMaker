@@ -5475,7 +5475,8 @@ async function newDesignWithDialog(systemId) {
   if (id) openDesign(id);
 }
 
-// システムの名前と説明の窓（「＋ 新しいシステム」と「名前と説明を変える」）。戻り値 { name, description } か null
+// システムの名前と説明の窓（「＋ 新しいシステム」と「名前と説明を変える」）。戻り値 { name, description } か null。
+// 名前は前後の空白を削り、説明は削らない（actions・AI の道具と同じ。何も変えずに「変える」を押したときに、中身が変わらないように）
 function openSystemDialog({ title, okLabel, name = '', description = '', hint = '' }) {
   return showDialog({
     title,
@@ -5492,7 +5493,7 @@ function openSystemDialog({ title, okLabel, name = '', description = '', hint = 
     collect: (m) => {
       const n = cleanName($('[name=name]', m).value);
       if (!n) return { error: '名前を書いてください。' };
-      return { name: n, description: $('[name=description]', m).value.trim() };
+      return { name: n, description: $('[name=description]', m).value };
     },
   });
 }
@@ -6226,7 +6227,7 @@ function sysHistoryHtml(y) {
     ? `<table><thead><tr><th>日時</th><th>行</th><th>そのときの中身</th><th></th></tr></thead><tbody>${rows.map(sysHistoryRowHtml).join('')}</tbody></table>`
     : '<p class="sys-empty">まだ履歴はありません。AI がこのシステムを直すと、直す前の中身がここに残ります。</p>';
   return `<div class="itable sys-hist" style="max-width:980px">${sysHead('履歴', y)}
-    <p class="map-note">AI がこのシステム（説明・役割・スイムレーン図・画面設計の並び）を直す前の中身を、自動で残しています（新しい方から ${AI_ROWS_MAX} 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。</p>
+    <p class="map-note">AI がこのシステム（説明・役割・スイムレーン図・画面設計の並び）を直す前の中身を、自動で残しています（新しい方から ${AI_ROWS_MAX} 行まで）。「この状態に戻す…」で戻したときは、戻す前の中身を「戻す前の状態」の行に残します（これも新しい方から ${SYSTEM_RESTORE_ROWS_MAX} 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。</p>
     ${table}</div>`;
 }
 // 行の名前は、AI の行は紫（「Claude Code が直す前の状態」）、戻す前の状態は灰色（マウスを乗せると、どの行に戻す前かを出す）

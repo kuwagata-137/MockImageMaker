@@ -254,6 +254,27 @@ test('「…」のメニュー: 名前と説明を変える（元に戻すで戻
   assert.equal(api.store.canUndo(), true, 'ごみ箱へ移すのは元に戻せる');
 });
 
+test('「名前と説明を変える」: 何も変えずに「変える」を押しても、更新日時も元に戻すの履歴も変わらない（名前は前後の空白を削り、説明は削らない）', async (t) => {
+  const st = sampleState();
+  st.systems[0].description = '出張の申請をまとめる\n';
+  const { api, $, sys } = await boot(t, st);
+  const undo0 = api.store.undoStack.length;
+  click($('.sys-head [data-action="sys-menu"]'));
+  click($('.sys-pop [data-action="sys-edit"]'));
+  await waitFor(() => $('.modal'));
+  click($('[data-dlg="ok"]'));
+  await waitFor(() => !$('.modal'));
+  assert.deepEqual([sys('y-trip').description, sys('y-trip').updatedAt, api.store.undoStack.length], ['出張の申請をまとめる\n', OLD, undo0]);
+  click($('.sys-head [data-action="sys-menu"]'));
+  click($('.sys-pop [data-action="sys-edit"]'));
+  await waitFor(() => $('.modal'));
+  setValue($('.modal [name=name]'), '  国内出張システム  ');
+  $('.modal [name=description]').value = '  国内の出張だけ\n';
+  click($('[data-dlg="ok"]'));
+  await waitFor(() => !$('.modal'));
+  assert.deepEqual([sys('y-trip').name, sys('y-trip').description], ['国内出張システム', '  国内の出張だけ\n']);
+});
+
 test('ごみ箱: システムも出す（「システム」と「画面設計」の小見出し・数は合計）。戻す・完全に削除（確かめの窓。画面設計は残り、元に戻すの履歴は消える）', async (t) => {
   const { api, $, $$, S, sys, rows } = await boot(t);
   api.actions.trashSystem('y-exp');
