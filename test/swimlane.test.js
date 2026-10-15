@@ -105,23 +105,23 @@ test('モデル: 箱は役割のある作業だけ（帯の番号と列）。矢
   assert.deepEqual(plain(api.swimlaneModel(S(), sys('y-empty'))), { nodes: [], edges: [] });
 });
 
-test('並べ方: 帯は役割の順に上から。箱の左の端は 名前の列 + 24 + 列 × 240。同じ帯の同じ列の作業は縦に積み、その帯が高くなる', async (t) => {
+test('並べ方: 帯は役割の順に上から。箱の左の端は 名前の列 + 24 + 列 × 280。同じ帯の同じ列の作業は縦に積み、その帯が高くなる', async (t) => {
   const { api, S, sys } = await boot(t);
   assert.equal(api.SWIM_LABEL_W, 136);
-  assert.equal(api.SWIM_COL, 240);
+  assert.equal(api.SWIM_COL, 280);
   const y = sys('y-trip');
   const lay = api.swimlaneLayout(api.swimlaneModel(S(), y), y);
   assert.deepEqual(plain(lay.lanes.map((l) => [l.role.name, l.y, l.h])), [['申請者', 0, 112], ['上長', 112, 192], ['経理', 304, 112]],
     '1 段の帯は 24 + 64 + 24、2 段の帯は 24 + 64 + 16 + 64 + 24。作業のない帯も 1 段分');
   assert.deepEqual(plain(lay.pos), {
     'w:w-1': { x: 160, y: 24, h: 64 },
-    'w:w-2': { x: 400, y: 24, h: 64 },
-    'w:w-3': { x: 640, y: 136, h: 64 },
-    'w:w-4': { x: 640, y: 216, h: 64 },
-    'w:w-5': { x: 880, y: 24, h: 64 },
-    'w:w-7': { x: 1120, y: 24, h: 64 },
+    'w:w-2': { x: 440, y: 24, h: 64 },
+    'w:w-3': { x: 720, y: 136, h: 64 },
+    'w:w-4': { x: 720, y: 216, h: 64 },
+    'w:w-5': { x: 1000, y: 24, h: 64 },
+    'w:w-7': { x: 1280, y: 24, h: 64 },
   });
-  assert.equal(lay.w, 1120 + 200 + 40, 'いちばん右の列の箱の右 + 40');
+  assert.equal(lay.w, 1280 + 200 + 40, 'いちばん右の列の箱の右 + 40');
   assert.equal(lay.h, 416);
   const two = api.swimlaneLayout(api.swimlaneModel(S(), sys('y-lanes')), sys('y-lanes'));
   assert.deepEqual(plain([two.lanes.map((l) => [l.y, l.h]), two.w, two.h, two.pos]), [[[0, 112], [112, 112]], 600, 224, {}], '作業がなくても幅は 600');
@@ -135,14 +135,14 @@ test('HTML: 帯と名前の列は SVG の rect（diagramCrop が拾う）。箱�
   const box = dom(app, html);
   const inner = box.querySelector('.map-inner.swim-inner');
   assert.equal(inner.id, 'map-inner');
-  assert.deepEqual(plain([inner.dataset.view, inner.dataset.focus, inner.style.width, inner.style.height]), ['swimlane', 'y-trip', '1360px', '416px']);
+  assert.deepEqual(plain([inner.dataset.view, inner.dataset.focus, inner.style.width, inner.style.height]), ['swimlane', 'y-trip', '1520px', '416px']);
   // 帯（交互に白と #f8fafc）と名前の列（#e8eef6）。矢印の文字の下地は、文字のある 2 本の分だけ
   const rects = [...box.querySelectorAll('svg rect')];
   const bands = rects.filter((r) => r.getAttribute('opacity') !== '.92');
   assert.deepEqual(plain(bands.map((r) => ['x', 'y', 'width', 'height', 'fill'].map((a) => r.getAttribute(a)))), [
-    ['0', '0', '1360', '112', '#fff'], ['0', '0', '136', '112', '#e8eef6'],
-    ['0', '112', '1360', '192', '#f8fafc'], ['0', '112', '136', '192', '#e8eef6'],
-    ['0', '304', '1360', '112', '#fff'], ['0', '304', '136', '112', '#e8eef6'],
+    ['0', '0', '1520', '112', '#fff'], ['0', '0', '136', '112', '#e8eef6'],
+    ['0', '112', '1520', '192', '#f8fafc'], ['0', '112', '136', '192', '#e8eef6'],
+    ['0', '304', '1520', '112', '#fff'], ['0', '304', '136', '112', '#e8eef6'],
   ]);
   assert.equal(rects.length - bands.length, 2, '文字の下地は「承認」「差し戻し」の 2 つ');
   assert.deepEqual(plain([...box.querySelectorAll('svg text')].map((x) => x.textContent)), ['承認', '差し戻し']);
@@ -157,7 +157,7 @@ test('HTML: 帯と名前の列は SVG の rect（diagramCrop が拾う）。箱�
   const node = (id) => box.querySelector(`.mnode[data-node="w:${id}"]`);
   assert.deepEqual(plain([...box.querySelectorAll('.mnode')].map((n) => n.className)),
     ['mnode sw k-start', 'mnode sw k-input', 'mnode sw k-decision', 'mnode sw k-task', 'mnode sw k-end', 'mnode sw k-doc']);
-  assert.deepEqual(plain(['left', 'top', 'width', 'height'].map((k) => node('w-3').style[k])), ['640px', '136px', '200px', '64px']);
+  assert.deepEqual(plain(['left', 'top', 'width', 'height'].map((k) => node('w-3').style[k])), ['720px', '136px', '200px', '64px']);
   assert.equal(node('w-1').querySelector('b').textContent, '出張が決まる');
   assert.equal(node('w-1').querySelector('.ref'), null, '指す先がなければ札はない');
   assert.equal(node('w-2').querySelector('.ref').textContent, '画面: 申請の入力', '画面とステータスの両方を指すときは、札は画面');
@@ -168,7 +168,7 @@ test('HTML: 帯と名前の列は SVG の rect（diagramCrop が拾う）。箱�
   assert.equal(node('w-2').title, 'システムへの入力: 申請を入力する\n画面設計: 出張申請\n画面: 申請の入力\nステータス: 申請\nメモ: 日帰りも出す');
   assert.match(node('w-7').title, /ステータス: （ないステータス）/);
   // 切り出す範囲は、帯の全体（帯の rect を拾い、map-inner の幅と高さで抑える）
-  assert.deepEqual(plain(api.diagramCrop(html)), { x0: 0, y0: 0, cw: 1360, ch: 416 });
+  assert.deepEqual(plain(api.diagramCrop(html)), { x0: 0, y0: 0, cw: 1520, ch: 416 });
   // 書き出し・AI の画像では、id="map-inner" を付けず、矢印の印の id の頭を変える
   const xp = api.swimlaneHtml(S(), y, { idPrefix: 'xi-swim', bare: true });
   assert.ok(!/id="map-inner"|[#"]swim-arrow-/.test(xp) && /url\(#xi-swim-arrow-n\)/.test(xp));
@@ -201,7 +201,7 @@ test('書き出しの文と AI の図の画像: 題はシステムの名前、�
   assert.equal(api.VIEW_TITLES.swimlane, 'スイムレーン図');
   assert.match(api.VIEW_LEGENDS.swimlane, /流れ.*戻る流れ（差し戻しなど）.*ひし形＝判断/);
   const doc = api.swimlaneImageDoc(S(), sys('y-trip'));
-  assert.deepEqual(plain([doc.boxes, doc.arrows, doc.width, doc.height]), [6, 5, 1360 + 48, 416 + 28 + 48]);
+  assert.deepEqual(plain([doc.boxes, doc.arrows, doc.width, doc.height]), [6, 5, 1520 + 48, 416 + 28 + 48]);
   assert.match(doc.html, /<title>出張申請システム ／ スイムレーン図<\/title>/);
   assert.match(doc.html, /url\(#xi-swim-arrow-n\)/);
   assert.ok(!/id="map-inner"/.test(doc.html));

@@ -4990,7 +4990,7 @@ function mapLegendHtml() {
 // 作業の位置は、作業が持つ役割（帯）と列だけで決まる（ドラッグで動かした位置は覚えない。帯と列に吸い付く）。
 // 箱の大きさは、ほかの図と同じ 200 × 64（mapEdgesSvg が箱の大きさを決め打ちしているため）。帯は SVG の rect で描く（diagramCrop が拾うように）
 const SWIM_LABEL_W = 136; // 左の、役割の名前の列の幅
-const SWIM_COL = 240; // 列の幅（箱 200 ＋ 矢印の間 40）
+const SWIM_COL = 280; // 列の幅（箱 200 ＋ 矢印の間 80。第 9 段階の T6b で 240 から広げた。間が 40 だと、隣の列の行きと帰りの矢印〔差し戻しなど〕が重なって読めない）
 const SWIM_X0 = SWIM_LABEL_W + 24; // 列 0 の箱の左の端
 const SWIM_PAD = 24; // 帯の上と下の余白
 const SWIM_GAP = 16; // 同じ帯の同じ列に積んだ箱の間
