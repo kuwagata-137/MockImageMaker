@@ -153,7 +153,7 @@ test('読み込みの直し: 足りない欄を補い、知らない欄は残す
   assert.notEqual(y2.id, 'y-trip');
   assert.deepEqual(plain({ ...y2, id: '' }), {
     id: '', name: '名前なし', description: '', createdAt: null, updatedAt: null, trashedAt: null,
-    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: {},
+    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: {}, revisions: [],
   });
   assert.deepEqual(plain(api.migrate(plain(state)).state), plain(state), '2 回通しても同じ');
 });
@@ -169,7 +169,7 @@ test('システムを作り、同じ画面設計を 2 つのシステムに入�
   assert.equal(typeof y.createdAt, 'string');
   assert.deepEqual(plain({ ...y, id: '', createdAt: '', updatedAt: '' }), {
     id: '', name: '出張申請システム', description: '出張の申請と精算をまとめる', createdAt: '', updatedAt: '', trashedAt: null,
-    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: {},
+    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: {}, revisions: [],
   });
   assert.equal(y.updatedAt, y.createdAt);
   const emp = api.actions.createDesign('社員マスタ', 'kintone');

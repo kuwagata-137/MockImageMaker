@@ -1,10 +1,10 @@
-// mcp-tools.js — AI の入口（mcp-server.js）が出す MCP の道具の一覧（第 7 段階。第 8 段階で 3 つ足した。設計書の 9-2）
+// mcp-tools.js — AI の入口（mcp-server.js）が出す MCP の道具の一覧（第 7 段階。第 8 段階で 3 つ、第 9 段階の前半でシステムの 7 つを足した。設計書の 9-2）
 // 名前・日本語の説明・入力の形（mcp-schemas.js）・読むだけか・時間がかかるか、を決める。道具の中身はページの「AI の窓口」にある。
 // read_guide だけは入口の中で返す（local。アプリが動いていなくても読めるように）。
 // slow の道具は、アプリの側（automation-main.js の SLOW_TOOLS）でも時間切れを 5 分にしている。2 か所を同じにする。
 'use strict';
 
-const { z, obj, S, layout, itemOps, screenOps, partOps, calloutOps, processOps } = require('./mcp-schemas');
+const { z, obj, S, layout, itemOps, screenOps, partOps, calloutOps, processOps, roleOps, swimSteps, swimEdges } = require('./mcp-schemas');
 const { GUIDE_TOPICS } = require('./mcp-guide');
 
 const read = (name, title, description, shape, extra = {}) => ({ name, title, description, input: obj(shape), readOnly: true, ...extra });
@@ -34,14 +34,29 @@ const TOOLS = [
     { design: S.design, cursor: S.cursor }),
   read('get_view_image', '図の画像',
     '図の画像（PNG。長い辺を 1568 ドットまでに縮める）を返す。view: "map"（つながりの図。ルックアップと取り込みでつながる画面設計）・' +
-    '"process"（ステータスの移り方の図）・"screenflow"（画面の移り方の図）。作った移り方を見て確かめるときに使う。',
-    { design: S.design, view: z.enum(['map', 'process', 'screenflow']).describe('図の種類') }, { slow: true }),
+    '"process"（ステータスの移り方の図）・"screenflow"（画面の移り方の図）・"swimlane"（システムのスイムレーン図）。作った流れや移り方を見て確かめるときに使う。' +
+    '"swimlane" はシステムの図なので system を書き、ほかの図は画面設計の図なので design を書く。',
+    {
+      design: S.design.optional().describe('画面設計の id か名前（view が "map"・"process"・"screenflow" のとき）'),
+      system: S.system.optional().describe('システムの id か名前（view が "swimlane" のとき）'),
+      view: z.enum(['map', 'process', 'screenflow', 'swimlane']).describe('図の種類'),
+    }, { slow: true }),
   read('get_catalog', '部品のカタログ',
     '部品の種類（type・名前・最初の大きさ・設定の欄と値の形）・項目の種類・ひな形・機器・作る先・吹き出しの色・並べ方の数を返す。',
     {}),
+  read('list_systems', 'システムの一覧',
+    'システム（いくつかの画面設計と役割・スイムレーンをまとめた、1 つの業務のまとまり）の一覧を返す: id・名前・説明の頭・画面設計と役割と作業の数・更新の印 updatedAt。query で名前を探せる。',
+    { query: z.string().optional().describe('名前に含まれる文字'), trashed: z.boolean().optional().describe('ごみ箱にあるシステムも出す'), cursor: S.cursor }),
+  read('get_system', 'システムの中身',
+    'システムの中身を返す: 名前・説明・役割（レーン）・入れている画面設計の並び（ほかのシステムと共通なら sharedWith）・スイムレーンの作業（役割・列・種類・文字・指す先の画面設計と画面とステータス）と矢印・' +
+    '履歴の行・更新の印 updatedAt。多いときは、役割・画面設計・作業・矢印 の順に分けて nextCursor を付ける。',
+    { system: S.system, cursor: S.cursor }),
   write('create_design', '画面設計を作る',
-    '新しい画面設計を作る（白紙の画面が 1 つ入る）。作った画面設計の id と、最初の画面の id を返す。',
-    { name: z.string().describe('画面設計の名前（業務アプリの名前。例 "顧客管理"）'), target: z.string().optional().describe('作る先（"kintone"・"Salesforce"・"Claude で作るアプリ" か、ほかの名前）'), description: z.string().optional().describe('説明') }),
+    '新しい画面設計を作る（白紙の画面が 1 つ入る）。作った画面設計の id と、最初の画面の id を返す。system を書くと、作ってすぐそのシステムに入れる。',
+    {
+      name: z.string().describe('画面設計の名前（業務アプリの名前。例 "顧客管理"）'), target: z.string().optional().describe('作る先（"kintone"・"Salesforce"・"Claude で作るアプリ" か、ほかの名前）'),
+      description: z.string().optional().describe('説明'), system: S.system.optional().describe('作ってすぐ入れるシステムの id か名前'),
+    }),
   write('update_design', '画面設計の情報を直す',
     '画面設計の名前・作る先・説明を直す。',
     { design: S.design, expect: S.expect, name: z.string().optional(), target: z.string().optional(), description: z.string().optional() }),
@@ -73,6 +88,23 @@ const TOOLS = [
     'ステータスの移り方（kintone のプロセス管理に当たる）を直す: ステータスの並び（申請 → 承認待ち → 承認済み など）と、ステータスを進める操作' +
     '（例「承認する」: 承認待ち → 承認済み。操作する人・条件つき）を足す・直す・消す・並べ替える（ops に並べて 1 回で行う）。ステータスと操作は id か名前で指す。',
     { design: S.design, expect: S.expect, ops: processOps }),
+  write('create_system', 'システムを作る',
+    '新しいシステム（1 つの業務のまとまり。例 "出張申請システム"）を作る。作ったシステムの id を返す。続けて update_system で役割を足し、add_to_system・create_design で画面設計を入れ、set_swimlane で業務の流れを書く。',
+    { name: z.string().describe('システムの名前'), description: z.string().optional().describe('説明（理念と概要）') }),
+  write('update_system', 'システムを直す',
+    'システムの名前・説明を直し、役割（スイムレーンのレーン。申請者・上長など）を足す・名前を変える・メモを書く・並べ替える・消す（ops に並べて 1 回で行う）。役割は id か名前で指す。',
+    { system: S.system, expect: S.expect, name: z.string().optional(), description: z.string().optional(), ops: roleOps.optional() }),
+  write('add_to_system', '画面設計をシステムに入れる',
+    '今ある画面設計をシステムに入れる。mode "same"（既定）は同じ画面設計を入れる（ほかのシステムと共通になり、どちらから直しても同じものが変わる）。' +
+    '"copy" は複製して、このシステムにだけ入れる（別の画面設計になる）。入れた画面設計の id を返す。',
+    { system: S.system, design: S.design, mode: z.enum(['same', 'copy']).optional().describe('既定は "same"') }),
+  write('remove_from_system', '画面設計をシステムから外す',
+    '画面設計をシステムから外す。画面設計は消えずに残る（ほかのシステムか、どのシステムにも入っていない所に出る）。',
+    { system: S.system, design: S.design }),
+  write('set_swimlane', 'スイムレーンを書く',
+    'システムのスイムレーン（役割ごとのレーンに作業の箱を並べ、矢印でつないだ業務の流れ）をまとめて置き換える。作業の役割は、先に update_system で足しておく。' +
+    '矢印の from・to は、作業の key（この頼みの中の名前）か id か文字で書く。col を省いた作業は、矢印の順からアプリが列を付ける。返事は作業の key と id の対応と、付けた列。',
+    { system: S.system, expect: S.expect, steps: swimSteps, edges: swimEdges.optional() }),
   write('add_revision', '改訂する',
     '改訂する: 次の版の番号（第◯版）と今日の日付の行を改訂履歴に足し、今の中身の写しを残す。note は変えた内容（PDF の表紙の改訂履歴に出る）。',
     { design: S.design, expect: S.expect, note: z.string().optional().describe('変えた内容') }),

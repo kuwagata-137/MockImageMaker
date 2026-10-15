@@ -4,7 +4,8 @@
 // （窓の × は、check-electron と同じく BrowserWindow.close() を inspector から呼んで再現する。ページの window.close() は close の知らせを通らないため）。
 //  A. 最初の頼みで、アプリを --background で起動する（かかった時間を出す）。画面設計を作って部品を並べると、designs.json に残る。
 //     画面の画像は長い辺が 1568 以下の PNG。書き出し（PDF・PNG・HTML）は MIM_AI_EXPORT_DIR に書き、同じ名前には番号を付ける。
-//     道具は 20 個。edit_process でステータスと操作を書き、移る先を持つボタンを並べると、get_flow で読め、get_view_image は PNG（長い辺が 1568 以下。第 8 段階）。
+//     道具は 27 個。edit_process でステータスと操作を書き、移る先を持つボタンを並べると、get_flow で読め、get_view_image は PNG（長い辺が 1568 以下。第 8 段階）。
+//     システムを作って役割・画面設計・スイムレーンを書くと、get_system・list_systems で読め、designs.json に残り、スイムレーン図の画像は PNG（第 9 段階）。
 //     status で、窓が見えていない・裏の起動・ページの準備ができている。2 つ目の起動（--background）では窓を出す印が付かない。
 //     前に人が窓を最大化して閉じていても（window-state.json の isMaximized）、裏の起動では窓が画面に出ない（status の onScreen）。
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり、automation.json が消える
@@ -154,8 +155,9 @@ async function phaseA() {
     names.join('、'));
   // 第 8 段階の道具（ステータスの移り方と画面の移り方）
   const tl = await client.listTools();
-  check('A. 道具は 20 個（edit_process・get_flow・get_view_image を含む）',
-    tl.tools.length === 20 && ['edit_process', 'get_flow', 'get_view_image'].every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
+  const NEW_TOOLS = ['edit_process', 'get_flow', 'get_view_image', 'list_systems', 'get_system', 'create_system', 'update_system', 'add_to_system', 'remove_from_system', 'set_swimlane'];
+  check('A. 道具は 27 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個を含む）',
+    tl.tools.length === 27 && NEW_TOOLS.every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
   await tool(client, 'edit_process', { design: made.id, ops: [
     { op: 'set_states', states: ['申請', '承認待ち', '完了'] },
     { op: 'add_action', name: '申請する', from: '申請', to: '承認待ち', role: '申請者' },
@@ -175,6 +177,7 @@ async function phaseA() {
     const [vw, vh] = vb.length > 24 ? [vb.readUInt32BE(16), vb.readUInt32BE(20)] : [0, 0];
     check(`A. get_view_image（${view}）は PNG で、長い辺が 1568 以下`, !vi.isError && vb.subarray(1, 4).toString() === 'PNG' && Math.max(vw, vh) <= 1568 && vw >= 400, `${vw} × ${vh}`);
   }
+  await checkSystemTools(client, made);
   const st = await status();
   check('A. 窓は見えていない・裏の起動・ページの準備ができている', st.visible === false && st.background === true && st.pageReady === true && st.clients >= 1, JSON.stringify(st));
   check('A. 前に人が窓を最大化して閉じていても、裏の起動では窓が画面に出ない', st.onScreen === false, `onScreen ${st.onScreen}`);
@@ -189,6 +192,33 @@ async function phaseA() {
   await client.close();
   const ms = await waitUntil(() => !alive(info.pid), IDLE_MS + 15000, 'A. 入口を閉じた後にアプリが終わる');
   check('A. 入口を閉じると、5 秒たってアプリが終わり、automation.json が消える', !appInfo() && ms >= IDLE_MS - 500, `${ms} ms`);
+}
+
+// 第 9 段階の道具（システム）を 1 回ずつ呼ぶ: 作る・役割を足す・画面設計を入れる・スイムレーンを書く・読む・図の画像・外す
+async function checkSystemTools(client, made) {
+  const ys = await tool(client, 'create_system', { name: '出張申請システム（確かめ）', description: '確かめの見本' });
+  await tool(client, 'update_system', { system: ys.id, expect: ys.updatedAt, ops: [{ op: 'add', name: '申請者' }, { op: 'add', name: '上長', memo: '課長以上' }] });
+  await tool(client, 'add_to_system', { system: ys.id, design: made.id });
+  const sw = await tool(client, 'set_swimlane', { system: ys.id, steps: [
+    { key: 's', role: '申請者', kind: 'start', text: '始まり' },
+    { key: 'in', role: '申請者', kind: 'input', text: '申請を入力する', ref: { design: made.id, screen: made.firstScreen.id } },
+    { key: 'ok', role: '上長', kind: 'decision', text: '承認する' },
+  ], edges: [{ from: 's', to: 'in' }, { from: 'in', to: 'ok', label: '出す' }] });
+  const gs = await tool(client, 'get_system', { system: ys.id });
+  const ls = await tool(client, 'list_systems');
+  const saved = (JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).systems || []).find((y) => y.id === ys.id);
+  check('A. システムを作り、役割・画面設計・スイムレーンを書くと、get_system・list_systems で読め、designs.json に残る（第 9 段階）',
+    gs.roles.length === 2 && gs.designs.length === 1 && gs.steps.length === 3 && gs.edges.length === 2 && sw.steps.map((s) => s.col).join(',') === '0,1,2'
+      && ls.systems.some((y) => y.id === ys.id) && !!saved && saved.swimlane.steps.length === 3 && saved.revisions.some((r) => r.kind === 'ai'),
+    `役割 ${gs.roles.length}・画面設計 ${gs.designs.length}・作業 ${gs.steps.length}・矢印 ${gs.edges.length}・列 ${sw.steps.map((s) => s.col).join(',')}`);
+  const vi = await client.callTool({ name: 'get_view_image', arguments: { system: ys.id, view: 'swimlane' } });
+  const vim = vi.content.find((c) => c.type === 'image');
+  const vb = vim ? Buffer.from(vim.data, 'base64') : Buffer.alloc(0);
+  const [vw, vh] = vb.length > 24 ? [vb.readUInt32BE(16), vb.readUInt32BE(20)] : [0, 0];
+  check('A. get_view_image（swimlane）は PNG で、長い辺が 1568 以下', !vi.isError && vb.subarray(1, 4).toString() === 'PNG' && Math.max(vw, vh) <= 1568 && vw >= 400, `${vw} × ${vh}`);
+  const rm = await tool(client, 'remove_from_system', { system: ys.id, design: made.id });
+  const after = await tool(client, 'get_system', { system: ys.id });
+  check('A. remove_from_system で外しても、画面設計は残る', rm.design.id === made.id && after.designs.length === 0 && (await tool(client, 'list_designs')).designs.some((d) => d.id === made.id));
 }
 
 async function phaseB() {

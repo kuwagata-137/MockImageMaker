@@ -37,8 +37,44 @@ function sampleState() {
   };
 }
 
+// ── 版 3 のシステム（第 9 段階）──
+const OLD = '2026-10-01T00:00:00.000Z';
+const NO_REF = { designId: null, screenId: null, stateId: null };
+const swStep = (id, roleId, col, kind, text, ref = NO_REF, extra = {}) => ({ id, roleId, col, kind, text, memo: '', ref: { ...NO_REF, ...ref }, src: null, ...extra });
+const swEdge = (id, from, to, label = '') => ({ id, from, to, label });
+const system = (id, name, designIds, extra = {}) => ({
+  id, name, description: '', createdAt: OLD, updatedAt: OLD, trashedAt: null, designIds, roles: [], swimlane: { steps: [], edges: [] },
+  materials: [], notes: {}, revisions: [], ...extra,
+});
+// sampleState の画面設計（顧客管理にはステータスの項目を足す）に、システムを 3 つ足した版 3 の見本:
+// 営業管理システム（顧客管理・受注管理。役割 2 つ・作業 3 つ・矢印 2 本）・請求管理システム（顧客管理を共通の画面設計として使う）・ごみ箱の古いシステム
+function systemState() {
+  const st = sampleState();
+  st.schemaVersion = 3;
+  st.designs[0].items.push(item('st', 'ステータス', 'status', { props: { states: [{ id: 't1', name: '申請' }, { id: 't2', name: '承認待ち' }], actions: [] } }));
+  st.systems = [
+    system('y1', '営業管理システム', ['d1', 'd2'], {
+      description: '顧客の登録から受注までをまとめる。',
+      roles: [{ id: 'l1', name: '営業', memo: '' }, { id: 'l2', name: '上長', memo: '課長以上' }],
+      swimlane: {
+        steps: [
+          swStep('w1', 'l1', 0, 'start', '始まり'),
+          swStep('w2', 'l1', 1, 'input', '顧客を登録する', { designId: 'd1', screenId: 's1', stateId: 't1' }),
+          swStep('w3', 'l2', 2, 'decision', '確かめる', { designId: 'd1', screenId: 's2', stateId: 't2' }),
+        ],
+        edges: [swEdge('e1', 'w1', 'w2'), swEdge('e2', 'w2', 'w3')],
+      },
+      materials: [{ id: 'm1', name: '受注の流れ.txt', kind: 'text', size: 10, addedAt: OLD, memo: '', file: 'm1.txt' }],
+      notes: { memo: '設計ノートのメモ' },
+    }),
+    system('y2', '請求管理システム', ['d1']),
+    system('y3', '古いシステム', [], { trashedAt: '2026-10-05T00:00:00.000Z' }),
+  ];
+  return st;
+}
+
 const STORAGE_KEY = 'mockimagemaker.v1';
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-module.exports = { screen, item, ipart, design, sampleState, STORAGE_KEY, plain, tick };
+module.exports = { screen, item, ipart, design, sampleState, systemState, system, swStep, swEdge, NO_REF, OLD, STORAGE_KEY, plain, tick };

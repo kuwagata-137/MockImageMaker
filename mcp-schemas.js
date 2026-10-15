@@ -20,6 +20,8 @@ const MAX_SCREEN_HEIGHT = 20000;
 
 const S = {
   design: ref('画面設計の id か名前'),
+  system: ref('システムの id か名前'),
+  role: ref('役割の id か名前（そのシステムの中で）'),
   screen: ref('画面の id か名前（その画面設計の中で）'),
   part: ref('部品の id か赤い番号（その画面の中で）'),
   item: ref('データベースの項目の id か項目名'),
@@ -152,9 +154,46 @@ const processOps = z.discriminatedUnion('op', [
   op('delete_action', { action: actionRef }, '操作を消す'),
 ]);
 
+// ── システムの役割（update_system。第 9 段階）──
+const roleOps = z.discriminatedUnion('op', [
+  op('add', { name: z.string().describe('役割の名前（例 "申請者"・"上長"・"経理"）'), memo: opt(z.string().describe('役割のメモ')) }, '役割を足す（いちばん下のレーン）'),
+  op('rename', { role: S.role, name: z.string() }, '役割の名前を変える（同じシステムに同じ名前の役割は作れない）'),
+  op('set_memo', { role: S.role, memo: z.string() }, '役割のメモを書く'),
+  op('move', { role: S.role, to: z.number().int().min(0).describe('動かした後の位置（0 がいちばん上のレーン）') }, '役割（スイムレーンのレーン）を並べ替える'),
+  op('delete', { role: S.role }, '役割を消す（その役割の作業と、その作業につながる矢印も消える）'),
+]);
+
+// ── スイムレーン（set_swimlane。第 9 段階）──
+// 作業の種類。ページの SWIM_KINDS と同じ（test/mcp.test.js で比べる）
+const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end'];
+const swimStep = obj({
+  key: opt(z.string().describe('この頼みの中で、矢印（edges の from・to）から指すための名前（省くと text）')),
+  id: opt(z.string().describe('今ある作業の id（get_system の steps[].id）。書くと同じ id を残し、書かなかった kind・memo・ref は今のまま。新しい作業は書かない')),
+  role: S.role.describe('どの役割（レーン）の作業か。役割の id か名前。ない役割は、先に update_system で足す'),
+  kind: opt(z.enum(SWIM_KINDS).describe('作業の種類: "start"（始まり）・"task"（作業。既定）・"input"（システムへの入力）・"decision"（判断）・"doc"（書類）・"end"（終わり）')),
+  text: z.string().describe('作業の文（例 "出張申請書を書く"）'),
+  memo: opt(z.string()),
+  col: opt(z.number().int().min(0).describe('左から何番目の列か（0 から）。省くと、矢印の順からアプリが付ける')),
+  ref: opt(z.union([
+    obj({
+      design: opt(ref('このシステムに入っている画面設計の id か名前')),
+      screen: opt(ref('その画面設計の画面の id か名前')),
+      state: opt(ref('その画面設計のステータスの id か名前')),
+    }),
+    z.null(),
+  ]).describe('この作業で使う画面設計・画面・ステータス（null で外す）')),
+});
+const swimEdge = obj({
+  from: z.string().describe('矢印の元の作業（key か id か文字）'),
+  to: z.string().describe('矢印の先の作業（key か id か文字）'),
+  label: opt(z.string().describe('矢印の文字（例 "差し戻し"）')),
+});
+
 const opsOf = (union) => z.array(union).min(1).describe('操作の並び（まとめて 1 回の変更になる）');
 
 module.exports = {
   z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps), processOps: opsOf(processOps),
-  DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT,
+  roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('作業の並び（今のスイムレーンの作業を全部置き換える。空の並びで作業を全部消す）'),
+  swimEdges: z.array(swimEdge).describe('矢印の並び（今の矢印を全部置き換える）'),
+  DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS,
 };
