@@ -40,7 +40,7 @@
      箱をドラッグで動かすと位置を覚える。画面の図の箱を押すと、その画面を開く。アプリのメニュー「項目」にも 2 つ。
    - PDF にステータスの移り方（図と操作の一覧表）と画面の移り方のページ。書き出しの窓の「入れるページ」に 2 つのチェック。
    - AI の道具 3 つ（edit_process・get_flow・get_view_image。17 → 20 個）。ボタンとリンクの文字の移る先（to）を本物にした。export_design に process・flow。
-   - テストは全部で 385 個。tools/check-electron.js に v2 → v3、tools/check-export.js の見本に操作と移る先、tools/check-mcp.js に 3 つの道具、
+   - テストは全部で 397 個。tools/check-electron.js に v2 → v3、tools/check-export.js の見本に操作と移る先、tools/check-mcp.js に 3 つの道具、
      tools/shoot-app.js に場面 54〜59・101〜106（--only=flow。tools/shoot-app-flow.js）。
 第 7 段階　AI の窓口と MCP の土台（2026-10-14。版は v1.00 のまま。設計は AI設計基盤_設計書.md）
    - 確かめの段（入口を ELECTRON_RUN_AS_NODE で動かす・名前付きパイプ・--background の起動・Claude Code を閉じても裏のアプリが残る）。結果は開発記録。
