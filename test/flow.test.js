@@ -240,3 +240,27 @@ test('画面の移り方の図: 単体で開いた HTML では、ほかの画面
     ['x:' + B + '/' + b2, 's:' + a1, ['戻る']],
   ]);
 });
+
+// ── 見直し（第 8 段階）で見つけた不具合 ──
+test('書き出す HTML: ごみ箱にある画面設計は screenPeers に「ごみ箱」の印を付けて入れ、単体で開いたときは図に描かず、移る先の画面設計の選択肢にも出さない', async (t) => {
+  const { api, A, B, a1, a2, b1, put } = await bootTwo(t);
+  const out = put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
+  api.actions.trashDesign(B);
+  assert.equal(plain(api.flowModel(api.store.state, api.store.state.designs.find((x) => x.id === A)).edges).length, 0, 'アプリではごみ箱の画面設計を描かない');
+  const payload = api.embedPayload(api.store.state.designs.find((x) => x.id === A), api.store.state);
+  assert.equal(payload.screenPeers.length, 1);
+  assert.equal(payload.screenPeers[0].trashed, true);
+  const html = api.buildStandaloneHtml(api.store.state.designs.find((x) => x.id === A), api.store.state);
+  const app2 = bootApp({ html, url: 'https://localhost/vendor/a.html' });
+  t.after(() => app2.close());
+  const api2 = await app2.api();
+  const d2 = api2.currentDesign();
+  assert.equal(plain(api2.flowModel(api2.store.state, d2).edges).length, 0, '単体で開いても、ごみ箱の画面設計を描かない');
+  const sc = d2.screens.find((s) => s.id === a2);
+  assert.equal(api2.tableRows(sc, d2, api2.store.state).find((r) => r.id === out).setting, '移る先＝経費精算 ／ 精算の入力の画面');
+  api2.openScreen(a2);
+  api2.selectPart(out);
+  const opts = [...app2.document.querySelectorAll('#side-settings select[data-pf="props.designId"] option')].map((o) => o.textContent);
+  assert.deepEqual(opts, ['この画面設計（出張申請）', '経費精算（ごみ箱にあります）']);
+  assert.ok(a1);
+});

@@ -296,3 +296,36 @@ test('図の箱の位置を覚える: processPos・flowPos に覚え、更新日
   assert.equal(api.actions.resetViewPos('d-order', 'process'), false, '覚えた位置がなければ false');
   assert.deepEqual(plain(d('d-order').flowPos), { 's:y': { x: 0, y: 8 } });
 });
+
+// ── 見直し（第 8 段階）で見つけた不具合 ──
+test('違いの文: 同じ名前の操作が 2 つあっても、どちらの変更も改訂履歴の違いに出る', async (t) => {
+  const { api, d } = await boot(t, withActions([{ id: 'a-1', name: '新しい操作', from: '受付', to: '確認待ち' }, { id: 'a-2', name: '新しい操作', from: '確認待ち', to: '確認済み' }]));
+  const rev = api.actions.addRevision('d-order', { note: '第 1 版' });
+  api.actions.updateProcessAction('d-order', 'i-st', 'a-1', { role: '課長' });
+  api.actions.addProcessAction('d-order', 'i-st', { name: '新しい操作', from: idOf(statusOf(d('d-order')).props.states, '確認済み'), to: idOf(statusOf(d('d-order')).props.states, '完了') });
+  const cur = d('d-order');
+  const diff = api.designDiff(api.designFromSnapshot(cur, cur.revisions.find((x) => x.id === rev)), cur, api.store.state);
+  const texts = diff.rows.map((x) => x.text).join('\n');
+  assert.match(texts, /操作「新しい操作」：受付から確認待ちへ → 受付から確認待ちへ（課長）/);
+  assert.match(texts, /操作「新しい操作」：なし → 確認済みから完了へ/);
+});
+
+test('貼り付け: ほかの画面設計へ貼ったステータスの印の見本は、コピーした元のステータスの名前で当て直す（同じ id でも、名前が変わっていれば名前の方）', async (t) => {
+  const { api, d } = await boot(t);
+  const exp = () => statusOf(d('d-exp'));
+  api.actions.unlinkItem('d-exp', exp().id); // 受注管理から取り込んだ項目なので、つながりを切って直せるようにする
+  const waiting = idOf(exp().props.states, '確認待ち');
+  assert.equal(waiting, idOf(statusOf(d('d-order')).props.states, '確認待ち'), '版 2 から直した同じ名前のステータスは、画面設計をまたいで同じ id');
+  assert.ok(api.actions.renameState('d-exp', exp().id, waiting, '審査中'));
+  const fresh = api.actions.addState('d-exp', exp().id, '確認待ち');
+  api.openDesign('d-order');
+  api.openScreen('s-list');
+  api.selectPart('p-st1');
+  api.runCommand('copyPart');
+  api.openDesign('d-exp');
+  api.openScreen('s-b1');
+  api.runCommand('pastePart');
+  const pasted = d('d-exp').screens[0].parts.at(-1);
+  assert.equal(pasted.type, 'status');
+  assert.equal(pasted.view.current, fresh);
+});

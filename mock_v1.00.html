@@ -995,6 +995,7 @@ function moveTargetText(ctx, pr) {
 }
 // 書き出す HTML に入れる、移る先のほかの画面設計（この画面設計のボタン・リンクの文字が指す画面設計と、この画面設計の画面を指す
 // ボタン・リンクの文字のある画面設計〔ごみ箱にないもの〕）。名前・画面の名前と、入ってくる移る先（from: 相手の画面・to: この画面設計の画面）だけを入れる。
+// 指す先の画面設計がごみ箱にあるときは trashed の印を付ける（設定の文には名前を出し、図と移る先の選択肢には出さない。アプリと同じ）。
 // つながりの図の peers とは分ける（つながりの図に箱を増やさないため）
 function screenPeersOf(d, state) {
   const ids = new Set();
@@ -1008,7 +1009,7 @@ function screenPeersOf(d, state) {
   })));
   return [...ids].map((id) => findDesign(state, id)).filter(Boolean)
     .sort((a, b) => a.name.localeCompare(b.name, 'ja'))
-    .map((x) => ({ id: x.id, name: x.name, screens: x.screens.map((s) => ({ id: s.id, name: s.name })), refs: refs.get(x.id) || [] }));
+    .map((x) => ({ id: x.id, name: x.name, screens: x.screens.map((s) => ({ id: s.id, name: s.name })), refs: refs.get(x.id) || [], ...(x.trashedAt ? { trashed: true } : {}) }));
 }
 function normalizeScreenPeers(raw) {
   return (Array.isArray(raw) ? raw : []).filter((p) => isObj(p) && str(p.id)).map((p) => ({
@@ -1016,6 +1017,7 @@ function normalizeScreenPeers(raw) {
     name: cleanName(p.name) || '名前なし',
     screens: (Array.isArray(p.screens) ? p.screens : []).filter((s) => isObj(s) && str(s.id)).map((s) => ({ id: str(s.id), name: str(s.name) })),
     refs: (Array.isArray(p.refs) ? p.refs : []).filter(isObj).map((r) => ({ from: str(r.from), to: str(r.to), type: r.type === 'button' ? 'button' : 'link', label: str(r.label) })),
+    ...(p.trashed === true ? { trashed: true } : {}),
   }));
 }
 
@@ -1770,12 +1772,21 @@ function partFacts(design, raw, state) {
 function settingChanges(a, b) {
   const out = [];
   if (a.short !== b.short) out.push(fromTo('条件', a.short, b.short));
-  const map = (eq) => new Map(eq.map((line) => {
-    const i = line.indexOf('＝');
-    return i < 0 ? [line, ''] : [line.slice(0, i), line.slice(i + 1)];
-  }));
+  // 「＝」より前を鍵にして、前後の行を突き合わせる。同じ鍵の行（同じ名前の操作など）は、鍵ごとに並びの順で突き合わせる
+  const map = (eq) => {
+    const m = new Map();
+    eq.forEach((line) => {
+      const i = line.indexOf('＝');
+      const [k, v] = i < 0 ? [line, ''] : [line.slice(0, i), line.slice(i + 1)];
+      m.set(k, [...(m.get(k) || []), v]);
+    });
+    return m;
+  };
   const [ma, mb] = [map(a.eq), map(b.eq)];
-  [...new Set([...ma.keys(), ...mb.keys()])].forEach((k) => { if (ma.get(k) !== mb.get(k)) out.push(fromTo(k, ma.get(k), mb.get(k))); });
+  [...new Set([...ma.keys(), ...mb.keys()])].forEach((k) => {
+    const [va, vb] = [ma.get(k) || [], mb.get(k) || []];
+    for (let i = 0; i < Math.max(va.length, vb.length); i++) if (va[i] !== vb[i]) out.push(fromTo(k, va[i], vb[i]));
+  });
   if (a.memo !== b.memo) out.push(fromTo('メモ', a.memo, b.memo));
   return out;
 }
@@ -2076,17 +2087,19 @@ function normalizeActions(src, states) {
   });
 }
 // ステータスの id か名前（v）を、並び states の id にする。見つからなければ ''。
-// fromStates を渡すと、ほかの並びの id も、その名前で当て直す（ほかの画面設計へ貼り付けた部品の見本など）
+// fromStates（元の並び）を渡すと、元の並びのステータスの名前で当て直す（ほかの画面設計へ貼り付けた部品の見本・項目の一覧表に戻した部品など）
 function resolveStateRef(states, v, fromStates = null) {
   const list = Array.isArray(states) ? states.filter(isObj) : [];
   const ref = str(v);
   if (!ref) return '';
-  if (list.some((s) => s.id === ref)) return ref;
-  const byName = list.find((s) => s.name === ref);
-  if (byName) return byName.id;
+  // 元の並び（fromStates。ほかの画面設計から貼り付けたときなど）があれば、元のステータスの名前で当て直すのを先にする
+  // （画面設計の複製や版 2 から直した並びは、画面設計をまたいで同じ id なので、名前を変えた後は id で当てると違うステータスになる）
   const was = Array.isArray(fromStates) ? fromStates.find((s) => isObj(s) && s.id === ref) : null;
   const again = was ? list.find((s) => s.name === was.name) : null;
-  return again ? again.id : '';
+  if (again) return again.id;
+  if (list.some((s) => s.id === ref)) return ref;
+  const byName = list.find((s) => s.name === ref);
+  return byName ? byName.id : '';
 }
 const stateNames = (states) => (Array.isArray(states) ? states : []).map((s) => (isObj(s) ? s.name : String(s)));
 // ステータスの名前（id か名前で指す）。並びになければ ''
@@ -4309,7 +4322,7 @@ function procBracket(a, b, others, lane, minX = 0) {
 function flowOwner(state, designId) {
   const x = findDesign(state, designId);
   if (x) return x.trashedAt ? null : x;
-  return (standalone && standalone.screenPeers.find((p) => p.id === designId)) || null;
+  return (standalone && standalone.screenPeers.find((p) => p.id === designId && !p.trashed)) || null;
 }
 // ほかの画面設計から、この画面設計の画面へ移ってくるボタン・リンクの文字（q58: 来る元も描く）。[{ owner, from（相手の画面）, to, type, label }]
 function flowIncoming(state, d) {
@@ -5849,7 +5862,7 @@ function moveFieldsHtml(p) {
   const to = pfSelect('props.to', '移る先', pr.to, [['', '（なし）'], ['screen', '画面'], ['url', 'URL を書く']]);
   if (pr.to === 'url') return to + pfText('props.url', 'URL', pr.url, { placeholder: 'https://' });
   if (pr.to !== 'screen' || !d) return to;
-  const peers = [...visibleDesigns(store.state).filter((x) => x.id !== d.id), ...(standalone ? standalone.screenPeers.filter((x) => !findDesign(store.state, x.id)) : [])]
+  const peers = [...visibleDesigns(store.state).filter((x) => x.id !== d.id), ...(standalone ? standalone.screenPeers.filter((x) => !x.trashed && !findDesign(store.state, x.id)) : [])]
     .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   const designId = pr.designId && pr.designId !== d.id ? pr.designId : '';
   const owner = designId ? screenOwner(store.state, designId) : d;
