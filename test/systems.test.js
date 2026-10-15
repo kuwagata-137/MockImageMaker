@@ -508,13 +508,15 @@ test('システムの履歴の行に戻すとき、作業の指す先を今の�
   const y = st.systems[0];
   const swim = plain(y.swimlane);
   swim.steps[0].ref = { designId: 'd-emp', screenId: 's-d-emp', stateId: null };
+  // 説明だけは今と違う（同じ中身の行には戻さないため。T9 の見直し）
   y.revisions = [{ id: 'r-1', kind: 'ai', date: OLD, note: 'Claude Code が直す前の状態', aiSession: 's-0',
-    snapshot: { name: y.name, description: '', roles: plain(y.roles), swimlane: swim, designIds: ['d-trip', 'd-emp'] } }];
+    snapshot: { name: y.name, description: '前の説明', roles: plain(y.roles), swimlane: swim, designIds: ['d-trip', 'd-emp'] } }];
   const { api, sys, stepOf } = await boot(t, st);
   api.actions.deleteDesignForever('d-emp');
   api.actions.deleteScreen('d-trip', 's-form');
   api.actions.deleteState('d-trip', 'i-st', 't-b');
   assert.equal(api.actions.restoreSystemRevision('y-trip', 'r-1'), true);
+  assert.equal(sys('y-trip').description, '前の説明');
   assert.deepEqual(plain(sys('y-trip').designIds), ['d-trip']);
   assert.deepEqual(plain(stepOf('y-trip', 'w-1').ref), NO_REF, '完全に削除した画面設計は指さない');
   assert.deepEqual(plain(stepOf('y-trip', 'w-2').ref), { designId: 'd-trip', screenId: null, stateId: 't-a' });

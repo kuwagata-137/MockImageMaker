@@ -295,7 +295,7 @@ test('ごみ箱: システムも出す（「システム」と「画面設計」
   assert.equal($('.modal h2').textContent, '完全に削除');
   assert.equal($('.modal-body').textContent.trim(),
     '「古いシステム」を完全に削除します。システムの役割とスイムレーン図が消えます。入っていた画面設計は消えません。元に戻せません（元に戻す〔Ctrl+Z〕の履歴も消えます）。');
-  assert.deepEqual(dialogButtons($$), ['完全に削除', 'キャンセル']);
+  assert.deepEqual(dialogButtons($$), ['完全に削除する', 'キャンセル'], '画面設計の窓と同じ「完全に削除する」');
   assert.ok($('[data-dlg="ok"]').classList.contains('danger'));
   assert.equal($('[data-dlg="cancel"]').ownerDocument.activeElement, $('[data-dlg="cancel"]'), '最初のフォーカスはキャンセル');
   click($('[data-dlg="ok"]'));
@@ -459,8 +459,8 @@ test('今ある画面設計を複製して入れる窓: このシステムに入
   assert.equal(card('d-emp').querySelector('.pick-in'), null);
   assert.ok($('[data-dlg="ok"]').disabled);
   key(app, $('.pick-search'), { key: 'Enter' });
-  assert.equal($('.modal-error').hidden, false, 'Enter で押しても、選んでいなければ閉じない');
-  assert.equal($('.modal-error').textContent, '複製する画面設計を選んでください。');
+  assert.ok($('.modal'), 'Enter を押しても、選んでいなければ閉じない');
+  assert.equal($('.modal-error').hidden, true, '肯定のボタンを押せないときの Enter は何もしない（T9 の見直し）');
   click(card('d-emp'));
   assert.equal($('.pick-note').textContent,
     '選んでいるもの：社員マスタ（1 つ）。選んだ画面設計を複製して、経費精算システムに入れます。複製は別のもので、元を直しても変わりません。');
@@ -633,4 +633,77 @@ test('AI がシステムを直して元に戻すの履歴を消したとき、�
   assert.equal(btn.textContent, '「出張申請システム」の履歴を開く');
   click(btn);
   assert.deepEqual([api.ui.view, api.ui.systemId], ['system', 'y-trip']);
+});
+
+// ── 見直しで見つけたもの（第 9 段階の T9）──
+test('画面設計の「完全に削除」の窓: システムに入っていれば、どのシステムからも外れ、作業の指す先も外れることを知らせる。ボタンはどちらの窓も「完全に削除する」', async (t) => {
+  const { api, $, $$ } = await boot(t);
+  api.actions.trashDesign('d-emp');
+  click($('.trash-toggle'));
+  click($('.trash-row [data-action="delete-forever"][data-id="d-emp"]'));
+  await waitFor(() => $('.modal'));
+  assert.match($('.modal-body').textContent,
+    /「社員マスタ」は、出張申請システム・経費精算システムに入っています。完全に削除すると、どのシステムからも外れ、スイムレーン図の作業の指す先も外れます。/);
+  assert.deepEqual(dialogButtons($$), ['完全に削除する', 'キャンセル']);
+  click($('[data-dlg="cancel"]'));
+  await waitFor(() => !$('.modal'));
+  // どのシステムにも入っていない画面設計（ごみ箱のシステムにだけ入っている日報も）では書かない
+  api.actions.trashDesign('d-daily');
+  click($('.trash-row [data-action="delete-forever"][data-id="d-daily"]'));
+  await waitFor(() => $('.modal'));
+  assert.doesNotMatch($('.modal-body').textContent, /に入っています/);
+  assert.deepEqual(dialogButtons($$), ['完全に削除する', 'キャンセル']);
+  click($('[data-dlg="cancel"]'));
+  await waitFor(() => !$('.modal'));
+});
+
+test('入れる窓・複製して入れる窓: 名前で探す欄の Enter では入れない（窓は開いたまま）。肯定のボタンを押せないときの Enter も何もしない。ほかの窓の Enter は今までどおり', async (t) => {
+  const { app, $, $$, sys, item } = await boot(t);
+  click(item('y-exp'));
+  for (const mode of ['same', 'copy']) {
+    click($('.sys-head [data-action="sys-add-menu"]'));
+    click($(`.sys-pop [data-action="sys-add-${mode}"]`));
+    await waitFor(() => $('.modal'));
+    const ids = sys('y-exp').designIds;
+    // 何も選ばずに Enter（名前で探す欄の上でも、ほかの所でも）
+    key(app, $('.pick-search'), { key: 'Enter' });
+    key(app, $('.pick-sys'), { key: 'Enter' });
+    assert.ok($('.modal'), `${mode}: 窓は開いたまま`);
+    assert.equal($('.modal-error').hidden, true, `${mode}: 誤りの文を出さない`);
+    // 選んでから、名前で探す欄で Enter
+    click($('.pick-card[data-pick="d-cli"]'));
+    setValue($('.pick-search'), '取引');
+    key(app, $('.pick-search'), { key: 'Enter' });
+    await new Promise((r) => setTimeout(r, 20));
+    assert.ok($('.modal'), `${mode}: 名前で探す欄の Enter では入れない`);
+    assert.deepEqual(sys('y-exp').designIds, ids);
+    // 名前で探す欄の外（システムで絞る欄）の Enter は、今までどおり肯定
+    key(app, $('.pick-sys'), { key: 'Enter' });
+    await waitFor(() => !$('.modal'), { label: `${mode}: 肯定` });
+  }
+  assert.equal(sys('y-exp').designIds.length, 4, '入れる（d-cli）と複製して入れる（d-cli のコピー）');
+  // ほかの窓（新しいシステム）の名前の欄の Enter は、今までどおり肯定
+  click($('.home-head [data-action="new-system"]'));
+  await waitFor(() => $('.modal [name=name]'));
+  setValue($('.modal [name=name]'), '備品管理システム');
+  key(app, $('.modal [name=name]'), { key: 'Enter' });
+  await waitFor(() => !$('.modal'), { label: '新しいシステム' });
+  assert.ok($$('.sys-list .sys-item .nm').some((e) => e.textContent === '備品管理システム'));
+});
+
+test('システムの画面から「新しい画面設計…」: 入れるシステムの最初の値は、開いていたシステム（最初の画面で選んでいたまとまりではない）', async (t) => {
+  const { api, $, item } = await boot(t);
+  click(item('y-exp'));
+  api.openSystem('y-trip');
+  api.runCommand('newDesign');
+  assert.equal(api.ui.view, 'home');
+  await waitFor(() => $('.modal [name=system]'));
+  assert.equal($('.modal [name=system]').value, 'y-trip');
+  click($('[data-dlg="cancel"]'));
+  await waitFor(() => !$('.modal'));
+  // 最初の画面からは、今までどおり選んでいるまとまり
+  api.runCommand('newDesign');
+  await waitFor(() => $('.modal [name=system]'));
+  assert.equal($('.modal [name=system]').value, 'y-exp');
+  click($('[data-dlg="cancel"]'));
 });

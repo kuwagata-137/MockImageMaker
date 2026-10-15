@@ -565,14 +565,20 @@ test('箱のドラッグ: 帯と列に吸い付いて動く（moveStep。元に�
   const c1 = cellAt(2, 8);
   fire(inner(), 'mousemove', c1);
   assert.ok(app.document.body.classList.contains('map-dragging'));
-  // 動かしている間は、吸い付いた所に描き直す（まだ保存しない）
+  // 動かしている間は、図を並べ直さず、箱をカーソルに付けて動かし、落とす枠（帯と列のいちばん上の段）を出す（まだ保存しない。BDM と同じ。T9 の見直し）
   const moving = node('w-5');
   assert.deepEqual([moving.style.left, moving.style.top], [`${api.SWIM_X0 + api.SWIM_COL * 8}px`, `${geom().lanes[2].y + 24}px`]);
   assert.ok(moving.classList.contains('dragging'));
+  const frame = app.document.querySelector('#swim-cell');
+  assert.deepEqual([frame.style.left, frame.style.top], [`${api.SWIM_X0 + api.SWIM_COL * 8}px`, `${geom().lanes[2].y + 24}px`]);
+  fire(inner(), 'mousemove', { clientX: c1.clientX + 30, clientY: c1.clientY - 20 });
+  assert.deepEqual([moving.style.left, moving.style.top], [`${api.SWIM_X0 + api.SWIM_COL * 8 + 30}px`, `${geom().lanes[2].y + 4}px`], '箱はカーソルに付いて動く');
+  assert.equal(node('w-5'), moving, '描き直さない');
   assert.deepEqual([step('w-5').roleId, step('w-5').col], ['l-a', 4]);
   fire(inner(), 'mouseup', c1);
   assert.deepEqual([step('w-5').roleId, step('w-5').col], ['l-c', 8]);
   assert.equal(app.document.body.classList.contains('map-dragging'), false);
+  assert.equal(app.document.querySelector('#swim-cell'), null, '放すと枠を消す');
   // 箱の真ん中で枠を決める（つかんだ所によらない）
   const c2 = cellAt(2, 8);
   fire(node('w-5'), 'mousedown', { clientX: c2.clientX + 90, clientY: c2.clientY });
@@ -760,4 +766,87 @@ test('ほかの図（つながりの図・ステータスの移り方の図・�
   const view = api.viewHtml('process', S(), S().designs[0]);
   assert.ok(!/sw-hit|sw-line/.test(view));
   await waitFor(() => true);
+});
+
+// ── 見直しで見つけたもの（第 9 段階の T9）──
+// 図の上の文字の欄で直した後、右の欄を押すと文字の欄を離れて確定する（ブラウザでは、押した時点〔mousedown〕の後にフォーカスが移る）。
+// 確定のときに右の欄を作り直すと、押した欄・ボタンが click の前に消え、1 回押しても効かなかった（その後の Backspace で作業の箱が消えた）
+test('図の上の文字の欄（作業）で直してから右の欄を押す: 確定しても右の欄を作り直さず（同じ要素）、値だけ書き換える。押した欄・ボタンが 1 回で効く', async (t) => {
+  const { app, $, node, step, sys } = await boot(t);
+  fire(node('w-5'), 'dblclick');
+  const field = $('#sys-side [data-sw="text"]');
+  const role = $('#sys-side [data-sw="role"]');
+  $('#sys-swim .swim-edit').value = '出張に行く（直した）';
+  field.focus();
+  assert.equal(step('w-5').text, '出張に行く（直した）', '確定する');
+  assert.equal($('#sys-side [data-sw="text"]'), field, '右の欄を作り直さない');
+  assert.equal(field.value, '出張に行く（直した）', '右の欄の文字の欄の値も書き換える');
+  assert.equal(app.document.activeElement, field, '押した欄にフォーカスが移る');
+  assert.equal($('#sys-side [data-sw="role"]'), role);
+  assert.equal(node('w-5').querySelector('b').textContent, '出張に行く（直した）', '図は描き直す');
+  // もう一度直してから「この作業を消す」（押した時点でフォーカスが移り、確定する）
+  fire(node('w-5'), 'dblclick');
+  $('#sys-swim .swim-edit').value = '出張する';
+  const del = $('#sys-side [data-action="sys-step-del"]');
+  del.focus();
+  assert.equal(step('w-5').text, '出張する');
+  assert.ok(del.isConnected, '押したボタンは残る');
+  click(del);
+  assert.equal(sys().swimlane.steps.some((w) => w.id === 'w-5'), false, '1 回で消える');
+});
+test('図の上の文字の欄（矢印）で直してから右の欄を押す: 確定しても右の欄を作り直さず、矢印の文字の欄の値だけ書き換える。「この矢印を消す」が 1 回で効く', async (t) => {
+  const { $, edgeHit, edges } = await boot(t);
+  fire(edgeHit('e-3'), 'dblclick');
+  const label = $('#sys-side [data-sw="edge-label"]');
+  $('#sys-swim .swim-edit').value = '急ぎ';
+  label.focus();
+  assert.deepEqual(edges()[2], ['w-3', 'w-4', '急ぎ']);
+  assert.equal($('#sys-side [data-sw="edge-label"]'), label, '右の欄を作り直さない');
+  assert.equal(label.value, '急ぎ');
+  fire(edgeHit('e-3'), 'dblclick');
+  $('#sys-swim .swim-edit').value = '承認';
+  const del = $('#sys-side [data-action="sys-edge-del"]');
+  del.focus();
+  assert.ok(del.isConnected);
+  click(del);
+  assert.equal(edges().some((e) => e[0] === 'w-3' && e[1] === 'w-4'), false, '1 回で消える');
+});
+test('図の上の文字の欄で直した後、右の欄がほかの作業を出しているときは、右の欄を描き直す（矢印の先の名前を今の名前にする）', async (t) => {
+  const { api, $, $$, node, step } = await boot(t);
+  fire(node('w-2'), 'dblclick');
+  $('#sys-swim .swim-edit').value = '出張を申請する';
+  api.ui.stepSel = 'w-1'; // 右の欄が w-1（次の作業が w-2）を出している形にする
+  api.runCommand('zoomIn'); // 命令の前に確定する
+  assert.equal(step('w-2').text, '出張を申請する');
+  assert.deepEqual($$('#sys-side .sw-next .to').map((x) => x.textContent), ['→ 出張を申請する']);
+});
+test('積んだ箱の下の段を横にドラッグしても、同じ帯のまま（ドラッグの間は図を並べ直さず、帯と列は、ドラッグを始めたときの並べ方で求める。前は描き直しで帯が低くなり、1 つ下の帯に入った）', async (t) => {
+  const st = sampleState();
+  st.systems[0].swimlane.steps.push(step('w-9', 'l-a', 1, 'task', '積んだ箱'));
+  const { app, node, geom, step: get } = await boot(t, st);
+  const b = geom().pos['w:w-9'];
+  assert.equal(b.y, 24 + 64 + 16, '申請者の帯の 2 段目');
+  const [sx, sy] = [b.x + 100, b.y + 32];
+  fire(node('w-9'), 'mousedown', at(sx, sy));
+  for (let dx = 10; dx <= 300; dx += 10) fire(app.document, 'mousemove', at(sx + dx, sy));
+  fire(app.document, 'mouseup', at(sx + 300, sy));
+  assert.deepEqual([get('w-9').roleId, get('w-9').col], ['l-a', 2]);
+});
+// フォーカスが見えない radio（作業の種類）に残っていても、元に戻す・やり直すは効く（どの画面でも）。Delete・Backspace は欄の中の扱いのまま
+test('作業の種類（radio）を押した後も Ctrl+Z・Ctrl+Y は効く。Delete・Backspace は作業を消さない', async (t) => {
+  const { app, $, node, step, sys } = await boot(t);
+  press(node('w-6'));
+  const r = $('#sys-side input[data-sw="kind"][value="doc"]');
+  r.focus();
+  r.checked = true;
+  r.dispatchEvent(new app.window.Event('change', { bubbles: true }));
+  assert.equal(step('w-6').kind, 'doc');
+  assert.equal(app.document.activeElement.dataset.sw, 'kind', 'フォーカスは種類の欄に残る');
+  key(app, app.document.activeElement, { key: 'z', ctrlKey: true });
+  assert.equal(step('w-6').kind, 'task');
+  key(app, app.document.activeElement, { key: 'y', ctrlKey: true });
+  assert.equal(step('w-6').kind, 'doc');
+  key(app, app.document.activeElement, { key: 'Delete' });
+  key(app, app.document.activeElement, { key: 'Backspace' });
+  assert.equal(sys().swimlane.steps.length, 8);
 });

@@ -239,3 +239,42 @@ test('列を自動で付ける: 列のない作業に、矢印の順から列を
   assert.deepEqual(plain(api.swimAutoCols([{ id: 'x' }, { id: 'y' }], [])), [{ id: 'x', col: 0 }, { id: 'y', col: 1 }], '矢印も列もなければ、左から順に');
   assert.deepEqual(plain(api.swimAutoCols([{ id: 'x', col: 2 }], [])), [{ id: 'x', col: 2 }]);
 });
+
+// ── 見直しで見つけたもの（第 9 段階の T9）──
+// 線の d（M x1,y1 C a,b c,d x2,y2）の上の点を、細かく区切って返す
+function curvePoints(d) {
+  const n = d.match(/-?\d+(\.\d+)?/g).map(Number);
+  const pts = [];
+  for (let k = 0; k <= 100; k++) {
+    const t = k / 100;
+    const b = [(1 - t) ** 3, 3 * (1 - t) ** 2 * t, 3 * (1 - t) * t * t, t ** 3];
+    pts.push([0, 1].map((j) => b[0] * n[j] + b[1] * n[2 + j] + b[2] * n[4 + j] + b[3] * n[6 + j]));
+  }
+  return pts;
+}
+test('スイムレーン図の 2 本並んだ線（行きと差し戻し）の文字は、線の向きに直角に外側へ離し、もう 1 本の線に下地を重ねない', async (t) => {
+  const { app, api, S, sys } = await boot(t);
+  const box = dom(app, api.swimlaneHtml(S(), sys('y-trip')));
+  // 線は矢印の順（e-1・e-2・e-3・e-4・e-6）。文字の下地は「承認」「差し戻し」の順
+  const lines = [...box.querySelectorAll('svg path[marker-end]')];
+  const forward = curvePoints(lines[1].getAttribute('d')); // e-2: 申請を入力する → 承認する（帯をまたぐ急な線）
+  const back = curvePoints(lines[3].getAttribute('d')); // e-4: 差し戻し
+  const labels = [...box.querySelectorAll('svg rect')].filter((r) => r.getAttribute('rx') === '4');
+  assert.equal(labels.length, 2);
+  const r = ['x', 'y', 'width', 'height'].map((a) => Number(labels[1].getAttribute(a)));
+  const inside = ([x, y]) => x > r[0] - 2 && x < r[0] + r[2] + 2 && y > r[1] - 2 && y < r[1] + r[3] + 2;
+  assert.equal(forward.some(inside), false, '行きの線に重ねない');
+  assert.equal(back.some(inside), false, '自分の線にも重ねない');
+  const text = [...box.querySelectorAll('svg text')].find((x) => x.textContent === '差し戻し');
+  assert.ok(Number(text.getAttribute('x')) >= r[0], '文字は下地の中');
+});
+test('列を自動で付ける: 矢印の並びの順によらない（作業の並びで前へ進む矢印を先に数え、戻る矢印〔差し戻し〕を輪を閉じる矢印にする）', async (t) => {
+  const { api } = await boot(t);
+  const steps = ['A', 'B', 'C'].map((id) => ({ id, roleId: 'l-app' }));
+  const cols = (edges) => plain(api.swimAutoCols(steps, edges).map((w) => w.col));
+  const fwd = [{ from: 'A', to: 'B' }, { from: 'B', to: 'C' }];
+  const back = { from: 'C', to: 'B', label: '差し戻し' };
+  assert.deepEqual(cols([...fwd, back]), [0, 1, 2]);
+  assert.deepEqual(cols([fwd[0], back, fwd[1]]), [0, 1, 2], '差し戻しが行きより先に並んでいても同じ');
+  assert.deepEqual(cols([back, fwd[1], fwd[0]]), [0, 1, 2]);
+});

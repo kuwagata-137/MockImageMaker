@@ -180,48 +180,60 @@ test('画面設計のカード: 小見出し「画面設計 2 つ」・designIds
   assert.equal($('#sys-list .sys-add').textContent, '＋ 画面設計を入れる ▾');
 });
 
-test('カードを押すと、その画面設計の編集の画面を開く。「← システムへ」（アプリのメニューの「一覧へ戻る」も）でシステムの画面へ戻る。最初の画面から開いたときは今までどおり', async (t) => {
+test('カードを押すと、その画面設計の編集の画面を開く。メニューバーの「← システムへ」（命令 backToSystem）でシステムの画面へ戻る。最初の画面から開いたときは今までどおり', async (t) => {
   const { app, api, $, $$, entry } = await boot(t);
   click(entry('roles'));
   click($$('#sys-list .sys-dcard')[1]);
   assert.deepEqual([api.ui.view, api.ui.designId], ['editor', 'd-emp']);
-  const back = $('#toolbar [data-action="home"]');
+  const back = $('#tb-home');
+  assert.equal(back.dataset.action, 'back-system');
   assert.equal(back.textContent, '←システムへ');
   assert.equal(back.title, '出張申請システムの画面へ戻ります');
   click(back);
   assert.deepEqual([api.ui.view, api.ui.systemId, api.ui.sysPanel], ['system', 'y-trip', 'roles'], '開いていた入口のまま');
-  // アプリのメニューの「一覧へ戻る」
+  // 命令 backToSystem
   click($$('#sys-list .sys-dcard')[0]);
-  api.runCommand('goHome');
+  api.runCommand('backToSystem');
   assert.deepEqual([api.ui.view, api.ui.systemId], ['system', 'y-trip']);
   // 編集の画面から、ほかの画面設計を開いても、戻る先はシステムのまま
   click($$('#sys-list .sys-dcard')[0]);
   api.openDesign('d-cli');
-  assert.equal($('#toolbar [data-action="home"]').textContent, '←システムへ');
-  api.runCommand('goHome');
+  assert.equal($('#tb-home').textContent, '←システムへ');
+  click($('#tb-home'));
   assert.equal(api.ui.view, 'system');
   // 最初の画面から開いたとき
   api.goHome();
   api.openDesign('d-emp');
-  assert.equal($('#toolbar [data-action="home"]').textContent, '←一覧へ');
-  assert.equal($('#toolbar [data-action="home"]').title, '画面設計の一覧へ戻ります');
-  api.runCommand('goHome');
-  assert.equal(api.ui.view, 'home');
+  assert.equal($('#tb-home').dataset.action, 'home');
+  assert.equal($('#tb-home').textContent, '←一覧へ');
+  assert.equal($('#tb-home').title, '画面設計の一覧へ戻ります');
+  api.runCommand('backToSystem');
+  assert.equal(api.ui.view, 'home', '戻るシステムがなければ最初の画面へ');
   assert.equal(app.window.document.querySelector('#sys-view'), null);
+});
+
+test('アプリのメニューの「一覧へ戻る」（命令 goHome）は、システムの画面から開いた画面設計でも、いつも最初の画面へ行く', async (t) => {
+  const { api, $, $$ } = await boot(t);
+  click($$('#sys-list .sys-dcard')[0]);
+  assert.equal(api.ui.view, 'editor');
+  api.runCommand('goHome');
+  assert.deepEqual([api.ui.view, api.ui.systemId], ['home', null]);
+  assert.ok($('.home-head'));
 });
 
 test('「← システムへ」: 戻る先のシステムがごみ箱に入った・消えたときは、最初の画面へ戻る', async (t) => {
   const { api, $, $$ } = await boot(t);
   click($$('#sys-list .sys-dcard')[0]);
   api.actions.trashSystem('y-trip');
-  assert.match($('#toolbar [data-action="home"]').textContent, /一覧へ/);
-  api.runCommand('goHome');
+  assert.match($('#tb-home').textContent, /一覧へ/);
+  assert.equal($('#tb-home').dataset.action, 'home');
+  api.runCommand('backToSystem');
   assert.equal(api.ui.view, 'home');
   api.actions.restoreSystem('y-trip');
   api.openSystem('y-trip');
   click($$('#sys-list .sys-dcard')[0]);
   api.actions.deleteSystemForever('y-trip');
-  click($('#toolbar [data-action="home"]'));
+  click($('#tb-home'));
   assert.equal(api.ui.view, 'home');
 });
 
@@ -322,7 +334,7 @@ test('「＋ 画面設計を入れる ▾」: 最初の画面と同じ 3 つの�
   setValue($('.modal [name=name]'), '旅費の精算', 'input');
   click($('[data-dlg="ok"]'));
   await waitFor(() => api.ui.view === 'editor', { label: '編集の画面' });
-  assert.equal($$('#toolbar [data-action="home"]')[0].textContent, '←システムへ');
+  assert.equal($('#tb-home').textContent, '←システムへ');
 });
 
 // ── 概要 ──
@@ -540,7 +552,7 @@ test('スイムレーン図: 役割がないときは案内の文と「役割を
 test('履歴: 日時・行（AI の行は紫・戻す前の状態は灰色）・そのときの中身・「この状態に戻す…」。新しい行が上', async (t) => {
   const { $, $$, entry } = await boot(t);
   click(entry('history'));
-  assert.match($('#sys-view .map-note').textContent, /AI がこのシステム（説明・役割・スイムレーン図・画面設計の並び）を直す前の中身を、自動で残しています（新しい方から 10 行まで）。「この状態に戻す…」で戻したときは、戻す前の中身を「戻す前の状態」の行に残します（これも新しい方から 10 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。/);
+  assert.match($('#sys-view .map-note').textContent, /AI がこのシステム（名前・説明・役割・スイムレーン図・画面設計の並び）を直す前の中身を、自動で残しています（新しい方から 10 行まで）。「この状態に戻す…」で戻したときは、戻す前の中身を「戻す前の状態」の行に残します（これも新しい方から 10 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。/);
   assert.deepEqual($$('#sys-view thead th').map((e) => e.textContent), ['日時', '行', 'そのときの中身', '']);
   const rows = $$('#sys-view tbody tr').map((tr) => [...tr.children].map((td) => td.textContent));
   assert.deepEqual(rows, [
@@ -670,4 +682,37 @@ test('命令: 編集の画面だけの命令は、この画面で来ても何も
   // 「← 一覧へ」
   click($('#toolbar [data-action="home"]'));
   assert.equal(api.ui.view, 'home');
+});
+
+// ── 見直しで見つけたもの（第 9 段階の T9）──
+test('役割の入口の説明: まだない動き（ステータスの操作の「操作する人」と同じ名前を同じ役割として扱う）は書かない', async (t) => {
+  const { $, entry } = await boot(t);
+  click(entry('roles'));
+  assert.equal($('#sys-view .map-note').textContent, '役割は、スイムレーン図の横の帯になります。上から順に帯を並べます。');
+});
+
+test('履歴の「この状態に戻す…」: 今と同じ中身の行では、確かめの窓を出さず何もしない（行も更新日時も元に戻すの履歴も変えない）。お知らせで知らせる', async (t) => {
+  // 15:00 の「戻す前の状態」は、今と同じ中身（いちばん上の行）
+  const st = sampleState();
+  const y0 = st.systems[0];
+  y0.revisions.push({ id: 'r-same', kind: 'restore', date: at(15, 0), note: '「Claude Code が直す前の状態（2026-10-15）」に戻す前の状態',
+    snapshot: plain({ name: y0.name, description: y0.description, roles: y0.roles, swimlane: y0.swimlane, designIds: y0.designIds }) });
+  const { app, api, $, $$, entry, sys, toast } = await boot(t, st);
+  click(entry('history'));
+  const before = sys();
+  const undo0 = api.store.undoStack.length;
+  click($$('#sys-view [data-action="sys-rev-restore"]')[0]);
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal($('.modal'), null, '確かめの窓を出さない');
+  assert.equal(toast(), '今の中身と同じなので、戻すことはありません。');
+  assert.deepEqual(sys(), before);
+  assert.equal(api.store.undoStack.length, undo0);
+  // actions から呼んでも変えない
+  assert.equal(api.actions.restoreSystemRevision('y-trip', 'r-same'), false);
+  assert.deepEqual(sys(), before);
+  // 違う中身の行は今までどおり
+  click($$('#sys-view [data-action="sys-rev-restore"]')[1]);
+  await waitFor(() => $('.modal'));
+  key(app, $('[data-dlg="cancel"]'), { key: 'Escape' });
+  await waitFor(() => !$('.modal'));
 });

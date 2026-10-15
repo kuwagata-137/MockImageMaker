@@ -616,7 +616,7 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .sys-swim .mnode.sw{cursor:grab}
 .sys-swim.linking .mnode.sw,.sys-swim.linking .swim-inner,.sys-swim.armed .mnode.sw,.sys-swim.armed .swim-inner{cursor:crosshair}
 .mnode.sw.link-from{outline:3px solid #3b82f6;outline-offset:3px}
-.mnode.sw.dragging{box-shadow:0 6px 18px rgba(15,23,42,.25);opacity:.92}
+.mnode.sw.dragging{z-index:3;box-shadow:0 6px 18px rgba(15,23,42,.25);opacity:.92}
 .mnode.sw.relink-to{outline:3px solid #16a34a;outline-offset:3px}
 .mnode.sw.swim-replace{box-shadow:0 0 0 6px rgba(249,115,22,.35)}
 .swim-plus{position:absolute;z-index:3;width:18px;height:18px;border-radius:50%;background:#2563eb;border:1.5px solid #fff;box-sizing:border-box;cursor:pointer;box-shadow:0 1px 3px rgba(15,23,42,.3)}
@@ -643,6 +643,9 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .sw-kinds span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:46px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:10.5px;line-height:1.15;color:#334155;text-align:center;white-space:pre-line}
 .sw-kinds input:checked+span{border-color:#2563eb;background:#eff6ff;color:#1d4ed8;font-weight:700;box-shadow:0 0 0 1px #2563eb}
 .sw-kinds input:focus-visible+span{box-shadow:0 0 0 2px rgba(59,130,246,.35)}
+/* 置き場と種類の 6 つのボタンは、絵を上に、文字を下にそろえる（真ん中にそろえると、文字が 2 行の「システムへの入力」だけ絵が上に寄っていた。T9 の見直し） */
+#sys-box .pal-btn,.sw-kinds span{justify-content:space-between;height:50px;padding:5px 2px 4px}
+.sw-kinds span svg{flex:none}
 .sw-ref{border:2px solid #1d3f6e;border-radius:8px;padding:9px 10px 0;margin-bottom:12px}
 .sw-ref-title{font-size:12px;font-weight:700;color:#1d3f6e;margin-bottom:8px}
 .sw-ref .field{margin-bottom:9px}
@@ -2830,6 +2833,8 @@ function systemFromSnapshot(snap, state) {
   c.swimlane.steps.forEach((w) => dropMissingStepRef(state, w.ref));
   return systemContentOf(c);
 }
+// 履歴の行 r の中身に戻しても、今のシステム y の中身と変わらないか（写しを戻すときの形〔systemFromSnapshot〕に直して比べる。T9 の見直し）
+const sameAsSystemRevision = (state, y, r) => canonicalJson(systemFromSnapshot(r.snapshot, state)) === systemContent(y);
 // 履歴の行のうち、その種類（kind）の行を新しい方から max 行まで残し、古い行から消す（ほかの種類の行は消さない。行は古い順に並んでいる）。
 // x は画面設計かシステム
 function trimRevisionRows(x, kind, max) {
@@ -3513,11 +3518,11 @@ const actions = {
   // システムの履歴の行（AI が直す前の状態・戻す前の状態）の中身に戻す（q65。人がシステムの画面の「履歴」から戻す。AI の道具はない）。
   // 今の中身を「戻す前の状態」の行に残してから、写しの中身（名前・説明・役割・スイムレーン・画面設計の並び）で置き換える。
   // 写しにあって今ない画面設計は外し、作業の指す先も今の中身で検める（systemFromSnapshot）。1 回の変更なので、元に戻す 1 回で戻る。
-  // 「戻す前の状態」の行は新しい方から 10 行まで。戻した行がない・写しがないときは false
+  // 「戻す前の状態」の行は新しい方から 10 行まで。戻した行がない・写しがない・写しの中身が今と同じ（T9 の見直し）ときは false
   restoreSystemRevision(sysId, rowId) {
     const y = editableSystem(sysId);
     const r = y && rowId ? y.revisions.find((x) => isObj(x) && x.id === rowId) : null;
-    if (!hasSnapshot(r)) return false;
+    if (!hasSnapshot(r) || sameAsSystemRevision(store.state, y, r)) return false;
     const title = systemRevisionTitle(r);
     return mutateSystem(sysId, (yy, s) => {
       const from = systemFromSnapshot(r.snapshot, s);
@@ -4256,6 +4261,10 @@ function showDialog({ title, body, okLabel = 'OK', okClass = 'primary', init, co
       // ボタンの上の Enter は、ブラウザの本来の動き（そのボタンを押す）に任せる。複数行の欄では改行にする
       if (e.target && e.target.closest && e.target.closest('button, textarea')) return;
       e.preventDefault();
+      // 名前で探す欄の Enter は、探すだけで肯定にしない。肯定のボタンを押せないときも肯定にしない（T9 の見直し。入れる窓で、
+      // 探してから Enter を押すと、選んでいた画面設計を入れて窓が閉じていた・何も選んでいないと誤りの文が出ていた）
+      if (e.target && e.target.matches && e.target.matches('input[type="search"]')) return;
+      if ($('[data-dlg="ok"]', modal).disabled) return;
       ok();
     }
     document.addEventListener('keydown', onKey, true);
@@ -4830,8 +4839,9 @@ function mapEdgesSvg(model, pos, w, h, o = {}) {
     }
     const lh = 16 + (label.length - 1) * 15;
     const tw = labelWidth(label);
-    const [mx, my] = !vert ? [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)]
-      : g.detour ? [outer + 8 + tw / 2, g.my] : [g.mx + (outside || 1) * (tw / 2 + 12), g.my];
+    const [mx, my] = o.normalOutside && outside && !vert && g.tx != null ? edgeLabelOutside(g, outside, tw, lh)
+      : !vert ? [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)]
+        : g.detour ? [outer + 8 + tw / 2, g.my] : [g.mx + (outside || 1) * (tw / 2 + 12), g.my];
     const text = label.map((s, j) => `<text x="${(mx - tw / 2 + 6).toFixed(1)}" y="${(my + 4 + j * 15 - (label.length - 1) * 7.5).toFixed(1)}" font-size="${j ? 11 : 12}" font-weight="${(j && !o.flat) || st.light ? 400 : 700}" fill="${j && !o.flat ? '#475569' : st.col}">${esc(s)}</text>`).join('');
     const tag = `
       <rect x="${(mx - tw / 2).toFixed(1)}" y="${(my - 9 - (label.length - 1) * 7.5).toFixed(1)}" width="${tw}" height="${16 + (label.length - 1) * 15}" rx="4" fill="#fff" opacity=".92"/>${text}`;
@@ -4846,6 +4856,16 @@ function mapEdgesSvg(model, pos, w, h, o = {}) {
     : mapMarker(`${idp}-arrow-n`, '#1d3f6e') + mapMarker(`${idp}-arrow-g`, '#16a34a');
   return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>${defs}
     </defs>${o.under || ''}${paths}</svg>`;
+}
+// 同じ 2 つの箱の間に 2 本並んだ線の文字の真ん中（スイムレーン図。VIEW_DRAW の normalOutside）。線の真ん中の向きに直角に、外側（outside。
+// -1 は上〔縦の線では左〕の線、1 は下〔右〕の線）へ、下地が自分の線から 8 離れるまで離す。横の線は今までどおり上と下（8 ＋ 高さの半分）。帯をまたぐ急な線では横へ離す
+// （上と下へ離すと、下地が、すぐそばを通るもう 1 本の線〔行きと差し戻し〕を途切れさせていた。T9 の見直し）
+function edgeLabelOutside(g, outside, tw, lh) {
+  const len = Math.hypot(g.tx, g.ty) || 1;
+  let [nx, ny] = [-g.ty / len, g.tx / len];
+  if (ny < 0 || (ny === 0 && nx < 0)) [nx, ny] = [-nx, -ny]; // 下向きの法線（上の線の外側は、その逆）
+  const d = (Math.abs(nx) * tw) / 2 + (Math.abs(ny) * lh) / 2 + 8;
+  return [g.mx + outside * d * nx, g.my + outside * d * ny];
 }
 // 箱のどちらの縁（l・r・t・b）から線を出すか
 function mapSides(a, b) {
@@ -4874,6 +4894,7 @@ function mapPorts(model, pos) {
   return out;
 }
 // 1 本の矢印の形。d は線の道のり、(mx, my) は文字を書く真ん中。detour は、ほかの箱を避けて隙間を通したか。
+// (tx, ty) は、隙間を通さない線の真ん中の向き（曲線の接線。スイムレーン図で、2 本並んだ線の文字を線に直角に離すときに使う。T9 の見直し）。
 // shift は、隙間を通す線の高さをずらす量（同じ高さを通る線が重ならないように。画面の移り方の図）
 function mapEdgeGeometry(a, b, port, others, shift = 0) {
   const f = (n) => n.toFixed(1);
@@ -4890,7 +4911,11 @@ function mapEdgeGeometry(a, b, port, others, shift = 0) {
   const c1 = horiz ? [x1 + s * off, y1] : [x1, y1 + s * off];
   const c2 = horiz ? [x2 - s * off, y2] : [x2, y2 - s * off];
   const way = horiz ? mapDetour([x1, y1], c1, c2, [x2, y2], others) : null;
-  if (!way) return { detour: false, mx: (x1 + x2) / 2, my: (y1 + y2) / 2, d: `M${f(x1)},${f(y1)} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(x2)},${f(y2)}` };
+  if (!way) {
+    const tan = (k) => 0.75 * (c1[k] - [x1, y1][k]) + 1.5 * (c2[k] - c1[k]) + 0.75 * ([x2, y2][k] - c2[k]);
+    return { detour: false, mx: (x1 + x2) / 2, my: (y1 + y2) / 2, tx: tan(0), ty: tan(1),
+      d: `M${f(x1)},${f(y1)} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(x2)},${f(y2)}` };
+  }
   const { xa, xb } = way;
   const yd = way.yd + shift;
   const [ma, mb] = [(x1 + xa) / 2, (xb + x2) / 2];
@@ -4928,7 +4953,8 @@ const VIEW_DRAW = {
   process: { style: (e) => (e.kind === 'back' ? { col: '#ea580c', w: 2, dash: '6 4', mark: 'o' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels.slice(0, 2), vertical: true },
   flow: { style: (e) => (e.kind === 'link' ? { col: '#16a34a', w: 2, dash: '3 4', mark: 'g' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels.slice(0, 3), flat: true, lanes: true },
   // スイムレーン図（第 9 段階）: 流れは紺の実線、戻る流れ（差し戻しなど。列が左へ戻る矢印）は橙の点線
-  swimlane: { style: (e) => (e.kind === 'back' ? { col: '#ea580c', w: 2, dash: '6 4', mark: 'o' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels, flat: true },
+  // 2 本並んだ線（行きと差し戻し）の文字は、線の向きに直角に離す（normalOutside。T9 の見直し）
+  swimlane: { style: (e) => (e.kind === 'back' ? { col: '#ea580c', w: 2, dash: '6 4', mark: 'o' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels, flat: true, normalOutside: true },
 };
 // ステータスの移り方の図。箱＝ステータス（並びの順。order）、矢印＝操作（前と次の両方があるものだけ。並びで前へ戻る操作は kind 'back'）。
 // 矢印の文字は「操作の名前（操作する人）」と、2 行目に条件。outs は、そのステータスから出ていく操作の数
@@ -5231,12 +5257,16 @@ function swimFitZoom(w, avail) {
 // 列はつながりの図と同じく、矢印の元から何段目か（mapForwardEdges で輪を閉じる矢印〔差し戻しなど〕を外し、mapRanks で決める）。
 // 列を書いた作業はそのまま動かさず、列のない作業は、前の作業（矢印の元）のいちばん右の列の次にする。前の作業がなく、列を書いた
 // 次の作業があれば、そのすぐ左の列。矢印のない作業は、作業の並びの順に、列のある作業のいちばん右の次の列（作業を足す addStep と同じ）
+// 輪を閉じる矢印として外すのは、作業の並び（steps の順）で前へ戻る矢印（差し戻しなど）にする（前へ進む矢印を order 0 で先に足し、戻る矢印を
+// order 1 で後に足す。T9 の見直し。矢印の並びの順で足していたので、差し戻しが先に並ぶと、差し戻しが流れになり、進む矢印が戻る流れになっていた）
 function swimAutoCols(steps, edges) {
   const out = steps.map((w) => ({ ...w }));
   const byId = new Map(out.map((w) => [w.id, w]));
+  const at = new Map(out.map((w, i) => [w.id, i]));
   const model = {
     nodes: out.map((w) => ({ key: w.id })),
-    edges: edges.filter((e) => isObj(e) && byId.has(e.from) && byId.has(e.to) && e.from !== e.to).map((e) => ({ from: e.from, to: e.to, order: 0 })),
+    edges: edges.filter((e) => isObj(e) && byId.has(e.from) && byId.has(e.to) && e.from !== e.to)
+      .map((e) => ({ from: e.from, to: e.to, order: at.get(e.to) > at.get(e.from) ? 0 : 1 })),
   };
   const forward = mapForwardEdges(model);
   const rank = mapRanks(model, forward);
@@ -5625,8 +5655,13 @@ function openRenameDialog(d, label = '画面設計の名前') {
   });
 }
 
+// 画面設計の完全な削除の確かめ。ごみ箱にないシステムに入っていれば、どのシステムからも外れ、スイムレーン図の作業の指す先も外れることを書く（T9 の見直し）
 function openDeleteForeverDialog(d) {
   const importers = designsImporting(store.state, d.id);
+  const systems = systemsOf(store.state, d.id);
+  const sysNote = systems.length
+    ? `<p style="margin-top:6px">「${esc(d.name)}」は、${esc(systems.map((y) => y.name).join('・'))}に入っています。完全に削除すると、どのシステムからも外れ、スイムレーン図の作業の指す先も外れます。</p>`
+    : '';
   const note = importers.length
     ? `<p class="warn">このモックの項目を、ほかの ${importers.length} つの画面設計（${esc(importers.map((x) => x.name).join('・'))}）が取り込んでいます。完全に削除すると、取り込んだ側の項目は、今の中身で固定されます。</p>`
     : '';
@@ -5634,14 +5669,14 @@ function openDeleteForeverDialog(d) {
     title: '完全に削除',
     okLabel: '完全に削除する',
     okClass: 'danger',
-    body: `<p>「${esc(d.name)}」を完全に削除します。</p><p class="warn">完全に削除すると、元に戻せません（「元に戻す」でも戻りません）。</p>${note}`,
+    body: `<p>「${esc(d.name)}」を完全に削除します。</p><p class="warn">完全に削除すると、元に戻せません（「元に戻す」でも戻りません）。</p>${sysNote}${note}`,
   });
 }
-// システムの完全な削除の確かめ（入っていた画面設計は残る。戻せないので、元に戻すの履歴も消える）
+// システムの完全な削除の確かめ（入っていた画面設計は残る。戻せないので、元に戻すの履歴も消える）。ボタンは画面設計の窓と同じ「完全に削除する」
 function openDeleteSystemDialog(y) {
   return showDialog({
     title: '完全に削除',
-    okLabel: '完全に削除',
+    okLabel: '完全に削除する',
     okClass: 'danger',
     body: `<p>「${esc(y.name)}」を完全に削除します。システムの役割とスイムレーン図が消えます。入っていた画面設計は消えません。元に戻せません（元に戻す〔Ctrl+Z〕の履歴も消えます）。</p>`,
   });
@@ -6090,7 +6125,7 @@ function sysRolesHtml(y) {
       ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を消す`, '✕', false)}</div>`;
   }).join('');
   return `<div class="itable" style="max-width:760px">${sysHead('役割', y)}
-    <p class="map-note">役割は、スイムレーン図の横の帯になります。上から順に帯を並べます。ステータスの操作の「操作する人」に同じ名前を書くと、同じ役割として扱います。</p>
+    <p class="map-note">役割は、スイムレーン図の横の帯になります。上から順に帯を並べます。</p>
     ${rows || '<p class="sys-empty">まだ役割がありません。「＋ 役割を足す」で、申請者・上長などの役割を足します。</p>'}
     <button class="lk-add" data-action="sys-role-add">＋ 役割を足す</button></div>`;
 }
@@ -6227,7 +6262,7 @@ function sysHistoryHtml(y) {
     ? `<table><thead><tr><th>日時</th><th>行</th><th>そのときの中身</th><th></th></tr></thead><tbody>${rows.map(sysHistoryRowHtml).join('')}</tbody></table>`
     : '<p class="sys-empty">まだ履歴はありません。AI がこのシステムを直すと、直す前の中身がここに残ります。</p>';
   return `<div class="itable sys-hist" style="max-width:980px">${sysHead('履歴', y)}
-    <p class="map-note">AI がこのシステム（説明・役割・スイムレーン図・画面設計の並び）を直す前の中身を、自動で残しています（新しい方から ${AI_ROWS_MAX} 行まで）。「この状態に戻す…」で戻したときは、戻す前の中身を「戻す前の状態」の行に残します（これも新しい方から ${SYSTEM_RESTORE_ROWS_MAX} 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。</p>
+    <p class="map-note">AI がこのシステム（名前・説明・役割・スイムレーン図・画面設計の並び）を直す前の中身を、自動で残しています（新しい方から ${AI_ROWS_MAX} 行まで）。「この状態に戻す…」で戻したときは、戻す前の中身を「戻す前の状態」の行に残します（これも新しい方から ${SYSTEM_RESTORE_ROWS_MAX} 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。</p>
     ${table}</div>`;
 }
 // 行の名前は、AI の行は紫（「Claude Code が直す前の状態」）、戻す前の状態は灰色（マウスを乗せると、どの行に戻す前かを出す）
@@ -6239,11 +6274,13 @@ function sysHistoryRowHtml(r) {
     <td>${snap ? esc(sysContentCounts(r.snapshot)) : '（中身の写しがありません）'}</td>
     <td><button class="btn small" data-action="sys-rev-restore" data-id="${esc(r.id)}"${snap ? '' : ' disabled'}>この状態に戻す…</button></td></tr>`;
 }
-// 履歴の行の中身に戻す（確かめの窓。最初はキャンセル。画面設計の「前の版に戻す」と同じ）。写しにあって今ない画面設計は入らないことも書く
+// 履歴の行の中身に戻す（確かめの窓。最初はキャンセル。画面設計の「前の版に戻す」と同じ）。写しにあって今ない画面設計は入らないことも書く。
+// 写しの中身が今と同じときは、確かめの窓を出さずにお知らせだけ（戻しても中身が変わらず、行と更新日時と元に戻すの履歴だけが増えていた。T9 の見直し）
 async function restoreSystemRevisionWithConfirm(sysId, rowId) {
   const y = findSystem(store.state, sysId);
   const r = y && y.revisions.find((x) => isObj(x) && x.id === rowId);
   if (!hasSnapshot(r)) return;
+  if (sameAsSystemRevision(store.state, y, r)) { toast('今の中身と同じなので、戻すことはありません。'); return; }
   const lost = r.snapshot.designIds.filter((id) => !findDesign(store.state, id)).length;
   const title = `${fmtDateTime(r.date)} の ${systemRevisionTitle(r)}`;
   const ok = await showDialog({
@@ -6782,44 +6819,52 @@ function deleteSwimSelection() {
 }
 
 // ── ドラッグ（drag.kind: 'swim-move'〔箱を動かす〕・'swim-end'〔矢印の端の付け替え〕・'swim-place'〔置き場から置く〕）──
-// 箱を動かす。4 ドットより動かしたらドラッグ。箱の真ん中のある帯と列に吸い付き、動かした先に置いた写しで図を描き直す（放すまで保存しない）
+// 箱を動かす（BDM と同じ: 4 ドットより動かしたらドラッグ。ドラッグの間は図を並べ直さず、箱をカーソルに付けて動かし、落とす枠〔#swim-cell。
+// 箱の真ん中のある帯と列〕を出す。放すと、その帯と列に吸い付く。放すまで保存しない）。帯と列は、ドラッグを始めたときの並べ方（layout）から求める。
+// T9 の見直しで直した: 前は、動かした先に置いた写しで図を描き直し、描き直した並べ方から帯と列を求めていたので、積んだ箱の下の段を横に動かすと
+// その帯が低くなり、同じ所のカーソルが 1 つ下の帯に入っていた（始めたときの並べ方から求めるだけにすると、描き直した図とカーソルの帯がずれて見えた）
 function startSwimMove(e, stepId) {
   const b = swimDrawn && swimDrawn.pos['w:' + stepId];
   if (!b) return;
   const p = swimPoint(e);
-  drag = { kind: 'swim-move', id: stepId, sx: e.clientX, sy: e.clientY, ox: p.x - b.x, oy: p.y - b.y, moved: false, cell: null };
+  drag = { kind: 'swim-move', id: stepId, sx: e.clientX, sy: e.clientY, ox: p.x - b.x, oy: p.y - b.y, moved: false, cell: null, layout: swimDrawn };
 }
+const swimNodeEl = (id) => [...document.querySelectorAll('#sys-swim .mnode.sw')].find((x) => x.dataset.node === 'w:' + id) || null;
 function dragSwimMove(ev) {
   if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
-  const y = findSystem(store.state, ui.systemId);
-  const w = y && findStep(y, drag.id);
-  if (!w || !swimDrawn) return;
+  const n = swimNodeEl(drag.id);
+  if (!n) return;
   if (!drag.moved) {
     drag.moved = true;
     document.body.classList.add('map-dragging');
     hideSwimPlus();
   }
+  n.classList.add('dragging'); // 元に戻すなどで図が描き直されたときも、今の箱に付ける
   const p = swimPoint(ev);
-  const cell = swimCellAt(swimDrawn, p.x - drag.ox + MAP_W / 2, p.y - drag.oy + MAP_H / 2);
-  if (!cell || (drag.cell && drag.cell.roleId === cell.roleId && drag.cell.col === cell.col)) return;
-  drag.cell = cell;
-  const moved = { ...y, swimlane: { ...y.swimlane, steps: y.swimlane.steps.map((x) => (x.id === w.id ? { ...x, roleId: cell.roleId, col: cell.col } : x)) } };
-  const keep = keepScroll(['#sys-swim']);
-  redrawSwimlane(y, moved);
-  keep();
-  const n = [...document.querySelectorAll('#sys-swim .mnode.sw')].find((x) => x.dataset.node === 'w:' + w.id);
-  if (n) n.classList.add('dragging');
+  const [x, top] = [p.x - drag.ox, p.y - drag.oy];
+  Object.assign(n.style, { left: x + 'px', top: top + 'px' });
+  drag.cell = swimCellAt(drag.layout, x + MAP_W / 2, top + MAP_H / 2);
+  clearSwimDropMarks();
+  showSwimCell(drag.layout, drag.cell);
 }
-// 放したとき。帯か列が変わったら moveStep（元に戻すの 1 回分）。同じ枠なら描き直すだけ
+// 放したとき。帯か列が変わったら moveStep（元に戻すの 1 回分）。同じ枠に戻したとき（動かせなかったときも）は、箱を元の所に描き直す
 function endSwimMove(done) {
   document.body.classList.remove('map-dragging');
+  clearSwimDropMarks();
   if (!done.moved) return;
   const y = findSystem(store.state, ui.systemId);
   const w = y && findStep(y, done.id);
   if (!w) return;
   const c = done.cell;
-  if (c && (c.roleId !== w.roleId || c.col !== w.col)) actions.moveStep(y.id, w.id, { roleId: c.roleId, col: c.col });
-  else redrawSwimlane(y);
+  if (c && (c.roleId !== w.roleId || c.col !== w.col) && actions.moveStep(y.id, w.id, { roleId: c.roleId, col: c.col })) return;
+  redrawSwimlane(y);
+}
+// 落とす枠（帯 cell.laneIndex の列 cell.col の、いちばん上の段。置き場からのドラッグと箱のドラッグ）。layout は図の並べ方
+function showSwimCell(layout, cell) {
+  const inner = $('#sys-swim .swim-inner');
+  if (!cell || !inner) return;
+  const lane = layout.lanes[cell.laneIndex];
+  inner.insertAdjacentHTML('beforeend', `<div id="swim-cell" class="swim-cell" style="left:${SWIM_X0 + cell.col * SWIM_COL}px;top:${lane.y + SWIM_PAD}px;width:${MAP_W}px;height:${MAP_H}px"></div>`);
 }
 // 矢印の端の付け替え（選んだ矢印の両端のオレンジの ○ のドラッグ。BDM と同じく、動かない端からカーソルまでオレンジの破線。重ねた箱に印）
 function startSwimRelink(e, hit) {
@@ -6885,11 +6930,7 @@ function dragSwimPlace(ev) {
   const w = node && findStep(y, hit.id);
   if (w && w.kind !== drag.swimKind) { node.classList.add('swim-replace'); return; }
   const p = swimPoint(ev);
-  const cell = swimCellAt(swimDrawn, p.x, p.y);
-  const inner = $('#sys-swim .swim-inner');
-  if (!cell || !inner) return;
-  const lane = swimDrawn.lanes[cell.laneIndex];
-  inner.insertAdjacentHTML('beforeend', `<div id="swim-cell" class="swim-cell" style="left:${SWIM_X0 + cell.col * SWIM_COL}px;top:${lane.y + SWIM_PAD}px;width:${MAP_W}px;height:${MAP_H}px"></div>`);
+  showSwimCell(swimDrawn, swimCellAt(swimDrawn, p.x, p.y));
 }
 function endSwimPlace(done, ev) {
   const ghost = $('.swim-ghost');
@@ -6943,6 +6984,10 @@ function openSwimEditor(kind, id) {
   input.focus();
   input.select();
 }
+// 確定は、右の欄を作り直さずに保存し（commitKeepSysSide）、右の欄の同じ作業・同じ矢印の文字の欄の値だけを書き換える（T9 の見直し）。
+// 右の欄を押すと、押した時点（mousedown）の後にこの欄を離れて確定するので、右の欄を作り直すと、押した欄・ボタンが click の前に消え、
+// 1 回押しても効かなかった（その後の Backspace で、選んだままの作業の箱が消えた）。確定を後へずらしても、押したボタンが mouseup の前に作り直されるので直らない。
+// 右の欄がほかの作業を出しているとき（その作業の「次の作業」などに、直した作業の名前が出ている）は、今までどおり右の欄も描き直す
 function commitSwimEditor() {
   const ed = swimEditor;
   if (!ed) return;
@@ -6953,11 +6998,25 @@ function commitSwimEditor() {
   if (!y) return;
   if (ed.kind === 'step') {
     const w = findStep(y, ed.id);
-    if (w && v.trim() !== w.text) actions.updateStep(y.id, w.id, { text: v });
+    if (!w || v.trim() === w.text) return;
+    const save = () => actions.updateStep(y.id, w.id, { text: v });
+    if (ui.stepSel !== w.id) { save(); return; }
+    commitKeepSysSide(save);
+    syncSwimSideField('text', 'step', w.id, (findStep(findSystem(store.state, y.id), w.id) || w).text);
     return;
   }
+  // 矢印の文字は、右の欄では矢印の文字の欄（矢印の設定・元の作業の「次の作業」）にだけ出るので、いつも右の欄を作り直さない
   const e = y.swimlane.edges.find((x) => x.id === ed.id);
-  if (e && v.trim() !== e.label) actions.updateEdge(y.id, e.id, v);
+  if (!e || v.trim() === e.label) return;
+  commitKeepSysSide(() => actions.updateEdge(y.id, e.id, v));
+  const now = findSystem(store.state, y.id).swimlane.edges.find((x) => x.id === e.id);
+  syncSwimSideField('edge-label', 'edge', e.id, (now || e).label);
+}
+// 右の欄の文字の欄（data-sw が sw で、data-step か data-edge が id のもの）の値を value にする（右の欄は作り直さない）
+function syncSwimSideField(sw, attr, id, value) {
+  document.querySelectorAll(`#sys-side [data-sw="${sw}"]`).forEach((el) => {
+    if (el.dataset[attr] === id && el.value !== value) el.value = value;
+  });
 }
 function cancelSwimEditor() {
   const ed = swimEditor;
@@ -7153,17 +7212,18 @@ function updateToolbarState() {
   $('#tb-rev-arrow').setAttribute('aria-expanded', String(ui.revMenu));
   updateHomeButton();
 }
-// 「← 一覧へ」は、システムの画面から開いたときは「← システムへ」（第 9 段階）。文字が変わるときだけ書き換える
-// （右の欄を離れたときの保存で描き直しても、押した文字の要素が click の前に消えないように）
+// 「← 一覧へ」は、システムの画面から開いたときは「← システムへ」（第 9 段階。命令は backToSystem。T9 の見直しで goHome と分けた）。
+// 文字が変わるときだけ書き換える（右の欄を離れたときの保存で描き直しても、押した文字の要素が click の前に消えないように。ボタンは作り直さない）
 function updateHomeButton() {
   const label = $('#tb-home-label');
   if (!label) return; // 単体で開いた HTML には「一覧へ」がない
   const back = editorBackSystem();
   const text = back ? 'システムへ' : '一覧へ';
   if (label.textContent !== text) label.textContent = text;
+  $('#tb-home').dataset.action = back ? 'back-system' : 'home';
   $('#tb-home').title = back ? `${back.name}の画面へ戻ります` : '画面設計の一覧へ戻ります';
 }
-const VIEW_OK_ACTIONS = ['home', 'zoom-in', 'zoom-out', 'zoom-reset', 'mode-select', 'mode-hand'];
+const VIEW_OK_ACTIONS = ['home', 'back-system', 'zoom-in', 'zoom-out', 'zoom-reset', 'mode-select', 'mode-hand'];
 
 function screenListHtml(d) {
   const linked = mapModel(store.state, d.id).nodes.length - 1;
@@ -10863,18 +10923,26 @@ function runCommand(cmd) {
       if (ui.view !== 'editor') { toast('改訂する画面設計を開いてから選んでください。'); return true; }
       (cmd === 'addRevision' ? openAddRevisionDialog() : openRevisionsDialog()).catch(reportPageError);
       return true;
-    // システムの画面から開いた画面設計では「← システムへ」（そのシステムがごみ箱に入った・消えたときは最初の画面へ。第 9 段階）
+    // 一覧へ戻る（アプリのメニュー・メニューバーの「← 一覧へ」）。システムの画面から開いた画面設計でも、いつも最初の画面へ行く（T9 の見直しで決めた）
     case 'goHome':
+      if (ui.view === 'home' || standalone) return true;
+      goHome();
+      return true;
+    // 編集の画面のメニューバーの「← システムへ」（システムの画面から開いた画面設計。そのシステムがごみ箱に入った・消えたときは最初の画面へ。第 9 段階）
+    case 'backToSystem':
       if (ui.view === 'home' || standalone) return true;
       if (ui.view === 'editor' && editorBackSystem()) openSystem(ui.editorFrom);
       else goHome();
       return true;
-    // 新しい画面設計・新しいシステム（第 9 段階）。編集の画面・システムの画面からは、一覧へ戻ってから窓を出す
-    case 'newDesign': case 'newSystem':
+    // 新しい画面設計・新しいシステム（第 9 段階）。編集の画面・システムの画面からは、一覧へ戻ってから窓を出す。
+    // システムの画面から出した新しい画面設計の窓の「入れるシステム」の最初の値は、開いていたシステム（T9 の見直し。ほかからは選んでいるまとまり）
+    case 'newDesign': case 'newSystem': {
       if (standalone) return true;
+      const from = ui.view === 'system' ? ui.systemId : undefined;
       if (ui.view !== 'home') goHome();
-      (cmd === 'newDesign' ? newDesignWithDialog() : newSystemWithDialog()).catch(reportPageError);
+      (cmd === 'newDesign' ? newDesignWithDialog(from) : newSystemWithDialog()).catch(reportPageError);
       return true;
+    }
     // 書き出しと取り込み（第 5 段階）。単体で開いた HTML では、書き出しの窓と取り込みは出さず、HTML を保存し直すだけ（q37）
     case 'exportDialog':
       if (standalone) return true;
@@ -10931,7 +10999,7 @@ function runCommand(cmd) {
 }
 
 // 前の版を見ている間にも使える命令（見る・選ぶ・移る・拡大縮小と、今の中身に戻ってから行う命令）
-const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'importHtml', 'newDesign', 'newSystem', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'openProcess', 'openFlow', 'prevScreen', 'nextScreen',
+const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'backToSystem', 'importHtml', 'newDesign', 'newSystem', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'openProcess', 'openFlow', 'prevScreen', 'nextScreen',
   'zoomIn', 'zoomOut', 'zoomReset', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart', 'aiConnect'];
 
 // 揃える命令（メニューバー・右の欄・アプリのメニュー）と、alignedRects の how
@@ -10956,7 +11024,7 @@ const SIZE_BUTTONS = [
 const alignSvg = (inner) => `<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">${inner}</svg>`;
 
 const ACTION_COMMANDS = {
-  undo: 'undo', redo: 'redo', home: 'goHome', export: 'exportDialog', 'import-html': 'importHtml', 'save-html': 'saveHtml', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
+  undo: 'undo', redo: 'redo', home: 'goHome', 'back-system': 'backToSystem', export: 'exportDialog', 'import-html': 'importHtml', 'save-html': 'saveHtml', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'zoom-fit': 'zoomFit', 'swim-select': 'swimSelect', 'swim-connect': 'swimConnect', 'swim-delete': 'swimDelete', // システムの画面のスイムレーン図（第 9 段階の T6b）
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
@@ -11153,7 +11221,9 @@ function onKeyDown(e) {
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
   const cmd = keyCommand(e);
   if (!cmd) return;
-  if ((cmd === 'undo' || cmd === 'redo') && inField) return;
+  // 文字の欄の中の元に戻す・やり直すは、ブラウザの文字の取り消しに任せる。radio・checkbox（押した後もフォーカスが見えないまま残る）では、
+  // 画面の元に戻す・やり直すにする（T9 の見直し。どの画面でも。Delete・Backspace は、今までどおり欄の中の扱い）
+  if ((cmd === 'undo' || cmd === 'redo') && inField && !inField.matches('input[type="radio"], input[type="checkbox"]')) return;
   // 拡大縮小のキーは、編集の画面と、システムの画面のスイムレーン図だけ（ほかではブラウザに任せる）
   if (cmd.startsWith('zoom') && ui.view !== 'editor' && !sysZoomable()) return;
   e.preventDefault();
