@@ -693,6 +693,10 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .map-head i.g,.xp-legend i.g{border-top:2.5px dotted #16a34a}
 .xp-fit{display:flex;justify-content:center;align-items:flex-start}
 .xp-fit .mnode,.xp-png .mnode{cursor:default}
+.xp-proc{display:flex;gap:32px;align-items:flex-start}
+.xp-proc-tbl{flex:none}
+.xp-proc.stack{display:block}
+.xp-proc.stack .xp-proc-tbl{margin-top:16px}
 .xp-stage{margin:0 auto;position:relative}
 .xp-stage .screen{box-shadow:none;outline:1px solid #94a3b8}
 .xp-stage .callout{box-shadow:none;cursor:default}
@@ -7309,6 +7313,8 @@ function coverListRows(plan) {
   if (plan.changesPage) rows.push(`<tr class="lead"><td class="nm">${esc(plan.changesTitle)}</td><td class="dev"></td><td class="no">${plan.changesPage}</td></tr>`);
   if (plan.mapPage) rows.push(`<tr class="lead"><td class="nm">つながりの図</td><td class="dev"></td><td class="no">${plan.mapPage}</td></tr>`);
   if (plan.itemsPage) rows.push(`<tr class="lead"><td class="nm">データベースの項目の一覧表</td><td class="dev"></td><td class="no">${plan.itemsPage}</td></tr>`);
+  if (plan.processPage) rows.push(`<tr class="lead"><td class="nm">ステータスの移り方</td><td class="dev"></td><td class="no">${plan.processPage}</td></tr>`);
+  if (plan.flowPage) rows.push(`<tr class="lead"><td class="nm">画面の移り方</td><td class="dev"></td><td class="no">${plan.flowPage}</td></tr>`);
   plan.screens.forEach(({ s, i, page }) => rows.push(`<tr><td class="nm">${i + 1}　${esc(s.name)}</td><td class="dev">${DEVICES[s.device].label}</td><td class="no">${page}</td></tr>`));
   return rows;
 }
@@ -7423,7 +7429,7 @@ function splitItemRows(rows, aw, ah, measured, tableFn = printItemTable) {
 // つながりの図のページ（q35 案A）。凡例だけ出し（案内の文・並べ直すボタンなし）、箱のある所を切り出して本文に収まるように縮める（拡大しない）
 const hasMapLinks = (d, state) => mapModel(state, d.id).nodes.length > 1;
 function mapPageBody(d, state, aw, ah) {
-  const legend = '<div class="xp-legend"><span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span></div>';
+  const legend = `<div class="xp-legend">${VIEW_LEGENDS.map}</div>`;
   // 矢印の印の id は、編集の画面の図と重ならない名前にする（同じ id があると矢印が消えるため）
   const html = mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xp-map' }).replace(' id="map-inner"', '');
   const boxes = [...html.matchAll(/class="mnode[^"]*"[^>]*style="left:(-?[\d.]+)px;top:(-?[\d.]+)px;width:([\d.]+)px;height:([\d.]+)px"/g)].map((m) => m.slice(1).map(Number));
@@ -7435,11 +7441,56 @@ function mapPageBody(d, state, aw, ah) {
   const y0 = Math.max(0, Math.min(...boxes.map((b) => b[1])) - pad);
   const x1 = Math.min(mw, Math.max(...boxes.map((b) => b[0] + b[2])) + pad);
   const y1 = Math.min(mh, Math.max(...boxes.map((b) => b[1] + b[3])) + pad);
-  const [cw, ch] = [x1 - x0, y1 - y0];
-  const k = Math.min(1, aw / cw, (ah - 28) / ch); // 28 は凡例の分
-  return `${legend}<div class="xp-fit"><div style="width:${Math.floor(cw * k)}px;height:${Math.floor(ch * k)}px;position:relative;overflow:hidden">`
-    + `<div style="width:${cw}px;height:${ch}px;position:relative;zoom:${k.toFixed(4)}">`
-    + `<div style="position:absolute;left:${-x0}px;top:${-y0}px">${html}</div></div></div></div>`;
+  return legend + fitDiagram(html, { x0, y0, cw: x1 - x0, ch: y1 - y0 }, aw, ah - 28); // 28 は凡例の分
+}
+// 図の HTML の切り出す範囲（c: { x0, y0, cw, ch }）を、aw × ah に収まるように縮めて置く（拡大しない）
+function fitDiagram(html, c, aw, ah) {
+  const k = Math.min(1, aw / c.cw, ah / c.ch);
+  return `<div class="xp-fit"><div style="width:${Math.floor(c.cw * k)}px;height:${Math.floor(c.ch * k)}px;position:relative;overflow:hidden">`
+    + `<div style="width:${c.cw}px;height:${c.ch}px;position:relative;zoom:${k.toFixed(4)}">`
+    + `<div style="position:absolute;left:${-c.x0}px;top:${-c.y0}px">${html}</div></div></div></div>`;
+}
+
+// ステータスの移り方のページと画面の移り方のページ（第 8 段階。q59）。操作が 1 つもない・移る先が 1 本もないときは出さない
+const hasProcessPage = (d) => { const it = d.items.find((x) => x.type === 'status'); return !!it && it.props.actions.length > 0; };
+const hasFlowPage = (d, state) => flowModel(state, d).edges.length > 0;
+// 操作の一覧表（番号・操作・前のステータス → 次のステータス・操作する人・条件）
+const ACTION_COLS = '<colgroup><col style="width:8%"><col style="width:22%"><col style="width:32%"><col style="width:16%"><col style="width:22%"></colgroup>';
+const printActionTable = (rows) => `<table class="xp-itable">${ACTION_COLS}<thead><tr><th>番号</th><th>操作</th><th>前のステータス → 次のステータス</th><th>操作する人</th><th>条件</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+function actionRowsHtml(it) {
+  const name = (id) => esc(stateNameOf(it.props.states, id) || '（なし）');
+  return it.props.actions.map((a, i) => `<tr><td>${i + 1}</td><td>${esc(a.name)}</td><td>${name(a.from)} → ${name(a.to)}</td><td>${esc(a.role)}</td><td class="set">${esc(a.cond)}</td></tr>`);
+}
+// ステータスの移り方のページ。上に凡例、左に図（上から下へ。本文の幅の 45% まで縮める）、右に操作の一覧表。
+// 右に置くと表の幅が PROC_TABLE_MIN より狭くなるとき（縦の用紙）は、図（本文の高さの 6 割まで縮める）の下に、本文の幅いっぱいの表を置く。
+// 表が入りきらないときは、続きのページに表だけを出す。戻り値 { sub, body, rest（続きのページごとの表の行） }
+const PROC_TABLE_MIN = 520;
+function processPagePlan(d, state, aw, ah, measured) {
+  const it = d.items.find((x) => x.type === 'status');
+  const html = viewHtml('process', state, d, d.processPos || {}, { idPrefix: 'xp-proc', bare: true });
+  const c = diagramCrop(html);
+  const bh = ah - 28; // 凡例の分
+  const fw = Math.floor(aw * 0.45);
+  const side = c ? Math.floor(aw - c.cw * Math.min(1, fw / c.cw, bh / c.ch) - 32) : aw;
+  const stack = !!c && side < PROC_TABLE_MIN;
+  const fh = stack ? Math.floor(bh * 0.6) : bh;
+  const fig = c ? fitDiagram(html, c, stack ? aw : fw, fh) : '';
+  // 表の 1 ページ目に使える高さ。図の下に置くときは、図の高さと間（16）を引く
+  const th = stack ? bh - Math.floor(c.ch * Math.min(1, aw / c.cw, fh / c.ch)) - 16 : bh;
+  const rows = actionRowsHtml(it);
+  const first = splitItemRows(rows, stack ? aw : side, th, measured, printActionTable)[0] || [];
+  const rest = first.length < rows.length ? splitItemRows(rows.slice(first.length), aw, ah, measured, printActionTable) : [];
+  return {
+    sub: `ステータス ${it.props.states.length} つ・操作 ${it.props.actions.length} つ`,
+    body: `<div class="xp-legend">${VIEW_LEGENDS.process}</div><div class="xp-proc${stack ? ' stack' : ''}">${fig ? `<div>${fig}</div>` : ''}`
+      + `<div class="xp-proc-tbl"${stack ? '' : ` style="width:${side}px"`}>${printActionTable(first)}</div></div>`,
+    rest,
+  };
+}
+function flowPageBody(d, state, aw, ah) {
+  const html = viewHtml('flow', state, d, d.flowPos || {}, { idPrefix: 'xp-flow', bare: true });
+  const c = diagramCrop(html);
+  return `<div class="xp-legend">${VIEW_LEGENDS.flow}</div>${c ? fitDiagram(html, c, aw, ah - 28) : html}`;
 }
 
 // 画面と吹き出しと部品の設定の一覧表を 1 つに組む（q36 案A）。編集の画面と同じ並べ方（画面のまわり 240 ドット）を、
@@ -7528,9 +7579,10 @@ function diffSumHtml(df, info) {
   return `<span class="df-sum">${esc(df.title)}との違い：<b class="n">新 ${c.new}</b>・<b class="c">変 ${c.chg}</b>・<b class="d">削除 ${c.del}</b></span>`;
 }
 
-// PDF の中身を組む。opts { paper, orient, cover, map, items, screenIds（省略するとすべての画面）, diffRevId（比べる版の行の id） }。
+// PDF の中身を組む。opts { paper, orient, cover, map, items, process, flow, screenIds（省略するとすべての画面）, diffRevId（比べる版の行の id） }。
 // 表紙（入りきらなければ「画面の一覧（続き）」）→ 比べた版からの変更内容（違いの印を選んだときだけ）→ つながりの図（つながりがあるときだけ）→
-// 項目の一覧表（項目があるときだけ）→ 選んだ画面。戻り値 { html（印刷用の文書）, P（用紙）, pages（ページの HTML）, total }
+// 項目の一覧表（項目があるときだけ）→ ステータスの移り方（操作があるときだけ）→ 画面の移り方（移る先があるときだけ）→ 選んだ画面。
+// 戻り値 { html（印刷用の文書）, P（用紙）, pages（ページの HTML）, total }
 function exportDocument(d, state, opts, exportedAt = nowIso()) {
   const P = paperSize(opts.paper, opts.orient);
   const measured = canMeasure();
@@ -7541,6 +7593,8 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
   const df = opts.diffRevId ? exportDiff(d, state, opts.diffRevId) : null;
   const changesTitle = df ? `${df.title}からの変更内容` : '';
   const changeChunks = !df ? [] : df.result.rows.length ? splitItemRows(changeRowsHtml(df.result.rows), aw, ah, measured, printChangeTable) : [[]];
+  const proc = opts.process && hasProcessPage(d) ? processPagePlan(d, state, aw, ah, measured) : null;
+  const withFlow = !!opts.flow && hasFlowPage(d, state);
   // ページ番号は、表紙が何ページになるかで変わる。番号の桁で行の高さは変わらないので、仮の番号で 1 回分けてから決め直す
   const numbering = (coverPages) => {
     let n = coverPages;
@@ -7549,7 +7603,10 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
     const mapPage = withMap ? ++n : 0;
     const itemsPage = itemChunks.length ? n + 1 : 0;
     n += itemChunks.length;
-    return { changesPage, changesTitle, mapPage, itemsPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n };
+    const processPage = proc ? n + 1 : 0;
+    n += proc ? 1 + proc.rest.length : 0;
+    const flowPage = withFlow ? ++n : 0;
+    return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n };
   };
   let plan = numbering(opts.cover ? 1 : 0);
   let coverChunks = [];
@@ -7582,6 +7639,15 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
   itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`,
     sub: `項目 ${d.items.length} 個${rows.cut ? '・長い行は途中まで（全文はアプリか HTML で見られます）' : ''}`,
     body: printItemTable(rows), left: left('データベースの項目の一覧表'), right: `${plan.itemsPage + k} / ${total}` })));
+  if (proc) {
+    pages.push(pageFrame({ P, title: 'ステータスの移り方', sub: proc.sub, body: proc.body, left: left('ステータスの移り方'), right: `${plan.processPage} / ${total}` }));
+    proc.rest.forEach((rows, k) => pages.push(pageFrame({ P, title: 'ステータスの移り方（続き）', sub: '操作の一覧表', body: printActionTable(rows),
+      left: left('ステータスの移り方'), right: `${plan.processPage + 1 + k} / ${total}` })));
+  }
+  if (withFlow) {
+    pages.push(pageFrame({ P, title: '画面の移り方', sub: `画面 ${d.screens.length} つ・${flowEntryNote(state, d)}`, body: flowPageBody(d, state, aw, ah),
+      left: left('画面の移り方'), right: `${plan.flowPage} / ${total}` }));
+  }
   plan.screens.forEach(({ s, i, page }) => {
     const info = df ? df.result.screens[s.id] : null;
     const body = screenPageBody(screenComposite(d, s, 'p' + page, measured, info && { info, label: df.label }), aw, ah, measured);
@@ -7911,7 +7977,7 @@ async function saveStandalone() {
 
 // ── 書き出しの窓（q33）──
 // 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない）
-const exportOpts = { kind: 'pdf', paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, openAfter: true, diff: false };
+const exportOpts = { kind: 'pdf', paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, process: true, flow: true, openAfter: true, diff: false };
 const EXPORT_KINDS = [
   ['pdf', '📄', 'PDF', '印刷して渡す。1 画面＝1 ページ。表紙・つながりの図・項目の一覧表も入れられる'],
   ['html', '🌐', 'HTML', 'ブラウザで開いて、見る・直すことができる。直したものはアプリで取り込める'],
@@ -7946,7 +8012,7 @@ function exportDialogBody(d, desk, kind, hasMap) {
         <div class="field"><span>向き</span>${seg('xp-orient', slide ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
       </div>
       <div class="xp-sub">入れるページ</div>
-      <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', 'つながりの図', hasMap, 'ほかの画面設計とのつながりがないので、出しません')}${page('items', 'データベースの項目の一覧表', d.items.length > 0, '項目がないので、出しません')}</div>
+      <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', 'つながりの図', hasMap, 'ほかの画面設計とのつながりがないので、出しません')}${page('items', 'データベースの項目の一覧表', d.items.length > 0, '項目がないので、出しません')}${page('process', 'ステータスの移り方', hasProcessPage(d), 'ステータスを進める操作がないので、出しません')}${page('flow', '画面の移り方', hasFlowPage(d, store.state), 'ボタン・リンクの文字の移る先がないので、出しません')}</div>
       ${pick}
       ${diffPick('pdf')}
       <label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>書き出したら PDF を開く</span></label>
@@ -8012,9 +8078,10 @@ async function openExportDialog(designId) {
       const r2 = {
         kind: k, screenIds, paper: (box.querySelector('[name="xp-paper"]:checked') || {}).value || 'A4',
         orient: (box.querySelector('[name="xp-orient"]:checked') || {}).value || 'landscape',
-        cover: checked('cover'), map: checked('map'), items: checked('items'), openAfter: !!box.querySelector('[data-xopen]').checked, diffRevId, diffOn,
+        cover: checked('cover'), map: checked('map'), items: checked('items'), process: checked('process'), flow: checked('flow'),
+        openAfter: !!box.querySelector('[data-xopen]').checked, diffRevId, diffOn,
       };
-      if (!screenIds.length && !r2.cover && !r2.map && !r2.items) return { error: '入れるページか、書き出す画面を 1 つ以上選んでください。' };
+      if (!screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((key) => r2[key])) return { error: '入れるページか、書き出す画面を 1 つ以上選んでください。' };
       return r2;
     },
   });
@@ -8026,6 +8093,8 @@ async function openExportDialog(designId) {
     Object.assign(exportOpts, { paper: r.paper, orient: r.paper === 'slide' ? exportOpts.orient : r.orient, cover: r.cover, openAfter: r.openAfter });
     if (hasMap) exportOpts.map = r.map;
     if (d.items.length) exportOpts.items = r.items;
+    if (hasProcessPage(d)) exportOpts.process = r.process;
+    if (hasFlowPage(d, store.state)) exportOpts.flow = r.flow;
   }
   return runExport(d.id, r);
 }
@@ -8034,7 +8103,7 @@ function reportExport(res, what) {
   if (!res.ok) { toast(`${what} を書き出せませんでした（${res.error || 'わからない理由'}）。`); return; }
   toast(res.count > 1 ? `${res.count} 枚の ${what} を書き出しました（${res.dir}）。` : `${what} を書き出しました（${res.path}）。`);
 }
-// 書き出す。r は書き出しの窓の結果（{ kind, screenIds, paper, orient, cover, map, items, openAfter, diffRevId（比べる版。違いの印を付けないときは null） }）
+// 書き出す。r は書き出しの窓の結果（{ kind, screenIds, paper, orient, cover, map, items, process, flow, openAfter, diffRevId（比べる版。違いの印を付けないときは null） }）
 async function runExport(designId, r) {
   const d = findDesign(store.state, designId);
   if (!d) return null;
@@ -10076,11 +10145,12 @@ async function aiExportDesign(args) {
   const opts = {
     paper, orient, screenIds, diffRevId,
     cover: args.cover !== false, map: args.map !== false && hasMapLinks(d, S), items: args.items !== false && d.items.length > 0,
+    process: args.process !== false && hasProcessPage(d), flow: args.flow !== false && hasFlowPage(d, S),
   };
-  if (screenIds && !screenIds.length && !opts.cover && !opts.map && !opts.items) throw aiBad('入れるページか、書き出す画面を 1 つ以上選んでください。');
+  if (screenIds && !screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((k) => opts[k])) throw aiBad('入れるページか、書き出す画面を 1 つ以上選んでください。');
   const doc = exportDocument(d, S, opts);
   return new AiRendered(
-    { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items },
+    { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items, process: opts.process, flow: opts.flow },
     { kind: 'pdf', files: [{ name: `${base}.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi } }] },
   );
 }

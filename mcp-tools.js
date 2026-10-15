@@ -89,6 +89,8 @@ const TOOLS = [
       cover: z.boolean().optional().describe('PDF に表紙を入れる（既定は入れる）'),
       map: z.boolean().optional().describe('PDF につながりの図のページを入れる（つながりがあるとき。既定は入れる）'),
       items: z.boolean().optional().describe('PDF にデータベースの項目の一覧表のページを入れる（項目があるとき。既定は入れる）'),
+      process: z.boolean().optional().describe('PDF にステータスの移り方のページ（図と操作の一覧表）を入れる（操作があるとき。既定は入れる）'),
+      flow: z.boolean().optional().describe('PDF に画面の移り方のページを入れる（ボタン・リンクの文字の移る先があるとき。既定は入れる）'),
       diffWith: z.union([z.string(), z.number()]).optional().describe('この版（改訂履歴の行の id か版の番号）との違いを「新」「変」の印で示す'),
     }, { slow: true }),
 ];

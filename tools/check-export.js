@@ -2,6 +2,7 @@
 //   クラウドのセッション（Linux・root）では ELECTRON_DISABLE_SANDBOX=1 xvfb-run -a node tools/check-export.js
 // Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、書き出しと取り込み（第 5 段階）を確かめる。
 //  1. 架空の見本（顧客管理・住所の共通項目・取引先マスタ・受注管理）の designs.json で起動し、顧客管理を開いて、
+//     （顧客管理には、操作 3 つのステータスの項目と、移る先を持つボタンがあるので、ステータスの移り方と画面の移り方のページも入る。第 8 段階）
 //     メニューバーの「書き出す」の窓から PDF・PNG・HTML を書き出す（MIM_EXPORT_DIR で、保存の窓を出さずに .devdata/check-export/out へ書く）
 //  2. PDF: A4 横・A3 縦・スライド（16:9）の 3 つ。ページ数と用紙の大きさ（pdfinfo）、表紙と画面の名前が入っているか（pdftotext）、
 //     表紙のほかのページの中身が用紙いっぱいに入っているか（いちばん下の文字〔下の端の行〕が、ページの下の 1 割の中にあるか。pdftotext -bbox）。
@@ -38,7 +39,7 @@ const design = (id, name, target, extra = {}) => ({
   id, name, target, description: '', createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z', trashedAt: null, revisions: [], items: [], screens: [screen('s-' + id, '一覧')], mapPos: {}, ...extra,
 });
 const SAMPLE = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   settings: { customTargets: [], mapPos: {} },
   designs: [
     design('d1', '顧客管理', 'kintone', {
@@ -48,12 +49,21 @@ const SAMPLE = {
         item('i2', '取引先コード', 'text1', { lookup: { db: { designId: 'd3', name: '取引先マスタ', free: false }, key: { itemId: 'b1', name: '取引先コード' }, copies: [{ from: { itemId: 'b2', name: '取引先名' }, to: { itemId: 'i3', name: '取引先名' } }] } }),
         item('i3', '取引先名', 'text1'),
         item('i4', '郵便番号', 'text1', { link: { designId: 'd2', itemId: 'a1', designName: '住所の共通項目', lost: false } }),
+        item('i5', 'ステータス', 'status', { props: {
+          states: [{ id: 't1', name: '申請' }, { id: 't2', name: '承認待ち' }, { id: 't3', name: '完了' }],
+          actions: [
+            { id: 'x1', name: '申請する', from: 't1', to: 't2', role: '担当者', cond: '' },
+            { id: 'x2', name: '承認する', from: 't2', to: 't3', role: '上長', cond: '' },
+            { id: 'x3', name: '差し戻す', from: 't2', to: 't1', role: '上長', cond: '書き直してほしいとき' },
+          ],
+        } }),
       ],
       screens: [
         screen('s1', '詳細', [ipart('p1', 32, 112, 1, 'i1'), ipart('p2', 32, 200, 2, 'i2'), ipart('p3', 32, 288, 3, 'i3'), ipart('p4', 400, 112, 4, 'i4')], {
           callouts: [{ id: 'k1', x: 1300, y: 100, w: 200, h: 80, text: '取引先コードで取引先名を引く。', color: 'yellow', tip: 'arrow', target: 'p2' }],
         }),
-        screen('s2', '新規登録', [ipart('p5', 32, 112, 1, 'i1')]),
+        screen('s2', '新規登録', [ipart('p5', 32, 112, 1, 'i1'),
+          { id: 'p6', type: 'button', x: 32, y: 200, w: 96, h: 40, no: 2, label: '保存', props: { style: 'primary', action: '', to: 'screen', designId: '', screenId: 's1', url: '' } }]),
       ],
     }),
     design('d2', '住所の共通項目', 'その他の作る先', { items: [item('a1', '郵便番号', 'text1', { props: { maxLen: '8' } })] }),
@@ -169,15 +179,16 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
       const f = pdfFacts(dest);
       if (f.tool) {
         const sizeOk = f.size.length === 2 && Math.abs(f.size[0] - want[0]) < 2 && Math.abs(f.size[1] - want[1]) < 2;
-        check(`PDF（${tag}）のページ数と用紙`, f.pages === 5 && sizeOk, `${f.pages} ページ・${f.size.join(' × ')} pt（表紙・図・表・画面 2 つ）`);
-        const words = ['画面設計書', '顧客管理', 'つながりの図', 'データベースの項目の一覧表', '詳細', '新規登録', '取引先コードで取引先名を引く'];
+        check(`PDF（${tag}）のページ数と用紙`, f.pages === 7 && sizeOk, `${f.pages} ページ・${f.size.join(' × ')} pt（表紙・つながりの図・項目の一覧表・ステータスの移り方・画面の移り方・画面 2 つ）`);
+        const words = ['画面設計書', '顧客管理', 'つながりの図', 'データベースの項目の一覧表', 'ステータスの移り方', '画面の移り方', '差し戻す', '書き直してほしいとき',
+          '詳細', '新規登録', '取引先コードで取引先名を引く'];
         const missing = words.filter((w) => !f.text.replace(/\s+/g, '').includes(w.replace(/\s+/g, '')));
         check(`PDF（${tag}）の文字`, !missing.length, missing.length ? `見つからない: ${missing.join('・')}` : words.join('・'));
         const low = f.bottoms.slice(1).map((b) => b / f.size[1]);
         check(`PDF（${tag}）の中身が用紙いっぱいに入っている`, low.length === f.pages - 1 && low.every((r) => r > 0.9),
           `表紙のほかのページの、いちばん下の文字の位置: ${low.map((r) => Math.round(r * 100) + '%').join('・')}`);
       } else {
-        check(`PDF（${tag}）`, f.head === '%PDF' && f.pages === 5, `${f.pages} ページ（pdfinfo がないので数えただけ）`);
+        check(`PDF（${tag}）`, f.head === '%PDF' && f.pages === 7, `${f.pages} ページ（pdfinfo がないので数えただけ）`);
       }
     }
     // 5. 違いの印（第 1 版を作り、取引先名の部品を消してから、第 1 版と比べた PDF）
@@ -200,7 +211,7 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
       const dest = path.join(OUT, '顧客管理_違いの印.pdf');
       fs.renameSync(file, dest);
       const f = pdfFacts(dest);
-      check('PDF（違いの印）のページ数', f.pages === 6, `${f.pages} ページ（変更内容のページで 1 ページ増える）`);
+      check('PDF（違いの印）のページ数', f.pages === 8, `${f.pages} ページ（変更内容のページで 1 ページ増える）`);
       if (f.tool) {
         const words = ['第1版', 'からの変更内容', '削除', '取引先名'];
         const missing = words.filter((w) => !f.text.replace(/\s+/g, '').includes(w));

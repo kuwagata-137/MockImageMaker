@@ -125,7 +125,8 @@ test('書き出しの窓: メニューバー・カードの「…」・アプリ
   assert.equal($(app, '.xp-kind.on').dataset.xkind, 'pdf');
   assert.equal($(app, '[name="xp-paper"]:checked').value, 'A4');
   assert.equal($(app, '[name="xp-orient"]:checked').value, 'landscape');
-  assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => [x.dataset.xpage, x.checked, x.disabled]), [['cover', true, false], ['map', true, false], ['items', true, false]]);
+  assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => [x.dataset.xpage, x.checked, x.disabled]),
+    [['cover', true, false], ['map', true, false], ['items', true, false], ['process', false, true], ['flow', false, true]], '操作も移る先もないので、ステータスの移り方と画面の移り方は押せない');
   assert.equal($$(app, '[data-xbox="pdf"] [data-xscreen]:checked').length, 2, '画面は全部選んである');
   // 札を押すと、その形の設定だけが出る
   click($(app, '[data-xkind="png"]'));
@@ -154,7 +155,8 @@ test('書き出しの窓: つながりがない・項目がないときは、そ
   const { app, api } = await bootSample(t, { exportAPI: xapi, state });
   const done = api.openExportDialog('d9');
   await tick();
-  assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => [x.dataset.xpage, x.checked, x.disabled]), [['cover', true, false], ['map', false, true], ['items', false, true]]);
+  assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => [x.dataset.xpage, x.checked, x.disabled]),
+    [['cover', true, false], ['map', false, true], ['items', false, true], ['process', false, true], ['flow', false, true]]);
   assert.match($(app, '[data-xbox="pdf"]').textContent, /つながりがないので、出しません/);
   click($(app, '[name="xp-paper"][value="slide"]'));
   $(app, '[name="xp-paper"][value="slide"]').dispatchEvent(new app.window.Event('change', { bubbles: true }));
@@ -172,7 +174,7 @@ test('書き出しの窓: つながりがない・項目がないときは、そ
   await tick();
   assert.equal($(app, '[name="xp-paper"]:checked').value, 'A3');
   assert.equal($(app, '[name="xp-orient"]:checked').value, 'portrait');
-  assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => x.checked), [true, true, true], '押せなかったチェックは前の設定のまま');
+  assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => x.checked), [true, true, true, false, false], '押せなかったチェックは前の設定のまま');
   click($(app, '[data-dlg="cancel"]'));
   assert.equal(await again, null);
 });
