@@ -553,12 +553,43 @@ test('入れる: 待つ間にほかの画面へ移っていたら、行は足す
   assert.equal(api.store.undoStack.length, 1);
   h.resolve({ ok: true, added: [{ id: 'm-d1', name: '出張の写真.jpg', kind: 'image', size: 5000, file: 'm-d1.jpg', legacy: false }], skipped: [] });
   await waitFor(() => sys().materials.length === 6, { label: '資料の行' });
-  assert.equal(toast(), '資料を 1 つ入れました。');
+  assert.equal(toast(), '「出張申請システム」に資料を 1 つ入れました。元に戻す（Ctrl+Z）の履歴を消しました。', '入れた先のシステムの名前と、履歴を消したことを知らせる');
   assert.equal(api.store.undoStack.length, 0, '元に戻すの履歴を消す');
   assert.equal($('#sys-undo').disabled, true);
   api.runCommand('undo');
   assert.equal(sys().materials.length, 6, '元に戻すで、見えない所の行が消えない');
   assert.deepEqual(sys('y-eq').roles.map((r) => r.name), ['申請者']);
+});
+
+test('入れる: 待つ間にほかの画面へ移っていて、その画面に元に戻すの履歴がなければ、入れた先のシステムの名前だけを付けて知らせる（入れられなかったファイルの文は後ろに続ける）', async (t) => {
+  const { app, api, $, sys, materials, toast } = await boot(t);
+  const h = held();
+  materials.set('addDropped', h.fn);
+  fileEvent(app, $('#sys-view .mat-drop'), 'drop', [{ name: '出張の写真.jpg', size: 5000, text: async () => '' }]);
+  await waitFor(() => h.resolve, { label: 'addDropped' });
+  api.openSystem('y-eq');
+  assert.equal(api.store.undoStack.length + api.store.redoStack.length, 0);
+  h.resolve({
+    ok: true, added: [{ id: 'm-d1', name: '出張の写真.jpg', kind: 'image', size: 5000, file: 'm-d1.jpg', legacy: false }],
+    skipped: [{ name: '設定', reason: 'ふつうのファイルではありません' }],
+  });
+  await waitFor(() => sys().materials.length === 6, { label: '資料の行' });
+  assert.equal(toast(), '「出張申請システム」に資料を 1 つ入れました。「設定」は入れられませんでした。ふつうのファイルではありません。');
+});
+
+test('読む: 読み終えたときにほかの窓が開いていたら、読むの窓を出さずに知らせる', async (t) => {
+  const { $, btn, materials, toast, entry } = await boot(t);
+  const r = held();
+  materials.set('read', r.fn);
+  click(btn('sys-mat-read', 'm-pdf'));
+  await waitFor(() => r.resolve, { label: 'read' });
+  click(entry('roles'));
+  click($('#sys-view [data-action="sys-role-del"][data-id="l-app"]'));
+  await waitFor(() => $('.modal'), { label: '役割を消す確かめの窓' });
+  r.resolve({ ok: true, result: plain(PART1) });
+  await waitFor(() => toast().includes('ほかの窓'), { label: 'お知らせ' });
+  assert.equal(toast(), '「旅費規程.pdf」を読み終えましたが、ほかの窓が開いているため表示しませんでした。窓を閉じてからもう一度押してください。');
+  assert.equal($('.modal h2').textContent, '役割「申請者」を消しますか？', '開いていた窓はそのまま');
 });
 
 test('待っている資料の「読む」「スイムレーン図にする」は、2 回目を無視する（返事の後はまた押せる）', async (t) => {

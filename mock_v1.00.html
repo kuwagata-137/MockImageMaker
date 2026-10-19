@@ -6561,7 +6561,9 @@ async function whileMaterialWaits(matId, fn) {
 // 待つ間に打った文字は、行を足す前に保存する（行を足すと真ん中を描き直すため）。待っている間にシステムがごみ箱に入った・消えたときは行を足さない
 // （写したファイルは、次に起動したときの掃除で消える）。待つ間にほかの画面（別のシステム・画面設計・最初の画面）へ移っていたら、行は足す
 // （写したファイルを生かす）が、元に戻すの履歴は消す。元に戻すの履歴は中身を丸ごと写したものなので、積まずに足すと、後の元に戻すで見えない所の
-// 行が消え、積むと、開いている画面の元に戻すで見えない所が変わるため（開いていない画面設計を AI が直したときと同じ。aiHistoryMode）
+// 行が消え、積むと、開いている画面の元に戻すで見えない所が変わるため（開いていない画面設計を AI が直したときと同じ。aiHistoryMode）。
+// そのときのお知らせは、頭に入れた先のシステムの名前を付け、消した履歴があったときだけ「元に戻す（Ctrl+Z）の履歴を消しました。」を足す
+// （履歴を消したら知らせる。AI のときの aiAfterWrite のオレンジの帯と同じ考え）
 async function addMaterialFiles(sysId, request) {
   const api = window.materialsAPI;
   if (!api || store.blockReason || !editableSystem(sysId)) return;
@@ -6577,13 +6579,17 @@ async function addMaterialFiles(sysId, request) {
   const y = editableSystem(sysId);
   if (!y || y.trashedAt) return;
   const here = ui.view === 'system' && ui.systemId === sysId;
-  const rows = store.batch(() => actions.addMaterials(sysId, res.added), { history: here ? true : 'clear' }).result;
-  const text = materialsAddedText(rows, Array.isArray(res.skipped) ? res.skipped.filter(isObj) : []);
+  const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
+  const done = store.batch(() => actions.addMaterials(sysId, res.added), { history: here ? true : 'clear' });
+  const where = here ? null : { name: y.name, cleared: hadHistory && done.changed };
+  const text = materialsAddedText(done.result, Array.isArray(res.skipped) ? res.skipped.filter(isObj) : [], where);
   if (text) toast(text);
 }
-// 入れた結果のお知らせ: 入れた数・入れられなかったファイル（3 つまでは名前と理由、ほかは数）・古い形を入れたときの注意
-function materialsAddedText(rows, skipped) {
-  const parts = rows.length ? [`資料を ${rows.length} つ入れました。`] : [];
+// 入れた結果のお知らせ: 入れた数・入れられなかったファイル（3 つまでは名前と理由、ほかは数）・古い形を入れたときの注意。
+// where は、待つ間にほかの画面へ移っていたときの { name（入れた先のシステムの名前）, cleared（元に戻すの履歴を消したか）}（移っていなければ null）
+function materialsAddedText(rows, skipped, where = null) {
+  const added = where ? `「${where.name}」に資料を ${rows.length} つ入れました。` : `資料を ${rows.length} つ入れました。`;
+  const parts = rows.length ? [added + (where && where.cleared ? '元に戻す（Ctrl+Z）の履歴を消しました。' : '')] : [];
   skipped.slice(0, 3).forEach((s) => {
     const reason = str(s.reason).replace(/。$/, '');
     parts.push(`「${str(s.name) || '名前のないファイル'}」は入れられませんでした。${reason ? `${reason}。` : ''}`);
@@ -6621,6 +6627,8 @@ async function openMaterialReader(sysId, matId) {
   };
   const first = await whileMaterialWaits(m.id, () => read(null));
   if (!first || ui.view !== 'system' || ui.systemId !== sysId) return;
+  // ほかの窓が開いていると読むの窓を出せない（showDialog は 2 つ目を開かない）ので、黙って捨てずに知らせる（スイムレーン図にするとそろえる）
+  if (isDialogOpen()) { toast(`「${m.name}」を読み終えましたが、ほかの窓が開いているため表示しませんでした。窓を閉じてからもう一度押してください。`); return; }
   await showDialog({
     title: `${m.name} を読む`, width: 640, okHidden: true, cancelLabel: '閉じる', aiPassive: true,
     body: '<div class="rd-warn"></div><div class="rd-text" tabindex="0"></div><p class="hint rd-foot"></p>',
