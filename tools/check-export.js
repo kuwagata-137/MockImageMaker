@@ -197,6 +197,9 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
     await page.waitForSelector('.modal [name="rv-note"]');
     await page.click('.modal [data-dlg="ok"]');
     await page.waitForFunction(() => !document.querySelector('.modal'));
+    // お知らせ「第 1 版として残しました。」（画面の下の真ん中に 3.5 秒出る）が消えるのを待ってから押す。消える前に押すと、見える所まで送った p3 の上に
+    // お知らせが重なり、クリックがお知らせに当たって p3 を選べない（2026-10-19。メニューバーの直し〔b2c6e22〕で送った後の位置が変わり、重なるようになった）
+    await page.waitForFunction(() => document.querySelector('#toast').hidden);
     await page.click('#stage .part[data-part-id="p3"]');
     await page.keyboard.press('Delete');
     await page.waitForFunction(() => !document.querySelector('#stage .part[data-part-id="p3"]'));
