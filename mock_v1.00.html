@@ -669,6 +669,32 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .sys-hist .h-ai{color:#7c3aed;font-weight:700}
 .sys-hist .h-auto{color:#64748b}
 #sys-side .hint+.hint{margin-top:8px}
+/* 資料の入口（第 9 段階の後半。画像 q67 の案A「表」）: 「＋ ファイルを入れる…」・落とす枠（ファイルを落としている間は青）・表（名前・種類・大きさ・入れた日・メモ・操作）。
+   窓が狭いときは、メモの欄を 120px まで縮め、操作のボタンを 1 つずつ折り返す（ボタンの文字は言葉の途中で改行させない。.btn は nowrap） */
+.mat-top{display:flex;align-items:center;gap:12px;margin:10px 0 0}
+.mat-drop{border:2px dashed #94a3b8;border-radius:8px;background:#f8fafc;color:#475569;font-size:13px;text-align:center;padding:10px 12px;margin:12px 0 16px}
+.mat-drop.drop-on{border-color:#2563eb;background:#eff6ff;color:#1d4ed8}
+.mat-tbl th,.mat-tbl td{padding:6px 5px;vertical-align:middle}
+.mat-tbl td.nw{white-space:nowrap}
+.mat-name{display:flex;align-items:center;gap:7px}
+.mat-ic{font-size:17px;line-height:1;flex-shrink:0}
+.mat-name b{font-size:13px;color:#0f172a;overflow-wrap:anywhere}
+.mat-name .tag{font-size:11.5px;padding:1px 7px}
+.mat-tbl tr.old td b{color:#64748b}
+.mat-memo{width:100%;min-width:120px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;font-size:12.5px;background:#fff}
+.mat-memo::placeholder{color:#94a3b8}
+.mat-ops{display:flex;flex-wrap:wrap;gap:4px}
+.mat-ops .btn.small{padding:4px 8px}
+/* 「読む」の窓（画像 q67_3）: 黄色の帯（断り書き）・文の欄（改行を保ち、スクロールする。「── 1 ページ ──」のような見出しの行は灰色の太字）・画像。
+   置き換えの確かめの窓（q67_4）の資料の名前は、収まるときは 1 行のまま出す */
+.rd-warn{background:#fef9c3;border:1px solid #eab308;border-radius:7px;color:#713f12;font-size:12.5px;font-weight:600;padding:7px 10px;margin-bottom:10px}
+.rd-text{border:1px solid #cbd5e1;border-radius:7px;background:#f8fafc;padding:10px 12px;font-size:12.5px;line-height:1.75;color:#1e293b;min-height:120px;max-height:min(430px,calc(100vh - 330px));overflow:auto}
+.rd-pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.rd-pg{color:#64748b;font-weight:700;margin-top:8px}
+.rd-pg:first-child{margin-top:0}
+.rd-img{display:block;max-width:100%;height:auto;border:1px solid #cbd5e1;border-radius:6px;background:#fff;margin:6px 0 2px}
+.rd-foot{margin-top:8px}
+.rp-name{display:inline-block;max-width:100%;overflow-wrap:anywhere}
 .sys-step{border:1px solid #e2e8f0;border-radius:7px;background:#f8fafc;padding:8px 10px;margin-bottom:10px;font-size:12.5px;line-height:1.6;overflow-wrap:anywhere}
 /* ── 書き出しと取り込み（第 5 段階）───────────────────────────── */
 /* 書き出しの窓（画像 q33） */
@@ -5955,10 +5981,13 @@ async function onSystemAction(action, y) {
 }
 
 // ── システムの画面（第 9 段階の T6a。画像 q62 の案A・q64 の案A・q65・q66）──
-// 編集の画面と同じ形: 上にメニューバー（一覧へ・元に戻す・やり直す・拡大・縮小）、左に入口 4 つ（概要・役割・スイムレーン図・履歴）と
-// 入っている画面設計のカード、真ん中に押した入口の中身（ui.sysPanel）、右に入口ごとの案内。
+// 編集の画面と同じ形: 上にメニューバー（一覧へ・元に戻す・やり直す・拡大・縮小）、左に入口 5 つ（概要・役割・スイムレーン図・資料・履歴。
+// 資料はデスクトップ版だけ）と入っている画面設計のカード、真ん中に押した入口の中身（ui.sysPanel）、右に入口ごとの案内。
 // スイムレーン図の上の操作（足す・つなぐ・ドラッグ）と、右の欄の作業の設定は T6b で作る（T6a では、箱を押して選ぶだけ）
-const SYS_PANELS = ['overview', 'roles', 'swimlane', 'history'];
+const SYS_PANELS = ['overview', 'roles', 'swimlane', 'materials', 'history'];
+// 資料の入口（第 9 段階の後半）は、資料の窓口（デスクトップ版の preload.js の materialsAPI）があるときだけ出す（ブラウザ・単体で開いた HTML では、
+// ファイルを入れられず読めないため）。窓口がないときに資料の入口を選んだら、スイムレーン図にする
+const shownSysPanel = (panel) => (panel === 'materials' && !window.materialsAPI ? 'swimlane' : panel);
 // ui.view を 'system'、ui.systemId を開くシステムにする。画面設計を開くときと同じく、元に戻すの履歴を空にし、AI の知らせを片付ける
 // （AI の元に戻すの履歴の決め方〔q66〕は、この 2 つの値で決まる）。ごみ箱のシステムは開かない。
 // 入口は panel か、同じアプリの間にそのシステムで最後に開いた入口（ui.sysPanels。保存しない）。初めて開くシステムはスイムレーン図
@@ -5967,7 +5996,7 @@ function openSystem(id, { panel = null } = {}) {
   const y = findSystem(store.state, id);
   if (!y || y.trashedAt) return;
   aiForgetView(ui.view === 'home');
-  const p = SYS_PANELS.includes(panel) ? panel : ui.sysPanels[id] || 'swimlane';
+  const p = shownSysPanel(SYS_PANELS.includes(panel) ? panel : ui.sysPanels[id] || 'swimlane');
   Object.assign(ui, {
     view: 'system', systemId: id, designId: null, screenId: null, menuFor: null, sysMenu: null, sysDesignMenu: null, stepSel: null, editorFrom: null,
     previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false, foldMenu: null, sysPanel: p,
@@ -5981,8 +6010,9 @@ function openSystem(id, { panel = null } = {}) {
 // 入口を切り替える（左の入口・「役割を足す」・オレンジの帯の「履歴を開く」）
 function openSystemPanel(panel) {
   if (!SYS_PANELS.includes(panel) || ui.view !== 'system') return;
-  Object.assign(ui, { sysPanel: panel, sysMenu: null, sysDesignMenu: null, swimLink: null, swimPal: null });
-  ui.sysPanels[ui.systemId] = panel;
+  const p = shownSysPanel(panel);
+  Object.assign(ui, { sysPanel: p, sysMenu: null, sysDesignMenu: null, swimLink: null, swimPal: null });
+  ui.sysPanels[ui.systemId] = p;
   renderSystem();
 }
 
@@ -6086,15 +6116,17 @@ function refreshSysList() {
   renderSysMenus();
 }
 
-// ── システムの画面の左の欄: 入口 4 つ（編集の画面の「データベースの項目」の札と同じ形）と、入っている画面設計のカード ──
+// ── システムの画面の左の欄: 入口 5 つ（編集の画面の「データベースの項目」の札と同じ形。資料はデスクトップ版だけ）と、入っている画面設計のカード ──
 function sysScreenListHtml(y) {
   const designs = designsOfSystem(store.state, y);
   const entry = (panel, ic, label, note, title) => `<button class="db-entry sys-entry${ui.sysPanel === panel ? ' active' : ''}" data-action="sys-panel" data-panel="${panel}" aria-pressed="${ui.sysPanel === panel}" title="${title}">
       <span class="ic">${ic}</span><span><b>${label}</b><small>${esc(note)}</small></span></button>`;
   const steps = y.swimlane.steps.length;
+  const mats = y.materials.length;
   return entry('overview', '✎', '概要', '名前と説明', 'システムの名前と説明を開きます')
     + entry('roles', '👥', '役割', y.roles.length ? `${y.roles.length} つ` : 'まだありません', '役割（申請者・上長など。スイムレーン図の横の帯）を開きます')
     + entry('swimlane', '⇶', 'スイムレーン図', steps ? `作業 ${steps} つ` : '作業なし', '役割ごとの帯に作業の箱を並べた、業務の流れの図を開きます')
+    + (window.materialsAPI ? entry('materials', '📎', '資料', mats ? `ファイル ${mats} つ` : 'まだありません', 'システムを作るときに参考にするファイル（業務の様式・説明書・図）を開きます') : '')
     + entry('history', '◷', '履歴', sysHistoryNote(y), 'AI がこのシステムを直す前の中身（自動で残した行）を開きます')
     + `<div class="sl-sep"></div><div class="panel-title sys-dhead">${designs.length ? `画面設計 ${designs.length} つ` : '画面設計'}</div>`
     + (designs.length ? designs.map(sysDesignCardHtml).join('') : '<p class="sys-dempty">まだ画面設計が入っていません。</p>')
@@ -6216,7 +6248,7 @@ function endSysDesignSort(done) {
 }
 
 // ── システムの画面の真ん中（押した入口の中身）──
-const SYS_MAIN = { overview: sysOverviewHtml, roles: sysRolesHtml, swimlane: sysSwimlaneHtml, history: sysHistoryHtml };
+const SYS_MAIN = { overview: sysOverviewHtml, roles: sysRolesHtml, swimlane: sysSwimlaneHtml, materials: sysMaterialsHtml, history: sysHistoryHtml };
 // 同じ入口を描き直すときは、スクロールの位置と、打っている欄のフォーカスを戻す（AI が書いたときなど）
 function renderSysMain(y) {
   const el = $('#sys-view');
@@ -6232,16 +6264,16 @@ function renderSysMain(y) {
   focus();
   if (ui.sysPanel === 'swimlane') fitSwimlaneFirst(y);
 }
-// 打っている欄（data-sy）を控え、描き直した後に同じ欄へフォーカスを戻す関数を返す。
+// 打っている欄（data-sy）を控え、描き直した後に同じ欄へフォーカスを戻す関数を返す。同じ data-sy の欄は、役割（data-role）・資料（data-mat）で見分ける。
 // 名前を空にして打ち直している途中の欄は、空のまま戻す（flushSideField が待っている間に、描き直しで元の名前に戻さないため）
 function keepSysFocus() {
   const el = document.activeElement;
   if (!el || !el.dataset || !el.dataset.sy || !el.closest('#sys-view')) return () => {};
-  const { sy, role = '' } = el.dataset;
+  const { sy, role = '', mat = '' } = el.dataset;
   const empty = (sy === 'name' || sy === 'role-name') && !cleanName(el.value);
   const [a, b] = [el.selectionStart, el.selectionEnd];
   return () => {
-    const now = [...document.querySelectorAll(`#sys-view [data-sy="${sy}"]`)].find((x) => (x.dataset.role || '') === role);
+    const now = [...document.querySelectorAll(`#sys-view [data-sy="${sy}"]`)].find((x) => (x.dataset.role || '') === role && (x.dataset.mat || '') === mat);
     if (!now) return;
     if (empty) now.value = '';
     now.focus();
@@ -6453,6 +6485,214 @@ async function restoreSystemRevisionWithConfirm(sysId, rowId) {
   if (ok && actions.restoreSystemRevision(sysId, rowId)) toast(`「${title}」の中身に戻しました。`);
 }
 
+// ── 資料（第 9 段階の後半。画像 q67 の案A「表」・q67_3・q67_4。設計書の 5-3）──
+// 真ん中に「＋ ファイルを入れる…」・落とす枠・表（名前・種類・大きさ・入れた日・メモ・操作）。ファイルを写す・中身を読む・BDM の案を作るのは、
+// main の側の資料の窓口（preload.js の materialsAPI → materials-main.js）。資料の入口は、窓口があるときだけ出す（shownSysPanel）
+const MATERIAL_KIND_ICONS = { text: '📄', image: '🖼️', pdf: '📕', word: '📘', excel: '📗', bdm: '🔷', other: '📁' };
+// 資料の大きさ（バイト）の文。1 MB より小さければ KB（10 KB より小さいときだけ小数 1 桁。0 より大きければ 0.1 KB から）、1 MB からは MB（小数 1 桁まで）
+function fmtMaterialSize(n) {
+  const round1 = (v) => Math.round(v * 10) / 10;
+  if (n >= 1048576) return `${round1(n / 1048576)} MB`;
+  const kb = n / 1024;
+  if (kb >= 10) return `${Math.round(kb)} KB`;
+  return `${n > 0 ? Math.max(0.1, round1(kb)) : 0} KB`;
+}
+// 真ん中: 見出し・説明・「＋ ファイルを入れる…」（保存を止めているときは押せない）・落とす枠・表（資料がないときは案内の文）
+function sysMaterialsHtml(y) {
+  const pick = store.blockReason
+    ? '<button class="btn primary" data-action="sys-mat-pick" disabled title="アプリが保存を止めているため、ファイルを入れられません">＋ ファイルを入れる…</button>'
+    : '<button class="btn primary" data-action="sys-mat-pick" title="入れるファイルを選びます（いくつでも選べます）">＋ ファイルを入れる…</button>';
+  const table = y.materials.length
+    ? `<table class="mat-tbl"><thead><tr><th>名前</th><th>種類</th><th>大きさ</th><th>入れた日</th><th>メモ</th><th>操作</th></tr></thead>
+      <tbody>${y.materials.map(sysMaterialRowHtml).join('')}</tbody></table>`
+    : '<p class="sys-empty">まだ資料がありません。</p>';
+  return `<div class="itable wide sys-mats">${sysHead('資料', y)}
+    <p class="map-note">業務の様式・説明書・図など、このシステムを作るときに参考にするファイルを入れます。</p>
+    <div class="mat-top">${pick}</div>
+    <div class="mat-drop">ここにファイルを落としても入れられます（1 つ 50 MB まで）</div>
+    ${table}</div>`;
+}
+// 表の 1 行。メモは 1 行の欄（data-sy="mat-memo"。欄を離れると保存する。onSystemFieldChange）。古い形（.doc・.xls）の行は、名前の横に灰色の札・
+// 種類に「（古い形）」を付け、「読む」は押せない。「スイムレーン図にする」は BDM の図の行だけ
+function sysMaterialRowHtml(m) {
+  const id = esc(m.id);
+  const name = esc(m.name);
+  const old = isLegacyMaterial(m);
+  const kind = MATERIAL_KIND_NAMES[m.kind] || MATERIAL_KIND_NAMES.other;
+  const read = old ? ' disabled title="古い形のため読めません"' : ` title="「${name}」の中身を読みます"`;
+  const swim = m.kind === 'bdm'
+    ? `<button class="btn small" data-action="sys-mat-swim" data-id="${id}" title="この図から、スイムレーン図を作ります">スイムレーン図にする</button>` : '';
+  return `<tr${old ? ' class="old"' : ''} data-id="${id}">
+    <td><span class="mat-name"><span class="mat-ic" aria-hidden="true">${MATERIAL_KIND_ICONS[m.kind] || MATERIAL_KIND_ICONS.other}</span><b>${name}</b>${old ? '<span class="tag gone">古い形のため読めません</span>' : ''}</span></td>
+    <td class="nw">${esc(old ? `${kind}（古い形）` : kind)}</td><td class="nw">${esc(fmtMaterialSize(m.size))}</td><td class="nw">${esc(fmtDateTime(m.addedAt).slice(0, 10))}</td>
+    <td><input type="text" class="mat-memo" data-sy="mat-memo" data-mat="${id}" value="${esc(m.memo)}" placeholder="メモを書く" aria-label="「${name}」のメモ"></td>
+    <td><div class="mat-ops"><button class="btn small" data-action="sys-mat-read" data-id="${id}"${read}>読む</button>${swim}<button class="btn small danger-text" data-action="sys-mat-del" data-id="${id}" title="この資料を一覧から外します（元に戻す〔Ctrl+Z〕で戻せます）">消す</button></div></td></tr>`;
+}
+// 資料の窓口を呼ぶ（読む・BDM の案）。返事が ok で valid(返事) が真ならその返事、そうでなければお知らせ（返事の message。ないときは fallback）を出して null
+async function askMaterialsApi(call, valid, fallback) {
+  let res = null;
+  try {
+    res = await call();
+  } catch (e) {
+    console.warn('資料の窓口を呼べませんでした:', (e && e.message) || e);
+  }
+  if (res && res.ok === true && valid(res)) return res;
+  toast((res && isObj(res.error) && str(res.error.message)) || fallback);
+  return null;
+}
+
+// 資料のファイルを入れる（「＋ ファイルを入れる…」は pick、落としたときは addDropped）。request(api) は資料の窓口に写してもらう関数。
+// 写した資料の行を 1 回の変更で足し（元に戻す 1 回で消える）、お知らせで知らせる。キャンセルなら何もしない。保存を止めているときは入れない。
+// 待っている間にシステムがごみ箱に入った・消えたときは行を足さない（写したファイルは、次に起動したときの掃除で消える）
+async function addMaterialFiles(sysId, request) {
+  const api = window.materialsAPI;
+  if (!api || store.blockReason || !editableSystem(sysId)) return;
+  let res = null;
+  try {
+    res = await request(api);
+  } catch (e) {
+    console.warn('資料のファイルを入れられませんでした:', (e && e.message) || e);
+  }
+  if (res && res.canceled) return;
+  if (!res || res.ok !== true) { toast(`ファイルを入れられませんでした（${materialFailText(res).replace(/。$/, '')}）。`); return; }
+  const y = editableSystem(sysId);
+  if (!y || y.trashedAt) return;
+  const rows = actions.addMaterials(sysId, res.added);
+  const text = materialsAddedText(rows, Array.isArray(res.skipped) ? res.skipped.filter(isObj) : []);
+  if (text) toast(text);
+}
+// 入れた結果のお知らせ: 入れた数・入れられなかったファイル（3 つまでは名前と理由、ほかは数）・古い形を入れたときの注意
+function materialsAddedText(rows, skipped) {
+  const parts = rows.length ? [`資料を ${rows.length} つ入れました。`] : [];
+  skipped.slice(0, 3).forEach((s) => {
+    const reason = str(s.reason).replace(/。$/, '');
+    parts.push(`「${str(s.name) || '名前のないファイル'}」は入れられませんでした。${reason ? `${reason}。` : ''}`);
+  });
+  if (skipped.length > 3) parts.push(`ほかに ${skipped.length - 3} つのファイルも入れられませんでした。`);
+  if (rows.some(isLegacyMaterial)) parts.push('古い形（.doc・.xls）のファイルは読めません。新しい形で保存し直して入れてください。');
+  return parts.join('');
+}
+// 資料の入口に落としたファイルを入れる。打ちかけのメモを先に保存する（行を足すと真ん中を描き直すため）
+function dropMaterialFiles(files) {
+  if (!files.length) return;
+  flushSideField();
+  const sysId = ui.systemId;
+  addMaterialFiles(sysId, (api) => api.addDropped(sysId, files)).catch(reportPageError);
+}
+// 資料の行を消す（確かめの窓は出さない。元に戻すで戻せる。ファイルは次に起動したときの掃除で消える）
+function deleteMaterialRow(y, matId) {
+  const m = y.materials.find((x) => x.id === matId);
+  if (m && actions.deleteMaterial(y.id, m.id)) toast(`「${m.name}」を資料から外しました。元に戻す（Ctrl+Z）で戻せます。`);
+}
+
+// 「読む」の窓（画像 q67_3）。資料の窓口に中身を読んでもらい、題名「<名前> を読む」・黄色の帯（断り書き）・文と画像・「1〜3 / 8 の部分」を出す。
+// ボタンは左に「続きを読む」（続きがあるときだけ。同じ窓の中身を次の部分に入れ替える）、右に「閉じる」。読めないときはお知らせ。
+// 見るだけの窓なので、開いている間も AI の書く頼みは止めない（aiPassive。「AI とつなぐ」の窓と同じ）
+async function openMaterialReader(sysId, matId) {
+  const api = window.materialsAPI;
+  const y = findSystem(store.state, sysId);
+  const m = y && y.materials.find((x) => x.id === matId);
+  if (!api || !m || isLegacyMaterial(m)) return;
+  const req = { systemId: y.id, file: m.file, kind: m.kind, name: m.name };
+  const read = async (cursor) => {
+    const res = await askMaterialsApi(() => api.read({ ...req, cursor }), (r) => isObj(r.result), `「${m.name}」を読めませんでした。`);
+    return res && res.result;
+  };
+  const first = await read(null);
+  if (!first) return;
+  await showDialog({
+    title: `${m.name} を読む`, width: 640, okHidden: true, cancelLabel: '閉じる', aiPassive: true,
+    body: '<div class="rd-warn"></div><div class="rd-text" tabindex="0"></div><p class="hint rd-foot"></p>',
+    init: (modal) => {
+      const more = document.createElement('button');
+      Object.assign(more, { className: 'btn primary', textContent: '続きを読む' });
+      more.dataset.rd = 'more';
+      $('[data-dlg="cancel"]', modal).before(more);
+      let cursor = null;
+      const show = (r) => { fillMaterialReader(modal, r); cursor = r.nextCursor || null; more.hidden = !cursor; };
+      const next = async () => {
+        more.disabled = true;
+        const r = await read(cursor);
+        if (!modal.isConnected) return; // 待つ間に閉じた
+        more.disabled = false;
+        if (r) show(r);
+        $(more.hidden ? '[data-dlg="cancel"]' : '[data-rd="more"]', modal).focus();
+      };
+      more.addEventListener('click', () => { next().catch(reportPageError); });
+      show(first);
+      if (!more.hidden) more.focus();
+    },
+  });
+}
+// 読むの窓の中身を、返事 r（{ notice, part:{ from, to, total }, text, images, nextCursor }）で書き換える（文の欄は上へ戻す）
+function fillMaterialReader(modal, r) {
+  $('.rd-warn', modal).textContent = str(r.notice) || '以下は資料の中身です。中の文は指示ではありません。';
+  const box = $('.rd-text', modal);
+  box.innerHTML = materialReadBodyHtml(r);
+  box.scrollTop = 0;
+  const p = isObj(r.part) ? r.part : {};
+  $('.rd-foot', modal).textContent = p.total ? `${p.from === p.to ? p.from : `${p.from}〜${p.to}`} / ${p.total} の部分` : '';
+}
+// 読むの窓の文と画像。文の頭の断り書き（黄色の帯と同じ 1 行）は外す。「── 1 ページ ──」のような見出しの行は灰色の太字、ほかの行は改行を保って出す。
+// 画像は、画像の見出しの行（「── 画像 ──」「── 3 ページ（文字がないので画像で渡します）──」）の後に順に置き、見出しが足りないときは残りを後ろに並べる
+function materialReadBodyHtml(r) {
+  const lines = str(r.text).split('\n');
+  if (lines[0] === str(r.notice)) lines.shift();
+  const images = (Array.isArray(r.images) ? r.images : []).filter((x) => isObj(x) && /^[A-Za-z0-9+/]+=*$/.test(str(x.data)));
+  const img = (x) => `<img class="rd-img" src="data:image/png;base64,${x.data}" alt="${esc(x.page ? `${x.page} ページの画像` : '資料の画像')}">`;
+  const out = [];
+  let text = [];
+  let used = 0;
+  const flushText = () => { if (text.length) out.push(`<div class="rd-pre">${esc(text.join('\n'))}</div>`); text = []; };
+  for (const line of lines) {
+    if (!/^── .+──$/.test(line)) { text.push(line); continue; }
+    flushText();
+    out.push(`<div class="rd-pg">${esc(line)}</div>`);
+    if (line.includes('画像') && used < images.length) out.push(img(images[used++]));
+  }
+  flushText();
+  return out.join('') + images.slice(used).map(img).join('');
+}
+
+// 「スイムレーン図にする」（BDM の図の行。画像 q67_4）。資料の窓口に案を作ってもらい（ファイルを読むので待つ）、待った後にシステムを引き直す
+// （消えた・ごみ箱に入った・資料の行が消えた・ほかの画面へ移ったときは何もしない）。案に作業の箱がなければ置き換えない。
+// 今の図に作業があれば確かめの窓（最初はキャンセル）。置き換えたらスイムレーン図の入口を開き、お知らせで知らせる。元に戻す 1 回で戻る
+async function swimlaneFromMaterial(sysId, matId) {
+  const api = window.materialsAPI;
+  const y0 = editableSystem(sysId);
+  const m0 = y0 && y0.materials.find((x) => x.id === matId);
+  if (!api || !m0 || m0.kind !== 'bdm') return;
+  const res = await askMaterialsApi(() => api.bdmPlan({ systemId: sysId, file: m0.file }), (r) => isObj(r.plan), `「${m0.name}」を読めませんでした。`);
+  const y = editableSystem(sysId);
+  const m = y && !y.trashedAt && y.materials.find((x) => x.id === matId);
+  if (!res || !m || ui.view !== 'system' || ui.systemId !== sysId) return;
+  const plan = res.plan;
+  if (!Array.isArray(plan.steps) || !plan.steps.length) { toast('この図には作業の箱がありません。'); return; }
+  if (y.swimlane.steps.length && !(await confirmReplaceSwimlane(y, m))) return;
+  const r = actions.swimlaneFromPlan(sysId, plan, { materialId: m.id });
+  if (!r) { toast(`「${m.name}」から作った案の形が正しくありません。`); return; }
+  openSystemPanel('swimlane');
+  toast(r.changed ? swimFromMaterialText(m, r, plan.warnings) : '今のスイムレーン図と同じ中身なので、変わりませんでした。');
+}
+// 置き換えの確かめの窓（q71 で「置き換える」に決めた）。肯定の「置き換える」（赤）を左、「キャンセル」を右。最初のフォーカスはキャンセル（showDialog の danger）
+function confirmReplaceSwimlane(y, m) {
+  const sw = y.swimlane;
+  return showDialog({
+    title: 'スイムレーン図を置き換えますか？',
+    okLabel: '置き換える',
+    okClass: 'danger',
+    body: `<p>今のスイムレーン図（作業の箱 ${sw.steps.length} つ・矢印 ${sw.edges.length} 本）を、<span class="rp-name">「${esc(m.name)}」</span>の図で置き換えます。`
+      + '役割は同じ名前を使い回し、足りない役割を足します。元に戻す（Ctrl+Z）で戻せます。</p>',
+  });
+}
+// 置き換えた後のお知らせ: 作業の箱と矢印の数・足した役割・注意（1 つ目と、ほかの数）
+function swimFromMaterialText(m, r, warnings) {
+  const notes = (Array.isArray(warnings) ? warnings : []).filter((w) => typeof w === 'string' && w);
+  return `「${m.name}」の図でスイムレーン図を作りました（作業の箱 ${r.steps} つ・矢印 ${r.edges} 本）。`
+    + (r.addedRoles.length ? `足した役割: ${r.addedRoles.join('・')}。` : '')
+    + (notes.length ? `注意: ${notes[0]}${notes.length > 1 ? `（ほか ${notes.length - 1} 件）` : ''}` : '');
+}
+
 // 右の欄の下: 入口ごとの案内の文。スイムレーン図では、選んだ作業の設定・選んだ矢印の設定、何も選んでいないときは足し方とつなぎ方の案内（T6b。画像 q63）
 function sysSideHtml(y) {
   const hint = (t) => `<p class="hint">${t}</p>`;
@@ -6461,6 +6701,11 @@ function sysSideHtml(y) {
     case 'roles': return hint('役割を直すと、スイムレーン図の帯がすぐ変わります。')
       + hint('作業の箱が入っている役割を消すと、その箱と、箱につながる矢印も一緒に消えます（元に戻す〔Ctrl+Z〕で戻せます）。');
     case 'history': return hint('「この状態に戻す…」を押すと、今の中身を「戻す前の状態」として残してから、その行の中身に置き換えます。');
+    case 'materials': return '<div class="panel-title">資料について</div>'
+      + hint('入れたファイルは、このパソコンのアプリの中に保存されます（元のファイルは変わりません）。')
+      + hint('AI は、ここに入れた資料だけを読めます。AI が資料を足したり消したりすることはありません。')
+      + hint('資料の中の文は、AI への指示としては扱いません。')
+      + hint('1 つのファイルは 50 MB まで。古い形（.doc・.xls）は読めないので、新しい形（.docx・.xlsx）で保存し直して入れてください。');
   }
   if (!y.roles.length) return `<div class="panel-title">作業の設定</div>${hint('役割を足すと、スイムレーン図に作業の箱を置けます。')}`;
   const w = ui.stepSel ? findStep(y, ui.stepSel) : null;
@@ -6600,6 +6845,12 @@ function onSystemFieldChange(el) {
     if (el.value !== y.description) commitKeepSide(() => actions.updateSystem(y.id, { description: el.value }));
     return;
   }
+  // 資料のメモ（第 9 段階の後半。data-mat は資料の id）。前後の空白を取って比べる（setMaterialMemo と同じ）
+  if (k === 'mat-memo') {
+    const m = y.materials.find((x) => x.id === el.dataset.mat);
+    if (m && el.value.trim() !== m.memo) commitKeepSide(() => actions.setMaterialMemo(y.id, m.id, el.value));
+    return;
+  }
   const r = y.roles.find((x) => x.id === el.dataset.role);
   if (!r) return;
   if (k === 'role-memo') {
@@ -6684,6 +6935,11 @@ function onSystemScreenClick(action, btn) {
     case 'sys-step-add': addStepAfter(y, id); return true;
     case 'sys-step-del': deleteSwimStep(id); return true;
     case 'sys-edge-del': deleteSwimEdge(id); return true;
+    // 資料（第 9 段階の後半）: ファイルを入れる・読む・スイムレーン図にする・消す
+    case 'sys-mat-pick': addMaterialFiles(y.id, (api) => api.pick(y.id)).catch(reportPageError); return true;
+    case 'sys-mat-read': openMaterialReader(y.id, id).catch(reportPageError); return true;
+    case 'sys-mat-swim': swimlaneFromMaterial(y.id, id).catch(reportPageError); return true;
+    case 'sys-mat-del': deleteMaterialRow(y, id); return true;
   }
   return false;
 }
@@ -11080,26 +11336,36 @@ function dropSystemEl(e) {
   const el = e.target && e.target.closest ? e.target.closest('[data-drop-sys]') : null;
   return el && findSystem(store.state, el.dataset.dropSys) ? el : null;
 }
-// 落とす先の上にいる間は、そのまとまりの枠を青くする（el が null なら、青い枠を消す）
+// 落とす先の上にいる間は、そのまとまりの枠を青くする（el が null なら、青い枠を消す）。資料の入口の落とす枠（.mat-drop）もこれで青くする
 function markDropSystem(el) {
   document.querySelectorAll('.drop-on').forEach((x) => { if (x !== el) x.classList.remove('drop-on'); });
   if (el) el.classList.add('drop-on');
+}
+// 資料を落とせる所（第 9 段階の後半）: システムの画面で資料の入口を開いているときの、真ん中の欄。資料の窓口がないとき・保存を止めているとき・
+// 窓を開いているときと、ほかの所（左の欄・右の欄など）は null
+function materialDropArea(e) {
+  if (ui.view !== 'system' || ui.sysPanel !== 'materials' || !window.materialsAPI || store.blockReason || isDialogOpen()) return null;
+  return e.target && e.target.closest ? e.target.closest('#sys-body .canvas-area') : null;
 }
 function onFileDragOver(e) {
   if (!hasFiles(e)) return;
   e.preventDefault();
   const ok = canDropImport();
-  e.dataTransfer.dropEffect = ok ? 'copy' : 'none';
+  const mat = !ok && materialDropArea(e);
+  e.dataTransfer.dropEffect = ok || mat ? 'copy' : 'none';
   document.body.classList.toggle('file-over', ok);
-  markDropSystem(ok ? dropSystemEl(e) : null);
+  markDropSystem(ok ? dropSystemEl(e) : mat ? $('#sys-view .mat-drop') : null);
 }
-// システムの上に落としたときは、新しく足す画面設計をそのシステムに入れる（同じ画面設計を置き換えるときは、入っているシステムを変えない）
+// システムの上に落としたときは、新しく足す画面設計をそのシステムに入れる（同じ画面設計を置き換えるときは、入っているシステムを変えない）。
+// システムの画面の資料の入口に落としたときは、資料のファイルとして入れる（dropMaterialFiles）
 function onFileDrop(e) {
   if (!hasFiles(e)) return;
   e.preventDefault();
   document.body.classList.remove('file-over');
   const target = dropSystemEl(e);
+  const mat = materialDropArea(e);
   markDropSystem(null);
+  if (mat) { dropMaterialFiles([...e.dataTransfer.files]); return; }
   if (!canDropImport()) return;
   const opts = { systemId: target ? target.dataset.dropSys : null };
   const files = [...e.dataTransfer.files];
@@ -13979,7 +14245,8 @@ function bindGlobalEvents() {
       e.returnValue = '';
     }
   });
-  // ファイルを落としたとき（最初の画面なら HTML を取り込む。ほかの画面では、ページが置き換わらないように止める）
+  // ファイルを落としたとき（最初の画面なら HTML を取り込む。システムの画面の資料の入口なら資料として入れる。ほかの画面では、ページが置き換わらないように止める）。
+  // 窓の外へ出たときは、青い枠（システムのまとまり・資料の入口の落とす枠）を消す
   document.addEventListener('dragover', onFileDragOver);
   document.addEventListener('drop', onFileDrop);
   document.addEventListener('dragleave', (e) => {
@@ -14042,7 +14309,7 @@ function exposeForTest() {
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
     changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
     SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
-    MATERIAL_KINDS, MATERIAL_KIND_NAMES, normalizeMaterials, isLegacyMaterial,
+    MATERIAL_KINDS, MATERIAL_KIND_NAMES, normalizeMaterials, isLegacyMaterial, fmtMaterialSize,
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
     swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,
