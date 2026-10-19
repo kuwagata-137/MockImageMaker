@@ -23,15 +23,18 @@ const errorResult = (code, message, candidates) => ({
   content: [{ type: 'text', text: `${message}\n${JSON.stringify({ code, ...(candidates ? { candidates } : {}) })}` }],
 });
 
-// アプリの返事 { ok, result?, image?, error? } を、MCP の道具の返事にする（画像は PNG の image、ほかは JSON の文字）
+// アプリの返事 { ok, result?, image?, images?, error? } を、MCP の道具の返事にする（画像は PNG の image、ほかは JSON の文字）。
+// image（画面・図の画像 1 枚）は先頭に、images（資料の画像の並び。read_material）は JSON の文の後に並べる（資料の断り書き notice が先に読まれるように）
 function toToolResult(res) {
   if (!res || res.ok !== true) {
     const e = (res && res.error) || {};
     return errorResult(e.code || 'internal', e.message || 'アプリからの返事の形が正しくありません。', e.candidates);
   }
+  const png = (data) => ({ type: 'image', data, mimeType: 'image/png' });
   const content = [];
-  if (typeof res.image === 'string' && res.image) content.push({ type: 'image', data: res.image, mimeType: 'image/png' });
+  if (typeof res.image === 'string' && res.image) content.push(png(res.image));
   content.push({ type: 'text', text: JSON.stringify(res.result === undefined ? null : res.result) });
+  if (Array.isArray(res.images)) res.images.filter((x) => typeof x === 'string' && x).forEach((x) => content.push(png(x)));
   return { content };
 }
 
