@@ -4,8 +4,8 @@
 //    materials:read（資料の中身を読む）・materials:bdmPlan（BDM の HTML からスイムレーン図の案を作る）・
 //    materials:sweep（一覧にないファイルの掃除）・materials:removeSystem（システムを完全に削除したときのフォルダ消し）
 //  - ファイルの置き場（material-files.js）は <userData>/data/files/<システムの id>/。資料の中身は designs.json に入れない
-//  - 読む部品 reader（material-reader.js）と BDM を読む部品 bdm（bdm-swimlane.js）は、つなぐまでは null。
-//    null のときの読む頼みは unavailable の失敗を返す
+//  - 読む部品 reader（material-reader.js）と BDM を読む部品 bdm（bdm-swimlane.js）は、main.js が createReadingParts() の戻り値で渡す。
+//    渡さない（null の）ときの読む頼みは unavailable の失敗を返す
 //  - finishRead は AI の read_material の仕上げ（automation-render.js から呼ぶ）。画面の窓口と同じ中身を、AI の返事の形で返す
 // どの受け口も例外を投げず、{ ok: true, … } か { ok: false, error: { code, message } }（取りやめは { ok: false, canceled: true }）を返す。
 // 失敗の文にパソコンの中のファイルの場所（パス）を入れない。MaterialError の文はそのまま、ほかの失敗は定型の文にして、原因は console に残す。
@@ -92,7 +92,22 @@ function plainResult(r) {
   };
 }
 
-// storage は initStorage の戻り値（whenIdle・dataDir）。reader は { read }、bdm は { planFromHtml }（つなぐまでは null）。
+// 資料を読む部品 reader（material-reader.js）と、BDM の HTML を読む部品 bdm（bdm-swimlane.js）。main.js が initMaterials に渡す。
+// 読む部品は exceljs・mammoth・canvas を読み込むのに 1 秒近くかかるので、最初の「読む」頼みが来たときに読み込む（起動を遅らせない）。
+// 読み込みに失敗したときは、次の頼みでもう一度読み込む。pdfAssetsDir は渡さない（既定の pdfjs-dist の場所）。
+function createReadingParts() {
+  let reader = null;
+  const loadReader = () => {
+    if (!reader) reader = require('./material-reader').createMaterialReader({ bdmBlocks: require('./bdm-swimlane').bdmBlocksFromHtml });
+    return reader;
+  };
+  return {
+    reader: { read: async (request) => loadReader().read(request) },
+    bdm: { planFromHtml: (html) => require('./bdm-swimlane').planFromHtml(html) },
+  };
+}
+
+// storage は initStorage の戻り値（whenIdle・dataDir）。reader は { read }、bdm は { planFromHtml }（createReadingParts() の戻り値。渡さなければ null）。
 // 戻り値は { files（置き場）, finishRead(render)（AI の read_material の仕上げ）}
 function initMaterials({ app, ipcMain, storage, headless = false, reader = null, bdm = null, dialog = null }) {
   const files = createMaterialFiles({ root: path.join(storage.dataDir(), 'files') });
@@ -168,4 +183,4 @@ function initMaterials({ app, ipcMain, storage, headless = false, reader = null,
   return { files, finishRead };
 }
 
-module.exports = { initMaterials };
+module.exports = { initMaterials, createReadingParts };

@@ -17,7 +17,7 @@ const path = require('path');
 const windowStateKeeper = require('electron-window-state');
 const { initStorage } = require('./storage');
 const { initExport, createPageRenderer } = require('./export');
-const { initMaterials } = require('./materials-main');
+const { initMaterials, createReadingParts } = require('./materials-main');
 const { initAutomation } = require('./automation-main');
 const { initTray } = require('./automation-tray');
 
@@ -249,7 +249,7 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
 
   app.whenReady().then(() => {
     storage = initStorage(app, ipcMain);
-    materials = initMaterials({ app, ipcMain, storage, headless: HEADLESS }); // 資料を読む部品・BDM を読む部品は、まだつないでいない（読む頼みは unavailable）
+    materials = initMaterials({ app, ipcMain, storage, headless: HEADLESS, ...createReadingParts() }); // 資料を読む部品と BDM を読む部品をつなぐ（読む部品は最初の頼みで読み込む）
     const renderer = createPageRenderer(app); // PDF・PNG を作る（書き出しの窓と AI の書き出しで同じものを使う）
     initExport(app, ipcMain, { headless: HEADLESS, renderer });
     automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION, renderer, materials });
