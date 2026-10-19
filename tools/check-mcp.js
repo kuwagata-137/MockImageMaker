@@ -1,4 +1,4 @@
-// 使い方: node tools/check-mcp.js [--packaged=<作った版のフォルダ（例 dist/win-unpacked）>]
+// 使い方: node tools/check-mcp.js [--only=materials（場面 D だけ）] [--packaged=<作った版のフォルダ（例 dist/win-unpacked）>]
 // AI の入口（mcp-server.js --dev）を公式の SDK の Client で起動してつなぎ、入口が Electron のアプリを裏で起動して使えるかを確かめる（第 7 段階の T9）。
 // アプリは窓を出さない（MIM_HEADLESS=1）。入口がアプリを起動するときの文は MIM_APP_CMD で差し替え、メインプロセスの inspector を開ける
 // （窓の × は、check-electron と同じく BrowserWindow.close() を inspector から呼んで再現する。ページの window.close() は close の知らせを通らないため）。
@@ -11,6 +11,8 @@
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり始め（automation.json が消える）、プロセスも消える
 //  B. 次の入口で、アプリをまた起動し、A で作った画面設計が一覧に出る。入口を強制終了しても、5 秒たってアプリが終わる
 //  C. 2 つ目の起動（--background なし。人がアプリを起動した）では窓を出す印が付き、入口を閉じても終わらない。AI のつながりがないときの窓の × では終わる
+//  D. 資料の置き場（第 9 段階の後半。check-mcp-materials.js）: 起動の前に見本のシステムと資料 7 つを置き、道具が 30 個・list_materials・read_material
+//     （6 つ同時に頼んでも読める・Excel の番地・PDF の日本語の文字と 3 ページ目の画像・古い形の old_format）・swimlane_from_bdm（replace なしは断られ、replace: true で入る）・get_system
 //  最後に、窓を出さなかった起動では window-state.json を書き換えていない（人が最大化して使っていたことが残る）
 // 「アプリが終わる」は 2 つに分けて待つ（waitAppQuit）。終わり始める時（automation.json が消える。アプリが決める時）は決めた時間で確かめ、
 // その後プロセスが消えるまでは長く待つ（EXIT_WAIT_MS）。PC の負荷が高いと、Windows で Electron のプロセスが消えるまで数十秒〜数分かかるため（2026-10-19。開発記録）。
@@ -28,9 +30,11 @@ const electronPath = require('electron');
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
 const P = require('../automation-protocol');
+const { phaseMaterials } = require('./check-mcp-materials');
 
 const ROOT = path.resolve(__dirname, '..');
 const PACKAGED = ((process.argv.find((a) => a.startsWith('--packaged=')) || '').slice(11)) || null;
+const ONLY_MATERIALS = process.argv.includes('--only=materials'); // 場面 D（資料の置き場）だけを確かめる
 const PKG_DIR = PACKAGED ? path.resolve(ROOT, PACKAGED) : null;
 const PKG_EXE = PKG_DIR ? path.join(PKG_DIR, 'MockImageMaker.exe') : null;
 // アプリの起動の文（2 つ目の起動と、入口がアプリを起動するときの差し替え）
@@ -184,7 +188,8 @@ async function phaseA() {
     names.join('、'));
   // 第 8 段階の道具（ステータスの移り方と画面の移り方）
   const tl = await client.listTools();
-  const NEW_TOOLS = ['edit_process', 'get_flow', 'get_view_image', 'list_systems', 'get_system', 'create_system', 'update_system', 'add_to_system', 'remove_from_system', 'set_swimlane'];
+  const NEW_TOOLS = ['edit_process', 'get_flow', 'get_view_image', 'list_systems', 'get_system', 'create_system', 'update_system', 'add_to_system', 'remove_from_system', 'set_swimlane',
+    'list_materials', 'read_material', 'swimlane_from_bdm'];
   check('A. 道具は 30 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個・資料の 3 個を含む）',
     tl.tools.length === 30 && NEW_TOOLS.every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
   await tool(client, 'edit_process', { design: made.id, ops: [
@@ -299,9 +304,12 @@ function removeDir(dir) {
   fs.mkdirSync(USER_DATA, { recursive: true });
   fs.writeFileSync(WINDOW_STATE_FILE, JSON.stringify(WINDOW_STATE));
   try {
-    await phaseA();
-    await phaseB();
-    await phaseC();
+    if (!ONLY_MATERIALS) {
+      await phaseA();
+      await phaseB();
+      await phaseC();
+    }
+    await phaseMaterials({ openEntry, check, appInfo, waitUntil, waitAppQuit, quitDetail, setLastPid: (pid) => { lastPid = pid; }, USER_DATA, STATE_FILE, IDLE_MS });
     const kept = JSON.parse(fs.readFileSync(WINDOW_STATE_FILE, 'utf8'));
     check('窓を出さなかった起動では、覚えた窓の状態（最大化）を書き換えない', kept.isMaximized === true && kept.width === WINDOW_STATE.width, JSON.stringify(kept));
   } catch (err) {

@@ -1,5 +1,5 @@
 // 使い方: node tools/check-electron.js
-// Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、次の 5 つを確かめる。
+// Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、次の 1〜11 を確かめる。
 //  1. 画面設計を作って名前を変え、部品の箱から部品を 1 つ（データベースの項目も 1 つ増える）と吹き出しを 1 つ置き、
 //     つながりの図の箱をドラッグで動かし、ひな形から画面を 2 つ足して「…」のメニューで並べ替え、
 //     窓を閉じたあと <userData>/data/designs.json に残っている
@@ -26,6 +26,11 @@
 //  9. システムの画面の「概要」の名前の欄と、スイムレーン図の右の欄の作業の文字・メモの欄に文字を打ち、欄を離れないまま閉じても、
 //     その文字が designs.json に残る。閉じ方は窓の × とファイル > 終了（3 と同じ作り）
 // 10. 起動し直すと、9 で打った文字が、概要の名前の欄と右の欄の作業の文字・メモの欄に出る
+// 11. 資料の置き場（第 9 段階の後半。tools/check-electron-materials.js）。システムに見本の資料の 6 種類を入れ（環境変数 MIM_MATERIAL_FILES）、
+//     本物の Electron で読み（materialsAPI.read・bdmPlan）、「スイムレーン図にする」で役割と作業が入る。1 行を消して起動し直すと、次の保存の後の起動でファイルが片付く。
+//     システムを完全に削除するとフォルダが消える。保存を止める起動（データの形の版 99）では、指されていないファイルが消えない。
+//     ファイルを落とす操作は CDP の Input.dispatchDragEvent で試し、できなければ「手で確かめる」と出す（保存先は .devdata/check-userData-mat）。
+//     node tools/check-electron.js --only=materials で、この 11 だけを動かす
 // 窓の × と終了は、メインプロセスを --inspect で起動し、Node の inspector から呼んで再現する。
 // 保存先は作業フォルダの .devdata/check-userData（毎回消してから始める。npm start のデータとは別）。
 'use strict';
@@ -41,6 +46,7 @@ const USER_DATA = path.join(ROOT, '.devdata', 'check-userData');
 const STATE_FILE = path.join(USER_DATA, 'data', 'designs.json');
 const USER_DATA_V1 = path.join(ROOT, '.devdata', 'check-userData-v1');
 const STATE_FILE_V1 = path.join(USER_DATA_V1, 'data', 'designs.json');
+const USER_DATA_MAT = path.join(ROOT, '.devdata', 'check-userData-mat'); // 11（資料の置き場）
 const USER_DATA_V2 = path.join(ROOT, '.devdata', 'check-userData-v2');
 const STATE_FILE_V2 = path.join(USER_DATA_V2, 'data', 'designs.json');
 const V2_STATE = require('../test/fixtures/v2-state.json').state; // 版 2 のアプリで作った見本（架空の受注管理・経費精算・出張申請）
@@ -57,8 +63,8 @@ const TYPING_CASES = [
 ];
 const MAIN_CLOSE = { x: 'BrowserWindow.getAllWindows()[0].close()', quit: 'app.quit()' }; // メインプロセスで呼ぶ閉じ方
 
-function launch(extraArgs = [], userData = USER_DATA) {
-  const env = { ...process.env, MIM_HEADLESS: '1', MIM_USER_DATA: userData };
+function launch(extraArgs = [], userData = USER_DATA, extraEnv = {}) {
+  const env = { ...process.env, MIM_HEADLESS: '1', MIM_USER_DATA: userData, ...extraEnv };
   delete env.ELECTRON_RUN_AS_NODE;
   const child = spawn(electronPath, ['.', ...extraArgs], { cwd: ROOT, env, stdio: 'ignore', windowsHide: true });
   child.exited = new Promise((resolve) => child.on('exit', (code) => resolve(code)));
@@ -579,7 +585,15 @@ async function checkSystems() {
   return builtOk && againOk && typedOk && shownOk;
 }
 
+// 11. 資料の置き場（check-electron-materials.js）
+const checkMaterialsScene = () => require('./check-electron-materials')({ launch, connect, appPage, enableTestHooks, withTimeout, sleep, PORT, USER_DATA_MAT });
+
 (async () => {
+  if (process.argv.includes('--only=materials')) {
+    const matOk = await checkMaterialsScene();
+    console.log(matOk ? 'OK' : 'NG');
+    process.exit(matOk ? 0 : 1);
+  }
   fs.rmSync(USER_DATA, { recursive: true, force: true });
   const r = await firstRun();
   console.log('編集の画面の題名:', r.title);
@@ -635,7 +649,8 @@ async function checkSystems() {
     && v.bakVersion === 2 && v.again.badge === '確認待ち' && v.again.states.join() === v.first.states.join() && v.again.cards === 1
     && JSON.stringify(v.after.designs) === JSON.stringify(v.saved.designs);
   const sysOk = await checkSystems();
-  const ok = firstOk && typedOk && againOk && migrateOk && v2Ok && sysOk;
+  const matOk = await checkMaterialsScene();
+  const ok = firstOk && typedOk && againOk && migrateOk && v2Ok && sysOk && matOk;
   console.log(ok ? 'OK' : 'NG');
   process.exit(ok ? 0 : 1);
 })().catch((e) => {
