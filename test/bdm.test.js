@@ -348,10 +348,32 @@ test('bdmPlan — レーン（役割）', async (t) => {
     assert.equal(at(300), '経理'); // 中心 310 → [250,450)
     assert.equal(at(2000), '経理');
   });
-  await t.test("'__virtual__' はレーンなし。役割「（レーンなし）」は roles の最後", () => {
-    const plan = bdmPlan(swim([box('n1', 'rect', 30, 100, 100, 40, '箱', 'L1'), box('n2', 'doc', 500, 100, 60, 40, '書類', '__virtual__')]));
-    assert.deepEqual(plan.roles, ['申請者', '上長', '経理', '（レーンなし）']);
-    assert.equal(plan.steps[1].role, '（レーンなし）');
+  await t.test("レーンのある図では、lid が '__virtual__'（BDM のフリー配置の箱。step_num など）の箱も、一覧にない lid と同じに中心の位置でレーンを決める（縦の図）", () => {
+    const at = (x, type = 'doc') => bdmPlan(swim([box('n1', type, x, 100, 60, 40, '箱', '__virtual__')]));
+    assert.equal(at(500).steps[0].role, '経理'); // 中心 530 → [440,660)
+    assert.equal(at(250).steps[0].role, '上長'); // 中心 280 → [220,440)
+    assert.equal(at(0).steps[0].role, '申請者');
+    assert.equal(at(500, 'step_num').steps[0].role, '経理');
+    assert.equal(at(900).steps[0].role, '経理', '外れたら端のレーン');
+    assert.deepEqual(at(500).roles, ['申請者', '上長', '経理'], '「（レーンなし）」は増えない');
+  });
+  await t.test("レーンのある図では、lid が '__virtual__' の箱も、横の図は中心の y でレーンを決める", () => {
+    const lanes = [lane('H1', '申請者', 100), lane('H2', '上長', 150), lane('H3', '経理', 200)];
+    const plan = bdmPlan({ ...swim([box('a', 'doc', 10, 300, 60, 40, '下', '__virtual__'), box('b', 'step_num', 500, 120, 66, 66, '中', '__virtual__'),
+      box('c', 'doc', 10, 0, 60, 40, '上', '__virtual__')]), orientation: 'horizontal', lanes });
+    assert.deepEqual(plan.steps.map((s) => s.role), ['経理', '上長', '申請者']); // 中心 y 320・153・20（x は見ない）
+    assert.deepEqual(plan.roles, ['申請者', '上長', '経理']);
+  });
+  await t.test("lid が '__virtual__'・空・一覧にない・ない物は、どれも同じ位置のレーンに入る", () => {
+    for (const lid of ['__virtual__', '', 'ZZ', null, undefined]) {
+      assert.equal(bdmPlan(swim([box('n1', 'doc', 500, 100, 60, 40, '箱', lid)])).steps[0].role, '経理', String(lid));
+    }
+  });
+  await t.test("「（レーンなし）」になるのは、レーンを使わない図（フローチャート）とレーンの一覧が空の図だけ（'__virtual__' の箱も同じ）", () => {
+    const doc = box('n1', 'doc', 500, 100, 60, 40, '書類', '__virtual__');
+    assert.deepEqual(bdmPlan({ ...swim([doc]), diagramType: 'flowchart' }).steps.map((s) => s.role), ['（レーンなし）']);
+    const empty = bdmPlan({ ...swim([doc]), lanes: [] });
+    assert.deepEqual([empty.roles, empty.steps[0].role], [['（レーンなし）'], '（レーンなし）']);
   });
   await t.test('レーンのない作業がなければ「（レーンなし）」は roles に入れない。作業のないレーンも roles に残る', () => {
     assert.deepEqual(bdmPlan(swim([box('n1', 'rect', 30, 100, 100, 40, '箱', 'L1')])).roles, ['申請者', '上長', '経理']);

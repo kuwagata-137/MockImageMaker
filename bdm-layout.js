@@ -1,13 +1,12 @@
 // bdm-layout.js — BDM の図の中の位置から、レーン（役割）・列・グループ枠を決める
 // 役割:
-//  - レーン: 箱の lid が一覧にあればそのレーン。なければ、箱の中心の位置でレーンを決める（BDM の nodeLaneIdx・laneAt と同じ考え）
+//  - レーン: 箱の lid が一覧にあればそのレーン。なければ（lid が空・一覧にない・'__virtual__'）、箱の中心の位置でレーンを決める（BDM の nodeLaneIdx・laneAt と同じ考え）
 //    縦の図はレーンが縦の列（x が交差する向き・w がレーンの幅）、横の図はレーンが横の行（y が交差する向き・w が高さ）
 //  - 同じ名前のレーンは 1 つの役割にまとめる
 //  - 列: 流れの進む向き（縦の図は y・横の図は x）の、箱の中心の位置の順。前の列との違いが、箱の流れの向きの大きさの半分以内なら同じ列
 // Electron に触らない。node だけでテストできる
 'use strict';
 
-const { VIRTUAL_LANE_ID } = require('./bdm-kinds');
 const { idOf, cleanText, isObject } = require('./bdm-values');
 
 const DEFAULT_LANE_SIZE = 220; // BDM の LANE_W（レーンの幅が数でないとき）
@@ -34,9 +33,11 @@ function laneAt(list, cross) {
   return found || (cross < 0 ? list[0] : list[list.length - 1]);
 }
 
-// 箱のレーンの役割の名前。レーンなし（'__virtual__'・レーンの一覧が空）は null
+// 箱のレーンの役割の名前。lid が一覧にあればそのレーン。ないとき（lid が空・一覧にない・'__virtual__'）は、箱の中心の位置のレーン
+// （BDM の nodeLaneIdx と同じ。'__virtual__' は BDM がレーンのある図でもフリー配置の箱〔step_num など〕に付ける lid で、BDM はそれも位置のレーンに描く）。
+// レーンなし（null）になるのは、レーンの一覧が空（フローチャートなどレーンを使わない図を含む）のときだけ
 function laneRoleOf(laneMap, box, vertical) {
-  if (!laneMap.list.length || box.laneId === VIRTUAL_LANE_ID) return null;
+  if (!laneMap.list.length) return null;
   const byId = box.laneId ? laneMap.list.find((lane) => lane.id === box.laneId) : null;
   if (byId) return byId.role;
   return laneAt(laneMap.list, vertical ? box.x + box.w / 2 : box.y + box.h / 2).role;

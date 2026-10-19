@@ -10,7 +10,6 @@
 const { MaterialError } = require('./material-error');
 
 const NO_LANE_ROLE = '（レーンなし）';
-const VIRTUAL_LANE_ID = '__virtual__'; // BDM の「レーンなし」の仮のレーンの id（VIRTUAL_LANE）
 const GROUP_TYPE = 'group_box';
 const SUPPLEMENT_TYPE = 'supplement';
 const CROSSLANE_TYPES = new Set(['crosslane', 'crosslane_sys_input']);
@@ -66,4 +65,4 @@ function classifyBox(box, degree) {
   return { kind: 'task', notes: [`元の種類: ${box.type || '（不明）'}`] };
 }
 
-module.exports = { NO_LANE_ROLE, VIRTUAL_LANE_ID, GROUP_TYPE, SUPPLEMENT_TYPE, CROSSLANE_TYPES, diagramInfo, classifyBox };
+module.exports = { NO_LANE_ROLE, GROUP_TYPE, SUPPLEMENT_TYPE, CROSSLANE_TYPES, diagramInfo, classifyBox };
