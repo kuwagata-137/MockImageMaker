@@ -55,7 +55,7 @@ function result(kind, legacy = false) {
 }
 
 // 名前と先頭のバイトから { kind, legacy } を返す。buf は先頭の 8 バイト以上（HTML のときはファイル全体）。
-// legacy は古い形式の Word・Excel（読めないので、呼ぶ側が断る）のとき true。
+// legacy は古い形の Word・Excel（.doc・.xls。読めないので、呼ぶ側が断る）のとき true。
 function detectKind(name, bytes) {
   const ext = extensionOf(name);
   const buf = toBuffer(bytes);
