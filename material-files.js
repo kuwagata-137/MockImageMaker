@@ -3,7 +3,9 @@
 //  - 人が選んだファイルを <root>/<システムの id>/<資料の id>.<拡張子> に写す（root は <userData>/data/files）。
 //    写す途中は <名前>.part に書き、終わってから名前を変える（途中で落ちても、半端なファイルが資料として残らない）
 //  - システムを完全に削除したとき、フォルダごと消す（removeSystem）
-//  - ページの資料の一覧にないファイルを掃除する（sweep。.part・どの一覧にもないファイル・どの一覧にもないシステムのフォルダ）
+//  - ページの資料の一覧にないファイルを掃除する（sweep。.part・どの一覧にもないファイル・どの一覧にもないシステムのフォルダ）。
+//    この起動で入れたファイルは、一覧になくても必ず残す（入れた直後に、古い一覧で掃除が来ても消さないため。呼ぶ時をページに頼らない）。
+//    一覧から消した行のファイルは、次の起動の掃除で消える
 //  - 写す・消す・掃除するは 1 つずつ行う（掃除が、写している途中の .part を消さないため）
 //  - Electron に触らない。node だけでテストできる
 // ファイルの中身は designs.json に入れない。ページは資料の行（id・名前・種類・大きさ・file）だけを持つ。
@@ -132,6 +134,7 @@ async function copyIn(source, dest) {
 // root は <userData>/data/files。maxBytes は 1 つのファイルの大きさの上限（確かめでは小さくする）
 function createMaterialFiles({ root, maxBytes = MATERIAL_MAX_BYTES }) {
   const rootDir = path.resolve(root);
+  const addedThisRun = Object.create(null); // この起動で写したファイル { [システムの id]: [file, …] }（掃除で必ず残す）
   let queue = Promise.resolve();
   const serial = (task) => {
     const run = queue.then(task);
@@ -165,6 +168,7 @@ function createMaterialFiles({ root, maxBytes = MATERIAL_MAX_BYTES }) {
       const id = `m-${crypto.randomUUID()}`;
       const file = storedName(id, name);
       await copyIn(source, pathOf(systemId, file));
+      (addedThisRun[systemId] = addedThisRun[systemId] || []).push(file);
       return { added: { id, name, kind, size: st.size, file, legacy } };
     } catch (_) {
       return skip(name, MESSAGE.copyFailed);
@@ -201,8 +205,17 @@ function createMaterialFiles({ root, maxBytes = MATERIAL_MAX_BYTES }) {
       if (!isRealDirectory(dir)) return { removed: 0 };
       const { files, dirRemoved } = removeFolder(dir);
       if (!dirRemoved) throw new MaterialError('read_failed', 'システムの資料のフォルダを消せませんでした。');
+      delete addedThisRun[systemId];
       return { removed: files };
     });
+  }
+
+  // alsoKeep に、この起動で写したファイルを足した一覧（alsoKeep は書き換えない）
+  function withAddedThisRun(alsoKeep) {
+    const merged = Object.create(null);
+    for (const [id, list] of Object.entries(alsoKeep)) merged[id] = list;
+    for (const [id, list] of Object.entries(addedThisRun)) merged[id] = (merged[id] || []).concat(list);
+    return merged;
   }
 
   function sweepAll(keep, alsoKeep) {
@@ -228,11 +241,12 @@ function createMaterialFiles({ root, maxBytes = MATERIAL_MAX_BYTES }) {
   }
 
   // keep・alsoKeep は { [システムの id]: [file, …] }。どちらにもないシステムのフォルダは中ごと消し、
-  // 残すフォルダの中では、どちらにもないファイルと .part を消す。戻り値は { removedFiles, removedDirs }
+  // 残すフォルダの中では、どちらにもないファイルと .part を消す。この起動で写したファイル（とそのシステムのフォルダ）は、一覧になくても残す。
+  // 戻り値は { removedFiles, removedDirs }
   async function sweep(keep, alsoKeep = {}) {
     checkKeepList(keep);
     checkKeepList(alsoKeep);
-    return serial(() => sweepAll(keep, alsoKeep));
+    return serial(() => sweepAll(keep, withAddedThisRun(alsoKeep))); // 写している最中のものが終わってから、控えを足す
   }
 
   return { pathOf, addFromPaths, removeSystem, sweep };

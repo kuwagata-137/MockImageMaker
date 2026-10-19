@@ -193,7 +193,16 @@ test('materials:addPaths — 落としたファイルのパスを入れる。ふ
   assert.deepEqual(await env.ipc('materials:addPaths', { systemId: SYS, paths: 'nope' }), { ok: true, added: [], skipped: [] });
 });
 
-// 掃除の見本: 資料を 3 つ入れ、1 つ目は keep（ページの今の一覧）、2 つ目は .bak、3 つ目はどちらにもない
+// 掃除の見本（前の起動で入れた資料）: 置き場へ直接 3 つのファイルを置く。1 つ目は keep（ページの今の一覧）、2 つ目は .bak、3 つ目はどちらにもない。
+// この起動で入れたファイルは掃除で必ず残るので、掃除で消える物は、この起動で入れずに置く
+function earlierMaterials(env) {
+  return ['m-first.txt', 'm-second.txt', 'm-third.txt'].map((file) => {
+    env.write(`userData/data/files/${SYS}/${file}`, file);
+    return { file };
+  });
+}
+
+// 資料を 3 つ入れる（この起動で入れた物になる）
 async function threeMaterials(env) {
   const names = ['出張申請の手引き.txt', '旅費規程.txt', '古い資料.txt'];
   const paths = names.map((n) => env.write(`src/${n}`, n));
@@ -205,7 +214,7 @@ const bakWith = (systems) => JSON.stringify({ schemaVersion: 3, systems, designs
 
 test('materials:sweep — keep と、1 つ前の保存（designs.json.bak）にある資料は残し、ほかは消す', async (t) => {
   const env = setup(t);
-  const [first, second, third] = await threeMaterials(env);
+  const [first, second, third] = earlierMaterials(env);
   env.write('userData/data/designs.json.bak', bakWith([{ id: SYS, materials: [{ file: second.file }] }]));
   const r = await env.ipc('materials:sweep', { keep: { [SYS]: [first.file] } });
   assert.deepEqual(r, { ok: true, removedFiles: 1, removedDirs: 0 });
@@ -223,7 +232,7 @@ test('materials:sweep — .bak がない・読めない・形が違うときは�
   };
   for (const [label, bak] of Object.entries(cases)) {
     const env = setup(t);
-    const [first, second] = await threeMaterials(env);
+    const [first, second] = earlierMaterials(env);
     if (bak !== null) env.write('userData/data/designs.json.bak', bak);
     const r = await env.ipc('materials:sweep', { keep: { [SYS]: [first.file] } });
     assert.deepEqual(r, { ok: true, removedFiles: 2, removedDirs: 0 }, label);
@@ -231,11 +240,21 @@ test('materials:sweep — .bak がない・読めない・形が違うときは�
   }
 });
 
+test('materials:sweep — この起動で入れた資料は、keep と .bak になくても残る（入れた直後に掃除が来ても消さない）。前の起動の資料は消える', async (t) => {
+  const env = setup(t);
+  const earlier = earlierMaterials(env); // 前の起動で入れた 3 つ
+  const added = await threeMaterials(env); // この起動で入れた 3 つ
+  const r = await env.ipc('materials:sweep', { keep: { [SYS]: [] } });
+  assert.deepEqual(r, { ok: true, removedFiles: 3, removedDirs: 0 });
+  for (const e of earlier) assert.equal(fs.existsSync(env.stored(e.file)), false, e.file);
+  for (const a of added) assert.equal(fs.existsSync(env.stored(a.file)), true, a.name);
+});
+
 test('materials:sweep — 保存の書き込みが終わるのを待ってから掃除する', async (t) => {
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
   const env = setup(t, { whenIdle: () => gate });
-  const [first] = await threeMaterials(env);
+  const [first] = earlierMaterials(env);
   let finished = false;
   const sweeping = env.ipc('materials:sweep', { keep: { [SYS]: [] } }).then((r) => { finished = true; return r; });
   await new Promise((resolve) => setTimeout(resolve, 50));
@@ -250,7 +269,7 @@ test('materials:sweep — 保存の書き込みが終わるのを待ってから
 
 test('materials:sweep — keep の形が正しくなければ失敗を返し、何も消さない', async (t) => {
   const env = setup(t);
-  const [first] = await threeMaterials(env);
+  const [first] = earlierMaterials(env);
   for (const req of [undefined, {}, { keep: null }, { keep: [] }, { keep: { [SYS]: 'x' } }]) {
     const r = await env.ipc('materials:sweep', req);
     assert.equal(r.ok, false, JSON.stringify(req));

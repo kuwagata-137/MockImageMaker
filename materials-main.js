@@ -145,7 +145,7 @@ function initMaterials({ app, ipcMain, storage, headless = false, reader = null,
   ipcMain.handle('materials:addPaths', (_e, req) => guarded(FAILED.add, async () => ({ ok: true, ...(await files.addFromPaths(req && req.systemId, req && req.paths)) })));
   ipcMain.handle('materials:read', (_e, req) => guarded(FAILED.read, async () => ({ ok: true, result: await readMaterial(req || {}) })));
   ipcMain.handle('materials:bdmPlan', (_e, req) => guarded(FAILED.read, async () => ({ ok: true, plan: await bdmPlan(req || {}) })));
-  // 保存の書き込みが終わってから行う（掃除は、1 つ前の保存〔.bak〕の資料も残す）
+  // 保存の書き込みが終わってから行う（掃除は、1 つ前の保存〔.bak〕の資料と、この起動で入れた資料〔files.sweep が控えている〕も残す）
   ipcMain.handle('materials:sweep', (_e, req) => guarded(FAILED.cleanup, async () => {
     await storage.whenIdle();
     return { ok: true, ...(await files.sweep(req && req.keep, await readPreviousGeneration(storage))) };

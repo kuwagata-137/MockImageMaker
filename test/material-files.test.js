@@ -212,7 +212,7 @@ test('addFromPaths — 写す途中で失敗したら .part を消して skipped
   }
 });
 
-test('写している途中に掃除を頼んでも、掃除は写し終わってから行われる（.part を消して写しを壊さない）', async (t) => {
+test('写している途中に掃除を頼んでも、掃除は写し終わってから行われ、写し終えたファイルは一覧になくても消さない', async (t) => {
   const { files, write } = workspace(t);
   const src = write('src/旅費規程.txt', '規程');
   const realCopy = fs.promises.copyFile;
@@ -236,7 +236,40 @@ test('写している途中に掃除を頼んでも、掃除は写し終わっ�
   const swept = await sweeping;
   assert.equal(added.added.length, 1);
   assert.deepEqual(added.skipped, []);
-  assert.equal(swept.removedFiles, 1); // 写し終わった後に掃除が走り、一覧にないそのファイルを消した
+  assert.deepEqual(swept, { removedFiles: 0, removedDirs: 0 }); // 写し終わった後に掃除が走ったが、この起動で入れたファイルは一覧になくても残る
+  assert.equal(fs.existsSync(files.pathOf(SYS, added.added[0].file)), true);
+});
+
+test('sweep — この起動で入れたファイルは、一覧（keep・alsoKeep）になくても必ず残る。ほかの起動で入れたファイルは、一覧になければ消える', async (t) => {
+  const { files, write, root } = workspace(t);
+  const src = write('src/出張申請の手引き.txt', '手引き');
+  const earlier = (await files.addFromPaths(SYS, [src])).added[0]; // 前の起動で入れたファイル
+  const later = createMaterialFiles({ root }); // 起動し直した（この起動で入れたファイルの控えは空になる）
+  const current = (await later.addFromPaths(SYS, [src])).added[0];
+  const currentOther = (await later.addFromPaths(OTHER_SYS, [src])).added[0];
+
+  // 一覧は空のシステムの分だけ（OTHER_SYS は一覧にもないシステム）。前の起動のファイルだけが消える
+  assert.deepEqual(await later.sweep({ [SYS]: [] }), { removedFiles: 1, removedDirs: 0 });
+  assert.equal(fs.existsSync(later.pathOf(SYS, earlier.file)), false);
+  assert.equal(fs.existsSync(later.pathOf(SYS, current.file)), true);
+  // 一覧が空でも（システムが一覧にない場合も）、この起動で入れたファイルとそのフォルダは残る
+  assert.deepEqual(await later.sweep({}, {}), { removedFiles: 0, removedDirs: 0 });
+  assert.equal(fs.existsSync(later.pathOf(SYS, current.file)), true);
+  assert.equal(fs.existsSync(later.pathOf(OTHER_SYS, currentOther.file)), true);
+  // また起動し直すと、一覧になければ消える（行を消してもファイルはすぐ消さず、次の起動の掃除で片付く）
+  const next = createMaterialFiles({ root });
+  assert.deepEqual(await next.sweep({}, {}), { removedFiles: 2, removedDirs: 2 });
+  assert.equal(fs.existsSync(path.join(root, SYS)), false);
+});
+
+test('removeSystem の後は、そのシステムでこの起動に入れたファイルの控えも消える（同じ名前のファイルが現れても、掃除で消える）', async (t) => {
+  const { files, write, root } = workspace(t);
+  const src = write('src/出張申請の手引き.txt', '手引き');
+  const added = (await files.addFromPaths(SYS, [src])).added[0];
+  assert.deepEqual(await files.removeSystem(SYS), { removed: 1 });
+  write(`files/${SYS}/${added.file}`, 'x'); // 消した後に、同じ名前で現れたファイル
+  assert.deepEqual(await files.sweep({ [SYS]: [] }), { removedFiles: 1, removedDirs: 0 });
+  assert.equal(fs.existsSync(path.join(root, SYS, added.file)), false);
 });
 
 test('removeSystem — システムのフォルダを、日本語の名前のファイルごと消す。ほかのシステムのフォルダは消さない', async (t) => {
