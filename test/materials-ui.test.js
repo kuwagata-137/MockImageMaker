@@ -197,6 +197,7 @@ test('大きさの書き方: 1 MB より小さければ KB（10 KB より小さ�
   const f = api.fmtMaterialSize;
   assert.deepEqual([0, 10, 300, 1536, 10240, 49152, 327680, 1047552].map(f), ['0 KB', '0.1 KB', '0.3 KB', '1.5 KB', '10 KB', '48 KB', '320 KB', '1023 KB']);
   assert.deepEqual([1048576, 1258291, 2202010, 52428800].map(f), ['1 MB', '1.2 MB', '2.1 MB', '50 MB']);
+  assert.deepEqual([1048063, 1048064, 1048575].map(f), ['1023 KB', '1 MB', '1 MB'], 'KB に丸めて 1024 になるときは MB で書く（「1024 KB」にしない）');
 });
 
 test('資料がないときは表の代わりに「まだ資料がありません。」。右の欄は「資料について」と 4 つの文', async (t) => {
@@ -322,7 +323,7 @@ test('落とす: 最初の画面の HTML の取り込みは今までどおり（
 
 // ── メモ・消す ──
 test('メモ: 欄を離れると setMaterialMemo（前後の空白を取る。真ん中は描き直さない）。打ちかけは、入口の切り替え・窓を離れるときに保存する', async (t) => {
-  const { app, api, sys, memo, entry } = await boot(t);
+  const { app, sys, memo, entry } = await boot(t);
   const el = memo('m-png');
   el.focus();
   setValue(el, '  記入の見本  ');
@@ -341,11 +342,10 @@ test('メモ: 欄を離れると setMaterialMemo（前後の空白を取る。�
   el2.value = '今の紙の様式（A4）';
   app.window.dispatchEvent(new app.window.Event('blur'));
   assert.equal(sys().materials[0].memo, '今の紙の様式（A4）');
-  void api;
 });
 
 test('メモ: 打ちかけの文字とフォーカスは、AI が書いたときと、メモを打ちながらファイルを落としたときの描き直しで消えない', async (t) => {
-  const { app, api, sys, memo, call, materials } = await boot(t);
+  const { app, sys, memo, call, materials } = await boot(t);
   const el = memo('m-pdf');
   el.focus();
   el.value = '日当の決まりは 3 ページ・宿泊費は 4 ページ';
@@ -367,7 +367,6 @@ test('メモ: 打ちかけの文字とフォーカスは、AI が書いたとき
   assert.equal(sys().materials[0].memo, '今の紙の様式（2026 年 4 月版）');
   assert.equal(memo('m-xlsx').value, '今の紙の様式（2026 年 4 月版）');
   assert.equal(app.document.activeElement, memo('m-xlsx'));
-  void api;
 });
 
 test('消す: 確かめの窓を出さずに行を消し、お知らせ。元に戻す（Ctrl+Z）で戻る', async (t) => {
@@ -503,4 +502,161 @@ test('スイムレーン図にする: 作業の箱のない図は置き換えず
   await tick();
   assert.equal($('.modal'), null);
   assert.deepEqual(sys().swimlane, before.swimlane, 'ごみ箱に入ったシステムは直さない');
+});
+
+// ── 直し 1 回目（見直しの Important 1・Minor 1〜5・9）──
+// 返事を止めておける窓口の関数（返事は後で h.resolve(返事) で返す）
+function held() {
+  const h = { resolve: null, fn: () => new Promise((r) => { h.resolve = r; }) };
+  return h;
+}
+
+test('待つ間に打ったメモ: 落としたファイルを写す間に打ったメモは、行を足す前に保存し、描き直した欄にも残る', async (t) => {
+  const { app, $, sys, memo, materials } = await boot(t);
+  const h = held();
+  materials.set('addDropped', h.fn);
+  fileEvent(app, $('#sys-view .mat-drop'), 'drop', [{ name: '宿泊費の表.csv', size: 300, text: async () => '' }]);
+  await waitFor(() => h.resolve, { label: 'addDropped' });
+  const el = memo('m-xlsx');
+  el.focus();
+  el.value = '待つ間に打った文字';
+  h.resolve({ ok: true, added: [{ id: 'm-d3', name: '宿泊費の表.csv', kind: 'text', size: 300, file: 'm-d3.csv', legacy: false }], skipped: [] });
+  await waitFor(() => sys().materials.length === 6, { label: '資料の行' });
+  assert.equal(sys().materials[0].memo, '待つ間に打った文字');
+  assert.equal(memo('m-xlsx').value, '待つ間に打った文字');
+  assert.equal(app.document.activeElement, memo('m-xlsx'));
+});
+
+test('待つ間に打ったメモ: スイムレーン図にするの案を作る間に打ったメモは、置き換える前に保存する', async (t) => {
+  const { api, sys, memo, btn, materials } = await boot(t, { sysId: 'y-exp' });
+  const h = held();
+  materials.set('bdmPlan', h.fn);
+  click(btn('sys-mat-swim', 'm-flow'));
+  await waitFor(() => h.resolve, { label: 'bdmPlan' });
+  const el = memo('m-flow');
+  el.focus();
+  el.value = '経理が描いた今の流れ';
+  h.resolve({ ok: true, plan: plain(PLAN) });
+  await waitFor(() => sys('y-exp').swimlane.steps.length === 3, { label: '置き換え' });
+  assert.equal(sys('y-exp').materials[0].memo, '経理が描いた今の流れ');
+  assert.equal(api.ui.sysPanel, 'swimlane');
+});
+
+test('入れる: 待つ間にほかの画面へ移っていたら、行は足すが元に戻すの履歴は消す（元に戻すで見えない所を変えないため）', async (t) => {
+  const { app, api, $, sys, materials, toast } = await boot(t);
+  const h = held();
+  materials.set('addDropped', h.fn);
+  fileEvent(app, $('#sys-view .mat-drop'), 'drop', [{ name: '出張の写真.jpg', size: 5000, text: async () => '' }]);
+  await waitFor(() => h.resolve, { label: 'addDropped' });
+  api.openSystem('y-eq');
+  api.actions.addRole('y-eq', '申請者');
+  assert.equal(api.store.undoStack.length, 1);
+  h.resolve({ ok: true, added: [{ id: 'm-d1', name: '出張の写真.jpg', kind: 'image', size: 5000, file: 'm-d1.jpg', legacy: false }], skipped: [] });
+  await waitFor(() => sys().materials.length === 6, { label: '資料の行' });
+  assert.equal(toast(), '資料を 1 つ入れました。');
+  assert.equal(api.store.undoStack.length, 0, '元に戻すの履歴を消す');
+  assert.equal($('#sys-undo').disabled, true);
+  api.runCommand('undo');
+  assert.equal(sys().materials.length, 6, '元に戻すで、見えない所の行が消えない');
+  assert.deepEqual(sys('y-eq').roles.map((r) => r.name), ['申請者']);
+});
+
+test('待っている資料の「読む」「スイムレーン図にする」は、2 回目を無視する（返事の後はまた押せる）', async (t) => {
+  const { $, btn, calls, materials } = await boot(t);
+  const h = held();
+  materials.set('bdmPlan', h.fn);
+  click(btn('sys-mat-swim', 'm-bdm'));
+  click(btn('sys-mat-swim', 'm-bdm'));
+  click(btn('sys-mat-read', 'm-bdm'));
+  await waitFor(() => h.resolve, { label: 'bdmPlan' });
+  await tick();
+  assert.equal(calls.bdmPlan.length, 1);
+  assert.equal(calls.read.length, 0, '同じ資料の「読む」も、返事を待つ');
+  h.resolve({ ok: true, plan: plain(PLAN) });
+  await waitFor(() => $('.modal'), { label: '確かめの窓' });
+  click($('[data-dlg="cancel"]'));
+  materials.set('bdmPlan', async () => ({ ok: false, error: { code: 'read_failed', message: '二度目（テスト）。' } }));
+  click(btn('sys-mat-swim', 'm-bdm'));
+  await waitFor(() => calls.bdmPlan.length === 2, { label: '返事の後はまた押せる' });
+  const r = held();
+  materials.set('read', r.fn);
+  click(btn('sys-mat-read', 'm-pdf'));
+  click(btn('sys-mat-read', 'm-pdf'));
+  await waitFor(() => r.resolve, { label: 'read' });
+  await tick();
+  assert.equal(calls.read.length, 1);
+  r.resolve({ ok: true, result: plain(PART2) });
+  await waitFor(() => $('.modal'), { label: '読むの窓' });
+});
+
+test('スイムレーン図にする: 待った後にほかの窓が開いていたら、置き換えずに知らせる（今の図に作業があるときも、空のときも）', async (t) => {
+  const { api, $, sys, btn, materials, toast, entry } = await boot(t);
+  const before = sys().swimlane;
+  const h = held();
+  materials.set('bdmPlan', h.fn);
+  click(btn('sys-mat-swim', 'm-bdm'));
+  await waitFor(() => h.resolve, { label: 'bdmPlan' });
+  click(entry('roles'));
+  click($('#sys-view [data-action="sys-role-del"][data-id="l-app"]'));
+  await waitFor(() => $('.modal'), { label: '役割を消す確かめの窓' });
+  h.resolve({ ok: true, plan: plain(PLAN) });
+  await waitFor(() => toast().includes('ほかの窓'), { label: 'お知らせ' });
+  assert.equal(toast(), '「出張申請の流れ.html」の図を読み終えましたが、ほかの窓が開いているため置き換えませんでした。窓を閉じてからもう一度押してください。');
+  assert.equal($('.modal h2').textContent, '役割「申請者」を消しますか？', '開いていた窓はそのまま');
+  assert.deepEqual(sys().swimlane, before);
+  click($('[data-dlg="cancel"]'));
+  // 今の図が空のシステム（待つ間に、別の資料の読むの窓を開いた）
+  api.openSystem('y-exp', { panel: 'materials' });
+  api.actions.addMaterials('y-exp', [{ id: 'm-t', name: '精算の決まり.txt', kind: 'text', size: 100, file: 'm-t.txt' }]);
+  materials.set('read', async () => ({ ok: true, result: plain(PART2) }));
+  const h2 = held();
+  materials.set('bdmPlan', h2.fn);
+  click(btn('sys-mat-swim', 'm-flow'));
+  await waitFor(() => h2.resolve, { label: 'bdmPlan' });
+  click(btn('sys-mat-read', 'm-t'));
+  await waitFor(() => $('.modal'), { label: '読むの窓' });
+  h2.resolve({ ok: true, plan: plain(PLAN) });
+  await waitFor(() => toast().startsWith('「経費精算の流れ.html」の図を読み終えましたが'), { label: 'お知らせ' });
+  assert.equal(sys('y-exp').swimlane.steps.length, 0);
+  assert.equal(api.ui.sysPanel, 'materials');
+});
+
+test('待つ間にほかの画面へ移っていたら、読むの窓は開かず、前のシステムのスイムレーン図も置き換えない', async (t) => {
+  const { api, $, sys, btn, materials } = await boot(t);
+  const before = sys();
+  const r = held();
+  materials.set('read', r.fn);
+  click(btn('sys-mat-read', 'm-pdf'));
+  await waitFor(() => r.resolve, { label: 'read' });
+  api.goHome();
+  r.resolve({ ok: true, result: plain(PART1) });
+  await tick();
+  await tick();
+  assert.equal($('.modal'), null, '最初の画面では読むの窓を開かない');
+  api.openSystem('y-trip', { panel: 'materials' });
+  const h = held();
+  materials.set('bdmPlan', h.fn);
+  click(btn('sys-mat-swim', 'm-bdm'));
+  await waitFor(() => h.resolve, { label: 'bdmPlan' });
+  api.openSystem('y-eq', { panel: 'roles' });
+  h.resolve({ ok: true, plan: plain(PLAN) });
+  await tick();
+  await tick();
+  assert.equal($('.modal'), null);
+  assert.deepEqual(sys(), before, '前のシステムの図は置き換えない');
+  assert.deepEqual([api.ui.systemId, api.ui.sysPanel], ['y-eq', 'roles'], '開いている画面の入口も変えない');
+});
+
+test('読む: 画像は画像の見出しの行の後に置く（Excel のシートの名前に「画像」があっても、そこには置かない）', async (t) => {
+  const { $, btn, materials } = await boot(t);
+  materials.set('read', async () => ({ ok: true, result: {
+    notice: NOTICE, part: { from: 1, to: 2, total: 2 },
+    text: [NOTICE, '── シート「画像一覧」──', 'A1: 写真の番号', '── 画像 ──'].join('\n'),
+    images: [{ page: 1, width: 10, height: 10, data: 'iVBORw0KGgo=' }], nextCursor: null,
+  } }));
+  click(btn('sys-mat-read', 'm-xlsx'));
+  await waitFor(() => $('.modal'), { label: '読むの窓' });
+  const box = $('.modal .rd-text');
+  assert.deepEqual([...box.children].map((e) => e.className), ['rd-pg', 'rd-pre', 'rd-pg', 'rd-img']);
+  assert.equal(box.querySelector('img').previousElementSibling.textContent, '── 画像 ──');
 });
