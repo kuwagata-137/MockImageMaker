@@ -15,15 +15,16 @@ const { connectInfo } = require('./automation-connect');
 
 const READY_WAIT_MS = 30000; // ページの準備を待つ時間
 const IDLE_QUIT_MS = 30000; // AI のつながりが 0 で窓が見えていないとき、終わるまでの時間
-// 時間のかかる道具（書き出し・画像）。受け口の時間切れを 5 分にする
-const SLOW_TOOLS = new Set(['export_design', 'get_screen_image', 'get_view_image']);
+// 時間のかかる道具（書き出し・画像・資料を読む）。受け口の時間切れを 5 分にする
+const SLOW_TOOLS = new Set(['export_design', 'get_screen_image', 'get_view_image', 'read_material', 'swimlane_from_bdm']);
 
 const fail = (code, message) => ({ ok: false, error: { code, message } });
 
 // background: --background で起動したか。headless: 確かめのための起動（MIM_HEADLESS=1）か。
-// renderer: export.js の createPageRenderer（画面の画像と書き出しを PNG・PDF にする）
-function initAutomation({ app, ipcMain, getWindow, background = false, headless = false, appVersion, renderer }) {
-  const render = createRenderFinisher({ app, renderer, headless });
+// renderer: export.js の createPageRenderer（画面の画像と書き出しを PNG・PDF にする）。
+// materials: materials-main.js の initMaterials の戻り値（AI の read_material で資料を読む。第 9 段階の後半）
+function initAutomation({ app, ipcMain, getWindow, background = false, headless = false, appVersion, renderer, materials = null }) {
+  const render = createRenderFinisher({ app, renderer, headless, materials });
   // 確かめのときだけ、終わるまでの時間を環境変数で縮められる（インストールした版では読まない）
   const idleMs = (headless || !app.isPackaged) && Number(process.env.MIM_IDLE_QUIT_MS) > 0 ? Number(process.env.MIM_IDLE_QUIT_MS) : IDLE_QUIT_MS;
   let quitting = false;

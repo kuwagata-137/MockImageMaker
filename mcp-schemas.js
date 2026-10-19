@@ -22,6 +22,7 @@ const S = {
   design: ref('画面設計の id か名前'),
   system: ref('システムの id か名前'),
   role: ref('役割の id か名前（そのシステムの中で）'),
+  material: ref('資料の id か名前（そのシステムの資料の置き場の中で。list_materials の id・name）'),
   screen: ref('画面の id か名前（その画面設計の中で）'),
   part: ref('部品の id か赤い番号（その画面の中で）'),
   item: ref('データベースの項目の id か項目名'),
@@ -195,11 +196,22 @@ const swimEdge = obj({
   label: opt(z.string().describe('矢印の文字（例 "差し戻し"）。省くと、今の矢印の文字のまま（新しい矢印は文字なし）')),
 });
 
+// ── 資料の置き場（list_materials・read_material・swimlane_from_bdm。第 9 段階の後半）──
+// 入力の形の欄（mcp-tools.js の read・write が obj で包み、知らない欄を断る）。ファイルの場所を受け取る欄は作らない（設計書の 1-4）
+const materialInputs = {
+  list: { system: S.system, cursor: S.cursor },
+  read: { system: S.system, material: S.material, cursor: S.cursor },
+  swimlaneFromBdm: {
+    system: S.system, material: S.material, expect: S.expect,
+    replace: opt(z.boolean().describe('今のスイムレーン図に作業があるとき、置き換えてよいか。人に確かめてから true を書く（省くと、今の図に作業があれば断る）')),
+  },
+};
+
 const opsOf = (union) => z.array(union).min(1).describe('操作の並び（まとめて 1 回の変更になる）');
 
 module.exports = {
   z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps), processOps: opsOf(processOps),
   roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('作業の並び（今のスイムレーンの作業を全部置き換える。空の並びで作業を全部消す）'),
   swimEdges: z.array(swimEdge).describe('矢印の並び（今の矢印を全部置き換える。省くと、今の矢印のうち両端の作業が残っているものを残す。[] で全部消す）'),
-  DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS,
+  materialInputs, DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS,
 };

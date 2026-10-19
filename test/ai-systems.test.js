@@ -31,8 +31,8 @@ test('list_systems: ごみ箱にないシステムを並べる（id・名前・�
   const { app, call } = await boot(st);
   const r = ok(await call('list_systems'));
   assert.deepEqual(r.systems, [
-    { id: 'y1', name: '営業管理システム', description: '顧客の登録から受注までをまとめる。', designs: 2, roles: 2, steps: 3, updatedAt: OLD },
-    { id: 'y2', name: '請求管理システム', description: 'あ'.repeat(60) + '…', designs: 1, roles: 0, steps: 0, updatedAt: OLD },
+    { id: 'y1', name: '営業管理システム', description: '顧客の登録から受注までをまとめる。', designs: 2, roles: 2, steps: 3, materials: 1, updatedAt: OLD },
+    { id: 'y2', name: '請求管理システム', description: 'あ'.repeat(60) + '…', designs: 1, roles: 0, steps: 0, materials: 0, updatedAt: OLD },
   ]);
   assert.deepEqual([r.total, r.nextCursor], [2, null]);
   assert.deepEqual(ok(await call('list_systems', { query: '請求' })).systems.map((y) => y.id), ['y2']);
@@ -63,7 +63,7 @@ test('get_system: 名前・説明・役割（作業の数）・画面設計の�
   assert.deepEqual(r.edges, [{ id: 'e1', from: 'w1', to: 'w2', label: '' }, { id: 'e2', from: 'w2', to: 'w3', label: '' }]);
   assert.deepEqual(r.revisions, []);
   assert.deepEqual([r.rolesTotal, r.designsTotal, r.stepsTotal, r.edgesTotal, r.nextCursor], [2, 2, 3, 2, null]);
-  assert.equal(r.materials, undefined, '資料は第 9 段階の後半で足す');
+  assert.deepEqual([r.materials, r.materialsTotal], [[{ id: 'm1', name: '受注の流れ.txt', kind: 'text', kindName: '文字', size: 10, addedAt: OLD, memo: '' }], 1], '資料（第 9 段階の後半。test/ai-materials.test.js）');
   const r2 = ok(await call('get_system', { system: 'y2' }));
   assert.deepEqual(r2.designs[1], { id: 'd3', name: '出張申請', target: 'その他', screens: 1, trashed: true, sharedWith: [] });
   assert.equal(ok(await call('get_system', { system: '古いシステム' })).trashed, true, 'ごみ箱のシステムも読める');

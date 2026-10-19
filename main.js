@@ -252,7 +252,7 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
     materials = initMaterials({ app, ipcMain, storage, headless: HEADLESS }); // 資料を読む部品・BDM を読む部品は、まだつないでいない（読む頼みは unavailable）
     const renderer = createPageRenderer(app); // PDF・PNG を作る（書き出しの窓と AI の書き出しで同じものを使う）
     initExport(app, ipcMain, { headless: HEADLESS, renderer });
-    automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION, renderer });
+    automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION, renderer, materials });
     buildAppMenu();
     createMainWindow();
     automation.windowCreated();
