@@ -372,6 +372,24 @@ test('materials:read — reader の MaterialError は { code, message } にし�
   assert.equal(warn.mock.callCount(), 1); // 原因は console に残す
 });
 
+test('materials:read・finishRead — MaterialError に元の例外（cause）があれば main の console に残す。返事は code と message だけ（パスを出さない）', async (t) => {
+  const env = setup(t);
+  const secret = path.join(env.dir, '秘密の場所', 'm-a.pdf');
+  const failure = new MaterialError('read_failed', 'この PDF は読めませんでした。ファイルが壊れているか、対応していない形式かもしれません。');
+  failure.cause = new Error(`InvalidPDFException: Invalid PDF structure. '${secret}'`);
+  const failing = setup(t, { reader: fakeReader(null, failure) });
+  const warn = t.mock.method(console, 'warn', () => {});
+  const want = { ok: false, error: { code: 'read_failed', message: failure.message } };
+  assert.deepEqual(await failing.ipc('materials:read', { systemId: SYS, file: 'm-a.pdf', kind: 'pdf', name: 'a.pdf', cursor: null }), want);
+  assert.deepEqual(await failing.materials.finishRead({ kind: 'material', systemId: SYS, file: 'm-a.pdf', materialKind: 'pdf', name: 'a.pdf', cursor: null }), want);
+  assert.equal(warn.mock.callCount(), 2);
+  assert.deepEqual(warn.mock.calls.map((c) => [c.arguments[0], c.arguments[1]]), [['資料の処理の失敗の原因:', failure.cause], ['資料の処理の失敗の原因:', failure.cause]]);
+  // cause のない MaterialError（古い形など、原因がはっきりしているもの）は console に出さない
+  const old = setup(t, { reader: fakeReader(null, new MaterialError('old_format', '古い形の Word は読めません。')) });
+  await old.ipc('materials:read', { systemId: SYS, file: 'm-a.doc', kind: 'word', name: 'a.doc', cursor: null });
+  assert.equal(warn.mock.callCount(), 2);
+});
+
 test('finishRead — AI の read_material の仕上げ。内容と、画像の base64 の並びを返す', async (t) => {
   const reader = fakeReader(READ_RESULT());
   const env = setup(t, { reader });

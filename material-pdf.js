@@ -99,7 +99,8 @@ async function pageText(page) {
   }
 }
 
-// ページを、長い辺が IMAGE_MAX_SIDE の PNG に描く
+// ページを、長い辺が IMAGE_MAX_SIDE の PNG に描く。描けないときは read_failed（元の例外は cause）。
+// 読む部品（material-reader.js）は、その塊を「（N ページの画像を作れませんでした）」の文の行にして、後ろのページへ進む
 async function renderPage(pdf, pageNumber) {
   try {
     const page = await pdf.getPage(pageNumber);

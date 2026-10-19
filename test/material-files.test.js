@@ -201,6 +201,7 @@ test('addFromPaths — 写す途中で失敗したら .part を消して skipped
       throw new Error(`EPERM: operation not permitted, rename '${from}' -> '${to}'`);
     }),
   };
+  const warn = t.mock.method(console, 'warn', () => {});
   for (const [when, install] of Object.entries(failures)) {
     const mocked = install();
     const r = await files.addFromPaths(SYS, [src]);
@@ -210,6 +211,9 @@ test('addFromPaths — 写す途中で失敗したら .part を消して skipped
     assert.deepEqual(listNames(path.join(root, SYS)), [], `${when}: .part が残っている`);
     assert.equal(JSON.stringify(r).includes(dir), false, when);
   }
+  // 元の例外（EIO・EPERM など）は、返事には入れず main の console にだけ残す（人から「入らない」と言われたときに調べるため）
+  assert.equal(warn.mock.callCount(), 2);
+  assert.deepEqual(warn.mock.calls.map((c) => [c.arguments[0], /^(EIO|EPERM)/.test(c.arguments[1].message)]), [['資料を写せませんでした:', true], ['資料を写せませんでした:', true]]);
 });
 
 test('写している途中に掃除を頼んでも、掃除は写し終わってから行われ、写し終えたファイルは一覧になくても消さない', async (t) => {

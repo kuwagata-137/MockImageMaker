@@ -92,6 +92,50 @@ test('画像の塊 — 1 回 3 枚まで・合わせて PNG 8MB まで・1 枚�
   });
 });
 
+test('画像を 1 枚描けないときは、その塊を「（N ページの画像を作れませんでした）」の文の行にして先へ進む（返事全体を read_failed にしない）', async (t) => {
+  const png = samples.fakePng(10, 10, 500);
+  const broken = (page, how) => ({ image: { page, caption: `── ${page} ページ（文字がないので画像で渡します）──`, render: how } });
+  await t.test('描く途中で投げた・PNG でない物を返した塊は文の行になり、ほかの塊と次の部分は読める（原因は console に残す）', async () => {
+    const warn = t.mock.method(console, 'warn', () => {});
+    const blocks = [
+      { text: '── 1 ページ ──\n第 1 条' },
+      broken(2, async () => { throw new MaterialError('read_failed', 'この PDF は読めませんでした。'); }),
+      broken(3, async () => 'PNG ではない'),
+      { image: { page: 4, caption: '── 4 ページ（文字がないので画像で渡します）──', render: async () => png } },
+      { text: 'い'.repeat(3000) },
+      { text: 'う'.repeat(3000) },
+      { text: 'え'.repeat(3000) },
+      { text: '── 8 ページ ──\n第 8 条' },
+    ];
+    const { reader, file } = readerWithBlocks(blocks);
+    const first = await reader.read({ path: file, kind: 'bdm', name: 'a.html', cursor: null });
+    assert.deepEqual(body(first).split('\n').slice(0, 5), ['── 1 ページ ──', '第 1 条', '（2 ページの画像を作れませんでした）', '（3 ページの画像を作れませんでした）', '── 4 ページ（文字がないので画像で渡します）──']);
+    assert.deepEqual(first.images.map((i) => i.page), [4]);
+    assert.deepEqual(first.part, { from: 1, to: 6, total: 8 }, '描けなかった塊は画像の重みで数えない（画像 1 枚＋文字 6,000 で、次の文字 3,000 は入らない）');
+    assert.equal(first.nextCursor, '6');
+    const second = await reader.read({ path: file, kind: 'bdm', name: 'a.html', cursor: first.nextCursor });
+    assert.equal(body(second), `${'え'.repeat(3000)}\n── 8 ページ ──\n第 8 条`);
+    assert.equal(warn.mock.callCount(), 2);
+    assert.equal(warn.mock.calls[0].arguments[0], '資料の画像を作れませんでした:');
+    warn.mock.restore();
+  });
+  await t.test('最初の塊が描けない画像でも、文の行にして次の塊へ進む', async () => {
+    t.mock.method(console, 'warn', () => {});
+    const { reader, file } = readerWithBlocks([broken(5, async () => { throw new Error('描けない'); }), { text: '── 6 ページ ──\n第 6 条' }]);
+    const result = await reader.read({ path: file, kind: 'bdm', name: 'a.html', cursor: null });
+    assert.deepEqual(body(result).split('\n'), ['（5 ページの画像を作れませんでした）', '── 6 ページ ──', '第 6 条']);
+    assert.deepEqual(result.images, []);
+    assert.equal(result.nextCursor, null);
+  });
+  await t.test('資料の塊がその画像 1 つだけ（画像の資料など）で描けないときは、読めるものがないので read_failed', async () => {
+    t.mock.method(console, 'warn', () => {});
+    const { reader, file } = readerWithBlocks([broken(1, async () => { throw new Error('描けない'); })]);
+    await rejectsWith(reader.read({ path: file, kind: 'bdm', name: 'a.html', cursor: null }), 'read_failed');
+    const { reader: other, file: file2 } = readerWithBlocks([broken(1, async () => null)]);
+    await rejectsWith(other.read({ path: file2, kind: 'bdm', name: 'a.html', cursor: null }), 'read_failed');
+  });
+});
+
 test('bdm・そのほかの種類', async (t) => {
   await t.test('bdm は bdmBlocks に HTML の文字を渡し、その文の並びを返す', async () => {
     const { reader, file, calls } = readerWithBlocks([{ text: '図の種類: スイムレーン' }, { text: '箱: 申請' }]);

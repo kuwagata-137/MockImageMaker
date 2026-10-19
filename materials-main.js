@@ -30,9 +30,13 @@ const DIALOG_FILTERS = [
 const UNAVAILABLE_MESSAGE = '資料を読む機能は、まだ使えません。';
 const FAILED = { add: '資料を入れられませんでした。', read: '資料を読めませんでした。', cleanup: '資料のファイルを片付けられませんでした。' };
 
-// 失敗を { code, message } にする。MaterialError の文はそのまま。ほかは fallbackMessage の定型文（原因は console に残す）
+// 失敗を { code, message } にする。MaterialError の文はそのまま（読む部品が残した元の例外 cause があれば console に残す）。
+// ほかは fallbackMessage の定型文（原因は console に残す）。どちらも返事にはパスを入れない
 function errorOf(err, fallbackMessage) {
-  if (err instanceof MaterialError) return { code: err.code, message: err.message };
+  if (err instanceof MaterialError) {
+    if (err.cause) console.warn('資料の処理の失敗の原因:', err.cause);
+    return { code: err.code, message: err.message };
+  }
   console.warn('資料の処理で予期しない失敗:', err);
   return { code: 'read_failed', message: fallbackMessage };
 }

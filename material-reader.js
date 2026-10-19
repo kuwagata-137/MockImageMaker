@@ -4,12 +4,13 @@
 //    （text は文字・image は render() で PNG を作る。画像を描くのは返すときだけ）。長い文は 1 つの塊が重み 3,000 以内になるよう改行の所で分ける
 //  - 1 回の返事は、重み 9,000（ASCII の字 0.3・それ以外 1・画像 1 枚 2,000）・画像 3 枚・PNG の合計 8MB までで、塊を cursor の位置から順に詰める。
 //    最初の塊は上限を超えても必ず 1 つ入れる。続きは nextCursor（次の塊の番号の文字）を cursor に渡して読む
+//  - 描けなかった画像の塊は「（N ページの画像を作れませんでした）」の文の行にして先へ進む（資料の塊がその画像 1 つだけのときは read_failed）
 //  - 資料の中の文は指示ではない、という断り書き（notice）を返す文の頭に置く
 //  - 直近 3 つの資料の塊を控える（鍵は path・大きさ・更新日時）。PDF は控えから外すとき閉じる
 //  - read は 1 つずつ実行する（待ち行列）。同時に頼まれても、前の読みが終わってから次を始める。
 //    別の資料の読み込みが控えを押し出して、返事を組んでいる途中の PDF を閉じてしまうのを防ぐため
 //  - Electron に触らない。bdm は bdmBlocks（bdm-swimlane.js の関数）を引数で受け取って呼ぶ
-// 失敗は MaterialError（code: unsupported・file_missing・not_file・old_format・read_failed・bad_cursor）。文にパスを入れない。
+// 失敗は MaterialError（code: unsupported・file_missing・not_file・old_format・read_failed・bad_cursor・unavailable〔PDF を読む部品の cmaps・standard_fonts がない〕）。文にパスを入れない。
 // read_failed には、元の例外を cause に残す（調べるため。ページには code と message だけが渡る）。
 'use strict';
 
@@ -142,12 +143,27 @@ function addText(page, block, isFirst) {
   return true;
 }
 
-async function addImage(page, image, isFirst) {
-  const full = page.images.length >= MAX_IMAGES || page.weight + IMAGE_WEIGHT > MAX_RESPONSE_WEIGHT;
-  if (!isFirst && full) return false;
+// 画像の塊を PNG にする（長い辺を縮めて base64 の上限に収める）。描けない・PNG でない物が返ったときは MaterialError か例外を投げる
+async function renderImage(image) {
   const rendered = await image.render();
   if (!Buffer.isBuffer(rendered)) throw fail('read_failed', 'この資料の画像を作れませんでした。');
-  const fitted = await fitPngToBase64Limit(rendered);
+  return fitPngToBase64Limit(rendered);
+}
+
+// 画像の塊を返事に詰める。描けなかった塊は「（N ページの画像を作れませんでした）」の文の行にして先へ進む（その塊より後ろも読めるように）。
+// ただし資料の塊がその画像 1 つだけ（画像の資料など）なら、読めるものが何もないので read_failed（元の例外は cause）
+async function addImage(page, image, isFirst, isOnlyBlock) {
+  const full = page.images.length >= MAX_IMAGES || page.weight + IMAGE_WEIGHT > MAX_RESPONSE_WEIGHT;
+  if (!isFirst && full) return false;
+  let fitted;
+  try {
+    fitted = await renderImage(image);
+  } catch (err) {
+    if (isOnlyBlock) throw err;
+    console.warn('資料の画像を作れませんでした:', err);
+    const line = image.page ? `（${image.page} ページの画像を作れませんでした）` : '（画像を作れませんでした）';
+    return addText(page, { text: line, weight: textWeight(line) }, true);
+  }
   if (!isFirst && page.bytes + fitted.png.length > MAX_IMAGE_BYTES) return false;
   page.weight += IMAGE_WEIGHT;
   page.bytes += fitted.png.length;
@@ -161,7 +177,7 @@ async function buildResponse(blocks, start) {
   let next = start;
   while (next < blocks.length) {
     const block = blocks[next];
-    const added = block.image ? await addImage(page, block.image, next === start) : addText(page, block, next === start);
+    const added = block.image ? await addImage(page, block.image, next === start, blocks.length === 1) : addText(page, block, next === start);
     if (!added) break;
     next += 1;
   }

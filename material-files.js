@@ -170,7 +170,8 @@ function createMaterialFiles({ root, maxBytes = MATERIAL_MAX_BYTES }) {
       await copyIn(source, pathOf(systemId, file));
       (addedThisRun[systemId] = addedThisRun[systemId] || []).push(file);
       return { added: { id, name, kind, size: st.size, file, legacy } };
-    } catch (_) {
+    } catch (err) {
+      console.warn('資料を写せませんでした:', err); // 元の例外（パスを含む）は console にだけ残す。返事の理由は定型の文
       return skip(name, MESSAGE.copyFailed);
     }
   }
