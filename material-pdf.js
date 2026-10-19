@@ -15,6 +15,7 @@ const path = require('node:path');
 const { createCanvas } = require('@napi-rs/canvas');
 const { MaterialError } = require('./material-error');
 const { IMAGE_MAX_SIDE } = require('./material-image');
+const { normalizeRadicals } = require('./material-text');
 
 // pdfjs の警告（字体・wasm の場所など）を出さない。値は pdfjs の VerbosityLevel.ERRORS と同じ
 const VERBOSITY_ERRORS = 0;
@@ -84,12 +85,12 @@ async function openDocument(bytes, assetsDir) {
   }
 }
 
-// 1 ページの文字（hasEOL の所で改行する）。読めないページは空の文字（画像のページとして扱う）
+// 1 ページの文字（hasEOL の所で改行する。康熙部首の字は通常の漢字に直す）。読めないページは空の文字（画像のページとして扱う）
 async function pageText(page) {
   try {
     const content = await page.getTextContent();
     const text = content.items.map((item) => (item.str || '') + (item.hasEOL ? '\n' : '')).join('');
-    return text.trim();
+    return normalizeRadicals(text.trim());
   } catch (_) {
     return '';
   }

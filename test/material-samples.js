@@ -99,32 +99,6 @@ async function makePdf(pages) {
   return Buffer.from(await doc.save());
 }
 
-// ── 日本語の PDF（字体を埋め込まない CID 字体 HeiseiKakuGo-W5・文字コード表 UniJIS-UCS2-H・Adobe-Japan1。pdfjs の cMap が要る）──
-// pdf-lib の標準の字体では日本語を組めないので、PDF の文字を直接組む。文字は UTF-16BE の 16 進にして Tj に渡す。
-function makeJapanesePdf(text) {
-  const hex = Buffer.from(text, 'utf16le').swap16().toString('hex');
-  const content = `BT /F1 20 Tf 20 200 Td <${hex}> Tj ET`;
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
-    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
-    '<< /Type /Font /Subtype /Type0 /BaseFont /HeiseiKakuGo-W5 /Encoding /UniJIS-UCS2-H /DescendantFonts [6 0 R] >>',
-    '<< /Type /Font /Subtype /CIDFontType0 /BaseFont /HeiseiKakuGo-W5 /DW 1000 /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 2 >> >>',
-  ];
-  let pdf = '%PDF-1.4\n';
-  const offsets = objects.map((body, i) => {
-    const offset = pdf.length;
-    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`;
-    return offset;
-  });
-  const entries = offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('');
-  const xrefOffset = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${entries}`;
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
-  return Buffer.from(pdf, 'latin1');
-}
-
 // ── Word（見出し 1・段落・見出し 2・表 2 行）──
 async function makeDocx() {
   const cell = (...lines) => new TableCell({ children: lines.map((line) => new Paragraph(line)) });
@@ -204,7 +178,6 @@ module.exports = {
   noisePng,
   fakePng,
   makePdf,
-  makeJapanesePdf,
   makeDocx,
   makeRichDocx,
   makeXlsx,

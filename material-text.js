@@ -2,6 +2,7 @@
 // 役割:
 //  - decodeText: 資料のバイト列を文字にする。BOM つきの UTF-8・UTF-16LE・UTF-16BE はその形で、
 //    BOM がなければ UTF-8 として読めるときは UTF-8・読めなければ Shift_JIS で読む。改行は \n にそろえる
+//  - normalizeRadicals: PDF から取った文字の、康熙部首・CJK 部首補助の字（見た目は漢字と同じで符号が違う字。游ゴシック・メイリオの PDF で「日」が「⽇」になる）だけを通常の漢字に直す
 //  - textWeight・splitText: 1 回の返事に入れる量（重み）を数え、1 つの塊が重くなりすぎるとき改行の所で分ける（material-reader.js が使う）
 //  - Electron に触らない。node だけでテストできる
 // 重みは「ASCII の字 0.3・それ以外の字 1」を 10 倍した整数で数える（0.3 の足し算の丸め誤差で上限の判定がずれないように）。
@@ -39,6 +40,19 @@ function decodeBytes(buf) {
 // バイト列（Buffer・Uint8Array）→ 文字。改行（\r\n・\r）は \n にそろえる。
 function decodeText(bytes) {
   return decodeBytes(toBuffer(bytes)).replace(/\r\n?/g, '\n');
+}
+
+// 康熙部首（U+2F00〜U+2FDF）と CJK 部首補助（U+2E80〜U+2EFF）の符号か
+function isRadical(code) {
+  return (code >= 0x2e80 && code <= 0x2eff) || (code >= 0x2f00 && code <= 0x2fdf);
+}
+
+// 文の中の康熙部首・CJK 部首補助の字だけを、1 字ずつ NFKC で通常の漢字に直す（「⽇」→「日」）。
+// 文全体を NFKC にすると、「①」・全角の英数字・「㈱」まで変わるので、範囲を絞っている。NFKC で変わらない部首の字はそのまま。
+function normalizeRadicals(text) {
+  let result = '';
+  for (const ch of text) result += isRadical(ch.codePointAt(0)) ? ch.normalize('NFKC') : ch;
+  return result;
 }
 
 // 文の重み（10 倍した整数）。字は 1 字ずつ（サロゲートペアは 1 字）数える。
@@ -91,4 +105,4 @@ function splitText(text, maxWeight) {
   return pieces.filter((piece) => piece !== '');
 }
 
-module.exports = { WEIGHT_SCALE, decodeText, textWeight, splitText };
+module.exports = { WEIGHT_SCALE, decodeText, normalizeRadicals, textWeight, splitText };

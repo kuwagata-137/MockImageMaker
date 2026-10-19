@@ -4,7 +4,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { decodeText, textWeight, splitText, WEIGHT_SCALE } = require('../material-text');
+const { decodeText, textWeight, splitText, normalizeRadicals, WEIGHT_SCALE } = require('../material-text');
 const samples = require('./material-samples');
 
 const TRIP = '出張申請\nOK';
@@ -89,5 +89,33 @@ test('splitText — 重みの上限ごとに改行の所で分ける', async (t)
   await t.test('空の文は空の並び・空行は残す', () => {
     assert.deepEqual(splitText('', 100), []);
     assert.deepEqual(splitText('a\n\nb', 1000), ['a\n\nb']);
+  });
+});
+
+// 康熙部首（U+2F00〜U+2FDF）と CJK 部首補助（U+2E80〜U+2EFF）の字。見た目は漢字と同じだが、符号が違う
+const radical = (code) => String.fromCodePoint(code);
+
+test('normalizeRadicals — 康熙部首・CJK 部首補助の字だけを通常の漢字に直す', async (t) => {
+  await t.test('康熙部首: 「⽇本」→「日本」・「⽬的」→「目的」', () => {
+    assert.equal(normalizeRadicals(`${radical(0x2f47)}本`), '日本');
+    assert.equal(normalizeRadicals(`${radical(0x2f6c)}的`), '目的');
+    assert.equal(normalizeRadicals(radical(0x2f00)), '一');
+  });
+
+  await t.test('CJK 部首補助: 「⺟」→「母」', () => {
+    assert.equal(normalizeRadicals(radical(0x2e9f)), '母');
+  });
+
+  await t.test('文の中の部首の字を 1 字ずつ直し、まわりの字・改行は変えない', () => {
+    const text = `出張${radical(0x2f47)}程\n${radical(0x2f6c)}的: abc`;
+    assert.equal(normalizeRadicals(text), '出張日程\n目的: abc');
+  });
+
+  await t.test('NFKC で変わる字でも、部首の範囲の外は変えない（「①」・全角の「Ａ」・半角のカナ・「㈱」・サロゲートペア）', () => {
+    for (const same of ['①', 'Ａ', 'ｱ', '㈱', '𠮷', '出張申請', 'abc', '']) assert.equal(normalizeRadicals(same), same, same);
+  });
+
+  await t.test('NFKC で変わらない部首の字（U+2E80 など）はそのまま', () => {
+    assert.equal(normalizeRadicals(radical(0x2e80)), radical(0x2e80));
   });
 });

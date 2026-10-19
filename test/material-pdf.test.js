@@ -1,6 +1,6 @@
 'use strict';
 // material-pdf.js と、reader の kind 'pdf' のテスト。見本は pdf-lib で作る（文字のページ・画像だけのページ・白紙）。
-// 文字は ASCII だけ（日本語の字体は pdf-lib の標準の字体に入っていないため）。
+// 文字は ASCII だけ（日本語の字体は pdf-lib の標準の字体に入っていないため。日本語の PDF は test/material-pdf-japanese.test.js）。
 // pdfjs の警告（standardFontDataUrl を渡して、など）が出力に出ないことも確かめる。
 
 const test = require('node:test');
@@ -154,68 +154,4 @@ test('reader の控え — 4 つ目の PDF を読むと最初の PDF は閉じ�
   assert.deepEqual(again.images.map((i) => i.page), [2]);
   const last = await read(files[3]);
   assert.deepEqual(last.images.map((i) => i.page), [2]);
-});
-
-test('日本語の PDF（字体を埋め込まない CID 字体・cMap を使う）から日本語の文字が取れる', async (t) => {
-  const bytes = samples.makeJapanesePdf('出張申請');
-
-  await t.test('loadPdfBlocks: 既定の場所の cMap で「出張申請」が取れる（画像の塊にならない）', async () => {
-    const { blocks, dispose } = await loadPdfBlocks(bytes, {});
-    t.after(() => dispose());
-    assert.equal(blocks.length, 1);
-    assert.equal(blocks[0].text, '── 1 ページ ──\n出張申請');
-  });
-
-  await t.test('reader: text に日本語の文字が入り、画像は 0 枚', async () => {
-    const file = samples.writeSample(dir, 'japanese.pdf', bytes);
-    const result = await createMaterialReader().read({ path: file, kind: 'pdf', name: 'j.pdf', cursor: null });
-    assert.ok(result.text.endsWith('── 1 ページ ──\n出張申請'), result.text);
-    assert.deepEqual(result.images, []);
-  });
-});
-
-// cmaps・standard_fonts のフォルダがあるかだけを見る確かめ用に、空のフォルダを作る（Windows の日本語の名前のファイルは作らない）
-function makeAssetsDir(folderNames) {
-  const root = samples.makeSampleDir();
-  for (const name of folderNames) fs.mkdirSync(path.join(root, name));
-  return {
-    root,
-    cleanup: () => {
-      for (const name of folderNames) fs.rmdirSync(path.join(root, name));
-      samples.removeSampleDir(root);
-    },
-  };
-}
-
-test('cmaps・standard_fonts のフォルダがない場所を渡すと unavailable（パスを出さない）', async (t) => {
-  const file = samples.writeSample(dir, 'noassets.pdf', await samples.makePdf(['hello']));
-  const readWith = (pdfAssetsDir) => createMaterialReader({ pdfAssetsDir }).read({ path: file, kind: 'pdf', name: 'n.pdf', cursor: null });
-  const assertUnavailable = (promise, assetsRoot) => assert.rejects(promise, (err) => {
-    assert.ok(err instanceof MaterialError);
-    assert.equal(err.code, 'unavailable');
-    assert.match(err.message, /PDF を読む部品の準備ができていません/);
-    assert.equal(err.message.includes(assetsRoot), false, '文にパスが入っている');
-    return true;
-  });
-
-  await t.test('場所そのものがない', async () => {
-    const missing = path.join(dir, 'no-such-assets');
-    await assertUnavailable(readWith(missing), missing);
-    await assertUnavailable(readWith(missing), missing); // もう一度読んでも同じ（失敗は控えない）
-  });
-
-  for (const present of [['cmaps'], ['standard_fonts']]) {
-    await t.test(`${present[0]} だけある（もう一方がない）`, async () => {
-      const assets = makeAssetsDir(present);
-      t.after(assets.cleanup);
-      await assertUnavailable(readWith(assets.root), assets.root);
-    });
-  }
-
-  await t.test('両方のフォルダがあれば読める（確かめるのはフォルダがあるかだけ）', async () => {
-    const assets = makeAssetsDir(['cmaps', 'standard_fonts']);
-    t.after(assets.cleanup);
-    const result = await readWith(assets.root);
-    assert.match(result.text, /hello/);
-  });
 });
