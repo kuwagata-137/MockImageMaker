@@ -11,8 +11,8 @@
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり始め（automation.json が消える）、プロセスも消える
 //  B. 次の入口で、アプリをまた起動し、A で作った画面設計が一覧に出る。入口を強制終了しても、5 秒たってアプリが終わる
 //  C. 2 つ目の起動（--background なし。人がアプリを起動した）では窓を出す印が付き、入口を閉じても終わらない。AI のつながりがないときの窓の × では終わる
-//  D. 資料の置き場（第 9 段階の後半。check-mcp-materials.js）: 起動の前に見本のシステムと資料 7 つを置き、道具が 30 個・list_materials・read_material
-//     （6 つ同時に頼んでも読める・Excel の番地・PDF の日本語の文字と 3 ページ目の画像・古い形の old_format）・swimlane_from_bdm（replace なしは断られ、replace: true で入る）・get_system
+//  D. 資料の置き場（第 9 段階の後半。check-mcp-materials.js）: 起動の前に見本のシステムと資料 8 つを置き、道具が 30 個・list_materials・read_material
+//     （7 つ同時に頼んでも読める・仕込んだ指示の文字・Excel の番地・PDF の日本語の文字と 3 ページ目の画像・古い形の old_format）・swimlane_from_bdm（replace なしは断られ、replace: true で入る）・get_system
 //  最後に、窓を出さなかった起動では window-state.json を書き換えていない（人が最大化して使っていたことが残る）
 // 「アプリが終わる」は 2 つに分けて待つ（waitAppQuit）。終わり始める時（automation.json が消える。アプリが決める時）は決めた時間で確かめ、
 // その後プロセスが消えるまでは長く待つ（EXIT_WAIT_MS）。PC の負荷が高いと、Windows で Electron のプロセスが消えるまで数十秒〜数分かかるため（2026-10-19。開発記録）。

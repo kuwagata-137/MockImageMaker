@@ -41,9 +41,9 @@ function checkReads(reads) {
   const isPng = (i) => i.head.startsWith('iVBORw0KGgo');
   const detail = reads.map((r) => `${r.name}${r.error ? `（失敗 ${r.error.code}）` : `（文字 ${r.text.length} 字・画像 ${r.images.length}）`}`).join('、');
   report(textOk, '本物の Electron の materialsAPI.read（1 つずつ頼む）で、Excel の番地・Word の見出し・PDF の日本語の文字・BDM の文・Shift_JIS の文字が読める（断り書き notice つき）', detail);
-  report(pdf.images.length === 1 && pdf.images[0].page === 3 && isPng(pdf.images[0]) && pdf.part.total === 3 && png.images.length === 1 && isPng(png.images[0]) && png.images[0].width === 800,
+  const imagesOk = report(pdf.images.length === 1 && pdf.images[0].page === 3 && isPng(pdf.images[0]) && (pdf.part || {}).total === 3 && png.images.length === 1 && isPng(png.images[0]) && png.images[0].width === 800,
     'PDF の文字のない 3 ページ目と PNG の資料が、PNG の画像で渡る', `PDF ${JSON.stringify(pdf.images.map((i) => [i.page, i.width, i.height]))}・画像 ${JSON.stringify(png.images.map((i) => [i.width, i.height]))}`);
-  return textOk && pdf.images.length === 1 && png.images.length === 1;
+  return textOk && imagesOk;
 }
 // 同じ 6 つを同時に頼んだときの様子（数えない注意の行）。今の画面は 1 つずつ頼み、AI の入口も 1 つずつ頼む（check-mcp.js の場面 D で、6 つ同時に頼んでも全部読めることを確かめている）ので、
 // 表に出る場面は、人の「読む」と AI の頼みが重なったときくらい。読む部品（material-reader.js）に同時に頼むと、PDF が read_failed になることがある（pdfjs の UnknownErrorException）

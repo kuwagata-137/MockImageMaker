@@ -58,9 +58,10 @@ async function shootReader(ctx) {
   await page.click('.modal [data-dlg="cancel"]');
   await page.evaluate(() => { window.__readReal = true; });
   await open();
-  const real3 = await page.$$eval('.modal .rd-text img.rd-img', (i) => i.map((x) => `${x.naturalWidth}x${x.naturalHeight}`));
+  const real3 = await page.$$eval('.modal .rd-text img.rd-img', (i) => i.map((x) => ({ w: x.naturalWidth, h: x.naturalHeight })));
   need(real3.length === 1 && /第 1 条/.test(await page.$eval('.modal .rd-text', (e) => e.textContent)), `本物の読む部品の返事が窓に出ていない（画像 ${real3.length} 枚）`);
-  console.log('144・145: 本物の読む部品が返した PDF の画像:', real3.join(','));
+  need(real3.every((x) => x.w > 0 && x.h > 0), '本物の PDF の画像が読み込めていない（naturalWidth が 0）');
+  console.log('144・145: 本物の読む部品が返した PDF の画像:', real3.map((x) => `${x.w}x${x.h}`).join(','));
   await shot(page, '144_資料_「読む」の窓（本物の読む部品で読んだ旅費規程.pdf。1・2 ページ目の日本語の文字）');
   await page.$eval('.modal .rd-text', (box) => { const h = [...box.querySelectorAll('.rd-pg')].pop(); box.scrollTop = h.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 8; }); // 3 ページ目の見出しを先頭に
   await sleep(150);
