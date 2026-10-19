@@ -144,8 +144,9 @@ const INJECTED_LINES = [
 ];
 
 // ── Chrome で作る画像と PDF ──
-// 字体は BIZ UDP ゴシック（なければ MS P ゴシック）。游ゴシック・メイリオで PDF にすると、取れる文字の「日」「目」などが康熙部首の字（⽇・⽬）になるため
-const PAGE_FONT = 'font-family:"BIZ UDPGothic","MS PGothic","MS Gothic",sans-serif;';
+// 字体は BIZ UDP ゴシック（なければ MS P ゴシック）。游ゴシック・メイリオで PDF にすると、取れる文字の「日」「目」などが康熙部首の字（⽇・⽬）になるため。
+// style="…" の中にも入れるので、字体の名前は ' で囲む（" だと属性がそこで終わり、字体が効かない）
+const PAGE_FONT = "font-family:'BIZ UDPGothic','MS PGothic','MS Gothic',sans-serif;";
 const formTable = (rows) => `<table style="border-collapse:collapse;width:100%;margin-top:14px">${rows.map((r, i) => `<tr>${r.map((c) => `<${i ? 'td' : 'th'} style="border:2px solid #333;padding:7px 10px;${i ? '' : 'background:#e5e5e5;'}">${c}</${i ? 'td' : 'th'}>`).join('')}</tr>`).join('')}</table>`;
 // スキャンの代わりの画像（旅費規程 PDF の 3 ページ目）。幅 640・高さ 968（A4 の余白をのぞいた中身の縦横の比）
 const SCAN_FORM_HTML = `<body style="margin:0;${PAGE_FONT}"><div style="box-sizing:border-box;width:640px;height:968px;padding:36px 34px;background:#f4f1ea;border:1px solid #bbb;font-size:20px">
