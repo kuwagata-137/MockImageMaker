@@ -6,8 +6,11 @@
 //    最初の塊は上限を超えても必ず 1 つ入れる。続きは nextCursor（次の塊の番号の文字）を cursor に渡して読む
 //  - 資料の中の文は指示ではない、という断り書き（notice）を返す文の頭に置く
 //  - 直近 3 つの資料の塊を控える（鍵は path・大きさ・更新日時）。PDF は控えから外すとき閉じる
+//  - read は 1 つずつ実行する（待ち行列）。同時に頼まれても、前の読みが終わってから次を始める。
+//    別の資料の読み込みが控えを押し出して、返事を組んでいる途中の PDF を閉じてしまうのを防ぐため
 //  - Electron に触らない。bdm は bdmBlocks（bdm-swimlane.js の関数）を引数で受け取って呼ぶ
 // 失敗は MaterialError（code: unsupported・file_missing・not_file・old_format・read_failed・bad_cursor）。文にパスを入れない。
+// read_failed には、元の例外を cause に残す（調べるため。ページには code と message だけが渡る）。
 'use strict';
 
 const fs = require('node:fs');
@@ -171,11 +174,22 @@ async function buildResponse(blocks, start) {
   };
 }
 
+// 頼まれた仕事を 1 つずつ実行する待ち行列。前の仕事が失敗しても、次の仕事は動く
+function createSerialQueue() {
+  let tail = Promise.resolve();
+  return (task) => {
+    const run = tail.then(task);
+    tail = run.catch(() => {});
+    return run;
+  };
+}
+
 // 資料を読む部品。bdmBlocks は HTML の文字 → 文の塊の並び（bdm-swimlane.js の bdmSummaryBlocks を HTML から作る関数）。
 // pdfAssetsDir は pdfjs-dist のフォルダ（インストーラの中で場所が変わるときに渡す。なければ既定の場所）。
 function createMaterialReader({ bdmBlocks = null, pdfAssetsDir } = {}) {
   const loaders = createLoaders({ bdmBlocks, pdfAssetsDir });
   const cached = createLoadedCache(CACHE_SIZE);
+  const inTurn = createSerialQueue();
 
   async function loadBlocks(file, kind) {
     const stat = await statMaterial(file);
@@ -196,15 +210,19 @@ function createMaterialReader({ bdmBlocks = null, pdfAssetsDir } = {}) {
     return buildResponse(blocks, start);
   }
 
+  async function readOrFail(request) {
+    try {
+      return await readMaterial(request || {});
+    } catch (err) {
+      if (err instanceof MaterialError) throw err;
+      const failure = fail('read_failed', 'この資料は読めませんでした。ファイルが壊れているか、対応していない形式かもしれません。');
+      failure.cause = err;
+      throw failure;
+    }
+  }
+
   return {
-    async read(request) {
-      try {
-        return await readMaterial(request || {});
-      } catch (err) {
-        if (err instanceof MaterialError) throw err;
-        throw fail('read_failed', 'この資料は読めませんでした。ファイルが壊れているか、対応していない形式かもしれません。');
-      }
-    },
+    read: (request) => inTurn(() => readOrFail(request)),
   };
 }
 

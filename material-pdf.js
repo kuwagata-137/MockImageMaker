@@ -56,11 +56,14 @@ function assetUrl(assetsDir, name) {
   return `${path.join(assetsDir, name).split(path.sep).join('/')}/`;
 }
 
+// 読めなかったときの失敗。元の例外（pdfjs のもの）は cause に残す（調べるため。文には入れない）
 function readFailed(err) {
-  if (err && err.name === 'PasswordException') {
-    return new MaterialError('read_failed', 'この PDF はパスワードで守られているので読めません。パスワードをはずした PDF を入れてください。');
-  }
-  return new MaterialError('read_failed', 'この PDF は読めませんでした。ファイルが壊れているか、対応していない形式かもしれません。');
+  const passwordProtected = err && err.name === 'PasswordException';
+  const failure = new MaterialError('read_failed', passwordProtected
+    ? 'この PDF はパスワードで守られているので読めません。パスワードをはずした PDF を入れてください。'
+    : 'この PDF は読めませんでした。ファイルが壊れているか、対応していない形式かもしれません。');
+  failure.cause = err;
+  return failure;
 }
 
 async function openDocument(bytes, assetsDir) {
