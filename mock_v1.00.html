@@ -2717,11 +2717,14 @@ function normalizeMapPos(src) {
 // いくつかの画面設計をまとめる入れ物（例: 出張申請システム）。{ id（y-）, name, description, createdAt, updatedAt, trashedAt,
 //   designIds（入れている画面設計の id。並び順が表示の順）, roles: [{ id（l-）, name, memo }]（並び順がスイムレーンのレーンの順）,
 //   swimlane: { steps: [{ id（w-）, roleId, col, kind, text, memo, ref: { designId, screenId, stateId }, src }], edges: [{ id（e-）, from, to, label }] },
-//   materials（資料）, notes（設計ノート。中身は第 10 段階）}。
+//   materials（資料。行の形は下の normalizeMaterial）, notes（設計ノート。中身は第 10 段階）}。
 // 1 つの画面設計を 2 つ以上のシステムに入れられる（案B）。どのシステムに入っているかは、システムの designIds だけに持つ（画面設計の側には持たない）。
 // 画面設計をごみ箱へ移しても designIds からは外さない（戻したときに元のシステムに戻るように）。完全に削除したときに、全部のシステムから外す
 const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end']; // 始まり・作業・システムへの入力・判断・書類・終わり
 const SWIM_KIND_NAMES = { start: '始まり', task: '作業', input: 'システムへの入力', decision: '判断', doc: '書類', end: '終わり' };
+// 資料（第 9 段階の後半）の種類。資料のファイルの見分け（material-kind.js の MATERIAL_KINDS）と同じ並び
+const MATERIAL_KINDS = ['text', 'image', 'pdf', 'word', 'excel', 'bdm', 'other'];
+const MATERIAL_KIND_NAMES = { text: '文字', image: '画像', pdf: 'PDF', word: 'Word', excel: 'Excel', bdm: 'BDM の図', other: 'そのほか' };
 
 function createSystemData({ name, description = '' } = {}, now = nowIso()) {
   return {
@@ -2775,6 +2778,24 @@ function normalizeSwimlane(src) {
     .filter((e) => stepIds.has(e.from) && stepIds.has(e.to) && e.from !== e.to && firstOfPair(e)), 'e');
   return { ...sw, steps, edges };
 }
+// 資料の行 { id（m-）, name（入れたときのファイルの名前）, kind, size（バイト）, addedAt, memo, file（<userData>/data/files/<システムの id>/ の中の
+// ファイルの名前）}（設計書の 5-3。ファイルの中身は designs.json に入れない）。知らない種類は「そのほか」、大きさが 0 以上の整数でなければ 0。知らない欄は残す
+function normalizeMaterial(m) {
+  return {
+    ...m,
+    id: str(m.id) || newId('m'),
+    name: str(m.name),
+    kind: MATERIAL_KINDS.includes(m.kind) ? m.kind : 'other',
+    size: Number.isSafeInteger(m.size) && m.size >= 0 ? m.size : 0,
+    addedAt: str(m.addedAt),
+    memo: str(m.memo),
+    file: str(m.file),
+  };
+}
+// 資料の並び。オブジェクトでない行は外し、id の重なりを直す（片方を消すと両方消えるのを防ぐため）
+const normalizeMaterials = (list) => uniqueIds((Array.isArray(list) ? list : []).filter(isObj).map(normalizeMaterial), 'm');
+// 古い形（.doc・.xls）のファイルの資料か（中身を読めない）。行には持たず、保存したファイルの名前の拡張子で見る
+const isLegacyMaterial = (row) => isObj(row) && /\.(doc|xls)$/i.test(str(row.file));
 // システム 1 つを読み込める形に直す。designIds は state にある画面設計（ごみ箱のものも含む）の id だけを、重ねずに残す。知らない欄は残す
 function normalizeSystem(raw, designIds) {
   const y = isObj(raw) ? raw : {};
@@ -2791,7 +2812,7 @@ function normalizeSystem(raw, designIds) {
     designIds: [...new Set((Array.isArray(y.designIds) ? y.designIds : []).filter((id) => typeof id === 'string' && known.has(id)))],
     roles: normalizeRoles(y.roles),
     swimlane: normalizeSwimlane(y.swimlane),
-    materials: (Array.isArray(y.materials) ? y.materials : []).filter(isObj),
+    materials: normalizeMaterials(y.materials),
     notes: isObj(y.notes) ? y.notes : {},
     // 履歴の行の id が重なっていれば、2 つ目からは新しい id にする（どの行に戻すかを id で決めるため）
     revisions: uniqueIds((Array.isArray(y.revisions) ? y.revisions : []).filter(isObj).map(normalizeSystemRevision), 'r'),
@@ -3259,6 +3280,55 @@ function mutateSystem(id, fn, { touch = true } = {}) {
   });
   return true;
 }
+// ── BDM の案からスイムレーン図を作る（第 9 段階の後半。actions.swimlaneFromPlan が使う）──
+// 案（plan）は資料の窓口の bdmPlan の返事 { roles: [名前], steps: [{ key, role, col, kind, text, memo, src }], edges: [{ from, to, label }] }。
+// 役割の名前は、名前と同じく前後の空白を取り、続く空白を 1 つにして比べる（cleanName）。名前のない役割は「名前なし」（読み込むときと同じ）
+const planRoleName = (v) => cleanName(v) || '名前なし';
+// 案の役割（roles の順。作業の役割で roles にない名前は後ろに足す）を、システムの役割に当てる。同じ名前の役割は使い回し、ない名前は新しい役割にする
+// （今の役割の並びは変えず、後ろに足す。形は addRole と同じ）。戻り値 { added（足す役割）, reused（使い回す名前）, idOf（案の名前 → 役割の id）}
+function rolesFromPlan(y, plan) {
+  const names = [];
+  const push = (v) => {
+    const n = planRoleName(v);
+    if (!names.includes(n)) names.push(n);
+  };
+  (Array.isArray(plan.roles) ? plan.roles : []).forEach(push);
+  plan.steps.filter(isObj).forEach((p) => push(p.role));
+  const added = [];
+  const reused = [];
+  const idOf = new Map();
+  names.forEach((n) => {
+    const r = y.roles.find((x) => x.name.trim() === n);
+    if (r) reused.push(n);
+    else added.push({ id: newId('l'), name: n, memo: '' });
+    idOf.set(n, r ? r.id : added[added.length - 1].id);
+  });
+  return { added, reused, idOf };
+}
+// 案の作業と矢印を、システムの作業と矢印にする。作業は、今の作業のうち BDM の箱（src.id）が案の key と同じものがあれば、その id と指す先（ref）を残す
+// （BDM を読み直しても、作業と画面の対応が消えないように）。矢印は案の key を作業の id にし、今の矢印に同じ「元 → 先」があれば、その id を使い回す。
+// 列のない作業は swimAutoCols で付け、setSwimlane と同じく normalizeSwimlane で直す（知らない種類・端のない矢印・自分への矢印・同じ向きの 2 本目）
+function swimlaneFromPlanSteps(y, plan, idOf) {
+  const used = new Set();
+  const idByKey = new Map();
+  const steps = plan.steps.filter(isObj).map((p) => {
+    const key = p.key == null ? '' : String(p.key);
+    const old = key ? y.swimlane.steps.find((w) => isObj(w.src) && w.src.id != null && String(w.src.id) === key && !used.has(w.id)) : null;
+    const id = old ? old.id : newId('w');
+    used.add(id);
+    if (!idByKey.has(key)) idByKey.set(key, id);
+    return {
+      id, roleId: idOf.get(planRoleName(p.role)), col: swimCol(p.col), kind: p.kind, text: str(p.text).trim(), memo: str(p.memo),
+      ref: old ? clone(old.ref) : null, src: isObj(p.src) ? clone(p.src) : null,
+    };
+  });
+  const edges = (Array.isArray(plan.edges) ? plan.edges : []).filter(isObj).map((e) => {
+    const [from, to] = [idByKey.get(String(e.from)) || '', idByKey.get(String(e.to)) || ''];
+    const old = y.swimlane.edges.find((x) => x.from === from && x.to === to);
+    return { id: old ? old.id : newId('e'), from, to, label: str(e.label).trim() };
+  });
+  return normalizeSwimlane({ steps: swimAutoCols(steps, edges), edges });
+}
 
 const actions = {
   // systemId を渡すと、作った画面設計をそのシステムに入れる（同じ 1 回の変更で）。ない・ごみ箱にあるシステムを渡したときは作らない
@@ -3448,6 +3518,26 @@ const actions = {
     const next = normalizeSwimlane(clone({ steps: Array.isArray(sw.steps) ? sw.steps : [], edges: Array.isArray(sw.edges) ? sw.edges : [] }));
     return mutateSystem(sysId, (yy) => { yy.swimlane = { ...yy.swimlane, steps: next.steps, edges: next.edges }; });
   },
+  // BDM の案（資料の窓口の bdmPlan の返事の plan）でスイムレーン図を置き換える（第 9 段階の後半。AI の swimlane_from_bdm から呼ぶ）。
+  // 役割は同じ名前を使い回し、ない名前を後ろに足す（rolesFromPlan）。作業と矢印は案で置き換える（swimlaneFromPlanSteps。案にない作業・矢印は消える）。
+  // 役割とスイムレーンを 1 回の変更で直すので、元に戻す 1 回で全部戻る。中身が同じなら履歴に積まず、更新日時も変えない（changed: false）。
+  // 戻り値 { addedRoles, reusedRoles（役割の名前の並び）, steps, edges（置き換えた後の数）, changed }。直せないシステム・案の形が違うときは null
+  swimlaneFromPlan(sysId, plan) {
+    const y = editableSystem(sysId);
+    if (!y || !isObj(plan) || !Array.isArray(plan.steps)) return null;
+    const roles = rolesFromPlan(y, plan);
+    const sw = swimlaneFromPlanSteps(y, plan, roles.idOf);
+    const before = systemJsonWithRefs(y);
+    mutateSystem(sysId, (yy) => {
+      yy.roles.push(...roles.added);
+      yy.swimlane = { ...yy.swimlane, steps: sw.steps, edges: sw.edges };
+    });
+    const now = findSystem(store.state, sysId);
+    return {
+      addedRoles: roles.added.map((r) => r.name), reusedRoles: roles.reused,
+      steps: now.swimlane.steps.length, edges: now.swimlane.edges.length, changed: systemJsonWithRefs(now) !== before,
+    };
+  },
   // 作業を足す。spec は { roleId, col, kind, text, memo, ref }。役割はこのシステムにあるもの。列を書かなければ、いちばん右の作業の次の列。
   // 種類を書かなければ「作業」。役割が見つからない・知らない種類・列が 0 以上の整数でないときは null。戻り値は作業の id
   addStep(sysId, spec = {}) {
@@ -3522,6 +3612,35 @@ const actions = {
     const [from, dest] = ['from' in to ? to.from : e.from, 'to' in to ? to.to : e.to];
     if (from === dest || !findStep(y, from) || !findStep(y, dest) || y.swimlane.edges.some((x) => x.id !== edgeId && x.from === from && x.to === dest)) return false;
     return mutateSystem(sysId, (yy) => { Object.assign(yy.swimlane.edges.find((x) => x.id === edgeId), { from, to: dest }); });
+  },
+  // ── 資料（第 9 段階の後半。設計書の 5-3）──
+  // 資料の行を足す。added は資料の窓口（materialsAPI の pick・addDropped）の返事の added [{ id, name, kind, size, file, legacy }]（ファイルは窓口が
+  // もう写してある）。古い形（legacy）は行に入れない（isLegacyMaterial でファイルの名前から見る）。今ある行と同じ id は新しい id にする。
+  // 保存したファイルの名前（file）のない行は足さない（読めず、起動時の掃除でも残せないため）。
+  // 1 回の変更なので、元に戻す 1 回で全部消える。戻り値は足した行の写しの並び（足すものがない・直せないシステムのときは []）
+  addMaterials(sysId, added) {
+    const list = Array.isArray(added) ? added.filter((a) => isObj(a) && str(a.file)) : [];
+    if (!editableSystem(sysId) || !list.length) return [];
+    const addedAt = nowIso();
+    const rows = list.map((a) => normalizeMaterial({ id: a.id, name: a.name, kind: a.kind, size: a.size, addedAt, memo: '', file: a.file }));
+    mutateSystem(sysId, (yy) => {
+      yy.materials.push(...rows);
+      uniqueIds(yy.materials, 'm'); // 足した行（後ろ）の id を直す。rows も同じ行なので、返す id も直った id になる
+    });
+    return clone(rows);
+  },
+  // 資料のメモ（どんな資料か・どこを見るかなど）。前後の空白を取る。長さの上限は設けない（役割・作業のメモと同じ）
+  setMaterialMemo(sysId, matId, memo) {
+    const y = editableSystem(sysId);
+    if (!y || !y.materials.some((m) => m.id === matId)) return false;
+    return mutateSystem(sysId, (yy) => { yy.materials.find((m) => m.id === matId).memo = str(memo).trim(); });
+  },
+  // 資料の行を消す。ファイルはすぐには消さない（元に戻すで行が戻ったときに、ファイルがないと困るため。どの行からも指されていないファイルは、
+  // 次に起動したときに消す〔sweepMaterialFiles〕）
+  deleteMaterial(sysId, matId) {
+    const y = editableSystem(sysId);
+    if (!y || !y.materials.some((m) => m.id === matId)) return false;
+    return mutateSystem(sysId, (yy) => { yy.materials = yy.materials.filter((m) => m.id !== matId); });
   },
   // システムの履歴の行（AI が直す前の状態・戻す前の状態）の中身に戻す（q65。人がシステムの画面の「履歴」から戻す。AI の道具はない）。
   // 今の中身を「戻す前の状態」の行に残してから、写しの中身（名前・説明・役割・スイムレーン・画面設計の並び）で置き換える。
@@ -5681,14 +5800,38 @@ function openDeleteForeverDialog(d) {
     body: `<p>「${esc(d.name)}」を完全に削除します。</p><p class="warn">完全に削除すると、元に戻せません（「元に戻す」でも戻りません）。</p>${sysNote}${note}`,
   });
 }
-// システムの完全な削除の確かめ（入っていた画面設計は残る。戻せないので、元に戻すの履歴も消える）。ボタンは画面設計の窓と同じ「完全に削除する」
+// システムの完全な削除の確かめ（入っていた画面設計は残る。戻せないので、元に戻すの履歴も消える）。ボタンは画面設計の窓と同じ「完全に削除する」。
+// 資料の行があり、資料の窓口があるとき（デスクトップ版）だけ、資料のファイルも消えることを知らせる（removeMaterialFiles）
 function openDeleteSystemDialog(y) {
+  const n = window.materialsAPI ? y.materials.length : 0;
+  const files = n ? `資料のファイル（${n} つ）も消えます。` : '';
   return showDialog({
     title: '完全に削除',
     okLabel: '完全に削除する',
     okClass: 'danger',
-    body: `<p>「${esc(y.name)}」を完全に削除します。システムの役割とスイムレーン図が消えます。入っていた画面設計は消えません。元に戻せません（元に戻す〔Ctrl+Z〕の履歴も消えます）。</p>`,
+    body: `<p>「${esc(y.name)}」を完全に削除します。システムの役割とスイムレーン図が消えます。${files}入っていた画面設計は消えません。元に戻せません（元に戻す〔Ctrl+Z〕の履歴も消えます）。</p>`,
   });
+}
+// 資料の窓口（デスクトップ版の preload.js の materialsAPI）の失敗の返事 { ok:false, error:{ code, message } } の文（console.warn に出す。起動時の掃除も使う）
+const materialFailText = (res) => (res && res.error && res.error.message) || 'わからない理由';
+// システムを完全に削除した後に、そのシステムの資料のファイルを資料の窓口に消してもらう（第 9 段階の後半。デスクトップ版だけ）。
+// 消したことが保存されてから消す（保存に失敗したまま消すと、次に起動したときに戻ってくるシステムの資料のファイルがなくなるため）。
+// 保存を止めているとき（blockReason）も同じ理由で消さない。失敗しても console.warn だけ（消し残したファイルは、次に起動したときの掃除で消える）
+async function removeMaterialFiles(sysId) {
+  const api = window.materialsAPI;
+  if (!api || store.blockReason) return;
+  try {
+    await store.whenSaved();
+  } catch (e) {
+    console.warn('保存が済んでいないため、資料のファイルを消しませんでした:', (e && e.message) || e);
+    return;
+  }
+  try {
+    const res = await api.removeSystem(sysId);
+    if (!res || !res.ok) console.warn('資料のファイルを消せませんでした:', materialFailText(res));
+  } catch (e) {
+    console.warn('資料のファイルを消せませんでした:', (e && e.message) || e);
+  }
 }
 
 // 画面設計をごみ箱へ移すときの確かめ（画像 q21 の右下・AI設計基盤_設計書.md の 5-6）。ごみ箱にないシステムに入っている（systems）か、
@@ -5799,7 +5942,9 @@ async function onSystemAction(action, y) {
       return;
     case 'delete-system-forever':
       if (!(await openDeleteSystemDialog(y))) return;
-      if (actions.deleteSystemForever(y.id)) toast(`「${y.name}」を完全に削除しました。`);
+      if (!actions.deleteSystemForever(y.id)) return;
+      toast(`「${y.name}」を完全に削除しました。`);
+      removeMaterialFiles(y.id); // 消し終わるのは待たない（失敗しても知らせは console.warn だけ）
   }
 }
 
@@ -13756,6 +13901,7 @@ async function boot() {
     if (created.blockReason) showBanner(created.blockReason + (created.failed ? '' : ' この HTML は、新しい版のアプリで開いてください。'));
   } else if (created.blockReason) showBanner(created.blockReason + ' 今のデータを消さないように、保存を止めています。');
   else if (created.notice) showBanner(created.notice);
+  if (!embedded) sweepMaterialFiles(created);
   store.subscribe(onStoreChange);
   bindGlobalEvents();
   if (window.menuAPI) window.menuAPI.onCommand(runCommand);
@@ -13763,6 +13909,21 @@ async function boot() {
   else if (!created.blockReason) openDesign(standalone.designId);
   bindAiEvents();
   exposeForTest();
+}
+
+// 起動したときに、どの資料の行からも指されていない資料のファイルを、資料の窓口に消してもらう（第 9 段階の後半。設計書の 5-3）。
+// 保存データをそのまま読めて（保存を止めた理由 blockReason がない）、知らせ（notice。前の保存から戻したときなど）もなく、資料の窓口があるとき
+// （デスクトップ版）だけ。keep は { システムの id: [資料の行の file, …] }（ごみ箱のシステムも入れる。資料のないシステムは []）。
+// 消し終わるのは待たずに起動を進め、失敗しても起動は止めない（console.warn だけ）
+function sweepMaterialFiles(created) {
+  const api = window.materialsAPI;
+  if (!api || created.blockReason || created.notice) return;
+  const keep = {};
+  store.state.systems.forEach((y) => { keep[y.id] = y.materials.map((m) => m.file).filter(Boolean); });
+  Promise.resolve()
+    .then(() => api.sweep(keep))
+    .then((res) => { if (!res || !res.ok) console.warn('資料のファイルを片付けられませんでした:', materialFailText(res)); })
+    .catch((e) => console.warn('資料のファイルを片付けられませんでした:', (e && e.message) || e));
 }
 
 // ── 12. テスト用の窓口 ────────────────────────────────────────────────────────
@@ -13781,6 +13942,7 @@ function exposeForTest() {
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
     changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
     SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
+    MATERIAL_KINDS, MATERIAL_KIND_NAMES, normalizeMaterials, isLegacyMaterial,
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
     swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,

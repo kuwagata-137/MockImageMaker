@@ -48,10 +48,12 @@ function createMainStorage() {
 //   html         … アプリの HTML の代わりに起動する HTML の文字（書き出した HTML を単体で開いたときのテストに使う）
 //   exportAPI    … 書き出しの窓口（preload.js の exportAPI）の身代わり。渡すとデスクトップ版として PDF・PNG も選べる
 //   aiAPI        … AI の窓口（preload.js の aiAPI）の身代わり。{ onRequest(cb), ready() }（第 7 段階）
+//   materialsAPI … 資料の窓口（preload.js の materialsAPI）の身代わり。{ available, pick, addDropped, read, bdmPlan, sweep, removeSystem }
+//                  （どれも Promise を返す。第 9 段階の後半）。渡すとデスクトップ版として資料の置き場が使える
 // 戻り値の api() は、起動が終わって window.__test__ が埋まるのを待ってから返す。
 // ページの中で起きた例外と console.error は errors に集め、close() のときに 1 件でもあれば失敗にする
 // （クリックの処理の中の例外を見落とさないため）。
-function bootApp({ storage = null, localStorage = null, url = 'https://localhost/app/' + HTML_NAME, html = null, exportAPI = null, aiAPI = null } = {}) {
+function bootApp({ storage = null, localStorage = null, url = 'https://localhost/app/' + HTML_NAME, html = null, exportAPI = null, aiAPI = null, materialsAPI = null } = {}) {
   const errors = [];
   const vc = new VirtualConsole();
   vc.on('error', (...args) => errors.push('console.error: ' + args.map(String).join(' ')));
@@ -68,6 +70,7 @@ function bootApp({ storage = null, localStorage = null, url = 'https://localhost
       window.alert = () => {};
       if (exportAPI) window.exportAPI = exportAPI;
       if (aiAPI) window.aiAPI = aiAPI;
+      if (materialsAPI) window.materialsAPI = materialsAPI;
       if (localStorage) {
         for (const [k, v] of Object.entries(localStorage)) window.localStorage.setItem(k, v);
       }
