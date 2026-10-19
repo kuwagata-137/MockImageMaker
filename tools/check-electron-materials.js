@@ -2,10 +2,11 @@
 // 見本は make-material-samples.js が作る架空の出張申請の資料。保存先は .devdata/check-userData-mat（毎回消してから始める）。
 //  1 回目: システムを 1 つ作り、システムの資料の入口の「＋ ファイルを入れる…」を押す（窓を出さず、環境変数 MIM_MATERIAL_FILES の見本の 6 種類を入れる）。
 //     表に 6 行・<userData>/data/files/<システムの id>/ に 6 つのファイル（見本と同じ中身）。本物の Electron で materialsAPI.read（Excel の番地・Word の見出し・
-//     PDF の日本語の文字と 3 ページ目の画像・BDM の文・Shift_JIS の文字・PNG）と bdmPlan。「スイムレーン図にする」で役割と作業が入る。
+//     PDF の日本語の文字と 3 ページ目の画像・BDM の文・Shift_JIS の文字・PNG）。6 つを同時に頼んでも全部読めて、1 つずつ読んだときと同じ文が返る。
+//     bdmPlan と「スイムレーン図にする」で役割と作業が入る。
 //     1 行を消して閉じる → 消した行のファイルは残る（元に戻すで行が戻ったときにファイルが要るため）
 //  2 回目（起動し直す）: 行は 5 つ。1 つ前の保存（.bak）に消した行が残っているので、消した行のファイルはまだ残る（設計どおり）。
-//     ファイルを落とす操作を CDP の Input.dispatchDragEvent で試し（できなければ「手で確かめる」と出す）、次の保存（メモ）を挟んで閉じる
+//     ファイルを落とす操作を CDP の Input.dispatchDragEvent で試し（1 つ落として 2 行以上入れば NG。0 行なら「手で確かめる」と出す）、次の保存（メモ）を挟んで閉じる
 //  3 回目（もう一度起動し直す）: 消した行のファイルが消え、ほかのファイルは残る。どの行にも指されていないシステムのフォルダ（files/y-orphan-1/）も消える（4 回目の対照）。
 //     システムをごみ箱へ移して完全に削除すると、そのフォルダが消える
 //  4 回目: 保存を止める起動（データの形の版 99 の designs.json）では、どの行にも指されていないファイルが消えず、designs.json も変わらない
@@ -15,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { removeTree, ensureSamples, SAMPLE_FILES, SAMPLES_DIR } = require('./material-sample-place');
-const { report, readAll, checkReads, noteParallelReads, SIX } = require('./check-electron-materials-read');
+const { report, readAll, checkReads, checkParallelReads, SIX } = require('./check-electron-materials-read');
 const { open, closeApp, killLeftovers, waitFor, listFiles, saved, materialsOf } = require('./check-electron-materials-app');
 
 const KIND_NAMES = ['Excel', 'Word', 'PDF', 'BDM の図', '文字', '画像'];
@@ -43,8 +44,9 @@ async function buildRun(h) {
   const same = rows.every((m, i) => fs.existsSync(path.join(dir, m.file)) && fs.readFileSync(path.join(dir, m.file)).equals(fs.readFileSync(files[i])));
   let ok = report(table.map((t) => t.join('=')).join() === SIX.map((n, i) => `${n}=${KIND_NAMES[i]}`).join() && listFiles(dir).length === 6 && same && rows.every((m) => /^m-[A-Za-z0-9-]+\.[a-z0-9]+$/.test(m.file)),
     '「＋ ファイルを入れる…」で 6 種類を入れると、表に 6 行・置き場（data/files/<システムの id>/）に 6 つのファイル（見本と同じ中身）', table.map((t) => `${t[0]}（${t[1]}）`).join('、'));
-  ok = checkReads(await page.evaluate(readAll, rows, sysId, false)) && ok;
-  noteParallelReads(await page.evaluate(readAll, rows, sysId, true));
+  const sequential = await page.evaluate(readAll, rows, sysId, false);
+  ok = checkReads(sequential) && ok;
+  ok = checkParallelReads(await page.evaluate(readAll, rows, sysId, true), sequential) && ok;
   ok = (await swimFromBdm(page, rows)) && ok;
   await page.evaluate(() => window.__test__.openSystemPanel('materials'));
   const image = rows.find((m) => m.name === DELETED);
@@ -91,18 +93,16 @@ async function tryDrop(page, filePath) {
   return { added: (await materialsOf(page)).length - before, error };
 }
 
-// 落とす操作の結果の行。1 行入れば数える結果（OK・NG）、0 行と 2 行以上は数えない注意（できない環境では「手で確かめる」）
+// 落とす操作の結果の行。1 行入れば数える結果（OK・NG）。2 行以上は、二重に入れる不具合なので NG（数える）。
+// 0 行だけは数えない注意（落とす操作を送れない環境があるため、「手で確かめる」と出す）
 function reportDrop(drop, last, dir) {
   const how = 'ファイルを落とす操作（CDP の Input.dispatchDragEvent の files）';
   if (drop.added === 1) {
     return report(last.name === DROPPED && fs.existsSync(path.join(dir, last.file)), `${how}で「${DROPPED}」が資料に入り、置き場にファイルができる`, `行 ${last.name}・${last.file}`);
   }
   const why = drop.error ? `理由: ${drop.error}` : '理由: 例外は出なかった';
-  if (drop.added === 0) {
-    console.log(`注意 資料（数えない）: ${how}では、資料が入らなかった（${why}）。手で確かめる: 資料の入口の枠にエクスプローラーからファイルを落とし、行が増えてファイルが置き場にできるか`);
-  } else {
-    console.log(`注意 資料（数えない）: ${how}で、1 つのファイルを落としたのに行が ${drop.added} つ入った（${why}）。資料の行の足し方を確かめる`);
-  }
+  if (drop.added >= 2) return report(false, `${how}で、1 つのファイルを落としたら資料の行が 1 つだけ入る`, `行が ${drop.added} つ入った（${why}）`);
+  console.log(`注意 資料（数えない）: ${how}では、資料が入らなかった（${why}）。手で確かめる: 資料の入口の枠にエクスプローラーからファイルを落とし、行が増えてファイルが置き場にできるか`);
   return true;
 }
 

@@ -2,7 +2,7 @@
 //  - report: 確かめの結果の 1 行（OK・NG）を出す
 //  - readAll: ページの中で動かす。資料の行を 1 つずつ（または同時に）読んで、文・断り書き・画像の要約を返す
 //  - checkReads: 見本の 6 種類が読めたか（Excel の番地・Word の見出し・PDF の日本語の文字と 3 ページ目の画像・BDM の文・Shift_JIS の文字・PNG）
-//  - noteParallelReads: 同時に読んだときの様子を、数えない注意の行で出す
+//  - checkParallelReads: 同時に読んでも全部読めて、1 つずつ読んだときと同じ文が返るか（数える確かめ）
 'use strict';
 
 const { SAMPLE_FILES } = require('./material-sample-place');
@@ -45,11 +45,15 @@ function checkReads(reads) {
     'PDF の文字のない 3 ページ目と PNG の資料が、PNG の画像で渡る', `PDF ${JSON.stringify(pdf.images.map((i) => [i.page, i.width, i.height]))}・画像 ${JSON.stringify(png.images.map((i) => [i.width, i.height]))}`);
   return textOk && imagesOk;
 }
-// 同じ 6 つを同時に頼んだときの様子（数えない注意の行）。今の画面は 1 つずつ頼み、AI の入口も 1 つずつ頼む（check-mcp.js の場面 D で、6 つ同時に頼んでも全部読めることを確かめている）ので、
-// 表に出る場面は、人の「読む」と AI の頼みが重なったときくらい。読む部品（material-reader.js）に同時に頼むと、PDF が read_failed になることがある（pdfjs の UnknownErrorException）
-function noteParallelReads(reads) {
+// 同じ 6 つを同時に頼んでも、全部読めて、1 つずつ頼んだときと同じ文が返るか（数える確かめ）。人の「読む」と AI の頼みが重なる場面に当たる。
+// 前は読む部品（material-reader.js）に同時に頼むと、PDF が read_failed になった（pdfjs の UnknownErrorException）。934229e の待ち行列で直したので、戻りを見張る
+function checkParallelReads(reads, sequential) {
+  const before = Object.fromEntries(sequential.map((r) => [r.name, r]));
   const failed = reads.filter((r) => r.error).map((r) => `${r.name}（${r.error.code}）`);
-  console.log(`${failed.length ? '注意' : 'OK'} 資料（数えない）: 6 つの資料の読む頼みを同時に窓口へ出すと … ${failed.length ? `読めなかった: ${failed.join('、')}` : '全部読めた'}`);
+  const differs = reads.filter((r) => !r.error && (!before[r.name] || before[r.name].text !== r.text)).map((r) => r.name);
+  const ok = reads.length === SIX.length && !failed.length && !differs.length;
+  const detail = failed.length ? `読めなかった: ${failed.join('、')}` : differs.length ? `1 つずつ読んだときと文が違う: ${differs.join('、')}` : `${reads.length} つとも読めた`;
+  return report(ok, '6 つの資料の読む頼みを同時に窓口へ出しても、全部読めて、1 つずつ頼んだときと同じ文が返る', detail);
 }
 
-module.exports = { report, readAll, checkReads, noteParallelReads, SIX };
+module.exports = { report, readAll, checkReads, checkParallelReads, SIX };
