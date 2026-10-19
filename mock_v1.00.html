@@ -676,9 +676,11 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .mat-drop.drop-on{border-color:#2563eb;background:#eff6ff;color:#1d4ed8}
 .mat-tbl th,.mat-tbl td{padding:6px 5px;vertical-align:middle}
 .mat-tbl td.nw{white-space:nowrap}
-.mat-name{display:flex;align-items:center;gap:7px}
+/* 名前の欄が狭いときは、名前を 1 字ずつ折り返さずに、古い形の札を名前の下へ送る（絵と名前は同じ行に置き、名前は収まらないときだけ折り返す） */
+.mat-name{display:flex;flex-wrap:wrap;align-items:center;gap:3px 7px}
+.mat-nm{display:flex;align-items:center;gap:7px;min-width:0}
 .mat-ic{font-size:17px;line-height:1;flex-shrink:0}
-.mat-name b{font-size:13px;color:#0f172a;overflow-wrap:anywhere}
+.mat-name b{font-size:13px;color:#0f172a;word-break:keep-all;overflow-wrap:anywhere}
 .mat-name .tag{font-size:11.5px;padding:1px 7px}
 .mat-tbl tr.old td b{color:#64748b}
 .mat-memo{width:100%;min-width:120px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;font-size:12.5px;background:#fff}
@@ -6523,7 +6525,7 @@ function sysMaterialRowHtml(m) {
   const swim = m.kind === 'bdm'
     ? `<button class="btn small" data-action="sys-mat-swim" data-id="${id}" title="この図から、スイムレーン図を作ります">スイムレーン図にする</button>` : '';
   return `<tr${old ? ' class="old"' : ''} data-id="${id}">
-    <td><span class="mat-name"><span class="mat-ic" aria-hidden="true">${MATERIAL_KIND_ICONS[m.kind] || MATERIAL_KIND_ICONS.other}</span><b>${name}</b>${old ? '<span class="tag gone">古い形のため読めません</span>' : ''}</span></td>
+    <td><span class="mat-name"><span class="mat-nm"><span class="mat-ic" aria-hidden="true">${MATERIAL_KIND_ICONS[m.kind] || MATERIAL_KIND_ICONS.other}</span><b>${name}</b></span>${old ? '<span class="tag gone">古い形のため読めません</span>' : ''}</span></td>
     <td class="nw">${esc(old ? `${kind}（古い形）` : kind)}</td><td class="nw">${esc(fmtMaterialSize(m.size))}</td><td class="nw">${esc(fmtDateTime(m.addedAt).slice(0, 10))}</td>
     <td><input type="text" class="mat-memo" data-sy="mat-memo" data-mat="${id}" value="${esc(m.memo)}" placeholder="メモを書く" aria-label="「${name}」のメモ"></td>
     <td><div class="mat-ops"><button class="btn small" data-action="sys-mat-read" data-id="${id}"${read}>読む</button>${swim}<button class="btn small danger-text" data-action="sys-mat-del" data-id="${id}" title="この資料を一覧から外します（元に戻す〔Ctrl+Z〕で戻せます）">消す</button></div></td></tr>`;
