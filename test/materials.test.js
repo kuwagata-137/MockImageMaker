@@ -21,6 +21,9 @@ const design = (id, name) => ({
 });
 const NO_REF = { designId: null, screenId: null, stateId: null };
 const box = (id, x) => ({ id, x, y: 20, w: 100, h: 40 });
+// 資料から読んだ BDM の箱（src.material はどの資料から読んだか）。BDM の箱の id は図ごとに e1・e2… と数えるので、別の資料にも同じ id の箱がある
+const BDM = 'm-bdm';
+const boxOf = (id, x, material) => ({ ...box(id, x), material });
 const step = (id, roleId, col, kind, text, extra = {}) => ({ id, roleId, col, kind, text, memo: '', ref: { ...NO_REF }, src: null, ...extra });
 const edge = (id, from, to, label = '') => ({ id, from, to, label });
 const material = (id, name, kind, file, extra = {}) => ({ id, name, kind, size: 1024, addedAt: OLD, memo: '', file, ...extra });
@@ -28,7 +31,7 @@ const system = (id, name, extra = {}) => ({
   id, name, description: '', createdAt: OLD, updatedAt: OLD, trashedAt: null, designIds: [], roles: [], swimlane: { steps: [], edges: [] },
   materials: [], notes: {}, revisions: [], ...extra,
 });
-// 出張申請システム（資料 1 つ・BDM から読んだ作業 2 つと手で足した作業 1 つ）・経費精算システム（資料なし）・ごみ箱の古いシステム（資料 1 つ）
+// 出張申請システム（資料 1 つ・BDM の資料 m-bdm から読んだ作業 2 つと手で足した作業 1 つ。m-bdm の行は、ほかの確かめを短くするため見本の資料の並びから省いた）・経費精算システム（資料なし）・ごみ箱の古いシステム（資料 1 つ）
 function sampleState() {
   return {
     schemaVersion: 3,
@@ -40,8 +43,8 @@ function sampleState() {
         roles: [{ id: 'l-app', name: '申請者', memo: '' }, { id: 'l-boss', name: '上長', memo: '課長以上' }, { id: 'l-acc', name: '経理', memo: '' }],
         swimlane: {
           steps: [
-            step('w-1', 'l-app', 0, 'start', '始まり', { src: box('n1', 10) }),
-            step('w-2', 'l-app', 1, 'task', '申請を入力する', { ref: { designId: 'd-trip', screenId: 's-form', stateId: null }, src: box('n2', 130) }),
+            step('w-1', 'l-app', 0, 'start', '始まり', { src: boxOf('n1', 10, BDM) }),
+            step('w-2', 'l-app', 1, 'task', '申請を入力する', { ref: { designId: 'd-trip', screenId: 's-form', stateId: null }, src: boxOf('n2', 130, BDM) }),
             step('w-3', 'l-acc', 2, 'task', '手で足した作業'),
           ],
           edges: [edge('e-1', 'w-1', 'w-2'), edge('e-9', 'w-2', 'w-3')],
@@ -231,10 +234,10 @@ const PLAN = {
   warnings: [],
 };
 
-test('swimlaneFromPlan: 同じ名前の役割は使い回し、ない役割は後ろに足す（今の並びは変えない）。src.id の同じ作業は id と ref が残り、同じ「元 → 先」の矢印は id が残る', async (t) => {
+test('swimlaneFromPlan: 同じ名前の役割は使い回し、ない役割は後ろに足す（今の並びは変えない）。同じ資料の同じ箱（src.material と src.id）の作業は id と ref が残り、同じ「元 → 先」の矢印は id が残る', async (t) => {
   const { api, sys } = await boot(t);
   const undo0 = api.store.undoStack.length;
-  const res = plain(api.actions.swimlaneFromPlan('y-trip', plain(PLAN)));
+  const res = plain(api.actions.swimlaneFromPlan('y-trip', plain(PLAN), { materialId: BDM }));
   assert.deepEqual(res, { addedRoles: ['総務'], reusedRoles: ['上長', '申請者'], steps: 4, edges: 4, changed: true });
   const y = plain(sys('y-trip'));
   assert.deepEqual(y.roles.map((r) => r.name), ['申請者', '上長', '経理', '総務'], '今の役割の並びは変えず、後ろに足す');
@@ -243,10 +246,10 @@ test('swimlaneFromPlan: 同じ名前の役割は使い回し、ない役割は�
   assert.deepEqual(y.roles[3], { id: y.roles[3].id, name: '総務', memo: '' }, '足す役割の形は addRole と同じ');
   const [w1, w2, w3, w4] = y.swimlane.steps;
   assert.deepEqual([w1.id, w2.id], ['w-1', 'w-2'], 'src.id の同じ作業の id が残る');
-  assert.deepEqual(w2, { id: 'w-2', roleId: 'l-app', col: 1, kind: 'input', text: '申請書を書く', memo: '様式あり', ref: { designId: 'd-trip', screenId: 's-form', stateId: null }, src: box('n2', 130) }, 'ref が残り、ほかは案のとおり');
+  assert.deepEqual(w2, { id: 'w-2', roleId: 'l-app', col: 1, kind: 'input', text: '申請書を書く', memo: '様式あり', ref: { designId: 'd-trip', screenId: 's-form', stateId: null }, src: boxOf('n2', 130, BDM) }, 'ref が残り、ほかは案のとおり（src には資料の id）');
   assert.match(w3.id, /^w-/);
   assert.ok(![w1.id, w2.id].includes(w3.id));
-  assert.deepEqual({ ...w3, id: 'x' }, { id: 'x', roleId: 'l-boss', col: 2, kind: 'decision', text: '承認する', memo: '', ref: NO_REF, src: box('n3', 250) });
+  assert.deepEqual({ ...w3, id: 'x' }, { id: 'x', roleId: 'l-boss', col: 2, kind: 'decision', text: '承認する', memo: '', ref: NO_REF, src: boxOf('n3', 250, BDM) });
   assert.equal(w4.roleId, y.roles[3].id, '足した役割の作業');
   assert.equal(y.swimlane.steps.some((w) => w.id === 'w-3'), false, '案にない作業は消える');
   const pairs = y.swimlane.edges.map((e) => [e.from, e.to, e.label]);
@@ -260,15 +263,49 @@ test('swimlaneFromPlan: 同じ名前の役割は使い回し、ない役割は�
 test('swimlaneFromPlan: 同じ案を 2 回入れると 2 回目は changed:false（履歴に積まず、更新日時も変えない）。1 回の元に戻すで役割もスイムレーンも全部戻る', async (t) => {
   const { api, sys } = await boot(t);
   const before = plain(sys('y-trip'));
-  api.actions.swimlaneFromPlan('y-trip', plain(PLAN));
+  api.actions.swimlaneFromPlan('y-trip', plain(PLAN), { materialId: BDM });
   const after1 = plain(sys('y-trip'));
   const undo1 = api.store.undoStack.length;
-  const res = plain(api.actions.swimlaneFromPlan('y-trip', plain(PLAN)));
+  const res = plain(api.actions.swimlaneFromPlan('y-trip', plain(PLAN), { materialId: BDM }));
   assert.deepEqual(res, { addedRoles: [], reusedRoles: ['上長', '総務', '申請者'], steps: 4, edges: 4, changed: false });
   assert.deepEqual(plain(sys('y-trip')), after1, '中身も更新日時も同じ');
   assert.equal(api.store.undoStack.length, undo1, '2 回目は履歴に積まない');
   api.store.undo();
   assert.deepEqual(plain(sys('y-trip')), before, '1 回の元に戻すで全部戻る');
+});
+
+test('swimlaneFromPlan: 別の資料の案（同じ key の箱）や、資料の id のない案では、今の作業の id と ref を残さない（src.material に資料の id か null）', async (t) => {
+  const { api, sys } = await boot(t);
+  const fresh = (y) => y.swimlane.steps.every((w) => !['w-1', 'w-2', 'w-3'].includes(w.id)) && y.swimlane.edges.every((e) => !['e-1', 'e-9'].includes(e.id));
+  // 別の BDM の資料（m-new）にも n1・n2 の箱がある
+  api.actions.swimlaneFromPlan('y-trip', plain(PLAN), { materialId: 'm-new' });
+  let y = plain(sys('y-trip'));
+  assert.ok(fresh(y), '別の資料の案では、同じ key の作業でも id を残さない（矢印も新しい id）');
+  assert.deepEqual(y.swimlane.steps[1].ref, NO_REF, '前の作業の画面へのつながりを受け継がない');
+  assert.deepEqual(y.swimlane.steps.map((w) => w.src.material), ['m-new', 'm-new', 'm-new', 'm-new']);
+  // 同じ資料（m-new）を読み直すと、こんどは id が残る
+  const ids = y.swimlane.steps.map((w) => w.id);
+  assert.equal(plain(api.actions.swimlaneFromPlan('y-trip', plain(PLAN), { materialId: 'm-new' })).changed, false);
+  assert.deepEqual(plain(sys('y-trip').swimlane.steps.map((w) => w.id)), ids);
+  // 資料の id のない案は、同じ key でも残さない（src.material は null）
+  api.store.undo();
+  api.actions.swimlaneFromPlan('y-trip', plain(PLAN), null);
+  y = plain(sys('y-trip'));
+  assert.ok(fresh(y), '資料の id のない案では id を残さない');
+  assert.deepEqual(y.swimlane.steps[1].ref, NO_REF);
+  assert.deepEqual(y.swimlane.steps.map((w) => w.src.material), [null, null, null, null]);
+});
+
+test('swimlaneFromPlan: 作業の src.material は、読み込み（2 回通す）と「AI が直す前の状態」の写しの直しでも残る', async (t) => {
+  const { api } = await boot(t);
+  api.actions.swimlaneFromPlan('y-trip', plain(PLAN), { materialId: BDM });
+  const once = api.migrate(plain(api.store.state)).state;
+  const twice = api.migrate(plain(once)).state;
+  const srcOf = (state) => plain(state.systems.find((y) => y.id === 'y-trip').swimlane.steps.map((w) => w.src));
+  assert.deepEqual(srcOf(twice), [boxOf('n1', 10, BDM), boxOf('n2', 130, BDM), boxOf('n3', 250, BDM), boxOf('n4', 370, BDM)]);
+  assert.deepEqual(srcOf(twice), srcOf(once));
+  const snap = api.systemContentFrom(plain(api.systemContentOf(twice.systems.find((y) => y.id === 'y-trip'))));
+  assert.deepEqual(plain(snap.swimlane.steps.map((w) => w.src.material)), [BDM, BDM, BDM, BDM]);
 });
 
 test('swimlaneFromPlan: 列のない作業は矢印の順で列を付ける。案の役割にない作業の役割も足す。案の形が違うときは null', async (t) => {
