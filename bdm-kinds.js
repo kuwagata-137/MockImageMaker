@@ -32,12 +32,16 @@ const KIND_OF_TYPE = Object.freeze({
 });
 const END_WORDS = /終|完了/;
 
+// 知らない図の種類の文字を、失敗の文に入れる形にする。資料から来た文なので、英数字と「_」「-」だけを 40 字まで残す（ほかの字は除く。
+// 失敗の文は AI の返事にそのまま入り、断り書きが付かないため）。何も残らなければ「不明」
+const unknownDiagramLabel = (key) => (typeof key === 'string' && key.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40)) || '不明';
+
 // 図の種類（diagramType）が読めるか確かめて { key, name, useLanes } を返す。ない・空は BDM と同じにスイムレーン図。読めなければ unsupported
 function diagramInfo(diagramType) {
   const key = diagramType === undefined || diagramType === null || diagramType === '' ? 'swimlane' : diagramType;
   if (typeof key === 'string' && Object.hasOwn(READABLE_DIAGRAMS, key)) return { key, ...READABLE_DIAGRAMS[key] };
   const known = typeof key === 'string' && Object.hasOwn(UNREADABLE_DIAGRAM_NAMES, key);
-  const label = known ? UNREADABLE_DIAGRAM_NAMES[key] : (typeof key === 'string' ? key.slice(0, 40) : '不明');
+  const label = known ? UNREADABLE_DIAGRAM_NAMES[key] : unknownDiagramLabel(key);
   throw new MaterialError('unsupported', `この図の種類は読めません（${label}）。スイムレーン図・フローチャート・BPMN だけ読めます。`);
 }
 
