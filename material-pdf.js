@@ -3,11 +3,14 @@
 //  - ページごとに、文字のあるページは「── 3 ページ ──」の見出しと文字の塊 { text }、
 //    文字のないページ（白紙・スキャンなどの画像だけのページ）は画像の塊 { image: { page, caption, render } } にする
 //  - 画像の塊は、返すときに render() で初めて @napi-rs/canvas に描く（長い辺 1566 に合う倍率）。ここでは描かない
-//  - pdfjs-dist（legacy の ESM）を await import で読む。字体・cMap・wasm はパッケージの中のフォルダを指し、ネットに行かない
+//  - pdfjs-dist（legacy の ESM）を await import で読む。字体・cMap・wasm はパッケージの中のフォルダを指し、ネットに行かない。
+//    cmaps・standard_fonts のフォルダがあるかを、その場所で最初に読むときに 1 回だけ確かめ、なければ MaterialError('unavailable')
+//    （ないまま読むと、pdfjs は警告も出さずに日本語のページから文字を取れず、全ページが画像の塊になるため）
 //  - Electron に触らない。node だけでテストできる
 // pdfjs が factory の場所に求める「末尾が /」の形にするため、場所の区切りは / にそろえる（Windows の fs も / を受け付ける）。
 'use strict';
 
+const fs = require('node:fs');
 const path = require('node:path');
 const { createCanvas } = require('@napi-rs/canvas');
 const { MaterialError } = require('./material-error');
@@ -25,6 +28,27 @@ function loadPdfjs() {
 // pdfjs-dist のパッケージのフォルダ（この下に cmaps・standard_fonts・wasm・iccs がある）
 function defaultPdfAssetsDir() {
   return path.dirname(require.resolve('pdfjs-dist/package.json'));
+}
+
+// pdfjs が使う字体と文字コード表（cMap）のフォルダ。確かめ済みの場所は、2 回目からは見ない
+const REQUIRED_ASSET_FOLDERS = ['cmaps', 'standard_fonts'];
+const verifiedAssetsDirs = new Set();
+
+async function isDirectory(folder) {
+  try {
+    return (await fs.promises.stat(folder)).isDirectory();
+  } catch (_) {
+    return false;
+  }
+}
+
+async function assertAssetsAvailable(assetsDir) {
+  if (verifiedAssetsDirs.has(assetsDir)) return;
+  const found = await Promise.all(REQUIRED_ASSET_FOLDERS.map((name) => isDirectory(path.join(assetsDir, name))));
+  if (!found.every(Boolean)) {
+    throw new MaterialError('unavailable', 'PDF を読む部品の準備ができていません。（字体と文字コード表のフォルダ cmaps・standard_fonts が見つかりません。アプリを入れ直してください。）');
+  }
+  verifiedAssetsDirs.add(assetsDir);
 }
 
 function assetUrl(assetsDir, name) {
@@ -99,7 +123,9 @@ function imageBlock(pdf, pageNumber) {
 
 // PDF のバイト列 → { blocks, dispose }。dispose() は開いた PDF を閉じる（控えから外すとき。閉じた後は画像の塊を描けない）。
 async function loadPdfBlocks(bytes, { assetsDir } = {}) {
-  const { pdf, task } = await openDocument(bytes, assetsDir || defaultPdfAssetsDir());
+  const dir = assetsDir || defaultPdfAssetsDir();
+  await assertAssetsAvailable(dir);
+  const { pdf, task } = await openDocument(bytes, dir);
   const dispose = () => task.destroy().catch(() => {});
   try {
     const blocks = [];
