@@ -238,21 +238,27 @@ test('アプリが終わって起動し直したら、次の頼みでつなぎ�
 
 test('頼みを送った後に切れたら、読む頼みは 1 回やり直し、書く頼みはやり直さない', async (t) => {
   const dir = makeDir(t);
+  const LATE_MS = 300; // 2 つ目の受け口の立ち上がりを遅らせ、負荷で遅れた場面をいつも作る（書く頼みは、その前に断りの返事が返る）
   // 1 つ目の受け口は、頼みを受けると止まり（返事を返さずに切る）、2 つ目の受け口を始める
   const relay = async (tool) => {
-    const second = { calls: [] };
-    const a1 = await startApp(t, dir, async () => {
-      await a1.srv.stop();
-      const a2 = await startApp(t, dir, (r) => ({ ok: true, result: { from: 2, tool: r.tool } }));
-      second.calls = a2.calls;
-      second.srv = a2.srv;
+    let second = null; // 2 つ目の受け口を始める処理の Promise（下で、立ち上がるのを待つ）
+    const a1 = await startApp(t, dir, () => {
+      second = (async () => {
+        await a1.srv.stop();
+        await delay(LATE_MS);
+        return startApp(t, dir, (r) => ({ ok: true, result: { from: 2, tool: r.tool } }));
+      })();
       return new Promise(() => {});
     });
     const client = await openEntry(t, dir, { MIM_TIMEOUT_MS: '5000' });
     const res = await call(client, tool, tool === 'create_design' ? { name: '出張申請' } : {});
     await client.close();
-    if (second.srv) await second.srv.stop();
-    return { res, first: a1.calls, second: second.calls };
+    // 2 つ目の受け口が立ち上がるのを待ってから止める。待たずに終えると、テストが終わった後で立ち上がり、
+    // そのとき t.after に登録した後片付けは動かないので、受け口が開いたまま残って npm test が終わらない（2026-10-19）
+    assert.ok(second, '1 つ目の受け口に頼みが届いた');
+    const a2 = await second;
+    await a2.srv.stop();
+    return { res, first: a1.calls, second: a2.calls };
   };
   const rd = await relay('list_designs');
   assert.equal(rd.res.isError, undefined);
