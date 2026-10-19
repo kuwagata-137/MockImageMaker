@@ -1,0 +1,42 @@
+{
+  "diagramType": "swimlane",
+  "orientation": "vertical",
+  "lanes": [
+    { "id": "e1", "name": "申請者", "bg": "#eff6ff", "hd": "#bfdbfe", "w": 220 },
+    { "id": "e2", "name": "上長", "bg": "#f0fdf4", "hd": "#bbf7d0", "w": 220 },
+    { "id": "e3", "name": "経理", "bg": "#fefce8", "hd": "#fde68a", "w": 220 }
+  ],
+  "nodes": [
+    { "id": "e4", "type": "terminal", "x": 55, "y": 70, "w": 110, "h": 31, "text": "開始", "lid": "e1" },
+    { "id": "e5", "type": "rect", "x": 60, "y": 140, "w": 120, "h": 37, "text": "出張を申請する", "lid": "e1" },
+    { "id": "e6", "type": "sys_input", "x": 60, "y": 210, "w": 120, "h": 37, "text": "出張申請システムに入力", "lid": "e1" },
+    { "id": "e7", "type": "note", "x": 270, "y": 290, "w": 140, "h": 65, "text": "上長が承認する", "note": "旅費規程に合う出張かを確認する", "lid": "e2" },
+    { "id": "e8", "type": "diamond", "x": 250, "y": 390, "w": 180, "h": 59, "text": "承認されたか", "lid": "e2" },
+    { "id": "e9", "type": "rect", "x": 500, "y": 480, "w": 120, "h": 37, "text": "概算払いを処理する", "lid": "e3" },
+    { "id": "e10", "type": "doc", "x": 600, "y": 490, "w": 60, "h": 40, "text": "出張精算書", "lid": "e3" },
+    { "id": "e11", "type": "terminal", "x": 505, "y": 570, "w": 110, "h": 31, "text": "終了", "lid": "e3" }
+  ],
+  "edges": [
+    { "id": "e12", "from": "e4", "to": "e5", "label": "", "fromLabel": "", "toLabel": "", "fromLid": null, "toLid": null },
+    { "id": "e13", "from": "e5", "to": "e6", "label": "", "fromLabel": "", "toLabel": "", "fromLid": null, "toLid": null },
+    { "id": "e14", "from": "e6", "to": "e7", "label": "", "fromLabel": "", "toLabel": "", "fromLid": null, "toLid": null },
+    { "id": "e15", "from": "e7", "to": "e8", "label": "", "fromLabel": "", "toLabel": "", "fromLid": null, "toLid": null },
+    { "id": "e16", "from": "e8", "to": "e9", "label": "", "fromLabel": "承認", "toLabel": "", "fromLid": null, "toLid": null },
+    { "id": "e17", "from": "e8", "to": "e5", "label": "差し戻し", "fromLabel": "", "toLabel": "", "fromLid": null, "toLid": null },
+    { "id": "e18", "from": "e9", "to": "e11", "label": "", "fromLabel": "", "toLabel": "", "fromLid": null, "toLid": null },
+    { "id": "e19", "from": "e9", "to": "e10", "label": "", "fromLabel": "", "toLabel": "", "fromLid": null, "toLid": null }
+  ],
+  "uid": 19,
+  "diagramName": "出張申請",
+  "gantt": {},
+  "mindLayout": "radial",
+  "gridOn": true,
+  "style": "standard",
+  "stepNums": false,
+  "docId": "doc-trip-sample",
+  "mindBranch": "curve",
+  "mindReserve": [],
+  "printPaper": "A4",
+  "printOrient": "landscape",
+  "appVer": "8.31"
+}

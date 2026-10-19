@@ -14,9 +14,10 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials をカンマで区切る）]
 // ai の場面（94〜100）は tools/shoot-app-ai.js、systems の場面（107〜133。システムとスイムレーン図）は tools/shoot-app-systems.js にある
 // toolbar の場面（134〜137）は、編集の画面のメニューバーを窓の幅ごとに撮る（q73・q74）
+// materials の場面（138〜149。システムの画面の「資料」の入口。第 9 段階の後半・画像 q67）は tools/shoot-app-materials.js にある
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -849,6 +850,7 @@ async function shootRevisions(browser) {
     if (wants('ai')) await require('./shoot-app-ai')(browser, { ROOT, HTML_NAME, shot });
     if (wants('systems')) await require('./shoot-app-systems')(browser, { shot, openDeskApp });
     if (wants('toolbar')) await shootToolbar(browser);
+    if (wants('materials')) await require('./shoot-app-materials')(browser, { ROOT, HTML_NAME, shot });
   } finally {
     await browser.close();
   }

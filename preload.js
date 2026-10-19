@@ -3,7 +3,7 @@
 // ブラウザで HTML を開いたときは、どの窓口も undefined になる（保存先は localStorage。PDF・PNG は書き出せない）。
 'use strict';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('storageAPI', {
   available: true,
@@ -51,6 +51,24 @@ contextBridge.exposeInMainWorld('aiAPI', {
   connectInfo: () => ipcRenderer.invoke('ai:connect-info'),
   // 文をクリップボードに写す。戻り値は true
   copyText: (text) => ipcRenderer.invoke('ai:copy', text),
+});
+
+// 資料の置き場（第 9 段階の後半。materials-main.js）。どれも Promise。戻り値は { ok: true, … } か { ok: false, error: { code, message } }
+// （pick の取りやめは { ok: false, canceled: true }）。ファイルの場所（パス）はページに渡さず、システムの id と保存したファイルの名前（file）で指す
+contextBridge.exposeInMainWorld('materialsAPI', {
+  available: true,
+  // 開く窓で資料を選んで、システムに入れる。戻り値は { ok, added: [{ id, name, kind, size, file, legacy }], skipped: [{ name, reason }] }
+  pick: (systemId) => ipcRenderer.invoke('materials:pick', { systemId }),
+  // 窓へ落としたファイル（File の並び）を、システムに入れる。パスは webUtils で取る（File.path は Electron 32 でなくなった）。戻り値は pick と同じ
+  addDropped: (systemId, files) => ipcRenderer.invoke('materials:addPaths', { systemId, paths: Array.from(files || []).map((f) => webUtils.getPathForFile(f)).filter(Boolean) }),
+  // 資料の中身を読む。req は { systemId, file, kind, name, cursor }。戻り値は { ok, result: { notice, part, text, images: [{ page, width, height, data: PNG の base64 }], nextCursor } }
+  read: (req) => ipcRenderer.invoke('materials:read', req),
+  // BDM の HTML の資料から、スイムレーン図の案を作る。req は { systemId, file }。戻り値は { ok, plan }
+  bdmPlan: (req) => ipcRenderer.invoke('materials:bdmPlan', req),
+  // ページの一覧にない資料のファイルを消す。keep は { [システムの id]: [file, …] }。戻り値は { ok, removedFiles, removedDirs }
+  sweep: (keep) => ipcRenderer.invoke('materials:sweep', { keep }),
+  // システムを完全に削除したあと、そのシステムの資料のフォルダを消す。戻り値は { ok, removed: 消したファイルの数 }
+  removeSystem: (systemId) => ipcRenderer.invoke('materials:removeSystem', { systemId }),
 });
 
 contextBridge.exposeInMainWorld('menuAPI', {
