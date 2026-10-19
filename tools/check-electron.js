@@ -17,6 +17,15 @@
 //     見本は版 2 のアプリで作った test/fixtures/v2-state.json。左の一覧の「ステータスの移り方」で操作を 1 つ足して保存させると、
 //     designs.json は v3（ステータスに id・見本で出すステータスは id・ボタンとリンクの文字に移る先の欄）になり、.bak は v2 のまま。
 //     起動し直しても同じ中身で読める（保存先は .devdata/check-userData-v2）
+//  8. システム（第 9 段階）を 3 つ作る（架空の出張申請システム・経費精算システム・ごみ箱へ移した旧出張申請システム）。
+//     出張申請システムは AI の道具（テスト用の窓口 window.__test__ の aiDispatch）で、経費精算システムは actions で組み立てる。
+//     役割・スイムレーン（作業と矢印・作業の指す先〔画面設計・画面・ステータス〕）・画面設計の並び（社員マスタは 2 つのシステムで共通）と、
+//     別の接続の AI の道具で直して作った履歴の行（AI が直す前の状態。写しつき）が、閉じた後の designs.json と、起動し直したページの中で同じ中身で残る。
+//     起動し直した後、システムの画面（スイムレーン図・左の画面設計のカード・履歴）に出て、ごみ箱のシステムも残り、
+//     履歴の行から restoreSystemRevision で戻せて、戻した中身と「戻す前の状態」の行が保存される（保存先は .devdata/check-userData-sys）
+//  9. システムの画面の「概要」の名前の欄と、スイムレーン図の右の欄の作業の文字・メモの欄に文字を打ち、欄を離れないまま閉じても、
+//     その文字が designs.json に残る。閉じ方は窓の × とファイル > 終了（3 と同じ作り）
+// 10. 起動し直すと、9 で打った文字が、概要の名前の欄と右の欄の作業の文字・メモの欄に出る
 // 窓の × と終了は、メインプロセスを --inspect で起動し、Node の inspector から呼んで再現する。
 // 保存先は作業フォルダの .devdata/check-userData（毎回消してから始める。npm start のデータとは別）。
 'use strict';
@@ -311,6 +320,265 @@ async function checkTypingCases() {
   return ok;
 }
 
+// ── システム（第 9 段階。上の 8〜10）──
+const USER_DATA_SYS = path.join(ROOT, '.devdata', 'check-userData-sys');
+const STATE_FILE_SYS = path.join(USER_DATA_SYS, 'data', 'designs.json');
+const SYS_CONTENT_KEYS = ['name', 'description', 'roles', 'swimlane', 'designIds']; // ページの SYSTEM_CONTENT_KEYS と同じ（履歴の行の写しの中身）
+const STEP_IN = '出張申請を入力する'; // 9 で文字を打つ作業（出張申請システムのスイムレーンの作業）
+const AI_ROW_NOTE = 'Claude Code が直す前の状態';
+
+// キーを並べ替えた JSON（読み込み直してキーの順が変わっても、同じ中身なら同じ文字になる）
+function canonical(v) {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (v && typeof v === 'object') return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;
+  return JSON.stringify(v);
+}
+const sysContent = (y) => canonical(Object.fromEntries(SYS_CONTENT_KEYS.map((k) => [k, y[k]])));
+const savedSysState = () => JSON.parse(fs.readFileSync(STATE_FILE_SYS, 'utf8'));
+const copyJson = (v) => JSON.parse(JSON.stringify(v));
+
+// テスト用の窓口（window.__test__）を出す。窓口はアプリの起動の前に置いたときだけ埋まるので、置いてからページを読み込み直す
+async function enableTestHooks(page) {
+  await page.evaluateOnNewDocument(() => { window.__test__ = {}; });
+  await page.reload();
+  await page.waitForFunction(() => window.__test__ && window.__test__.ready);
+}
+async function openSysApp(extraArgs = []) {
+  const child = launch([`--remote-debugging-port=${PORT}`, ...extraArgs], USER_DATA_SYS);
+  const browser = await connect();
+  const page = await appPage(browser);
+  await enableTestHooks(page);
+  return { child, browser, page };
+}
+// how: 'x' は窓の ×、'quit' はファイル > 終了（どちらもメインプロセスで呼ぶ。--inspect で起動したとき）、'page' はページの window.close()
+async function closeSysApp({ child, browser, page }, how = 'page') {
+  if (MAIN_CLOSE[how]) await evalInMain(`require('electron').${MAIN_CLOSE[how]}`);
+  else await page.evaluate(() => window.close());
+  browser.disconnect();
+  return withTimeout(child.exited, 15000, `システムの確かめのアプリが閉じない（${how}）`);
+}
+// AI の道具を呼ぶ。接続（session）ごとに、前からあるシステムへの最初の変更で「AI が直す前の状態」の行が入る
+async function aiCall(page, session, tool, args) {
+  const r = await page.evaluate((t, a, s) => window.__test__.aiDispatch(t, a, { session: s, client: 'claude-code' }), tool, args, session);
+  if (!r.ok) throw new Error(`${tool}: ${JSON.stringify(r.error)}`);
+  return r.result;
+}
+
+// 画面設計 3 つ（出張申請〔ステータスあり〕・経費精算・社員マスタ）と、出張申請システム（役割・画面設計の並び・スイムレーン）を AI の道具で作る。
+// 戻り値は出張申請システムの id
+async function buildTripSystem(page) {
+  const ai = (tool, args) => aiCall(page, 's-build', tool, args);
+  for (const name of ['出張申請', '経費精算', '社員マスタ']) await ai('create_design', { name, target: 'kintone' });
+  await ai('add_screen', { design: '出張申請', name: '新規申請' });
+  await ai('edit_process', { design: '出張申請', ops: [{ op: 'set_states', states: ['申請中', '承認待ち', '承認済み'] }] });
+  await ai('add_screen', { design: '経費精算', name: '精算の入力' });
+  const A = (await ai('create_system', { name: '出張申請システム', description: '出張の事前申請と上長の承認をまとめる。' })).id;
+  await ai('update_system', { system: A, ops: [{ op: 'add', name: '申請者', memo: '出張する社員' }, { op: 'add', name: '上長' }] });
+  for (const design of ['出張申請', '社員マスタ']) await ai('add_to_system', { system: A, design });
+  await ai('set_swimlane', {
+    system: A,
+    steps: [
+      { key: 's', role: '申請者', kind: 'start', text: '出張が決まる' },
+      { key: 'in', role: '申請者', kind: 'input', text: STEP_IN, ref: { design: '出張申請', screen: '新規申請', state: '申請中' } },
+      { key: 'ok', role: '上長', kind: 'decision', text: '承認する', memo: '10 万円以上は部長も見る', ref: { design: '出張申請', state: '承認待ち' } },
+      { key: 'e', role: '申請者', kind: 'end', text: '出張する' },
+    ],
+    edges: [{ from: 's', to: 'in' }, { from: 'in', to: 'ok' }, { from: 'ok', to: 'in', label: '差し戻し' }, { from: 'ok', to: 'e', label: '承認' }],
+  });
+  return A;
+}
+// 経費精算システム（社員マスタを出張申請システムと共通で入れ、並びを入れ替える）と、ごみ箱へ移す旧出張申請システムを actions で作る
+function buildExpenseSystems(page) {
+  return page.evaluate(() => {
+    const { actions: a, store } = window.__test__;
+    const design = (n) => store.state.designs.find((d) => d.name === n);
+    const B = a.createSystem({ name: '経費精算システム', description: '立て替えた経費を精算する。' });
+    a.addDesignsToSystem(B, [design('経費精算').id, design('社員マスタ').id]);
+    a.moveDesignInSystem(B, design('社員マスタ').id, 0);
+    const [r1, r2] = [a.addRole(B, '申請者'), a.addRole(B, '経理')];
+    a.setRoleMemo(B, r2, '経理課');
+    const screenId = design('経費精算').screens.find((s) => s.name === '精算の入力').id;
+    const w1 = a.addStep(B, { roleId: r1, col: 0, kind: 'input', text: '精算を入力する', ref: { designId: design('経費精算').id, screenId } });
+    const w2 = a.addStep(B, { roleId: r2, col: 1, text: '振り込む', memo: '月末にまとめて振り込む。' });
+    a.addEdge(B, w1, w2, '確かめた後');
+    const C = a.createSystem({ name: '旧出張申請システム' });
+    a.addDesignToSystem(C, design('出張申請').id);
+    a.trashSystem(C);
+    return { B, C };
+  });
+}
+
+// 1 回目: 組み立ててから、別の接続（s-fix）の AI の道具で出張申請システムを直し（直す前の中身の写しを持つ行が入る）、ページの中身を控えて閉じる
+async function sysFirstRun() {
+  fs.rmSync(USER_DATA_SYS, { recursive: true, force: true });
+  const app = await openSysApp();
+  const A = await buildTripSystem(app.page);
+  const { B, C } = await buildExpenseSystems(app.page);
+  await aiCall(app.page, 's-fix', 'update_system', {
+    system: A, description: '出張の事前申請と上長の承認、旅費の精算までをまとめる。', ops: [{ op: 'add', name: '経理' }],
+  });
+  const inPage = await app.page.evaluate(() => JSON.parse(JSON.stringify(window.__test__.store.state)));
+  const code = await closeSysApp(app);
+  return { ids: { A, B, C }, inPage, saved: savedSysState(), code };
+}
+
+// ページの中で: 最初の画面のごみ箱、共通の画面設計と、システムの画面（スイムレーン図・左の画面設計のカード・履歴）の見え方を読む
+function readSystemView(A) {
+  const T = window.__test__;
+  const S = T.store.state;
+  document.querySelector('[data-action="toggle-trash"]').click();
+  const trashRows = [...document.querySelectorAll('.trash-row.sys .trash-name')].map((e) => e.textContent);
+  const shared = S.designs.filter((d) => T.systemsOf(S, d.id).length > 1).map((d) => d.name);
+  T.openSystem(A, { panel: 'swimlane' });
+  const title = document.querySelector('#sys-title').textContent;
+  const boxes = document.querySelectorAll('#sys-view .mnode.sw').length;
+  const cards = [...document.querySelectorAll('#sys-list .sys-dcard b')].map((b) => b.textContent);
+  const sharedCards = document.querySelectorAll('#sys-list .sys-dcard.shared').length;
+  T.openSystemPanel('history');
+  const history = [...document.querySelectorAll('#sys-view .sys-hist tbody tr')].map((tr) => tr.children[1].textContent.trim());
+  return { trashRows, trashed: T.trashedSystems(S).map((y) => y.name), shared, title, boxes, cards, sharedCards, history };
+}
+// ページの中で: 出張申請システムの履歴の、いちばん新しい「AI が直す前の状態」の行から戻す
+function restoreLastAiRow(A) {
+  const T = window.__test__;
+  const rows = T.findSystem(T.store.state, A).revisions.filter((r) => r.kind === 'ai');
+  const row = rows[rows.length - 1];
+  const ok = T.actions.restoreSystemRevision(A, row.id);
+  const copy = (v) => JSON.parse(JSON.stringify(v));
+  return { ok, row: copy(row), now: copy(T.findSystem(T.store.state, A)) };
+}
+// 2 回目（起動し直す）: 読み込んだ中身と見え方を読み、履歴の行から戻して閉じる
+async function sysSecondRun(A) {
+  const app = await openSysApp();
+  const loaded = await app.page.evaluate(() => JSON.parse(JSON.stringify(window.__test__.store.state.systems)));
+  const view = await app.page.evaluate(readSystemView, A);
+  const restored = await app.page.evaluate(restoreLastAiRow, A);
+  await sleep(300);
+  const code = await closeSysApp(app);
+  return { loaded, view, restored, saved: savedSysState(), code };
+}
+
+// 1 回目に閉じた後の designs.json が、閉じる前のページの中身と同じで、組み立てたとおりか
+function checkBuiltSystems(r) {
+  const S = r.saved;
+  const [A, B, C] = [r.ids.A, r.ids.B, r.ids.C].map((id) => S.systems.find((y) => y.id === id));
+  const dName = (id) => (S.designs.find((d) => d.id === id) || {}).name;
+  const trip = S.designs.find((d) => d.name === '出張申請');
+  const stateId = (n) => trip.items.find((it) => it.type === 'status').props.states.find((s) => s.name === n).id;
+  const [win, wok] = [STEP_IN, '承認する'].map((t) => A.swimlane.steps.find((w) => w.text === t));
+  const aiRows = A.revisions.filter((x) => x.kind === 'ai');
+  const last = aiRows[aiRows.length - 1] || {};
+  const roles = (y) => y.roles.map((x) => x.name + (x.memo ? `（${x.memo}）` : '')).join('・');
+  const swim = (y) => `作業 ${y.swimlane.steps.length} つ・矢印 ${y.swimlane.edges.length} 本（${y.swimlane.edges.map((e) => e.label).filter(Boolean).join('・')}）`;
+  console.log('システムの designs.json は閉じる前のページの中身と同じか:', canonical(S.systems) === canonical(r.inPage.systems), '／ 終了コード', r.code);
+  [A, B, C].forEach((y) => console.log(`  ${y.name}${y.trashedAt ? '（ごみ箱）' : ''}: 役割 ${roles(y)} ／ 画面設計 ${y.designIds.map(dName).join('・')} ／ ${swim(y)}`,
+    `／ 履歴 ${y.revisions.map((x) => `${x.kind}（写し: 役割 ${x.snapshot ? x.snapshot.roles.length : 'なし'}・作業 ${x.snapshot ? x.snapshot.swimlane.steps.length : 'なし'}）`).join('、') || 'なし'}`));
+  console.log(`  作業「${STEP_IN}」の指す先: ${JSON.stringify(win.ref)} ／ 作業「承認する」の指す先: ${JSON.stringify(wok.ref)}`);
+  return canonical(S.systems) === canonical(r.inPage.systems) && r.code === 0 && S.systems.length === 3
+    && roles(A) === '申請者（出張する社員）・上長・経理' && A.designIds.map(dName).join() === '出張申請,社員マスタ' && swim(A) === '作業 4 つ・矢印 4 本（差し戻し・承認）'
+    && win.ref.designId === trip.id && win.ref.screenId === trip.screens.find((s) => s.name === '新規申請').id && win.ref.stateId === stateId('申請中')
+    && wok.ref.designId === trip.id && wok.ref.screenId === null && wok.ref.stateId === stateId('承認待ち') && wok.memo === '10 万円以上は部長も見る'
+    && aiRows.length === 2 && aiRows.every((x) => x.snapshot && x.note === AI_ROW_NOTE)
+    && last.snapshot.roles.map((x) => x.name).join() === '申請者,上長' && last.snapshot.swimlane.steps.length === 4 && last.snapshot.designIds.length === 2
+    && roles(B) === '申請者・経理（経理課）' && B.designIds.map(dName).join() === '社員マスタ,経費精算' && swim(B) === '作業 2 つ・矢印 1 本（確かめた後）'
+    && dName(B.swimlane.steps[0].ref.designId) === '経費精算' && !!B.swimlane.steps[0].ref.screenId && B.revisions.length === 0
+    && !!C.trashedAt && C.designIds.map(dName).join() === '出張申請';
+}
+// 起動し直したページの中身が designs.json と同じで、システムの画面に出て、履歴の行から戻した中身が保存されたか
+function checkReloadedSystems(first, r) {
+  const A = first.saved.systems.find((y) => y.id === first.ids.A);
+  const aiRows = A.revisions.filter((x) => x.kind === 'ai');
+  const want = aiRows[aiRows.length - 1];
+  const after = r.saved.systems.find((y) => y.id === first.ids.A);
+  const lastRow = after.revisions[after.revisions.length - 1];
+  const v = r.view;
+  console.log('起動し直したページのシステムは designs.json と同じか:', canonical(r.loaded) === canonical(first.saved.systems),
+    `／ ごみ箱 ${v.trashRows.join('・')}（${v.trashed.join('・')}） ／ 共通の画面設計 ${v.shared.join('・')}`);
+  console.log(`起動し直したシステムの画面: 題名「${v.title}」 ／ 作業の箱 ${v.boxes} つ ／ 画面設計のカード ${v.cards.join('・')}（共通の印 ${v.sharedCards} つ） ／ 履歴 ${v.history.join('、')}`);
+  console.log(`履歴の行（${want.date}）から戻す: ${r.restored.ok} ／ 戻した中身は行の写しと同じか ${sysContent(r.restored.now) === sysContent(want.snapshot)}`,
+    `／ 閉じた後の designs.json: 役割 ${after.roles.map((x) => x.name).join('・')}・履歴 ${after.revisions.map((x) => x.kind).join('・')}・終了コード ${r.code}`);
+  return canonical(r.loaded) === canonical(first.saved.systems)
+    && v.trashRows.join() === '旧出張申請システム' && v.trashed.join() === '旧出張申請システム' && v.shared.join() === '社員マスタ'
+    && v.title.startsWith('出張申請システム') && v.boxes === 4 && v.cards.join() === '出張申請,社員マスタ' && v.sharedCards === 1
+    && v.history.length === 2 && v.history.every((t) => t === AI_ROW_NOTE)
+    && r.restored.ok && r.restored.row.id === want.id && sysContent(r.restored.now) === sysContent(want.snapshot)
+    && sysContent(after) === sysContent(want.snapshot) && after.revisions.length === 3 && lastRow.kind === 'restore'
+    && sysContent(lastRow.snapshot) === sysContent(A) && r.code === 0;
+}
+
+// 9 で打つ文字。of: 'system' は出張申請システム、'step' はその作業「出張申請を入力する」。key は designs.json の項目
+const SYS_TYPING_CASES = [
+  { how: 'x', label: '窓の ×・概要の名前', panel: 'overview', sel: '#sys-view [data-sy="name"]', of: 'system', key: 'name', text: '・本社' },
+  { how: 'x', label: '窓の ×・作業の文字', panel: 'swimlane', sel: '#sys-side [data-sw="text"]', of: 'step', key: 'text', text: '（国内）' },
+  { how: 'x', label: '窓の ×・作業のメモ', panel: 'swimlane', sel: '#sys-side [data-sw="memo"]', of: 'step', key: 'memo', text: '行き先と日程も書く。' },
+  { how: 'quit', label: 'ファイル > 終了・概要の名前', panel: 'overview', sel: '#sys-view [data-sy="name"]', of: 'system', key: 'name', text: '・支店' },
+  { how: 'quit', label: 'ファイル > 終了・作業の文字', panel: 'swimlane', sel: '#sys-side [data-sw="text"]', of: 'step', key: 'text', text: '（海外）' },
+  { how: 'quit', label: 'ファイル > 終了・作業のメモ', panel: 'swimlane', sel: '#sys-side [data-sw="memo"]', of: 'step', key: 'memo', text: '宿の予約も書く。' },
+];
+function savedSysValue(c, ids) {
+  const y = savedSysState().systems.find((x) => x.id === ids.A);
+  return (c.of === 'step' ? y.swimlane.steps.find((w) => w.id === ids.stepIn) : y)[c.key];
+}
+// システムの画面を開き（スイムレーン図なら作業を選んで右の欄に設定を出し）、欄の終わりに文字を打って、欄を離れないまま閉じる
+async function sysTypeThenClose(c, ids) {
+  const app = await openSysApp([`--inspect=${MAIN_PORT}`]);
+  const { page } = app;
+  await page.evaluate((A, panel, step) => {
+    window.__test__.openSystem(A, { panel });
+    if (step) window.__test__.selectStep(step);
+  }, ids.A, c.panel, c.of === 'step' ? ids.stepIn : null);
+  await page.waitForSelector(c.sel);
+  await page.focus(c.sel);
+  await page.$eval(c.sel, (el) => el.setSelectionRange(el.value.length, el.value.length));
+  await page.keyboard.type(c.text);
+  await sleep(500);
+  const before = savedSysValue(c, ids);
+  const focused = await page.$eval(c.sel, (el) => document.activeElement === el);
+  const code = await closeSysApp(app, c.how);
+  return { before, after: savedSysValue(c, ids), focused, code };
+}
+async function checkSysTypingCases(ids) {
+  let ok = true;
+  for (const c of SYS_TYPING_CASES) {
+    const r = await sysTypeThenClose(c, ids);
+    const saved = r.focused && !r.before.includes(c.text) && r.after.includes(c.text);
+    console.log(`システムの画面で打ちかけのまま閉じる（${c.label}）: 打った「${c.text}」 ／ 閉じる直前も欄にいたか: ${r.focused}`,
+      `／ 閉じる前の designs.json「${r.before}」→ 閉じたあと「${r.after}」 ／ 終了コード ${r.code} → ${saved ? '保存された' : '保存されなかった'}`);
+    ok = ok && saved && r.code === 0;
+  }
+  return ok;
+}
+// 3 回目（起動し直す）: 打った文字が、概要の名前の欄と、右の欄の作業の文字・メモの欄に出るか
+async function sysThirdRun(ids) {
+  const app = await openSysApp();
+  const shown = await app.page.evaluate((A, step) => {
+    const T = window.__test__;
+    T.openSystem(A, { panel: 'overview' });
+    const name = document.querySelector('#sys-view [data-sy="name"]').value;
+    T.openSystemPanel('swimlane');
+    T.selectStep(step);
+    return { name, text: document.querySelector('#sys-side [data-sw="text"]').value, memo: document.querySelector('#sys-side [data-sw="memo"]').value };
+  }, ids.A, ids.stepIn);
+  await closeSysApp(app);
+  return shown;
+}
+
+async function checkSystems() {
+  const first = await sysFirstRun();
+  const builtOk = checkBuiltSystems(first);
+  const again = await sysSecondRun(first.ids.A);
+  const againOk = checkReloadedSystems(first, again);
+  const A = again.saved.systems.find((y) => y.id === first.ids.A);
+  const ids = { ...first.ids, stepIn: A.swimlane.steps.find((w) => w.text === STEP_IN).id };
+  const typedOk = await checkSysTypingCases(ids);
+  const shown = await sysThirdRun(ids);
+  const want = { name: A.name, text: STEP_IN, memo: A.swimlane.steps.find((w) => w.id === ids.stepIn).memo };
+  SYS_TYPING_CASES.forEach((c) => { want[c.key] += c.text; });
+  console.log(`起動し直したシステムの画面: 概要の名前「${shown.name}」 ／ 作業の文字「${shown.text}」 ／ 作業のメモ「${shown.memo}」`);
+  const shownOk = canonical(shown) === canonical(want);
+  return builtOk && againOk && typedOk && shownOk;
+}
+
 (async () => {
   fs.rmSync(USER_DATA, { recursive: true, force: true });
   const r = await firstRun();
@@ -366,7 +634,8 @@ async function checkTypingCases() {
     && part('p-b1').props.to === '' && part('p-b1').props.action === '新規登録の画面を開く' && Array.isArray(v.saved.systems)
     && v.bakVersion === 2 && v.again.badge === '確認待ち' && v.again.states.join() === v.first.states.join() && v.again.cards === 1
     && JSON.stringify(v.after.designs) === JSON.stringify(v.saved.designs);
-  const ok = firstOk && typedOk && againOk && migrateOk && v2Ok;
+  const sysOk = await checkSystems();
+  const ok = firstOk && typedOk && againOk && migrateOk && v2Ok && sysOk;
   console.log(ok ? 'OK' : 'NG');
   process.exit(ok ? 0 : 1);
 })().catch((e) => {

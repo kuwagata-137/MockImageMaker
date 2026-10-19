@@ -351,6 +351,10 @@ test('単体で開いたとき: その画面設計の編集の画面がすぐ開
   assert.match($(app, '#sa-bar').textContent, /「顧客管理」の画面設計です/);
   assert.ok($(app, '#toolbar [data-action="save-html"]'));
   for (const sel of ['[data-action="home"]', '[data-action="export"]', '[data-action="import-items"]']) assert.equal($(app, sel), null, `${sel} を出さない`);
+  // メニューバーの「揃える」はたたむ。「項目」の組はボタンが「項目を足す」の 1 つだけなので、たたまない（q73・q74）
+  assert.ok($(app, '#toolbar .fold-btn[data-fold="align"]'));
+  assert.equal($(app, '#toolbar .fold-btn[data-fold="items"]'), null);
+  assert.ok($(app, '#toolbar [data-action="add-item-menu"]').closest('.rgroup:not(.fold)'));
   api.runCommand('goHome');
   assert.equal(api.ui.view, 'editor', '一覧へ戻らない');
   api.runCommand('importHtml');

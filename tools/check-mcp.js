@@ -4,13 +4,16 @@
 // （窓の × は、check-electron と同じく BrowserWindow.close() を inspector から呼んで再現する。ページの window.close() は close の知らせを通らないため）。
 //  A. 最初の頼みで、アプリを --background で起動する（かかった時間を出す）。画面設計を作って部品を並べると、designs.json に残る。
 //     画面の画像は長い辺が 1568 以下の PNG。書き出し（PDF・PNG・HTML）は MIM_AI_EXPORT_DIR に書き、同じ名前には番号を付ける。
-//     道具は 20 個。edit_process でステータスと操作を書き、移る先を持つボタンを並べると、get_flow で読め、get_view_image は PNG（長い辺が 1568 以下。第 8 段階）。
+//     道具は 27 個。edit_process でステータスと操作を書き、移る先を持つボタンを並べると、get_flow で読め、get_view_image は PNG（長い辺が 1568 以下。第 8 段階）。
+//     システムを作って役割・画面設計・スイムレーンを書くと、get_system・list_systems で読め、designs.json に残り、スイムレーン図の画像は PNG（第 9 段階）。
 //     status で、窓が見えていない・裏の起動・ページの準備ができている。2 つ目の起動（--background）では窓を出す印が付かない。
 //     前に人が窓を最大化して閉じていても（window-state.json の isMaximized）、裏の起動では窓が画面に出ない（status の onScreen）。
-//     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり、automation.json が消える
+//     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり始め（automation.json が消える）、プロセスも消える
 //  B. 次の入口で、アプリをまた起動し、A で作った画面設計が一覧に出る。入口を強制終了しても、5 秒たってアプリが終わる
 //  C. 2 つ目の起動（--background なし。人がアプリを起動した）では窓を出す印が付き、入口を閉じても終わらない。AI のつながりがないときの窓の × では終わる
 //  最後に、窓を出さなかった起動では window-state.json を書き換えていない（人が最大化して使っていたことが残る）
+// 「アプリが終わる」は 2 つに分けて待つ（waitAppQuit）。終わり始める時（automation.json が消える。アプリが決める時）は決めた時間で確かめ、
+// その後プロセスが消えるまでは長く待つ（EXIT_WAIT_MS）。PC の負荷が高いと、Windows で Electron のプロセスが消えるまで数十秒〜数分かかるため（2026-10-19。開発記録）。
 // 保存先は作業フォルダの .devdata/check-mcp（毎回消してから始める）。
 // --packaged のときは、作った版（npm run dist の win-unpacked）の MockImageMaker.exe を ELECTRON_RUN_AS_NODE=1 で入口にし、
 // resources\app.asar\mcp-server.js を渡す（インストールした版と同じ動かし方）。保存先は .devdata/check-mcp-packaged
@@ -41,6 +44,10 @@ const WINDOW_STATE_FILE = path.join(USER_DATA, 'window-state.json');
 const WINDOW_STATE = { x: 0, y: 0, width: 800, height: 560, isMaximized: true, isFullScreen: false, displayBounds: { x: 0, y: 0, width: 800, height: 560 } };
 const MAIN_PORT = 9337; // メインプロセスの inspector（check-electron・check-export の 9333〜9335 と分ける）
 const IDLE_MS = 5000;
+// アプリが終わり始めてから（automation.json が消えてから）、プロセスが消えるまで待つ長さ。ふだんは 1 秒もかからないが、
+// PC の負荷が高いと、Windows で Electron のプロセス（と子のプロセス）が消えるまで数十秒〜数分かかった（2026-10-19。開発記録）
+const EXIT_WAIT_MS = 360000;
+const EXIT_SLOW_MS = 5000; // プロセスが消えるまでにこれより長くかかったら、結果の行に書き添える
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const check = (label, ok, detail = '') => { results.push(ok); console.log(`${ok ? 'OK' : 'NG'} ${label}${detail ? ' … ' + detail : ''}`); };
@@ -75,6 +82,28 @@ async function waitUntil(cond, ms, label) {
   }
   return Date.now() - t0;
 }
+
+let lastPid = null; // 最後に起動したアプリの pid（途中で止まったときに、残ったアプリを終わらせる）
+
+// アプリが終わるのを待つ。終わり始める（automation.json が消える）までは startMs、そこからプロセスが消えるまでは EXIT_WAIT_MS まで待つ。
+// 戻り値は、待ち始めてから終わり始めるまで（begin）と、プロセスが消えるまで（gone）の ms
+async function waitAppQuit(pid, startMs, label) {
+  const begin = await waitUntil(() => !appInfo(), startMs, `${label}（automation.json が消えない）`);
+  const t0 = Date.now();
+  let told = false;
+  while (alive(pid)) {
+    const ms = Date.now() - t0;
+    if (ms > EXIT_WAIT_MS) throw new Error(`時間切れ: ${label}（終わり始めてから ${Math.round(ms / 1000)} 秒たっても、プロセスが消えない）`);
+    if (!told && ms > 20000) {
+      told = true;
+      console.log(`… ${label}: 終わり始めた後、プロセスが消えるのを待っています（PC の負荷が高いと数分かかることがあります）`);
+    }
+    await sleep(100);
+  }
+  return { begin, gone: begin + (Date.now() - t0) };
+}
+const quitDetail = (q) => `終わり始めるまで ${q.begin} ms・プロセスが消えるまで ${q.gone} ms`
+  + (q.gone - q.begin > EXIT_SLOW_MS ? '（Windows でプロセスが消えるのに時間がかかった）' : '');
 
 // パイプにつないで status を聞く（確かめ用の決まり。つないでいる間は AI のつながりに数えられる）
 function status() {
@@ -127,6 +156,7 @@ async function phaseA() {
   const t0 = Date.now();
   const list = await tool(client, 'list_designs');
   const info = appInfo();
+  lastPid = info && info.pid;
   check('A. 最初の頼みでアプリを裏で起動する', !!info && list.total === 0, `${Date.now() - t0} ms ／ pid ${info && info.pid}`);
   const made = await tool(client, 'create_design', { name: '出張申請（確かめ）', target: 'kintone' });
   await tool(client, 'layout_screen', {
@@ -154,8 +184,9 @@ async function phaseA() {
     names.join('、'));
   // 第 8 段階の道具（ステータスの移り方と画面の移り方）
   const tl = await client.listTools();
-  check('A. 道具は 20 個（edit_process・get_flow・get_view_image を含む）',
-    tl.tools.length === 20 && ['edit_process', 'get_flow', 'get_view_image'].every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
+  const NEW_TOOLS = ['edit_process', 'get_flow', 'get_view_image', 'list_systems', 'get_system', 'create_system', 'update_system', 'add_to_system', 'remove_from_system', 'set_swimlane'];
+  check('A. 道具は 27 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個を含む）',
+    tl.tools.length === 27 && NEW_TOOLS.every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
   await tool(client, 'edit_process', { design: made.id, ops: [
     { op: 'set_states', states: ['申請', '承認待ち', '完了'] },
     { op: 'add_action', name: '申請する', from: '申請', to: '承認待ち', role: '申請者' },
@@ -175,20 +206,50 @@ async function phaseA() {
     const [vw, vh] = vb.length > 24 ? [vb.readUInt32BE(16), vb.readUInt32BE(20)] : [0, 0];
     check(`A. get_view_image（${view}）は PNG で、長い辺が 1568 以下`, !vi.isError && vb.subarray(1, 4).toString() === 'PNG' && Math.max(vw, vh) <= 1568 && vw >= 400, `${vw} × ${vh}`);
   }
+  await checkSystemTools(client, made);
   const st = await status();
   check('A. 窓は見えていない・裏の起動・ページの準備ができている', st.visible === false && st.background === true && st.pageReady === true && st.clients >= 1, JSON.stringify(st));
   check('A. 前に人が窓を最大化して閉じていても、裏の起動では窓が画面に出ない', st.onScreen === false, `onScreen ${st.onScreen}`);
+  const t2 = Date.now();
   const code = await secondLaunch(true);
+  const ms2 = Date.now() - t2; // 2 つ目の起動も、PC の負荷が高いとプロセスが消えるまで 1 分ほどかかることがある
   const st2 = await status();
-  check('A. 2 つ目の起動（--background）はすぐ終わり、窓を出す印は付かない', code === 0 && st2.showRequested === false && alive(info.pid), `終了コード ${code} ／ showRequested ${st2.showRequested}`);
+  check('A. 2 つ目の起動（--background）はすぐ終わり、窓を出す印は付かない', code === 0 && st2.showRequested === false && alive(info.pid), `終了コード ${code} ／ showRequested ${st2.showRequested} ／ ${ms2} ms`);
   await closeWindow();
   await sleep(800);
   const again = await tool(client, 'list_designs');
   const st3 = await status();
   check('A. AI がつながっている間の窓の × では、窓を隠して動き続ける', alive(info.pid) && again.total === 1 && st3.visible === false, `designs ${again.total} ／ visible ${st3.visible}`);
   await client.close();
-  const ms = await waitUntil(() => !alive(info.pid), IDLE_MS + 15000, 'A. 入口を閉じた後にアプリが終わる');
-  check('A. 入口を閉じると、5 秒たってアプリが終わり、automation.json が消える', !appInfo() && ms >= IDLE_MS - 500, `${ms} ms`);
+  const q = await waitAppQuit(info.pid, IDLE_MS + 15000, 'A. 入口を閉じた後にアプリが終わる');
+  check('A. 入口を閉じると、5 秒たってアプリが終わり始め（automation.json が消え）、プロセスも消える', q.begin >= IDLE_MS - 500, quitDetail(q));
+}
+
+// 第 9 段階の道具（システム）を 1 回ずつ呼ぶ: 作る・役割を足す・画面設計を入れる・スイムレーンを書く・読む・図の画像・外す
+async function checkSystemTools(client, made) {
+  const ys = await tool(client, 'create_system', { name: '出張申請システム（確かめ）', description: '確かめの見本' });
+  await tool(client, 'update_system', { system: ys.id, expect: ys.updatedAt, ops: [{ op: 'add', name: '申請者' }, { op: 'add', name: '上長', memo: '課長以上' }] });
+  await tool(client, 'add_to_system', { system: ys.id, design: made.id });
+  const sw = await tool(client, 'set_swimlane', { system: ys.id, steps: [
+    { key: 's', role: '申請者', kind: 'start', text: '始まり' },
+    { key: 'in', role: '申請者', kind: 'input', text: '申請を入力する', ref: { design: made.id, screen: made.firstScreen.id } },
+    { key: 'ok', role: '上長', kind: 'decision', text: '承認する' },
+  ], edges: [{ from: 's', to: 'in' }, { from: 'in', to: 'ok', label: '出す' }] });
+  const gs = await tool(client, 'get_system', { system: ys.id });
+  const ls = await tool(client, 'list_systems');
+  const saved = (JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).systems || []).find((y) => y.id === ys.id);
+  check('A. システムを作り、役割・画面設計・スイムレーンを書くと、get_system・list_systems で読め、designs.json に残る（第 9 段階）',
+    gs.roles.length === 2 && gs.designs.length === 1 && gs.steps.length === 3 && gs.edges.length === 2 && sw.steps.map((s) => s.col).join(',') === '0,1,2'
+      && ls.systems.some((y) => y.id === ys.id) && !!saved && saved.swimlane.steps.length === 3 && saved.revisions.some((r) => r.kind === 'ai'),
+    `役割 ${gs.roles.length}・画面設計 ${gs.designs.length}・作業 ${gs.steps.length}・矢印 ${gs.edges.length}・列 ${sw.steps.map((s) => s.col).join(',')}`);
+  const vi = await client.callTool({ name: 'get_view_image', arguments: { system: ys.id, view: 'swimlane' } });
+  const vim = vi.content.find((c) => c.type === 'image');
+  const vb = vim ? Buffer.from(vim.data, 'base64') : Buffer.alloc(0);
+  const [vw, vh] = vb.length > 24 ? [vb.readUInt32BE(16), vb.readUInt32BE(20)] : [0, 0];
+  check('A. get_view_image（swimlane）は PNG で、長い辺が 1568 以下', !vi.isError && vb.subarray(1, 4).toString() === 'PNG' && Math.max(vw, vh) <= 1568 && vw >= 400, `${vw} × ${vh}`);
+  const rm = await tool(client, 'remove_from_system', { system: ys.id, design: made.id });
+  const after = await tool(client, 'get_system', { system: ys.id });
+  check('A. remove_from_system で外しても、画面設計は残る', rm.design.id === made.id && after.designs.length === 0 && (await tool(client, 'list_designs')).designs.some((d) => d.id === made.id));
 }
 
 async function phaseB() {
@@ -196,10 +257,11 @@ async function phaseB() {
   const t0 = Date.now();
   const list = await tool(client, 'list_designs');
   const info = appInfo();
+  lastPid = info && info.pid;
   check('B. 次の入口でアプリをまた起動し、前に作った画面設計が一覧に出る', list.designs.some((d) => d.name === '出張申請（確かめ）'), `${Date.now() - t0} ms`);
   process.kill(transport.pid);
-  const ms = await waitUntil(() => !alive(info.pid), IDLE_MS + 15000, 'B. 入口を強制終了した後にアプリが終わる');
-  check('B. 入口を強制終了しても、5 秒たってアプリが終わり、automation.json が消える', !appInfo() && ms >= IDLE_MS - 500, `${ms} ms`);
+  const q = await waitAppQuit(info.pid, IDLE_MS + 15000, 'B. 入口を強制終了した後にアプリが終わる');
+  check('B. 入口を強制終了しても、5 秒たってアプリが終わり始め（automation.json が消え）、プロセスも消える', q.begin >= IDLE_MS - 500, quitDetail(q));
   await client.close().catch(() => {});
 }
 
@@ -207,15 +269,18 @@ async function phaseC() {
   const { client } = await openEntry();
   await tool(client, 'list_designs');
   const info = appInfo();
+  lastPid = info && info.pid;
+  const t2 = Date.now();
   const code = await secondLaunch(false);
+  const ms2 = Date.now() - t2;
   const st = await status();
-  check('C. 2 つ目の起動（--background なし）では、窓を出す印が付く', code === 0 && st.showRequested === true, `終了コード ${code} ／ showRequested ${st.showRequested}`);
+  check('C. 2 つ目の起動（--background なし）では、窓を出す印が付く', code === 0 && st.showRequested === true, `終了コード ${code} ／ showRequested ${st.showRequested} ／ ${ms2} ms`);
   await client.close();
   await sleep(IDLE_MS + 2000);
   check('C. 人がアプリを起動した後は、入口を閉じても終わらない', alive(info.pid) && !!appInfo());
   await closeWindow();
-  const ms = await waitUntil(() => !alive(info.pid), 15000, 'C. 窓の × でアプリが終わる');
-  check('C. AI のつながりがないときの窓の × では、アプリが終わる', !appInfo(), `${ms} ms`);
+  const q = await waitAppQuit(info.pid, 15000, 'C. 窓の × でアプリが終わる');
+  check('C. AI のつながりがないときの窓の × では、アプリが終わる', !appInfo() && !alive(info.pid), quitDetail(q));
 }
 
 // fs.rmSync は使わない（Windows の Node v24.12.0 で日本語の名前のファイルを渡すと Node ごと落ちる。書き出しのファイルは日本語の名前）
@@ -242,8 +307,11 @@ function removeDir(dir) {
   } catch (err) {
     check('途中で止まった', false, err.stack || String(err));
   } finally {
+    // 途中で止まったときに残ったアプリを終わらせる（automation.json が消えた後で止まったときは、lastPid でしか分からない）
     const info = appInfo();
-    if (info && alive(info.pid)) { try { process.kill(info.pid); } catch (_) { /* もう終わっている */ } }
+    for (const pid of new Set([info && info.pid, lastPid])) {
+      if (pid && alive(pid)) { try { process.kill(pid); } catch (_) { /* もう終わっている */ } }
+    }
   }
   console.log(results.every(Boolean) ? 'OK' : 'NG');
   process.exit(results.every(Boolean) ? 0 : 1);

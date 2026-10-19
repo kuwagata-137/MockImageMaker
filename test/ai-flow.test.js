@@ -212,7 +212,8 @@ test('get_view_image: つながりの図・ステータスの移り方の図・�
   assert.deepEqual([m.result.view, m.result.boxes, m.result.arrows], ['map', 2, 1]);
   assert.match(m.render.html, /受注管理/);
   assert.match(ng(await call('get_view_image', { design: 'd2', view: 'process' }), 'bad_request').message, /ステータスの項目/);
-  ng(await call('get_view_image', { design: 'd1', view: 'swimlane' }), 'bad_request');
+  // スイムレーン図はシステムの図（第 9 段階）。design で頼むと、system を書くよう断る
+  assert.match(ng(await call('get_view_image', { design: 'd1', view: 'swimlane' }), 'bad_request').message, /system/);
   app.close();
 });
 

@@ -1,4 +1,4 @@
-// tools/shoot-app.js の AI の場面（--only=ai。場面 94〜100）。第 7 段階の AI の見た目（CLAUDE.md の「AI の見た目の細かい決めごと」）を撮る。
+// tools/shoot-app.js の AI の場面（--only=ai。場面 94〜100）。第 7 段階の AI の見た目（仕様_細かい決めごと.md の「AI の見た目の細かい決めごと」）を撮る。
 // preload の aiAPI の身代わりを入れてアプリを開き、AI の頼みはテスト用の窓口の aiDispatch で送る。中身は架空の業務（顧客管理など）だけ。
 'use strict';
 

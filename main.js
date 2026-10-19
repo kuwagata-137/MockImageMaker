@@ -58,6 +58,10 @@ function buildAppMenu() {
     {
       label: 'ファイル',
       submenu: [
+        // 新しい画面設計・新しいシステムは、一覧へ戻ってから窓を出す（第 9 段階）
+        commandItem('新しい画面設計…', 'newDesign'),
+        commandItem('新しいシステム…', 'newSystem'),
+        { type: 'separator' },
         // 書き出す（PDF・HTML・PNG）は開いている画面設計を、取り込むは一覧へ戻ってから（第 5 段階）
         commandItem('書き出す…', 'exportDialog'),
         commandItem('HTML を取り込む…', 'importHtml'),

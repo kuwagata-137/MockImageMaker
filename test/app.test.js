@@ -83,7 +83,7 @@ test('一覧: 更新の新しい順に並び、名前で探せる', async (t) =>
   setValue($(app, '#home-search'), '管理', 'input');
   assert.deepEqual(cardNames(app), ['問い合わせ管理', '顧客管理アプリ']);
   setValue($(app, '#home-search'), '日報', 'input');
-  assert.match($(app, '#home-cards').textContent, /「日報」を名前に含む画面設計はありません/);
+  assert.match($(app, '#home-cards').textContent, /「日報」に当たる画面設計はありません/);
   assert.equal(ids.length, 3);
 });
 
@@ -468,4 +468,31 @@ test('アプリのメニューから: 部品をすべて選んで揃える・項
   // 保存が済むのを待ってから閉じる（閉じた後に保存の処理が画面を触らないように）
   await api.store.adapter.pending;
   await st.whenIdle();
+});
+
+// 第 9 段階の見直し（T9）: フォーカスが見えない radio・checkbox に残っていても、元に戻す・やり直すは効く（どの画面でも）。
+// 文字の欄の中の Ctrl+Z は、今までどおりブラウザの文字の取り消しに任せる
+// （編集の画面の右の欄は、押した後に描き直してフォーカスが外れることが多いので、キーを radio・checkbox の上で起こして確かめる）
+test('編集の画面の右の欄: 機器（radio）・帯（checkbox）の上の Ctrl+Z・Ctrl+Y も効く。文字の欄の中の Ctrl+Z は効かせない', async (t) => {
+  const { app, api } = await boot();
+  t.after(() => app.close());
+  const id = api.actions.createDesign('顧客管理', 'kintone');
+  api.openDesign(id);
+  const width = () => api.store.state.designs[0].screens[0].width;
+  const radio = $(app, '[data-field="device"][value="phone"]');
+  radio.checked = true;
+  radio.dispatchEvent(new app.window.Event('change', { bubbles: true }));
+  assert.equal(width(), 375);
+  key(app, $(app, '[data-field="device"][value="phone"]'), { key: 'z', ctrlKey: true });
+  assert.equal(width(), 1280);
+  key(app, $(app, '[data-field="device"][value="pc"]'), { key: 'y', ctrlKey: true });
+  assert.equal(width(), 375);
+  const box = $(app, '[data-field="screen-header"]');
+  box.checked = false;
+  box.dispatchEvent(new app.window.Event('change', { bubbles: true }));
+  assert.equal(api.store.state.designs[0].screens[0].showHeader, false);
+  key(app, $(app, '[data-field="screen-header"]'), { key: 'z', ctrlKey: true });
+  assert.equal(api.store.state.designs[0].screens[0].showHeader, true);
+  key(app, $(app, '[data-field="screen-name"]'), { key: 'z', ctrlKey: true });
+  assert.equal(width(), 375, '文字の欄の中では元に戻さない（機器の変更が残る）');
 });
