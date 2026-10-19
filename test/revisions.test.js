@@ -175,6 +175,8 @@ test('前の版を見る: 編集の画面を写しで描き、上に黄色い帯
   api.openDesign('d1');
   const { r1 } = makeTwoVersions(api);
   const savedBefore = app.window.localStorage.getItem(STORAGE_KEY);
+  click($(app, '#toolbar .fold-btn[data-fold="align"]')); // メニューバーのたたんだ組を出したまま見始めても、閉じる
+  assert.equal(api.ui.foldMenu, 'align');
   assert.ok(api.startViewRevision(r1));
   assert.ok(api.store.isViewing);
   const band = $(app, '#rv-band');
@@ -189,6 +191,9 @@ test('前の版を見る: 編集の画面を写しで描き、上に黄色い帯
   assert.equal(api.currentDesign().description, '取引先と顧客の連絡先を管理する。');
   assert.equal($(app, '#toolbar [data-action="export"]').disabled, true);
   assert.equal($(app, '#toolbar [data-action="zoom-in"]').disabled, false);
+  assert.equal(api.ui.foldMenu, null);
+  assert.ok(!$(app, '#toolbar .rgroup[data-fold="align"]').classList.contains('open'));
+  assert.ok(['align', 'items'].every((k) => $(app, `#toolbar .fold-btn[data-fold="${k}"]`).disabled), 'たたんだ組のボタンも押せない');
   assert.equal($(app, '#side-box').hidden, true, '部品の箱は出さない');
   assert.equal(api.store.canUndo(), false);
   assert.equal(api.runCommand('deletePart'), true);
@@ -206,6 +211,7 @@ test('前の版を見る: 編集の画面を写しで描き、上に黄色い帯
   assert.ok(!$(app, '#stage .part[data-part-id="p4"]'));
   assert.equal($(app, '#toolbar [data-action="export"]').disabled, false, '見ている間に押せなくしたボタンが、また押せる');
   assert.equal($(app, '#toolbar [data-action="add-screen"]').disabled, false);
+  assert.equal($(app, '#toolbar .fold-btn[data-fold="align"]').disabled, false);
   assert.equal($(app, '#side-box').hidden, false);
   assert.ok(api.actions.updateDesignInfo('d1', { description: '直せる' }));
 });

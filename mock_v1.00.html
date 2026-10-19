@@ -172,6 +172,14 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .tbtn:disabled{opacity:.4;cursor:default;background:transparent}
 .bigbtn:disabled{opacity:.4;cursor:default}
 .zoom-label{min-width:52px;color:#475569;align-self:center}
+/* たたんだ組（q73・q74）: 組を 1 つのボタンにし、押すと組のボタンを下に出す。出す位置は placeFoldPop が決める */
+.fold-caret{font-size:8px;color:#475569;margin-top:1px}
+.fold-btn.open{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
+.fold-btn.open .fold-caret{color:#1d4ed8}
+.fold-pop{display:none;position:fixed;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.18);padding:6px 6px 0}
+.rgroup.open>.fold-pop{display:flex;flex-direction:column}
+.fold-pop>.glabel{border-top:1px solid #e2e8f0;margin-top:4px}
+#toolbar.fold-open{z-index:25}
 
 .editor-body{flex:1;min-height:0;display:flex}
 .screen-list{width:192px;flex-shrink:0;background:#fff;border-right:1px solid #e2e8f0;overflow-y:auto;padding:12px 12px 20px}
@@ -4660,6 +4668,7 @@ const ui = {
   screenMenu: null, // 左の画面の一覧で「…」のメニューを開いている画面の id
   prevScreenId: null, // 画面を足す・複製する前に開いていた画面の id（元に戻すでその画面が消えたときに戻る先）
   revMenu: false, // メニューバーの「改訂履歴」の ▼ のメニューを開いているか
+  foldMenu: null, // メニューバーのたたんだ組（'align'・'items'）のうち、押して下に出している組（q73・q74）
   viewRev: null, // 見ている前の版の行の id（見ていないときは null。q41）
   viewReturn: null, // 前の版を見る前に開いていた所 { screenId, panel }（見るのをやめたときに戻る）
   diffHidden: false, // 単体で開いた HTML で、違いの札を隠しているか（q44d）
@@ -5810,7 +5819,7 @@ function openSystem(id, { panel = null } = {}) {
   const p = SYS_PANELS.includes(panel) ? panel : ui.sysPanels[id] || 'swimlane';
   Object.assign(ui, {
     view: 'system', systemId: id, designId: null, screenId: null, menuFor: null, sysMenu: null, sysDesignMenu: null, stepSel: null, editorFrom: null,
-    previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false, sysPanel: p,
+    previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false, foldMenu: null, sysPanel: p,
     edgeSel: null, swimMode: 'select', swimLink: null, swimPal: null,
   });
   ui.sysPanels[id] = p;
@@ -7067,7 +7076,7 @@ function openDesign(id) {
   const d = findDesign(store.state, id);
   if (!d) return;
   aiForgetView(ui.view === 'home');
-  Object.assign(ui, { view: 'editor', designId: id, systemId: null, editorFrom: from, sysDesignMenu: null, stepSel: null, screenId: d.screens[0].id, prevScreenId: null, screenMenu: null, zoom: 1, mode: 'select', menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
+  Object.assign(ui, { view: 'editor', designId: id, systemId: null, editorFrom: from, sysDesignMenu: null, stepSel: null, screenId: d.screens[0].id, prevScreenId: null, screenMenu: null, zoom: 1, mode: 'select', menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false, foldMenu: null });
   store.clearHistory();
   mountEditor();
 }
@@ -7076,7 +7085,7 @@ function goHome() {
   leaveViewing();
   aiForgetView(false);
   // 左の一覧で選んでいたまとまり（ui.homeGroup）は、そのまま残す（第 9 段階）
-  Object.assign(ui, { view: 'home', designId: null, systemId: null, editorFrom: null, sysDesignMenu: null, stepSel: null, screenId: null, menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false });
+  Object.assign(ui, { view: 'home', designId: null, systemId: null, editorFrom: null, sysDesignMenu: null, stepSel: null, screenId: null, menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false, foldMenu: null });
   store.clearHistory();
   renderHome();
 }
@@ -7109,6 +7118,13 @@ function mountEditor() {
 
 function toolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
+  // たたんだ組（q73・q74）: 窓の幅が狭いとメニューバーの右が切れたため、「揃える」「項目」はいつも 1 つのボタンにする。
+  // 組のボタンは #toolbar の中に残す（押せる・押せないを、ほかのボタンと同じく updateToolbarState で決めるため）
+  const foldGroup = (key, label, ico, note, title, body) => `<div class="rgroup fold" data-fold="${key}"><div class="gbody">
+      <button class="bigbtn fold-btn" data-action="fold-menu" data-fold="${key}" aria-expanded="false" title="${title}">${ico}${label}<span class="fold-caret">▼</span></button></div>
+    <div class="glabel">${label}</div>
+    <div class="fold-pop" role="group" aria-label="${label}"><div class="gbody">${body}</div><div class="glabel">${note}</div></div></div>`;
+  const addItemBtn = '<button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="データベースの項目の一覧表に項目を足します"><span class="ico">＋</span>項目を<br>足す</button>';
   return [
     group('ファイル', (standalone
       ? '<button class="bigbtn" data-action="save-html" title="直した中身を HTML ファイルに保存します（Ctrl+S）"><span class="ico">💾</span>HTML を<br>保存</button>'
@@ -7132,11 +7148,13 @@ function toolbarHtml() {
       <button class="tbtn" data-action="delete-part" id="tb-del" title="選んだ部品を消します（Delete）">✕ 削除</button></div>
       <div class="stack"><button class="tbtn" data-action="select-all" id="tb-select-all" data-screen-only title="この画面の部品と吹き出しを、すべて選びます（Ctrl+A）">☐ すべて選ぶ</button></div>
       <button class="bigbtn" data-action="renumber" id="tb-renumber" title="赤い番号を、上から下・左から右の順に 1 から付け直します"><span class="ico">①</span>番号を<br>振り直す</button>`),
-    group('揃える', ALIGN_BUTTONS.map(([cmd, action, label, svg]) =>
-      `<button class="bigbtn" data-action="${action}" data-align-cmd="${cmd}" title="選んだものを揃えます（最初に選んだものに合わせる）">${alignSvg(svg)}${label.replace('\n', '<br>')}</button>`).join('')),
-    group('項目', `
-      <button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="データベースの項目の一覧表に項目を足します"><span class="ico">＋</span>項目を<br>足す</button>
-      ${standalone ? '' : '<button class="bigbtn" data-action="import-items" id="tb-import" title="ほかのモック（画面設計）の項目を、つなげたまま取り込みます"><span class="ico">⇩</span>ほかのモック<br>から取り込む</button>'}`),
+    foldGroup('align', '揃える', alignSvg(ALIGN_BUTTONS[0][3]), '揃える（最初に選んだものに合わせる）', '揃えるボタン（左・右・上・下・中央・等間隔）を出します',
+      ALIGN_BUTTONS.map(([cmd, action, label, svg]) =>
+        `<button class="bigbtn" data-action="${action}" data-align-cmd="${cmd}" title="選んだものを揃えます（最初に選んだものに合わせる）">${alignSvg(svg)}${label.replace('\n', '<br>')}</button>`).join('')),
+    // 単体で開いた HTML の「項目」の組は「項目を足す」の 1 つだけなので、たたまない
+    standalone ? group('項目', addItemBtn)
+      : foldGroup('items', '項目', '<span class="ico">＋</span>', 'データベースの項目', '項目を足す・ほかのモックから取り込むボタンを出します', `${addItemBtn}
+      <button class="bigbtn" data-action="import-items" id="tb-import" title="ほかのモック（画面設計）の項目を、つなげたまま取り込みます"><span class="ico">⇩</span>ほかのモック<br>から取り込む</button>`),
     group('モード', `
       <button data-screen-only class="bigbtn" data-action="mode-select" id="tb-mode-select" title="部品を選んで動かすモード"><span class="ico">➤</span>選択</button>
       <button data-screen-only class="bigbtn" data-action="mode-hand" id="tb-mode-hand" title="ドラッグで画面を動かすモード（ホイールで拡大縮小）"><span class="ico">✋</span>ハンド</button>`),
@@ -7210,6 +7228,10 @@ function updateToolbarState() {
   }
   $('#tb-rev-arrow').classList.toggle('open', ui.revMenu);
   $('#tb-rev-arrow').setAttribute('aria-expanded', String(ui.revMenu));
+  // 押せなくなった組（前の版を見ている間）は閉じる
+  const foldBtn = ui.foldMenu && $(`#toolbar .fold-btn[data-fold="${ui.foldMenu}"]`);
+  if (!foldBtn || foldBtn.disabled) ui.foldMenu = null;
+  renderFoldMenu();
   updateHomeButton();
 }
 // 「← 一覧へ」は、システムの画面から開いたときは「← システムへ」（第 9 段階。命令は backToSystem。T9 の見直しで goHome と分けた）。
@@ -7523,6 +7545,43 @@ function closeRevMenu() {
   if ($('#tb-rev-arrow')) updateToolbarState();
 }
 
+// メニューバーのたたんだ組（q73・q74）を、ui.foldMenu のとおりに開け閉めする（組のボタンは作り直さない）
+function renderFoldMenu() {
+  const tb = $('#toolbar');
+  if (!tb) return;
+  tb.classList.toggle('fold-open', !!ui.foldMenu);
+  tb.querySelectorAll('.rgroup.fold').forEach((g) => {
+    const open = g.dataset.fold === ui.foldMenu;
+    const btn = g.querySelector('.fold-btn');
+    g.classList.toggle('open', open);
+    btn.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) placeFoldPop(g);
+  });
+}
+// 出した組は、組のボタンのすぐ下に左をそろえて置く。窓の右の端からはみ出すときは、右の端に寄せる
+function placeFoldPop(g) {
+  const r = g.querySelector('.fold-btn').getBoundingClientRect();
+  const pop = g.querySelector('.fold-pop');
+  pop.style.top = `${Math.round(r.bottom + 4)}px`;
+  pop.style.left = `${Math.round(Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)))}px`;
+}
+function closeFoldMenu() {
+  if (!ui.foldMenu) return;
+  ui.foldMenu = null;
+  renderFoldMenu();
+}
+function toggleFoldMenu(key) {
+  flushSideField();
+  closeScreenMenu();
+  closeRevMenu();
+  ui.foldMenu = ui.foldMenu === key ? null : key;
+  renderFoldMenu();
+  // キーボードでも組のボタンを選べるように、押せる最初のボタンにフォーカスを移す
+  const first = ui.foldMenu && $(`#toolbar .rgroup[data-fold="${key}"] .fold-pop button:not(:disabled)`);
+  if (first) first.focus();
+}
+
 // 変更内容の一覧の表（「改訂する」の窓・改訂履歴の窓・単体で開いた HTML の窓。q44）
 function changeTableHtml(rows) {
   return `<table class="cg-table"><thead><tr><th>画面</th><th>番号</th><th>項目名</th><th>変更</th><th>変更の内容</th></tr></thead><tbody>${rows.map((x) =>
@@ -7720,7 +7779,7 @@ function startViewRevision(revId) {
   const view = { ...store.state, designs: store.state.designs.map((x) => (x.id === d.id ? shown : x)) };
   Object.assign(ui, {
     viewRev: revId, viewReturn: { screenId: ui.screenId, panel: ui.panel },
-    sel: [], itemId: null, addItemMenu: false, screenMenu: null, revMenu: false, colId: null,
+    sel: [], itemId: null, addItemMenu: false, screenMenu: null, revMenu: false, foldMenu: null, colId: null,
   });
   store.startViewing(view);
   return true;
@@ -10903,6 +10962,7 @@ function runCommand(cmd) {
   flushSideField();
   closeScreenMenu();
   closeRevMenu();
+  closeFoldMenu();
   closeSysDesignMenu();
   if (store.isViewing && !VIEW_OK_COMMANDS.includes(cmd)) {
     toast('前の版を見ている間は、直せません。上の黄色い帯の「見るのをやめる」で、今の中身に戻ってください。');
@@ -11042,11 +11102,13 @@ function onEditorClick(action, btn) {
     case 'rev-menu':
       flushSideField();
       closeScreenMenu();
+      closeFoldMenu();
       ui.revMenu = !ui.revMenu;
       renderRevMenu();
       updateToolbarState();
       if (ui.revMenu) { const first = $('#rev-menu-root [role="menuitem"]:not([disabled])'); if (first) first.focus(); } // キーボードでも選べるように
       return true;
+    case 'fold-menu': toggleFoldMenu(btn.dataset.fold); return true;
     case 'rev-stop-view': leaveViewing(); return true;
     case 'rev-restore-viewing': if (ui.viewRev) restoreRevisionWithConfirm(ui.viewRev).catch(reportPageError); return true;
     case 'diff-list': openDiffListDialog().catch(reportPageError); return true;
@@ -11119,6 +11181,7 @@ function onAppClick(e) {
   if (ui.sysDesignMenu && !e.target.closest('.sys-dmenu, [data-action="sys-design-menu"]')) closeSysDesignMenu();
   if (ui.screenMenu && !e.target.closest('.screen-menu, .sl-more')) closeScreenMenu();
   if (ui.revMenu && !e.target.closest('.rv-menu, .rv-arrow')) closeRevMenu();
+  if (ui.foldMenu && !e.target.closest('.fold-pop, .fold-btn')) closeFoldMenu();
   if (ui.addItemMenu && !e.target.closest('.pop-menu, [data-action="add-item-menu"]')) {
     ui.addItemMenu = false;
     renderItemsView(currentDesign());
@@ -11193,6 +11256,13 @@ function onKeyDown(e) {
     return;
   }
   if (e.key === 'Escape' && ui.revMenu) { closeRevMenu(); return; }
+  if (e.key === 'Escape' && ui.foldMenu) {
+    const key = ui.foldMenu;
+    closeFoldMenu();
+    const opener = $(`#toolbar .fold-btn[data-fold="${key}"]`);
+    if (opener) opener.focus();
+    return;
+  }
   // システムの画面のカードの「…」のメニュー（第 9 段階）
   if (e.key === 'Escape' && ui.sysDesignMenu) {
     const id = ui.sysDesignMenu;
@@ -13645,12 +13715,14 @@ function bindGlobalEvents() {
   document.addEventListener('mouseup', onDragEnd);
   // メニューの位置がボタンからずれるので閉じる
   window.addEventListener('resize', () => {
-    if (ui.view === 'editor') { syncZoomSpacer(); closeScreenMenu(); closeRevMenu(); }
+    if (ui.view === 'editor') { syncZoomSpacer(); closeScreenMenu(); closeRevMenu(); closeFoldMenu(); }
     if (ui.view === 'system') { closeSysMenu(); closeSysDesignMenu(); }
   });
   // 画面の一覧（システムの画面では左の欄）を送ったときは、「…」のメニューを閉じる（「…」から離れるため。scroll は泡立たないので、捕まえる側で受ける）
   document.addEventListener('scroll', (e) => {
     if (e.target && e.target.id === 'screen-list') closeScreenMenu();
+    // 窓の幅が狭くてメニューバーを横に送ったときは、メニューバーから出したものを閉じる（ボタンから離れるため）
+    if (e.target && e.target.id === 'toolbar') { closeRevMenu(); closeFoldMenu(); }
     if (e.target && e.target.id === 'sys-list') { closeSysMenu(); closeSysDesignMenu(); }
   }, true);
   window.addEventListener('blur', flushSideField);

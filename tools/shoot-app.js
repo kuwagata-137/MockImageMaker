@@ -14,8 +14,9 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar をカンマで区切る）]
 // ai の場面（94〜100）は tools/shoot-app-ai.js、systems の場面（107〜133。システムとスイムレーン図）は tools/shoot-app-systems.js にある
+// toolbar の場面（134〜137）は、編集の画面のメニューバーを窓の幅ごとに撮る（q73・q74）
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -79,6 +80,36 @@ async function openDeskApp(browser, seed) {
   await page.goto(pathToFileURL(path.join(ROOT, HTML_NAME)).href, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__test__ && window.__test__.ready);
   return page;
+}
+
+// 編集の画面のメニューバーを窓の幅ごとに撮る（q73・q74）。「揃える」「項目」はいつもたたみ、それでも入りきらない幅では横に送る。
+// headless の Chrome は横のスクロールバーを描かないので、入りきるかはログの幅（scroll が client 以下か）で確かめる
+async function shootToolbar(browser) {
+  const page = await openApp(browser, SAMPLE);
+  const width = async (w) => {
+    await page.setViewport({ width: w, height: 860 });
+    const m = await page.evaluate(() => { const tb = document.querySelector('#toolbar'); return { client: tb.clientWidth, scroll: tb.scrollWidth }; });
+    console.log(`メニューバーの幅（窓の中の幅 ${w}）:`, JSON.stringify(m));
+  };
+  await page.click('.card-open[data-id="d1"]');
+  await page.evaluate(() => {
+    const T = window.__test__;
+    T.actions.addPart('d1', 's1', 'text1', { x: 40, y: 90 });
+    T.actions.addPart('d1', 's1', 'text1', { x: 120, y: 200 });
+    T.runCommand('selectAll');
+  });
+  await width(1264); // 窓の幅 1280（アプリを初めて開いたときの大きさ）の中の幅
+  await shot(page, '134_メニューバー_窓の幅1280');
+  await page.click('#toolbar .fold-btn[data-fold="align"]');
+  await shot(page, '135_メニューバー_揃えるの組を出した_窓の幅1280');
+  await page.keyboard.press('Escape');
+  await width(1904); // 窓の幅 1920 の中の幅
+  await page.click('#toolbar .fold-btn[data-fold="items"]');
+  await shot(page, '136_メニューバー_項目の組を出した_窓の幅1920');
+  await page.keyboard.press('Escape');
+  await width(1100); // 入りきらないので横に送る
+  await shot(page, '137_メニューバー_窓の幅1100_入りきらない');
+  await page.close();
 }
 
 async function shootHome(browser) {
@@ -279,8 +310,9 @@ async function shootDatabase(browser) {
   // 取り込んだ項目（都道府県）を選ぶ
   await page.click('#stage .part[data-part-id="p7"]');
   await shot(page, '27_取り込み_取り込んだ項目の部品を選んだところ');
-  // ほかのモックから取り込む窓
-  await page.click('[data-action="import-items"]');
+  // ほかのモックから取り込む窓（メニューバーの「項目」の組はたたんであるので、先に組のボタンを押す。q74）
+  await page.click('#toolbar .fold-btn[data-fold="items"]');
+  await page.click('#toolbar [data-action="import-items"]');
   await page.click('[data-imp-item="a1"]');
   await page.click('[data-imp-item="a5"]');
   await shot(page, '28_取り込み_ほかのモックから取り込む窓');
@@ -452,6 +484,7 @@ async function shootMulti(browser) {
   await page.keyboard.up('Control');
   console.log('Ctrl で足した後:', JSON.stringify((await info()).sel));
   await shot(page, '45_まとめて_Ctrlで足した（右の欄に揃えるボタン）_50%');
+  await page.click('#toolbar .fold-btn[data-fold="align"]'); // 「揃える」の組はたたんであるので、先に組のボタンを押す（q74）
   await page.click('#toolbar [data-action="align-left"]');
   const b2 = (await info()).pos;
   console.log('左に揃えた後の x:', JSON.stringify(['p1', 'p3', 'p5', 'p2'].map((id) => b2[id][0])));
@@ -815,6 +848,7 @@ async function shootRevisions(browser) {
     if (wants('revisions')) await shootRevisions(browser);
     if (wants('ai')) await require('./shoot-app-ai')(browser, { ROOT, HTML_NAME, shot });
     if (wants('systems')) await require('./shoot-app-systems')(browser, { shot, openDeskApp });
+    if (wants('toolbar')) await shootToolbar(browser);
   } finally {
     await browser.close();
   }

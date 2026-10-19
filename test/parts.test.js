@@ -240,6 +240,86 @@ test('メニューバーの編集: 選んでいないときは押せない。番
   assert.equal(parts().length, 2);
 });
 
+// 窓の幅が狭いと、メニューバーの右が切れたため（q73・q74）。jsdom では位置を測れないので、出した組の位置は tools/shoot-app.js で確かめる
+test('メニューバーのたたんだ組: 「揃える」「項目」はいつも 1 つのボタン。押すと組のボタンを下に出し、中のボタンを押したら閉じる', async (t) => {
+  const { app, api, parts, screen } = await bootEditor(t);
+  const fold = (k) => $(app, `#toolbar .fold-btn[data-fold="${k}"]`);
+  const group = (k) => $(app, `#toolbar .rgroup[data-fold="${k}"]`);
+  const isOpen = (k) => group(k).classList.contains('open') && fold(k).getAttribute('aria-expanded') === 'true';
+  assert.deepEqual($$(app, '#toolbar .rgroup > .glabel').map((e) => e.textContent), ['ファイル', '画面', '履歴', '編集', '揃える', '項目', 'モード', '表示']);
+  assert.match(fold('align').textContent, /揃える/);
+  assert.match(fold('items').textContent, /項目/);
+  // 中のボタンは #toolbar の中に残す（押せる・押せないを、ほかのボタンと同じく決めるため）
+  assert.equal($$(app, '#toolbar .rgroup[data-fold="align"] .fold-pop [data-align-cmd]').length, 8);
+  assert.ok($(app, '#toolbar .rgroup[data-fold="items"] .fold-pop [data-action="add-item-menu"]'));
+  assert.ok($(app, '#toolbar .rgroup[data-fold="items"] .fold-pop [data-action="import-items"]'));
+  assert.ok(!isOpen('align') && !isOpen('items'));
+  assert.equal(fold('align').getAttribute('aria-expanded'), 'false');
+
+  // 押すと開き、もう一度押すと閉じる。ほかの組を押すと入れ替わる。外を押すと閉じる
+  click(fold('align'));
+  assert.equal(api.ui.foldMenu, 'align');
+  assert.ok(isOpen('align'));
+  assert.ok($(app, '#toolbar').classList.contains('fold-open'), '出した組を真ん中の欄より前に出す');
+  click(fold('align'));
+  assert.equal(api.ui.foldMenu, null);
+  assert.ok(!isOpen('align'));
+  assert.ok(!$(app, '#toolbar').classList.contains('fold-open'));
+  click(fold('align'));
+  click(fold('items'));
+  assert.ok(!isOpen('align') && isOpen('items'));
+  click($(app, '#canvas-wrap'));
+  assert.equal(api.ui.foldMenu, null);
+  assert.ok(!isOpen('items'));
+
+  // 2 つ選ぶと、出した「揃える」の「左」を押せる。押すと揃えて閉じる
+  const did = api.ui.designId;
+  const ids = [[24, 80], [200, 240]].map(([x, y]) => api.actions.addPart(did, screen().id, 'text1', { x, y }));
+  api.runCommand('selectAll');
+  click(fold('align'));
+  const left = $(app, '#toolbar .fold-pop [data-action="align-left"]');
+  assert.equal(left.disabled, false);
+  click(left);
+  assert.equal(api.ui.foldMenu, null, '押したら閉じる');
+  const xs = ids.map((id) => parts().find((p) => p.id === id).x);
+  assert.equal(xs[1], xs[0], '左に揃えた');
+  // 押せないボタン（等間隔は 3 つから）を押しても閉じない
+  click(fold('align'));
+  const dist = $(app, '#toolbar .fold-pop [data-action="distribute-h"]');
+  assert.equal(dist.disabled, true);
+  click(dist);
+  assert.equal(api.ui.foldMenu, 'align', '押せないボタンでは閉じない');
+  // Esc で閉じ、組のボタンにフォーカスを戻す（選んだ部品はそのまま）
+  key(app, app.document.body, { key: 'Escape' });
+  assert.equal(api.ui.foldMenu, null);
+  assert.equal(app.document.activeElement, fold('align'));
+  assert.equal(api.ui.sel.length, 2, 'Esc は組を閉じるだけ');
+  // 窓の大きさが変わると閉じる（出した組の位置がボタンからずれるため）。メニューバーを横に送っても閉じる
+  click(fold('align'));
+  app.window.dispatchEvent(new app.window.Event('resize'));
+  assert.equal(api.ui.foldMenu, null);
+  click(fold('align'));
+  $(app, '#toolbar').dispatchEvent(new app.window.Event('scroll'));
+  assert.equal(api.ui.foldMenu, null);
+  // キーの命令（Ctrl+Z など）でも閉じる
+  click(fold('align'));
+  api.runCommand('undo');
+  assert.equal(api.ui.foldMenu, null);
+
+  // 「項目」の組の「項目を足す」は、データベースの項目の一覧表を開いて、種類のメニューを出す
+  click(fold('items'));
+  click($(app, '#toolbar .fold-pop [data-action="add-item-menu"]'));
+  assert.equal(api.ui.foldMenu, null);
+  assert.equal(api.ui.panel, 'items');
+  assert.equal(api.ui.addItemMenu, true);
+  // 画面設計を開き直すと閉じた状態から
+  click(fold('items'));
+  api.goHome();
+  api.openDesign(did);
+  assert.equal(api.ui.foldMenu, null);
+  assert.ok(!isOpen('items'));
+});
+
 test('一覧表: 番号の順に並び、行を押すとその部品を選ぶ。画面の右か下かを選べる', async (t) => {
   const { app, api, add, screen } = await bootEditor(t);
   assert.match($(app, '.ptable').textContent, /番号の付いた部品はまだありません/);
