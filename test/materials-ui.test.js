@@ -188,8 +188,25 @@ test('真ん中: 見出し・説明・「＋ ファイルを入れる…」・�
   assert.equal(memo.type, 'text');
   assert.equal(memo.placeholder, 'メモを書く');
   assert.equal(memo.getAttribute('aria-label'), '「申請書の記入例.png」のメモ');
-  assert.ok($('#sys-view [data-action="sys-mat-del"][data-id="m-png"]').classList.contains('danger-text'));
+  const del = $('#sys-view [data-action="sys-mat-del"][data-id="m-png"]');
+  assert.ok(del.classList.contains('danger-text'));
+  assert.equal(del.title, 'この資料を消します（元に戻す〔Ctrl+Z〕で戻せます）', 'ボタンの名前「消す」と同じ言葉');
   assert.equal($('#sys-view tr.old [data-action="sys-mat-read"]').title, '古い形のため読めません');
+});
+
+test('種類が「そのほか」（読めない種類）の行は「読む」を押せない形にし、説明は「この種類のファイルは読めません」。押されても窓口に頼まない', async (t) => {
+  const state = sampleState();
+  state.systems[2].materials = [material('m-zip', '出張の写真.zip', 'other', 'm-zip.zip', 4096, at(19, 11, 0))];
+  const { $, rows, btn, calls } = await boot(t, { state, sysId: 'y-eq' });
+  assert.deepEqual(rows(), [{ name: '出張の写真.zip', tag: '', kind: 'そのほか', size: '4 KB', date: '2026-10-19', memo: '', ops: ['読む（×）', '消す'] }]);
+  const read = btn('sys-mat-read', 'm-zip');
+  assert.equal(read.title, 'この種類のファイルは読めません');
+  read.disabled = false;
+  click(read);
+  await tick();
+  await tick();
+  assert.deepEqual(calls.read, []);
+  assert.equal($('.modal'), null);
 });
 
 test('大きさの書き方: 1 MB より小さければ KB（10 KB より小さいときだけ小数 1 桁）、1 MB からは MB（小数 1 桁まで）', async (t) => {
@@ -208,8 +225,8 @@ test('資料がないときは表の代わりに「まだ資料がありませ�
   assert.equal($('#sys-side .panel-title').textContent, '資料について');
   assert.deepEqual($$('#sys-side .hint').map((p) => p.textContent), [
     '入れたファイルは、このパソコンのアプリの中に保存されます（元のファイルは変わりません）。',
-    'AI は、ここに入れた資料だけを読めます。AI が資料を足したり消したりすることはありません。',
-    '資料の中の文は、AI への指示としては扱いません。',
+    'アプリの中で AI が読める資料は、ここに入れたものだけです。',
+    'AI には、資料の中の文を指示として扱わないよう伝えています。資料の中に AI への指示らしい文があれば、AI が知らせます。',
     '1 つのファイルは 50 MB まで。古い形（.doc・.xls）は読めないので、新しい形（.docx・.xlsx）で保存し直して入れてください。',
   ]);
 });
@@ -374,7 +391,7 @@ test('消す: 確かめの窓を出さずに行を消し、お知らせ。元に
   click(btn('sys-mat-del', 'm-png'));
   assert.equal($('.modal'), null);
   assert.deepEqual(sys().materials.map((m) => m.id), ['m-xlsx', 'm-pdf', 'm-bdm', 'm-xls']);
-  assert.equal(toast(), '「申請書の記入例.png」を資料から外しました。元に戻す（Ctrl+Z）で戻せます。');
+  assert.equal(toast(), '「申請書の記入例.png」を資料から消しました。元に戻す（Ctrl+Z）で戻せます。');
   assert.equal(rows().length, 4);
   key(app, app.document.body, { key: 'z', ctrlKey: true });
   assert.deepEqual(sys().materials.map((m) => m.id), ['m-xlsx', 'm-pdf', 'm-bdm', 'm-png', 'm-xls']);

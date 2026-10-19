@@ -194,7 +194,7 @@ test('materials:read — 古い形（OLE2 の .xls・.doc）は old_format の�
     const r = await env.readOf(material);
     assert.equal(r.ok, false, material.name);
     assert.equal(r.error.code, 'old_format', material.name);
-    assert.match(r.error.message, /古い形式/);
+    assert.match(r.error.message, /古い形の (Excel|Word)/);
     assert.equal(JSON.stringify(r).includes(env.dir), false, material.name);
   }
   const finished = await env.materials.finishRead({ kind: 'material', systemId: SYS, file: excel.file, materialKind: 'excel', name: excel.name, cursor: null });

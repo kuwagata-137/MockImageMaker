@@ -208,8 +208,8 @@ test('material-error.js — MaterialError', async (t) => {
 
   await t.test('throw したものを code で見分けられる', () => {
     assert.throws(
-      () => { throw new MaterialError('old_format', '古い形式です'); },
-      (err) => err instanceof MaterialError && err.code === 'old_format' && err.message === '古い形式です',
+      () => { throw new MaterialError('old_format', '古い形です'); },
+      (err) => err instanceof MaterialError && err.code === 'old_format' && err.message === '古い形です',
     );
   });
 

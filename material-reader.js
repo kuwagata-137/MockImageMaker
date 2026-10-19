@@ -37,11 +37,11 @@ const MISSING_CODES = new Set(['ENOENT', 'ENOTDIR', 'ERR_INVALID_ARG_TYPE']);
 
 const fail = (code, message) => new MaterialError(code, message);
 
-// Word・Excel の読み取り。中身が古い形式（OLE2）なら、名前が .docx・.xlsx でも読めないので断る
+// Word・Excel の読み取り。中身が古い形（OLE2）なら、名前が .docx・.xlsx でも読めないので断る
 function officeLoader(label, oldExtension, newExtension, read) {
   return async (bytes) => {
     if (bytes.subarray(0, OLE2_SIGNATURE.length).equals(OLE2_SIGNATURE)) {
-      throw fail('old_format', `この資料は古い形式の ${label}（${oldExtension}）です。読めません。${newExtension} に保存し直してから入れ直してください。`);
+      throw fail('old_format', `この資料は古い形の ${label}（${oldExtension}）です。読めません。${newExtension} に保存し直してから入れ直してください。`);
     }
     return read(bytes);
   };

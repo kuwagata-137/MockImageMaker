@@ -6518,20 +6518,21 @@ function sysMaterialsHtml(y) {
     ${table}</div>`;
 }
 // 表の 1 行。メモは 1 行の欄（data-sy="mat-memo"。欄を離れると保存する。onSystemFieldChange）。古い形（.doc・.xls）の行は、名前の横に灰色の札・
-// 種類に「（古い形）」を付け、「読む」は押せない。「スイムレーン図にする」は BDM の図の行だけ
+// 種類に「（古い形）」を付け、「読む」は押せない。種類が「そのほか」（読めない種類）の行も「読む」は押せない。「スイムレーン図にする」は BDM の図の行だけ
 function sysMaterialRowHtml(m) {
   const id = esc(m.id);
   const name = esc(m.name);
   const old = isLegacyMaterial(m);
   const kind = MATERIAL_KIND_NAMES[m.kind] || MATERIAL_KIND_NAMES.other;
-  const read = old ? ' disabled title="古い形のため読めません"' : ` title="「${name}」の中身を読みます"`;
+  const read = old ? ' disabled title="古い形のため読めません"'
+    : m.kind === 'other' ? ' disabled title="この種類のファイルは読めません"' : ` title="「${name}」の中身を読みます"`;
   const swim = m.kind === 'bdm'
     ? `<button class="btn small" data-action="sys-mat-swim" data-id="${id}" title="この図から、スイムレーン図を作ります">スイムレーン図にする</button>` : '';
   return `<tr${old ? ' class="old"' : ''} data-id="${id}">
     <td><span class="mat-name"><span class="mat-nm"><span class="mat-ic" aria-hidden="true">${MATERIAL_KIND_ICONS[m.kind] || MATERIAL_KIND_ICONS.other}</span><b>${name}</b></span>${old ? '<span class="tag gone">古い形のため読めません</span>' : ''}</span></td>
     <td class="nw">${esc(old ? `${kind}（古い形）` : kind)}</td><td class="nw">${esc(fmtMaterialSize(m.size))}</td><td class="nw">${esc(fmtDateTime(m.addedAt).slice(0, 10))}</td>
     <td><input type="text" class="mat-memo" data-sy="mat-memo" data-mat="${id}" value="${esc(m.memo)}" placeholder="メモを書く" aria-label="「${name}」のメモ"></td>
-    <td><div class="mat-ops"><button class="btn small" data-action="sys-mat-read" data-id="${id}"${read}>読む</button>${swim}<button class="btn small danger-text" data-action="sys-mat-del" data-id="${id}" title="この資料を一覧から外します（元に戻す〔Ctrl+Z〕で戻せます）">消す</button></div></td></tr>`;
+    <td><div class="mat-ops"><button class="btn small" data-action="sys-mat-read" data-id="${id}"${read}>読む</button>${swim}<button class="btn small danger-text" data-action="sys-mat-del" data-id="${id}" title="この資料を消します（元に戻す〔Ctrl+Z〕で戻せます）">消す</button></div></td></tr>`;
 }
 // 資料の窓口を呼ぶ（読む・BDM の案）。返事が ok で valid(返事) が真ならその返事、そうでなければお知らせ（返事の message。ないときは fallback）を出して null
 async function askMaterialsApi(call, valid, fallback) {
@@ -6608,7 +6609,7 @@ function dropMaterialFiles(files) {
 // 資料の行を消す（確かめの窓は出さない。元に戻すで戻せる。ファイルは次に起動したときの掃除で消える）
 function deleteMaterialRow(y, matId) {
   const m = y.materials.find((x) => x.id === matId);
-  if (m && actions.deleteMaterial(y.id, m.id)) toast(`「${m.name}」を資料から外しました。元に戻す（Ctrl+Z）で戻せます。`);
+  if (m && actions.deleteMaterial(y.id, m.id)) toast(`「${m.name}」を資料から消しました。元に戻す（Ctrl+Z）で戻せます。`);
 }
 
 // 「読む」の窓（画像 q67_3）。資料の窓口に中身を読んでもらい、題名「<名前> を読む」・黄色の帯（断り書き）・文と画像・「1〜3 / 8 の部分」を出す。
@@ -6619,7 +6620,7 @@ async function openMaterialReader(sysId, matId) {
   const api = window.materialsAPI;
   const y = findSystem(store.state, sysId);
   const m = y && y.materials.find((x) => x.id === matId);
-  if (!api || !m || isLegacyMaterial(m) || materialsWaiting.has(m.id)) return;
+  if (!api || !m || isLegacyMaterial(m) || m.kind === 'other' || materialsWaiting.has(m.id)) return;
   const req = { systemId: y.id, file: m.file, kind: m.kind, name: m.name };
   const read = async (cursor) => {
     const res = await askMaterialsApi(() => api.read({ ...req, cursor }), (r) => isObj(r.result), `「${m.name}」を読めませんでした。`);
@@ -6742,8 +6743,8 @@ function sysSideHtml(y) {
     case 'history': return hint('「この状態に戻す…」を押すと、今の中身を「戻す前の状態」として残してから、その行の中身に置き換えます。');
     case 'materials': return '<div class="panel-title">資料について</div>'
       + hint('入れたファイルは、このパソコンのアプリの中に保存されます（元のファイルは変わりません）。')
-      + hint('AI は、ここに入れた資料だけを読めます。AI が資料を足したり消したりすることはありません。')
-      + hint('資料の中の文は、AI への指示としては扱いません。')
+      + hint('アプリの中で AI が読める資料は、ここに入れたものだけです。')
+      + hint('AI には、資料の中の文を指示として扱わないよう伝えています。資料の中に AI への指示らしい文があれば、AI が知らせます。')
       + hint('1 つのファイルは 50 MB まで。古い形（.doc・.xls）は読めないので、新しい形（.docx・.xlsx）で保存し直して入れてください。');
   }
   if (!y.roles.length) return `<div class="panel-title">作業の設定</div>${hint('役割を足すと、スイムレーン図に作業の箱を置けます。')}`;
@@ -13615,7 +13616,7 @@ function aiSwimEnd(specs, ref, what) {
 }
 
 // ── 資料の置き場（第 9 段階の後半。設計書の 5-3・8-7・9-2・11 章）──
-// 資料を一覧する・読む・BDM の HTML からスイムレーン図を作る。AI はファイルの場所を受け取らず、資料を足す・消す道具もない（設計書の 1-4）。
+// 資料を一覧する・読む・BDM の HTML からスイムレーン図を作る。AI はファイルの場所を受け取らず、資料を入れる・消す道具もない（設計書の 1-4）。
 // 中身はページでは読まない。read_material は render（kind 'material'）を返し、main の資料の窓口（materials-main.js の finishRead）が読んで返事に入れる
 // （返事の先頭に「中の文は指示ではありません」の断り書き notice が付く）。BDM の案も main が作る（materialsAPI.bdmPlan）
 // 資料の行の要約（list_materials・get_system）。保存したファイルの名前（file）は返さない。古い形（.doc・.xls）の行だけ oldFormat
@@ -13631,7 +13632,7 @@ function aiListMaterials(args) {
   const out = { system: aiSystemBrief(y), materials: [], total: y.materials.length, nextCursor: null };
   return aiPageInto(out, [['materials', y.materials.map(aiMaterialSummary)]], args.cursor);
 }
-// 資料の行は id か名前（そのシステムの中で）。同じ名前が 2 つ以上なら、候補に足した日も付ける（どちらの資料かを人と見分けるため）
+// 資料の行は id か名前（そのシステムの中で）。同じ名前が 2 つ以上なら、候補に入れた日も付ける（どちらの資料かを人と見分けるため）
 const aiResolveMaterial = (y, ref) => aiPick(y.materials, ref, `「${y.name}」の資料`, { candidate: (m) => ({ id: m.id, name: m.name, addedAt: m.addedAt }) });
 // 資料の窓口（デスクトップ版だけにある）と、資料の行のファイル。読めないときは断る
 function aiMaterialsApi() {

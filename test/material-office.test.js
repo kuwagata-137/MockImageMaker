@@ -59,9 +59,9 @@ test('Word — 画像は読まない・段落の中の改行は空白・箇条�
 });
 
 test('Word — 読めないもの', async (t) => {
-  await t.test('中身が OLE2（古い形式）なら old_format', async () => {
+  await t.test('中身が OLE2（古い形）なら old_format', async () => {
     const file = samples.writeSample(dir, 'old.docx', samples.ole2Bytes());
-    await rejectsWith(readKind(file, 'word'), 'old_format', /古い形式/);
+    await rejectsWith(readKind(file, 'word'), 'old_format', /^この資料は古い形の Word（\.doc）です。/);
   });
 
   for (const [label, bytes] of [['壊れた zip', Buffer.from('PKこわれた中身です')], ['zip ではない中身', Buffer.from('hello')], ['空', Buffer.alloc(0)]]) {
@@ -125,9 +125,9 @@ test('Excel — シートの見出し・番地つきのセル・結合・日付�
 });
 
 test('Excel — 読めないもの', async (t) => {
-  await t.test('中身が OLE2（古い形式）なら old_format', async () => {
+  await t.test('中身が OLE2（古い形）なら old_format', async () => {
     const file = samples.writeSample(dir, 'old.xlsx', samples.ole2Bytes());
-    await rejectsWith(readKind(file, 'excel'), 'old_format', /古い形式/);
+    await rejectsWith(readKind(file, 'excel'), 'old_format', /^この資料は古い形の Excel（\.xls）です。/);
   });
 
   for (const [label, bytes] of [['壊れた zip', Buffer.from('PKこわれた中身です')], ['zip ではない中身', Buffer.from('hello')], ['空', Buffer.alloc(0)]]) {

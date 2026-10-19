@@ -355,10 +355,10 @@ test('materials:read — id・名前の形が合わなければ reader を呼ば
 });
 
 test('materials:read — reader の MaterialError は { code, message } にし、ほかの失敗は read_failed の定型文にする（パスを出さない）', async (t) => {
-  const old = setup(t, { reader: fakeReader(null, new MaterialError('old_format', '古い形式の Word は読めません。')) });
+  const old = setup(t, { reader: fakeReader(null, new MaterialError('old_format', '古い形の Word は読めません。')) });
   assert.deepEqual(await old.ipc('materials:read', { systemId: SYS, file: 'm-a.doc', kind: 'word', name: 'a.doc', cursor: null }), {
     ok: false,
-    error: { code: 'old_format', message: '古い形式の Word は読めません。' },
+    error: { code: 'old_format', message: '古い形の Word は読めません。' },
   });
 
   const secret = path.join(old.dir, '秘密の場所', 'm-a.pdf');

@@ -152,7 +152,7 @@ test('addMaterials: 足した行を返す（legacy は行に入れない）。�
   assert.equal(rows.length, 2);
   assert.deepEqual(Object.keys(rows[0]).sort(), ['addedAt', 'file', 'id', 'kind', 'memo', 'name', 'size']);
   assert.deepEqual({ ...plain(rows[1]), addedAt: 'x' }, { id: 'm-b', name: '旧様式.xls', kind: 'excel', size: 2048, addedAt: 'x', memo: '', file: 'm-b.xls' });
-  assert.ok(rows[0].addedAt > OLD, '足した日時');
+  assert.ok(rows[0].addedAt > OLD, '入れた日時');
   assert.equal(api.isLegacyMaterial(rows[1]), true, '古い形はファイルの名前で分かる');
   assert.deepEqual(plain(sys('y-trip').materials.map((m) => m.id)), ['m-old', 'm-a', 'm-b'], '後ろに足す');
   assert.notEqual(sys('y-trip').updatedAt, OLD, '更新日時が変わる');
