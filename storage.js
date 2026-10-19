@@ -98,8 +98,9 @@ function initStorage(app, ipcMain) {
       .catch((err) => ({ ok: false, error: String(err.message || err) }));
   });
 
-  // 終了の前に、並んでいる書き込みが全部終わるのを待つ（main.js の will-quit）
-  return { whenIdle: () => saveChain };
+  // 終了の前に、並んでいる書き込みが全部終わるのを待つ（main.js の will-quit）。
+  // dataDir は data フォルダの場所を返す関数（資料の置き場 materials-main.js が、同じ data の下の files/ と designs.json.bak を使う）
+  return { whenIdle: () => saveChain, dataDir };
 }
 
 module.exports = { initStorage, STATE_FILE_NAME };

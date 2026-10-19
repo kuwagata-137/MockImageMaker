@@ -5,6 +5,7 @@
 //    IPC（menu:command）でページへ送り、ページの runCommand() で受ける
 //  - ファイルへの保存（storage.js）。終了の前に、並んでいる書き込みが終わるのを待つ
 //  - 書き出し（PDF・PNG・HTML）と HTML の取り込みのファイルの窓（export.js）
+//  - システムに入れる資料のファイルの置き場と、ページへの窓口（materials-main.js。第 9 段階の後半）
 //  - 2 つ目の起動を止める（2 つ動くと、互いの designs.json を丸ごと上書きするため）
 //  - AI（Claude Code など）の頼みの受け口（automation-main.js。第 7 段階）。--background の起動では窓を出さずに動き、
 //    AI がつながっている間の窓の × は、終わらずに窓を隠す。タスクトレイのアイコン（automation-tray.js）とアプリのメニューの「ヘルプ > AI とつなぐ…」
@@ -16,6 +17,7 @@ const path = require('path');
 const windowStateKeeper = require('electron-window-state');
 const { initStorage } = require('./storage');
 const { initExport, createPageRenderer } = require('./export');
+const { initMaterials } = require('./materials-main');
 const { initAutomation } = require('./automation-main');
 const { initTray } = require('./automation-tray');
 
@@ -37,6 +39,7 @@ else if (HEADLESS && process.env.MIM_USER_DATA) app.setPath('userData', path.res
 
 let mainWin = null;
 let storage = null;
+let materials = null; // 資料の置き場（materials-main.js の戻り値 { files, finishRead }。AI の受け口 initAutomation に渡す）
 let quitWaiting = false; // 終わる前の待ち（受け口を止める・保存を待つ）の途中か
 let automation = null;
 let tray = null; // タスクトレイのアイコン（AI がつながっている間と、裏で動いている間だけ出す。automation-tray.js）
@@ -246,6 +249,7 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
 
   app.whenReady().then(() => {
     storage = initStorage(app, ipcMain);
+    materials = initMaterials({ app, ipcMain, storage, headless: HEADLESS }); // 資料を読む部品・BDM を読む部品は、まだつないでいない（読む頼みは unavailable）
     const renderer = createPageRenderer(app); // PDF・PNG を作る（書き出しの窓と AI の書き出しで同じものを使う）
     initExport(app, ipcMain, { headless: HEADLESS, renderer });
     automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION, renderer });
