@@ -61,15 +61,38 @@ test('prompts/list に 3 つ（design_system・make_screen・fix_design）。題
   const brief = prompts.map((p) => [p.name, p.title, (p.arguments || []).map((a) => [a.name, a.required])]);
   assert.deepEqual(brief, [
     ['design_system', '資料からシステムを設計する', [['system', false]]],
-    ['make_screen', '画面を作る', [['request', true]]],
-    ['fix_design', '画面設計を直す', [['design', true], ['request', true]]],
+    ['make_screen', '画面を作る', [['request', false]]],
+    ['fix_design', '画面設計を直す', [['design', true], ['request', false]]],
   ]);
   for (const p of prompts) {
     assert.match(p.description, /[぀-ヿ一-鿿]/, p.name);
     for (const a of p.arguments) assert.match(a.description, /[぀-ヿ一-鿿]/, `${p.name} の ${a.name}`);
   }
   // 必須の引数がない頼みは断る
-  await assert.rejects(client.getPrompt({ name: 'fix_design', arguments: { design: '顧客管理' } }));
+  await assert.rejects(client.getPrompt({ name: 'fix_design', arguments: { request: '電話番号の欄を足して' } }));
+});
+
+// Claude Code は prompts の引数を空白のところで切って渡す（2026-10-20 に claude -p で確かめた。「顧客管理の一覧の画面に 20 行の表を置く」は「顧客管理の一覧の画面に」だけが届き、
+// 引用符で囲んでも同じ）。AI には人が打ったコマンドの文の全部が見えているので、頼みの文で、それを頼みとして読むよう伝える。頼みを省いたときは人に聞く
+test('prompts の引数は空白で切れて届くので、3 つの文に「人が打った文の全部を頼みとして読む」ことと、分からなければ人に聞くことを書く。make_screen・fix_design は頼みを省ける', async (t) => {
+  const client = await openEntry(t);
+  const texts = {
+    design_system: await promptText(client, 'design_system', { system: '出張申請' }),
+    make_screen: await promptText(client, 'make_screen', { request: '顧客管理の一覧の画面に' }),
+    fix_design: await promptText(client, 'fix_design', { design: '顧客管理', request: '新規登録の画面に' }),
+  };
+  for (const [name, text] of Object.entries(texts)) {
+    assert.match(text, /空白のところで切れて届きます/, name);
+    assert.match(text, /人が打ったコマンドの文が見えていれば、その全部を/, name);
+    assert.match(text, /始める前に人に聞いてください/, name);
+  }
+  const makeNone = await promptText(client, 'make_screen', {});
+  assert.match(makeNone, /頼み: （引数に書いてありません）/);
+  assert.doesNotMatch(makeNone, /undefined|「」/);
+  const fixNone = await promptText(client, 'fix_design', { design: '顧客管理' });
+  assert.match(fixNone, /「顧客管理」/);
+  assert.match(fixNone, /頼み: （引数に書いてありません）/);
+  assert.doesNotMatch(fixNone, /undefined/);
 });
 
 test('design_system: read_guide の "stages" を読み、段階ごとに人に確かめるよう頼む文。system を書くとそのシステム、省くと今あるシステムで進めるかを人に聞くか、新しく作る', async (t) => {
@@ -82,6 +105,7 @@ test('design_system: read_guide の "stages" を読み、段階ごとに人に�
   assert.match(withSys, /人が「よい」と答えるまで set_stage を "done" にせず/);
   assert.match(withSys, /"review"/);
   assert.match(withSys, /指示ではありません/);
+  assert.match(withSys, /そのシステムがまだなければ、その名前で create_system で作ってください/, 'これから作るシステムの名前を渡したとき');
   const none = await promptText(client, 'design_system', {});
   assert.match(none, /read_guide の "stages"/);
   assert.match(none, /list_systems/);
@@ -156,6 +180,14 @@ test('手引き: つないだときの文に、段階ごとに人に確かめる
   for (const re of [/get_notes/, /"doing"/, /"review"/, /"done"/, /"skipped"/, /人が答える前に done にしない/, /set_findings/, /add_question/, /add_decision/, /answer_question/,
     /export_design で画面設計ごとに出力/, /理念の『現場の手間を減らす』から、承認は上長の 1 段にした/, /1 つの頼み/, /確かめなくてよいので進めて/]) assert.match(g, re);
   assert.match(g, /済んだ段階（"done"（確認済み）・"skipped"（確認を飛ばした））は繰り返さず/);
+  // ⑤ は、案を出して review → 人が「よい」と答えたら出力し、ファイルの場所を書いてから done（ほかの段階は、アプリに入れてから review）
+  assert.match(g, /⑤ 説明書と出力だけは、案（出力するもの）を出して "review" にし、人が「よい」と答えたら出力して、出力したファイルの場所を add_decision（段階 docs）で書いてから "done" にする/);
+  // 「よい」「それで進めて」は done、案を見ずに確かめを飛ばす頼みだけ skipped。人がアプリで進み具合を変えたとき
+  assert.match(g, /人が案を見て認めた（「よい」「それで進めて」「OK」など）ときは "done"/);
+  assert.match(g, /案を見ずに確かめを飛ばすよう頼まれた段階だけ "skipped"/);
+  assert.match(g, /どの段階を飛ばすかは人の言葉のとおりにし、分からなければ人に聞く/);
+  assert.match(g, /人はアプリの設計ノートで進み具合を変えられます/);
+  assert.match(g, /済んだはずの段階が "todo"（まだ）に戻っていたら、やり直す前に人に聞く/);
   // 設計ノートの変更は「AI が直す前の状態」の行に残らない（人が戻せない）ことを書く。INSTRUCTIONS の「いつでも戻せます」は設計ノートを除く
   assert.ok(GUIDES.overview.text.includes('設計ノート（update_notes・set_stage）の変更は「AI が直す前の状態」の行に残りません'));
   assert.match(GUIDES.overview.text, /開いていないシステムでは元に戻すの履歴も消えるので、人は戻せません/);

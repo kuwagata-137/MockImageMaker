@@ -50,8 +50,8 @@ async function checkWithoutApp(client, env) {
 
   const pl = await client.listPrompts();
   const shape = pl.prompts.map((p) => `${p.name}(${(p.arguments || []).map((a) => `${a.name}${a.required ? '*' : ''}`).join(',')})`).join(' ');
-  check('E. prompts は 3 つ（design_system・make_screen・fix_design）。引数は system（省ける）／ request（必須）／ design と request（必須）',
-    shape === 'design_system(system) make_screen(request*) fix_design(design*,request*)', shape);
+  check('E. prompts は 3 つ（design_system・make_screen・fix_design）。引数は system（省ける）／ request（省ける）／ design（必須）と request（省ける）',
+    shape === 'design_system(system) make_screen(request) fix_design(design*,request)', shape);
 
   const ds0 = await client.getPrompt({ name: 'design_system' });
   const t0 = promptText(ds0);
@@ -63,11 +63,13 @@ async function checkWithoutApp(client, env) {
   check('E. design_system（system あり）は user の文 1 つで、"stages" を読む指示・そのシステムの名前・get_notes で続きから進める指示がある',
     ds1.messages.length === 1 && ds1.messages[0].role === 'user' && /read_guide の "stages"/.test(t1) && t1.includes(`「${SYSTEM_NAME}」`) && /get_notes/.test(t1) && !/決まっていません/.test(t1), `${t1.length} 字`);
 
-  const noRequest = await rejected(client.getPrompt({ name: 'make_screen', arguments: {} }));
+  // Claude Code は prompts の引数を空白のところで切って渡すので、頼みは省けて、文で「人が打った文の全部を頼みとして読む・分からなければ人に聞く」と伝える
+  const msNone = promptText(await client.getPrompt({ name: 'make_screen', arguments: {} }));
   const REQUEST = '顧客管理の一覧の画面を作って';
   const ms = promptText(await client.getPrompt({ name: 'make_screen', arguments: { request: REQUEST } }));
-  check('E. make_screen は request がないと断られ、文に頼みが入る。文に "stages" を読ませる文も set_stage もない',
-    !!noRequest && ms.includes(REQUEST) && /"overview"/.test(ms) && !/stages/.test(ms) && !/set_stage/.test(ms), noRequest ? `断られた: ${noRequest.message.split('\n')[0].slice(0, 100)}` : '断られなかった');
+  check('E. make_screen は request を省ける（省くと「引数に書いてありません」）。文に頼みと、切れた引数の読み方が入る。"stages" を読ませる文も set_stage もない',
+    /（引数に書いてありません）/.test(msNone) && ms.includes(REQUEST) && /空白のところで切れて届きます/.test(ms) && /"overview"/.test(ms) && !/stages/.test(ms) && !/set_stage/.test(ms),
+    `省いたとき ${msNone.length} 字 ／ 頼みあり ${ms.length} 字`);
   const noDesign = await rejected(client.getPrompt({ name: 'fix_design', arguments: { request: '電話番号の欄を足して' } }));
   const fx = promptText(await client.getPrompt({ name: 'fix_design', arguments: { design: '顧客管理', request: '電話番号の欄を足して' } }));
   check('E. fix_design は design がないと断られ、文に画面設計の名前と頼みが入る。文に "stages" を読ませる文も set_stage もない',
@@ -160,7 +162,7 @@ async function checkNotesTools(client, env) {
   const gs = await callRaw(client, 'get_system', { system: SYSTEM_ID });
   const row = ((ls.json || {}).systems || []).find((y) => y.id === SYSTEM_ID);
   const expectStages = { read: 'done', flow: 'todo', items: 'todo', screens: 'todo', docs: 'todo' };
-  check('E. list_systems の行と get_system の返事の stages に、段階ごとの状態（read だけ done）が出る',
+  check('E. list_systems の行と get_system の返事の stages に、段階ごとの進み具合（read だけ done）が出る',
     !!row && JSON.stringify(row.stages) === JSON.stringify(expectStages) && !gs.isError && JSON.stringify(gs.json.stages) === JSON.stringify(expectStages),
     `list_systems ${JSON.stringify(row && row.stages)} ／ get_system ${JSON.stringify(gs.json && gs.json.stages)}`);
   return { pid: a && a.pid, stamp, noteIds: { qRead: qRead.id, dFlow: dFlow.id } };

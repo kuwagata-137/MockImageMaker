@@ -87,7 +87,7 @@ test('道具は 33 個（第 9 段階の前半でシステムの 7 個、後半�
   assert.deepEqual(TOOLS.filter((t) => t.slow).map((t) => t.name).sort(), [...SLOW_TOOLS].sort());
 });
 
-test('入口の選べる値（機器・表の中身・吹き出しの色と線の先・揃え方・スイムレーンの作業の種類・設計ノートの段階と状態）は、ページの値とそろう', async () => {
+test('入口の選べる値（機器・表の中身・吹き出しの色と線の先・揃え方・スイムレーンの作業の種類・設計ノートの段階と進み具合）は、ページの値とそろう', async () => {
   const app = bootApp();
   const T = await app.api();
   const cat = JSON.parse(JSON.stringify(await T.aiDispatch('get_catalog', {}, {}))).result;
