@@ -10740,10 +10740,12 @@ function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false } = {}) 
 }
 const coverContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '画面の一覧（続き）', body: coverListTable(rows),
   left: `${esc(d.name)} ／ 画面の一覧（続き）`, right: `${page} / ${total}` });
-// 表紙の画面の一覧を、1 ページ目と続きのページに分ける（行の高さを測る。続きのページでは見出しの行を繰り返す）。測れないときは全部を 1 ページ目に
-function splitCoverRows(d, P, rows, measured, bodyH, opts = {}) {
+// 表紙の画面の一覧を、1 ページ目と続きのページに分ける（行の高さを測る。続きのページでは見出しの行を繰り返す）。測れないときは全部を 1 ページ目に。
+// coverHtml(rows) は、その行を一覧に入れた表紙の HTML を返す関数（画面設計の表紙と、システムの説明書の表紙〔第 10 段階の後半〕で使う）。
+// 表紙は、左の列 .cv-list・右の列 .cv-revs・下の端 .cv-foot を持つこと（名前で探して測るため）
+function splitCoverRows(coverHtml, P, rows, measured, bodyH) {
   if (!measured || !rows.length) return [rows];
-  const probe = measureBox(coverPageHtml(d, P, rows, 99, nowIso(), opts));
+  const probe = measureBox(coverHtml(rows));
   const pgTop = probe.querySelector('.pg').getBoundingClientRect().top;
   const footH = probe.querySelector('.cv-foot').getBoundingClientRect().height;
   // 1 ページ目の一覧が入る下の端（下の余白と下の端の行を引く。縦の用紙では、一覧の下の改訂履歴の分も引く）
@@ -10821,10 +10823,11 @@ function splitItemRows(rows, aw, ah, measured, tableFn = printItemTable) {
 
 // つながりの図のページ（q35 案A）。凡例だけ出し（案内の文・並べ直すボタンなし）、箱のある所を切り出して本文に収まるように縮める（拡大しない）
 const hasMapLinks = (d, state) => mapModel(state, d.id).nodes.length > 1;
-function mapPageBody(d, state, aw, ah) {
+// idTag は矢印の印の id の頭に足す字（システムの説明書で、画面設計ごとに変える。第 10 段階の後半）
+function mapPageBody(d, state, aw, ah, idTag = '') {
   const legend = `<div class="xp-legend">${VIEW_LEGENDS.map}</div>`;
   // 矢印の印の id は、編集の画面の図と重ならない名前にする（同じ id があると矢印が消えるため）
-  const html = mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xp-map' }).replace(' id="map-inner"', '');
+  const html = mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xp-map' + idTag }).replace(' id="map-inner"', '');
   const boxes = [...html.matchAll(/class="mnode[^"]*"[^>]*style="left:(-?[\d.]+)px;top:(-?[\d.]+)px;width:([\d.]+)px;height:([\d.]+)px"/g)].map((m) => m.slice(1).map(Number));
   const m = html.match(/class="map-inner"[^>]*style="width:([\d.]+)px;height:([\d.]+)px"/);
   if (!m || !boxes.length) return legend + html;
@@ -10858,9 +10861,9 @@ function actionRowsHtml(it) {
 // 右に置くと表の幅が PROC_TABLE_MIN より狭くなるとき（縦の用紙）は、図（本文の高さの 6 割まで縮める）の下に、本文の幅いっぱいの表を置く。
 // 表が入りきらないときは、続きのページに表だけを出す。戻り値 { sub, body, rest（続きのページごとの表の行） }
 const PROC_TABLE_MIN = 520;
-function processPagePlan(d, state, aw, ah, measured) {
+function processPagePlan(d, state, aw, ah, measured, idTag = '') {
   const it = d.items.find((x) => x.type === 'status');
-  const html = viewHtml('process', state, d, d.processPos || {}, { idPrefix: 'xp-proc', bare: true });
+  const html = viewHtml('process', state, d, d.processPos || {}, { idPrefix: 'xp-proc' + idTag, bare: true });
   const c = diagramCrop(html);
   const bh = ah - 28; // 凡例の分
   const fw = Math.floor(aw * 0.45);
@@ -10880,8 +10883,8 @@ function processPagePlan(d, state, aw, ah, measured) {
     rest,
   };
 }
-function flowPageBody(d, state, aw, ah) {
-  const html = viewHtml('flow', state, d, d.flowPos || {}, { idPrefix: 'xp-flow', bare: true });
+function flowPageBody(d, state, aw, ah, idTag = '') {
+  const html = viewHtml('flow', state, d, d.flowPos || {}, { idPrefix: 'xp-flow' + idTag, bare: true });
   const c = diagramCrop(html);
   return `<div class="xp-legend">${VIEW_LEGENDS.flow}</div>${c ? fitDiagram(html, c, aw, ah - 28) : html}`;
 }
@@ -10975,22 +10978,34 @@ function diffSumHtml(df, info) {
 // PDF の中身を組む。opts { paper, orient, cover, map, items, process, flow, screenIds（省略するとすべての画面）, diffRevId（比べる版の行の id） }。
 // 表紙（入りきらなければ「画面の一覧（続き）」）→ 比べた版からの変更内容（違いの印を選んだときだけ）→ つながりの図（つながりがあるときだけ）→
 // 項目の一覧表（項目があるときだけ）→ ステータスの移り方（操作があるときだけ）→ 画面の移り方（移る先があるときだけ）→ 選んだ画面。
-// 戻り値 { html（印刷用の文書）, P（用紙）, pages（ページの HTML）, total }
+// システムの説明書（第 10 段階の後半）に画面設計のページを並べるときは、opts に pageStart（最初のページの番号。既定 1）・grandTotal（「n / N」と
+// 表紙の「全 N ページ」の N。既定はこの画面設計のページ数）・idTag（矢印の印の id の頭に足す字。既定 ''）を渡す。countOnly なら、ページを組まずに数だけ返す。
+// 戻り値 { html（印刷用の文書）, P（用紙）, pages（ページの HTML）, total（この画面設計のページ数） }。countOnly のときは { P, total }
 function exportDocument(d, state, opts, exportedAt = nowIso()) {
+  const L = exportLayout(d, state, opts, exportedAt);
+  if (opts.countOnly) return { P: L.P, total: L.plan.total };
+  const pages = [...exportCoverPages(d, L, exportedAt), ...exportViewPages(d, state, L), ...exportScreenPages(d, L)];
+  return { P: L.P, pages, total: L.plan.total, html: printDocumentHtml(d.name, L.P, pages.join('\n')) };
+}
+// ページの並べ方を決める（どのページを何ページ目に置くか・表紙と表をどこで分けるか）。番号は pageStart からの通し番号、plan.total はこの画面設計のページ数。
+// 戻り値 { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, descCut, grand（「n / N」の N）, idTag }
+function exportLayout(d, state, opts, exportedAt) {
   const P = paperSize(opts.paper, opts.orient);
   const measured = canMeasure();
   const { aw, ah } = pageBodySize(P, measured);
+  const idTag = opts.idTag || '';
   const screens = d.screens.map((s, i) => ({ s, i })).filter(({ s }) => !opts.screenIds || opts.screenIds.includes(s.id));
   const withMap = !!opts.map && hasMapLinks(d, state);
   const itemChunks = opts.items ? splitItemRows(itemRowsHtml(d, state), aw, ah, measured) : [];
   const df = opts.diffRevId ? exportDiff(d, state, opts.diffRevId) : null;
   const changesTitle = df ? `${df.title}からの変更内容` : '';
   const changeChunks = !df ? [] : df.result.rows.length ? splitItemRows(changeRowsHtml(df.result.rows), aw, ah, measured, printChangeTable) : [[]];
-  const proc = opts.process && hasProcessPage(d) ? processPagePlan(d, state, aw, ah, measured) : null;
+  const proc = opts.process && hasProcessPage(d) ? processPagePlan(d, state, aw, ah, measured, idTag) : null;
   const withFlow = !!opts.flow && hasFlowPage(d, state);
+  const base = (opts.pageStart || 1) - 1;
   // ページ番号は、表紙が何ページになるかで変わる。番号の桁で行の高さは変わらないので、仮の番号で 1 回分けてから決め直す
   const numbering = (coverPages) => {
-    let n = coverPages;
+    let n = base + coverPages;
     const changesPage = changeChunks.length ? n + 1 : 0;
     n += changeChunks.length;
     const mapPage = withMap ? ++n : 0;
@@ -10999,7 +11014,7 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
     const processPage = proc ? n + 1 : 0;
     n += proc ? 1 + proc.rest.length : 0;
     const flowPage = withFlow ? ++n : 0;
-    return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n };
+    return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n - base };
   };
   let plan = numbering(opts.cover ? 1 : 0);
   let coverChunks = [];
@@ -11012,43 +11027,57 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
     probe.remove();
   }
   if (opts.cover) {
-    coverChunks = splitCoverRows(d, P, coverListRows(plan), measured, ah, { descCut });
+    const coverHtml = (rows) => coverPageHtml(d, P, rows, 99, nowIso(), { descCut });
+    coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     if (coverChunks.length > 1) {
       plan = numbering(coverChunks.length);
-      coverChunks = splitCoverRows(d, P, coverListRows(plan), measured, ah, { descCut });
+      coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     }
   }
-  const { total } = plan;
+  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag };
+}
+// 表紙と「画面の一覧（続き）」のページ
+function exportCoverPages(d, L, exportedAt) {
+  const { P, grand } = L;
+  return L.coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, grand, exportedAt, { descCut: L.descCut }) : coverContHtml(d, P, rows, L.base + k + 1, grand)));
+}
+// 変更内容・つながりの図・項目の一覧表・ステータスの移り方・画面の移り方のページ
+function exportViewPages(d, state, L) {
+  const { P, aw, ah, df, plan, proc, grand } = L;
   const left = (t) => `${esc(d.name)} ／ ${t}`;
-  const pages = coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, total, exportedAt, { descCut }) : coverContHtml(d, P, rows, k + 1, total)));
-  changeChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: esc(changesTitle) + (k ? '（続き）' : ''),
+  const pages = [];
+  L.changeChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: esc(plan.changesTitle) + (k ? '（続き）' : ''),
     sub: `${df.result.rows.length} 件${rows.cut ? '・長い行は途中まで' : ''}`,
     body: rows.length ? printChangeTable(rows) : `<p class="cg-none">${esc(df.label)}から変わった所はありません。</p>`,
-    left: left('変更内容'), right: `${plan.changesPage + k} / ${total}` })));
-  if (withMap) {
-    pages.push(pageFrame({ P, title: 'つながりの図', sub: `「${esc(d.name)}」と、直接つながる画面設計`, body: mapPageBody(d, state, aw, ah),
-      left: left('つながりの図'), right: `${plan.mapPage} / ${total}` }));
+    left: left('変更内容'), right: `${plan.changesPage + k} / ${grand}` })));
+  if (L.withMap) {
+    pages.push(pageFrame({ P, title: 'つながりの図', sub: `「${esc(d.name)}」と、直接つながる画面設計`, body: mapPageBody(d, state, aw, ah, L.idTag),
+      left: left('つながりの図'), right: `${plan.mapPage} / ${grand}` }));
   }
-  itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`,
+  L.itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`,
     sub: `項目 ${d.items.length} 個${rows.cut ? '・長い行は途中まで（全文はアプリか HTML で見られます）' : ''}`,
-    body: printItemTable(rows), left: left('データベースの項目の一覧表'), right: `${plan.itemsPage + k} / ${total}` })));
+    body: printItemTable(rows), left: left('データベースの項目の一覧表'), right: `${plan.itemsPage + k} / ${grand}` })));
   if (proc) {
-    pages.push(pageFrame({ P, title: 'ステータスの移り方', sub: proc.sub, body: proc.body, left: left('ステータスの移り方'), right: `${plan.processPage} / ${total}` }));
+    pages.push(pageFrame({ P, title: 'ステータスの移り方', sub: proc.sub, body: proc.body, left: left('ステータスの移り方'), right: `${plan.processPage} / ${grand}` }));
     proc.rest.forEach((rows, k) => pages.push(pageFrame({ P, title: 'ステータスの移り方（続き）', sub: '操作の一覧表', body: printActionTable(rows),
-      left: left('ステータスの移り方'), right: `${plan.processPage + 1 + k} / ${total}` })));
+      left: left('ステータスの移り方'), right: `${plan.processPage + 1 + k} / ${grand}` })));
   }
-  if (withFlow) {
-    pages.push(pageFrame({ P, title: '画面の移り方', sub: `画面 ${d.screens.length} つ・${flowEntryNote(state, d)}`, body: flowPageBody(d, state, aw, ah),
-      left: left('画面の移り方'), right: `${plan.flowPage} / ${total}` }));
+  if (L.withFlow) {
+    pages.push(pageFrame({ P, title: '画面の移り方', sub: `画面 ${d.screens.length} つ・${flowEntryNote(state, d)}`, body: flowPageBody(d, state, aw, ah, L.idTag),
+      left: left('画面の移り方'), right: `${plan.flowPage} / ${grand}` }));
   }
-  plan.screens.forEach(({ s, i, page }) => {
+  return pages;
+}
+// 画面のページ（吹き出しの矢印の印の id の頭 'p' + ページの番号は、通し番号なので、説明書の中でも重ならない）
+function exportScreenPages(d, L) {
+  const { P, aw, ah, df, measured, grand } = L;
+  return L.plan.screens.map(({ s, i, page }) => {
     const info = df ? df.result.screens[s.id] : null;
     const body = screenPageBody(screenComposite(d, s, 'p' + page, measured, info && { info, label: df.label }), aw, ah, measured);
     const name = `${i + 1}　${esc(s.name)}`;
     const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`;
-    pages.push(pageFrame({ P, title: name, sub, body: body.html, left: left(name), right: `${page} / ${total}`, headExtra: diffSumHtml(df, info) }));
+    return pageFrame({ P, title: name, sub, body: body.html, left: `${esc(d.name)} ／ ${name}`, right: `${page} / ${grand}`, headExtra: diffSumHtml(df, info) });
   });
-  return { P, pages, total, html: printDocumentHtml(d.name, P, pages.join('\n')) };
 }
 
 // PNG にする文書（画面ごとに 1 つ。ページの枠なし・縮めない・まわりに白の余白）。戻り値 [{ name, html, width, height }]。
