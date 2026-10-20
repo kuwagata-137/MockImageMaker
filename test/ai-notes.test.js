@@ -85,7 +85,7 @@ test('get_notes: 決めたこと・まだ決まっていないことが多いと
   app.close();
 });
 
-test('list_systems・get_system: 段階ごとの状態の名前（stages）を返す', async () => {
+test('list_systems・get_system: 段階ごとの進み具合の名前（stages）を返す', async () => {
   const { app, call } = await boot(notedState());
   const all = { read: 'done', flow: 'review', items: 'todo', screens: 'todo', docs: 'todo' };
   const rows = ok(await call('list_systems', { trashed: true })).systems;
@@ -189,7 +189,7 @@ test('update_notes: 断る（空の文の add・知らない段階・知らな�
   app.close();
 });
 
-test('set_stage: doing・review・done・skipped に変える。done と skipped で確認の日時が入り、同じ状態は changed: false で確認の日時も変わらない。todo と知らない段階・状態は断る', async () => {
+test('set_stage: doing・review・done・skipped に変える。done と skipped で確認の日時が入り、同じ進み具合は changed: false で確認の日時も変わらない。todo と知らない段階・進み具合は断る（断りの文は NOTE_STATE_NAMES の名前）', async () => {
   const { app, call, sys } = await boot();
   const r1 = ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'doing' }));
   assert.deepEqual([r1.stage, r1.state, r1.confirmedAt, r1.changed], ['read', 'doing', null, true]);
@@ -204,13 +204,14 @@ test('set_stage: doing・review・done・skipped に変える。done と skipped
   assert.equal(sys('y1').notes.stages.read.confirmedAt, r3.confirmedAt);
   assert.equal(r3.warnings, undefined);
   const again = ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'done' }));
-  assert.deepEqual([again.changed, again.state, again.confirmedAt, again.updatedAt], [false, 'done', r3.confirmedAt, r3.updatedAt], '同じ状態は何も変えない');
+  assert.deepEqual([again.changed, again.state, again.confirmedAt, again.updatedAt], [false, 'done', r3.confirmedAt, r3.updatedAt], '同じ進み具合は何も変えない');
   const sk = ok(await call('set_stage', { system: 'y1', stage: 'flow', state: 'skipped' }));
   assert.match(sk.confirmedAt, ISO);
   const todo = ng(await call('set_stage', { system: 'y1', stage: 'read', state: 'todo' }), 'bad_request');
-  assert.match(todo.message, /"todo".*戻せません.*"review"/);
+  assert.equal(todo.message, '段階を "todo"（まだ）には戻せません。前の段階を直すときは "review"（確認待ち）に戻してください。');
   ng(await call('set_stage', { system: 'y1', stage: 'design', state: 'doing' }), 'bad_request');
-  ng(await call('set_stage', { system: 'y1', stage: 'items', state: 'finished' }), 'bad_request');
+  const unknown = ng(await call('set_stage', { system: 'y1', stage: 'items', state: 'finished' }), 'bad_request');
+  assert.equal(unknown.message, '進み具合「finished」は使えません（使える進み具合: doing（作業中）・review（確認待ち）・done（確認済み）・skipped（確認を飛ばした））。');
   ng(await call('set_stage', { system: 'y1', state: 'doing' }), 'bad_request');
   assert.deepEqual(Object.values(sys('y1').notes.stages).map((s) => s.state), ['done', 'skipped', 'todo', 'todo', 'todo']);
   // 前の段階を直すときは review に戻す（確認の日時は消える）
@@ -265,7 +266,7 @@ test('設計ノートだけを直しても、システムの履歴に「AI が�
   app.close();
 });
 
-test('notesChangeCount: 段階（状態と確認の日時）・読み取ったこと・メモと、決めたこと・まだ決まっていないことの行の足す・消す・直すを 1 件ずつ数える', async () => {
+test('notesChangeCount: 段階（進み具合と確認の日時）・読み取ったこと・メモと、決めたこと・まだ決まっていないことの行の足す・消す・直すを 1 件ずつ数える', async () => {
   const { app, T } = await boot();
   const row = (id, extra = {}) => ({ id, date: '2026-10-02', stage: 'items', text: `行 ${id}`, reason: '', ...extra });
   const a = plain(T.normalizeNotes({ decisions: [row('nd1'), row('nd2')], questions: [{ ...row('nq1'), answer: '', resolvedAt: null }] }));
@@ -328,5 +329,26 @@ test('知らせ: 開いていないシステムの設計ノートだけを直し
   assert.match($('#ai-warn').textContent, /AI の変更を戻すときは、「営業管理システム」の履歴の「Claude Code が直す前の状態」から戻せます。/);
   assert.ok($('#ai-warn [data-action="ai-open-system-history"]'));
   assert.equal($('#ai-warn [data-action="ai-open-system-notes"]'), null);
+  app.close();
+});
+
+test('NOTE_STATE_NAMES: 段階の進み具合の名前の表（データの区画。AI の断りの文と、設計ノートの画面が使う）', async () => {
+  const { app, T } = await boot();
+  assert.deepEqual(plain(T.NOTE_STATE_NAMES), { todo: 'まだ', doing: '作業中', review: '確認待ち', done: '確認済み', skipped: '確認を飛ばした' });
+  assert.deepEqual(Object.keys(T.NOTE_STATE_NAMES), plain(T.NOTE_STATES));
+  app.close();
+});
+
+test('aiOnlyNotesChanged: システムの道具で、中身が変わらず設計ノートが変わったときだけ真（オレンジの帯の「設計ノートを開く」）。中身も設計ノートも変わらないとき・作ったとき・中身が変わったときは偽', async () => {
+  const { app, T } = await boot();
+  const sys = { id: 'y1', notes: { memo: '今' } };
+  const seen = (notes, content = 'C') => ({ notes: notes == null ? null : JSON.stringify(notes), systems: new Map([['y1', content]]) });
+  const after = new Map([['y1', 'C']]);
+  assert.equal(T.aiOnlyNotesChanged(sys, false, seen({ memo: '前' }), after), true);
+  assert.equal(T.aiOnlyNotesChanged(sys, false, seen({ memo: '今' }), after), false, '設計ノートも変わっていない（資料だけなど）');
+  assert.equal(T.aiOnlyNotesChanged(sys, false, seen({ memo: '前' }, 'B'), after), false, '中身も変わった');
+  assert.equal(T.aiOnlyNotesChanged(sys, true, seen({ memo: '前' }), after), false, '作った');
+  assert.equal(T.aiOnlyNotesChanged(sys, false, seen(null), after), false, '直す前の設計ノートを控えていない');
+  assert.equal(T.aiOnlyNotesChanged(null, false, seen({ memo: '前' }), after), false, 'システムの道具でない');
   app.close();
 });

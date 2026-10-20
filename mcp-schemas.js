@@ -210,7 +210,7 @@ const materialInputs = {
 const opsOf = (union) => z.array(union).min(1).describe('操作の並び（まとめて 1 回の変更になる）');
 
 // ── 設計ノート（get_notes・update_notes・set_stage。第 10 段階の前半）──
-// 段階の鍵と状態。ページの NOTE_STAGES・NOTE_STATES と同じ（test/mcp.test.js で比べる）。
+// 段階の鍵と進み具合。ページの NOTE_STAGES・NOTE_STATES と同じ（test/mcp.test.js で比べる）。
 // set_stage の todo（まだ）は、ページが「前の段階を直すときは review に戻す」の文で断る（その文を AI に届けるため、入口の形では断らない）
 const NOTE_STAGES = ['read', 'flow', 'items', 'screens', 'docs'];
 const NOTE_STATES = ['todo', 'doing', 'review', 'done', 'skipped'];

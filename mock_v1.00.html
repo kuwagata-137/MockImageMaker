@@ -2832,8 +2832,9 @@ const isLegacyMaterial = (row) => isObj(row) && /\.(doc|xls)$/i.test(str(row.fil
 // システムの履歴の写しには入れない（SYSTEM_CONTENT_KEYS）。データの形の版は 3 のまま（読み込みで足りない欄を補う）
 const NOTE_STAGES = ['read', 'flow', 'items', 'screens', 'docs']; // 段階の鍵と順
 const NOTE_STAGE_NAMES = { read: '① 資料から読み取る', flow: '② 業務の流れ', items: '③ データベースの項目', screens: '④ 画面', docs: '⑤ 説明書と出力' };
-// 段階の状態: まだ・作業中・確認待ち・確認済み・確認を飛ばした（人の指示で）
+// 段階の進み具合: まだ・作業中・確認待ち・確認済み・確認を飛ばした（人の指示で）。名前の表は、AI の断りの文と設計ノートの画面が使う
 const NOTE_STATES = ['todo', 'doing', 'review', 'done', 'skipped'];
+const NOTE_STATE_NAMES = { todo: 'まだ', doing: '作業中', review: '確認待ち', done: '確認済み', skipped: '確認を飛ばした' };
 // 「読み取ったこと」「メモ」の 1 つの長さの上限（人の欄の長さと、AI が断る長さ）。行（決めたこと・まだ決まっていないこと）の文には設けない
 const NOTE_TEXT_MAX = 8000;
 // 段階 1 つ。知らない状態は todo。confirmedAt は空でない文字だけ残し、ほかは null（trashedAt と同じ。読み込みでは付け直さない）。知らない欄は残す
@@ -13395,7 +13396,7 @@ const aiHead = (s, n) => {
   return t.length > n ? t.slice(0, n) + '…' : t;
 };
 const aiSystemBrief = (y) => ({ id: y.id, name: y.name, updatedAt: y.updatedAt });
-// 設計ノートの段階ごとの状態の名前（list_systems・get_system。第 10 段階）。例 { read: 'done', flow: 'review', items: 'todo', … }
+// 設計ノートの段階ごとの進み具合（state だけ。list_systems・get_system。第 10 段階）。例 { read: 'done', flow: 'review', items: 'todo', … }
 const aiStageStates = (y) => Object.fromEntries(NOTE_STAGES.map((k) => [k, y.notes.stages[k].state]));
 function aiSystemSummary(S, y) {
   return {
@@ -13956,10 +13957,9 @@ function aiNotePatch(op, fields, what) {
   if (!Object.keys(patch).length) throw aiBad(`直す欄（${fields.join('・')}）を 1 つ以上書いてください。`);
   return patch;
 }
-// AI が set_stage に書ける状態。todo（まだ）には戻せない（前の段階を直すときは review に戻す。設計書の 10-2）
+// AI が set_stage に書ける進み具合。todo（まだ）には戻せない（前の段階を直すときは review に戻す。設計書の 10-2）。名前は NOTE_STATE_NAMES
 const AI_STAGE_STATES = ['doing', 'review', 'done', 'skipped'];
-const AI_STAGE_STATE_NAMES = { doing: '作業中', review: '確認待ち', done: '確認済み', skipped: '確認を飛ばした' };
-// 段階の進み具合を変える。同じ状態なら何も変えない（changed: false。確認の日時も付け直さない）。
+// 段階の進み具合を変える。同じ進み具合なら何も変えない（changed: false。確認の日時も付け直さない）。
 // その段階に、まだ決まっていないこと（答えのない行）が残るのに done にしたときは、warnings で知らせる（変えることはできる）
 async function aiSetStage(args, ctx) {
   return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
@@ -13975,8 +13975,9 @@ async function aiSetStage(args, ctx) {
 }
 function aiStageState(v) {
   const s = v == null ? '' : str(v);
-  if (s === 'todo') throw aiBad('段階を "todo"（まだ）には戻せません。前の段階を直すときは "review"（確認待ち）に戻してください。');
-  if (!AI_STAGE_STATES.includes(s)) throw aiBad(`状態「${s}」は使えません（使える状態: ${AI_STAGE_STATES.map((k) => `${k}（${AI_STAGE_STATE_NAMES[k]}）`).join('・')}）。`);
+  const N = NOTE_STATE_NAMES;
+  if (s === 'todo') throw aiBad(`段階を "todo"（${N.todo}）には戻せません。前の段階を直すときは "review"（${N.review}）に戻してください。`);
+  if (!AI_STAGE_STATES.includes(s)) throw aiBad(`進み具合「${s}」は使えません（使える進み具合: ${AI_STAGE_STATES.map((k) => `${k}（${N[k]}）`).join('・')}）。`);
   return s;
 }
 
@@ -14301,9 +14302,7 @@ function aiAfterWrite(tx, mode, hadHistory, beforeMap, seen) {
   // 元に戻すの履歴を消したら、前に出した紫の帯の「元に戻す」は出さない（押しても戻らないため）
   if (mode === 'clear' && aiView.band && (aiView.band.kind === 'edited' || aiView.band.kind === 'system')) aiView.band.undoable = false;
   const what = sys || target;
-  // システムの道具で、中身（SYSTEM_CONTENT_KEYS）は変わらず、設計ノートだけが変わったか（第 10 段階）。そのときは「AI が直す前の状態」の行が
-  // 残らないので、オレンジの帯に「戻せます」を書かず、ボタンを「設計ノートを開く」にする（aiWarnHtml）
-  const notesOnly = !!sys && !created && tx.afterSys.get(sys.id) === seen.systems.get(sys.id);
+  const notesOnly = aiOnlyNotesChanged(sys, created, seen, tx.afterSys);
   if (mode === 'clear' && hadHistory) {
     aiView.warn = what ? {
       designId: target ? target.id : null, systemId: sys ? sys.id : null, name: what.name, label, created, openChanged: openChanged || openSysChanged, sysNote, notesOnly,
@@ -14315,6 +14314,13 @@ function aiAfterWrite(tx, mode, hadHistory, beforeMap, seen) {
     aiView.band = { kind: created ? 'created' : 'other', designId: target.id, name: target.name, label, sysNote };
   }
   aiView.undoMark = { len: store.undoStack.length, top: store.undoStack[store.undoStack.length - 1] };
+}
+// システムの道具（sys）で、中身（SYSTEM_CONTENT_KEYS）は変わらず、設計ノートが変わったか（第 10 段階）。そのときは「AI が直す前の状態」の行が
+// 残らないので、オレンジの帯に「戻せます」を書かず、ボタンを「設計ノートを開く」にする（aiWarnHtml）。作ったシステムは偽。
+// seen は aiViewBefore の控え（notes は直す前の設計ノートの JSON、systems は直す前の中身）。afterSys は直した後の中身（tx.afterSys）
+function aiOnlyNotesChanged(sys, created, seen, afterSys) {
+  if (!sys || created || seen.notes == null) return false;
+  return seen.notes !== JSON.stringify(sys.notes) && afterSys.get(sys.id) === seen.systems.get(sys.id);
 }
 // 人がシステムの画面で開いているシステム y を、画面設計の道具が変えたときの帯の 1 文（エスケープの前の文字）。
 // 作った画面設計をそのシステムに入れたとき（create_design の system）と、作業の指す先が外れたとき（画面・ステータスを消したなど）
@@ -14342,7 +14348,7 @@ function systemChangeCount(a, b) {
     + listChangeCount(a.roles, b.roles, byId) + listChangeCount(a.swimlane.steps, b.swimlane.steps, byId)
     + listChangeCount(a.swimlane.edges, b.swimlane.edges, byId) + listChangeCount(a.designIds, b.designIds, (v) => v);
 }
-// 設計ノートの違いの数（システムの紫の帯の「変更 N 件」に足す。第 10 段階）。段階の進み具合（状態と確認の日時）が変わった段階を 1 件ずつ、
+// 設計ノートの違いの数（システムの紫の帯の「変更 N 件」に足す。第 10 段階）。段階の進み具合（state と確認の日時）が変わった段階を 1 件ずつ、
 // 読み取ったこと・メモが変わったら 1 件ずつ、決めたこと・まだ決まっていないことの行の足した・消した・直したを 1 件ずつ（id で比べる）数える
 function notesChangeCount(a, b) {
   const stage = (n, k) => canonicalJson(n.stages[k]);
@@ -14647,12 +14653,12 @@ function exposeForTest() {
     changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
     SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
     MATERIAL_KINDS, MATERIAL_KIND_NAMES, normalizeMaterials, isLegacyMaterial, fmtMaterialSize,
-    NOTE_STAGES, NOTE_STAGE_NAMES, NOTE_STATES, NOTE_TEXT_MAX, normalizeNotes,
+    NOTE_STAGES, NOTE_STAGE_NAMES, NOTE_STATES, NOTE_STATE_NAMES, NOTE_TEXT_MAX, normalizeNotes,
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
     swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,
     swimCellAt, swimPlusAt, swimSideToward, swimFitZoom, SWIM_X0, SWIM_NEAR, selectEdge, setSwimMode, setSwimPal,
-    SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount, notesChangeCount,
+    SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount, notesChangeCount, aiOnlyNotesChanged,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,

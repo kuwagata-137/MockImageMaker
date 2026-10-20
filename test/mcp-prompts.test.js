@@ -139,10 +139,15 @@ test('入口の形: get_notes は読むだけ、update_notes・set_stage は書�
   assert.equal(parse('set_stage', { system: 'y1', stage: 'design', state: 'done' }), false);
   assert.match(tool('set_stage').description, /人が「よい」と答えるまで done にしない/);
   assert.match(tool('read_guide').description, /"stages"/);
+  // 段階の state は、AI に見える文で「進み具合」と呼ぶ（設計書の「段階の進み具合」。「状態」と呼び分けない）
+  for (const n of ['list_systems', 'get_system', 'get_notes', 'set_stage']) assert.match(tool(n).description, /進み具合/, n);
+  assert.match(tool('set_stage').input.shape.state.description, /^進み具合: /);
+  const visible = [INSTRUCTIONS, ...Object.values(GUIDES).map((g) => g.text), ...TOOLS.map((x) => x.description)];
+  for (const text of visible) assert.doesNotMatch(text, /段階ごとの状態|同じ状態なら|使える状態/);
 });
 
 test('手引き: つないだときの文に、段階ごとに人に確かめることと、人が「よい」と答えるまで done にしないことを書く。"stages" の手引きと、よくある進め方の 2 と 6', () => {
-  assert.ok(INSTRUCTIONS.includes('資料からシステムを作るときは、read_guide の "stages" の段階ごとに人に確かめてください。人が『よい』と答えるまで set_stage を done にしないでください。'));
+  assert.ok(INSTRUCTIONS.includes('資料からシステムを作るときは、read_guide の "stages" の段階ごとに人に確かめてください。人が「よい」と答えるまで set_stage を done にしないでください。'));
   assert.match(INSTRUCTIONS.split(/\r?\n/)[1], /"stages"/, '最初の行の topic の並びにも stages');
   assert.equal(GUIDES.stages.title, '資料からシステムを作るときの段階');
   const g = GUIDES.stages.text;
@@ -150,6 +155,13 @@ test('手引き: つないだときの文に、段階ごとに人に確かめる
   for (const name of ['① 資料から読み取る', '② 業務の流れ', '③ データベースの項目', '④ 画面', '⑤ 説明書と出力']) assert.ok(g.includes(name), name);
   for (const re of [/get_notes/, /"doing"/, /"review"/, /"done"/, /"skipped"/, /人が答える前に done にしない/, /set_findings/, /add_question/, /add_decision/, /answer_question/,
     /export_design で画面設計ごとに出力/, /理念の『現場の手間を減らす』から、承認は上長の 1 段にした/, /1 つの頼み/, /確かめなくてよいので進めて/]) assert.match(g, re);
+  assert.match(g, /済んだ段階（"done"（確認済み）・"skipped"（確認を飛ばした））は繰り返さず/);
+  // 設計ノートの変更は「AI が直す前の状態」の行に残らない（人が戻せない）ことを書く。INSTRUCTIONS の「いつでも戻せます」は設計ノートを除く
+  assert.ok(GUIDES.overview.text.includes('設計ノート（update_notes・set_stage）の変更は「AI が直す前の状態」の行に残りません'));
+  assert.match(GUIDES.overview.text, /開いていないシステムでは元に戻すの履歴も消えるので、人は戻せません/);
+  assert.match(INSTRUCTIONS.split(/\r?\n/).at(-1), /（設計ノートを除く）.*人がいつでも戻せます/);
+  // 指し方: 設計ノートの行は get_notes の id で指す
+  assert.match(GUIDES.overview.text.split('## 指し方')[1].split('## ')[0], /設計ノートの行（決めたこと・まだ決まっていないこと）は、get_notes の id で指します/);
   const steps = GUIDES.overview.text.split('## よくある進め方')[1].split('## ')[0];
   const step = (no) => steps.split(new RegExp(`(?:^|\\n)${no}\\. `))[1].split(/\n\d\. /)[0];
   assert.match(step(2), /read_guide の "stages" の段階で進める/, '2（資料から下書きする）');

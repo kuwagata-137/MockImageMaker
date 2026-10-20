@@ -47,11 +47,11 @@ const TOOLS = [
     '部品の種類（type・名前・最初の大きさ・設定の欄と値の形）・項目の種類・ひな形・機器・作る先・吹き出しの色・並べ方の数を返す。',
     {}),
   read('list_systems', 'システムの一覧',
-    'システム（いくつかの画面設計と役割・スイムレーンをまとめた、1 つの業務のまとまり）の一覧を返す: id・名前・説明の頭・画面設計と役割と作業と資料の数・設計ノートの段階ごとの状態 stages（例 { read: "done", flow: "review", … }）・更新の印 updatedAt。query で名前を探せる。',
+    'システム（いくつかの画面設計と役割・スイムレーンをまとめた、1 つの業務のまとまり）の一覧を返す: id・名前・説明の頭・画面設計と役割と作業と資料の数・設計ノートの段階ごとの進み具合 stages（state だけ。例 { read: "done", flow: "review", … }）・更新の印 updatedAt。query で名前を探せる。',
     { query: z.string().optional().describe('名前に含まれる文字'), trashed: z.boolean().optional().describe('ごみ箱にあるシステムも出す'), cursor: S.cursor }),
   read('get_system', 'システムの中身',
     'システムの中身を返す: 名前・説明・役割（レーン）・入れている画面設計の並び（ほかのシステムと共通なら sharedWith）・スイムレーンの作業（役割・列・種類・文字・指す先の画面設計と画面とステータス）と矢印・' +
-    '資料の置き場の資料の並び（list_materials と同じ形）・設計ノートの段階ごとの状態 stages（中身は get_notes）・履歴の行・更新の印 updatedAt。多いときは、役割・画面設計・作業・矢印・資料 の順に分けて nextCursor を付ける（説明は最初のページだけに入れる）。' +
+    '資料の置き場の資料の並び（list_materials と同じ形）・設計ノートの段階ごとの進み具合 stages（state だけ。中身は get_notes）・履歴の行・更新の印 updatedAt。多いときは、役割・画面設計・作業・矢印・資料 の順に分けて nextCursor を付ける（説明は最初のページだけに入れる）。' +
     '作業（steps）と矢印（edges）は、そのまま set_swimlane に渡せる形で返す。',
     { system: S.system, cursor: S.cursor }),
   read('list_materials', '資料の一覧',
@@ -140,7 +140,7 @@ const TOOLS = [
   write('set_stage', '段階の進み具合を変える',
     '設計ノートの段階（read・flow・items・screens・docs）の進み具合を変える: "doing"（作業中。段階を始めるとき）・"review"（確認待ち。チャットに案を出して止まるとき）・' +
     '"done"（確認済み）・"skipped"（確認を飛ばした）。人が「よい」と答えるまで done にしない。skipped は、人が「確かめなくてよいので進めて」と言ったときだけ。' +
-    '"todo" には戻せない（前の段階を直すときは review に戻す）。返事は stage・state・確認の日時 confirmedAt（同じ状態なら changed: false で何も変わらない）。' +
+    '"todo" には戻せない（前の段階を直すときは review に戻す）。返事は stage・state・確認の日時 confirmedAt（同じ進み具合なら changed: false で何も変わらない）。' +
     'その段階にまだ決まっていないことが残るのに done にすると warnings で知らせる。',
     noteInputs.stage),
   write('add_revision', '改訂する',
