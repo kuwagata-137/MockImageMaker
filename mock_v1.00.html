@@ -6935,7 +6935,7 @@ function swimFromMaterialText(m, r, warnings) {
 // ── 設計ノート（第 10 段階の前半。画像 k75〔q75 の案B「段階ごとの札」と q78 の案A「人も変えられる」〕。設計書の 5-3・10 章）──
 // 真ん中に、段階ごとの札（5 つ）と、開いている札の段階の「この段階の進み具合」のボタン（押すとメニュー）・読み取ったこと（① の札だけ）・
 // まだ決まっていないことの表・決めたことと理由の表、札の外の下にメモ。欄は欄を離れたときに保存する（onSystemFieldChange の NOTE_FIELD_SAVERS）。
-// 開いている札は ui.notesStages（保存しない）。AI が段階を変えても、開いている札は動かさない
+// 開いている札は ui.notesStages（保存しない）。AI が段階を変えても、開いている札は動かさない（人が AI の帯の「設計ノートを開く」を押したときは、選び直す）
 const NOTE_STATE_MARKS = { done: '✓', review: '●', doing: '▶', todo: '–', skipped: '⤼' };
 const NOTE_STATE_TEXTS = {
   review: 'AI が案を出して、あなたの答えを待っています。', doing: 'AI がこの段階を進めています。', todo: 'まだ始めていません。',
@@ -6964,7 +6964,8 @@ function noteEntryNote(y) {
   const todo = NOTE_STAGES.find((s) => !noteSettled(noteStateOf(y, s)));
   return todo ? `${noteStageNo(todo)} ${NOTE_STATE_NAMES.todo}` : `${noteStageNo(NOTE_STAGES[NOTE_STAGES.length - 1])} まで済み`;
 }
-// 開いている札の段階。初めて開くときは、確認待ち・作業中の段階のうち最初のもの（なければ、まだの段階のうち最初のもの。全部済みなら ⑤）にして覚える
+// 開いている札の段階。初めて開くとき（と、AI の帯の「設計ノートを開く」で開くとき。onAiClick）は、確認待ち・作業中の段階のうち最初のもの
+// （なければ、まだの段階のうち最初のもの。全部済みなら ⑤）にして覚える
 function noteOpenStage(y) {
   const cur = ui.notesStages[y.id];
   if (NOTE_STAGES.includes(cur)) return cur;
@@ -14700,6 +14701,9 @@ function onAiClick(action, btn) {
     case 'ai-open-system': case 'ai-open-system-history': case 'ai-open-system-notes': {
       flushSideField();
       const panel = { 'ai-open-system-history': 'history', 'ai-open-system-notes': 'notes' }[action] || null;
+      // 設計ノートを開くときは、前に開いていた札を忘れ、最初に開く札の決まり（noteOpenStage）で札を選び直す
+      // （人が帯を押したので、札が動いてよい。AI が確認待ちにした段階が開く。終わりの見直し A の Minor 4）
+      if (panel === 'notes') delete ui.notesStages[btn.dataset.id];
       if (!(ui.view === 'system' && ui.systemId === btn.dataset.id)) openSystem(btn.dataset.id, { panel });
       else if (panel) openSystemPanel(panel);
       return true;

@@ -653,6 +653,31 @@ test('紫の帯の「開く」: 設計ノートだけを直したときは設計
   assert.deepEqual([api.ui.view, api.ui.sysPanel], ['system', 'roles']);
 });
 
+test('帯の「設計ノートを開く」（紫の帯・オレンジの帯）を押して開くと、最初に開く札の決まりで札を選び直す。帯を押さずに開くと、前に開いていた札のまま（終わりの見直し A の Minor 4）', async (t) => {
+  const { api, $, tab, call } = await boot(t, { sysId: 'y-exp' });
+  assert.equal(tab('read').classList.contains('on'), true, '全部まだなので ① の札');
+  api.goHome();
+  ok(await call('set_stage', { system: 'y-exp', stage: 'items', state: 'review' }));
+  // 帯を押さずに開く: ① の札のまま
+  api.openSystem('y-exp');
+  assert.deepEqual([api.ui.sysPanel, api.ui.notesStages['y-exp']], ['notes', 'read']);
+  assert.equal(tab('read').classList.contains('on'), true);
+  // 紫の帯の「開く」: 確認待ちの ③ の札
+  api.goHome();
+  ok(await call('update_notes', { system: 'y-exp', ops: [{ op: 'set_memo', text: 'AI のメモ' }] }));
+  click($('#ai-band [data-action="ai-open-system-notes"]'));
+  assert.deepEqual([api.ui.view, api.ui.sysPanel, api.ui.notesStages['y-exp']], ['system', 'notes', 'items']);
+  assert.equal(tab('items').classList.contains('on'), true);
+  // オレンジの帯の「設計ノートを開く」も同じ
+  click(tab('read'));
+  api.goHome();
+  api.actions.updateSystem('y-trip', { description: '人の変更' });
+  ok(await call('update_notes', { system: 'y-exp', ops: [{ op: 'set_memo', text: 'AI のメモ 2' }] }));
+  click($('#ai-warn [data-action="ai-open-system-notes"]'));
+  assert.deepEqual([api.ui.view, api.ui.systemId, api.ui.notesStages['y-exp']], ['system', 'y-exp', 'items']);
+  assert.equal(tab('items').classList.contains('on'), true);
+});
+
 // ── 文字の逃がし ──
 test('文字は esc() で逃がす（<b> などを書いても要素にならない）', async (t) => {
   const { api, $, $$, field, tab, entries } = await boot(t);
