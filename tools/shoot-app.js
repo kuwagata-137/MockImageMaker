@@ -14,11 +14,12 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes・doc をカンマで区切る）]
 // ai の場面（94〜100）は tools/shoot-app-ai.js、systems の場面（107〜133。システムとスイムレーン図）は tools/shoot-app-systems.js にある
 // toolbar の場面（134〜137）は、編集の画面のメニューバーを窓の幅ごとに撮る（q73・q74）
 // materials の場面（138〜149。システムの画面の「資料」の入口。第 9 段階の後半・画像 q67）は tools/shoot-app-materials.js にある
 // notes の場面（150〜157。システムの画面の「設計ノート」の入口。第 10 段階の前半・画像 k75）は tools/shoot-app-notes.js にある
+// doc の場面（158〜163。システムの説明書〔PDF〕の窓と、表紙・スイムレーン図・設計ノートのページ。第 10 段階の後半・画像 q80・q81）は tools/shoot-app-doc.js にある
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -853,6 +854,7 @@ async function shootRevisions(browser) {
     if (wants('toolbar')) await shootToolbar(browser);
     if (wants('materials')) await require('./shoot-app-materials')(browser, { ROOT, HTML_NAME, shot });
     if (wants('notes')) await require('./shoot-app-notes')(browser, { ROOT, HTML_NAME, shot });
+    if (wants('doc')) await require('./shoot-app-doc')(browser, { ROOT, HTML_NAME, shot, openDeskApp, OUT, VERSION });
   } finally {
     await browser.close();
   }
