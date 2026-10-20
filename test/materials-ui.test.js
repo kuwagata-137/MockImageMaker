@@ -138,7 +138,7 @@ async function boot(t, { state = sampleState(), materials = fakeMaterialsAPI(), 
 // ── 入口 ──
 test('入口: 窓口がないとき（ブラウザ・単体で開いた HTML）は、資料の行があっても資料の入口を出さない。資料を選んでもスイムレーン図にする', async (t) => {
   const { api, $, entries } = await boot(t, { materials: null });
-  assert.deepEqual(entries().map((e) => e[1]), ['概要', '役割', 'スイムレーン図', '履歴']);
+  assert.deepEqual(entries().map((e) => e[1]), ['概要', '役割', 'スイムレーン図', '設計ノート', '履歴']);
   assert.equal(api.ui.sysPanel, 'swimlane', '開くときに資料を選んでも、スイムレーン図');
   assert.equal($('#sys-list [data-panel="materials"]'), null);
   api.openSystemPanel('roles');
@@ -148,12 +148,12 @@ test('入口: 窓口がないとき（ブラウザ・単体で開いた HTML）�
   api.goHome();
   api.openSystem('y-trip');
   assert.equal(api.ui.sysPanel, 'swimlane', '最後に開いた入口が資料でも、窓口がなければスイムレーン図');
-  assert.deepEqual(plain(api.SYS_PANELS), ['overview', 'roles', 'swimlane', 'materials', 'history']);
+  assert.deepEqual(plain(api.SYS_PANELS), ['overview', 'roles', 'swimlane', 'materials', 'notes', 'history']);
 });
 
-test('入口: 窓口があれば 5 つ（概要・役割・スイムレーン図・資料・履歴）。資料の札は 📎・「資料」・「ファイル N つ」か「まだありません」', async (t) => {
+test('入口: 窓口があれば 6 つ（概要・役割・スイムレーン図・資料・設計ノート・履歴）。資料の札は 📎・「資料」・「ファイル N つ」か「まだありません」', async (t) => {
   const { api, entries, entry } = await boot(t);
-  assert.deepEqual(entries().map((e) => e[1]), ['概要', '役割', 'スイムレーン図', '資料', '履歴']);
+  assert.deepEqual(entries().map((e) => e[1]), ['概要', '役割', 'スイムレーン図', '資料', '設計ノート', '履歴']);
   assert.deepEqual(entries()[3], ['📎', '資料', 'ファイル 5 つ']);
   assert.equal(entry('materials').classList.contains('active'), true);
   assert.equal(api.ui.sysPanel, 'materials');
