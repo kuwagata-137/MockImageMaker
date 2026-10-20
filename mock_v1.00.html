@@ -6253,6 +6253,7 @@ function renderSystem({ keepMain = false, keepSide = false } = {}) {
   const y = findSystem(store.state, ui.systemId);
   if (!y || y.trashedAt) { goHome(); return; }
   if (!$('#sys-body')) { mountSystem(); keepMain = false; keepSide = false; }
+  const menuFocus = keepNoteMenuFocus();
   fixSwimState(y);
   $('#sys-title').innerHTML = `${esc(y.name)}<small>（システム）</small>`;
   updateSysToolbar();
@@ -6261,6 +6262,20 @@ function renderSystem({ keepMain = false, keepSide = false } = {}) {
   else renderSysMain(y);
   if (!keepSide) renderSysSide(y);
   renderAiChrome();
+  menuFocus();
+}
+// 設計ノートの進み具合のメニューの中にフォーカスがあれば、描き直した後（メニューは左の一覧と真ん中の描き直しで作り直される）、同じ項目
+// （data-state）へフォーカスを戻す関数を返す。同じ項目がなくなった（AI がその状態にした）・メニューが閉じたときは、進み具合のボタンへ戻す
+// （AI が書いて描き直したときに、フォーカスが body に落ちないように。終わりの見直し A の Minor 5）
+function keepNoteMenuFocus() {
+  const el = document.activeElement;
+  if (!el || !el.closest || !el.closest('#sys-menu-root .nt-menu')) return () => {};
+  const state = el.dataset.state || '';
+  return () => {
+    const same = [...document.querySelectorAll('#sys-menu-root .nt-menu [role="menuitem"]')].find((b) => b.dataset.state === state);
+    const back = same || $('#sys-view [data-action="sys-note-stage-menu"]');
+    if (back) back.focus();
+  };
 }
 // 元に戻す・AI が書いたなどで、選んでいた作業・矢印、つなぐ元の作業が消えたときは外す。スイムレーン図を出していないとき・役割がないときは、
 // つなぐ途中と、置き場で押した種類をやめる
@@ -7037,12 +7052,15 @@ function noteDecisionRowHtml(d) {
     <td>${noteRowFieldHtml('note-d-reason', id, d.reason, '理由')}</td>
     <td class="nt-end">${noteDelBtn('sys-note-del-d', d.id)}</td></tr>`;
 }
-// 札を切り替える（進み具合のメニューは閉じる）
+// 札を切り替える（進み具合のメニューは閉じる）。描き直すと札が作り直されるので、選んだ札へフォーカスを戻す
+// （キーボードで続けて札を選べるように。終わりの見直し A の Minor 3）
 function openNoteStage(y, k) {
   if (!NOTE_STAGES.includes(k)) return;
   Object.assign(ui, { sysMenu: null });
   ui.notesStages[y.id] = k;
   renderSystem();
+  const on = $('#sys-view .nt-tab.on');
+  if (on) on.focus();
 }
 // 開いている札の段階の行を足し、その行の文字の欄にフォーカスを置く（すぐ打てるように。空の行も残す。kind は 'q'〔まだ決まっていないこと〕か 'd'〔決めたこと〕）
 function addNoteRowAndFocus(y, kind) {

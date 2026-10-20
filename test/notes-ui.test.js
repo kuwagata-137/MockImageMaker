@@ -195,6 +195,18 @@ test('札: 押すとその段階の中身に変わる。AI が段階を変えて
   assert.equal(tab('docs').classList.contains('on'), true);
 });
 
+test('札を押すと、描き直した後の選んだ札にフォーカスを置く（キーボードで続けて札を選べる。終わりの見直し A の Minor 3）', async (t) => {
+  const { app, field, tab } = await boot(t);
+  tab('items').focus();
+  click(tab('read'));
+  assert.equal(app.document.activeElement, tab('read'));
+  assert.ok(app.document.activeElement.classList.contains('on'));
+  // 欄にフォーカスがあるときに札を押しても、選んだ札へ
+  field('note-memo').focus();
+  click(tab('flow'));
+  assert.equal(app.document.activeElement, tab('flow'));
+});
+
 // ── 見出し・右の欄 ──
 test('真ん中の見出しと案内の文、右の欄「設計ノートについて」の案内', async (t) => {
   const { $, $$ } = await boot(t);
@@ -312,6 +324,19 @@ test('進み具合: メニューで押すと状態が変わる（確認済み・
   // 元に戻す（Ctrl+Z）で 1 つずつ戻る
   key(app, app.document.body, { key: 'z', ctrlKey: true });
   assert.equal(sys().notes.stages.items.state, 'skipped');
+});
+
+test('進み具合: AI が書いて描き直しても、開いているメニューの中のフォーカスは同じ項目に戻る。その項目がなくなったら進み具合のボタンへ（終わりの見直し A の Minor 5）', async (t) => {
+  const { app, api, pill, menu, menuItem, call } = await boot(t);
+  click(pill());
+  menuItem('skipped').focus();
+  ok(await call('update_notes', { system: 'y-trip', ops: [{ op: 'set_memo', text: 'AI のメモ' }] }));
+  assert.equal(api.ui.sysMenu, 'stage:y-trip', 'メニューは開いたまま');
+  assert.equal(app.document.activeElement, menuItem('skipped'));
+  // AI が開いている札の段階を「確認を飛ばした」にした: メニューから「確かめずに進めたことにする」がなくなるので、進み具合のボタンへ
+  ok(await call('set_stage', { system: 'y-trip', stage: 'items', state: 'skipped' }));
+  assert.deepEqual(menu().map((m) => m[0]), ['done', 'todo']);
+  assert.equal(app.document.activeElement, pill());
 });
 
 // ── 読み取ったこと・メモ ──
