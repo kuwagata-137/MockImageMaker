@@ -30,9 +30,10 @@ test('list_systems: ごみ箱にないシステムを並べる（id・名前・�
   st.systems[1].description = 'あ'.repeat(100);
   const { app, call } = await boot(st);
   const r = ok(await call('list_systems'));
+  const stages = { read: 'todo', flow: 'todo', items: 'todo', screens: 'todo', docs: 'todo' }; // 設計ノートの段階ごとの状態（第 10 段階。test/ai-notes.test.js）
   assert.deepEqual(r.systems, [
-    { id: 'y1', name: '営業管理システム', description: '顧客の登録から受注までをまとめる。', designs: 2, roles: 2, steps: 3, materials: 1, updatedAt: OLD },
-    { id: 'y2', name: '請求管理システム', description: 'あ'.repeat(60) + '…', designs: 1, roles: 0, steps: 0, materials: 0, updatedAt: OLD },
+    { id: 'y1', name: '営業管理システム', description: '顧客の登録から受注までをまとめる。', designs: 2, roles: 2, steps: 3, materials: 1, stages, updatedAt: OLD },
+    { id: 'y2', name: '請求管理システム', description: 'あ'.repeat(60) + '…', designs: 1, roles: 0, steps: 0, materials: 0, stages, updatedAt: OLD },
   ]);
   assert.deepEqual([r.total, r.nextCursor], [2, null]);
   assert.deepEqual(ok(await call('list_systems', { query: '請求' })).systems.map((y) => y.id), ['y2']);

@@ -12284,7 +12284,7 @@ async function aiWrite(ctx, opts, run) {
   // 「AI が直す前の状態」の行は、直す前に作っておき、中身が変わったときだけ入れる（8-3）
   const before = d && !tx.noBeforeRow ? aiBeforeRow(ctx, d) : null;
   const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
-  const seen = aiViewBefore(S, beforeSys); // 知らせ（紫・オレンジの帯と光らせ方）のため、直す前の様子を控える
+  const seen = aiViewBefore(S, beforeSys, y); // 知らせ（紫・オレンジの帯と光らせ方）のため、直す前の様子を控える
   let mode = true;
   let out;
   let changed;
@@ -13395,10 +13395,13 @@ const aiHead = (s, n) => {
   return t.length > n ? t.slice(0, n) + '…' : t;
 };
 const aiSystemBrief = (y) => ({ id: y.id, name: y.name, updatedAt: y.updatedAt });
+// 設計ノートの段階ごとの状態の名前（list_systems・get_system。第 10 段階）。例 { read: 'done', flow: 'review', items: 'todo', … }
+const aiStageStates = (y) => Object.fromEntries(NOTE_STAGES.map((k) => [k, y.notes.stages[k].state]));
 function aiSystemSummary(S, y) {
   return {
     id: y.id, name: y.name, description: aiHead(y.description, AI_DESC_HEAD), designs: designsOfSystem(S, y).length,
-    roles: y.roles.length, steps: y.swimlane.steps.length, materials: y.materials.length, updatedAt: y.updatedAt, ...(y.trashedAt ? { trashed: true } : {}),
+    roles: y.roles.length, steps: y.swimlane.steps.length, materials: y.materials.length, stages: aiStageStates(y), updatedAt: y.updatedAt,
+    ...(y.trashedAt ? { trashed: true } : {}),
   };
 }
 function aiListSystems(args) {
@@ -13436,7 +13439,7 @@ function aiGetSystem(args) {
   const materials = y.materials.map(aiMaterialSummary);
   const out = {
     id: y.id, name: y.name, ...(args.cursor ? {} : { description: y.description }), updatedAt: y.updatedAt, ...(y.trashedAt ? { trashed: true } : {}),
-    roles: [], rolesTotal: roles.length, designs: [], designsTotal: designs.length, steps: [], stepsTotal: steps.length, edges: [], edgesTotal: edges.length,
+    stages: aiStageStates(y), roles: [], rolesTotal: roles.length, designs: [], designsTotal: designs.length, steps: [], stepsTotal: steps.length, edges: [], edgesTotal: edges.length,
     materials: [], materialsTotal: materials.length,
     revisions: y.revisions.filter(isObj).map((r) => ({ id: r.id, kind: r.kind, title: revisionTitle(r), date: r.date ? revisionDay(r) : null, note: str(r.note) })),
     nextCursor: null,
@@ -13831,6 +13834,152 @@ async function aiBdmPlan(api, y, m) {
   throw new AiRefusal(str(err.code) || 'read_failed', str(err.message) || `「${m.name}」を読めませんでした。もう一度頼んでください。`);
 }
 
+// ── 設計ノート（第 10 段階の前半。設計書の 5-3・9-2・10 章）──
+// 資料からシステムを作るときの 5 つの段階の進み具合と、読み取ったこと・決めたことと理由・まだ決まっていないこと・メモを読む・書く（actions の「設計ノート」）。
+// 設計ノートはシステムの履歴の写しに入らない（SYSTEM_CONTENT_KEYS）ので、設計ノートだけを直しても「AI が直す前の状態」の行は残らない
+// （知らせの扱いは aiAfterWrite・aiWarnHtml）。段階を done にしてよいのは、人が「よい」と答えたときだけ（入口の手引きの "stages" で AI に伝える）
+const aiStageOf = (y, k) => ({ state: y.notes.stages[k].state, confirmedAt: y.notes.stages[k].confirmedAt });
+// 段階の名前（例「③（データベースの項目）」。set_stage の注意の文）
+const aiStageLabel = (k) => NOTE_STAGE_NAMES[k].replace(/^(\S+) (.+)$/, '$1（$2）');
+// 設計ノートを読む。ごみ箱のシステムも読める。多いときは、決めたこと・まだ決まっていないこと の順に分ける（aiPageInto）。
+// 読み取ったこと・メモは最初のページ（cursor なし）にだけ入れる（get_system の説明と同じ。長い文で、どのページも大きくならないように）
+function aiGetNotes(args) {
+  const y = aiResolveSystem(aiState(), args.system);
+  const n = y.notes;
+  const decisions = n.decisions.map((r) => ({ id: r.id, date: r.date, stage: r.stage, text: r.text, reason: r.reason }));
+  const questions = n.questions.map((r) => ({ id: r.id, date: r.date, stage: r.stage, text: r.text, answer: r.answer, resolvedAt: r.resolvedAt }));
+  const out = {
+    system: { id: y.id, name: y.name }, stages: Object.fromEntries(NOTE_STAGES.map((k) => [k, aiStageOf(y, k)])),
+    ...(args.cursor ? {} : { findings: n.findings, memo: n.memo }),
+    decisions: [], decisionsTotal: decisions.length, questions: [], questionsTotal: questions.length, updatedAt: y.updatedAt, nextCursor: null,
+    ...(y.trashedAt ? { trashed: true } : {}),
+  };
+  return aiPageInto(out, [['decisions', decisions], ['questions', questions]], args.cursor);
+}
+// 設計ノートを書く。ops を 1 つずつ actions の「設計ノート」で行う（1 回の変更。断る操作があれば、前の操作も入れない）。
+// 返事の added は、足した行（add_decision・add_question）の { op, id }
+const AI_NOTE_OPS = ['set_findings', 'set_memo', 'add_decision', 'edit_decision', 'remove_decision', 'add_question', 'edit_question', 'answer_question', 'remove_question'];
+async function aiUpdateNotes(args, ctx) {
+  return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
+    const ops = aiRunOps(args.ops, (op) => aiNoteOp(tx.system.id, op));
+    return { ops, added: ops.filter((o) => o.op === 'add_decision' || o.op === 'add_question').map((o) => ({ op: o.op, id: o.id })) };
+  });
+}
+function aiNoteOp(sysId, op) {
+  const notes = () => findSystem(store.state, sysId).notes;
+  const DECISION = '決めたこと';
+  const QUESTION = 'まだ決まっていないこと';
+  switch (op.op) {
+    case 'set_findings':
+      actions.setNoteFindings(sysId, aiNoteText(op.text, '読み取ったこと'));
+      return { op: op.op };
+    case 'set_memo':
+      actions.setNoteMemo(sysId, aiNoteText(op.text, 'メモ'));
+      return { op: op.op };
+    case 'add_decision': {
+      const spec = { stage: aiNoteStage(op.stage), text: aiNoteRowText(op.text, DECISION), reason: op.reason == null ? '' : aiStrVal(op.reason, 'reason') };
+      return { op: op.op, id: aiAddedNoteRow(actions.addNoteDecision(sysId, spec), DECISION) };
+    }
+    case 'add_question': {
+      const spec = { stage: aiNoteStage(op.stage), text: aiNoteRowText(op.text, QUESTION) };
+      return { op: op.op, id: aiAddedNoteRow(actions.addNoteQuestion(sysId, spec), QUESTION) };
+    }
+    case 'edit_decision': {
+      const row = aiNoteRow(notes().decisions, op.id, DECISION);
+      actions.editNoteDecision(sysId, row.id, aiNotePatch(op, ['stage', 'text', 'reason'], DECISION));
+      return { op: op.op, id: row.id };
+    }
+    case 'edit_question': {
+      const row = aiNoteRow(notes().questions, op.id, QUESTION);
+      actions.editNoteQuestion(sysId, row.id, aiNotePatch(op, ['stage', 'text'], QUESTION));
+      return { op: op.op, id: row.id };
+    }
+    case 'answer_question': {
+      const row = aiNoteRow(notes().questions, op.id, QUESTION);
+      actions.answerNoteQuestion(sysId, row.id, aiStrVal(op.answer, 'answer')); // 空の答えは、まだ決まっていないことに戻す
+      return { op: op.op, id: row.id };
+    }
+    case 'remove_decision': {
+      const row = aiNoteRow(notes().decisions, op.id, DECISION);
+      actions.removeNoteDecision(sysId, row.id);
+      return { op: op.op, id: row.id };
+    }
+    case 'remove_question': {
+      const row = aiNoteRow(notes().questions, op.id, QUESTION);
+      actions.removeNoteQuestion(sysId, row.id);
+      return { op: op.op, id: row.id };
+    }
+    default: throw aiUnknownOp(op, AI_NOTE_OPS);
+  }
+}
+// 段階（NOTE_STAGES の値）。書いていない・知らない段階は、使える段階を添えて断る
+function aiNoteStage(v) {
+  const s = v == null ? '' : str(v);
+  const list = NOTE_STAGES.map((k) => `${k}（${NOTE_STAGE_NAMES[k]}）`).join('・');
+  if (!s) throw aiBad(`段階（stage）を書いてください（使える段階: ${list}）。`);
+  if (!NOTE_STAGES.includes(s)) throw aiBad(`段階「${s}」はありません（使える段階: ${list}）。`);
+  return s;
+}
+// 読み取ったこと・メモの全体の文。空の文は受ける（消すため）。NOTE_TEXT_MAX を超える文は断る（actions は超えた分を切って入れるので、切る前に断る）
+function aiNoteText(v, what) {
+  const text = aiStrVal(v, 'text');
+  if (text.length > NOTE_TEXT_MAX) throw aiBad(`${what}は ${NOTE_TEXT_MAX} 字までです（${text.length} 字あります）。短くまとめてください。`);
+  return text;
+}
+// 行（決めたこと・まだ決まっていないこと）の文。空の文は断る（行を消すときは remove_decision・remove_question）
+function aiNoteRowText(v, what) {
+  const text = v == null ? '' : aiStrVal(v, 'text');
+  if (!text.trim()) throw aiBad(`${what}の文（text）を空にはできません。`);
+  return text;
+}
+// 行は id で指す（get_notes の decisions[].id・questions[].id）
+function aiNoteRow(list, ref, what) {
+  const key = aiKey(ref);
+  if (!key) throw aiBad(`${what}の行を id（get_notes の id）で指してください。`);
+  const row = list.find((r) => r.id === key);
+  if (!row) throw new AiRefusal('not_found', `${what}に「${key}」という行は見つかりません（行は get_notes の id で指します）。`);
+  return row;
+}
+function aiAddedNoteRow(id, what) {
+  if (!id) throw aiBad(`${what}の行を足せませんでした。`);
+  return id;
+}
+// 行を直す欄。書いた欄だけを持たせる（actions.editNote… は 'stage' in patch のように書いた欄を見るため、書いていない欄は入れない）
+function aiNotePatch(op, fields, what) {
+  const patch = {};
+  fields.forEach((k) => {
+    if (op[k] === undefined) return;
+    if (k === 'stage') patch.stage = aiNoteStage(op.stage);
+    else if (k === 'text') patch.text = aiNoteRowText(op.text, what);
+    else patch[k] = op[k] == null ? '' : aiStrVal(op[k], k);
+  });
+  if (!Object.keys(patch).length) throw aiBad(`直す欄（${fields.join('・')}）を 1 つ以上書いてください。`);
+  return patch;
+}
+// AI が set_stage に書ける状態。todo（まだ）には戻せない（前の段階を直すときは review に戻す。設計書の 10-2）
+const AI_STAGE_STATES = ['doing', 'review', 'done', 'skipped'];
+const AI_STAGE_STATE_NAMES = { doing: '作業中', review: '確認待ち', done: '確認済み', skipped: '確認を飛ばした' };
+// 段階の進み具合を変える。同じ状態なら何も変えない（changed: false。確認の日時も付け直さない）。
+// その段階に、まだ決まっていないこと（答えのない行）が残るのに done にしたときは、warnings で知らせる（変えることはできる）
+async function aiSetStage(args, ctx) {
+  return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
+    const stage = aiNoteStage(args.stage);
+    const state = aiStageState(args.state);
+    const id = tx.system.id;
+    actions.setNoteStage(id, stage, state);
+    const y = findSystem(store.state, id);
+    const open = state === 'done' ? y.notes.questions.filter((q) => q.stage === stage && !q.answer.trim()).length : 0;
+    if (open) tx.warnings.push(`段階 ${aiStageLabel(stage)}に、まだ決まっていないことが ${open} つ残っています。人の答えは update_notes の answer_question で書いてください。`);
+    return { stage, ...aiStageOf(y, stage) };
+  });
+}
+function aiStageState(v) {
+  const s = v == null ? '' : str(v);
+  if (s === 'todo') throw aiBad('段階を "todo"（まだ）には戻せません。前の段階を直すときは "review"（確認待ち）に戻してください。');
+  if (!AI_STAGE_STATES.includes(s)) throw aiBad(`状態「${s}」は使えません（使える状態: ${AI_STAGE_STATES.map((k) => `${k}（${AI_STAGE_STATE_NAMES[k]}）`).join('・')}）。`);
+  return s;
+}
+
 // ── 画像と出力（main が render の HTML を PNG・PDF にし、決めたフォルダへ書く。ファイルの窓は出さない。設計書の 8-7）──
 const aiDesignBrief = (d) => ({ id: d.id, name: d.name, updatedAt: d.updatedAt });
 // 右の欄の打ちかけの文字を入れてから写す（8-5）。ただし日本語の変換中は確定しない（未確定のかなが人の 1 回の変更として履歴に入り、紫の帯も閉じるため）
@@ -13957,6 +14106,9 @@ const AI_TOOLS = {
   list_materials: { write: false, run: aiListMaterials },
   read_material: { write: false, run: aiReadMaterial },
   swimlane_from_bdm: { write: true, run: aiSwimlaneFromBdm },
+  get_notes: { write: false, run: aiGetNotes },
+  update_notes: { write: true, run: aiUpdateNotes },
+  set_stage: { write: true, run: aiSetStage },
 };
 
 // 日本語の変換中と、窓が隠れたとき（AI がつながっている間の × は窓を隠すだけなので、打ちかけの文字をここで確定する）
@@ -14050,14 +14202,14 @@ function aiWarnHtml() {
   let text = `<b>${esc(w.label)}</b> が「${esc(w.name)}」を${w.created ? '作った' : '直した'}ので、元に戻す（Ctrl+Z）の履歴を消しました。`;
   if (open && !w.openChanged && !(ui.view === 'system' && open.id === w.systemId)) text += `開いている「${esc(open.name)}」は変わっていません。`;
   if (w.sysNote) text += esc(w.sysNote); // 画面設計の道具が、開いているシステムも変えたとき
-  // システム（第 9 段階）の「AI が直す前の状態」の行は、システムの画面の「履歴」にある
-  if (!w.created) text += `<br>AI の変更を戻すときは、「${esc(w.name)}」の${w.systemId ? '履歴' : '改訂履歴'}の「${esc(w.label)} が直す前の状態」から戻せます。`;
+  // システム（第 9 段階）の「AI が直す前の状態」の行は、システムの画面の「履歴」にある。設計ノートだけを直したとき（第 10 段階）は行が残らないので書かない
+  if (!w.created && !w.notesOnly) text += `<br>AI の変更を戻すときは、「${esc(w.name)}」の${w.systemId ? '履歴' : '改訂履歴'}の「${esc(w.label)} が直す前の状態」から戻せます。`;
   let btn;
-  // システムは、作ったときは「開く」、直したときは「履歴を開く」（そのシステムの画面の「履歴」の入口を開く。onAiClick）
+  // システムは、作ったときは「開く」、直したときは「履歴を開く」（そのシステムの画面の「履歴」の入口を開く。onAiClick）、
+  // 設計ノートだけを直したときは「設計ノートを開く」（設計ノートの入口を開く）
   if (w.systemId) {
-    btn = w.created
-      ? `<button class="btn small" data-action="ai-open-system" data-id="${esc(w.systemId)}">「${esc(w.name)}」を開く</button>`
-      : `<button class="btn small" data-action="ai-open-system-history" data-id="${esc(w.systemId)}">「${esc(w.name)}」の履歴を開く</button>`;
+    const [action, what] = w.created ? ['ai-open-system', 'を開く'] : w.notesOnly ? ['ai-open-system-notes', 'の設計ノートを開く'] : ['ai-open-system-history', 'の履歴を開く'];
+    btn = `<button class="btn small" data-action="${action}" data-id="${esc(w.systemId)}">「${esc(w.name)}」${what}</button>`;
   } else if (w.created) btn = `<button class="btn small" data-action="ai-open-design" data-id="${esc(w.designId)}">「${esc(w.name)}」を開く</button>`;
   else btn = `<button class="btn small" data-action="ai-open-revisions" data-id="${esc(w.designId)}">「${esc(w.name)}」の改訂履歴を開く</button>`;
   return `<div class="ai-band warn" id="ai-warn" role="status"><span class="ic">⚠</span><span>${text}</span><span class="spacer"></span>${btn}${aiCloseBtn('ai-warn-close')}</div>`;
@@ -14113,14 +14265,16 @@ function aiCardMark(id) {
 }
 
 // 直す前の様子を控える（aiWrite の batch の前）。開いている画面設計の写しは、光らせる部品と紫の帯の件数を決めるのに使う。
-// systems は、システムごとの直す前の中身の JSON（システムの紫の帯の件数に使う。第 9 段階）
-function aiViewBefore(S, systems = new Map()) {
+// systems は、システムごとの直す前の中身の JSON（システムの紫の帯の件数に使う。第 9 段階）。
+// sys は書く道具が指したシステム。notes は、その直す前の設計ノートの JSON（設計ノートは systems の中身に入らないので、別に控えて帯の件数に足す。第 10 段階）
+function aiViewBefore(S, systems = new Map(), sys = null) {
+  const notes = sys ? JSON.stringify(sys.notes) : null;
   const openId = ui.view === 'editor' ? ui.designId : null;
   const open = openId ? findDesign(S, openId) : null;
-  if (!open) return { open: null, systems };
+  if (!open) return { open: null, systems, notes };
   const keep = aiView.band && aiView.band.kind === 'edited' && aiView.band.designId === openId;
   const snap = designSnapshot(open);
-  return { open: openId, content: designContent(open), snap, base: keep ? aiView.band.base : snap, systems };
+  return { open: openId, content: designContent(open), snap, base: keep ? aiView.band.base : snap, systems, notes };
 }
 // AI が直した後の知らせ（aiWrite で、中身が変わったときに呼ぶ。描き直しは呼ぶ側）。mode は元に戻すの履歴の扱い（true か 'clear'）。
 // システムの道具（tx.system・tx.createdSystem）は、知らせの名前をシステムの名前にする（第 9 段階）
@@ -14147,8 +14301,13 @@ function aiAfterWrite(tx, mode, hadHistory, beforeMap, seen) {
   // 元に戻すの履歴を消したら、前に出した紫の帯の「元に戻す」は出さない（押しても戻らないため）
   if (mode === 'clear' && aiView.band && (aiView.band.kind === 'edited' || aiView.band.kind === 'system')) aiView.band.undoable = false;
   const what = sys || target;
+  // システムの道具で、中身（SYSTEM_CONTENT_KEYS）は変わらず、設計ノートだけが変わったか（第 10 段階）。そのときは「AI が直す前の状態」の行が
+  // 残らないので、オレンジの帯に「戻せます」を書かず、ボタンを「設計ノートを開く」にする（aiWarnHtml）
+  const notesOnly = !!sys && !created && tx.afterSys.get(sys.id) === seen.systems.get(sys.id);
   if (mode === 'clear' && hadHistory) {
-    aiView.warn = what ? { designId: target ? target.id : null, systemId: sys ? sys.id : null, name: what.name, label, created, openChanged: openChanged || openSysChanged, sysNote } : null;
+    aiView.warn = what ? {
+      designId: target ? target.id : null, systemId: sys ? sys.id : null, name: what.name, label, created, openChanged: openChanged || openSysChanged, sysNote, notesOnly,
+    } : null;
     aiView.cleared = what ? what.name : '画面設計';
   } else if (sys) {
     aiNoteSystemEdited(sys, seen, label, created, mode === true);
@@ -14165,13 +14324,15 @@ function aiOpenSystemNote(y, target, tx, label) {
   return `開いている「${y.name}」のスイムレーン図の作業の指す先も外れました${row}。`;
 }
 // AI がシステムを直した・作ったとき: 紫の帯（kind 'system'）。件数は、同じシステムの帯を出してから最初に直す前（base）と今の違い。
-// AI が続けて直したら、件数を足して出し直す。undoable は「元に戻す」を出すか（q66 で元に戻すの 1 回分として積んだとき）
+// AI が続けて直したら、件数を足して出し直す。undoable は「元に戻す」を出すか（q66 で元に戻すの 1 回分として積んだとき）。
+// 設計ノート（第 10 段階）は中身（base）に入らないので、最初に直す前の設計ノート（notesBase）も持ち越し、その違いの数を足す
 function aiNoteSystemEdited(sys, seen, label, created, undoable) {
   const b = aiView.band;
   const keep = !!b && b.kind === 'system' && b.systemId === sys.id;
   const base = keep ? b.base : (seen.systems.get(sys.id) ?? null);
-  const count = base ? systemChangeCount(JSON.parse(base), systemContentOf(sys)) : 0;
-  aiView.band = { kind: 'system', systemId: sys.id, name: sys.name, label, created: created || (keep && b.created), base, count, undoable };
+  const notesBase = keep ? b.notesBase : seen.notes;
+  const count = (base ? systemChangeCount(JSON.parse(base), systemContentOf(sys)) : 0) + (notesBase ? notesChangeCount(JSON.parse(notesBase), sys.notes) : 0);
+  aiView.band = { kind: 'system', systemId: sys.id, name: sys.name, label, created: created || (keep && b.created), base, notesBase, count, undoable };
 }
 // システムの中身の違いの数（紫の帯の「変更 N 件」）。名前・説明、役割・作業・矢印・画面設計の並びの 1 つずつの、足した・消した・直したを 1 件と数え、
 // 並びの順が変わったら、その並びで 1 件を足す
@@ -14180,6 +14341,14 @@ function systemChangeCount(a, b) {
   return (a.name !== b.name) + (a.description !== b.description)
     + listChangeCount(a.roles, b.roles, byId) + listChangeCount(a.swimlane.steps, b.swimlane.steps, byId)
     + listChangeCount(a.swimlane.edges, b.swimlane.edges, byId) + listChangeCount(a.designIds, b.designIds, (v) => v);
+}
+// 設計ノートの違いの数（システムの紫の帯の「変更 N 件」に足す。第 10 段階）。段階の進み具合（状態と確認の日時）が変わった段階を 1 件ずつ、
+// 読み取ったこと・メモが変わったら 1 件ずつ、決めたこと・まだ決まっていないことの行の足した・消した・直したを 1 件ずつ（id で比べる）数える
+function notesChangeCount(a, b) {
+  const stage = (n, k) => canonicalJson(n.stages[k]);
+  const byId = (v) => v.id;
+  return NOTE_STAGES.filter((k) => stage(a, k) !== stage(b, k)).length + (a.findings !== b.findings) + (a.memo !== b.memo)
+    + listChangeCount(a.decisions, b.decisions, byId) + listChangeCount(a.questions, b.questions, byId);
 }
 function listChangeCount(before, after, keyOf) {
   const old = new Map(before.map((v) => [keyOf(v), canonicalJson(v)]));
@@ -14238,10 +14407,11 @@ function onAiClick(action, btn) {
       else if (ui.view === 'system') renderSystem();
       else updateEditor({ keepSide: true });
       return true;
-    // システムの画面を開く（第 9 段階）。「履歴を開く」は履歴の入口を開く。もう開いていれば開き直さない（「履歴を開く」は入口だけを履歴にする）
-    case 'ai-open-system': case 'ai-open-system-history': {
+    // システムの画面を開く（第 9 段階）。「履歴を開く」は履歴の入口、「設計ノートを開く」（第 10 段階）は設計ノートの入口を開く。
+    // もう開いていれば開き直さない（入口だけを切り替える）
+    case 'ai-open-system': case 'ai-open-system-history': case 'ai-open-system-notes': {
       flushSideField();
-      const panel = action === 'ai-open-system-history' ? 'history' : null;
+      const panel = { 'ai-open-system-history': 'history', 'ai-open-system-notes': 'notes' }[action] || null;
       if (!(ui.view === 'system' && ui.systemId === btn.dataset.id)) openSystem(btn.dataset.id, { panel });
       else if (panel) openSystemPanel(panel);
       return true;
@@ -14482,7 +14652,7 @@ function exposeForTest() {
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
     swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,
     swimCellAt, swimPlusAt, swimSideToward, swimFitZoom, SWIM_X0, SWIM_NEAR, selectEdge, setSwimMode, setSwimPal,
-    SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount,
+    SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount, notesChangeCount,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
