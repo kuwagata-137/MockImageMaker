@@ -117,7 +117,7 @@ test('prompts の文にも、手引きと同じ言葉の決まり（「書き出
 });
 
 // ── 設計ノートの道具の入力の形と、段階の手引き ──
-test('入口の形: get_notes は読むだけ、update_notes・set_stage は書く道具。知らない欄・知らない操作・知らない段階・set_stage の todo は、アプリへ送る前に断る', () => {
+test('入口の形: get_notes は読むだけ、update_notes・set_stage は書く道具。知らない欄・知らない操作・知らない段階は、アプリへ送る前に断る（set_stage の todo は、ページが文で断る）', () => {
   const tool = (n) => TOOLS.find((t) => t.name === n);
   assert.deepEqual(['get_notes', 'update_notes', 'set_stage'].map((n) => [!!tool(n).readOnly, !!tool(n).slow]), [[true, false], [false, false], [false, false]]);
   const parse = (n, v) => tool(n).input.safeParse(v).success;
@@ -134,7 +134,8 @@ test('入口の形: get_notes は読むだけ、update_notes・set_stage は書�
   assert.equal(parse('update_notes', { system: 'y1', ops: [{ op: 'add_answer', id: 'nq1' }] }), false);
   assert.equal(parse('set_stage', { system: 'y1', stage: 'read', state: 'review' }), true);
   assert.equal(parse('set_stage', { system: 'y1', stage: 'docs', state: 'skipped', expect: OLD }), true);
-  assert.equal(parse('set_stage', { system: 'y1', stage: 'read', state: 'todo' }), false);
+  assert.equal(parse('set_stage', { system: 'y1', stage: 'read', state: 'todo' }), true, 'todo はページが「review に戻す」の文で断る（test/ai-notes.test.js）');
+  assert.equal(parse('set_stage', { system: 'y1', stage: 'read', state: 'finished' }), false);
   assert.equal(parse('set_stage', { system: 'y1', stage: 'design', state: 'done' }), false);
   assert.match(tool('set_stage').description, /人が「よい」と答えるまで done にしない/);
   assert.match(tool('read_guide').description, /"stages"/);

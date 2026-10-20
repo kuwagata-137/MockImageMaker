@@ -210,9 +210,10 @@ const materialInputs = {
 const opsOf = (union) => z.array(union).min(1).describe('操作の並び（まとめて 1 回の変更になる）');
 
 // ── 設計ノート（get_notes・update_notes・set_stage。第 10 段階の前半）──
-// 段階の鍵と、AI が set_stage に書ける状態。ページの NOTE_STAGES と、NOTE_STATES から todo（まだ）を除いたものと同じ（test/mcp.test.js で比べる）
+// 段階の鍵と状態。ページの NOTE_STAGES・NOTE_STATES と同じ（test/mcp.test.js で比べる）。
+// set_stage の todo（まだ）は、ページが「前の段階を直すときは review に戻す」の文で断る（その文を AI に届けるため、入口の形では断らない）
 const NOTE_STAGES = ['read', 'flow', 'items', 'screens', 'docs'];
-const NOTE_AI_STATES = ['doing', 'review', 'done', 'skipped'];
+const NOTE_STATES = ['todo', 'doing', 'review', 'done', 'skipped'];
 const noteStage = z.enum(NOTE_STAGES).describe('段階: "read"（① 資料から読み取る）・"flow"（② 業務の流れ）・"items"（③ データベースの項目）・"screens"（④ 画面）・"docs"（⑤ 説明書と出力）');
 const noteRow = (what) => z.string().describe(`${what}の行の id（get_notes の id）`);
 const noteOps = z.discriminatedUnion('op', [
@@ -237,7 +238,7 @@ const noteInputs = {
   update: { system: S.system, expect: S.expect, ops: opsOf(noteOps) },
   stage: {
     system: S.system, stage: noteStage,
-    state: z.enum(NOTE_AI_STATES).describe('進み具合: "doing"（作業中）・"review"（確認待ち）・"done"（確認済み）・"skipped"（確認を飛ばした）。"todo"（まだ）には戻せない'),
+    state: z.enum(NOTE_STATES).describe('進み具合: "doing"（作業中）・"review"（確認待ち）・"done"（確認済み）・"skipped"（確認を飛ばした）。"todo"（まだ）には戻せない（断る。前の段階を直すときは "review" に戻す）'),
     expect: S.expect,
   },
 };
@@ -249,5 +250,5 @@ module.exports = {
   z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps), processOps: opsOf(processOps),
   roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('作業の並び（今のスイムレーンの作業を全部置き換える。空の並びで作業を全部消す）'),
   swimEdges: z.array(swimEdge).describe('矢印の並び（今の矢印を全部置き換える。省くと、今の矢印のうち両端の作業が残っているものを残す。[] で全部消す）'),
-  materialInputs, noteInputs, promptArgs, DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, NOTE_STAGES, NOTE_AI_STATES,
+  materialInputs, noteInputs, promptArgs, DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, NOTE_STAGES, NOTE_STATES,
 };

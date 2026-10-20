@@ -97,8 +97,7 @@ test('入口の選べる値（機器・表の中身・吹き出しの色と線�
   assert.deepEqual(Object.keys(cat.callout.tips), SC.CALLOUT_TIPS);
   assert.deepEqual(JSON.parse(JSON.stringify(T.SWIM_KINDS)), SC.SWIM_KINDS);
   assert.deepEqual(JSON.parse(JSON.stringify(T.NOTE_STAGES)), SC.NOTE_STAGES);
-  // AI が set_stage に書ける状態は、ページの状態から todo（まだ）を除いたもの
-  assert.deepEqual(JSON.parse(JSON.stringify(T.NOTE_STATES)).filter((s) => s !== 'todo'), SC.NOTE_AI_STATES);
+  assert.deepEqual(JSON.parse(JSON.stringify(T.NOTE_STATES)), SC.NOTE_STATES);
   app.close();
   const html = fs.readFileSync(path.join(REPO, 'mock_v1.00.html'), 'utf8');
   const align = JSON.parse(html.match(/const AI_ALIGN = (\[[^\]]*\]);/)[1].replace(/'/g, '"'));
