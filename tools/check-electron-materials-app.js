@@ -34,7 +34,9 @@ async function open(h, userData, extraEnv = {}, extraArgs = []) {
 }
 // how: 'page' はページの window.close()、'x' は窓の ×（BrowserWindow.close()）、'quit' はファイル > 終了（app.quit()）。'x'・'quit' は --inspect つきで起動したときだけ（h.evalInMain・h.MAIN_CLOSE は check-electron.js の道具）
 async function closeApp(h, { child, browser, page }, how = 'page') {
-  if (h.MAIN_CLOSE && h.MAIN_CLOSE[how]) await h.evalInMain(`require('electron').${h.MAIN_CLOSE[how]}`);
+  // 'x'・'quit' の道具を渡し忘れたときに、黙ってページの window.close() で確かめた気にならないよう、止める
+  if (how !== 'page' && !(h.MAIN_CLOSE && h.MAIN_CLOSE[how])) throw new Error(`閉じ方「${how}」の道具（h.MAIN_CLOSE・h.evalInMain）が渡されていない`);
+  if (how !== 'page') await h.evalInMain(`require('electron').${h.MAIN_CLOSE[how]}`);
   else await page.evaluate(() => window.close());
   browser.disconnect();
   const code = await h.withTimeout(child.exited, 30000, `確かめのアプリが閉じない（${how}）`);
