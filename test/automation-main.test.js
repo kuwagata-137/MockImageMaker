@@ -121,7 +121,7 @@ test('AI の出力が途中で失敗したときは、書けたファイルの�
   assert.ok(res.error.message.includes(written), res.error.message);
 });
 
-// 確かめの道具は MIM_AI_EXPORT_DIR でフォルダを変えるため、既定のフォルダの名前は道具では確かめられない（計画外 T1。「書き出し」を「出力」にそろえた）
+// 確かめの道具は MIM_AI_EXPORT_DIR でフォルダを変えるため、既定のフォルダの名前は道具では確かめられない（計画外。q79 で「書き出し」を「出力」にそろえた）
 test('AI の出力の既定のフォルダは「ドキュメント\\モックイメージメーカー\\AI の出力」。インストールした版では MIM_AI_EXPORT_DIR で変えられない', (t) => {
   const saved = process.env.MIM_AI_EXPORT_DIR;
   t.after(() => {
