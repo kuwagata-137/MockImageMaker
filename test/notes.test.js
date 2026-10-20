@@ -97,7 +97,7 @@ test('読み込み: 設計ノートがオブジェクトでない（null・配�
   assert.deepEqual(plain(api.migrate(plain(raw)).state.systems[0].notes), emptyNotes(), 'notes の欄がないシステム');
 });
 
-test('読み込み: 段階は 5 つの鍵を必ず持ち、知らない状態は todo・confirmedAt は文字だけ残す（付け直さない）。知らない段階の鍵と知らない欄は残る', async (t) => {
+test('読み込み: 段階は 5 つの鍵を必ず持ち、知らない状態は todo・confirmedAt は空でない文字だけ残す（付け直さない）。知らない段階の鍵と知らない欄は残る', async (t) => {
   const { api } = await boot(t);
   const out = plain(api.normalizeNotes({
     stages: {
@@ -119,6 +119,9 @@ test('読み込み: 段階は 5 つの鍵を必ず持ち、知らない状態は
   assert.deepEqual(out.stages.extra, { state: 'ふしぎ', note: 'のこす' }, '知らない段階の鍵は直さずに残す');
   assert.equal(out.stages.other, 'もじ', 'オブジェクトでない知らない段階の鍵も消さない');
   assert.deepEqual(out.future, { keep: 1 }, 'notes の中の知らない欄は残す');
+  // 空の文字の confirmedAt は null にする（trashedAt と同じ。「入っていない」を null だけで表すため）
+  const blank = plain(api.normalizeNotes({ stages: { read: { state: 'done', confirmedAt: '' }, flow: { state: 'skipped', confirmedAt: '' } } })).stages;
+  assert.deepEqual([blank.read, blank.flow], [{ state: 'done', confirmedAt: null }, { state: 'skipped', confirmedAt: null }], '空の文字の confirmedAt は null');
   for (const stages of [[], 'こわれた', null, 7]) {
     assert.deepEqual(plain(api.normalizeNotes({ stages })).stages, emptyNotes().stages, `stages が ${JSON.stringify(stages)}`);
   }
@@ -162,6 +165,9 @@ test('読み込み: 読み取ったこと・メモは文字（長さは切らな
   assert.deepEqual({ ...q1, id: '' }, { id: '', date: '', stage: '', text: '重なる', answer: '', resolvedAt: null }, '答えが文字でなければ空・resolvedAt が文字でなければ null');
   assert.match(q2.id, /^nq-/);
   assert.deepEqual({ ...q2, id: '' }, { id: '', date: '', stage: '', text: 'id なし', answer: '', resolvedAt: null });
+  // 空の文字の resolvedAt は null にする（答えがあっても。confirmedAt と同じ）
+  const blankQ = plain(api.normalizeNotes({ questions: [{ id: 'nq-1', text: '空の日時', answer: '一律', resolvedAt: '' }] })).questions[0];
+  assert.equal(blankQ.resolvedAt, null, '空の文字の resolvedAt は null');
   assert.deepEqual(plain(api.normalizeNotes(plain(out))), out, '2 回通しても同じ');
   for (const bad of ['こわれた', null, {}, 3]) {
     const n = plain(api.normalizeNotes({ decisions: bad, questions: bad }));

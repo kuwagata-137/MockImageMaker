@@ -2836,10 +2836,10 @@ const NOTE_STAGE_NAMES = { read: '① 資料から読み取る', flow: '② 業�
 const NOTE_STATES = ['todo', 'doing', 'review', 'done', 'skipped'];
 // 「読み取ったこと」「メモ」の 1 つの長さの上限（人の欄の長さと、AI が断る長さ）。行（決めたこと・まだ決まっていないこと）の文には設けない
 const NOTE_TEXT_MAX = 8000;
-// 段階 1 つ。知らない状態は todo。confirmedAt は文字だけ残し、ほかは null（読み込みでは付け直さない）。知らない欄は残す
+// 段階 1 つ。知らない状態は todo。confirmedAt は空でない文字だけ残し、ほかは null（trashedAt と同じ。読み込みでは付け直さない）。知らない欄は残す
 function normalizeNoteStage(src) {
   const s = isObj(src) ? src : {};
-  return { ...s, state: NOTE_STATES.includes(s.state) ? s.state : 'todo', confirmedAt: typeof s.confirmedAt === 'string' ? s.confirmedAt : null };
+  return { ...s, state: NOTE_STATES.includes(s.state) ? s.state : 'todo', confirmedAt: str(s.confirmedAt) || null };
 }
 // 段階の入れ物。5 つの鍵を決まった順に必ず持たせる。知らない段階の鍵は、直さずに後ろへ残す（消さない）
 function normalizeNoteStages(src) {
@@ -2853,7 +2853,7 @@ function normalizeNoteStages(src) {
 const normalizeNoteDecision = (r) => ({ ...r, id: str(r.id) || newId('nd'), date: str(r.date), stage: str(r.stage), text: str(r.text), reason: str(r.reason) });
 const normalizeNoteQuestion = (r) => ({
   ...r, id: str(r.id) || newId('nq'), date: str(r.date), stage: str(r.stage), text: str(r.text),
-  answer: str(r.answer), resolvedAt: typeof r.resolvedAt === 'string' ? r.resolvedAt : null,
+  answer: str(r.answer), resolvedAt: str(r.resolvedAt) || null,
 });
 // 行の並び。オブジェクトでない行は外し、id の重なりを直す（片方を消すと両方消えるのを防ぐため）
 const noteRows = (list, normalizeRow, prefix) => uniqueIds((Array.isArray(list) ? list : []).filter(isObj).map(normalizeRow), prefix);
