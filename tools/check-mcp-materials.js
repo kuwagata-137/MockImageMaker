@@ -1,7 +1,7 @@
 // tools/check-mcp.js の場面 D（資料の置き場。第 9 段階の後半）。AI の入口（mcp-server）から、資料の道具 3 つを本物のアプリで確かめる。
 // 起動の前に、保存先へ見本のシステム 1 つ（役割 2・作業 2）と資料 8 つ（Excel・Word・PDF・BDM の HTML・Shift_JIS の文字・PNG の画像・仕込んだ指示の文字・古い形の Excel）のファイルを置く。
 //  0. 読める資料 7 つを同時に頼んでも、全部読める（AI が道具の呼び出しを並べて出す場合。最初の読みで動かす）
-//  1. 道具は 30 個で、list_materials・read_material・swimlane_from_bdm がある
+//  1. 道具は 33 個（第 10 段階で設計ノートの 3 個が増えた）で、list_materials・read_material・swimlane_from_bdm がある
 //  2. list_materials は資料を 8 つ返し、保存したファイルの名前（file）と場所は返さない。古い形の行だけ oldFormat
 //  3. read_material: Excel は断り書き notice が先頭で、番地と値が読める ／ PDF は日本語の文字が読め、文字のない 3 ページ目は画像（長い辺 1568 以下）で渡る ／
 //     Word の見出しと表・BDM の図のレーン・Shift_JIS の日本語の文字が読める ／ 古い形は old_format で断る ／ cursor が範囲の外なら bad_cursor（見本は 1 回で全部読めるので、nextCursor は null）
@@ -52,7 +52,7 @@ async function checkListAndRead(client, env, rows) {
   const { check } = env;
   const tl = await client.listTools();
   const NEW = ['list_materials', 'read_material', 'swimlane_from_bdm'];
-  check('D. 道具は 30 個で、資料の道具 3 個（list_materials・read_material・swimlane_from_bdm）がある', tl.tools.length === 30 && NEW.every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
+  check(`D. 道具は ${env.TOOL_COUNT} 個で、資料の道具 3 個（list_materials・read_material・swimlane_from_bdm）がある`, tl.tools.length === env.TOOL_COUNT && NEW.every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
 
   const list = await callRaw(client, 'list_materials', { system: SYSTEM_ID });
   const l = list.json || { materials: [] };
@@ -123,7 +123,7 @@ async function checkSwimlaneFromBdm(client, env, rows) {
     `作業の src.material ${[...new Set(saved.swimlane.steps.map((w) => w.src && w.src.material))].join('・')} ／ 行 ${saved.revisions.map((r) => r.kind).join('・')}`);
 }
 
-// 場面 D 全体。env は check-mcp.js の道具（openEntry・check・appInfo・waitUntil・waitAppQuit・quitDetail・setLastPid・USER_DATA・STATE_FILE・IDLE_MS）
+// 場面 D 全体。env は check-mcp.js の道具（openEntry・check・appInfo・waitUntil・waitAppQuit・quitDetail・setLastPid・USER_DATA・STATE_FILE・IDLE_MS・TOOL_COUNT）
 async function phaseMaterials(env) {
   const { openEntry, check, appInfo, waitAppQuit, quitDetail, setLastPid, USER_DATA, IDLE_MS } = env;
   const { materials } = await placeSampleSystem({ userData: USER_DATA, systemId: SYSTEM_ID, systemName: '出張申請システム（資料の確かめ）', names: NAMES, idPrefix: 'm-check-' });
@@ -142,4 +142,4 @@ async function phaseMaterials(env) {
   check('D. 入口を閉じると、アプリが終わり始め、プロセスも消える', q.begin >= IDLE_MS - 500, quitDetail(q));
 }
 
-module.exports = { phaseMaterials };
+module.exports = { phaseMaterials, callRaw };
