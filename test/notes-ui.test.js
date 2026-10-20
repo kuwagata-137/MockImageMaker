@@ -257,12 +257,34 @@ test('進み具合: ボタン（状態の名前と ▾）と説明の文。押�
   assert.equal(menu().length, 3);
 });
 
+test('進み具合: メニューを開いたまま真ん中を送ると閉じる（ボタンから離れるため）。左の「＋ 画面設計を入れる ▾」のメニューは、真ん中を送っても閉じない', async (t) => {
+  const { app, api, $, pill, menu } = await boot(t);
+  const scroll = (el) => el.dispatchEvent(new app.window.Event('scroll'));
+  click(pill());
+  assert.equal(menu().length, 3);
+  scroll($('#sys-view'));
+  assert.equal(api.ui.sysMenu, null);
+  assert.deepEqual(menu(), []);
+  assert.equal(pill().getAttribute('aria-expanded'), 'false');
+  // 左の欄を送っても閉じる（今の決まり）
+  click(pill());
+  scroll($('#sys-list'));
+  assert.equal(api.ui.sysMenu, null);
+  // 左の「＋ 画面設計を入れる ▾」のメニューは、錨が左の欄なので、真ん中を送っても閉じない
+  click($('#sys-list .sys-add'));
+  assert.equal(api.ui.sysMenu, 'add:y-trip');
+  scroll($('#sys-view'));
+  assert.equal(api.ui.sysMenu, 'add:y-trip');
+  assert.ok($('#sys-menu-root .sys-pop'));
+});
+
 test('進み具合: メニューで押すと状態が変わる（確認済み・確認を飛ばしたは日付も）。メニューは今の状態を除いた 2 つ。元に戻すで戻る', async (t) => {
   const { app, api, pill, stateText, menu, menuItem, tabs, sys } = await boot(t);
   const today = api.todayDay();
   click(pill());
   click(menuItem('done'));
   assert.equal(api.ui.sysMenu, null, '押したら閉じる');
+  assert.equal(app.document.activeElement, pill(), '描き直した進み具合のボタンにフォーカスを戻す（Esc で閉じたときと同じ）');
   assert.equal(sys().notes.stages.items.state, 'done');
   assert.match(sys().notes.stages.items.confirmedAt, ISO);
   assert.equal(pill().textContent, `確認済み（${today}） ▾`);
@@ -304,7 +326,7 @@ test('① の札だけ「読み取ったこと」（長さの上限は NOTE_TEXT
   const f = field('note-findings');
   assert.equal(f.tagName, 'TEXTAREA');
   assert.equal(f.value, FINDINGS);
-  assert.equal(f.maxLength, 8000);
+  assert.equal(f.maxLength, api.NOTE_TEXT_MAX);
   assert.ok(f.closest('.nt-tabbody'), '読み取ったことは札の中');
   assert.deepEqual(heads()[0], ['読み取ったこと', '① で資料から読み取ったこと（業務の要約・登場人物・今の手順・様式の欄）']);
   assert.equal(field('note-memo').value, 'ベンダーとの打ち合わせは 10/25。');

@@ -723,7 +723,8 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .itable .nt-tbl tr.resolved td{color:#94a3b8;background:#f8fafc}
 .nt-tbl tr.resolved input{color:#94a3b8;background:#f8fafc;border-color:#e2e8f0}
 .nt-tbl td.nt-end{text-align:center;white-space:nowrap}
-.nt-tbl .ok{color:#166534;font-weight:700;margin-right:4px}
+/* 決まった行の「10/19 に決まった」は灰色の太字（緑は札の「確認済み」の色なので使わない） */
+.nt-tbl .ok{color:#64748b;font-weight:700;margin-right:4px}
 .nt-stg{display:inline-block;min-width:24px;text-align:center;border-radius:5px;background:#e8eef6;color:#1d3f6e;font-weight:700;padding:0 4px}
 .nt-add{margin-top:6px}
 .nt-text{display:block;width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;font:inherit;font-size:12.5px;line-height:1.7;resize:vertical;background:#fff}
@@ -7309,10 +7310,13 @@ function onSystemScreenClick(action, btn) {
     // 設計ノート（第 10 段階の前半）: 札・進み具合のボタンとメニュー・行を足す・行を消す（元に戻す〔Ctrl+Z〕で戻せる）
     case 'sys-note-tab': openNoteStage(y, btn.dataset.stage); return true;
     case 'sys-note-stage-menu': toggleSysMenu('stage', y.id); return true;
-    case 'sys-note-stage-set':
+    case 'sys-note-stage-set': {
       closeSysMenu();
       actions.setNoteStage(y.id, btn.dataset.stage, btn.dataset.state);
+      const pill = $('#sys-view [data-action="sys-note-stage-menu"]');
+      if (pill) pill.focus(); // 描き直した進み具合のボタンへ戻す（Esc で閉じたときと同じ。キーボードで続けて使えるように）
       return true;
+    }
     case 'sys-note-add-q': addNoteRowAndFocus(y, 'q'); return true;
     case 'sys-note-add-d': addNoteRowAndFocus(y, 'd'); return true;
     case 'sys-note-del-q': actions.removeNoteQuestion(y.id, id); return true;
@@ -14806,6 +14810,8 @@ function bindGlobalEvents() {
     // 窓の幅が狭くてメニューバーを横に送ったときは、メニューバーから出したものを閉じる（ボタンから離れるため）
     if (e.target && e.target.id === 'toolbar') { closeRevMenu(); closeFoldMenu(); }
     if (e.target && e.target.id === 'sys-list') { closeSysMenu(); closeSysDesignMenu(); }
+    // 真ん中を送ったときは、設計ノートの進み具合のメニューだけを閉じる（錨のボタンが真ん中にあるため。左の「＋ 画面設計を入れる ▾」のメニューは閉じない）
+    if (e.target && e.target.id === 'sys-view' && str(ui.sysMenu).startsWith('stage:')) closeSysMenu();
   }, true);
   window.addEventListener('blur', flushSideField);
   // 閉じる前に、打ちかけの文字を保存する。単体で開いた HTML で保存していない変更があれば、閉じるのを止める（ブラウザの確かめが出る）
