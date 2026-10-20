@@ -14680,10 +14680,7 @@ async function aiExportDesign(args) {
     if (!docs.length) throw aiBad('出力する画面を 1 つ以上選んでください。');
     return new AiRendered({ ...result, screens: docs.length }, { kind: 'png', files: docs.map(({ name, html, width, height }) => ({ name, html, width, height })) });
   }
-  const paper = args.paper == null ? 'A4' : str(args.paper);
-  if (!['A4', 'A3', 'slide'].includes(paper)) throw aiBad('paper は "A4"・"A3"・"slide"（16:9 の横）です。');
-  const orient = paper === 'slide' ? 'landscape' : args.orient == null ? 'landscape' : str(args.orient);
-  if (!['landscape', 'portrait'].includes(orient)) throw aiBad('orient は "landscape"（横）か "portrait"（縦）です。');
+  const { paper, orient } = aiPaperOrient(args);
   const opts = {
     paper, orient, screenIds, diffRevId,
     cover: args.cover !== false, map: args.map !== false && hasMapLinks(d, S), items: args.items !== false && d.items.length > 0,
@@ -14694,6 +14691,31 @@ async function aiExportDesign(args) {
   return new AiRendered(
     { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items, process: opts.process, flow: opts.flow },
     { kind: 'pdf', files: [{ name: `${base}.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi } }] },
+  );
+}
+// PDF の用紙と向き（export_design・export_system_doc。既定は A4 の横。スライドは横だけ）
+function aiPaperOrient(args) {
+  const paper = args.paper == null ? 'A4' : str(args.paper);
+  if (!['A4', 'A3', 'slide'].includes(paper)) throw aiBad('paper は "A4"・"A3"・"slide"（16:9 の横）です。');
+  const orient = paper === 'slide' ? 'landscape' : args.orient == null ? 'landscape' : str(args.orient);
+  if (!['landscape', 'portrait'].includes(orient)) throw aiBad('orient は "landscape"（横）か "portrait"（縦）です。');
+  return { paper, orient };
+}
+// システムの説明書（PDF）を出力する（第 10 段階の後半。設計書の 9-2）。ページの名前は説明書の窓と同じ（DOC_PAGE_KEYS。既定は全部入れる）。
+// 出せないページ（作業の箱がない・設計ノートに行がない・画面設計につながりがないなど）は黙って外し、返事の included・designs に入れたページを書く。
+// ごみ箱のシステムも出せる（get_view_image の swimlane と同じ）。ファイルを書くのは main（export_design と同じ）
+async function aiExportSystemDoc(args) {
+  aiFlushBeforeRead();
+  const S = aiState();
+  const y = aiResolveSystem(S, args.system);
+  const { paper, orient } = aiPaperOrient(args);
+  const opts = { paper, orient };
+  DOC_PAGE_KEYS.forEach((k) => { opts[k] = args[k] !== false; });
+  const doc = exportSystemDocument(y, S, opts);
+  if (!doc.pages.length) throw aiBad('入れるページが 1 つもありません。');
+  return new AiRendered(
+    { system: aiSystemBrief(y), format: 'pdf', paper, orient, pages: doc.total, included: doc.included, designs: doc.designs },
+    { kind: 'pdf', files: [{ name: `${safeFileName(y.name, 'システム')}_説明書.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi } }] },
   );
 }
 
@@ -14707,6 +14729,7 @@ const AI_TOOLS = {
   get_flow: { write: false, run: aiGetFlow },
   get_view_image: { write: false, run: aiGetViewImage },
   export_design: { write: false, run: aiExportDesign },
+  export_system_doc: { write: false, run: aiExportSystemDoc },
   create_design: { write: true, run: aiCreateDesign },
   update_design: { write: true, run: aiUpdateDesign },
   edit_items: { write: true, run: aiEditItems },

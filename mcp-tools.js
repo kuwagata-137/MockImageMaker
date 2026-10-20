@@ -1,5 +1,5 @@
 // mcp-tools.js — AI の入口（mcp-server.js）が出す MCP の道具の一覧（第 7 段階。第 8 段階で 3 つ、第 9 段階の前半でシステムの 7 つ、後半で資料の 3 つ、
-// 第 10 段階の前半で設計ノートの 3 つを足して 33 個。設計書の 9-2）
+// 第 10 段階の前半で設計ノートの 3 つ、後半で説明書の 1 つ〔export_system_doc〕を足して 34 個。設計書の 9-2）
 // 名前・日本語の説明・入力の形（mcp-schemas.js）・読むだけか・時間がかかるか、を決める。道具の中身はページの「AI の窓口」にある。
 // read_guide だけは入口の中で返す（local。アプリが動いていなくても読めるように）。
 // slow の道具は、アプリの側（automation-main.js の SLOW_TOOLS）でも時間切れを 5 分にしている。2 か所を同じにする。
@@ -10,6 +10,9 @@ const { GUIDE_TOPICS } = require('./mcp-guide');
 
 const read = (name, title, description, shape, extra = {}) => ({ name, title, description, input: obj(shape), readOnly: true, ...extra });
 const write = (name, title, description, shape, extra = {}) => ({ name, title, description, input: obj(shape), readOnly: false, ...extra });
+// PDF の用紙と向き（export_design・export_system_doc）
+const PDF_PAPER = z.enum(['A4', 'A3', 'slide']).optional().describe('PDF の用紙（既定は "A4"。"slide" は 16:9 の横）');
+const PDF_ORIENT = z.enum(['landscape', 'portrait']).optional().describe('PDF の向き（既定は "landscape"）');
 
 const TOOLS = [
   read('read_guide', '手引きを読む',
@@ -154,14 +157,33 @@ const TOOLS = [
     {
       design: S.design, format: z.enum(['pdf', 'html', 'png']).describe('出力する形'),
       screens: z.array(S.screen).optional().describe('出力する画面（既定は全部。PDF・PNG）'),
-      paper: z.enum(['A4', 'A3', 'slide']).optional().describe('PDF の用紙（既定は "A4"。"slide" は 16:9 の横）'),
-      orient: z.enum(['landscape', 'portrait']).optional().describe('PDF の向き（既定は "landscape"）'),
+      paper: PDF_PAPER,
+      orient: PDF_ORIENT,
       cover: z.boolean().optional().describe('PDF に表紙を入れる（既定は入れる）'),
       map: z.boolean().optional().describe('PDF につながりの図のページを入れる（つながりがあるとき。既定は入れる）'),
       items: z.boolean().optional().describe('PDF にデータベースの項目の一覧表のページを入れる（項目があるとき。既定は入れる）'),
       process: z.boolean().optional().describe('PDF にステータスの移り方のページ（図と操作の一覧表）を入れる（操作があるとき。既定は入れる）'),
       flow: z.boolean().optional().describe('PDF に画面の移り方のページを入れる（ボタン・リンクの文字の移る先があるとき。既定は入れる）'),
       diffWith: z.union([z.string(), z.number()]).optional().describe('この版（改訂履歴の行の id か版の番号）との違いを「新」「変」の印で示す'),
+    }, { slow: true }),
+  // ページの名前（systemCover・swimlane・notes・cover・map・items・process・flow）は、アプリの説明書の窓と同じ（第 10 段階の後半）
+  write('export_system_doc', '説明書を出力',
+    'システムの説明書（1 つの PDF。システムの表紙 → スイムレーン図 → 入っている画面設計ごとに、export_design の PDF と同じページ → 設計ノート）を出力し、' +
+    '決めたフォルダ（ドキュメント\\モックイメージメーカー\\AI の出力）に書いたファイルの場所を返す。同じ名前のファイルがあれば番号を付ける。' +
+    'ページの番号は説明書の全体の通し番号。出せないページ（作業の箱がない・設計ノートに行がない・つながりがないなど）は外し、返事の included と designs（画面設計ごとの始まりのページ firstPage・ページ数・入れたページ）に書く。' +
+    '設計ノートのページには、段階 ①〜④ の決めたことと理由・まだ決まっていないこと（答えのある行も）を入れる（⑤ の行は入れない）。ごみ箱のシステムも出力できる。',
+    {
+      system: S.system,
+      paper: PDF_PAPER,
+      orient: PDF_ORIENT,
+      systemCover: z.boolean().optional().describe('システムの表紙（画面設計の一覧と役割）を入れる（既定は入れる）'),
+      swimlane: z.boolean().optional().describe('スイムレーン図のページを入れる（作業の箱があるとき。既定は入れる）'),
+      notes: z.boolean().optional().describe('設計ノートのページを入れる（決めたこと・まだ決まっていないことの行があるとき。既定は入れる）'),
+      cover: z.boolean().optional().describe('画面設計ごとの表紙を入れる（既定は入れる）'),
+      map: z.boolean().optional().describe('画面設計ごとのつながりの図のページを入れる（つながりがあるとき。既定は入れる）'),
+      items: z.boolean().optional().describe('画面設計ごとのデータベースの項目の一覧表のページを入れる（項目があるとき。既定は入れる）'),
+      process: z.boolean().optional().describe('画面設計ごとのステータスの移り方のページを入れる（操作があるとき。既定は入れる）'),
+      flow: z.boolean().optional().describe('画面設計ごとの画面の移り方のページを入れる（移る先があるとき。既定は入れる）'),
     }, { slow: true }),
 ];
 

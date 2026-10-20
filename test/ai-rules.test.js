@@ -5,7 +5,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { bootApp } = require('./harness');
-const { sampleState, design, item, STORAGE_KEY, plain } = require('./ai-fixtures');
+const { sampleState, systemState, design, item, STORAGE_KEY, plain } = require('./ai-fixtures');
 
 async function boot(state = sampleState()) {
   const app = bootApp({ localStorage: { [STORAGE_KEY]: JSON.stringify(state) } });
@@ -212,7 +212,7 @@ test('8-5: 右の欄の打ちかけの文字は、AI が書く前に人の 1 回
 });
 
 test('8-5: 日本語を変換している間は、画像・出力の道具で右の欄の打ちかけの文字を確定しない（変換が終われば、確定してから描く）', async () => {
-  const { app, T, call, d } = await boot();
+  const { app, T, call, d } = await boot(systemState());
   T.openDesign('d1');
   assert.equal((await call(...desc('AI の変更'))).ok, true);
   const doc = app.document;
@@ -222,7 +222,7 @@ test('8-5: 日本語を変換している間は、画像・出力の道具で右
   ta.value = 'にゅうりょく';
   doc.dispatchEvent(new app.window.Event('compositionstart'));
   const undo0 = T.store.undoStack.length;
-  for (const [tool, args] of [['get_screen_image', { design: 'd1', screen: 's1' }], ['export_design', { design: 'd1', format: 'html' }]]) {
+  for (const [tool, args] of [['get_screen_image', { design: 'd1', screen: 's1' }], ['export_design', { design: 'd1', format: 'html' }], ['export_system_doc', { system: 'y1' }]]) {
     assert.equal((await call(tool, args)).ok, true, tool);
     assert.equal(d('d1').description, 'AI の変更', `${tool}: 変換中のかなは確定しない`);
     assert.equal(T.store.undoStack.length, undo0, `${tool}: 人の変更として履歴に入れない`);
