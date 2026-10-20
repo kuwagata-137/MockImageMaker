@@ -1,7 +1,7 @@
 'use strict';
 // 第 8 段階: データの形の版 3（ステータスに id・操作・移る先の欄・図の位置の入れ物・systems）と、ステータスと操作の操作のテスト。
 // 版 2 の見本（test/fixtures/v2-state.json・v2-export-payload.json）は、版 2 のアプリ（コミット ca73fed）で作った
-// （版 2 の書き出しの印は、版 2 のアプリでしか作れないため）。画面設計の名前は架空の業務だけを使う。
+// （版 2 の出力の印は、版 2 のアプリでしか作れないため）。画面設計の名前は架空の業務だけを使う。
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -98,9 +98,9 @@ test('版 2 の改訂履歴の写しと今を比べても、違いは 0 件', as
   assert.deepEqual(plain(diff.rows), []);
 });
 
-test('版 2 で書き出した HTML: こちらで変えていないと分かり、取り込むと「中身が同じ」で取り込まない', async (t) => {
+test('版 2 で出力した HTML: こちらで変えていないと分かり、取り込むと「中身が同じ」で取り込まない', async (t) => {
   const { api, d } = await boot(t);
-  assert.equal(api.changedSinceExport(d('d-order'), V2_PAYLOAD), false, '版 2 の書き出しの印と比べても、変えていない');
+  assert.equal(api.changedSinceExport(d('d-order'), V2_PAYLOAD), false, '版 2 の出力の印と比べても、変えていない');
   const html = '<!DOCTYPE html><html><body><script type="application/json" id="mim-embedded">'
     + JSON.stringify(V2_PAYLOAD).replace(/</g, '\\u003c') + '</' + 'script></body></html>';
   assert.equal((await api.importHtmlText(html)).status, 'same');
@@ -262,7 +262,7 @@ test('ステータスの移り方の図: 箱はステータスの並びの順に
   assert.deepEqual(plain(api.processModel({ items: [] })), { nodes: [], edges: [], item: null }, 'ステータスの項目がなければ空');
 });
 
-test('ステータスの移り方の図の HTML: 箱と矢印。間の箱をまたぐ矢印は、箱の右を回る。矢印の印の id は proc（書き出しでは頭を変えられる）', async (t) => {
+test('ステータスの移り方の図の HTML: 箱と矢印。間の箱をまたぐ矢印は、箱の右を回る。矢印の印の id は proc（出力では頭を変えられる）', async (t) => {
   const { api, d, app } = await boot(t, withActions([
     { id: 'a-1', name: '確かめる', from: '確認待ち', to: '確認済み' },
     { id: 'a-4', name: '一気に終える', from: '受付', to: '完了' },
@@ -279,7 +279,7 @@ test('ステータスの移り方の図の HTML: 箱と矢印。間の箱をま�
   assert.ok(Math.max(...xs(paths[1])) >= 240 + 200 + 28, '受付 → 完了 は、間の箱の右を回る');
   assert.ok(Math.max(...xs(paths[0])) < 240 + 200, '隣のステータスへの矢印は、まっすぐ下へ');
   const xp = api.viewHtml('process', api.store.state, d('d-order'), {}, { idPrefix: 'xp-proc', bare: true });
-  assert.ok(!/id="map-inner"|[#"]proc-arrow-/.test(xp) && /url\(#xp-proc-arrow-/.test(xp), '書き出しでは id="map-inner" を付けず、印の id の頭を変える');
+  assert.ok(!/id="map-inner"|[#"]proc-arrow-/.test(xp) && /url\(#xp-proc-arrow-/.test(xp), '出力では id="map-inner" を付けず、印の id の頭を変える');
   assert.match(api.viewHtml('process', api.store.state, { items: [] }), /ステータスの項目がまだありません/);
 });
 

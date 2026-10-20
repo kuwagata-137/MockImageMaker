@@ -3,8 +3,8 @@
 //  - 起動ごとに乱数の名前のパイプ（Windows は名前付きパイプ、ほかは Unix ソケット）と合言葉を作って待ち受け、<userData>/automation.json に書く
 //  - つないだ客の最初の 1 行（hello）で合言葉と protocol を確かめる。合言葉が違えば何も返さずに切る
 //  - 頼みは全部の客をまたいで 1 本の列に並べ、1 つずつ onRequest（ページの AI の窓口への橋）に渡し、返事に id を付けて返す
-//  - 1 つの頼みに時間切れを付ける（ふつう 60 秒・isSlow の頼み〔書き出しなど〕は 5 分）
-//  - AI の書き出しを、同じ名前のファイルを上書きせずに書く（writeUnique）
+//  - 1 つの頼みに時間切れを付ける（ふつう 60 秒・isSlow の頼み〔出力など〕は 5 分）
+//  - AI の出力を、同じ名前のファイルを上書きせずに書く（writeUnique）
 // Electron には頼らない（main との結び付けは、後でこのファイルに足す）。やりとりの決まりは automation-protocol.js。
 // 設計は AI設計基盤_設計書.md の 7-3・7-5・8-7。ログは環境変数 MIM_AUTOMATION_LOG=1 のときだけ console.error に出す。
 'use strict';
@@ -286,7 +286,7 @@ function createAutomationServer({
   return { start, stop, clientCount, inflight, clients };
 }
 
-// AI の書き出しを dir に書く。同じ名前のファイルがあれば「名前 (2).拡張子」「名前 (3).拡張子」… にする（上書きしない）。書いた道を返す。
+// AI の出力を dir に書く。同じ名前のファイルがあれば「名前 (2).拡張子」「名前 (3).拡張子」… にする（上書きしない）。書いた道を返す。
 // name はファイルの名前だけ（フォルダの区切りを含む名前は断る。決めたフォルダの外へ書かないため。設計書 8-7）
 async function writeUnique(dir, name, data) {
   if (typeof name !== 'string' || !name || name === '.' || name === '..' || path.basename(name) !== name) {

@@ -1,6 +1,6 @@
 // mcp-server.js — AI の入口（MCP サーバー・stdio）（第 7 段階）
 // AI のアプリ（Claude Code など）が起動する。道具の頼みを名前付きパイプでモックイメージメーカーへ渡し、返事を MCP の形に直して返す。
-// 道具の中身は持たない（ページの「AI の窓口」にある）。手引き（read_guide・resources）だけは、アプリが動いていなくても返す。
+// 道具の中身は持たない（ページの「AI の窓口」にある）。手引き（read_guide・resources）と prompts（第 10 段階の前半）だけは、アプリが動いていなくても返す。
 // 起動のしかた:
 //  - インストールした版: MockImageMaker.exe を環境変数 ELECTRON_RUN_AS_NODE=1 で起動し、resources\app.asar\mcp-server.js を渡す（設計書 12 章）
 //  - 開発版: node mcp-server.js（app.asar の外から動くと開発版とみなす。保存先は npm start と同じ .devdata/userData。MIM_USER_DATA で変えられる）
@@ -14,7 +14,8 @@ const crypto = require('crypto');
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
 const { TOOLS } = require('./mcp-tools');
-const { INSTRUCTIONS, GUIDES } = require('./mcp-guide');
+const { INSTRUCTIONS, GUIDES, PROMPTS } = require('./mcp-guide');
+const { promptArgs } = require('./mcp-schemas');
 const { appTarget, createAppLink } = require('./automation-client');
 const { version } = require('./package.json');
 
@@ -59,6 +60,11 @@ function createServer({ link }) {
     const uri = `mim://guide/${topic}`;
     server.registerResource(`guide-${topic}`, uri, { title: g.title, description: `手引き: ${g.title}（read_guide の "${topic}" と同じ）`, mimeType: 'text/markdown' },
       async () => ({ contents: [{ uri, mimeType: 'text/markdown', text: g.text }] }));
+  }
+  // prompts（設計書の 9-4）。文は mcp-guide.js の PROMPTS にあり、ここでは引数の値を入れた頼みの文を、人の 1 つの文として返すだけ
+  for (const [name, p] of Object.entries(PROMPTS)) {
+    server.registerPrompt(name, { title: p.title, description: p.description, argsSchema: promptArgs(p.args) },
+      async (args) => ({ messages: [{ role: 'user', content: { type: 'text', text: p.text(args) } }] }));
   }
   return server;
 }

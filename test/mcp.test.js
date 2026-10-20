@@ -68,8 +68,8 @@ async function startApp(t, dir, onRequest, opts = {}) {
   return { srv, calls };
 }
 
-test('道具は 30 個（第 9 段階の前半でシステムの 7 個、後半で資料の 3 個を足した）で、説明は日本語。入口の道具は、read_guide のほかはページの AI_TOOLS とぴったり同じ', () => {
-  assert.equal(TOOLS.length, 30);
+test('道具は 33 個（第 9 段階の前半でシステムの 7 個、後半で資料の 3 個、第 10 段階の前半で設計ノートの 3 個を足した）で、説明は日本語。入口の道具は、read_guide のほかはページの AI_TOOLS とぴったり同じ', () => {
+  assert.equal(TOOLS.length, 33);
   for (const t of TOOLS) {
     assert.match(t.name, /^[a-z_]+$/, t.name);
     assert.ok(isJa(t.description) && isJa(t.title), `${t.name} の説明が日本語でない`);
@@ -87,7 +87,7 @@ test('道具は 30 個（第 9 段階の前半でシステムの 7 個、後半�
   assert.deepEqual(TOOLS.filter((t) => t.slow).map((t) => t.name).sort(), [...SLOW_TOOLS].sort());
 });
 
-test('入口の選べる値（機器・表の中身・吹き出しの色と線の先・揃え方・スイムレーンの作業の種類）は、ページの値とそろう', async () => {
+test('入口の選べる値（機器・表の中身・吹き出しの色と線の先・揃え方・スイムレーンの作業の種類・設計ノートの段階と進み具合）は、ページの値とそろう', async () => {
   const app = bootApp();
   const T = await app.api();
   const cat = JSON.parse(JSON.stringify(await T.aiDispatch('get_catalog', {}, {}))).result;
@@ -96,6 +96,8 @@ test('入口の選べる値（機器・表の中身・吹き出しの色と線�
   assert.deepEqual(Object.keys(cat.callout.colors), SC.CALLOUT_COLORS);
   assert.deepEqual(Object.keys(cat.callout.tips), SC.CALLOUT_TIPS);
   assert.deepEqual(JSON.parse(JSON.stringify(T.SWIM_KINDS)), SC.SWIM_KINDS);
+  assert.deepEqual(JSON.parse(JSON.stringify(T.NOTE_STAGES)), SC.NOTE_STAGES);
+  assert.deepEqual(JSON.parse(JSON.stringify(T.NOTE_STATES)), SC.NOTE_STATES);
   app.close();
   const html = fs.readFileSync(path.join(REPO, 'mock_v1.00.html'), 'utf8');
   const align = JSON.parse(html.match(/const AI_ALIGN = (\[[^\]]*\]);/)[1].replace(/'/g, '"'));
@@ -108,12 +110,12 @@ test('アプリがなくても、道具の一覧・read_guide・resources は返
   const app = JSON.stringify([process.execPath, '-e', `require('fs').appendFileSync(${JSON.stringify(marker)}, 'x')`, '--']);
   const client = await openEntry(t, dir, { MIM_APP_CMD: app, MIM_TIMEOUT_MS: '1500' });
   const { tools } = await client.listTools();
-  assert.equal(tools.length, 30);
+  assert.equal(tools.length, 33);
   assert.ok(tools.every((x) => x.inputSchema && x.inputSchema.type === 'object'));
   const g = await call(client, 'read_guide', { topic: 'overview' });
   assert.match(textOf(g), /^# モックイメージメーカーの使い方/);
   const { resources } = await client.listResources();
-  assert.deepEqual(resources.map((r) => r.uri).sort(), ['mim://guide/catalog', 'mim://guide/layout', 'mim://guide/overview', 'mim://guide/rules']);
+  assert.deepEqual(resources.map((r) => r.uri).sort(), ['mim://guide/catalog', 'mim://guide/layout', 'mim://guide/overview', 'mim://guide/rules', 'mim://guide/stages']);
   const rr = await client.readResource({ uri: 'mim://guide/rules' });
   assert.match(rr.contents[0].text, /^# 守ること/);
   assert.equal(fs.existsSync(marker), false, 'まだ起動していない');

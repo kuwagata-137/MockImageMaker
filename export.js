@@ -1,6 +1,6 @@
-// export.js — メインプロセス側の書き出しと取り込み（第 5 段階。PDF の出力は CheckListMaker の main.js を手本にした）
+// export.js — メインプロセス側の出力と取り込み（第 5 段階。PDF の出力は CheckListMaker の main.js を手本にした）
 // 役割:
-//  - HTML の書き出し（export:saveHtml）: 保存の窓 → 書く
+//  - HTML の出力（export:saveHtml）: 保存の窓 → 書く
 //  - PDF（export:pdf）: 保存の窓 → ページ側で組んだ印刷用の HTML を一時ファイルに書き、窓を出さない別の窓で開く
 //    → 字の形が整うのを待つ → printToPDF（用紙の大きさはインチで渡す。余白 0・背景の色も出す）→ 書く → 開く
 //  - PNG（export:png）: 画面ごとの HTML を、画面の外で描く窓（offscreen）で 2 倍の細かさに描いて撮る。
@@ -8,8 +8,8 @@
 //  - HTML の取り込み（export:openHtml）: 開く窓 → 読む（アプリのメニューからも開けるように、ページの input でなく main で開く）
 // 確かめの道具（tools/check-export.js）のため、MIM_HEADLESS=1 のときだけ、環境変数 MIM_EXPORT_DIR があれば窓を出さずにそこへ書き（PDF も開かない）、
 // MIM_IMPORT_FILE があれば開く窓を出さずにそのファイルを読む。
-// ページ側の対になる処理は mock_v*.html の「8. 書き出しと取り込み」。
-// HTML を PDF・PNG にする所は createPageRenderer に分けてあり、AI の書き出しと画面の画像（automation-main.js）でも使う（第 7 段階）。
+// ページ側の対になる処理は mock_v*.html の「8. 出力と取り込み」。
+// HTML を PDF・PNG にする所は createPageRenderer に分けてあり、AI の出力と画面の画像（automation-main.js）でも使う（第 7 段階）。
 'use strict';
 
 const path = require('path');
@@ -34,7 +34,7 @@ function safeName(name, fallback) {
 }
 const errText = (err) => String((err && err.message) || err);
 
-// 印刷用の HTML を PDF・PNG にする（書き出しの窓と、AI の書き出し・画面の画像〔automation-main.js。第 7 段階〕の両方で使う）
+// 印刷用の HTML を PDF・PNG にする（出力の窓と、AI の出力・画面の画像〔automation-main.js。第 7 段階〕の両方で使う）
 function createPageRenderer(app) {
   // HTML を一時ファイルに書き、窓を出さない窓で開いて fn(win) を呼ぶ。終わったら窓と一時ファイルを片付ける
   async function withPageWindow(html, winOpts, fn) {
@@ -122,7 +122,7 @@ function initExport(app, ipcMain, { headless = false, renderer = createPageRende
 
   ipcMain.handle('export:saveHtml', async (e, { name, html }) => {
     try {
-      const file = await askSavePath(e, { title: 'HTML に書き出す', name, ext: 'html', label: 'HTML ファイル' });
+      const file = await askSavePath(e, { title: 'HTML に出力する', name, ext: 'html', label: 'HTML ファイル' });
       if (!file) return { ok: false, canceled: true };
       await fsp.writeFile(file, String(html), 'utf8');
       return { ok: true, path: file };
@@ -133,7 +133,7 @@ function initExport(app, ipcMain, { headless = false, renderer = createPageRende
 
   ipcMain.handle('export:pdf', async (e, { name, html, pageSize, open }) => {
     try {
-      const file = await askSavePath(e, { title: 'PDF に書き出す', name, ext: 'pdf', label: 'PDF' });
+      const file = await askSavePath(e, { title: 'PDF に出力する', name, ext: 'pdf', label: 'PDF' });
       if (!file) return { ok: false, canceled: true };
       const data = await renderer.renderPdf({ html, pageSize });
       await fsp.writeFile(file, data);
@@ -149,13 +149,13 @@ function initExport(app, ipcMain, { headless = false, renderer = createPageRende
 
   ipcMain.handle('export:png', async (e, { files }) => {
     try {
-      if (!Array.isArray(files) || !files.length) return { ok: false, error: '書き出す画面がありません' };
+      if (!Array.isArray(files) || !files.length) return { ok: false, error: '出力する画面がありません' };
       let targets;
       if (fixedDir) {
         await fsp.mkdir(fixedDir, { recursive: true });
         targets = files.map((f) => ({ file: path.join(fixedDir, safeName(f.name, 'screen.png')), page: f }));
       } else if (files.length === 1) {
-        const file = await askSavePath(e, { title: 'PNG に書き出す', name: files[0].name, ext: 'png', label: 'PNG 画像' });
+        const file = await askSavePath(e, { title: 'PNG に出力する', name: files[0].name, ext: 'png', label: 'PNG 画像' });
         if (!file) return { ok: false, canceled: true };
         targets = [{ file, page: files[0] }];
       } else {
@@ -167,7 +167,7 @@ function initExport(app, ipcMain, { headless = false, renderer = createPageRende
         const exists = targets.filter((t) => fs.existsSync(t.file));
         if (exists.length) {
           const ans = await dialog.showMessageBox(winOf(e), {
-            type: 'question', buttons: ['上書きする', 'キャンセル'], defaultId: 1, cancelId: 1, title: 'PNG に書き出す',
+            type: 'question', buttons: ['上書きする', 'キャンセル'], defaultId: 1, cancelId: 1, title: 'PNG に出力する',
             message: `同じ名前のファイルが ${exists.length} つあります。上書きしますか？`,
             detail: exists.slice(0, 10).map((t) => path.basename(t.file)).join('\n') + (exists.length > 10 ? '\n…' : ''),
           });

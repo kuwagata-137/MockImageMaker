@@ -352,7 +352,7 @@ test('画面設計をごみ箱へ移す: システムに入っていれば確か
 test('カードの「…」の「このシステムから外す」: システムのまとまりのカードだけに出る。外しても画面設計は残る。複製はそのシステムに入れる', async (t) => {
   const { api, $, $$, S, sys, cards, item } = await boot(t);
   click($('.card-more[data-id="d-emp"]'));
-  assert.deepEqual($$('.card-menu [role="menuitem"]').map((b) => b.textContent), ['名前の変更', '複製', '書き出す…', 'このシステムから外す', '削除（ごみ箱へ移す）']);
+  assert.deepEqual($$('.card-menu [role="menuitem"]').map((b) => b.textContent), ['名前の変更', '複製', '出力…', 'このシステムから外す', '削除（ごみ箱へ移す）']);
   click($('.card-menu [data-action="remove-from-system"]'));
   assert.deepEqual(sys('y-trip').designIds, ['d-trip', 'd-gone']);
   assert.ok(S().designs.some((x) => x.id === 'd-emp'));
@@ -527,7 +527,7 @@ test('新しい画面設計の窓: システムがないときは「入れるシ
 
 test('ファイルを落とす: 右のシステムのまとまりか、左の一覧のシステムの名前の上に落としたときだけ、そのシステムに入れる。上にいる間は枠を青くする', async (t) => {
   const { app, api, $, $$, S, sys, item } = await boot(t);
-  // 取り込む HTML（一覧にない画面設計を作って書き出し、完全に削除しておく）
+  // 取り込む HTML（一覧にない画面設計を作って出力し、完全に削除しておく）
   const htmlOf = (name) => {
     const id = api.actions.createDesign(name, 'kintone');
     const html = api.buildStandaloneHtml(S().designs.find((x) => x.id === id), S());

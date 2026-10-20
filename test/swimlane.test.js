@@ -169,7 +169,7 @@ test('HTML: 帯と名前の列は SVG の rect（diagramCrop が拾う）。箱�
   assert.match(node('w-7').title, /ステータス: （ないステータス）/);
   // 切り出す範囲は、帯の全体（帯の rect を拾い、map-inner の幅と高さで抑える）
   assert.deepEqual(plain(api.diagramCrop(html)), { x0: 0, y0: 0, cw: 1520, ch: 416 });
-  // 書き出し・AI の画像では、id="map-inner" を付けず、矢印の印の id の頭を変える
+  // 出力・AI の画像では、id="map-inner" を付けず、矢印の印の id の頭を変える
   const xp = api.swimlaneHtml(S(), y, { idPrefix: 'xi-swim', bare: true });
   assert.ok(!/id="map-inner"|[#"]swim-arrow-/.test(xp) && /url\(#xi-swim-arrow-n\)/.test(xp));
 });
@@ -196,7 +196,7 @@ test('ほかの図の矢印も、文字が全部空なら文字の下地を描�
   assert.ok(!/Infinity|NaN/.test(html));
 });
 
-test('書き出しの文と AI の図の画像: 題はシステムの名前、凡例は流れと戻る流れと箱の形。箱と矢印の数を返す', async (t) => {
+test('出力の文と AI の図の画像: 題はシステムの名前、凡例は流れと戻る流れと箱の形。箱と矢印の数を返す', async (t) => {
   const { api, S, sys } = await boot(t);
   assert.equal(api.VIEW_TITLES.swimlane, 'スイムレーン図');
   assert.match(api.VIEW_LEGENDS.swimlane, /流れ.*戻る流れ（差し戻しなど）.*ひし形＝判断/);

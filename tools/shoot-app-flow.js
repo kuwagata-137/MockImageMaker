@@ -120,10 +120,10 @@ module.exports = async function shootFlow(browser, env) {
   await page.waitForSelector('.modal');
   await shot(page, '59_流れ_画面を消す確かめの窓');
   await page.click('.modal [data-dlg="cancel"]');
-  // 101: 書き出しの窓（入れるページに「ステータスの移り方」「画面の移り方」。q59）
+  // 101: 出力の窓（入れるページに「ステータスの移り方」「画面の移り方」。q59）
   await page.click('#toolbar [data-action="export"]');
   await page.waitForSelector('.modal .xp-kinds');
-  await shot(page, '101_流れ_書き出しの窓（入れるページ）');
+  await shot(page, '101_流れ_出力の窓（入れるページ）');
   await page.click('.modal [data-dlg="cancel"]');
   // 102〜104: PDF のページ（印刷用の文書を、用紙の大きさのページごとに撮る）
   for (const [orient, scenes] of [['landscape', { ステータスの移り方: '102_流れ_PDF_ステータスの移り方（A4横）', 画面の移り方: '104_流れ_PDF_画面の移り方（A4横）' }],

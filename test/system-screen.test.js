@@ -98,7 +98,7 @@ async function boot(t, state = sampleState(), sysId = 'y-trip') {
 }
 
 // ── 配置（q62 の案A）──
-test('配置: いちばん上の帯（システムの名前と小さく「（システム）」）・メニューバー（一覧へ・元に戻す・やり直す・選択・接続・削除・拡大・縮小・全体を表示）・左の入口 4 つ・右の欄。最初はスイムレーン図', async (t) => {
+test('配置: いちばん上の帯（システムの名前と小さく「（システム）」）・メニューバー（一覧へ・元に戻す・やり直す・選択・接続・削除・拡大・縮小・全体を表示）・左の入口 5 つ（資料の窓口がないとき）・右の欄。最初はスイムレーン図', async (t) => {
   const { $, $$, api, entries } = await boot(t);
   assert.equal($('.brandbar .brand').textContent, 'モックイメージメーカー');
   assert.equal($('#sys-title').textContent, '出張申請システム（システム）');
@@ -111,7 +111,7 @@ test('配置: いちばん上の帯（システムの名前と小さく「（シ
   assert.equal($('#toolbar [data-action="undo"]').disabled, true);
   assert.equal($('#toolbar [data-action="redo"]').disabled, true);
   // 左の入口（数）。履歴は「AI が直す前の状態」の行の数
-  assert.deepEqual(entries(), [['概要', '名前と説明', false], ['役割', '3 つ', false], ['スイムレーン図', '作業 8 つ', true], ['履歴', 'AI が直す前の状態 1', false]]);
+  assert.deepEqual(entries(), [['概要', '名前と説明', false], ['役割', '3 つ', false], ['スイムレーン図', '作業 8 つ', true], ['設計ノート', 'まだ始めていません', false], ['履歴', 'AI が直す前の状態 1', false]]);
   assert.equal(api.ui.sysPanel, 'swimlane');
   assert.equal($('#sys-list').classList.contains('screen-list'), true, '左の欄は編集の画面と同じ幅（192）');
   assert.ok($('#sys-side-panel.side-panel'), '右の欄は編集の画面と同じ幅');
@@ -120,19 +120,19 @@ test('配置: いちばん上の帯（システムの名前と小さく「（シ
 
 test('左の入口の小さな字: 役割・作業・履歴の行がないとき', async (t) => {
   const { api, entries } = await boot(t, sampleState(), 'y-exp');
-  assert.deepEqual(entries(), [['概要', '名前と説明', false], ['役割', 'まだありません', false], ['スイムレーン図', '作業なし', true], ['履歴', 'まだありません', false]]);
+  assert.deepEqual(entries(), [['概要', '名前と説明', false], ['役割', 'まだありません', false], ['スイムレーン図', '作業なし', true], ['設計ノート', 'まだ始めていません', false], ['履歴', 'まだありません', false]]);
   // 戻す前の状態の行だけがあるとき
   api.actions.addRole('y-exp', '申請者');
   api.store.state.systems[1].revisions.push({ id: 'r-x', kind: 'restore', date: OLD, note: '', snapshot: null });
   api.renderSystem();
-  assert.deepEqual(entries()[3], ['履歴', '戻す前の状態 1', false]);
+  assert.deepEqual(entries()[4], ['履歴', '戻す前の状態 1', false]);
 });
 
 test('入口を押すと真ん中を切り替える。最後に開いた入口は、同じアプリの間はシステムごとに覚える（保存データには入れない）', async (t) => {
   const { app, api, $, entry, entries, S } = await boot(t);
   click(entry('roles'));
   assert.equal(api.ui.sysPanel, 'roles');
-  assert.deepEqual(entries().map((e) => e[2]), [false, true, false, false]);
+  assert.deepEqual(entries().map((e) => e[2]), [false, true, false, false, false]);
   assert.match($('#sys-view h3').textContent, /^役割（出張申請システム）$/);
   click(entry('overview'));
   assert.match($('#sys-view h3').textContent, /^概要（出張申請システム）$/);
@@ -613,7 +613,7 @@ test('AI がこのシステムだけを直したら、紫の帯と「元に戻�
   assert.ok($('#ai-band [data-action="undo"]'));
   assert.equal(api.ui.sysPanel, 'roles');
   assert.deepEqual(entries()[1], ['役割', '4 つ', true]);
-  assert.deepEqual(entries()[3], ['履歴', 'AI が直す前の状態 2', false]);
+  assert.deepEqual(entries()[4], ['履歴', 'AI が直す前の状態 2', false]);
   assert.equal(roleRows($), 4);
   click($('#ai-band [data-action="undo"]'));
   assert.equal(sys().roles.length, 3);

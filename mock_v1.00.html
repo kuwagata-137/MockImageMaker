@@ -257,7 +257,7 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .pbox.calc{background:#f1f5f9;border-style:dashed}
 .pval{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .pbox .pr{margin-left:auto;color:#475569;font-size:13px;flex-shrink:0}
-/* ルックアップの印（画像 q22）: 項目名の後ろの黄色い札、探す項目の「取得」、一緒に写される項目の灰色の入力欄。書き出しにも出す */
+/* ルックアップの印（画像 q22）: 項目名の後ろの黄色い札、探す項目の「取得」、一緒に写される項目の灰色の入力欄。出力にも出す */
 .reftag{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;border-radius:4px;padding:0 5px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;line-height:1.6;flex-shrink:0}
 .pbox .pget{margin-left:auto;margin-right:-10px;align-self:stretch;display:flex;align-items:center;gap:3px;padding:0 10px;border-left:1px solid #94a3b8;background:#f8fafc;font-size:12px;color:#1d4ed8;font-weight:600;flex-shrink:0}
 .pbox.copied{background:#f1f5f9;color:#64748b}
@@ -493,7 +493,7 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 .pick-none{color:#64748b;font-size:12.5px;padding:14px 4px}
 .pick-note{margin-top:12px;border:1px solid #86efac;background:#f0fdf4;color:#166534;border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.7}
 body.sorting,body.sorting *{cursor:grabbing!important}
-/* 部品や項目に付ける小さな札（編集の画面だけ。ルックアップの札は書き出しにも出す） */
+/* 部品や項目に付ける小さな札（編集の画面だけ。ルックアップの札は出力にも出す） */
 .tag{display:inline-block;font-size:10.5px;font-weight:700;border-radius:4px;padding:0 5px;white-space:nowrap;line-height:1.6;vertical-align:middle}
 .tag.link{background:#dcfce7;color:#166534;border:1px solid #86efac}
 .tag.lost,.tag.gone{background:#f1f5f9;color:#475569;border:1px solid #94a3b8}
@@ -687,6 +687,53 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .mat-memo::placeholder{color:#94a3b8}
 .mat-ops{display:flex;flex-wrap:wrap;gap:4px}
 .mat-ops .btn.small{padding:4px 8px}
+/* 設計ノートの入口（第 10 段階の前半。画像 k75〔q75 の案B「段階ごとの札」と q78 の案A「人も変えられる」〕）: 段階ごとの札（選んだ札は濃い紺）・
+   札の下の欄（この段階の進み具合のボタン・読み取ったこと・まだ決まっていないことと決めたことと理由の表）・札の外の下のメモ。
+   札とボタンの色: 確認済み＝緑・確認待ち＝オレンジ・作業中＝青・まだ＝灰色・確認を飛ばした＝灰色の点線の枠。札・ボタンの文字は言葉の途中で改行させない */
+.nt-tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:2px solid #1d3f6e;margin-top:6px}
+.nt-tab{border:1px solid #cbd5e1;border-bottom:none;border-radius:8px 8px 0 0;padding:7px 12px;background:#f8fafc;font-size:12.5px;white-space:nowrap;color:#334155;cursor:pointer}
+.nt-tab:hover{background:#eef2f7}
+.nt-tab i{font-style:normal;margin-left:6px;font-weight:700}
+.nt-tab.done i{color:#16a34a}
+.nt-tab.review i{color:#d97706}
+/* 作業中の ▶ は、字の形がほかの印より大きいので小さくする */
+.nt-tab.doing i{color:#2563eb;font-size:9px}
+.nt-tab.todo i,.nt-tab.skipped i{color:#94a3b8}
+/* 確認を飛ばした札は点線の枠（下の辺は、札の下の線とつながるように付けないまま） */
+.nt-tab.skipped{border-style:dashed dashed none}
+.nt-tab.on{background:#1d3f6e;color:#fff;border-color:#1d3f6e;font-weight:700}
+.nt-tab.on i{color:#fde68a}
+.nt-tabbody{border:1px solid #cbd5e1;border-top:none;border-radius:0 0 8px 8px;padding:12px 14px 14px;background:#fff}
+.nt-state{display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:12.5px;color:#475569}
+.nt-pill{border-radius:999px;padding:2px 10px;font-weight:700;font-size:12px;white-space:nowrap;cursor:pointer;border:1.5px solid #cbd5e1;background:#f8fafc;color:#64748b}
+.nt-pill.review{background:#fffbeb;color:#92400e;border-color:#f59e0b}
+.nt-pill.done{background:#f0fdf4;color:#166534;border-color:#16a34a}
+.nt-pill.doing{background:#eff6ff;color:#1d4ed8;border-color:#2563eb}
+.nt-pill.skipped{border-style:dashed}
+.pop-menu.nt-menu{min-width:300px}
+.nt-sec{margin-top:18px}
+.nt-sec h4{font-size:14px;color:#0f172a;margin-bottom:6px;display:flex;align-items:baseline;gap:8px}
+.nt-sec h4 small{font-weight:400;color:#64748b;font-size:12px}
+.itable .nt-tbl{font-size:12.5px;background:#fff;table-layout:fixed}
+.itable .nt-tbl th{background:#f1f5f9;border-color:#e2e8f0;padding:6px 8px;font-weight:600}
+.itable .nt-tbl td{padding:4px 6px;border-color:#e2e8f0;vertical-align:middle}
+.itable .nt-tbl td.nw{white-space:nowrap;color:#475569}
+/* 行の文字の欄は 1 行の textarea（rows="1"）。高さは中身に合わせ（field-sizing:content。長い文は列の幅で折り返して行が高くなり、改行も残る）、
+   1 行の文は 1 行の欄（input）と同じ見た目（高さ・枠・余白）にする（終わりの見直し A の Important 1・Minor 1）。Enter は改行（ほかの textarea と同じ） */
+.nt-tbl textarea{display:block;width:100%;border:1px solid #cbd5e1;border-radius:5px;padding:4px 6px;font:inherit;background:#fff;color:#0f172a;resize:none;overflow:hidden;field-sizing:content}
+/* field-sizing が使えないブラウザでは 1 行の高さのままなので、欄の中を送れるようにする */
+@supports not (field-sizing:content){.nt-tbl textarea{overflow:auto}}
+.nt-tbl textarea::placeholder{color:#94a3b8}
+.itable .nt-tbl tr.resolved td{color:#94a3b8;background:#f8fafc}
+.nt-tbl tr.resolved textarea{color:#94a3b8;background:#f8fafc;border-color:#e2e8f0}
+.nt-tbl td.nt-end{text-align:center;white-space:nowrap}
+/* 決まった行の「10/19 に決まった」は灰色の太字（緑は札の「確認済み」の色なので使わない） */
+.nt-tbl .ok{color:#64748b;font-weight:700;margin-right:4px}
+.nt-stg{display:inline-block;min-width:24px;text-align:center;border-radius:5px;background:#e8eef6;color:#1d3f6e;font-weight:700;padding:0 4px}
+.nt-add{margin-top:6px}
+.nt-text{display:block;width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;font:inherit;font-size:12.5px;line-height:1.7;resize:vertical;background:#fff}
+.nt-findings{height:118px}
+.nt-memo{height:52px}
 /* 「読む」の窓（画像 q67_3）: 黄色の帯（断り書き）・文の欄（改行を保ち、スクロールする。「── 1 ページ ──」のような見出しの行は灰色の太字）・画像。
    置き換えの確かめの窓（q67_4）の資料の名前は、収まるときは 1 行のまま出す */
 .rd-warn{background:#fef9c3;border:1px solid #eab308;border-radius:7px;color:#713f12;font-size:12.5px;font-weight:600;padding:7px 10px;margin-bottom:10px}
@@ -698,8 +745,8 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .rd-foot{margin-top:8px}
 .rp-name{display:inline-block;max-width:100%;overflow-wrap:anywhere}
 .sys-step{border:1px solid #e2e8f0;border-radius:7px;background:#f8fafc;padding:8px 10px;margin-bottom:10px;font-size:12.5px;line-height:1.6;overflow-wrap:anywhere}
-/* ── 書き出しと取り込み（第 5 段階）───────────────────────────── */
-/* 書き出しの窓（画像 q33） */
+/* ── 出力と取り込み（第 5 段階）───────────────────────────── */
+/* 出力の窓（画像 q33） */
 .xp-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
 .xp-kind{border:1.5px solid #cbd5e1;border-radius:9px;padding:10px 12px;background:#fff;text-align:left;cursor:pointer}
 .xp-kind b{display:flex;align-items:center;gap:6px;font-size:14px;color:#0f172a}
@@ -887,11 +934,11 @@ body.xp-doc{display:block;height:auto;overflow:visible;background:#fff;-webkit-p
 body.xp-doc .pg{box-shadow:none}
 body.xp-doc .pg+.pg{break-before:page}
 .xp-png{background:#fff;position:relative}
-/* ブラウザの印刷（q38）。アプリの画面の代わりに案内の文だけを出す（PDF・PNG はデスクトップ版の「書き出す」で作る） */
+/* ブラウザの印刷（q38）。アプリの画面の代わりに案内の文だけを出す（PDF・PNG はデスクトップ版の「出力」で作る） */
 @media print{
   body:not(.xp-doc){display:block;height:auto;overflow:visible;background:#fff}
   body:not(.xp-doc)>*{display:none!important}
-  body:not(.xp-doc)::before{content:'この画面は印刷できません。PDF は、デスクトップ版のモックイメージメーカーの「書き出す」で作ります（HTML を受け取った人は、画面設計を作った人に PDF を頼んでください）。';display:block;padding:24px;font-size:14px;line-height:1.8;color:#1e293b}
+  body:not(.xp-doc)::before{content:'この画面は印刷できません。PDF は、デスクトップ版のモックイメージメーカーの「出力」で作ります（HTML を受け取った人は、画面設計を作った人に PDF を頼んでください）。';display:block;padding:24px;font-size:14px;line-height:1.8;color:#1e293b}
 }
 </style>
 </head>
@@ -914,7 +961,7 @@ body.xp-doc .pg+.pg{break-before:page}
 //                              入れる窓。第 9 段階）・システムの画面（第 9 段階）
 //   7. 編集の画面            … メニューバー・画面の一覧・画面（帯・マス目・高さ）・部品の箱・設定の欄・拡大縮小・ハンド・
 //                              部品のドラッグ（置く・動かす・大きさ）・コピーと貼り付け
-//   8. 書き出しと取り込み    … 書き出しの窓（PDF・HTML・PNG）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面）・
+//   8. 出力と取り込み        … 出力の窓（PDF・HTML・PNG）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面）・
 //                              単体で開いて編集できる HTML（埋め込み・保存し直す）・HTML の取り込み（確かめの窓）
 //   9. 命令（runCommand）    … ボタン・キー・アプリのメニューからの命令を 1 か所で受ける
 //  10. AI の窓口            … AI（Claude Code など）の頼みを受けて実行する（第 7 段階。AI設計基盤_設計書.md の 8・9 章）
@@ -926,7 +973,7 @@ body.xp-doc .pg+.pg{break-before:page}
 
 // ── 1. 版 ─────────────────────────────────────────────────────────────────────
 const APP_VERSION = '1.00';
-// 書き出す HTML（単体で開いて編集できる HTML）の材料にする、このアプリの script の文字。
+// 出力する HTML（単体で開いて編集できる HTML）の材料にする、このアプリの script の文字。
 // document.currentScript は script を実行している間しか取れないので、いちばん初めに取っておく（style の文字は起動のときに取る）
 const APP_SCRIPT = document.currentScript ? document.currentScript.textContent : '';
 
@@ -1161,7 +1208,7 @@ function clearDesignRefs(state, designId) {
     if (hasMoveTarget(p) && p.props.designId === designId) Object.assign(p.props, { designId: '', screenId: '' });
   })));
 }
-// 移る先の画面設計の名前と画面（{ name, screens }）。単体で開いた HTML では、書き出したときに入れた screenPeers から引く
+// 移る先の画面設計の名前と画面（{ name, screens }）。単体で開いた HTML では、出力したときに入れた screenPeers から引く
 function screenOwner(state, designId) {
   return findDesign(state, designId) || (standalone && standalone.screenPeers.find((p) => p.id === designId)) || null;
 }
@@ -1175,7 +1222,7 @@ function moveTargetText(ctx, pr) {
   if (!s) return '（ない画面）';
   return (own ? '' : `${owner.name} ／ `) + `${s.name}の画面`;
 }
-// 書き出す HTML に入れる、移る先のほかの画面設計（この画面設計のボタン・リンクの文字が指す画面設計と、この画面設計の画面を指す
+// 出力する HTML に入れる、移る先のほかの画面設計（この画面設計のボタン・リンクの文字が指す画面設計と、この画面設計の画面を指す
 // ボタン・リンクの文字のある画面設計〔ごみ箱にないもの〕）。名前・画面の名前と、入ってくる移る先（from: 相手の画面・to: この画面設計の画面）だけを入れる。
 // 指す先の画面設計がごみ箱にあるときは trashed の印を付ける（設定の文には名前を出し、図と移る先の選択肢には出さない。アプリと同じ）。
 // つながりの図の peers とは分ける（つながりの図に箱を増やさないため）
@@ -1866,7 +1913,7 @@ function minScreenHeight(screen) {
 //   kind: 'revision'（改訂する。no に版の番号）・'import'（取り込む前の状態）・'restore'（戻す前の状態）・'ai'（AI が直す前の状態。第 7 段階）。
 //     自動の行（import・restore・ai）の no は null。
 //   snapshot: revisions を除いた画面設計の写し。ほかのモックから取り込んだ項目も、そのときの中身のまま写る（後で元が変わっても、前の版の中身は変わらない）。
-//     書き出した HTML には写しを入れないので、HTML から足した画面設計の行には写しがない（見る・戻すができない）。
+//     出力した HTML には写しを入れないので、HTML から足した画面設計の行には写しがない（見る・戻すができない）。
 //   changes: 改訂したときに、ひとつ前の版（第 baseNo 版）と比べて作った変更内容の一覧（designDiff の rows）。第 1 版と、前の版の写しがないときは null
 const REV_AUTO = { import: '取り込む前の状態', restore: '戻す前の状態', ai: 'AI が直す前の状態' };
 const isVersionRow = (r) => isObj(r) && r.kind === 'revision' && Number.isInteger(r.no);
@@ -2185,7 +2232,7 @@ function normalizePart(src, items = []) {
   return withStateView({ ...common, itemId, ...fields, lookup: isInputType(itemType) ? normalizeLookup(p.lookup) : null, link: normalizeLink(p.link) }, fields.props);
 }
 // ステータスの印・進み具合の矢印の、見本で出すステータス（view.current）を、ステータスの id にそろえる（データの形の版 2 では名前で持っていた）。
-// 並びにない値は消さずに残す（版 2 で並びの名前を変えた後に残った名前。版 2 の書き出しの印と比べるときに、中身が変わらないように）
+// 並びにない値は消さずに残す（版 2 で並びの名前を変えた後に残った名前。版 2 の出力の印と比べるときに、中身が変わらないように）
 function withStateView(part, props) {
   if (!part.view || !('current' in part.view) || !isObj(props) || !Array.isArray(props.states)) return part;
   return { ...part, view: { ...part.view, current: resolveStateRef(props.states, part.view.current) || part.view.current } };
@@ -2231,7 +2278,7 @@ function normalizeItemProps(type, src) {
 // ── ステータスと操作（プロセス管理。データの形の版 3・第 8 段階）──
 // ステータスは { id, name }。操作は { id, name, from, to, role, cond }（from・to はステータスの id。role は操作する人、cond は条件）。
 // データの形の版 2 の文字のステータスには、名前から id を作る（毎回同じ id になるように。改訂履歴の版 2 の写しと今を比べるとき・
-// 版 2 で書き出した HTML を取り込むとき・取り込んだ項目で、同じステータスが同じ id になる）。同じ名前の 2 つ目からは「-2」「-3」を付ける。
+// 版 2 で出力した HTML を取り込むとき・取り込んだ項目で、同じステータスが同じ id になる）。同じ名前の 2 つ目からは「-2」「-3」を付ける。
 // 版 3 で新しく足すステータスは newId('t')、操作は newId('a')
 function stateIdFromName(name, seen) {
   const base = 't-' + shortHash(name);
@@ -2438,7 +2485,7 @@ function syncLinkedItems(state) {
       const srcDesign = designs.get(it.link.designId);
       const src = srcDesign ? findItem(srcDesign, it.link.itemId) : null;
       if (!src || src === it) {
-        // 単体で開いた HTML には、元の画面設計が入っていない。「元なし」にせず、書き出したときの中身とつながりのまま残す
+        // 単体で開いた HTML には、元の画面設計が入っていない。「元なし」にせず、出力したときの中身とつながりのまま残す
         // （直して返してもらった HTML を取り込んだときに、一覧にある元とつなぎ直すため）
         if (!srcDesign && standalone) return;
         if (!it.link.lost) { it.link.lost = true; changed = true; }
@@ -2745,7 +2792,7 @@ function normalizeMapPos(src) {
 // いくつかの画面設計をまとめる入れ物（例: 出張申請システム）。{ id（y-）, name, description, createdAt, updatedAt, trashedAt,
 //   designIds（入れている画面設計の id。並び順が表示の順）, roles: [{ id（l-）, name, memo }]（並び順がスイムレーンのレーンの順）,
 //   swimlane: { steps: [{ id（w-）, roleId, col, kind, text, memo, ref: { designId, screenId, stateId }, src（BDM の箱。normalizeStep）}], edges: [{ id（e-）, from, to, label }] },
-//   materials（資料。行の形は下の normalizeMaterial）, notes（設計ノート。中身は第 10 段階）}。
+//   materials（資料。行の形は下の normalizeMaterial）, notes（設計ノート。形は下の normalizeNotes）}。
 // 1 つの画面設計を 2 つ以上のシステムに入れられる（案B）。どのシステムに入っているかは、システムの designIds だけに持つ（画面設計の側には持たない）。
 // 画面設計をごみ箱へ移しても designIds からは外さない（戻したときに元のシステムに戻るように）。完全に削除したときに、全部のシステムから外す
 const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end']; // 始まり・作業・システムへの入力・判断・書類・終わり
@@ -2757,7 +2804,7 @@ const MATERIAL_KIND_NAMES = { text: '文字', image: '画像', pdf: 'PDF', word:
 function createSystemData({ name, description = '' } = {}, now = nowIso()) {
   return {
     id: newId('y'), name, description, createdAt: now, updatedAt: now, trashedAt: null,
-    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: {}, revisions: [],
+    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: normalizeNotes({}), revisions: [],
   };
 }
 // 役割の並び。名前のない役割は「名前なし」。id の重なりを直す。知らない欄は残す
@@ -2826,6 +2873,53 @@ function normalizeMaterial(m) {
 const normalizeMaterials = (list) => uniqueIds((Array.isArray(list) ? list : []).filter(isObj).map(normalizeMaterial), 'm');
 // 古い形（.doc・.xls）のファイルの資料か（中身を読めない）。行には持たず、保存したファイルの名前の拡張子で見る
 const isLegacyMaterial = (row) => isObj(row) && /\.(doc|xls)$/i.test(str(row.file));
+// 設計ノート（第 10 段階。設計書の 5-3・10 章）。AI が資料からシステムを作るときの 5 つの段階の進み具合と、読み取ったこと・決めたことと理由・
+// まだ決まっていないこと・メモを、システムごとに持つ。{ stages: { read・flow・items・screens・docs: { state, confirmedAt } }, findings,
+//   decisions: [{ id（nd-）, date, stage, text, reason }], questions: [{ id（nq-）, date, stage, text, answer, resolvedAt }], memo }。
+// システムの履歴の写しには入れない（SYSTEM_CONTENT_KEYS）。データの形の版は 3 のまま（読み込みで足りない欄を補う）
+const NOTE_STAGES = ['read', 'flow', 'items', 'screens', 'docs']; // 段階の鍵と順
+const NOTE_STAGE_NAMES = { read: '① 資料から読み取る', flow: '② 業務の流れ', items: '③ データベースの項目', screens: '④ 画面', docs: '⑤ 説明書と出力' };
+// 段階の進み具合: まだ・作業中・確認待ち・確認済み・確認を飛ばした（人の指示で）。名前の表は、AI の断りの文と設計ノートの画面が使う
+const NOTE_STATES = ['todo', 'doing', 'review', 'done', 'skipped'];
+const NOTE_STATE_NAMES = { todo: 'まだ', doing: '作業中', review: '確認待ち', done: '確認済み', skipped: '確認を飛ばした' };
+// 「読み取ったこと」「メモ」の 1 つの長さの上限（人の欄の長さと、AI が断る長さ）。行（決めたこと・まだ決まっていないこと）の文には設けない
+const NOTE_TEXT_MAX = 8000;
+// 段階 1 つ。知らない進み具合は todo。confirmedAt は空でない文字だけ残し、ほかは null（trashedAt と同じ。読み込みでは付け直さない）。知らない欄は残す
+function normalizeNoteStage(src) {
+  const s = isObj(src) ? src : {};
+  return { ...s, state: NOTE_STATES.includes(s.state) ? s.state : 'todo', confirmedAt: str(s.confirmedAt) || null };
+}
+// 段階の入れ物。5 つの鍵を決まった順に必ず持たせる。知らない段階の鍵は、直さずに後ろへ残す（消さない）
+function normalizeNoteStages(src) {
+  const st = isObj(src) ? src : {};
+  const out = {};
+  NOTE_STAGES.forEach((k) => { out[k] = normalizeNoteStage(st[k]); });
+  Object.keys(st).forEach((k) => { if (!NOTE_STAGES.includes(k)) out[k] = st[k]; });
+  return out;
+}
+// 行（決めたこと・まだ決まっていないこと）。id がなければ付け、文字の欄は文字にする。知らない欄と知らない段階の行は残す
+const normalizeNoteDecision = (r) => ({ ...r, id: str(r.id) || newId('nd'), date: str(r.date), stage: str(r.stage), text: str(r.text), reason: str(r.reason) });
+const normalizeNoteQuestion = (r) => ({
+  ...r, id: str(r.id) || newId('nq'), date: str(r.date), stage: str(r.stage), text: str(r.text),
+  answer: str(r.answer), resolvedAt: str(r.resolvedAt) || null,
+});
+// まだ決まっていないことの行が「決まった」か: 答え（前後の空白を除く）が空でない行。解決の日時（resolvedAt）では見分けない
+// （読み込んだデータで、答えがあるのに resolvedAt が null の行があるため）。画面の表と、AI の set_stage の warnings で使う（終わりの見直し A の Minor 2）
+const noteQuestionDecided = (q) => str(q.answer).trim() !== '';
+// 行の並び。オブジェクトでない行は外し、id の重なりを直す（片方を消すと両方消えるのを防ぐため）
+const noteRows = (list, normalizeRow, prefix) => uniqueIds((Array.isArray(list) ? list : []).filter(isObj).map(normalizeRow), prefix);
+// 設計ノートを読み込める形に直す。オブジェクトでなければ既定の形（5 つの段階が todo・文と行は空）。読み取ったこと・メモの長さは読み込みでは切らない。知らない欄は残す
+function normalizeNotes(raw) {
+  const n = isObj(raw) ? raw : {};
+  return {
+    ...n,
+    stages: normalizeNoteStages(n.stages),
+    findings: str(n.findings),
+    decisions: noteRows(n.decisions, normalizeNoteDecision, 'nd'),
+    questions: noteRows(n.questions, normalizeNoteQuestion, 'nq'),
+    memo: str(n.memo),
+  };
+}
 // システム 1 つを読み込める形に直す。designIds は state にある画面設計（ごみ箱のものも含む）の id だけを、重ねずに残す。知らない欄は残す
 function normalizeSystem(raw, designIds) {
   const y = isObj(raw) ? raw : {};
@@ -2843,7 +2937,7 @@ function normalizeSystem(raw, designIds) {
     roles: normalizeRoles(y.roles),
     swimlane: normalizeSwimlane(y.swimlane),
     materials: normalizeMaterials(y.materials),
-    notes: isObj(y.notes) ? y.notes : {},
+    notes: normalizeNotes(y.notes),
     // 履歴の行の id が重なっていれば、2 つ目からは新しい id にする（どの行に戻すかを id で決めるため）
     revisions: uniqueIds((Array.isArray(y.revisions) ? y.revisions : []).filter(isObj).map(normalizeSystemRevision), 'r'),
   };
@@ -3310,6 +3404,30 @@ function mutateSystem(id, fn, { touch = true } = {}) {
   });
   return true;
 }
+// ── 設計ノートの操作の下請け（第 10 段階。actions の setNote…・editNote…・removeNote… が使う）。どれも、変わらないとき・直せないときは false ──
+// 読み取ったこと・メモ（key は 'findings'・'memo'）。前後の空白と改行はそのまま入れ、NOTE_TEXT_MAX を超える分は切る
+function setNoteText(sysId, key, text) {
+  const y = editableSystem(sysId);
+  const next = str(text).slice(0, NOTE_TEXT_MAX);
+  if (!y || y.notes[key] === next) return false;
+  return mutateSystem(sysId, (yy) => { yy.notes[key] = next; });
+}
+// 行（listKey は 'decisions'・'questions'）の欄を直す。書いた欄（fields のうち patch にあるもの）だけ変える。
+// stage を書いたときは NOTE_STAGES の値だけ受ける（知らない段階は、今と同じ値でも断る）。文は前後の空白を取らずにそのまま入れる
+function editNoteRow(sysId, listKey, rowId, patch, fields) {
+  const y = editableSystem(sysId);
+  const row = y && isObj(patch) ? y.notes[listKey].find((r) => r.id === rowId) : null;
+  if (!row || ('stage' in patch && !NOTE_STAGES.includes(patch.stage))) return false;
+  const next = {};
+  fields.forEach((k) => { if (k in patch) next[k] = str(patch[k]); });
+  if (Object.keys(next).every((k) => row[k] === next[k])) return false;
+  return mutateSystem(sysId, (yy) => { Object.assign(yy.notes[listKey].find((r) => r.id === rowId), next); });
+}
+function removeNoteRow(sysId, listKey, rowId) {
+  const y = editableSystem(sysId);
+  if (!y || !y.notes[listKey].some((r) => r.id === rowId)) return false;
+  return mutateSystem(sysId, (yy) => { yy.notes[listKey] = yy.notes[listKey].filter((r) => r.id !== rowId); });
+}
 // ── BDM の案からスイムレーン図を作る（第 9 段階の後半。actions.swimlaneFromPlan が使う）──
 // 案（plan）は資料の窓口の bdmPlan の返事 { roles: [名前], steps: [{ key, role, col, kind, text, memo, src }], edges: [{ from, to, label }] }。
 // 役割の名前は、名前と同じく前後の空白を取り、続く空白を 1 つにして比べる（cleanName）。名前のない役割は「名前なし」（読み込むときと同じ）
@@ -3676,6 +3794,54 @@ const actions = {
     if (!y || !y.materials.some((m) => m.id === matId)) return false;
     return mutateSystem(sysId, (yy) => { yy.materials = yy.materials.filter((m) => m.id !== matId); });
   },
+  // ── 設計ノート（第 10 段階。設計書の 5-3。形は normalizeNotes）──
+  // 段階の進み具合を変える。done・skipped に変わったときだけ確認の日時（confirmedAt）を入れ（done ↔ skipped も、変わったので入れ直す）、
+  // ほかの進み具合に変わったら null にする。知らない段階・進み具合・今と同じ進み具合のときは何も変えず false
+  setNoteStage(sysId, stage, state) {
+    const y = editableSystem(sysId);
+    if (!y || !NOTE_STAGES.includes(stage) || !NOTE_STATES.includes(state) || y.notes.stages[stage].state === state) return false;
+    return mutateSystem(sysId, (yy) => {
+      const st = yy.notes.stages[stage];
+      st.state = state;
+      st.confirmedAt = state === 'done' || state === 'skipped' ? nowIso() : null;
+    });
+  },
+  // ① で資料から読み取ったこと・メモ。前後の空白と改行はそのまま入れ、NOTE_TEXT_MAX を超える分は切る
+  setNoteFindings(sysId, text) { return setNoteText(sysId, 'findings', text); },
+  setNoteMemo(sysId, text) { return setNoteText(sysId, 'memo', text); },
+  // 決めたことと理由の行を足す。spec は { stage, text, reason }（stage は NOTE_STAGES の値。文は省ける）。日付は今日。戻り値は行の id（足せなければ null）
+  addNoteDecision(sysId, spec = {}) {
+    if (!editableSystem(sysId) || !isObj(spec) || !NOTE_STAGES.includes(spec.stage)) return null;
+    const row = { id: newId('nd'), date: todayDay(), stage: spec.stage, text: str(spec.text), reason: str(spec.reason) };
+    mutateSystem(sysId, (yy) => { yy.notes.decisions.push(row); });
+    return row.id;
+  },
+  // 決めたことの行を直す。patch は { stage, text, reason } のどれか（書いた欄だけ変える）
+  editNoteDecision(sysId, rowId, patch = {}) { return editNoteRow(sysId, 'decisions', rowId, patch, ['stage', 'text', 'reason']); },
+  removeNoteDecision(sysId, rowId) { return removeNoteRow(sysId, 'decisions', rowId); },
+  // まだ決まっていないことの行を足す。spec は { stage, text }。答えは空・解決の日時は null。戻り値は行の id（足せなければ null）
+  addNoteQuestion(sysId, spec = {}) {
+    if (!editableSystem(sysId) || !isObj(spec) || !NOTE_STAGES.includes(spec.stage)) return null;
+    const row = { id: newId('nq'), date: todayDay(), stage: spec.stage, text: str(spec.text), answer: '', resolvedAt: null };
+    mutateSystem(sysId, (yy) => { yy.notes.questions.push(row); });
+    return row.id;
+  },
+  // まだ決まっていないことの行を直す。patch は { stage, text }（答えは answerNoteQuestion で変える）
+  editNoteQuestion(sysId, rowId, patch = {}) { return editNoteRow(sysId, 'questions', rowId, patch, ['stage', 'text']); },
+  // 答えを入れる。前後の空白を取って空でなければ、解決の日時（resolvedAt）を入れる。すでに入っているときは、答えだけを変えても付け直さない。空にしたら null
+  answerNoteQuestion(sysId, rowId, answer) {
+    const y = editableSystem(sysId);
+    const q = y ? y.notes.questions.find((r) => r.id === rowId) : null;
+    const next = str(answer);
+    if (!q || q.answer === next) return false;
+    return mutateSystem(sysId, (yy) => {
+      const r = yy.notes.questions.find((x) => x.id === rowId);
+      r.answer = next;
+      if (!next.trim()) r.resolvedAt = null;
+      else if (!r.resolvedAt) r.resolvedAt = nowIso();
+    });
+  },
+  removeNoteQuestion(sysId, rowId) { return removeNoteRow(sysId, 'questions', rowId); },
   // システムの履歴の行（AI が直す前の状態・戻す前の状態）の中身に戻す（q65。人がシステムの画面の「履歴」から戻す。AI の道具はない）。
   // 今の中身を「戻す前の状態」の行に残してから、写しの中身（名前・説明・役割・スイムレーン・画面設計の並び）で置き換える。
   // 写しにあって今ない画面設計は外し、作業の指す先も今の中身で検める（systemFromSnapshot）。1 回の変更なので、元に戻す 1 回で戻る。
@@ -4483,7 +4649,7 @@ function targetChip(target) {
 }
 
 // 画面を、編集の画面と同じ HTML で描く（縮小画像にも使う）。selectedId の部品には、選んだ印と縁のつまみを付ける。
-// marks のとき（編集の画面）は、項目を消した後に残った部品などに小さな札を付ける（書き出しと縮小画像には付けない）
+// marks のとき（編集の画面）は、項目を消した後に残った部品などに小さな札を付ける（出力と縮小画像には付けない）
 // selected（部品の id の Set）を渡すと、それらに選んだ印を付ける。縁のつまみは gripId の部品だけ（1 つだけ選んだとき）
 // diff（designDiff の screens の 1 つ）を渡すと、前の版から足した・変えた部品の右上に「新」「変」の札を付ける
 function screenHtml(design, screen, { grid = false, height = screen.height, selectedId = null, selected = null, gripId = selectedId, marks = false, diff = null } = {}) {
@@ -4743,7 +4909,7 @@ function partFieldHtml(p, t) {
 }
 
 // 部品の設定の一覧表。editor のときは、行を押すとその部品を選べるようにし、番号の付いた部品がなければ案内を出す。
-// 書き出し（editor でないとき）では、番号の付いた部品がなければ表を出さない
+// 出力（editor でないとき）では、番号の付いた部品がなければ表を出さない
 // diff（{ info: designDiff の screens の 1 つ, label: 「第 2 版」 }）を渡すと、番号の前に「新」「変」の札を付け、表の下に「削除した部品」を並べる
 function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null, diff = null } = {}) {
   const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
@@ -4757,7 +4923,7 @@ function partTableHtml(design, screen, { editor = false, selectedId = null, sele
     ? `<table>${head}<tbody>${rows.map((r) => `
         <tr${editor ? ` data-action="select-part" data-id="${esc(r.id)}"` : ''}${isSel(r.id) || r.branch ? ` class="${[isSel(r.id) ? 'sel' : '', r.branch ? 'br' : ''].join(' ').trim()}"` : ''}>
           <td class="c-no">${mark(r)}${r.no}</td><td>${esc(r.label)}</td><td>${esc(r.kind)}</td><td class="c-set">${esc(r.setting)}</td></tr>`).join('')}</tbody></table>`
-    : editor ? '<div class="ptable-empty">番号の付いた部品はまだありません。<br>部品を置くと、ここに番号ごとの設定が並びます。<br>（この案内は書き出しには出ません）</div>' : '';
+    : editor ? '<div class="ptable-empty">番号の付いた部品はまだありません。<br>部品を置くと、ここに番号ごとの設定が並びます。<br>（この案内は出力には出ません）</div>' : '';
   return `<div class="ptable" style="width:${width}px"><h3>部品の設定</h3>${body}${info ? diffTableFoot(info, diff.label) : ''}</div>`;
 }
 // 一覧表の下の「削除した部品」の表と、札の説明
@@ -4790,10 +4956,13 @@ const ui = {
   // 最初の画面の左の一覧で人が選んだまとまり（システムの id か 'lone'〔システムに入っていない〕。null は選んでいない〔いちばん上を出す〕。
   // アプリを閉じるまで覚える。一覧へ戻ったときもそのまま。第 9 段階）
   homeGroup: null,
-  sysMenu: null, // 最初の画面のシステムのまとまりで開いているメニュー（'add:システムの id'〔＋ 画面設計を入れる〕か 'more:システムの id'〔…〕）。システムの画面の「＋ 画面設計を入れる ▾」も同じ
+  sysMenu: null, // 最初の画面のシステムのまとまりで開いているメニュー（'add:システムの id'〔＋ 画面設計を入れる〕か 'more:システムの id'〔…〕）。システムの画面の「＋ 画面設計を入れる ▾」も同じ。
+  //   システムの画面の設計ノートの「この段階の進み具合」のボタンのメニューは 'stage:システムの id'（第 10 段階）
   // システムの画面（第 9 段階の T6a）。どれも保存しない
-  sysPanel: 'swimlane', // 真ん中に出している入口: 'overview'（概要）・'roles'（役割）・'swimlane'（スイムレーン図）・'materials'（資料。デスクトップ版だけ）・'history'（履歴）
+  sysPanel: 'swimlane', // 真ん中に出している入口: 'overview'（概要）・'roles'（役割）・'swimlane'（スイムレーン図）・'materials'（資料。デスクトップ版だけ）・
+  //   'notes'（設計ノート。第 10 段階）・'history'（履歴）
   sysPanels: {}, // システムの id → そのシステムで最後に開いた入口（アプリを閉じるまで覚える）
+  notesStages: {}, // システムの id → 設計ノートで開いている札の段階（NOTE_STAGES の値。第 10 段階。アプリを閉じるまで覚える）
   sysZoom: 1, // スイムレーン図の倍率
   sysFitted: {}, // システムの id → そのシステムのスイムレーン図を、最初の倍率（全体を表示か 100%）で出したか（T6b。アプリを閉じるまで覚える）
   stepSel: null, // スイムレーン図で選んでいる作業の id
@@ -4856,7 +5025,7 @@ function renderHome() {
           ${ui.homeMap ? '' : `<label class="search"><span aria-hidden="true">🔍</span><input type="search" id="home-search" placeholder="名前で探す" aria-label="名前で探す" value="${esc(ui.query)}"></label>`}
           <button class="btn${ui.homeMap ? '' : ' on'}" data-action="home-cards" aria-pressed="${!ui.homeMap}">▦ カードで並べる</button>
           <button class="btn${ui.homeMap ? ' on' : ''}" data-action="home-map" aria-pressed="${ui.homeMap}">⇄ つながりの図</button>
-          <button class="btn" data-action="import-html" title="このアプリで書き出した HTML（ベンダーが直して返したものなど）を取り込みます。HTML ファイルをこの画面へ落としても取り込めます（システムのまとまりの上へ落とすと、そのシステムに入れます）">⇩ HTML を取り込む</button>
+          <button class="btn" data-action="import-html" title="このアプリで出力した HTML（ベンダーが直して返したものなど）を取り込みます。HTML ファイルをこの画面へ落としても取り込めます（システムのまとまりの上へ落とすと、そのシステムに入れます）">⇩ HTML を取り込む</button>
           <button class="btn" data-action="new" title="新しい画面設計を作って開きます">＋ 新しい画面設計</button>
           <button class="btn primary" data-action="new-system" title="いくつかの画面設計をまとめる入れ物（システム）を作ります">＋ 新しいシステム</button>
           </div>
@@ -4885,7 +5054,7 @@ function keepScroll(selectors) {
   });
 }
 
-// つながりの図の HTML。focusId（編集の画面の画面設計）があればその画面設計の図。saved は覚えた箱の位置。o.idPrefix は矢印の印の id の頭（書き出し）
+// つながりの図の HTML。focusId（編集の画面の画面設計）があればその画面設計の図。saved は覚えた箱の位置。o.idPrefix は矢印の印の id の頭（出力）
 function mapHtml(state, focusId, saved, o = {}) {
   const model = mapModel(state, focusId);
   if (!model.nodes.length) return '<p class="map-empty">まだ画面設計がありません。</p>';
@@ -5206,8 +5375,8 @@ function flowModel(state, d) {
   flowIncoming(state, d).forEach((r) => { if (index.has(r.to)) add(extKey(r.owner, r.from), 's:' + r.to, r.type, r.label, 1); });
   return { nodes: [...nodes.values()], edges: [...edges.values()] };
 }
-// ステータスの移り方の図・画面の移り方の図の HTML（編集の画面・書き出し・AI の画像で使う）。saved は覚えた箱の位置。
-// o: idPrefix（矢印の印の id の頭。書き出しでは編集の画面と重ならない頭にする）・bare（id="map-inner" を付けない）
+// ステータスの移り方の図・画面の移り方の図の HTML（編集の画面・出力・AI の画像で使う）。saved は覚えた箱の位置。
+// o: idPrefix（矢印の印の id の頭。出力では編集の画面と重ならない頭にする）・bare（id="map-inner" を付けない）
 function viewHtml(view, state, d, saved = {}, o = {}) {
   const model = view === 'process' ? processModel(d) : flowModel(state, d);
   if (!model.nodes.length) return `<p class="map-empty">${view === 'process' ? 'ステータスの項目がまだありません（部品の箱から「ステータスの印」か「進み具合の矢印」を置くと作られます）。' : '画面がありません。'}</p>`;
@@ -5535,7 +5704,8 @@ function sysMoreMenuHtml(y) {
   </div>`;
 }
 // システムのまとまりの「＋ 画面設計を入れる ▾」・「…」のメニューを開く・閉じる（ui.sysMenu は 'add:システムの id' か 'more:システムの id'）。
-// システムの画面の左の「＋ 画面設計を入れる ▾」も同じメニュー（システムの画面では、左の一覧とメニューを描き直す）
+// システムの画面の左の「＋ 画面設計を入れる ▾」も同じメニュー（システムの画面では、左の一覧とメニューを描き直す）。
+// 設計ノートの「この段階の進み具合」のボタンのメニュー（'stage:システムの id'。第 10 段階）も同じ作り（真ん中は描き直さず、メニューだけを描き直す）
 function toggleSysMenu(kind, id) {
   const key = `${kind}:${id}`;
   Object.assign(ui, { sysMenu: ui.sysMenu === key ? null : key, menuFor: null, sysDesignMenu: null });
@@ -5549,6 +5719,10 @@ function closeSysMenu() {
   refreshSysMenuOwner();
 }
 const refreshSysMenuOwner = () => (ui.view === 'system' ? refreshSysList() : refreshCards());
+// メニューの種類（ui.sysMenu の頭）→ メニューを開くボタンの data-action（Esc で閉じたときに、フォーカスを戻す先・外を押したかの見分け）
+const SYS_MENU_OPENERS = { add: 'sys-add-menu', more: 'sys-menu', stage: 'sys-note-stage-menu' };
+// メニューと、メニューを開くボタン（ここの外を押すとメニューを閉じる。onAppClick）
+const SYS_MENU_INSIDE = ['.sys-pop', ...Object.values(SYS_MENU_OPENERS).map((a) => `[data-action="${a}"]`)].join(', ');
 
 // カードの「最新の版」。自動で残した行（取り込む前の状態・戻す前の状態）は数えない
 function revisionLabel(d) {
@@ -5575,7 +5749,7 @@ function renderCard(d, { sys = null } = {}) {
           <div class="card-date">更新 ${fmtDateTime(d.updatedAt)}</div>
         </div>
       </button>
-      <button class="card-more" data-action="card-menu" data-id="${esc(d.id)}" aria-label="「${esc(d.name)}」の操作" title="${sys ? '名前の変更・複製・書き出し・このシステムから外す・削除' : '名前の変更・複製・書き出し・削除'}">…</button>
+      <button class="card-more" data-action="card-menu" data-id="${esc(d.id)}" aria-label="「${esc(d.name)}」の操作" title="${sys ? '名前の変更・複製・出力・このシステムから外す・削除' : '名前の変更・複製・出力・削除'}">…</button>
       ${ui.menuFor === d.id ? cardMenuHtml(d, sys) : ''}
     </article>`;
 }
@@ -5587,7 +5761,7 @@ function cardMenuHtml(d, sys = null) {
     <div class="card-menu" role="menu">
       <button role="menuitem" data-action="rename" data-id="${id}">名前の変更</button>
       <button role="menuitem" data-action="duplicate" data-id="${id}"${inSys}>複製</button>
-      <button role="menuitem" data-action="export-design" data-id="${id}">書き出す…</button>
+      <button role="menuitem" data-action="export-design" data-id="${id}">出力…</button>
       ${sys ? `<button role="menuitem" data-action="remove-from-system" data-id="${id}"${inSys}>このシステムから外す</button>` : ''}
       <button role="menuitem" class="danger" data-action="trash" data-id="${id}">削除（ごみ箱へ移す）</button>
     </div>`;
@@ -5985,10 +6159,10 @@ async function onSystemAction(action, y) {
 }
 
 // ── システムの画面（第 9 段階の T6a。画像 q62 の案A・q64 の案A・q65・q66）──
-// 編集の画面と同じ形: 上にメニューバー（一覧へ・元に戻す・やり直す・拡大・縮小）、左に入口 5 つ（概要・役割・スイムレーン図・資料・履歴。
-// 資料はデスクトップ版だけ）と入っている画面設計のカード、真ん中に押した入口の中身（ui.sysPanel）、右に入口ごとの案内。
+// 編集の画面と同じ形: 上にメニューバー（一覧へ・元に戻す・やり直す・拡大・縮小）、左に入口 6 つ（概要・役割・スイムレーン図・資料・設計ノート・履歴。
+// 資料はデスクトップ版だけ。設計ノートは第 10 段階）と入っている画面設計のカード、真ん中に押した入口の中身（ui.sysPanel）、右に入口ごとの案内。
 // スイムレーン図の上の操作（足す・つなぐ・ドラッグ）と、右の欄の作業の設定は T6b で作る（T6a では、箱を押して選ぶだけ）
-const SYS_PANELS = ['overview', 'roles', 'swimlane', 'materials', 'history'];
+const SYS_PANELS = ['overview', 'roles', 'swimlane', 'materials', 'notes', 'history'];
 // 資料の入口（第 9 段階の後半）は、資料の窓口（デスクトップ版の preload.js の materialsAPI）があるときだけ出す（ブラウザ・単体で開いた HTML では、
 // ファイルを入れられず読めないため）。窓口がないときに資料の入口を選んだら、スイムレーン図にする
 const shownSysPanel = (panel) => (panel === 'materials' && !window.materialsAPI ? 'swimlane' : panel);
@@ -6079,6 +6253,7 @@ function renderSystem({ keepMain = false, keepSide = false } = {}) {
   const y = findSystem(store.state, ui.systemId);
   if (!y || y.trashedAt) { goHome(); return; }
   if (!$('#sys-body')) { mountSystem(); keepMain = false; keepSide = false; }
+  const menuFocus = keepNoteMenuFocus();
   fixSwimState(y);
   $('#sys-title').innerHTML = `${esc(y.name)}<small>（システム）</small>`;
   updateSysToolbar();
@@ -6087,6 +6262,20 @@ function renderSystem({ keepMain = false, keepSide = false } = {}) {
   else renderSysMain(y);
   if (!keepSide) renderSysSide(y);
   renderAiChrome();
+  menuFocus();
+}
+// 設計ノートの進み具合のメニューの中にフォーカスがあれば、描き直した後（メニューは左の一覧と真ん中の描き直しで作り直される）、同じ項目
+// （data-state）へフォーカスを戻す関数を返す。同じ項目がなくなった（AI がその進み具合にした）・メニューが閉じたときは、進み具合のボタンへ戻す
+// （AI が書いて描き直したときに、フォーカスが body に落ちないように。終わりの見直し A の Minor 5）
+function keepNoteMenuFocus() {
+  const el = document.activeElement;
+  if (!el || !el.closest || !el.closest('#sys-menu-root .nt-menu')) return () => {};
+  const state = el.dataset.state || '';
+  return () => {
+    const same = [...document.querySelectorAll('#sys-menu-root .nt-menu [role="menuitem"]')].find((b) => b.dataset.state === state);
+    const back = same || $('#sys-view [data-action="sys-note-stage-menu"]');
+    if (back) back.focus();
+  };
 }
 // 元に戻す・AI が書いたなどで、選んでいた作業・矢印、つなぐ元の作業が消えたときは外す。スイムレーン図を出していないとき・役割がないときは、
 // つなぐ途中と、置き場で押した種類をやめる
@@ -6120,7 +6309,7 @@ function refreshSysList() {
   renderSysMenus();
 }
 
-// ── システムの画面の左の欄: 入口 5 つ（編集の画面の「データベースの項目」の札と同じ形。資料はデスクトップ版だけ）と、入っている画面設計のカード ──
+// ── システムの画面の左の欄: 入口 6 つ（編集の画面の「データベースの項目」の札と同じ形。資料はデスクトップ版だけ）と、入っている画面設計のカード ──
 function sysScreenListHtml(y) {
   const designs = designsOfSystem(store.state, y);
   const entry = (panel, ic, label, note, title) => `<button class="db-entry sys-entry${ui.sysPanel === panel ? ' active' : ''}" data-action="sys-panel" data-panel="${panel}" aria-pressed="${ui.sysPanel === panel}" title="${title}">
@@ -6131,6 +6320,7 @@ function sysScreenListHtml(y) {
     + entry('roles', '👥', '役割', y.roles.length ? `${y.roles.length} つ` : 'まだありません', '役割（申請者・上長など。スイムレーン図の横の帯）を開きます')
     + entry('swimlane', '⇶', 'スイムレーン図', steps ? `作業 ${steps} つ` : '作業なし', '役割ごとの帯に作業の箱を並べた、業務の流れの図を開きます')
     + (window.materialsAPI ? entry('materials', '📎', '資料', mats ? `ファイル ${mats} つ` : 'まだありません', 'システムを作るときに参考にするファイル（業務の様式・説明書・図）を開きます') : '')
+    + entry('notes', '📓', '設計ノート', noteEntryNote(y), '段階ごとの進み具合・決めたことと理由・まだ決まっていないことを開きます')
     + entry('history', '◷', '履歴', sysHistoryNote(y), 'AI がこのシステムを直す前の中身（自動で残した行）を開きます')
     + `<div class="sl-sep"></div><div class="panel-title sys-dhead">${designs.length ? `画面設計 ${designs.length} つ` : '画面設計'}</div>`
     + (designs.length ? designs.map(sysDesignCardHtml).join('') : '<p class="sys-dempty">まだ画面設計が入っていません。</p>')
@@ -6157,17 +6347,22 @@ function sysDesignCardHtml(d) {
     <button class="sl-more${ui.sysDesignMenu === d.id ? ' open' : ''}" data-action="sys-design-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${ui.sysDesignMenu === d.id}" aria-label="「${esc(d.name)}」の操作" title="開く・並べ替え・このシステムから外す">…</button>
   </div>`;
 }
-// 左の欄のメニュー（カードの「…」と「＋ 画面設計を入れる ▾」）。左の欄の外まではみ出せるように、窓に対して置く。窓の下からはみ出すときは上に開く
+// 左の欄のメニュー（カードの「…」と「＋ 画面設計を入れる ▾」）と、設計ノートの「この段階の進み具合」のボタンのメニュー（第 10 段階）。
+// 欄の外まではみ出せるように、窓に対して置く。窓の下からはみ出すときは上に開く。進み具合のボタンは真ん中にあり、メニューを開け閉めしても
+// 真ん中を描き直さないので、ボタンの aria-expanded はここで付け直す
 function renderSysMenus() {
   const root = $('#sys-menu-root');
   if (!root) return;
   const y = findSystem(store.state, ui.systemId);
   const shown = y ? designsOfSystem(store.state, y) : [];
   if (ui.sysDesignMenu && !shown.some((d) => d.id === ui.sysDesignMenu)) ui.sysDesignMenu = null;
+  const stage = !!y && ui.sysMenu === `stage:${y.id}`;
+  const stageBtn = $('#sys-view [data-action="sys-note-stage-menu"]');
+  if (stageBtn) stageBtn.setAttribute('aria-expanded', String(stage));
   const anchor = ui.sysDesignMenu ? [...document.querySelectorAll('#sys-list .sl-more')].find((b) => b.dataset.id === ui.sysDesignMenu)
-    : y && ui.sysMenu === `add:${y.id}` ? $('#sys-list .sys-add') : null;
+    : y && ui.sysMenu === `add:${y.id}` ? $('#sys-list .sys-add') : stage ? stageBtn : null;
   if (!anchor) { root.innerHTML = ''; return; }
-  root.innerHTML = ui.sysDesignMenu ? sysDesignMenuHtml(shown, ui.sysDesignMenu) : sysAddMenuHtml(y, ' sys-fixed');
+  root.innerHTML = ui.sysDesignMenu ? sysDesignMenuHtml(shown, ui.sysDesignMenu) : stage ? noteStageMenuHtml(y) : sysAddMenuHtml(y, ' sys-fixed');
   const menu = root.firstElementChild;
   const r = anchor.getBoundingClientRect();
   menu.style.left = Math.round(r.left) + 'px';
@@ -6252,7 +6447,7 @@ function endSysDesignSort(done) {
 }
 
 // ── システムの画面の真ん中（押した入口の中身）──
-const SYS_MAIN = { overview: sysOverviewHtml, roles: sysRolesHtml, swimlane: sysSwimlaneHtml, materials: sysMaterialsHtml, history: sysHistoryHtml };
+const SYS_MAIN = { overview: sysOverviewHtml, roles: sysRolesHtml, swimlane: sysSwimlaneHtml, materials: sysMaterialsHtml, notes: sysNotesHtml, history: sysHistoryHtml };
 // 同じ入口を描き直すときは、スクロールの位置と、打っている欄のフォーカスを戻す（AI が書いたときなど）
 function renderSysMain(y) {
   const el = $('#sys-view');
@@ -6267,17 +6462,21 @@ function renderSysMain(y) {
   keep();
   focus();
   if (ui.sysPanel === 'swimlane') fitSwimlaneFirst(y);
+  // 設計ノートの進み具合のメニューを開いたまま描き直した（AI が書いたときなど）: 作り直したボタンに合わせて置き直す
+  if (str(ui.sysMenu).startsWith('stage:')) renderSysMenus();
 }
-// 打っている欄（data-sy）を控え、描き直した後に同じ欄へフォーカスを戻す関数を返す。同じ data-sy の欄は、役割（data-role）・資料（data-mat）で見分ける。
+// 打っている欄（data-sy）を控え、描き直した後に同じ欄へフォーカスを戻す関数を返す。同じ data-sy の欄は、役割（data-role）・資料（data-mat）・
+// 設計ノートの行（data-note。第 10 段階）で見分ける。
 // 名前を空にして打ち直している途中の欄は、空のまま戻す（flushSideField が待っている間に、描き直しで元の名前に戻さないため）
 function keepSysFocus() {
   const el = document.activeElement;
   if (!el || !el.dataset || !el.dataset.sy || !el.closest('#sys-view')) return () => {};
-  const { sy, role = '', mat = '' } = el.dataset;
+  const { sy, role = '', mat = '', note = '' } = el.dataset;
   const empty = (sy === 'name' || sy === 'role-name') && !cleanName(el.value);
   const [a, b] = [el.selectionStart, el.selectionEnd];
   return () => {
-    const now = [...document.querySelectorAll(`#sys-view [data-sy="${sy}"]`)].find((x) => (x.dataset.role || '') === role && (x.dataset.mat || '') === mat);
+    const now = [...document.querySelectorAll(`#sys-view [data-sy="${sy}"]`)]
+      .find((x) => (x.dataset.role || '') === role && (x.dataset.mat || '') === mat && (x.dataset.note || '') === note);
     if (!now) return;
     if (empty) now.value = '';
     now.focus();
@@ -6733,6 +6932,156 @@ function swimFromMaterialText(m, r, warnings) {
     + (notes.length ? `注意: ${notes[0]}${notes.length > 1 ? `（ほか ${notes.length - 1} 件）` : ''}` : '');
 }
 
+// ── 設計ノート（第 10 段階の前半。画像 k75〔q75 の案B「段階ごとの札」と q78 の案A「人も変えられる」〕。設計書の 5-3・10 章）──
+// 真ん中に、段階ごとの札（5 つ）と、開いている札の段階の「この段階の進み具合」のボタン（押すとメニュー）・読み取ったこと（① の札だけ）・
+// まだ決まっていないことの表・決めたことと理由の表、札の外の下にメモ。欄は欄を離れたときに保存する（onSystemFieldChange の NOTE_FIELD_SAVERS）。
+// 開いている札は ui.notesStages（保存しない）。AI が段階を変えても、開いている札は動かさない（人が AI の帯の「設計ノートを開く」を押したときは、選び直す）
+const NOTE_STATE_MARKS = { done: '✓', review: '●', doing: '▶', todo: '–', skipped: '⤼' };
+const NOTE_STATE_TEXTS = {
+  review: 'AI が案を出して、あなたの答えを待っています。', doing: 'AI がこの段階を進めています。', todo: 'まだ始めていません。',
+  done: 'この段階の案は確かめました。', skipped: '確かめずに次へ進めました。',
+};
+// 進み具合のメニューの項目 [進み具合, 名前, 小さな字]（今の進み具合の項目は出さない）
+const NOTE_STAGE_MENU = [
+  ['done', '✓ 確認済みにする', 'この段階の案でよい（AI は次の段階へ進める）'],
+  ['skipped', '⤼ 確かめずに進めたことにする', '「確認を飛ばした」にする'],
+  ['todo', '↺ まだに戻す', 'この段階をやり直す'],
+];
+const noteStageNo = (k) => NOTE_STAGE_NAMES[k].split(' ')[0]; // 段階の名前の頭の丸数字（①〜⑤）
+const noteStateOf = (y, k) => y.notes.stages[k].state;
+const noteSettled = (s) => s === 'done' || s === 'skipped'; // 確認済みか、確認を飛ばした
+// 確認待ち・作業中の段階のうち最初のもの（なければ null）
+const noteActiveStage = (y) => NOTE_STAGES.find((k) => noteStateOf(y, k) === 'review' || noteStateOf(y, k) === 'doing') || null;
+// 日時（ISO）の PC の時刻の日付「2026-10-19」と「10/19」（読めない日時は空）
+const noteDay = (iso) => fmtDateTime(iso).slice(0, 10);
+const noteMonthDay = (iso) => noteDay(iso).slice(5).split('-').filter(Boolean).map(Number).join('/');
+// 左の入口の小さな字: 確認待ち・作業中の段階があれば最初のもの（「③ 確認待ち」）、全部まだなら「まだ始めていません」、
+// 全部が確認済みか確認を飛ばしたなら「⑤ まで済み」、ほかは、まだの段階のうち最初のもの（「④ まだ」）
+function noteEntryNote(y) {
+  const k = noteActiveStage(y);
+  if (k) return `${noteStageNo(k)} ${NOTE_STATE_NAMES[noteStateOf(y, k)]}`;
+  if (NOTE_STAGES.every((s) => noteStateOf(y, s) === 'todo')) return 'まだ始めていません';
+  const todo = NOTE_STAGES.find((s) => !noteSettled(noteStateOf(y, s)));
+  return todo ? `${noteStageNo(todo)} ${NOTE_STATE_NAMES.todo}` : `${noteStageNo(NOTE_STAGES[NOTE_STAGES.length - 1])} まで済み`;
+}
+// 開いている札の段階。初めて開くとき（と、AI の帯の「設計ノートを開く」で開くとき。onAiClick）は、確認待ち・作業中の段階のうち最初のもの
+// （なければ、まだの段階のうち最初のもの。全部済みなら ⑤）にして覚える
+function noteOpenStage(y) {
+  const cur = ui.notesStages[y.id];
+  if (NOTE_STAGES.includes(cur)) return cur;
+  const k = noteActiveStage(y) || NOTE_STAGES.find((s) => noteStateOf(y, s) === 'todo') || NOTE_STAGES[NOTE_STAGES.length - 1];
+  ui.notesStages[y.id] = k;
+  return k;
+}
+// 真ん中: 見出し・案内の文・札・札の下の欄・メモ
+function sysNotesHtml(y) {
+  const k = noteOpenStage(y);
+  return `<div class="itable wide sys-notes">${sysHead('設計ノート', y)}
+    <p class="map-note">AI が資料からこのシステムを作るときに、段階ごとに読み取ったこと・決めたことと理由・まだ決まっていないことを書きます。人も直せます（欄を離れると保存します）。</p>
+    <div class="nt-tabs">${NOTE_STAGES.map((s) => noteTabHtml(y, s, s === k)).join('')}</div>
+    <div class="nt-tabbody">${noteStateHtml(y, k)}${k === 'read' ? noteFindingsHtml(y) : ''}${noteQuestionsHtml(y, k)}${noteDecisionsHtml(y, k)}</div>
+    <div class="nt-sec"><h4>メモ<small>段階によらない</small></h4>${noteTextHtml('note-memo', 'nt-memo', 'メモ', y.notes.memo)}</div></div>`;
+}
+// 札 1 つ（段階の名前と、進み具合の印。選んだ札は濃い紺）
+function noteTabHtml(y, k, on) {
+  const s = noteStateOf(y, k);
+  return `<button class="nt-tab ${s}${on ? ' on' : ''}" data-action="sys-note-tab" data-stage="${k}" aria-pressed="${on}" title="${esc(NOTE_STAGE_NAMES[k])}（${NOTE_STATE_NAMES[s]}）を開きます">${esc(NOTE_STAGE_NAMES[k])}<i>${NOTE_STATE_MARKS[s]}</i></button>`;
+}
+// 読み取ったこと・メモの欄（長さの上限は NOTE_TEXT_MAX）。textarea の最初の改行は HTML で消えるので、改行を 1 つ足して文の頭の改行を残す
+const noteTextHtml = (sy, cls, label, text) => `<textarea class="nt-text ${cls}" data-sy="${sy}" maxlength="${NOTE_TEXT_MAX}" aria-label="${label}">
+${esc(text)}</textarea>`;
+// 「この段階の進み具合:」のボタン（進み具合の名前と ▾。確認済み・確認を飛ばしたは確認の日付も）と、進み具合の説明の文。押すとメニュー（noteStageMenuHtml）
+function noteStateHtml(y, k) {
+  const st = y.notes.stages[k];
+  const day = noteSettled(st.state) && st.confirmedAt ? noteDay(st.confirmedAt) : '';
+  return `<div class="nt-state"><span>この段階の進み具合:</span>
+    <button class="nt-pill ${st.state}" data-action="sys-note-stage-menu" data-id="${esc(y.id)}" aria-haspopup="menu" aria-expanded="${ui.sysMenu === `stage:${y.id}`}"
+      title="この段階の進み具合を変えます">${NOTE_STATE_NAMES[st.state]}${day ? `（${day}）` : ''} ▾</button>
+    <span class="nt-state-text">${NOTE_STATE_TEXTS[st.state]}</span></div>`;
+}
+// 進み具合のメニュー（開いている札の段階。今の進み具合の項目は出さない）。窓に対して置く（renderSysMenus）
+function noteStageMenuHtml(y) {
+  const k = noteOpenStage(y);
+  const now = noteStateOf(y, k);
+  const items = NOTE_STAGE_MENU.filter(([s]) => s !== now).map(([s, label, sub]) => `<button role="menuitem" data-action="sys-note-stage-set" data-stage="${k}" data-state="${s}"><b>${label}</b><small>${sub}</small></button>`);
+  return `<div class="pop-menu sys-pop sys-fixed nt-menu" role="menu" aria-label="${esc(NOTE_STAGE_NAMES[k])}の進み具合">${items.join('')}</div>`;
+}
+// ① の札だけ: 読み取ったこと
+const noteFindingsHtml = (y) => `<div class="nt-sec"><h4>読み取ったこと<small>① で資料から読み取ったこと（業務の要約・登場人物・今の手順・様式の欄）</small></h4>
+  ${noteTextHtml('note-findings', 'nt-findings', '読み取ったこと', y.notes.findings)}</div>`;
+// 段階の丸数字の札と、行の ✕（どの行も元に戻す〔Ctrl+Z〕で戻せる）
+const noteStageChip = (k) => `<span class="nt-stg">${NOTE_STAGES.includes(k) ? noteStageNo(k) : esc(k)}</span>`;
+const noteDelBtn = (action, id) => `<button class="del-x" data-action="${action}" data-id="${esc(id)}" title="この行を消す（元に戻す〔Ctrl+Z〕で戻せます）" aria-label="この行を消す">✕</button>`;
+// まだ決まっていないこと（開いている札の段階の行）。決まっていない行を上に、決まった行（答えのある行。noteQuestionDecided）を表の下に灰色で並べる。
+// 行がなければ表は出さない
+function noteQuestionsHtml(y, k) {
+  const rows = y.notes.questions.filter((q) => q.stage === k);
+  const open = rows.filter((q) => !noteQuestionDecided(q));
+  const done = rows.filter(noteQuestionDecided);
+  const count = (open.length ? `${open.length} つ` : 'なし') + (done.length ? `（決まったもの ${done.length} つ）` : '');
+  const table = rows.length ? `<table class="nt-tbl nt-qs"><colgroup><col style="width:52px"><col style="width:40%"><col><col style="width:136px"></colgroup>
+    <thead><tr><th>段階</th><th>まだ決まっていないこと</th><th>答え</th><th></th></tr></thead><tbody>${[...open, ...done].map(noteQuestionRowHtml).join('')}</tbody></table>` : '';
+  return `<div class="nt-sec"><h4>まだ決まっていないこと（${noteStageNo(k)}）<small>${count}</small></h4>${table}
+    <button class="btn small nt-add" data-action="sys-note-add-q" title="この段階のまだ決まっていないことの行を足します">＋ まだ決まっていないことを足す</button></div>`;
+}
+// 行の文字の欄（行の id を data-note に持つ）。1 行の textarea で、高さは中身に合わせる（CSS の field-sizing。長い文は折り返し、改行も残す。
+// 終わりの見直し A の Important 1・Minor 1）。textarea の最初の改行は HTML で消えるので、改行を 1 つ足して文の頭の改行を残す（noteTextHtml と同じ）
+const noteRowFieldHtml = (sy, rowId, text, label, placeholder = '') => `<textarea rows="1" data-sy="${sy}" data-note="${rowId}"${placeholder ? ` placeholder="${placeholder}"` : ''} aria-label="${label}">
+${esc(text)}</textarea>`;
+// まだ決まっていないことの 1 行。決まった行（答えのある行。noteQuestionDecided）は、最後の列に「10/19 に決まった」（解決の日時〔resolvedAt〕がなければ「決まった」だけ）と ✕
+function noteQuestionRowHtml(q) {
+  const id = esc(q.id);
+  const decided = noteQuestionDecided(q);
+  const day = decided && q.resolvedAt ? noteMonthDay(q.resolvedAt) : '';
+  return `<tr${decided ? ' class="resolved"' : ''} data-id="${id}"><td class="nw">${noteStageChip(q.stage)}</td>
+    <td>${noteRowFieldHtml('note-q-text', id, q.text, 'まだ決まっていないこと')}</td>
+    <td>${noteRowFieldHtml('note-q-answer', id, q.answer, '答え', '答えを書くと「決まった」になる')}</td>
+    <td class="nt-end">${decided ? `<span class="ok">${day ? `${day} に` : ''}決まった</span>` : ''}${noteDelBtn('sys-note-del-q', q.id)}</td></tr>`;
+}
+// 決めたことと理由（開いている札の段階の行）。行がなければ表は出さない
+function noteDecisionsHtml(y, k) {
+  const rows = y.notes.decisions.filter((d) => d.stage === k);
+  const table = rows.length ? `<table class="nt-tbl nt-ds"><colgroup><col style="width:92px"><col style="width:52px"><col style="width:34%"><col><col style="width:40px"></colgroup>
+    <thead><tr><th>日付</th><th>段階</th><th>決めたこと</th><th>理由</th><th></th></tr></thead><tbody>${rows.map(noteDecisionRowHtml).join('')}</tbody></table>` : '';
+  return `<div class="nt-sec"><h4>決めたことと理由（${noteStageNo(k)}）<small>${rows.length ? `${rows.length} つ` : 'なし'}</small></h4>${table}
+    <button class="btn small nt-add" data-action="sys-note-add-d" title="この段階の決めたことと理由の行を足します">＋ 決めたことを足す</button></div>`;
+}
+function noteDecisionRowHtml(d) {
+  const id = esc(d.id);
+  return `<tr data-id="${id}"><td class="nw">${esc(d.date)}</td><td class="nw">${noteStageChip(d.stage)}</td>
+    <td>${noteRowFieldHtml('note-d-text', id, d.text, '決めたこと')}</td>
+    <td>${noteRowFieldHtml('note-d-reason', id, d.reason, '理由')}</td>
+    <td class="nt-end">${noteDelBtn('sys-note-del-d', d.id)}</td></tr>`;
+}
+// 札を切り替える（進み具合のメニューは閉じる）。描き直すと札が作り直されるので、選んだ札へフォーカスを戻す
+// （キーボードで続けて札を選べるように。終わりの見直し A の Minor 3）
+function openNoteStage(y, k) {
+  if (!NOTE_STAGES.includes(k)) return;
+  Object.assign(ui, { sysMenu: null });
+  ui.notesStages[y.id] = k;
+  renderSystem();
+  const on = $('#sys-view .nt-tab.on');
+  if (on) on.focus();
+}
+// 開いている札の段階の行を足し、その行の文字の欄にフォーカスを置く（すぐ打てるように。空の行も残す。kind は 'q'〔まだ決まっていないこと〕か 'd'〔決めたこと〕）
+function addNoteRowAndFocus(y, kind) {
+  const stage = noteOpenStage(y);
+  const id = kind === 'q' ? actions.addNoteQuestion(y.id, { stage }) : actions.addNoteDecision(y.id, { stage });
+  const sy = kind === 'q' ? 'note-q-text' : 'note-d-text';
+  const el = id && [...document.querySelectorAll(`#sys-view [data-sy="${sy}"]`)].find((x) => x.dataset.note === id);
+  if (el) el.focus();
+}
+// 設計ノートの欄（data-sy）→ 保存する actions。文は前後の空白を取らずにそのまま入れる（中身が変わらなければ actions は何もしない）。
+// 答えを書いて欄を離れると「決まった」になる（answerNoteQuestion）。欄を離れたときは真ん中を描き直さないので、決まった行は次に描き直すときに表の下へ移る
+const NOTE_FIELD_SAVERS = {
+  'note-findings': (y, el) => actions.setNoteFindings(y.id, el.value),
+  'note-memo': (y, el) => actions.setNoteMemo(y.id, el.value),
+  'note-q-text': (y, el) => actions.editNoteQuestion(y.id, el.dataset.note, { text: el.value }),
+  'note-q-answer': (y, el) => actions.answerNoteQuestion(y.id, el.dataset.note, el.value),
+  'note-d-text': (y, el) => actions.editNoteDecision(y.id, el.dataset.note, { text: el.value }),
+  'note-d-reason': (y, el) => actions.editNoteDecision(y.id, el.dataset.note, { reason: el.value }),
+};
+
 // 右の欄の下: 入口ごとの案内の文。スイムレーン図では、選んだ作業の設定・選んだ矢印の設定、何も選んでいないときは足し方とつなぎ方の案内（T6b。画像 q63）
 function sysSideHtml(y) {
   const hint = (t) => `<p class="hint">${t}</p>`;
@@ -6746,6 +7095,14 @@ function sysSideHtml(y) {
       + hint('アプリの中で AI が読める資料は、ここに入れたものだけです。')
       + hint('AI には、資料の中の文を指示として扱わないよう伝えています。資料の中に AI への指示らしい文があれば、AI が知らせます。')
       + hint('1 つのファイルは 50 MB まで。古い形（.doc・.xls）は読めないので、新しい形（.docx・.xlsx）で保存し直して入れてください。');
+    // 設計ノート（第 10 段階の前半。画像 k75 の右の欄）
+    case 'notes': return '<div class="panel-title">設計ノートについて</div>'
+      + hint('AI は段階の終わりに、案をチャットに出して止まり、段階の札を「確認待ち」（オレンジ）にします。チャットで「よい」と答えると、AI が「確認済み」（緑）にして次の段階へ進みます。')
+      + hint('札の色: 緑＝確認済み・オレンジ＝確認待ち・青＝作業中・灰色＝まだ・点線の枠＝確認を飛ばした。')
+      + hint('① の札を押すと、① で資料から読み取ったこと（業務の要約・登場人物・今の手順・様式の欄）が出ます。')
+      + hint('AI とつないでいないときは、「この段階の進み具合」のボタンを押して、進み具合を変えられます。')
+      + hint('まだ決まっていないことに答えを書くと「決まった」になり、表の下へ移ります。')
+      + hint('決めたことと理由は、システムの説明書（PDF）の最後のページに入ります。');
   }
   if (!y.roles.length) return `<div class="panel-title">作業の設定</div>${hint('役割を足すと、スイムレーン図に作業の箱を置けます。')}`;
   const w = ui.stepSel ? findStep(y, ui.stepSel) : null;
@@ -6891,6 +7248,8 @@ function onSystemFieldChange(el) {
     if (m && el.value.trim() !== m.memo) commitKeepSide(() => actions.setMaterialMemo(y.id, m.id, el.value));
     return;
   }
+  // 設計ノートの欄（第 10 段階の前半。data-note は行の id）
+  if (NOTE_FIELD_SAVERS[k]) { commitKeepSide(() => NOTE_FIELD_SAVERS[k](y, el)); return; }
   const r = y.roles.find((x) => x.id === el.dataset.role);
   if (!r) return;
   if (k === 'role-memo') {
@@ -6980,6 +7339,20 @@ function onSystemScreenClick(action, btn) {
     case 'sys-mat-read': openMaterialReader(y.id, id).catch(reportPageError); return true;
     case 'sys-mat-swim': swimlaneFromMaterial(y.id, id).catch(reportPageError); return true;
     case 'sys-mat-del': deleteMaterialRow(y, id); return true;
+    // 設計ノート（第 10 段階の前半）: 札・進み具合のボタンとメニュー・行を足す・行を消す（元に戻す〔Ctrl+Z〕で戻せる）
+    case 'sys-note-tab': openNoteStage(y, btn.dataset.stage); return true;
+    case 'sys-note-stage-menu': toggleSysMenu('stage', y.id); return true;
+    case 'sys-note-stage-set': {
+      closeSysMenu();
+      actions.setNoteStage(y.id, btn.dataset.stage, btn.dataset.state);
+      const pill = $('#sys-view [data-action="sys-note-stage-menu"]');
+      if (pill) pill.focus(); // 描き直した進み具合のボタンへ戻す（Esc で閉じたときと同じ。キーボードで続けて使えるように）
+      return true;
+    }
+    case 'sys-note-add-q': addNoteRowAndFocus(y, 'q'); return true;
+    case 'sys-note-add-d': addNoteRowAndFocus(y, 'd'); return true;
+    case 'sys-note-del-q': actions.removeNoteQuestion(y.id, id); return true;
+    case 'sys-note-del-d': actions.removeNoteDecision(y.id, id); return true;
   }
   return false;
 }
@@ -7576,7 +7949,7 @@ function toolbarHtml() {
     group('ファイル', (standalone
       ? '<button class="bigbtn" data-action="save-html" title="直した中身を HTML ファイルに保存します（Ctrl+S）"><span class="ico">💾</span>HTML を<br>保存</button>'
       : `<button class="bigbtn" data-action="home" id="tb-home" title="画面設計の一覧へ戻ります"><span class="ico">←</span><span id="tb-home-label">一覧へ</span></button>
-      <button class="bigbtn" data-action="export" title="PDF・HTML・PNG に書き出します"><span class="ico">⇪</span>書き出す</button>`)
+      <button class="bigbtn" data-action="export" title="PDF・HTML・PNG に出力します"><span class="ico">⇪</span>出力</button>`)
       // 改訂履歴のボタンと、その下の ▼（改訂する・改訂履歴のメニュー。改訂の機能が増えたら、このメニューに足す。q40c）
       + `<div class="rv-split" id="tb-rev"><button class="bigbtn rv-main" data-action="open-revisions" title="改訂履歴の窓を開きます（版の一覧・前の版を見る・前の版に戻す）"><span class="ico">◷</span>改訂<br>履歴</button>
       <button class="rv-arrow" data-action="rev-menu" id="tb-rev-arrow" aria-haspopup="menu" aria-expanded="false" aria-label="改訂のメニュー" title="改訂のメニュー（改訂する・改訂履歴）">▼</button></div>`),
@@ -7940,7 +8313,7 @@ function renderMapView(d) {
   el.dataset.view = 'map';
   el.innerHTML = `<div class="itable"><div class="itable-head"><h3>つながりの図（${esc(d.name)}）</h3></div>
     <p class="map-note">「${esc(d.name)}」と、直接つながる画面設計を描きます。箱をドラッグで動かすと、その位置を覚えます。
-      ${standalone ? 'ほかの画面設計は、この HTML に入っていないので開けません（書き出したときの写しで描いています）。'
+      ${standalone ? 'ほかの画面設計は、この HTML に入っていないので開けません（出力したときの写しで描いています）。'
     : 'ほかの画面設計の箱を押すと、その画面設計を開きます。全部の画面設計の図は、最初の画面の「つながりの図」で見られます。'}</p>${mapLegendHtml()}
     <div class="map-canvas" id="design-map">${mapHtml(store.state, d.id, d.mapPos || {})}</div></div>`;
   keep();
@@ -8260,7 +8633,7 @@ function lockForViewing() {
   document.querySelectorAll('#db-view [data-drag]').forEach((x) => { x.style.visibility = 'hidden'; });
 }
 
-// 単体で開いた HTML で出す違い（違いの印を付けて書き出したとき。q44d）。戻り値 { result, label } か null
+// 単体で開いた HTML で出す違い（違いの印を付けて出力したとき。q44d）。戻り値 { result, label } か null
 function editorDiff() {
   if (!standalone || !standalone.diffBase || ui.diffHidden || store.isViewing) return null;
   const d = currentDesign();
@@ -8550,7 +8923,7 @@ function partCommonFieldsHtml(p) {
 // 取り込んだ項目の知らせ（画像 q20 の 2）。元を直すとここも変わること、ここでは直せないことと、元を開く・つながりを切るボタン
 function linkBannerHtml(item) {
   if (standalone) {
-    return `<div class="pf-banner link">🔗 この項目は、モック「<b>${esc(item.link.designName)}</b>」の「${esc(item.name)}」から取り込んだ項目です（書き出したときの中身）。
+    return `<div class="pf-banner link">🔗 この項目は、モック「<b>${esc(item.link.designName)}</b>」の「${esc(item.name)}」から取り込んだ項目です（出力したときの中身）。
       元のモックで直す項目なので、ここでは直せません。</div>`;
   }
   const btns = `<div class="btns">${item.link.lost ? '' : `<button class="btn small primary" data-action="open-link-source" data-id="${esc(item.id)}">元のモックを開く</button>`}
@@ -8825,7 +9198,7 @@ function partTypeFieldsHtml(p) {
 }
 
 // 移る先の欄（ボタンとリンクの文字。画像 q53 の案A）。「画面」を選ぶと、画面設計（最初は「この画面設計」）と画面の 2 つの選ぶ欄を出す。
-// 画面設計はこの画面設計が先、ほかは名前の順（ごみ箱のものは出さない）。単体で開いた HTML では、書き出したときに入れた screenPeers の画面設計も選べる。
+// 画面設計はこの画面設計が先、ほかは名前の順（ごみ箱のものは出さない）。単体で開いた HTML では、出力したときに入れた screenPeers の画面設計も選べる。
 // この画面設計の画面では、開いている画面は出さない（読み込んだデータで自分を指しているときだけ残す）
 function moveFieldsHtml(p) {
   const pr = p.props;
@@ -9015,8 +9388,14 @@ function commitKeepSide(fn) {
   try { fn(); } finally { keepSideOnNotify = false; }
 }
 
-// 右の欄の変更（文字は、欄を離れたときか Enter を押したときに保存する）
+// 右の欄の変更（文字は、欄を離れたときか Enter を押したときに保存する）。打っている途中の文字の保存（flushSideField）もここを通る。
+// 人が打っていない文字の欄は保存しない（fieldUntyped）。保存した後は、欄の今の値を控え直す
 function onSidePanelChange(e) {
+  if (fieldUntyped(e.target)) return;
+  saveSideField(e);
+  rememberFieldValue(e.target);
+}
+function saveSideField(e) {
   if (e.target.dataset.sy) { onSystemFieldChange(e.target); return; } // システムの画面の真ん中の欄（第 9 段階）
   if (e.target.dataset.sw) { onStepFieldChange(e.target); return; } // システムの画面の右の欄の作業・矢印の設定（第 9 段階の T6b）
   if (e.target.dataset.co) { onCalloutFieldChange(e.target); return; }
@@ -9407,6 +9786,19 @@ function readPartField(el) {
   // 1 行の欄は前後の空白を取る。複数行の欄（説明の文字・メモ・押したとき）は書いたまま
   return el.tagName === 'TEXTAREA' ? el.value : el.value.trim();
 }
+
+// 人が打っていない文字の欄は保存しない（第 10 段階の前半・終わりの見直し A の Important 1）。欄に出した文は、保存してある文と違う形になる
+// ことがある（1 行の欄は改行を消す・複数行の欄は CRLF の改行を LF にそろえる・前後の空白を取って保存する欄がある・設計ノートの読み取ったこと
+// とメモは NOTE_TEXT_MAX を超える分を保存するときに切る）。そのような文を読み込んだ欄にフォーカスして離れるだけで、文が書き換わって
+// 元に戻すの履歴に積まれないように、欄にフォーカスしたとき（focusin）の値を控え、今の値が控えと同じ欄は保存しない（onSidePanelChange）。
+// 控えは、その欄で保存した後にも今の値で付け直す（打って保存した後に元の文へ打ち戻したときに保存するため。窓を離れて戻ったときは focusin が
+// 出ないことがあるので、focusin だけには頼らない）。描いたときの文（el.defaultValue）とは比べない（打って保存した後に、描いたときの文へ
+// 打ち戻すと、保存されなくなるため）
+const fieldValueAtFocus = new WeakMap();
+function rememberFieldValue(el) {
+  if (el && el.matches && isTextInput(el)) fieldValueAtFocus.set(el, el.value);
+}
+const fieldUntyped = (el) => fieldValueAtFocus.has(el) && fieldValueAtFocus.get(el) === el.value;
 
 // 右の欄（システムの画面では真ん中の欄と右の欄。第 9 段階）で打ちかけの文字（まだ change が起きていない）を保存する。
 // 右の欄を作り直す操作（高さのドラッグ・部品を選ぶ）・命令・窓を離れる前に呼ぶ（呼ばないと、作り直しで打った文字が消える）。
@@ -10241,10 +10633,10 @@ function nudgePart(dx, dy) {
   if (ui.sel.length) actions.moveMany(ui.designId, currentScreen().id, ui.sel, dx * GRID, dy * GRID);
 }
 
-// ── 8. 書き出しと取り込み ─────────────────────────────────────────────────────
-// 書き出しの窓（PDF・HTML・PNG。画像 q33）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面。q34〜q36）・
-// HTML の書き出しと、単体で開いたとき（q37）・HTML の取り込み（q39）。PDF・PNG のファイルは、デスクトップ版の main（export.js）が作る（q38）
-const EMBED_ID = 'mim-embedded'; // 書き出した HTML に画面設計を埋め込む script の id（ビジネスダイアグラムメーカー・CheckListMaker と別の名前）
+// ── 8. 出力と取り込み ─────────────────────────────────────────────────────
+// 出力の窓（PDF・HTML・PNG。画像 q33）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面。q34〜q36）・
+// HTML の出力と、単体で開いたとき（q37）・HTML の取り込み（q39）。PDF・PNG のファイルは、デスクトップ版の main（export.js）が作る（q38）
+const EMBED_ID = 'mim-embedded'; // 出力した HTML に画面設計を埋め込む script の id（ビジネスダイアグラムメーカー・CheckListMaker と別の名前）
 const EMBED_FORMAT = 'mockimagemaker-design';
 const IMPORT_MAX_CHARS = 50 * 1024 * 1024; // 取り込む HTML の大きさの上限
 const PNG_MARGIN = 24; // PNG のまわりの白
@@ -10308,7 +10700,7 @@ function pageBodySize(P, measured) {
   return { aw: Math.floor(r.width), ah: Math.floor(r.height) };
 }
 
-// 表紙（q34 案A）。名前・作る先・書き出した日・最終更新・数・説明と、2 列で「画面の一覧」と「改訂履歴」。縦の用紙では上下に積む
+// 表紙（q34 案A）。名前・作る先・出力した日・最終更新・数・説明と、2 列で「画面の一覧」と「改訂履歴」。縦の用紙では上下に積む
 function coverListRows(plan) {
   const rows = [];
   if (plan.changesPage) rows.push(`<tr class="lead"><td class="nm">${esc(plan.changesTitle)}</td><td class="dev"></td><td class="no">${plan.changesPage}</td></tr>`);
@@ -10319,7 +10711,7 @@ function coverListRows(plan) {
   plan.screens.forEach(({ s, i, page }) => rows.push(`<tr><td class="nm">${i + 1}　${esc(s.name)}</td><td class="dev">${DEVICES[s.device].label}</td><td class="no">${page}</td></tr>`));
   return rows;
 }
-const coverListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面の名前</th><th>機器</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('') || '<tr><td class="empty" colspan="3">（書き出す画面はありません）</td></tr>'}</tbody></table>`;
+const coverListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面の名前</th><th>機器</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('') || '<tr><td class="empty" colspan="3">（出力する画面はありません）</td></tr>'}</tbody></table>`;
 function coverRevisionTable(d) {
   const revs = versionRows(d).sort((a, b) => a.no - b.no); // 自動で残した行（取り込む前の状態・戻す前の状態）は出さない
   const rows = revs.length
@@ -10330,12 +10722,12 @@ function coverRevisionTable(d) {
 function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false } = {}) {
   const max = Math.round(P.h * 0.24);
   const desc = d.description.trim()
-    ? `<div class="cv-desc" style="max-height:${max}px">${esc(d.description)}</div>${descCut ? '<p class="cv-desc-cut">（説明が長いため、続きを省略しました。全文はアプリか、書き出した HTML で見られます）</p>' : ''}`
+    ? `<div class="cv-desc" style="max-height:${max}px">${esc(d.description)}</div>${descCut ? '<p class="cv-desc-cut">（説明が長いため、続きを省略しました。全文はアプリか、出力した HTML で見られます）</p>' : ''}`
     : '<div class="cv-desc none">（説明は書かれていません）</div>';
   return `<div class="pg" style="width:${P.w}px;height:${P.h}px"><div class="pg-cover">
     <div class="cv-kicker">画面設計書</div>
     <h1 class="cv-title">${esc(d.name)}</h1>
-    <div class="cv-meta">${targetChip(d.target)}<span>書き出した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span><span>最終更新 ${esc(fmtDateTime(d.updatedAt))}</span><span>画面 ${d.screens.length} つ・データベースの項目 ${d.items.length} 個</span></div>
+    <div class="cv-meta">${targetChip(d.target)}<span>出力した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span><span>最終更新 ${esc(fmtDateTime(d.updatedAt))}</span><span>画面 ${d.screens.length} つ・データベースの項目 ${d.items.length} 個</span></div>
     <hr class="cv-rule">
     <div class="cv-sec"><h3>説明</h3>${desc}</div>
     <div class="cv-cols${P.h > P.w ? ' stack' : ''}">
@@ -10343,7 +10735,7 @@ function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false } = {}) 
       <div class="cv-sec cv-revs"><h3>改訂履歴</h3>${coverRevisionTable(d)}</div>
     </div>
     <div class="cv-spacer"></div>
-    <div class="cv-foot"><span>モックイメージメーカー v${APP_VERSION} で書き出し</span><span>全 ${total} ページ</span></div>
+    <div class="cv-foot"><span>モックイメージメーカー v${APP_VERSION} で出力</span><span>全 ${total} ページ</span></div>
   </div></div>`;
 }
 const coverContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '画面の一覧（続き）', body: coverListTable(rows),
@@ -10566,7 +10958,7 @@ function printDocumentHtml(title, P, pagesHtml) {
     + '\n@page{size:' + P.wmm.toFixed(3) + 'mm ' + P.hmm.toFixed(3) + 'mm;margin:0}\n</style>\n</head>\n<body class="xp-doc">\n' + pagesHtml + '\n</body>\n</html>\n';
 }
 
-// 書き出しで比べる版（第 6 段階）。戻り値 { result（designDiff）, label（「第 2 版」）, title（「第 2 版（2026-10-10）」） } か null
+// 出力で比べる版（第 6 段階）。戻り値 { result（designDiff）, label（「第 2 版」）, title（「第 2 版（2026-10-10）」） } か null
 function exportDiff(d, state, revId) {
   const r = findRevision(d, revId);
   if (!isVersionRow(r) || !hasSnapshot(r)) return null;
@@ -10746,7 +11138,7 @@ function diagramImageDoc(title, legend, html, counts, minW = 480) {
   return { html: pngDocHtml(title, body), width, height, ...counts };
 }
 
-// ── 書き出す HTML（単体で開いて編集できる HTML。q37）──
+// ── 出力する HTML（単体で開いて編集できる HTML。q37）──
 // 写しの中の、ほかの画面設計を指す名前（ルックアップ元・関連レコード一覧の元）を今の名前に直す。
 // 名前は選んだときの控えで、後の名前の変更に追いついていない。単体で開いたときは元がないので、この控えの名前で出す
 function refreshRefNames(copy, state) {
@@ -10805,7 +11197,7 @@ function peerDesigns(state) {
     screens: [{ id: 'peer-' + p.id, parts: p.related.map((r) => ({ type: 'table', tableKind: 'related', label: r.label, props: { db: r.db } })) }],
   }));
 }
-// 画面設計の写し。改訂履歴の行は残し、版の写し（snapshot）は外す（書き出す HTML には入れない）
+// 画面設計の写し。改訂履歴の行は残し、版の写し（snapshot）は外す（出力する HTML には入れない）
 const withoutSnapshots = (d) => clone({ ...d, revisions: d.revisions.filter(isObj).map((r) => ({ ...r, snapshot: undefined })) });
 // 埋め込むデータ。revisions の写し（snapshot）は入れない。作る先の自由な名前は、この画面設計の作る先だけを入れる。
 // diffRevId（比べる版の行の id）を渡すと、その版の写しだけを diffBase として入れる（開いたときに「新」「変」の札を出すため。第 6 段階）
@@ -10818,14 +11210,14 @@ function embedPayload(d, state, { diffRevId = null } = {}) {
   if (diffSnap) refreshRefNames(diffSnap, state);
   return {
     format: EMBED_FORMAT, schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION, exportedAt: nowIso(), baseUpdatedAt: d.updatedAt,
-    baseHash: shortHash(comparableContent(d, state)), // 書き出したときの中身の印（取り込むときに、こちらでも変えたかを見る）
+    baseHash: shortHash(comparableContent(d, state)), // 出力したときの中身の印（取り込むときに、こちらでも変えたかを見る）
     data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: d.target && !builtinTarget(d.target) ? [d.target] : [], mapPos: {} }, designs: [copy] },
     peers: peersOf(d, state),
     screenPeers: screenPeersOf(d, state), // 移る先のほかの画面設計の名前と画面（第 8 段階）
     ...(diffSnap ? { diffBase: { title: revisionTitle(r), day: revisionDay(r), snapshot: diffSnap } } : {}),
   };
 }
-// 単体で開いた HTML を保存し直すときのデータ（書き出したときの日時・元の更新日時・ほかの画面設計の写しは、そのまま持ち回る）
+// 単体で開いた HTML を保存し直すときのデータ（出力したときの日時・元の更新日時・ほかの画面設計の写しは、そのまま持ち回る）
 function resavePayload(d, state) {
   const copy = withoutSnapshots(d);
   return {
@@ -10916,7 +11308,7 @@ function createStandaloneStore(el) {
   standalone.diffBase = readDiffBase(payload.diffBase, standalone.designId);
   return { store: new Store(new MemoryAdapter(), state), blockReason, failed: false };
 }
-// 違いの札の元にする版（書き出すときに選んだ版の写し）。読めないときは札を出さない
+// 違いの札の元にする版（出力するときに選んだ版の写し）。読めないときは札を出さない
 function readDiffBase(raw, designId) {
   if (!isObj(raw) || !isObj(raw.snapshot)) return null;
   try {
@@ -10937,7 +11329,7 @@ function standaloneFileName() {
   return safeFileName(d ? d.name : '') + '.html';
 }
 function standaloneBarHtml() {
-  // 違いの印を付けて書き出したときは、比べた版との違いの数・変更内容の一覧・印を隠すのボタンも出す（q44d）
+  // 違いの印を付けて出力したときは、比べた版との違いの数・変更内容の一覧・印を隠すのボタンも出す（q44d）
   const diff = standalone.diffBase ? `<span class="sa-diff" id="sa-diff"></span><button class="btn small" data-action="diff-list">変更内容の一覧</button>
     <button class="btn small" data-action="diff-toggle" id="sa-diff-toggle">印を隠す</button>` : '';
   return `<div class="sa-bar" id="sa-bar"><span class="sa-msg">この HTML は「<b id="sa-name"></b>」の画面設計です。直したら「HTML を保存」で保存して、送り返してください。</span>
@@ -10991,7 +11383,7 @@ async function saveStandalone() {
   return res;
 }
 
-// ── 書き出しの窓（q33）──
+// ── 出力の窓（q33）──
 // 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない）
 const exportOpts = { kind: 'pdf', paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, process: true, flow: true, openAfter: true, diff: false };
 const EXPORT_KINDS = [
@@ -11004,11 +11396,11 @@ function exportDialogBody(d, desk, kind, hasMap) {
   const kinds = EXPORT_KINDS.map(([k, ic, name, note]) => {
     const off = !desk && k !== 'html'; // PDF・PNG はデスクトップ版だけ（q38）
     return `<button type="button" class="xp-kind${k === kind ? ' on' : ''}" data-xkind="${k}" aria-pressed="${k === kind}"${off ? ' disabled' : ''}>`
-      + `<b><i>${ic}</i>${name}</b><small>${off ? 'デスクトップ版のアプリで書き出せます' : note}</small></button>`;
+      + `<b><i>${ic}</i>${name}</b><small>${off ? 'デスクトップ版のアプリで出力できます' : note}</small></button>`;
   }).join('');
   const seg = (name, value, choices) => `<div class="seg">${choices.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}"${value === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
   const screens = d.screens.map((s, i) => `<label class="check"><input type="checkbox" data-xscreen value="${esc(s.id)}" checked><span>${i + 1}　${esc(s.name)}<small class="dev">${DEVICES[s.device].label}</small></span></label>`).join('');
-  const pick = `<div class="xp-sub">書き出す画面<span class="spacer"></span><button type="button" class="link-btn" data-xall="1">すべて選ぶ</button><button type="button" class="link-btn" data-xall="0">すべて外す</button></div><div class="xp-screens">${screens}</div>`;
+  const pick = `<div class="xp-sub">出力する画面<span class="spacer"></span><button type="button" class="link-btn" data-xall="1">すべて選ぶ</button><button type="button" class="link-btn" data-xall="0">すべて外す</button></div><div class="xp-screens">${screens}</div>`;
   const page = (key, label, ok, why) => `<label class="check"><input type="checkbox" data-xpage="${key}"${ok && o[key] ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${label}${ok ? '' : `<small class="sub">${why}</small>`}</span></label>`;
   // 違いの印（第 6 段階。q42b）。比べられる版（写しのある版）がなければ、押せなくして理由を添える
   const vers = versionRows(d).filter(hasSnapshot).sort((a, b) => b.no - a.no);
@@ -11031,7 +11423,7 @@ function exportDialogBody(d, desk, kind, hasMap) {
       <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', 'つながりの図', hasMap, 'ほかの画面設計とのつながりがないので、出しません')}${page('items', 'データベースの項目の一覧表', d.items.length > 0, '項目がないので、出しません')}${page('process', 'ステータスの移り方', hasProcessPage(d), 'ステータスを進める操作がないので、出しません')}${page('flow', '画面の移り方', hasFlowPage(d, store.state), 'ボタン・リンクの文字の移る先がないので、出しません')}</div>
       ${pick}
       ${diffPick('pdf')}
-      <label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>書き出したら PDF を開く</span></label>
+      <label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>出力したら PDF を開く</span></label>
     </div>
     <div class="xp-box" data-xbox="html"${kind === 'html' ? '' : ' hidden'}>
       <p class="xp-note">画面設計 1 つ分（画面 ${d.screens.length} つ・項目 ${d.items.length} 個）を、アプリごと 1 つの HTML ファイルにします。<br>
@@ -11043,11 +11435,11 @@ function exportDialogBody(d, desk, kind, hasMap) {
     <div class="xp-box" data-xbox="png"${kind === 'png' ? '' : ' hidden'}>
       ${pick}
       ${diffPick('png')}
-      <p class="xp-note">1 画面＝1 枚（画面・吹き出し・部品の設定の一覧表が入る大きさ）。2 倍の細かさで書き出します。<br>
+      <p class="xp-note">1 画面＝1 枚（画面・吹き出し・部品の設定の一覧表が入る大きさ）。2 倍の細かさで出力します。<br>
         画面が 2 つ以上のときは、保存するフォルダを選びます（ファイルの名前は「${esc(safeFileName(d.name))}_01_${esc(safeFileName(d.screens[0].name, '画面'))}.png」のようにします）。</p>
     </div>`;
 }
-// 書き出しの窓を開き、選んだ形で書き出す。戻り値は書き出しの結果（キャンセルは null）
+// 出力の窓を開き、選んだ形で出力する。戻り値は出力の結果（キャンセルは null）
 async function openExportDialog(designId) {
   const d = findDesign(store.state, designId);
   if (!d || standalone) return null;
@@ -11056,8 +11448,8 @@ async function openExportDialog(designId) {
   const kind = desk ? exportOpts.kind : 'html';
   const hasMap = hasMapLinks(d, store.state);
   const r = await showDialog({
-    title: `「${d.name}」を書き出す`,
-    okLabel: '書き出す…',
+    title: `「${d.name}」を出力`,
+    okLabel: '出力…',
     width: 640,
     body: exportDialogBody(d, desk, kind, hasMap),
     init(m) {
@@ -11085,7 +11477,7 @@ async function openExportDialog(designId) {
       const k = m.querySelector('.xp-kind.on').dataset.xkind;
       const box = m.querySelector(`[data-xbox="${k}"]`);
       const screenIds = [...box.querySelectorAll('[data-xscreen]:checked')].map((x) => x.value);
-      if (k === 'png' && !screenIds.length) return { error: '書き出す画面を 1 つ以上選んでください。' };
+      if (k === 'png' && !screenIds.length) return { error: '出力する画面を 1 つ以上選んでください。' };
       const xd = box.querySelector('[data-xdiff]');
       const diffOn = !!xd && !xd.disabled && xd.checked;
       const diffRevId = diffOn ? box.querySelector('[data-xdiffrev]').value : null;
@@ -11097,7 +11489,7 @@ async function openExportDialog(designId) {
         cover: checked('cover'), map: checked('map'), items: checked('items'), process: checked('process'), flow: checked('flow'),
         openAfter: !!box.querySelector('[data-xopen]').checked, diffRevId, diffOn,
       };
-      if (!screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((key) => r2[key])) return { error: '入れるページか、書き出す画面を 1 つ以上選んでください。' };
+      if (!screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((key) => r2[key])) return { error: '入れるページか、出力する画面を 1 つ以上選んでください。' };
       return r2;
     },
   });
@@ -11116,10 +11508,10 @@ async function openExportDialog(designId) {
 }
 function reportExport(res, what) {
   if (!res || res.canceled) return;
-  if (!res.ok) { toast(`${what} を書き出せませんでした（${res.error || 'わからない理由'}）。`); return; }
-  toast(res.count > 1 ? `${res.count} 枚の ${what} を書き出しました（${res.dir}）。` : `${what} を書き出しました（${res.path}）。`);
+  if (!res.ok) { toast(`${what} を出力できませんでした（${res.error || 'わからない理由'}）。`); return; }
+  toast(res.count > 1 ? `${res.count} 枚の ${what} を出力しました（${res.dir}）。` : `${what} を出力しました（${res.path}）。`);
 }
-// 書き出す。r は書き出しの窓の結果（{ kind, screenIds, paper, orient, cover, map, items, process, flow, openAfter, diffRevId（比べる版。違いの印を付けないときは null） }）
+// 出力する。r は出力の窓の結果（{ kind, screenIds, paper, orient, cover, map, items, process, flow, openAfter, diffRevId（比べる版。違いの印を付けないときは null） }）
 async function runExport(designId, r) {
   const d = findDesign(store.state, designId);
   if (!d) return null;
@@ -11147,7 +11539,7 @@ async function runExport(designId, r) {
 }
 
 // ── HTML の取り込み（q39）──
-// 書き出した HTML を読む。戻り値 { payload, design, customTargets } か { error }
+// 出力した HTML を読む。戻り値 { payload, design, customTargets } か { error }
 function parseExportedHtml(text) {
   if (typeof text !== 'string' || !text.trim()) return { error: 'ファイルが空です。' };
   if (text.length > IMPORT_MAX_CHARS) return { error: 'ファイルが大きすぎます（50MB まで）。' };
@@ -11158,17 +11550,17 @@ function parseExportedHtml(text) {
     return { error: 'HTML として読めませんでした。' };
   }
   const el = doc.getElementById(EMBED_ID);
-  if (!el) return { error: 'モックイメージメーカーで書き出した HTML ではありません（画面設計のデータが入っていません）。' };
+  if (!el) return { error: 'モックイメージメーカーで出力した HTML ではありません（画面設計のデータが入っていません）。' };
   let payload;
   try {
     payload = JSON.parse(el.textContent);
   } catch (_) {
     return { error: 'HTML に入っている画面設計のデータが壊れています。' };
   }
-  if (!isObj(payload) || payload.format !== EMBED_FORMAT) return { error: 'モックイメージメーカーで書き出した HTML ではありません。' };
+  if (!isObj(payload) || payload.format !== EMBED_FORMAT) return { error: 'モックイメージメーカーで出力した HTML ではありません。' };
   const v = Number(payload.schemaVersion);
   if (!Number.isInteger(v) || v < 1) return { error: 'HTML に入っている画面設計のデータの版が正しくありません。' };
-  if (v > SCHEMA_VERSION) return { error: `新しい版のアプリで書き出した HTML です（データの形の版 ${v}。この版のアプリが分かるのは ${SCHEMA_VERSION} まで）。新しい版のアプリで取り込んでください。` };
+  if (v > SCHEMA_VERSION) return { error: `新しい版のアプリで出力した HTML です（データの形の版 ${v}。この版のアプリが分かるのは ${SCHEMA_VERSION} まで）。新しい版のアプリで取り込んでください。` };
   let migrated;
   try {
     migrated = migrate(payload.data);
@@ -11186,13 +11578,13 @@ function canonicalJson(v) {
   return JSON.stringify(v === undefined ? null : v);
 }
 const designContent = (d) => canonicalJson(designContentOf(d));
-// 比べるための中身。形を整え、ほかの画面設計を指す控えの名前を今の名前に直してから作る（書き出した HTML の写しと同じ直し方）
+// 比べるための中身。形を整え、ほかの画面設計を指す控えの名前を今の名前に直してから作る（出力した HTML の写しと同じ直し方）
 function comparableContent(d, state) {
   const c = normalizeDesign(clone({ ...d, revisions: [] }));
   refreshRefNames(c, state);
   return designContent(c);
 }
-// 中身の短い印（受け渡しで「書き出した後に、こちらでも変えたか」を見るため。FNV-1a を 2 本並べた 16 桁）
+// 中身の短い印（受け渡しで「出力した後に、こちらでも変えたか」を見るため。FNV-1a を 2 本並べた 16 桁）
 function shortHash(text) {
   let a = 0x811c9dc5;
   let b = 0x9e3779b9;
@@ -11204,7 +11596,7 @@ function shortHash(text) {
   }
   return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
 }
-// データの形の版 2 の形に戻した中身（版 2 のアプリで書き出した HTML・取り込んだときの中身の印と比べるため。第 8 段階）。
+// データの形の版 2 の形に戻した中身（版 2 のアプリで出力した HTML・取り込んだときの中身の印と比べるため。第 8 段階）。
 // ステータスは名前の並び、見本で出すステータスは名前に戻し、版 3 で足した欄は空なら外す（中身の入った欄は残すので、そのときは印が合わない）
 function legacyContent(d, state) {
   const c = normalizeDesign(clone({ ...d, revisions: [] }));
@@ -11229,7 +11621,7 @@ function legacyContent(d, state) {
   ['processPos', 'flowPos'].forEach((k) => { if (isObj(out[k]) && !Object.keys(out[k]).length) delete out[k]; });
   return canonicalJson(out);
 }
-// 書き出した後に、こちらでも変えたか。書き出したときの中身の印（baseHash）か、前に取り込んだときの中身の印（画面設計の exchangeHash）と
+// 出力した後に、こちらでも変えたか。出力したときの中身の印（baseHash）か、前に取り込んだときの中身の印（画面設計の exchangeHash）と
 // 今の中身が同じなら、変えていない（元に戻すで戻した変更や、2 回目の取り込みも正しく分かるように、更新日時でなく中身で比べる）。
 // 印は、データの形の版 2 のアプリで作ったものもあるので、版 2 の形に戻した中身の印とも比べる
 function changedSinceExport(cur, payload) {
@@ -11248,7 +11640,7 @@ function replaceWithImported(s, incoming) {
   d.exchangeHash = shortHash(comparableContent(d, s)); // 取り込んだ中身の印（次に取り込むとき、こちらで変えていないと分かるように）
 }
 // 置き換えても中身が変わらないか（つながった項目は、一覧にある元にそろえてから比べる。
-// 書き出した HTML ではルックアップ元などの名前を今の名前に直しているので、手元の写しも同じように直してから比べる）
+// 出力した HTML ではルックアップ元などの名前を今の名前に直しているので、手元の写しも同じように直してから比べる）
 function sameAfterImport(existing, incoming) {
   const trial = cloneState(store.state);
   replaceWithImported(trial, incoming);
@@ -11266,12 +11658,12 @@ function openImportConfirmDialog(cur, inc, payload) {
     okLabel: '取り込む',
     okClass: 'danger',
     width: 560,
-    body: `<p>一覧${cur.trashedAt ? 'の「ごみ箱」' : ''}にある画面設計「${esc(cur.name)}」から書き出した HTML です。</p>
+    body: `<p>一覧${cur.trashedAt ? 'の「ごみ箱」' : ''}にある画面設計「${esc(cur.name)}」から出力した HTML です。</p>
       <table class="imp-cmp"><thead><tr><th></th><th>今の中身</th><th>取り込む中身</th></tr></thead><tbody>
         ${row('名前', esc(cur.name), esc(inc.name))}${row('更新日時', fmtDateTime(cur.updatedAt), fmtDateTime(inc.updatedAt))}
         ${row('画面', `${a.screens} つ`, `${b.screens} つ`)}${row('部品', `${a.parts} 個`, `${b.parts} 個`)}${row('項目', `${a.items} 個`, `${b.items} 個`)}
       </tbody></table>
-      ${changedHere ? `<p class="warn">書き出した後（${esc(fmtDateTime(payload.baseUpdatedAt))} より後）に、こちらでも変えています。置き換えると、こちらで変えた所は消えます（今の中身は改訂履歴に残ります）。</p>` : ''}
+      ${changedHere ? `<p class="warn">出力した後（${esc(fmtDateTime(payload.baseUpdatedAt))} より後）に、こちらでも変えています。置き換えると、こちらで変えた所は消えます（今の中身は改訂履歴に残ります）。</p>` : ''}
       <div class="imp-choice">
         <label class="check"><input type="radio" name="imp-how" value="replace" checked><span><b>置き換える</b><small class="sub">今の中身は、改訂履歴に「取り込む前の状態」として残ります。${cur.trashedAt ? 'ごみ箱から一覧に戻します。' : ''}元に戻す（Ctrl+Z）でも戻せます。</small></span></label>
         <label class="check"><input type="radio" name="imp-how" value="copy"><span><b>別の画面設計として足す</b><small class="sub">「${esc(importedCopyName(inc.name))}」として一覧に足します。今の中身はそのままです。</small></span></label>
@@ -11279,7 +11671,7 @@ function openImportConfirmDialog(cur, inc, payload) {
     collect: (m) => (m.querySelector('[name="imp-how"]:checked') || {}).value || 'replace',
   });
 }
-// 書き出した HTML の文字を取り込む。戻り値 { status: 'added'|'replaced'|'copied'|'same'|'canceled'|'error', designId?, error? }。
+// 出力した HTML の文字を取り込む。戻り値 { status: 'added'|'replaced'|'copied'|'same'|'canceled'|'error', designId?, error? }。
 // systemId を渡すと、新しく足すとき（一覧にない・別の画面設計として足す）だけ、そのシステムに入れる（システムのまとまりの上にファイルを落としたとき。
 // 置き換え・中身が同じときは、入っているシステムを変えない。設計書の 5-6）
 async function importHtmlText(text, { systemId = null } = {}) {
@@ -11460,11 +11852,11 @@ function runCommand(cmd) {
       (cmd === 'newDesign' ? newDesignWithDialog(from) : newSystemWithDialog()).catch(reportPageError);
       return true;
     }
-    // 書き出しと取り込み（第 5 段階）。単体で開いた HTML では、書き出しの窓と取り込みは出さず、HTML を保存し直すだけ（q37）
+    // 出力と取り込み（第 5 段階）。単体で開いた HTML では、出力の窓と取り込みは出さず、HTML を保存し直すだけ（q37）
     case 'exportDialog':
       if (standalone) return true;
       if (ui.view === 'editor') openExportDialog(ui.designId).catch(reportPageError);
-      else toast('書き出す画面設計を開くか、カードの「…」から「書き出す…」を選んでください。');
+      else toast('出力する画面設計を開くか、カードの「…」から「出力…」を選んでください。');
       return true;
     case 'importHtml':
       if (standalone) return true;
@@ -11634,7 +12026,7 @@ function onAppClick(e) {
     ui.menuFor = null;
     refreshCards();
   }
-  if (ui.sysMenu && !e.target.closest('.sys-pop, [data-action="sys-add-menu"], [data-action="sys-menu"]')) closeSysMenu();
+  if (ui.sysMenu && !e.target.closest(SYS_MENU_INSIDE)) closeSysMenu();
   if (ui.sysDesignMenu && !e.target.closest('.sys-dmenu, [data-action="sys-design-menu"]')) closeSysDesignMenu();
   if (ui.screenMenu && !e.target.closest('.screen-menu, .sl-more')) closeScreenMenu();
   if (ui.revMenu && !e.target.closest('.rv-menu, .rv-arrow')) closeRevMenu();
@@ -11708,7 +12100,7 @@ function onKeyDown(e) {
   if (e.key === 'Escape' && ui.sysMenu) {
     const [kind, id] = ui.sysMenu.split(':');
     closeSysMenu();
-    const opener = [...document.querySelectorAll(`[data-action="${kind === 'more' ? 'sys-menu' : 'sys-add-menu'}"]`)].find((b) => b.dataset.id === id);
+    const opener = [...document.querySelectorAll(`[data-action="${SYS_MENU_OPENERS[kind]}"]`)].find((b) => b.dataset.id === id);
     if (opener) opener.focus();
     return;
   }
@@ -11770,7 +12162,7 @@ function onStoreChange() {
 // AI（Claude Code など）の頼みを main から preload の aiAPI で受け、actions.* に直して実行し、返事を返す。
 // 道具の決まりはここ 1 か所に置く（入口の mcp-server.js は、頼みをそのまま渡すだけ）。確かめの窓・ファイルを選ぶ窓を出す関数は呼ばない（8-5）。
 // 読む道具は本当の中身（前の版を見ている間は store.realState）を読む。書く道具は store.batch() で 1 回の変更にする（8-1）。
-// 返事は { ok: true, result } か { ok: false, error: { code, message, candidates? } }。画像と書き出しは render も返す（main が画像・PDF にする）。
+// 返事は { ok: true, result } か { ok: false, error: { code, message, candidates? } }。画像と出力は render も返す（main が画像・PDF にする）。
 
 // 断るときの例外。message は AI に返す日本語の文（理由と、人がすること）
 class AiRefusal extends Error {
@@ -11809,7 +12201,7 @@ function aiError(e) {
   if (e.candidates) error.candidates = e.candidates;
   return { ok: false, error };
 }
-// 画像・書き出しの返事（main が render の HTML を PNG・PDF にする）
+// 画像・出力の返事（main が render の HTML を PNG・PDF にする）
 class AiRendered {
   constructor(result, render) {
     this.result = result;
@@ -12169,7 +12561,7 @@ async function aiWrite(ctx, opts, run) {
   // 「AI が直す前の状態」の行は、直す前に作っておき、中身が変わったときだけ入れる（8-3）
   const before = d && !tx.noBeforeRow ? aiBeforeRow(ctx, d) : null;
   const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
-  const seen = aiViewBefore(S, beforeSys); // 知らせ（紫・オレンジの帯と光らせ方）のため、直す前の様子を控える
+  const seen = aiViewBefore(S, beforeSys, y); // 知らせ（紫・オレンジの帯と光らせ方）のため、直す前の様子を控える
   let mode = true;
   let out;
   let changed;
@@ -13280,10 +13672,13 @@ const aiHead = (s, n) => {
   return t.length > n ? t.slice(0, n) + '…' : t;
 };
 const aiSystemBrief = (y) => ({ id: y.id, name: y.name, updatedAt: y.updatedAt });
+// 設計ノートの段階ごとの進み具合（state だけ。list_systems・get_system。第 10 段階）。例 { read: 'done', flow: 'review', items: 'todo', … }
+const aiStageStates = (y) => Object.fromEntries(NOTE_STAGES.map((k) => [k, y.notes.stages[k].state]));
 function aiSystemSummary(S, y) {
   return {
     id: y.id, name: y.name, description: aiHead(y.description, AI_DESC_HEAD), designs: designsOfSystem(S, y).length,
-    roles: y.roles.length, steps: y.swimlane.steps.length, materials: y.materials.length, updatedAt: y.updatedAt, ...(y.trashedAt ? { trashed: true } : {}),
+    roles: y.roles.length, steps: y.swimlane.steps.length, materials: y.materials.length, stages: aiStageStates(y), updatedAt: y.updatedAt,
+    ...(y.trashedAt ? { trashed: true } : {}),
   };
 }
 function aiListSystems(args) {
@@ -13321,7 +13716,7 @@ function aiGetSystem(args) {
   const materials = y.materials.map(aiMaterialSummary);
   const out = {
     id: y.id, name: y.name, ...(args.cursor ? {} : { description: y.description }), updatedAt: y.updatedAt, ...(y.trashedAt ? { trashed: true } : {}),
-    roles: [], rolesTotal: roles.length, designs: [], designsTotal: designs.length, steps: [], stepsTotal: steps.length, edges: [], edgesTotal: edges.length,
+    stages: aiStageStates(y), roles: [], rolesTotal: roles.length, designs: [], designsTotal: designs.length, steps: [], stepsTotal: steps.length, edges: [], edgesTotal: edges.length,
     materials: [], materialsTotal: materials.length,
     revisions: y.revisions.filter(isObj).map((r) => ({ id: r.id, kind: r.kind, title: revisionTitle(r), date: r.date ? revisionDay(r) : null, note: str(r.note) })),
     nextCursor: null,
@@ -13716,13 +14111,159 @@ async function aiBdmPlan(api, y, m) {
   throw new AiRefusal(str(err.code) || 'read_failed', str(err.message) || `「${m.name}」を読めませんでした。もう一度頼んでください。`);
 }
 
-// ── 画像と書き出し（main が render の HTML を PNG・PDF にし、決めたフォルダへ書く。ファイルの窓は出さない。設計書の 8-7）──
+// ── 設計ノート（第 10 段階の前半。設計書の 5-3・9-2・10 章）──
+// 資料からシステムを作るときの 5 つの段階の進み具合と、読み取ったこと・決めたことと理由・まだ決まっていないこと・メモを読む・書く（actions の「設計ノート」）。
+// 設計ノートはシステムの履歴の写しに入らない（SYSTEM_CONTENT_KEYS）ので、設計ノートだけを直しても「AI が直す前の状態」の行は残らない
+// （知らせの扱いは aiAfterWrite・aiWarnHtml）。段階を done にしてよいのは、人が「よい」と答えたときだけ（入口の手引きの "stages" で AI に伝える）
+const aiStageOf = (y, k) => ({ state: y.notes.stages[k].state, confirmedAt: y.notes.stages[k].confirmedAt });
+// 段階の名前（例「③（データベースの項目）」。set_stage の注意の文）
+const aiStageLabel = (k) => NOTE_STAGE_NAMES[k].replace(/^(\S+) (.+)$/, '$1（$2）');
+// 設計ノートを読む。ごみ箱のシステムも読める。多いときは、決めたこと・まだ決まっていないこと の順に分ける（aiPageInto）。
+// 読み取ったこと・メモは最初のページ（cursor なし）にだけ入れる（get_system の説明と同じ。長い文で、どのページも大きくならないように）
+function aiGetNotes(args) {
+  const y = aiResolveSystem(aiState(), args.system);
+  const n = y.notes;
+  const decisions = n.decisions.map((r) => ({ id: r.id, date: r.date, stage: r.stage, text: r.text, reason: r.reason }));
+  const questions = n.questions.map((r) => ({ id: r.id, date: r.date, stage: r.stage, text: r.text, answer: r.answer, resolvedAt: r.resolvedAt }));
+  const out = {
+    system: { id: y.id, name: y.name }, stages: Object.fromEntries(NOTE_STAGES.map((k) => [k, aiStageOf(y, k)])),
+    ...(args.cursor ? {} : { findings: n.findings, memo: n.memo }),
+    decisions: [], decisionsTotal: decisions.length, questions: [], questionsTotal: questions.length, updatedAt: y.updatedAt, nextCursor: null,
+    ...(y.trashedAt ? { trashed: true } : {}),
+  };
+  return aiPageInto(out, [['decisions', decisions], ['questions', questions]], args.cursor);
+}
+// 設計ノートを書く。ops を 1 つずつ actions の「設計ノート」で行う（1 回の変更。断る操作があれば、前の操作も入れない）。
+// 返事の added は、足した行（add_decision・add_question）の { op, id }
+const AI_NOTE_OPS = ['set_findings', 'set_memo', 'add_decision', 'edit_decision', 'remove_decision', 'add_question', 'edit_question', 'answer_question', 'remove_question'];
+async function aiUpdateNotes(args, ctx) {
+  return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
+    const ops = aiRunOps(args.ops, (op) => aiNoteOp(tx.system.id, op));
+    return { ops, added: ops.filter((o) => o.op === 'add_decision' || o.op === 'add_question').map((o) => ({ op: o.op, id: o.id })) };
+  });
+}
+function aiNoteOp(sysId, op) {
+  const notes = () => findSystem(store.state, sysId).notes;
+  const DECISION = '決めたこと';
+  const QUESTION = 'まだ決まっていないこと';
+  switch (op.op) {
+    case 'set_findings':
+      actions.setNoteFindings(sysId, aiNoteText(op.text, '読み取ったこと'));
+      return { op: op.op };
+    case 'set_memo':
+      actions.setNoteMemo(sysId, aiNoteText(op.text, 'メモ'));
+      return { op: op.op };
+    case 'add_decision': {
+      const spec = { stage: aiNoteStage(op.stage), text: aiNoteRowText(op.text, DECISION), reason: op.reason == null ? '' : aiStrVal(op.reason, 'reason') };
+      return { op: op.op, id: aiAddedNoteRow(actions.addNoteDecision(sysId, spec), DECISION) };
+    }
+    case 'add_question': {
+      const spec = { stage: aiNoteStage(op.stage), text: aiNoteRowText(op.text, QUESTION) };
+      return { op: op.op, id: aiAddedNoteRow(actions.addNoteQuestion(sysId, spec), QUESTION) };
+    }
+    case 'edit_decision': {
+      const row = aiNoteRow(notes().decisions, op.id, DECISION);
+      actions.editNoteDecision(sysId, row.id, aiNotePatch(op, ['stage', 'text', 'reason'], DECISION));
+      return { op: op.op, id: row.id };
+    }
+    case 'edit_question': {
+      const row = aiNoteRow(notes().questions, op.id, QUESTION);
+      actions.editNoteQuestion(sysId, row.id, aiNotePatch(op, ['stage', 'text'], QUESTION));
+      return { op: op.op, id: row.id };
+    }
+    case 'answer_question': {
+      const row = aiNoteRow(notes().questions, op.id, QUESTION);
+      actions.answerNoteQuestion(sysId, row.id, aiStrVal(op.answer, 'answer')); // 空の答えは、まだ決まっていないことに戻す
+      return { op: op.op, id: row.id };
+    }
+    case 'remove_decision': {
+      const row = aiNoteRow(notes().decisions, op.id, DECISION);
+      actions.removeNoteDecision(sysId, row.id);
+      return { op: op.op, id: row.id };
+    }
+    case 'remove_question': {
+      const row = aiNoteRow(notes().questions, op.id, QUESTION);
+      actions.removeNoteQuestion(sysId, row.id);
+      return { op: op.op, id: row.id };
+    }
+    default: throw aiUnknownOp(op, AI_NOTE_OPS);
+  }
+}
+// 段階（NOTE_STAGES の値）。書いていない・知らない段階は、使える段階を添えて断る
+function aiNoteStage(v) {
+  const s = v == null ? '' : str(v);
+  const list = NOTE_STAGES.map((k) => `${k}（${NOTE_STAGE_NAMES[k]}）`).join('・');
+  if (!s) throw aiBad(`段階（stage）を書いてください（使える段階: ${list}）。`);
+  if (!NOTE_STAGES.includes(s)) throw aiBad(`段階「${s}」はありません（使える段階: ${list}）。`);
+  return s;
+}
+// 読み取ったこと・メモの全体の文。空の文は受ける（消すため）。NOTE_TEXT_MAX を超える文は断る（actions は超えた分を切って入れるので、切る前に断る）
+function aiNoteText(v, what) {
+  const text = aiStrVal(v, 'text');
+  if (text.length > NOTE_TEXT_MAX) throw aiBad(`${what}は ${NOTE_TEXT_MAX} 字までです（${text.length} 字あります）。短くまとめてください。`);
+  return text;
+}
+// 行（決めたこと・まだ決まっていないこと）の文。空の文は断る（行を消すときは remove_decision・remove_question）
+function aiNoteRowText(v, what) {
+  const text = v == null ? '' : aiStrVal(v, 'text');
+  if (!text.trim()) throw aiBad(`${what}の文（text）を空にはできません。`);
+  return text;
+}
+// 行は id で指す（get_notes の decisions[].id・questions[].id）
+function aiNoteRow(list, ref, what) {
+  const key = aiKey(ref);
+  if (!key) throw aiBad(`${what}の行を id（get_notes の id）で指してください。`);
+  const row = list.find((r) => r.id === key);
+  if (!row) throw new AiRefusal('not_found', `${what}に「${key}」という行は見つかりません（行は get_notes の id で指します）。`);
+  return row;
+}
+function aiAddedNoteRow(id, what) {
+  if (!id) throw aiBad(`${what}の行を足せませんでした。`);
+  return id;
+}
+// 行を直す欄。書いた欄だけを持たせる（actions.editNote… は 'stage' in patch のように書いた欄を見るため、書いていない欄は入れない）
+function aiNotePatch(op, fields, what) {
+  const patch = {};
+  fields.forEach((k) => {
+    if (op[k] === undefined) return;
+    if (k === 'stage') patch.stage = aiNoteStage(op.stage);
+    else if (k === 'text') patch.text = aiNoteRowText(op.text, what);
+    else patch[k] = op[k] == null ? '' : aiStrVal(op[k], k);
+  });
+  if (!Object.keys(patch).length) throw aiBad(`直す欄（${fields.join('・')}）を 1 つ以上書いてください。`);
+  return patch;
+}
+// AI が set_stage に書ける進み具合。todo（まだ）には戻せない（前の段階を直すときは review に戻す。設計書の 10-2）。名前は NOTE_STATE_NAMES
+const AI_STAGE_STATES = ['doing', 'review', 'done', 'skipped'];
+// 段階の進み具合を変える。同じ進み具合なら何も変えない（changed: false。確認の日時も付け直さない）。
+// その段階に、まだ決まっていないこと（答えのない行）が残るのに done にしたときは、warnings で知らせる（変えることはできる）
+async function aiSetStage(args, ctx) {
+  return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
+    const stage = aiNoteStage(args.stage);
+    const state = aiStageState(args.state);
+    const id = tx.system.id;
+    actions.setNoteStage(id, stage, state);
+    const y = findSystem(store.state, id);
+    const open = state === 'done' ? y.notes.questions.filter((q) => q.stage === stage && !noteQuestionDecided(q)).length : 0;
+    if (open) tx.warnings.push(`段階 ${aiStageLabel(stage)}に、まだ決まっていないことが ${open} つ残っています。人の答えは update_notes の answer_question で書いてください。`);
+    return { stage, ...aiStageOf(y, stage) };
+  });
+}
+function aiStageState(v) {
+  const s = v == null ? '' : str(v);
+  const N = NOTE_STATE_NAMES;
+  if (s === 'todo') throw aiBad(`段階を "todo"（${N.todo}）には戻せません。前の段階を直すときは "review"（${N.review}）に戻してください。`);
+  if (!AI_STAGE_STATES.includes(s)) throw aiBad(`進み具合「${s}」は使えません（使える進み具合: ${AI_STAGE_STATES.map((k) => `${k}（${N[k]}）`).join('・')}）。`);
+  return s;
+}
+
+// ── 画像と出力（main が render の HTML を PNG・PDF にし、決めたフォルダへ書く。ファイルの窓は出さない。設計書の 8-7）──
 const aiDesignBrief = (d) => ({ id: d.id, name: d.name, updatedAt: d.updatedAt });
 // 右の欄の打ちかけの文字を入れてから写す（8-5）。ただし日本語の変換中は確定しない（未確定のかなが人の 1 回の変更として履歴に入り、紫の帯も閉じるため）
 function aiFlushBeforeRead() {
   if (!imeComposing) flushSideField();
 }
-// 画面の画像。withTable が true なら、部品の設定の一覧表と吹き出しも写す（書き出しの PNG と同じ形）。false なら画面だけ
+// 画面の画像。withTable が true なら、部品の設定の一覧表と吹き出しも写す（出力の PNG と同じ形）。false なら画面だけ
 async function aiGetScreenImage(args) {
   aiFlushBeforeRead();
   const S = aiState();
@@ -13770,7 +14311,7 @@ function aiSwimlaneImage(S, args) {
   );
 }
 const AI_EXPORT_FORMATS = ['pdf', 'html', 'png'];
-// 書き出す。設定は書き出しの窓と同じ（PDF: 用紙・向き・表紙・つながりの図・項目の一覧表、PDF と PNG: 画面、全部: 違いの印を付ける版）
+// 出力する。設定は出力の窓と同じ（PDF: 用紙・向き・表紙・つながりの図・項目の一覧表、PDF と PNG: 画面、全部: 違いの印を付ける版）
 async function aiExportDesign(args) {
   aiFlushBeforeRead();
   const S = aiState();
@@ -13791,7 +14332,7 @@ async function aiExportDesign(args) {
   }
   if (format === 'png') {
     const docs = exportPngDocs(d, S, screenIds, diffRevId);
-    if (!docs.length) throw aiBad('書き出す画面を 1 つ以上選んでください。');
+    if (!docs.length) throw aiBad('出力する画面を 1 つ以上選んでください。');
     return new AiRendered({ ...result, screens: docs.length }, { kind: 'png', files: docs.map(({ name, html, width, height }) => ({ name, html, width, height })) });
   }
   const paper = args.paper == null ? 'A4' : str(args.paper);
@@ -13803,7 +14344,7 @@ async function aiExportDesign(args) {
     cover: args.cover !== false, map: args.map !== false && hasMapLinks(d, S), items: args.items !== false && d.items.length > 0,
     process: args.process !== false && hasProcessPage(d), flow: args.flow !== false && hasFlowPage(d, S),
   };
-  if (screenIds && !screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((k) => opts[k])) throw aiBad('入れるページか、書き出す画面を 1 つ以上選んでください。');
+  if (screenIds && !screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((k) => opts[k])) throw aiBad('入れるページか、出力する画面を 1 つ以上選んでください。');
   const doc = exportDocument(d, S, opts);
   return new AiRendered(
     { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items, process: opts.process, flow: opts.flow },
@@ -13842,6 +14383,9 @@ const AI_TOOLS = {
   list_materials: { write: false, run: aiListMaterials },
   read_material: { write: false, run: aiReadMaterial },
   swimlane_from_bdm: { write: true, run: aiSwimlaneFromBdm },
+  get_notes: { write: false, run: aiGetNotes },
+  update_notes: { write: true, run: aiUpdateNotes },
+  set_stage: { write: true, run: aiSetStage },
 };
 
 // 日本語の変換中と、窓が隠れたとき（AI がつながっている間の × は窓を隠すだけなので、打ちかけの文字をここで確定する）
@@ -13919,7 +14463,9 @@ function aiBandHtml() {
     const here = ui.view === 'system' && ui.systemId === b.systemId;
     const open = ui.view === 'editor' ? currentDesign() : ui.view === 'system' && !here ? findSystem(store.state, ui.systemId) : null;
     text = `${who} が「${esc(b.name)}」を${b.created ? '作りました' : `直しました（変更 ${b.count} 件）`}。${open ? `開いている「${esc(open.name)}」は変わっていません。` : ''}`;
-    btns = (here ? '' : `<button class="btn small" data-action="ai-open-system" data-id="${esc(b.systemId)}">${open ? `「${esc(b.name)}」を開く` : '開く'}</button>`) + undoBtn;
+    // 設計ノートだけを直したときの「開く」は、設計ノートの入口で開く（第 10 段階。オレンジの帯の「設計ノートを開く」とそろえる）
+    const act = b.notesOnly ? 'ai-open-system-notes' : 'ai-open-system';
+    btns = (here ? '' : `<button class="btn small" data-action="${act}" data-id="${esc(b.systemId)}">${open ? `「${esc(b.name)}」を開く` : '開く'}</button>`) + undoBtn;
   } else {
     const open = ui.view === 'editor' ? currentDesign() : null;
     text = `${who} が「${esc(b.name)}」を${b.kind === 'created' ? '作りました' : '直しました'}。${open ? `開いている「${esc(open.name)}」は変わっていません。` : ''}${esc(b.sysNote || '')}`;
@@ -13935,14 +14481,14 @@ function aiWarnHtml() {
   let text = `<b>${esc(w.label)}</b> が「${esc(w.name)}」を${w.created ? '作った' : '直した'}ので、元に戻す（Ctrl+Z）の履歴を消しました。`;
   if (open && !w.openChanged && !(ui.view === 'system' && open.id === w.systemId)) text += `開いている「${esc(open.name)}」は変わっていません。`;
   if (w.sysNote) text += esc(w.sysNote); // 画面設計の道具が、開いているシステムも変えたとき
-  // システム（第 9 段階）の「AI が直す前の状態」の行は、システムの画面の「履歴」にある
-  if (!w.created) text += `<br>AI の変更を戻すときは、「${esc(w.name)}」の${w.systemId ? '履歴' : '改訂履歴'}の「${esc(w.label)} が直す前の状態」から戻せます。`;
+  // システム（第 9 段階）の「AI が直す前の状態」の行は、システムの画面の「履歴」にある。設計ノートだけを直したとき（第 10 段階）は行が残らないので書かない
+  if (!w.created && !w.notesOnly) text += `<br>AI の変更を戻すときは、「${esc(w.name)}」の${w.systemId ? '履歴' : '改訂履歴'}の「${esc(w.label)} が直す前の状態」から戻せます。`;
   let btn;
-  // システムは、作ったときは「開く」、直したときは「履歴を開く」（そのシステムの画面の「履歴」の入口を開く。onAiClick）
+  // システムは、作ったときは「開く」、直したときは「履歴を開く」（そのシステムの画面の「履歴」の入口を開く。onAiClick）、
+  // 設計ノートだけを直したときは「設計ノートを開く」（設計ノートの入口を開く）
   if (w.systemId) {
-    btn = w.created
-      ? `<button class="btn small" data-action="ai-open-system" data-id="${esc(w.systemId)}">「${esc(w.name)}」を開く</button>`
-      : `<button class="btn small" data-action="ai-open-system-history" data-id="${esc(w.systemId)}">「${esc(w.name)}」の履歴を開く</button>`;
+    const [action, what] = w.created ? ['ai-open-system', 'を開く'] : w.notesOnly ? ['ai-open-system-notes', 'の設計ノートを開く'] : ['ai-open-system-history', 'の履歴を開く'];
+    btn = `<button class="btn small" data-action="${action}" data-id="${esc(w.systemId)}">「${esc(w.name)}」${what}</button>`;
   } else if (w.created) btn = `<button class="btn small" data-action="ai-open-design" data-id="${esc(w.designId)}">「${esc(w.name)}」を開く</button>`;
   else btn = `<button class="btn small" data-action="ai-open-revisions" data-id="${esc(w.designId)}">「${esc(w.name)}」の改訂履歴を開く</button>`;
   return `<div class="ai-band warn" id="ai-warn" role="status"><span class="ic">⚠</span><span>${text}</span><span class="spacer"></span>${btn}${aiCloseBtn('ai-warn-close')}</div>`;
@@ -13998,14 +14544,16 @@ function aiCardMark(id) {
 }
 
 // 直す前の様子を控える（aiWrite の batch の前）。開いている画面設計の写しは、光らせる部品と紫の帯の件数を決めるのに使う。
-// systems は、システムごとの直す前の中身の JSON（システムの紫の帯の件数に使う。第 9 段階）
-function aiViewBefore(S, systems = new Map()) {
+// systems は、システムごとの直す前の中身の JSON（システムの紫の帯の件数に使う。第 9 段階）。
+// sys は書く道具が指したシステム。notes は、その直す前の設計ノートの JSON（設計ノートは systems の中身に入らないので、別に控えて帯の件数に足す。第 10 段階）
+function aiViewBefore(S, systems = new Map(), sys = null) {
+  const notes = sys ? JSON.stringify(sys.notes) : null;
   const openId = ui.view === 'editor' ? ui.designId : null;
   const open = openId ? findDesign(S, openId) : null;
-  if (!open) return { open: null, systems };
+  if (!open) return { open: null, systems, notes };
   const keep = aiView.band && aiView.band.kind === 'edited' && aiView.band.designId === openId;
   const snap = designSnapshot(open);
-  return { open: openId, content: designContent(open), snap, base: keep ? aiView.band.base : snap, systems };
+  return { open: openId, content: designContent(open), snap, base: keep ? aiView.band.base : snap, systems, notes };
 }
 // AI が直した後の知らせ（aiWrite で、中身が変わったときに呼ぶ。描き直しは呼ぶ側）。mode は元に戻すの履歴の扱い（true か 'clear'）。
 // システムの道具（tx.system・tx.createdSystem）は、知らせの名前をシステムの名前にする（第 9 段階）
@@ -14032,15 +14580,25 @@ function aiAfterWrite(tx, mode, hadHistory, beforeMap, seen) {
   // 元に戻すの履歴を消したら、前に出した紫の帯の「元に戻す」は出さない（押しても戻らないため）
   if (mode === 'clear' && aiView.band && (aiView.band.kind === 'edited' || aiView.band.kind === 'system')) aiView.band.undoable = false;
   const what = sys || target;
+  const notesOnly = aiOnlyNotesChanged(sys, created, seen, tx.afterSys);
   if (mode === 'clear' && hadHistory) {
-    aiView.warn = what ? { designId: target ? target.id : null, systemId: sys ? sys.id : null, name: what.name, label, created, openChanged: openChanged || openSysChanged, sysNote } : null;
+    aiView.warn = what ? {
+      designId: target ? target.id : null, systemId: sys ? sys.id : null, name: what.name, label, created, openChanged: openChanged || openSysChanged, sysNote, notesOnly,
+    } : null;
     aiView.cleared = what ? what.name : '画面設計';
   } else if (sys) {
-    aiNoteSystemEdited(sys, seen, label, created, mode === true);
+    aiNoteSystemEdited(sys, seen, label, created, mode === true, notesOnly);
   } else if (!openChanged && target && target.id !== seen.open) {
     aiView.band = { kind: created ? 'created' : 'other', designId: target.id, name: target.name, label, sysNote };
   }
   aiView.undoMark = { len: store.undoStack.length, top: store.undoStack[store.undoStack.length - 1] };
+}
+// システムの道具（sys）で、中身（SYSTEM_CONTENT_KEYS）は変わらず、設計ノートが変わったか（第 10 段階）。そのときは「AI が直す前の状態」の行が
+// 残らないので、オレンジの帯に「戻せます」を書かず、ボタンを「設計ノートを開く」にする（aiWarnHtml）。作ったシステムは偽。
+// seen は aiViewBefore の控え（notes は直す前の設計ノートの JSON、systems は直す前の中身）。afterSys は直した後の中身（tx.afterSys）
+function aiOnlyNotesChanged(sys, created, seen, afterSys) {
+  if (!sys || created || seen.notes == null) return false;
+  return seen.notes !== JSON.stringify(sys.notes) && afterSys.get(sys.id) === seen.systems.get(sys.id);
 }
 // 人がシステムの画面で開いているシステム y を、画面設計の道具が変えたときの帯の 1 文（エスケープの前の文字）。
 // 作った画面設計をそのシステムに入れたとき（create_design の system）と、作業の指す先が外れたとき（画面・ステータスを消したなど）
@@ -14050,13 +14608,19 @@ function aiOpenSystemNote(y, target, tx, label) {
   return `開いている「${y.name}」のスイムレーン図の作業の指す先も外れました${row}。`;
 }
 // AI がシステムを直した・作ったとき: 紫の帯（kind 'system'）。件数は、同じシステムの帯を出してから最初に直す前（base）と今の違い。
-// AI が続けて直したら、件数を足して出し直す。undoable は「元に戻す」を出すか（q66 で元に戻すの 1 回分として積んだとき）
-function aiNoteSystemEdited(sys, seen, label, created, undoable) {
+// AI が続けて直したら、件数を足して出し直す。undoable は「元に戻す」を出すか（q66 で元に戻すの 1 回分として積んだとき）。
+// 設計ノート（第 10 段階）は中身（base）に入らないので、最初に直す前の設計ノート（notesBase）も持ち越し、その違いの数を足す。
+// notesOnly は、この頼みで設計ノートだけを直したか（aiOnlyNotesChanged）。同じ帯の間ずっと設計ノートだけを直したときだけ、帯の「開く」を設計ノートの入口にする
+function aiNoteSystemEdited(sys, seen, label, created, undoable, notesOnly = false) {
   const b = aiView.band;
   const keep = !!b && b.kind === 'system' && b.systemId === sys.id;
   const base = keep ? b.base : (seen.systems.get(sys.id) ?? null);
-  const count = base ? systemChangeCount(JSON.parse(base), systemContentOf(sys)) : 0;
-  aiView.band = { kind: 'system', systemId: sys.id, name: sys.name, label, created: created || (keep && b.created), base, count, undoable };
+  const notesBase = keep ? b.notesBase : seen.notes;
+  const count = (base ? systemChangeCount(JSON.parse(base), systemContentOf(sys)) : 0) + (notesBase ? notesChangeCount(JSON.parse(notesBase), sys.notes) : 0);
+  aiView.band = {
+    kind: 'system', systemId: sys.id, name: sys.name, label, created: created || (keep && b.created), base, notesBase, count, undoable,
+    notesOnly: notesOnly && (!keep || !!b.notesOnly),
+  };
 }
 // システムの中身の違いの数（紫の帯の「変更 N 件」）。名前・説明、役割・作業・矢印・画面設計の並びの 1 つずつの、足した・消した・直したを 1 件と数え、
 // 並びの順が変わったら、その並びで 1 件を足す
@@ -14065,6 +14629,14 @@ function systemChangeCount(a, b) {
   return (a.name !== b.name) + (a.description !== b.description)
     + listChangeCount(a.roles, b.roles, byId) + listChangeCount(a.swimlane.steps, b.swimlane.steps, byId)
     + listChangeCount(a.swimlane.edges, b.swimlane.edges, byId) + listChangeCount(a.designIds, b.designIds, (v) => v);
+}
+// 設計ノートの違いの数（システムの紫の帯の「変更 N 件」に足す。第 10 段階）。段階の進み具合（state と確認の日時）が変わった段階を 1 件ずつ、
+// 読み取ったこと・メモが変わったら 1 件ずつ、決めたこと・まだ決まっていないことの行の足した・消した・直したを 1 件ずつ（id で比べる）数える
+function notesChangeCount(a, b) {
+  const stage = (n, k) => canonicalJson(n.stages[k]);
+  const byId = (v) => v.id;
+  return NOTE_STAGES.filter((k) => stage(a, k) !== stage(b, k)).length + (a.findings !== b.findings) + (a.memo !== b.memo)
+    + listChangeCount(a.decisions, b.decisions, byId) + listChangeCount(a.questions, b.questions, byId);
 }
 function listChangeCount(before, after, keyOf) {
   const old = new Map(before.map((v) => [keyOf(v), canonicalJson(v)]));
@@ -14123,10 +14695,15 @@ function onAiClick(action, btn) {
       else if (ui.view === 'system') renderSystem();
       else updateEditor({ keepSide: true });
       return true;
-    // システムの画面を開く（第 9 段階）。「履歴を開く」は履歴の入口を開く。もう開いていれば開き直さない（「履歴を開く」は入口だけを履歴にする）
-    case 'ai-open-system': case 'ai-open-system-history': {
+    // システムの画面を開く（第 9 段階）。「履歴を開く」は履歴の入口、「設計ノートを開く」（第 10 段階。紫の帯の、設計ノートだけを直したときの「開く」も）は
+    // 設計ノートの入口を開く。
+    // もう開いていれば開き直さない（入口だけを切り替える）
+    case 'ai-open-system': case 'ai-open-system-history': case 'ai-open-system-notes': {
       flushSideField();
-      const panel = action === 'ai-open-system-history' ? 'history' : null;
+      const panel = { 'ai-open-system-history': 'history', 'ai-open-system-notes': 'notes' }[action] || null;
+      // 設計ノートを開くときは、前に開いていた札を忘れ、最初に開く札の決まり（noteOpenStage）で札を選び直す
+      // （人が帯を押したので、札が動いてよい。AI が確認待ちにした段階が開く。終わりの見直し A の Minor 4）
+      if (panel === 'notes') delete ui.notesStages[btn.dataset.id];
       if (!(ui.view === 'system' && ui.systemId === btn.dataset.id)) openSystem(btn.dataset.id, { panel });
       else if (panel) openSystemPanel(panel);
       return true;
@@ -14233,6 +14810,8 @@ function bindGlobalEvents() {
   app.addEventListener('change', (e) => {
     if (e.target.closest('#side-panel, #sys-view, #sys-side') && !e.target.closest('.target-picker')) onSidePanelChange(e);
   });
+  // 文字の欄にフォーカスしたときの値を控える（人が打っていない欄は保存しない。fieldUntyped）
+  app.addEventListener('focusin', (e) => rememberFieldValue(e.target));
   // システムの画面のスイムレーン図のダブルクリック（文字の欄・作業を足す）と右クリック（消す。ブラウザのメニューを出さない）（第 9 段階の T6b）
   app.addEventListener('dblclick', (e) => { if (ui.view === 'system' && !isDialogOpen()) onSwimDblClick(e); });
   app.addEventListener('contextmenu', (e) => { if (ui.view === 'system' && !isDialogOpen()) onSwimContextMenu(e); });
@@ -14287,6 +14866,8 @@ function bindGlobalEvents() {
     // 窓の幅が狭くてメニューバーを横に送ったときは、メニューバーから出したものを閉じる（ボタンから離れるため）
     if (e.target && e.target.id === 'toolbar') { closeRevMenu(); closeFoldMenu(); }
     if (e.target && e.target.id === 'sys-list') { closeSysMenu(); closeSysDesignMenu(); }
+    // 真ん中を送ったときは、設計ノートの進み具合のメニューだけを閉じる（錨のボタンが真ん中にあるため。左の「＋ 画面設計を入れる ▾」のメニューは閉じない）
+    if (e.target && e.target.id === 'sys-view' && str(ui.sysMenu).startsWith('stage:')) closeSysMenu();
   }, true);
   window.addEventListener('blur', flushSideField);
   // 閉じる前に、打ちかけの文字を保存する。単体で開いた HTML で保存していない変更があれば、閉じるのを止める（ブラウザの確かめが出る）
@@ -14311,7 +14892,7 @@ function bindGlobalEvents() {
 async function boot() {
   const styleEl = document.querySelector('head > style');
   APP_STYLE = styleEl ? styleEl.textContent : '';
-  // 書き出した HTML（画面設計が埋め込まれている）を開いたときは、単体で開いたときの形で起動する（q37。どこにも保存しない）
+  // 出力した HTML（画面設計が埋め込まれている）を開いたときは、単体で開いたときの形で起動する（q37。どこにも保存しない）
   const embedded = document.getElementById(EMBED_ID);
   const created = embedded ? createStandaloneStore(embedded) : await createAppStore();
   store = created.store;
@@ -14362,11 +14943,12 @@ function exposeForTest() {
     changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
     SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
     MATERIAL_KINDS, MATERIAL_KIND_NAMES, normalizeMaterials, isLegacyMaterial, fmtMaterialSize,
+    NOTE_STAGES, NOTE_STAGE_NAMES, NOTE_STATES, NOTE_STATE_NAMES, NOTE_TEXT_MAX, normalizeNotes, noteQuestionDecided,
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
     swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,
     swimCellAt, swimPlusAt, swimSideToward, swimFitZoom, SWIM_X0, SWIM_NEAR, selectEdge, setSwimMode, setSwimPal,
-    SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount,
+    SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount, notesChangeCount, aiOnlyNotesChanged,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,

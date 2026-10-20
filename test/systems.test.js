@@ -12,6 +12,9 @@ const OLD = '2026-10-01T00:00:00.000Z';
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const tick = () => new Promise((r) => setTimeout(r, 0));
 const click = (el) => el.dispatchEvent(new el.ownerDocument.defaultView.MouseEvent('click', { bubbles: true }));
+// 設計ノートの既定の形（第 10 段階の T2。5 つの段階が todo・文と行は空。くわしい確かめは notes.test.js）
+const todoStage = () => ({ state: 'todo', confirmedAt: null });
+const emptyNotes = () => ({ stages: { read: todoStage(), flow: todoStage(), items: todoStage(), screens: todoStage(), docs: todoStage() }, findings: '', decisions: [], questions: [], memo: '' });
 
 // ── 見本（架空の業務）──
 const screen = (id, name) => ({ id, name, device: 'pc', width: 1280, height: 800, showHeader: true, tablePos: 'right', parts: [], callouts: [] });
@@ -147,13 +150,13 @@ test('読み込みの直し: 足りない欄を補い、知らない欄は残す
   assert.match(y.swimlane.edges[1].id, /^e-/);
   assert.notEqual(y.swimlane.edges[1].id, 'e-1');
   assert.equal(y.swimlane.lanesHint, 'のこす');
-  assert.deepEqual(plain([y.materials, y.notes]), [[], {}]);
+  assert.deepEqual(plain([y.materials, y.notes]), [[], emptyNotes()], '資料の欄がなければ []・設計ノートの欄がなければ既定の形');
   // 2 つ目（id が重なる・ほとんど空）
   assert.match(y2.id, /^y-/);
   assert.notEqual(y2.id, 'y-trip');
   assert.deepEqual(plain({ ...y2, id: '' }), {
     id: '', name: '名前なし', description: '', createdAt: null, updatedAt: null, trashedAt: null,
-    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: {}, revisions: [],
+    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: emptyNotes(), revisions: [],
   });
   assert.deepEqual(plain(api.migrate(plain(state)).state), plain(state), '2 回通しても同じ');
 });
@@ -169,7 +172,7 @@ test('システムを作り、同じ画面設計を 2 つのシステムに入�
   assert.equal(typeof y.createdAt, 'string');
   assert.deepEqual(plain({ ...y, id: '', createdAt: '', updatedAt: '' }), {
     id: '', name: '出張申請システム', description: '出張の申請と精算をまとめる', createdAt: '', updatedAt: '', trashedAt: null,
-    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: {}, revisions: [],
+    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: emptyNotes(), revisions: [],
   });
   assert.equal(y.updatedAt, y.createdAt);
   const emp = api.actions.createDesign('社員マスタ', 'kintone');

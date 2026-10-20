@@ -4,12 +4,12 @@
 //  - 日本語のメニュー。元に戻す・やり直す・拡大・縮小は Electron の標準の動き（role）を使わず、
 //    IPC（menu:command）でページへ送り、ページの runCommand() で受ける
 //  - ファイルへの保存（storage.js）。終了の前に、並んでいる書き込みが終わるのを待つ
-//  - 書き出し（PDF・PNG・HTML）と HTML の取り込みのファイルの窓（export.js）
+//  - 出力（PDF・PNG・HTML）と HTML の取り込みのファイルの窓（export.js）
 //  - システムに入れる資料のファイルの置き場と、ページへの窓口（materials-main.js。第 9 段階の後半）
 //  - 2 つ目の起動を止める（2 つ動くと、互いの designs.json を丸ごと上書きするため）
 //  - AI（Claude Code など）の頼みの受け口（automation-main.js。第 7 段階）。--background の起動では窓を出さずに動き、
 //    AI がつながっている間の窓の × は、終わらずに窓を隠す。タスクトレイのアイコン（automation-tray.js）とアプリのメニューの「ヘルプ > AI とつなぐ…」
-// CheckListMaker の録画・ガジェット・Word・Excel の書き出しは写していない。
+// CheckListMaker の録画・ガジェット・Word・Excel の出力は写していない。
 'use strict';
 
 const { app, BrowserWindow, Menu, ipcMain } = require('electron');
@@ -65,8 +65,8 @@ function buildAppMenu() {
         commandItem('新しい画面設計…', 'newDesign'),
         commandItem('新しいシステム…', 'newSystem'),
         { type: 'separator' },
-        // 書き出す（PDF・HTML・PNG）は開いている画面設計を、取り込むは一覧へ戻ってから（第 5 段階）
-        commandItem('書き出す…', 'exportDialog'),
+        // 出力する（PDF・HTML・PNG）は開いている画面設計を、取り込むは一覧へ戻ってから（第 5 段階）
+        commandItem('出力…', 'exportDialog'),
         commandItem('HTML を取り込む…', 'importHtml'),
         { type: 'separator' },
         // 改訂する・改訂履歴は、開いている画面設計について行う（第 6 段階）
@@ -250,7 +250,7 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
   app.whenReady().then(() => {
     storage = initStorage(app, ipcMain);
     materials = initMaterials({ app, ipcMain, storage, headless: HEADLESS, ...createReadingParts() }); // 資料を読む部品と BDM を読む部品をつなぐ（読む部品は最初の頼みで読み込む）
-    const renderer = createPageRenderer(app); // PDF・PNG を作る（書き出しの窓と AI の書き出しで同じものを使う）
+    const renderer = createPageRenderer(app); // PDF・PNG を作る（出力の窓と AI の出力で同じものを使う）
     initExport(app, ipcMain, { headless: HEADLESS, renderer });
     automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION, renderer, materials });
     buildAppMenu();

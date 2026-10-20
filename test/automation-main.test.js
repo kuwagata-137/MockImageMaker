@@ -1,5 +1,5 @@
 'use strict';
-// automation-main.js（main とページの橋・終わる時計）と automation-render.js（AI の書き出しの仕上げ）のテスト。
+// automation-main.js（main とページの橋・終わる時計）と automation-render.js（AI の出力の仕上げ）のテスト。
 // Electron は使わない。app・ipcMain・窓は身代わりを渡す（終わる時計は MIM_IDLE_QUIT_MS で縮める。開発版〔isPackaged: false〕だけ読む）。
 
 const test = require('node:test');
@@ -92,7 +92,7 @@ test('--background の起動は、窓を出すまで見えていないとみな�
   assert.equal(quits(), 0);
 });
 
-test('AI の書き出しが途中で失敗したときは、書けたファイルの場所を失敗の文に入れる', async (t) => {
+test('AI の出力が途中で失敗したときは、書けたファイルの場所を失敗の文に入れる', async (t) => {
   const dir = makeDir();
   t.after(() => removeDir(dir));
   const saved = process.env.MIM_AI_EXPORT_DIR;
@@ -119,6 +119,40 @@ test('AI の書き出しが途中で失敗したときは、書けたファイ�
   assert.ok(fs.existsSync(written));
   assert.match(res.error.message, /描けない/);
   assert.ok(res.error.message.includes(written), res.error.message);
+});
+
+// 確かめの道具は MIM_AI_EXPORT_DIR でフォルダを変えるため、既定のフォルダの名前は道具では確かめられない（計画外。q79 で「書き出し」を「出力」にそろえた）
+test('AI の出力の既定のフォルダは「ドキュメント\\モックイメージメーカー\\AI の出力」。インストールした版では MIM_AI_EXPORT_DIR で変えられない', (t) => {
+  const saved = process.env.MIM_AI_EXPORT_DIR;
+  t.after(() => {
+    if (saved === undefined) delete process.env.MIM_AI_EXPORT_DIR;
+    else process.env.MIM_AI_EXPORT_DIR = saved;
+  });
+  const documents = path.join(ROOT, 'documents-sample');
+  const asked = [];
+  const app = (isPackaged) => ({ isPackaged, getPath: (name) => { asked.push(name); return documents; } });
+  const expected = path.join(documents, 'モックイメージメーカー', 'AI の出力');
+
+  delete process.env.MIM_AI_EXPORT_DIR;
+  assert.equal(createRenderFinisher({ app: app(true), renderer: {} }).exportDir(), expected, 'インストールした版の既定');
+  assert.deepEqual(asked, ['documents'], 'ドキュメントのフォルダを引く');
+  assert.equal(createRenderFinisher({ app: app(false), renderer: {} }).exportDir(), expected, '開発版でも、環境変数がなければ既定');
+
+  process.env.MIM_AI_EXPORT_DIR = path.join(ROOT, 'other-sample');
+  assert.equal(createRenderFinisher({ app: app(true), renderer: {} }).exportDir(), expected, 'インストールした版は環境変数を読まない');
+  assert.equal(createRenderFinisher({ app: app(false), renderer: {}, headless: true }).exportDir(), path.resolve(process.env.MIM_AI_EXPORT_DIR), '確かめ（headless）では環境変数で変わる');
+});
+
+test('AI の入口の手引きと export_design の説明には、出力のフォルダの名前「AI の出力」が書いてある', () => {
+  const { INSTRUCTIONS, GUIDES } = require('../mcp-guide');
+  const { TOOLS } = require('../mcp-tools');
+  const folder = 'ドキュメント\\モックイメージメーカー\\AI の出力';
+  assert.ok(GUIDES.rules.text.includes(folder), '「守ること」の手引きにフォルダの名前がある');
+  const exportTool = TOOLS.find((tool) => tool.name === 'export_design');
+  assert.ok(exportTool, 'export_design がある');
+  assert.ok(exportTool.description.includes(folder), '道具の説明にフォルダの名前がある');
+  const words = [INSTRUCTIONS, ...Object.values(GUIDES).map((g) => g.text), ...TOOLS.flatMap((tool) => [tool.title, tool.description])];
+  assert.ok(!words.some((w) => w.includes('書き出')), '手引きと道具の名前・説明に「書き出」が残っていない');
 });
 
 // ── AI の read_material の仕上げ（第 9 段階の後半。render.kind 'material' を資料の窓口の finishRead で読む）──

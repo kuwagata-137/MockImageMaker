@@ -1,18 +1,21 @@
-// 使い方: node tools/check-mcp.js [--only=materials（場面 D だけ）] [--packaged=<作った版のフォルダ（例 dist/win-unpacked）>]
+// 使い方: node tools/check-mcp.js [--only=materials（場面 D だけ）|--only=notes（場面 E だけ）] [--packaged=<作った版のフォルダ（例 dist/win-unpacked）>]
 // AI の入口（mcp-server.js --dev）を公式の SDK の Client で起動してつなぎ、入口が Electron のアプリを裏で起動して使えるかを確かめる（第 7 段階の T9）。
 // アプリは窓を出さない（MIM_HEADLESS=1）。入口がアプリを起動するときの文は MIM_APP_CMD で差し替え、メインプロセスの inspector を開ける
 // （窓の × は、check-electron と同じく BrowserWindow.close() を inspector から呼んで再現する。ページの window.close() は close の知らせを通らないため）。
 //  A. 最初の頼みで、アプリを --background で起動する（かかった時間を出す）。画面設計を作って部品を並べると、designs.json に残る。
-//     画面の画像は長い辺が 1568 以下の PNG。書き出し（PDF・PNG・HTML）は MIM_AI_EXPORT_DIR に書き、同じ名前には番号を付ける。
-//     道具は 30 個。edit_process でステータスと操作を書き、移る先を持つボタンを並べると、get_flow で読め、get_view_image は PNG（長い辺が 1568 以下。第 8 段階）。
+//     画面の画像は長い辺が 1568 以下の PNG。出力（PDF・PNG・HTML）は MIM_AI_EXPORT_DIR に書き、同じ名前には番号を付ける。
+//     道具は 33 個。edit_process でステータスと操作を書き、移る先を持つボタンを並べると、get_flow で読め、get_view_image は PNG（長い辺が 1568 以下。第 8 段階）。
 //     システムを作って役割・画面設計・スイムレーンを書くと、get_system・list_systems で読め、designs.json に残り、スイムレーン図の画像は PNG（第 9 段階）。
 //     status で、窓が見えていない・裏の起動・ページの準備ができている。2 つ目の起動（--background）では窓を出す印が付かない。
 //     前に人が窓を最大化して閉じていても（window-state.json の isMaximized）、裏の起動では窓が画面に出ない（status の onScreen）。
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり始め（automation.json が消える）、プロセスも消える
 //  B. 次の入口で、アプリをまた起動し、A で作った画面設計が一覧に出る。入口を強制終了しても、5 秒たってアプリが終わる
 //  C. 2 つ目の起動（--background なし。人がアプリを起動した）では窓を出す印が付き、入口を閉じても終わらない。AI のつながりがないときの窓の × では終わる
-//  D. 資料の置き場（第 9 段階の後半。check-mcp-materials.js）: 起動の前に見本のシステムと資料 8 つを置き、道具が 30 個・list_materials・read_material
+//  D. 資料の置き場（第 9 段階の後半。check-mcp-materials.js）: 起動の前に見本のシステムと資料 8 つを置き、道具が 33 個・list_materials・read_material
 //     （7 つ同時に頼んでも読める・仕込んだ指示の文字・Excel の番地・PDF の日本語の文字と 3 ページ目の画像・古い形の old_format）・swimlane_from_bdm（replace なしは断られ、replace: true で入る）・get_system
+//  E. 設計ノート（第 10 段階の前半。check-mcp-notes.js）: 起動の前に見本のシステムを置き、アプリを起動する前に、道具が 33 個・prompts が 3 つ（design_system・make_screen・fix_design。
+//     引数の必須と省略、文の中身）・resources が 5 つ（mim://guide/stages が読める）を確かめる。そのあと update_notes（set_findings・add_question・add_decision・set_memo）→ set_stage（read を doing → review → done。
+//     todo は断られる）→ get_notes・list_systems・get_system の stages で読め、入口を閉じた後の designs.json に残る
 //  最後に、窓を出さなかった起動では window-state.json を書き換えていない（人が最大化して使っていたことが残る）
 // 「アプリが終わる」は 2 つに分けて待つ（waitAppQuit）。終わり始める時（automation.json が消える。アプリが決める時）は決めた時間で確かめ、
 // その後プロセスが消えるまでは長く待つ（EXIT_WAIT_MS）。PC の負荷が高いと、Windows で Electron のプロセスが消えるまで数十秒〜数分かかるため（2026-10-19。開発記録）。
@@ -31,10 +34,14 @@ const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
 const P = require('../automation-protocol');
 const { phaseMaterials } = require('./check-mcp-materials');
+const { phaseNotes } = require('./check-mcp-notes');
 
 const ROOT = path.resolve(__dirname, '..');
 const PACKAGED = ((process.argv.find((a) => a.startsWith('--packaged=')) || '').slice(11)) || null;
-const ONLY_MATERIALS = process.argv.includes('--only=materials'); // 場面 D（資料の置き場）だけを確かめる
+const ONLY = ((process.argv.find((a) => a.startsWith('--only=')) || '').slice(7)) || null; // 'materials'（場面 D）か 'notes'（場面 E）だけを確かめる
+if (ONLY && !['materials', 'notes'].includes(ONLY)) { console.error('--only= は materials か notes'); process.exit(2); }
+const wants = (scene) => !ONLY || ONLY === scene; // scene: 'materials'（場面 D）・'notes'（場面 E）。場面 A〜C は --only= がないときだけ
+const TOOL_COUNT = 33; // 入口の道具の数（第 10 段階の前半で、設計ノートの 3 個が増えて 33 個。以前は 30 個）
 const PKG_DIR = PACKAGED ? path.resolve(ROOT, PACKAGED) : null;
 const PKG_EXE = PKG_DIR ? path.join(PKG_DIR, 'MockImageMaker.exe') : null;
 // アプリの起動の文（2 つ目の起動と、入口がアプリを起動するときの差し替え）
@@ -170,7 +177,7 @@ async function phaseA() {
   const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).designs.find((d) => d.id === made.id);
   check('A. 作った画面設計と並べた部品が designs.json に残る', !!saved && saved.screens[0].parts.length === 4 && saved.items.length === 3,
     saved ? `部品 ${saved.screens[0].parts.length} つ・項目 ${saved.items.map((i) => i.name).join('・')}` : 'ない');
-  // 画面の画像（PNG。長い辺を 1568 までに縮める）と書き出し（決めたフォルダへ。同じ名前には番号を付ける）
+  // 画面の画像（PNG。長い辺を 1568 までに縮める）と出力（決めたフォルダへ。同じ名前には番号を付ける）
   const img = await client.callTool({ name: 'get_screen_image', arguments: { design: made.id, screen: made.firstScreen.id } });
   const im = img.content.find((c) => c.type === 'image');
   const buf = im ? Buffer.from(im.data, 'base64') : Buffer.alloc(0);
@@ -182,16 +189,16 @@ async function phaseA() {
   const html = await tool(client, 'export_design', { design: made.id, format: 'html' });
   const names = [pdf1, pdf2, png, html].map((r) => r.files.map((f) => path.basename(f)).join('・'));
   const head = (f, n) => fs.readFileSync(f).subarray(0, n).toString();
-  check('A. 書き出しは決めたフォルダに書き、同じ名前のファイルには番号を付ける',
+  check('A. 出力は決めたフォルダに書き、同じ名前のファイルには番号を付ける',
     pdf1.folder === EXPORT_DIR && names[0] === '出張申請（確かめ）.pdf' && names[1] === '出張申請（確かめ） (2).pdf' && head(pdf1.files[0], 4) === '%PDF'
       && png.files.length === 1 && head(png.files[0], 4).slice(1) === 'PNG' && /mim-embedded/.test(fs.readFileSync(html.files[0], 'utf8')),
     names.join('、'));
   // 第 8 段階の道具（ステータスの移り方と画面の移り方）
   const tl = await client.listTools();
   const NEW_TOOLS = ['edit_process', 'get_flow', 'get_view_image', 'list_systems', 'get_system', 'create_system', 'update_system', 'add_to_system', 'remove_from_system', 'set_swimlane',
-    'list_materials', 'read_material', 'swimlane_from_bdm'];
-  check('A. 道具は 30 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個・資料の 3 個を含む）',
-    tl.tools.length === 30 && NEW_TOOLS.every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
+    'list_materials', 'read_material', 'swimlane_from_bdm', 'get_notes', 'update_notes', 'set_stage'];
+  check(`A. 道具は ${TOOL_COUNT} 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個・資料の 3 個、第 10 段階の設計ノートの 3 個を含む）`,
+    tl.tools.length === TOOL_COUNT && NEW_TOOLS.every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
   await tool(client, 'edit_process', { design: made.id, ops: [
     { op: 'set_states', states: ['申請', '承認待ち', '完了'] },
     { op: 'add_action', name: '申請する', from: '申請', to: '承認待ち', role: '申請者' },
@@ -288,7 +295,7 @@ async function phaseC() {
   check('C. AI のつながりがないときの窓の × では、アプリが終わる', !appInfo() && !alive(info.pid), quitDetail(q));
 }
 
-// fs.rmSync は使わない（Windows の Node v24.12.0 で日本語の名前のファイルを渡すと Node ごと落ちる。書き出しのファイルは日本語の名前）
+// fs.rmSync は使わない（Windows の Node v24.12.0 で日本語の名前のファイルを渡すと Node ごと落ちる。出力のファイルは日本語の名前）
 function removeDir(dir) {
   if (!fs.existsSync(dir)) return;
   for (const name of fs.readdirSync(dir)) {
@@ -304,12 +311,14 @@ function removeDir(dir) {
   fs.mkdirSync(USER_DATA, { recursive: true });
   fs.writeFileSync(WINDOW_STATE_FILE, JSON.stringify(WINDOW_STATE));
   try {
-    if (!ONLY_MATERIALS) {
+    const env = { openEntry, check, appInfo, waitUntil, waitAppQuit, quitDetail, setLastPid: (pid) => { lastPid = pid; }, USER_DATA, STATE_FILE, IDLE_MS, TOOL_COUNT };
+    if (!ONLY) {
       await phaseA();
       await phaseB();
       await phaseC();
     }
-    await phaseMaterials({ openEntry, check, appInfo, waitUntil, waitAppQuit, quitDetail, setLastPid: (pid) => { lastPid = pid; }, USER_DATA, STATE_FILE, IDLE_MS });
+    if (wants('materials')) await phaseMaterials(env);
+    if (wants('notes')) await phaseNotes(env);
     const kept = JSON.parse(fs.readFileSync(WINDOW_STATE_FILE, 'utf8'));
     check('窓を出さなかった起動では、覚えた窓の状態（最大化）を書き換えない', kept.isMaximized === true && kept.width === WINDOW_STATE.width, JSON.stringify(kept));
   } catch (err) {

@@ -130,7 +130,7 @@ test('material-kind.js — BDM の HTML', async (t) => {
     assert.deepEqual(detectKind('出張申請の流れ.HTML', buf), { kind: 'bdm', legacy: false });
   });
 
-  await t.test('どの印もない HTML は other（アプリの書き出しの HTML などを文字として読ませない）', () => {
+  await t.test('どの印もない HTML は other（アプリの出力の HTML などを文字として読ませない）', () => {
     assert.deepEqual(detectKind('お知らせ.html', html('<p>出張申請のお知らせ</p>')), { kind: 'other', legacy: false });
     assert.deepEqual(detectKind('お知らせ.htm', html('')), { kind: 'other', legacy: false });
     assert.deepEqual(detectKind('お知らせ.html', null), { kind: 'other', legacy: false });

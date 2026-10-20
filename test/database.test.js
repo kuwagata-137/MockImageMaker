@@ -485,7 +485,7 @@ test('ルックアップの印: 項目名の後ろに札、探す項目に「取
   assert.ok(el(parts.name).querySelector('.reftag'));
   assert.ok(el(parts.name).querySelector('.pbox.copied'));
   assert.equal(el(parts.name).querySelector('.pph').textContent, '（取引先コードから自動で入る）');
-  assert.ok($(app, '.sl-thumb .reftag'), 'ルックアップの札は縮小画像（書き出しと同じ見た目）にも出す');
+  assert.ok($(app, '.sl-thumb .reftag'), 'ルックアップの札は縮小画像（出力と同じ見た目）にも出す');
   const rows = $$(app, '.ptable tbody tr').map((r) => r.children[3].textContent);
   assert.deepEqual(plain(rows), ['ルックアップ＝取引先マスタの「取引先コード」で探す\n一緒に写す＝取引先名 → 取引先名', 'ルックアップ＝取引先マスタの「取引先名」（取引先コードで引く）']);
   // 一緒に写される項目の設定の欄から、探す項目の設定を開く

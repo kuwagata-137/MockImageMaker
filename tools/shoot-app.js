@@ -14,10 +14,11 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes をカンマで区切る）]
 // ai の場面（94〜100）は tools/shoot-app-ai.js、systems の場面（107〜133。システムとスイムレーン図）は tools/shoot-app-systems.js にある
 // toolbar の場面（134〜137）は、編集の画面のメニューバーを窓の幅ごとに撮る（q73・q74）
 // materials の場面（138〜149。システムの画面の「資料」の入口。第 9 段階の後半・画像 q67）は tools/shoot-app-materials.js にある
+// notes の場面（150〜157。システムの画面の「設計ノート」の入口。第 10 段階の前半・画像 k75）は tools/shoot-app-notes.js にある
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -62,7 +63,7 @@ async function openApp(browser, seed) {
   return page;
 }
 
-// デスクトップ版の書き出しの窓口の身代わりを入れて開く（受け取った中身は window.__xp に残す。取り込む HTML は window.__nextImport）
+// デスクトップ版の出力の窓口の身代わりを入れて開く（受け取った中身は window.__xp に残す。取り込む HTML は window.__nextImport）
 async function openDeskApp(browser, seed) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1400, height: 860 });
@@ -646,7 +647,7 @@ async function shootMap(browser) {
   await page.close();
 }
 
-// 書き出しと取り込み（第 5 段階）: 書き出しの窓・印刷用のページ（表紙・図・表・画面）・単体で開いた HTML・取り込みの確かめの窓
+// 出力と取り込み（第 5 段階）: 出力の窓・印刷用のページ（表紙・図・表・画面）・単体で開いた HTML・取り込みの確かめの窓
 async function shootExport(browser) {
   const page = await openDeskApp(browser, MAP_SAMPLE);
   await page.evaluate(() => {
@@ -663,11 +664,11 @@ async function shootExport(browser) {
   await page.click('.card-open[data-id="d1"]');
   await page.click('#toolbar [data-action="export"]');
   await page.waitForSelector('.modal .xp-kinds');
-  await shot(page, '71_書き出し_書き出しの窓（PDF）');
+  await shot(page, '71_出力_出力の窓（PDF）');
   await page.click('[data-xkind="html"]');
-  await shot(page, '72_書き出し_書き出しの窓（HTML）');
+  await shot(page, '72_出力_出力の窓（HTML）');
   await page.click('[data-xkind="png"]');
-  await shot(page, '73_書き出し_書き出しの窓（PNG）');
+  await shot(page, '73_出力_出力の窓（PNG）');
   await page.click('[data-xkind="pdf"]');
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForFunction(() => window.__xp.some((x) => x[0] === 'pdf'));
@@ -678,7 +679,7 @@ async function shootExport(browser) {
   await doc.setViewport({ width: 1200, height: 900 });
   await doc.setContent(pdf.html, { waitUntil: 'load' });
   const pages = await doc.$$('body > .pg');
-  const labels = ['74_書き出し_PDF_表紙', '75_書き出し_PDF_つながりの図', '76_書き出し_PDF_項目の一覧表', '77_書き出し_PDF_画面のページ（吹き出しと一覧表）'];
+  const labels = ['74_出力_PDF_表紙', '75_出力_PDF_つながりの図', '76_出力_PDF_項目の一覧表', '77_出力_PDF_画面のページ（吹き出しと一覧表）'];
   for (let i = 0; i < Math.min(pages.length, labels.length); i++) {
     const file = path.join(OUT, `v${VERSION}_${labels[i]}.png`);
     await pages[i].screenshot({ path: file });
@@ -686,7 +687,7 @@ async function shootExport(browser) {
   }
   console.log('PDF のページの数:', pages.length);
   await doc.close();
-  // HTML を書き出して、単体で開く
+  // HTML を出力して、単体で開く
   await page.click('#toolbar [data-action="export"]');
   await page.waitForSelector('.modal .xp-kinds');
   await page.click('[data-xkind="html"]');
@@ -701,9 +702,9 @@ async function shootExport(browser) {
   await sa.evaluateOnNewDocument(() => { window.__test__ = {}; });
   await sa.goto(pathToFileURL(saFile).href, { waitUntil: 'load' });
   await sa.waitForFunction(() => window.__test__ && window.__test__.ready);
-  await shot(sa, '78_書き出し_単体で開いたHTML');
+  await shot(sa, '78_出力_単体で開いたHTML');
   await sa.evaluate(() => window.__test__.runCommand('openMap'));
-  await shot(sa, '79_書き出し_単体で開いたHTMLのつながりの図');
+  await shot(sa, '79_出力_単体で開いたHTMLのつながりの図');
   // ベンダーが直したことにして保存し直した文字を作り、アプリで取り込む
   const vendor = await sa.evaluate(() => {
     const T = window.__test__;
@@ -716,16 +717,16 @@ async function shootExport(browser) {
   await page.evaluate((txt) => { window.__nextImport = txt; window.__test__.goHome(); }, vendor);
   await page.click('[data-action="import-html"]');
   await page.waitForSelector('.modal .imp-cmp');
-  await shot(page, '80_書き出し_取り込みの確かめの窓');
+  await shot(page, '80_出力_取り込みの確かめの窓');
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForFunction(() => !document.querySelector('.modal'));
-  await shot(page, '81_書き出し_取り込んだ後の一覧');
+  await shot(page, '81_出力_取り込んだ後の一覧');
   console.log('取り込んだ後:', await page.evaluate(() => { const d = window.__test__.store.state.designs.find((x) => x.id === 'd1'); return `説明「${d.description}」・画面 ${d.screens.length} つ・改訂履歴 ${d.revisions.map((r) => r.note).join('・')}`; }));
   await page.close();
 }
 
 // ── 改訂履歴（第 6 段階。画像 q40c〜q44 のとおりか）──
-// 第 1 版を作ってから中身を変え、改訂する窓・改訂履歴の窓・前の版を見る・戻す確かめの窓・書き出しの違いの印を撮る
+// 第 1 版を作ってから中身を変え、改訂する窓・改訂履歴の窓・前の版を見る・戻す確かめの窓・出力の違いの印を撮る
 async function shootRevisions(browser) {
   const page = await openDeskApp(browser, DB_SAMPLE);
   const r1 = await page.evaluate(() => {
@@ -764,7 +765,7 @@ async function shootRevisions(browser) {
   await page.click('.modal [data-dlg="cancel"]');
   await page.click('#rv-band [data-action="rev-stop-view"]');
   await page.click('#screen-list [data-action="select-screen"]');
-  // 書き出しの窓（違いの印）と、第 1 版と比べた PDF
+  // 出力の窓（違いの印）と、第 1 版と比べた PDF
   await page.click('#toolbar [data-action="export"]');
   await page.waitForSelector('.modal .xp-kinds');
   await page.evaluate((id) => {
@@ -772,7 +773,7 @@ async function shootRevisions(browser) {
     box.querySelector('[data-xdiff]').checked = true;
     box.querySelector('[data-xdiffrev]').value = id;
   }, r1);
-  await shot(page, '88_改訂_書き出しの窓の違いの印');
+  await shot(page, '88_改訂_出力の窓の違いの印');
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForFunction(() => window.__xp.some((x) => x[0] === 'pdf'));
   const pdf = await page.evaluate(() => window.__xp.find((x) => x[0] === 'pdf')[1]);
@@ -791,7 +792,7 @@ async function shootRevisions(browser) {
   }
   console.log('違いの印の PDF のページの数:', pages.length);
   await doc.close();
-  // 第 2 版と比べた HTML を書き出して、HTML の中で 1 つ直してから撮る
+  // 第 2 版と比べた HTML を出力して、HTML の中で 1 つ直してから撮る
   const r2 = await page.evaluate(() => window.__test__.latestVersion(window.__test__.currentDesign()).id);
   await page.click('#toolbar [data-action="export"]');
   await page.waitForSelector('.modal .xp-kinds');
@@ -851,6 +852,7 @@ async function shootRevisions(browser) {
     if (wants('systems')) await require('./shoot-app-systems')(browser, { shot, openDeskApp });
     if (wants('toolbar')) await shootToolbar(browser);
     if (wants('materials')) await require('./shoot-app-materials')(browser, { ROOT, HTML_NAME, shot });
+    if (wants('notes')) await require('./shoot-app-notes')(browser, { ROOT, HTML_NAME, shot });
   } finally {
     await browser.close();
   }
