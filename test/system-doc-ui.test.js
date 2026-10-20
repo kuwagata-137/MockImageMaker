@@ -101,7 +101,7 @@ test('説明書の窓: ブラウザで開いたとき（exportAPI なし）は�
   api.runCommand('exportDialog');
   await tick();
   assert.equal($('.modal'), null);
-  assert.equal(toast(), '説明書の PDF は、デスクトップ版のアプリで出力できます。');
+  assert.equal(toast(), '説明書（PDF）は、デスクトップ版のアプリで出力できます。');
   api.goHome();
   const more = $(`.sys-block [data-action="sys-menu"][data-id="${sysId}"]`);
   assert.doesNotMatch(more.title, /説明書/);

@@ -187,3 +187,31 @@ test('画面設計が入っていないシステム: 表紙の一覧は「（画
   assert.deepEqual(JSON.parse(JSON.stringify(x.designs)), []);
   assert.match(x.html, /<title>空のシステム_説明書<\/title>/);
 });
+
+test('表紙の札「〇〇でも使っている」: ほかのシステムの名前は 2 つまで、残りは「ほか N つ」。名前の切れ目でだけ折り返す（見直しの B-5）', async (t) => {
+  const { parse, api } = await boot(t);
+  const tag = (names) => parse(api.systemShareTag(names)).querySelector('.share-tag');
+  assert.equal(tag(['経費精算システム']).textContent, '経費精算システムでも使っている');
+  assert.equal(tag(['経費精算システム', '購買システム']).textContent, '経費精算システム・購買システムでも使っている');
+  const many = tag(['経費精算システム', '購買システム', '社用車の予約システム', '会議室の予約システム']);
+  assert.equal(many.textContent, '経費精算システム・購買システムほか 2 つでも使っている');
+  // 折り返さない塊は、名前ごと（最後の名前は「でも使っている」と一緒）
+  assert.deepEqual([...many.querySelectorAll('.nw')].map((x) => x.textContent), ['経費精算システム', '購買システムほか 2 つでも使っている']);
+  assert.equal(tag(['<b>&システム']).querySelector('b'), null, '名前は文字として入れる');
+});
+
+test('表紙の役割の表: 入る数（roleMax）までにし、残りを省いたことを表の下に書く。測れないとき（jsdom）は全部入れる（見直しの B-2）', async (t) => {
+  const { parse, api, y, doc } = await boot(t);
+  const P = { w: 1123, h: 794 };
+  const c = (roleMax) => parse(api.systemCoverHtml(y(), api.store.state, P, [], 1, AT, { roleMax }));
+  const one = c(1);
+  assert.equal(one.querySelectorAll('.cv-revs tbody tr').length, 1);
+  assert.equal(one.querySelector('.cv-revs .cv-desc-cut').textContent, '（表紙に入りきらないため、残りの役割 2 つを省略しました。全部はアプリのシステムの「役割」で見られます）');
+  const zero = c(0);
+  assert.equal(zero.querySelectorAll('.cv-revs tbody tr').length, 0);
+  assert.match(zero.querySelector('.cv-revs').textContent, /残りの役割 3 つを省略しました/);
+  const all = c(null);
+  assert.equal(all.querySelectorAll('.cv-revs tbody tr').length, 3);
+  assert.equal(all.querySelector('.cv-revs .cv-desc-cut'), null);
+  assert.equal(parse(doc().pages[0]).querySelectorAll('.cv-revs tbody tr').length, 3, '測れないときは全部');
+});

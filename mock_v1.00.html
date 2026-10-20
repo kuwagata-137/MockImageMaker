@@ -920,7 +920,8 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .xp-doc-h3{font-size:14px;color:#0f172a;margin:0 0 6px;display:flex;align-items:baseline;gap:8px}
 .xp-doc-h3 small{font-weight:400;color:#64748b;font-size:12px}
 .xp-itable + .xp-doc-h3{margin-top:18px}
-.cv-table .share-tag,.cv-table .share-tag:hover{cursor:default;margin:0 0 0 8px;font-size:10.5px;padding:0 6px;background:#f0fdf4}
+.cv-table .share-tag,.cv-table .share-tag:hover{cursor:default;margin:0 0 0 8px;font-size:10.5px;padding:0 6px;background:#f0fdf4;white-space:normal}
+.cv-table .share-tag .nw{white-space:nowrap}
 .xp-legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:11.5px;color:#475569;margin:0 0 8px}
 .xp-legend i{display:inline-block;width:30px;height:0;border-top:2.5px solid #1d3f6e;vertical-align:middle;margin-right:5px}
 .xp-legend i.d{border-top:2.5px dashed #16a34a}
@@ -10778,10 +10779,8 @@ const coverContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '画面
 function splitCoverRows(coverHtml, P, rows, measured, bodyH) {
   if (!measured || !rows.length) return [rows];
   const probe = measureBox(coverHtml(rows));
-  const pgTop = probe.querySelector('.pg').getBoundingClientRect().top;
-  const footH = probe.querySelector('.cv-foot').getBoundingClientRect().height;
-  // 1 ページ目の一覧が入る下の端（下の余白と下の端の行を引く。縦の用紙では、一覧の下の改訂履歴の分も引く）
-  let limit = pgTop + P.h - 36 - footH - 12;
+  // 1 ページ目の一覧が入る下の端（縦の用紙では、一覧の下の改訂履歴の分も引く）
+  let limit = coverLimit(probe, P);
   if (P.h > P.w) limit -= probe.querySelector('.cv-revs').getBoundingClientRect().height + 18;
   const trs = [...probe.querySelectorAll('.cv-list tbody tr')].map((tr) => tr.getBoundingClientRect());
   const headH = probe.querySelector('.cv-list thead').getBoundingClientRect().height;
@@ -10800,6 +10799,9 @@ function splitCoverRows(coverHtml, P, rows, measured, bodyH) {
   if (cur.length) chunks.push(cur);
   return chunks;
 }
+
+// 表紙の 1 ページ目で、表が入る下の端（下の余白と下の端の行を引く）。probe は measureBox で描いた表紙
+const coverLimit = (probe, P) => probe.querySelector('.pg').getBoundingClientRect().top + P.h - 36 - probe.querySelector('.cv-foot').getBoundingClientRect().height - 12;
 
 // データベースの項目の一覧表（q35 案A。つまみ・消すボタン・足すボタンなし。元は札でなく文字で書く）
 function itemSourceText(d, it, state) {
@@ -11022,7 +11024,7 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
   return { P: L.P, pages, total: L.plan.total, included, html: printDocumentHtml(d.name, L.P, pages.join('\n')) };
 }
 // ページの並べ方を決める（どのページを何ページ目に置くか・表紙と表をどこで分けるか）。番号は pageStart からの通し番号、plan.total はこの画面設計のページ数。
-// 戻り値 { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, descCut, grand（「n / N」の N）, idTag }
+// 戻り値 { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, descCut, base（最初のページの番号 - 1）, grand（「n / N」の N）, idTag }
 function exportLayout(d, state, opts, exportedAt) {
   const P = paperSize(opts.paper, opts.orient);
   const measured = canMeasure();
@@ -11130,26 +11132,48 @@ function systemDocCan(y, state) {
 function systemCoverRows(plan) {
   const lead = (name, page) => `<tr class="lead"><td class="nm">${name}</td><td class="dev"></td><td class="no">${page}</td></tr>`;
   const rows = plan.swimlanePage ? [lead('スイムレーン図', plan.swimlanePage)] : [];
-  plan.designs.forEach((r) => rows.push(`<tr><td class="nm">${esc(r.d.name)}${r.others.length ? `<span class="share-tag">${esc(r.others.join('・'))}でも使っている</span>` : ''}</td>`
+  plan.designs.forEach((r) => rows.push(`<tr><td class="nm">${esc(r.d.name)}${r.others.length ? systemShareTag(r.others) : ''}</td>`
     + `<td class="dev">${targetChip(r.d.target)}</td><td class="no">${r.pages ? r.firstPage : ''}</td></tr>`));
   if (!plan.designs.length) rows.push('<tr><td class="empty" colspan="3">（画面設計は入っていません）</td></tr>');
   if (plan.notesPage) rows.push(lead('設計ノート', plan.notesPage));
   return rows;
 }
-const systemListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面設計</th><th>作る先</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
-function systemRoleTable(y) {
-  const rows = y.roles.length
-    ? y.roles.map((r) => `<tr><td>${esc(r.name)}</td><td style="white-space:pre-wrap">${esc(r.memo)}</td></tr>`).join('')
-    : '<tr><td class="empty" colspan="2">（役割はまだありません）</td></tr>';
-  return `<table class="cv-table"><thead><tr><th style="width:96px">役割</th><th>メモ</th></tr></thead><tbody>${rows}</tbody></table>`;
+// 表紙の札「〇〇でも使っている」。ほかのシステムの名前は 2 つまで出し、残りは「ほか N つ」にまとめる。
+// 札は名前の切れ目（「・」の後）でだけ折り返す（名前の長いシステムが多くても、左の列を押し広げない。見直しの B-5）
+function systemShareTag(others) {
+  const names = others.slice(0, 2).map(esc);
+  const last = `<span class="nw">${names.pop()}${others.length > 2 ? `ほか ${others.length - 2} つ` : ''}でも使っている</span>`;
+  return `<span class="share-tag">${[...names.map((n) => `<span class="nw">${n}</span>`), last].join('・')}</span>`;
 }
+const systemListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面設計</th><th>作る先</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+// 表紙の役割の表。max は表紙に入る役割の数（null は全部。coverRoleFit が測る）。入りきらない役割は省き、表の下にそう書く（見直しの B-2）
+function systemRoleTable(y, max = null) {
+  const shown = max == null ? y.roles : y.roles.slice(0, max);
+  const rows = y.roles.length
+    ? shown.map((r) => `<tr><td>${esc(r.name)}</td><td style="white-space:pre-wrap">${esc(r.memo)}</td></tr>`).join('')
+    : '<tr><td class="empty" colspan="2">（役割はまだありません）</td></tr>';
+  const left = y.roles.length - shown.length;
+  const more = left ? `<p class="cv-desc-cut">（表紙に入りきらないため、残りの役割 ${left} つを省略しました。全部はアプリのシステムの「役割」で見られます）</p>` : '';
+  return `<table class="cv-table"><thead><tr><th style="width:96px">役割</th><th>メモ</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
+}
+// 表紙の役割の表に入る役割の数（測れるときだけ呼ぶ）。全部入るときは null。入りきらないときは、表の下の断り書きの 1 行の分を空けて入る数。
+// html は、画面設計の一覧を 1 行だけ入れた表紙（縦の用紙では、役割の表は一覧の下にあるため。一覧は splitCoverRows が役割の表の分を引いて分ける）
+function coverRoleFit(html, P) {
+  const probe = measureBox(html);
+  const limit = coverLimit(probe, P);
+  const bottoms = [...probe.querySelectorAll('.cv-revs tbody tr')].map((tr) => tr.getBoundingClientRect().bottom);
+  probe.remove();
+  if (!bottoms.length || bottoms[bottoms.length - 1] <= limit) return null;
+  return bottoms.filter((b) => b <= limit - COVER_MORE_H).length;
+}
+const COVER_MORE_H = 26; // 表の下の断り書きの 1 行の高さ（.cv-desc-cut）
 // システムの表紙（画像 q81_2）。左に「画面設計の一覧」、右に「役割」（縦の用紙では上下）
-function systemCoverHtml(y, state, P, rows, total, exportedAt, { descCut = false } = {}) {
+function systemCoverHtml(y, state, P, rows, total, exportedAt, { descCut = false, roleMax = null } = {}) {
   const counts = `役割 ${y.roles.length} つ・画面設計 ${designsOfSystem(state, y).length} つ・作業 ${swimlaneModel(state, y).nodes.length} つ`;
   const updated = y.updatedAt ? `<span>最終更新 ${esc(fmtDateTime(y.updatedAt))}</span>` : ''; // 読み込んだデータで日時がないとき（new Date(null) は 1970 年になる）は出さない
   const meta = `<span>出力した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span>${updated}<span>${counts}</span>`;
   return coverShell(P, { kicker: 'システムの説明書', title: y.name, meta, desc: coverDescHtml(P, y.description, descCut, 'アプリのシステムの「概要」で'),
-    list: ['画面設計の一覧', systemListTable(rows)], side: ['役割', systemRoleTable(y)], total });
+    list: ['画面設計の一覧', systemListTable(rows)], side: ['役割', systemRoleTable(y, roleMax)], total });
 }
 const systemCoverContHtml = (y, P, rows, page, total) => pageFrame({ P, title: '画面設計の一覧（続き）', body: systemListTable(rows),
   left: `${esc(y.name)} ／ 画面設計の一覧（続き）`, right: `${page} / ${total}` });
@@ -11171,7 +11195,7 @@ function swimlanePageHtml(y, state, P, L, page, total) {
 // 設計ノートのページ（画像 q80_3）。「決めたことと理由」の表と、「まだ決まっていないこと」の表（答えのない行 → 答えのある行を灰色で）
 const NOTE_KEY_HTML = `<p class="xp-nt-key">段階: ${NOTE_DOC_STAGES.map((k) => esc(NOTE_STAGE_NAMES[k])).join('　')}</p>`;
 const NOTE_DEC_COLS = '<colgroup><col style="width:11%"><col style="width:6%"><col style="width:38%"><col></colgroup>';
-const NOTE_Q_COLS = '<colgroup><col style="width:6%"><col style="width:38%"><col><col style="width:13%"></colgroup>';
+const NOTE_Q_COLS = '<colgroup><col style="width:6%"><col style="width:38%"><col><col style="width:15%"></colgroup>';
 const noteDecTable = (rows) => `<table class="xp-itable">${NOTE_DEC_COLS}<thead><tr><th>日付</th><th>段階</th><th>決めたこと</th><th>理由</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
 const noteQTable = (rows) => `<table class="xp-itable">${NOTE_Q_COLS}<thead><tr><th>段階</th><th>まだ決まっていないこと</th><th>答え</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
 const noteDecRowHtml = (r) => `<tr><td class="nw">${esc(r.date)}</td><td>${noteStageNo(r.stage)}</td><td class="set">${esc(r.text)}</td><td class="set">${esc(r.reason)}</td></tr>`;
@@ -11244,7 +11268,7 @@ const noteSecHead = (sec, cont) => `<h3 class="xp-doc-h3">${sec.title}${cont ? '
 // 設計ノートのページ（分けたページごと）。firstPage はこのページの番号、total は説明書の全体のページ数
 function noteDocPagesHtml(y, P, pages, sub, firstPage, total) {
   return pages.map((chunks, k) => pageFrame({ P, title: k ? '設計ノート（続き）' : '設計ノート',
-    sub: sub + (chunks.some((c) => c.cut) ? '・長い行は途中まで（全文はアプリの設計ノートで見られます）' : ''),
+    sub: (chunks.some((c) => c.cut) ? '長い行は途中まで（全文はアプリの設計ノートで見られます）・' : '') + sub,
     body: (k ? '' : NOTE_KEY_HTML) + chunks.map((c) => noteSecHead(c.sec, c.cont) + c.sec.table(c.rows)).join(''),
     left: `${esc(y.name)} ／ 設計ノート`, right: `${firstPage + k} / ${total}` }));
 }
@@ -11262,7 +11286,7 @@ function exportSystemDocument(y, state, opts, exportedAt = nowIso()) {
   const notes = included.notes ? noteDocSections(y) : { sub: '', sections: [] };
   const notePages = splitNoteSections(notes.sections, aw, ah, measured);
   const plan = systemDocPlan(y, state, P, { included, per, notePages: notePages.length, measured, ah, exportedAt });
-  const pages = plan.coverChunks.map((rows, k) => (k === 0 ? systemCoverHtml(y, state, P, rows, plan.total, exportedAt, { descCut: plan.descCut })
+  const pages = plan.coverChunks.map((rows, k) => (k === 0 ? systemCoverHtml(y, state, P, rows, plan.total, exportedAt, { descCut: plan.descCut, roleMax: plan.roleMax })
     : systemCoverContHtml(y, P, rows, k + 1, plan.total)));
   if (included.swimlane) pages.push(swimlanePageHtml(y, state, P, { aw, ah, measured }, plan.swimlanePage, plan.total));
   const designs = plan.designs.map((r, k) => {
@@ -11274,7 +11298,7 @@ function exportSystemDocument(y, state, opts, exportedAt = nowIso()) {
   return { P, pages, total: plan.total, included, designs, html: printDocumentHtml(`${y.name}_説明書`, P, pages.join('\n')) };
 }
 // 説明書のページの並べ方。画面設計ごとのページの数を数え（countOnly）、表紙を分けてから番号を決め直す（exportLayout と同じ 2 回の形）。
-// 戻り値 { swimlanePage, designs: [{ d, firstPage, pages, others }], notesPage, total, coverChunks, descCut }
+// 戻り値 { swimlanePage, designs: [{ d, firstPage, pages, others }], notesPage, total, coverChunks, descCut, roleMax（表紙に入る役割の数。null は全部） }
 function systemDocPlan(y, state, P, { included, per, notePages, measured, ah, exportedAt }) {
   const dl = designsOfSystem(state, y).map((d) => ({ d, pages: exportDocument(d, state, { ...per, countOnly: true }).total,
     others: systemsOf(state, d.id).filter((x) => x.id !== y.id).map((x) => x.name) }));
@@ -11286,15 +11310,16 @@ function systemDocPlan(y, state, P, { included, per, notePages, measured, ah, ex
     return { swimlanePage, designs, notesPage, total: n + notePages };
   };
   let plan = numbering(included.systemCover ? 1 : 0);
-  if (!included.systemCover) return { ...plan, coverChunks: [], descCut: false };
+  if (!included.systemCover) return { ...plan, coverChunks: [], descCut: false, roleMax: null };
   const descCut = measured && !!y.description.trim() && coverDescOver(systemCoverHtml(y, state, P, [], 1, exportedAt));
-  const coverHtml = (rows) => systemCoverHtml(y, state, P, rows, 99, exportedAt, { descCut });
+  const roleMax = measured ? coverRoleFit(systemCoverHtml(y, state, P, systemCoverRows(plan).slice(0, 1), 1, exportedAt, { descCut }), P) : null;
+  const coverHtml = (rows) => systemCoverHtml(y, state, P, rows, 99, exportedAt, { descCut, roleMax });
   let coverChunks = splitCoverRows(coverHtml, P, systemCoverRows(plan), measured, ah);
   if (coverChunks.length > 1) {
     plan = numbering(coverChunks.length);
     coverChunks = splitCoverRows(coverHtml, P, systemCoverRows(plan), measured, ah);
   }
-  return { ...plan, coverChunks, descCut };
+  return { ...plan, coverChunks, descCut, roleMax };
 }
 
 // PNG にする文書（画面ごとに 1 つ。ページの枠なし・縮めない・まわりに白の余白）。戻り値 [{ name, html, width, height }]。
@@ -11828,7 +11853,7 @@ function systemDocDialogBody(y, can) {
 // 説明書の窓を開き、選んだ形で出力する。戻り値は出力の結果（出力しなかったときは null）。デスクトップ版だけ
 async function openSystemDocDialog(sysId) {
   if (standalone || docWaiting.has(sysId)) return null;
-  if (!window.exportAPI) { toast('説明書の PDF は、デスクトップ版のアプリで出力できます。'); return null; }
+  if (!window.exportAPI) { toast('説明書（PDF）は、デスクトップ版のアプリで出力できます。'); return null; }
   flushSideField();
   const y = findSystem(store.state, sysId);
   if (!y || y.trashedAt) return null;
@@ -15303,7 +15328,7 @@ function exposeForTest() {
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, hasFlowPage, minScreenHeight, selectPart, currentScreen,
     currentDesign, currentPart, openScreen, openItemsPanel, selectItem, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
-    exportDocument, exportSystemDocument, noteDocRows, systemDocCan, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport, openSystemDocDialog, docOpts,
+    exportDocument, exportSystemDocument, noteDocRows, systemDocCan, systemCoverHtml, systemShareTag, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport, openSystemDocDialog, docOpts,
     paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
