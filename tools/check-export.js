@@ -12,6 +12,9 @@
 //     説明を直した HTML を取り込むと確かめの窓が出て、置き換えると designs.json に直した説明と「取り込む前の状態」が残る
 //  5. 違いの印（第 6 段階）: メニューバーの ▼ の「改訂する」で第 1 版を作り、部品を 1 つ消してから、第 1 版と比べた PDF を出力する。
 //     変更内容のページで 1 ページ増え、「からの変更内容」「削除」と消した部品の名前が入る（5 の後に 3・4 を行う）
+//  6. システムの説明書（第 10 段階の後半。tools/check-export-doc.js）: 見本に出張申請システム（顧客管理と、画面 24 個の社員マスタ・項目 40 個の旅費規程・
+//     設計ノートの行 50 個）を足し、システムの画面のメニューバーの「出力」から説明書の PDF を出力する。pdfjs-dist で読み、ページ数・見出しの順・
+//     下の端の「n / N」・表紙の「全 N ページ」・続きのページに分かれた表の最後の行・⑤ の行が入らないことを確かめる（4 の後に行う）
 // pdfinfo・pdftotext（poppler-utils）がないとき（社内の Windows PC など）は、PDF はファイルの頭とページの数え方だけで確かめる。
 // 保存先は作業フォルダの .devdata/check-export（毎回消してから始める。npm start のデータとは別）。
 'use strict';
@@ -21,6 +24,7 @@ const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const puppeteer = require('puppeteer');
 const electronPath = require('electron');
+const { addDocSample, checkSystemDoc } = require('./check-export-doc');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASE = path.join(ROOT, '.devdata', 'check-export');
@@ -38,7 +42,7 @@ const ipart = (id, x, y, no, itemId) => ({ id, type: 'text1', x, y, w: 320, h: 6
 const design = (id, name, target, extra = {}) => ({
   id, name, target, description: '', createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z', trashedAt: null, revisions: [], items: [], screens: [screen('s-' + id, '一覧')], mapPos: {}, ...extra,
 });
-const SAMPLE = {
+const SAMPLE = addDocSample({
   schemaVersion: 3,
   settings: { customTargets: [], mapPos: {} },
   designs: [
@@ -72,7 +76,7 @@ const SAMPLE = {
       items: [item('e1', '顧客コード', 'text1', { lookup: { db: { designId: 'd1', name: '顧客管理', free: false }, key: { itemId: 'i1', name: '顧客コード' }, copies: [] } })],
     }),
   ],
-};
+}, { design, screen, item });
 
 function launch() {
   const env = { ...process.env, MIM_HEADLESS: '1', MIM_USER_DATA: USER_DATA, MIM_EXPORT_DIR: OUT, MIM_IMPORT_FILE: IMPORT_FILE };
@@ -103,6 +107,13 @@ async function appPage(browser) {
     await sleep(250);
   }
   throw new Error('アプリの画面が見つかりません');
+}
+
+// テスト用の窓口（window.__test__）を出す。窓口はアプリの起動の前に置いたときだけ埋まるので、置いてからページを読み込み直す（check-electron.js と同じ）
+async function enableTestHooks(page) {
+  await page.evaluateOnNewDocument(() => { window.__test__ = {}; });
+  await page.reload();
+  await page.waitForFunction(() => window.__test__ && window.__test__.ready);
 }
 
 async function waitFile(file, label, timeout = 60000) {
@@ -250,6 +261,8 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
     check('直した HTML を取り込むと置き換わり、前の中身が改訂履歴に残る', saved.description === 'ベンダーが直した説明。'
       && saved.revisions.length === 2 && imp.note === '取り込む前の状態' && imp.snapshot.description === '取引先と顧客の連絡先を管理する。',
     `説明「${saved.description}」・改訂履歴 ${saved.revisions.map((r) => r.note || `第 ${r.no} 版`).join('・')}`);
+    // 6. システムの説明書
+    await checkSystemDoc({ page, OUT, check, waitFile, enableTestHooks });
   } finally {
     await page.evaluate(() => window.close()).catch(() => {});
     browser.disconnect();

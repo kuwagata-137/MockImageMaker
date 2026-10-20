@@ -13,7 +13,7 @@
 //  C. 2 つ目の起動（--background なし。人がアプリを起動した）では窓を出す印が付き、入口を閉じても終わらない。AI のつながりがないときの窓の × では終わる
 //  D. 資料の置き場（第 9 段階の後半。check-mcp-materials.js）: 起動の前に見本のシステムと資料 8 つを置き、道具が 34 個・list_materials・read_material
 //     （7 つ同時に頼んでも読める・仕込んだ指示の文字・Excel の番地・PDF の日本語の文字と 3 ページ目の画像・古い形の old_format）・swimlane_from_bdm（replace なしは断られ、replace: true で入る）・get_system
-//  E. 設計ノート（第 10 段階の前半。check-mcp-notes.js）: 起動の前に見本のシステムを置き、アプリを起動する前に、道具が 34 個・prompts が 3 つ（design_system・make_screen・fix_design。
+//  E. 設計ノート（第 10 段階の前半。check-mcp-notes.js）と説明書（第 10 段階の後半。export_system_doc）: 起動の前に見本のシステムを置き、アプリを起動する前に、道具が 34 個・prompts が 3 つ（design_system・make_screen・fix_design。
 //     引数の必須と省略、文の中身）・resources が 5 つ（mim://guide/stages が読める）を確かめる。そのあと update_notes（set_findings・add_question・add_decision・set_memo）→ set_stage（read を doing → review → done。
 //     todo は断られる）→ get_notes・list_systems・get_system の stages で読め、入口を閉じた後の designs.json に残る
 //  最後に、窓を出さなかった起動では window-state.json を書き換えていない（人が最大化して使っていたことが残る）
@@ -196,8 +196,8 @@ async function phaseA() {
   // 第 8 段階の道具（ステータスの移り方と画面の移り方）
   const tl = await client.listTools();
   const NEW_TOOLS = ['edit_process', 'get_flow', 'get_view_image', 'list_systems', 'get_system', 'create_system', 'update_system', 'add_to_system', 'remove_from_system', 'set_swimlane',
-    'list_materials', 'read_material', 'swimlane_from_bdm', 'get_notes', 'update_notes', 'set_stage'];
-  check(`A. 道具は ${TOOL_COUNT} 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個・資料の 3 個、第 10 段階の設計ノートの 3 個を含む）`,
+    'list_materials', 'read_material', 'swimlane_from_bdm', 'get_notes', 'update_notes', 'set_stage', 'export_system_doc'];
+  check(`A. 道具は ${TOOL_COUNT} 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個・資料の 3 個、第 10 段階の設計ノートの 3 個・説明書の 1 個を含む）`,
     tl.tools.length === TOOL_COUNT && NEW_TOOLS.every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
   await tool(client, 'edit_process', { design: made.id, ops: [
     { op: 'set_states', states: ['申請', '承認待ち', '完了'] },
@@ -311,7 +311,7 @@ function removeDir(dir) {
   fs.mkdirSync(USER_DATA, { recursive: true });
   fs.writeFileSync(WINDOW_STATE_FILE, JSON.stringify(WINDOW_STATE));
   try {
-    const env = { openEntry, check, appInfo, waitUntil, waitAppQuit, quitDetail, setLastPid: (pid) => { lastPid = pid; }, USER_DATA, STATE_FILE, IDLE_MS, TOOL_COUNT };
+    const env = { openEntry, check, appInfo, waitUntil, waitAppQuit, quitDetail, setLastPid: (pid) => { lastPid = pid; }, USER_DATA, STATE_FILE, IDLE_MS, TOOL_COUNT, EXPORT_DIR };
     if (!ONLY) {
       await phaseA();
       await phaseB();

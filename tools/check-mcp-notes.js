@@ -1,4 +1,5 @@
-// tools/check-mcp.js の場面 E（設計ノート。第 10 段階の前半）。AI の入口（mcp-server）から、設計ノートの道具 3 つ・手引き stages・prompts 3 つを本物のアプリで確かめる。
+// tools/check-mcp.js の場面 E（設計ノート。第 10 段階の前半。説明書の export_system_doc は後半）。AI の入口（mcp-server）から、設計ノートの道具 3 つ・手引き stages・prompts 3 つ・
+// export_system_doc を本物のアプリで確かめる。
 // 起動の前に、保存先へ見本のシステム 1 つ（役割 2・作業 2。資料は置かない）を置く（check-mcp-materials.js の場面 D と同じ置き方。--only=notes で E だけを動かせる）。
 //  0. アプリを起動する前に、入口だけで返る物を確かめる（アプリは起動しない）:
 //     道具は 34 個で、get_notes（読むだけ）・update_notes・set_stage（書く）がある ／ prompts は 3 つ（design_system・make_screen・fix_design）で引数の必須と省略が合う ／
@@ -8,6 +9,8 @@
 //  2. update_notes（set_findings・add_question 2 つ・add_decision・set_memo を 1 回で）→ added が足した 3 行の id・更新の印が変わる。古い expect は stale で断られ、何も変わらない
 //  3. set_stage: read を doing → review（確認の日時なし）→ done（確認の日時が入る。read にまだ決まっていないことが 1 つ残るので warnings）。answer_question で答えを書く。todo は bad_request で断られる
 //  4. get_notes・list_systems・get_system で読める（段階・読み取ったこと・メモ・決めたこと・まだ決まっていないこと〔答えあり・答えなし〕）
+//  4b. export_system_doc（第 10 段階の後半）: 決めたフォルダ（MIM_AI_EXPORT_DIR）に <システムの名前>_説明書.pdf（%PDF）を書き、返事の pages・included（設計ノートを入れた）・
+//     designs（見本のシステムには画面設計がないので空）が合う。書く頼みではないので、システムの更新の印は変わらない
 //  5. 入口を閉じてアプリが終わった後の designs.json に、段階・読み取ったこと・メモ・決めたこと・まだ決まっていないことが残り、「AI が直す前の状態」の行は増えていない
 // インストールした版（--packaged）でも同じ場面が動く（保存先の置き方と、入口の起動の文は check-mcp.js のもの）。
 'use strict';
@@ -168,6 +171,21 @@ async function checkNotesTools(client, env) {
   return { pid: a && a.pid, stamp, noteIds: { qRead: qRead.id, dFlow: dFlow.id } };
 }
 
+// 4b. export_system_doc（説明書の PDF。第 10 段階の後半）
+async function checkSystemDocTool(client, env, info) {
+  const { check, EXPORT_DIR } = env;
+  const r = await callRaw(client, 'export_system_doc', { system: SYSTEM_ID });
+  const j = r.json || {};
+  const file = (j.files || [])[0] || '';
+  const head = file && fs.existsSync(file) ? fs.readFileSync(file).subarray(0, 4).toString() : '';
+  check('E. export_system_doc: 決めたフォルダに <システムの名前>_説明書.pdf を書き、返事のページ数・入れたページ（表紙・スイムレーン図・設計ノート）が合う',
+    !r.isError && j.folder === EXPORT_DIR && path.basename(file) === `${SYSTEM_NAME}_説明書.pdf` && head === '%PDF'
+      && j.pages === 3 && JSON.stringify(j.included) === JSON.stringify({ systemCover: true, swimlane: true, notes: true }) && Array.isArray(j.designs) && j.designs.length === 0,
+    r.isError ? brief(r) : `${path.basename(file)}（${head}）・${j.pages} ページ・${JSON.stringify(j.included)}`);
+  const g = await callRaw(client, 'get_notes', { system: SYSTEM_ID });
+  check('E. export_system_doc は書く頼みではない（システムの更新の印が変わらない）', !g.isError && g.json.updatedAt === info.stamp, `updatedAt ${g.json && g.json.updatedAt}`);
+}
+
 // 5. アプリが終わった後の designs.json
 function checkSaved(env, info) {
   const { check, STATE_FILE } = env;
@@ -186,7 +204,7 @@ function checkSaved(env, info) {
     saved ? `改訂履歴の行 ${saved.revisions.length}・役割 ${saved.roles.length}` : 'システムがない');
 }
 
-// 場面 E 全体。env は check-mcp.js の道具（openEntry・check・appInfo・waitUntil・waitAppQuit・quitDetail・setLastPid・USER_DATA・STATE_FILE・IDLE_MS・TOOL_COUNT）
+// 場面 E 全体。env は check-mcp.js の道具（openEntry・check・appInfo・waitUntil・waitAppQuit・quitDetail・setLastPid・USER_DATA・STATE_FILE・IDLE_MS・TOOL_COUNT・EXPORT_DIR）
 async function phaseNotes(env) {
   const { openEntry, check, waitAppQuit, quitDetail, USER_DATA, STATE_FILE, IDLE_MS } = env;
   await placeSampleSystem({ userData: USER_DATA, systemId: SYSTEM_ID, systemName: SYSTEM_NAME, names: [], idPrefix: 'm-check-', description: '設計ノートの確かめの見本' });
@@ -195,6 +213,7 @@ async function phaseNotes(env) {
   const { client } = await openEntry();
   await checkWithoutApp(client, env);
   const info = await checkNotesTools(client, env);
+  await checkSystemDocTool(client, env, info);
   await client.close();
   const q = await waitAppQuit(info.pid, IDLE_MS + 15000, 'E. 入口を閉じた後にアプリが終わる');
   check('E. 入口を閉じると、アプリが終わり始め、プロセスも消える', q.begin >= IDLE_MS - 500, quitDetail(q));
