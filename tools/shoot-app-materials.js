@@ -93,13 +93,15 @@ async function shootReplace(ctx) {
   await page.close();
 }
 
-// 148・149: ブラウザで開いたとき（窓口なし）は資料の入口が出ない・幅 1280 の窓
+// 148・149: ブラウザで開いたとき（窓口なし）は資料の入口が出ない・幅 1280 の窓。
+// 入口は 概要・役割・スイムレーン図・設計ノート・履歴の 5 つ（第 10 段階の前半で、設計ノートの入口が足された。設計ノートは資料の窓口がなくても出る）
 async function shootNarrow(ctx) {
   const { shot } = ctx;
   const web = await openPage(ctx, { api: false, panel: 'materials' });
-  const inside = await web.evaluate(() => ({ entry: !!document.querySelector('#sys-list [data-panel="materials"]'), panel: window.__test__.ui.sysPanel, entries: document.querySelectorAll('#sys-list .db-entry[data-panel]').length }));
-  need(!inside.entry && inside.panel === 'swimlane' && inside.entries === 4, `窓口がないのに資料の入口が出ている: ${JSON.stringify(inside)}`);
-  await shot(web, '148_資料_ブラウザで開いたとき（資料の窓口がないので、左の入口は 4 つで「資料」が出ない）');
+  const inside = await web.evaluate(() => ({ entry: !!document.querySelector('#sys-list [data-panel="materials"]'), panel: window.__test__.ui.sysPanel,
+    entries: [...document.querySelectorAll('#sys-list .db-entry[data-panel]')].map((e) => e.dataset.panel) }));
+  need(!inside.entry && inside.panel === 'swimlane' && inside.entries.join() === 'overview,roles,swimlane,notes,history', `窓口がないのに資料の入口が出ている・入口の並びが違う: ${JSON.stringify(inside)}`);
+  await shot(web, '148_資料_ブラウザで開いたとき（資料の窓口がないので、左の入口は 5 つで「資料」が出ない）');
   await web.close();
   const narrow = await openPage(ctx, { width: 1280, height: 800 });
   const m = await narrow.evaluate(() => {
