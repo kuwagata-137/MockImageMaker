@@ -71,7 +71,7 @@ async function checkWithoutApp(client, env) {
   const REQUEST = '顧客管理の一覧の画面を作って';
   const ms = promptText(await client.getPrompt({ name: 'make_screen', arguments: { request: REQUEST } }));
   check('E. make_screen は request を省ける（省くと「引数に書いてありません」）。文に頼みと、切れた引数の読み方が入る。"stages" を読ませる文も set_stage もない',
-    /（引数に書いてありません）/.test(msNone) && ms.includes(REQUEST) && /空白のところで切れて届きます/.test(ms) && /"overview"/.test(ms) && !/stages/.test(ms) && !/set_stage/.test(ms),
+    /頼み: （引数に書いてありません。/.test(msNone) && ms.includes(REQUEST) && /空白のところで切れて届きます/.test(ms) && /"overview"/.test(ms) && !/stages/.test(ms) && !/set_stage/.test(ms),
     `省いたとき ${msNone.length} 字 ／ 頼みあり ${ms.length} 字`);
   const noDesign = await rejected(client.getPrompt({ name: 'fix_design', arguments: { request: '電話番号の欄を足して' } }));
   const fx = promptText(await client.getPrompt({ name: 'fix_design', arguments: { design: '顧客管理', request: '電話番号の欄を足して' } }));
