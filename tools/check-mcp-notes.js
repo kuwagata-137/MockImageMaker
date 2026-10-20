@@ -7,7 +7,7 @@
 //  1. 最初の get_notes（アプリを裏で起動する）: 段階 5 つが todo・読み取ったこと・メモ・決めたこと・まだ決まっていないことが空 ／ list_systems の行の stages も todo
 //  2. update_notes（set_findings・add_question 2 つ・add_decision・set_memo を 1 回で）→ added が足した 3 行の id・更新の印が変わる。古い expect は stale で断られ、何も変わらない
 //  3. set_stage: read を doing → review（確認の日時なし）→ done（確認の日時が入る。read にまだ決まっていないことが 1 つ残るので warnings）。answer_question で答えを書く。todo は bad_request で断られる
-//  4. get_notes・list_systems・get_system で読める（段階・読み取ったこと・メモ・決めたこと・まだ決まっていないこと〔答え済みと未回答〕）
+//  4. get_notes・list_systems・get_system で読める（段階・読み取ったこと・メモ・決めたこと・まだ決まっていないこと〔答えあり・答えなし〕）
 //  5. 入口を閉じてアプリが終わった後の designs.json に、段階・読み取ったこと・メモ・決めたこと・まだ決まっていないことが残り、「AI が直す前の状態」の行は増えていない
 // インストールした版（--packaged）でも同じ場面が動く（保存先の置き方と、入口の起動の文は check-mcp.js のもの）。
 'use strict';
@@ -67,11 +67,11 @@ async function checkWithoutApp(client, env) {
   const REQUEST = '顧客管理の一覧の画面を作って';
   const ms = promptText(await client.getPrompt({ name: 'make_screen', arguments: { request: REQUEST } }));
   check('E. make_screen は request がないと断られ、文に頼みが入る。文に "stages" を読ませる文も set_stage もない',
-    !!noRequest && ms.includes(REQUEST) && /"overview"/.test(ms) && !/read_guide の "stages"/.test(ms) && !/set_stage/.test(ms), noRequest ? `断られた: ${noRequest.message.split('\n')[0].slice(0, 100)}` : '断られなかった');
+    !!noRequest && ms.includes(REQUEST) && /"overview"/.test(ms) && !/stages/.test(ms) && !/set_stage/.test(ms), noRequest ? `断られた: ${noRequest.message.split('\n')[0].slice(0, 100)}` : '断られなかった');
   const noDesign = await rejected(client.getPrompt({ name: 'fix_design', arguments: { request: '電話番号の欄を足して' } }));
   const fx = promptText(await client.getPrompt({ name: 'fix_design', arguments: { design: '顧客管理', request: '電話番号の欄を足して' } }));
   check('E. fix_design は design がないと断られ、文に画面設計の名前と頼みが入る。文に "stages" を読ませる文も set_stage もない',
-    !!noDesign && fx.includes('「顧客管理」') && fx.includes('電話番号の欄を足して') && /get_design/.test(fx) && !/read_guide の "stages"/.test(fx) && !/set_stage/.test(fx), noDesign ? `断られた: ${noDesign.message.split('\n')[0].slice(0, 100)}` : '断られなかった');
+    !!noDesign && fx.includes('「顧客管理」') && fx.includes('電話番号の欄を足して') && /get_design/.test(fx) && !/stages/.test(fx) && !/set_stage/.test(fx), noDesign ? `断られた: ${noDesign.message.split('\n')[0].slice(0, 100)}` : '断られなかった');
 
   const rl = await client.listResources();
   const uris = rl.resources.map((r) => r.uri);
