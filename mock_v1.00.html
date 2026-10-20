@@ -718,10 +718,14 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .itable .nt-tbl th{background:#f1f5f9;border-color:#e2e8f0;padding:6px 8px;font-weight:600}
 .itable .nt-tbl td{padding:4px 6px;border-color:#e2e8f0;vertical-align:middle}
 .itable .nt-tbl td.nw{white-space:nowrap;color:#475569}
-.nt-tbl input{width:100%;border:1px solid #cbd5e1;border-radius:5px;padding:4px 6px;font:inherit;background:#fff;color:#0f172a}
-.nt-tbl input::placeholder{color:#94a3b8}
+/* 行の文字の欄は 1 行の textarea（rows="1"）。高さは中身に合わせ（field-sizing:content。長い文は列の幅で折り返して行が高くなり、改行も残る）、
+   1 行の文は 1 行の欄（input）と同じ見た目（高さ・枠・余白）にする（終わりの見直し A の Important 1・Minor 1）。Enter は改行（ほかの textarea と同じ） */
+.nt-tbl textarea{display:block;width:100%;border:1px solid #cbd5e1;border-radius:5px;padding:4px 6px;font:inherit;background:#fff;color:#0f172a;resize:none;overflow:hidden;field-sizing:content}
+/* field-sizing が使えないブラウザでは 1 行の高さのままなので、欄の中を送れるようにする */
+@supports not (field-sizing:content){.nt-tbl textarea{overflow:auto}}
+.nt-tbl textarea::placeholder{color:#94a3b8}
 .itable .nt-tbl tr.resolved td{color:#94a3b8;background:#f8fafc}
-.nt-tbl tr.resolved input{color:#94a3b8;background:#f8fafc;border-color:#e2e8f0}
+.nt-tbl tr.resolved textarea{color:#94a3b8;background:#f8fafc;border-color:#e2e8f0}
 .nt-tbl td.nt-end{text-align:center;white-space:nowrap}
 /* 決まった行の「10/19 に決まった」は灰色の太字（緑は札の「確認済み」の色なので使わない） */
 .nt-tbl .ok{color:#64748b;font-weight:700;margin-right:4px}
@@ -2899,6 +2903,9 @@ const normalizeNoteQuestion = (r) => ({
   ...r, id: str(r.id) || newId('nq'), date: str(r.date), stage: str(r.stage), text: str(r.text),
   answer: str(r.answer), resolvedAt: str(r.resolvedAt) || null,
 });
+// まだ決まっていないことの行が「決まった」か: 答え（前後の空白を除く）が空でない行。解決の日時（resolvedAt）では見分けない
+// （読み込んだデータで、答えがあるのに resolvedAt が null の行があるため）。画面の表と、AI の set_stage の warnings で使う（終わりの見直し A の Minor 2）
+const noteQuestionDecided = (q) => str(q.answer).trim() !== '';
 // 行の並び。オブジェクトでない行は外し、id の重なりを直す（片方を消すと両方消えるのを防ぐため）
 const noteRows = (list, normalizeRow, prefix) => uniqueIds((Array.isArray(list) ? list : []).filter(isObj).map(normalizeRow), prefix);
 // 設計ノートを読み込める形に直す。オブジェクトでなければ既定の形（5 つの段階が todo・文と行は空）。読み取ったこと・メモの長さは読み込みでは切らない。知らない欄は残す
@@ -6989,25 +6996,31 @@ const noteFindingsHtml = (y) => `<div class="nt-sec"><h4>読み取ったこと<s
 // 段階の丸数字の札と、行の ✕（どの行も元に戻す〔Ctrl+Z〕で戻せる）
 const noteStageChip = (k) => `<span class="nt-stg">${NOTE_STAGES.includes(k) ? noteStageNo(k) : esc(k)}</span>`;
 const noteDelBtn = (action, id) => `<button class="del-x" data-action="${action}" data-id="${esc(id)}" title="この行を消す（元に戻す〔Ctrl+Z〕で戻せます）" aria-label="この行を消す">✕</button>`;
-// まだ決まっていないこと（開いている札の段階の行）。決まっていない行を上に、決まった行（resolvedAt あり）を表の下に灰色で並べる。行がなければ表は出さない
+// まだ決まっていないこと（開いている札の段階の行）。決まっていない行を上に、決まった行（答えのある行。noteQuestionDecided）を表の下に灰色で並べる。
+// 行がなければ表は出さない
 function noteQuestionsHtml(y, k) {
   const rows = y.notes.questions.filter((q) => q.stage === k);
-  const open = rows.filter((q) => !q.resolvedAt);
-  const done = rows.filter((q) => q.resolvedAt);
+  const open = rows.filter((q) => !noteQuestionDecided(q));
+  const done = rows.filter(noteQuestionDecided);
   const count = (open.length ? `${open.length} つ` : 'なし') + (done.length ? `（決まったもの ${done.length} つ）` : '');
   const table = rows.length ? `<table class="nt-tbl nt-qs"><colgroup><col style="width:52px"><col style="width:40%"><col><col style="width:136px"></colgroup>
     <thead><tr><th>段階</th><th>まだ決まっていないこと</th><th>答え</th><th></th></tr></thead><tbody>${[...open, ...done].map(noteQuestionRowHtml).join('')}</tbody></table>` : '';
   return `<div class="nt-sec"><h4>まだ決まっていないこと（${noteStageNo(k)}）<small>${count}</small></h4>${table}
     <button class="btn small nt-add" data-action="sys-note-add-q" title="この段階のまだ決まっていないことの行を足します">＋ まだ決まっていないことを足す</button></div>`;
 }
-// まだ決まっていないことの 1 行（文字の欄は、行の id を data-note に持つ）。決まった行は、最後の列に「10/19 に決まった」と ✕
+// 行の文字の欄（行の id を data-note に持つ）。1 行の textarea で、高さは中身に合わせる（CSS の field-sizing。長い文は折り返し、改行も残す。
+// 終わりの見直し A の Important 1・Minor 1）。textarea の最初の改行は HTML で消えるので、改行を 1 つ足して文の頭の改行を残す（noteTextHtml と同じ）
+const noteRowFieldHtml = (sy, rowId, text, label, placeholder = '') => `<textarea rows="1" data-sy="${sy}" data-note="${rowId}"${placeholder ? ` placeholder="${placeholder}"` : ''} aria-label="${label}">
+${esc(text)}</textarea>`;
+// まだ決まっていないことの 1 行。決まった行（答えのある行。noteQuestionDecided）は、最後の列に「10/19 に決まった」（解決の日時〔resolvedAt〕がなければ「決まった」だけ）と ✕
 function noteQuestionRowHtml(q) {
   const id = esc(q.id);
-  const day = q.resolvedAt ? noteMonthDay(q.resolvedAt) : '';
-  return `<tr${q.resolvedAt ? ' class="resolved"' : ''} data-id="${id}"><td class="nw">${noteStageChip(q.stage)}</td>
-    <td><input type="text" data-sy="note-q-text" data-note="${id}" value="${esc(q.text)}" aria-label="まだ決まっていないこと"></td>
-    <td><input type="text" data-sy="note-q-answer" data-note="${id}" value="${esc(q.answer)}" placeholder="答えを書くと「決まった」になる" aria-label="答え"></td>
-    <td class="nt-end">${q.resolvedAt ? `<span class="ok">${day ? `${day} に` : ''}決まった</span>` : ''}${noteDelBtn('sys-note-del-q', q.id)}</td></tr>`;
+  const decided = noteQuestionDecided(q);
+  const day = decided && q.resolvedAt ? noteMonthDay(q.resolvedAt) : '';
+  return `<tr${decided ? ' class="resolved"' : ''} data-id="${id}"><td class="nw">${noteStageChip(q.stage)}</td>
+    <td>${noteRowFieldHtml('note-q-text', id, q.text, 'まだ決まっていないこと')}</td>
+    <td>${noteRowFieldHtml('note-q-answer', id, q.answer, '答え', '答えを書くと「決まった」になる')}</td>
+    <td class="nt-end">${decided ? `<span class="ok">${day ? `${day} に` : ''}決まった</span>` : ''}${noteDelBtn('sys-note-del-q', q.id)}</td></tr>`;
 }
 // 決めたことと理由（開いている札の段階の行）。行がなければ表は出さない
 function noteDecisionsHtml(y, k) {
@@ -7020,8 +7033,8 @@ function noteDecisionsHtml(y, k) {
 function noteDecisionRowHtml(d) {
   const id = esc(d.id);
   return `<tr data-id="${id}"><td class="nw">${esc(d.date)}</td><td class="nw">${noteStageChip(d.stage)}</td>
-    <td><input type="text" data-sy="note-d-text" data-note="${id}" value="${esc(d.text)}" aria-label="決めたこと"></td>
-    <td><input type="text" data-sy="note-d-reason" data-note="${id}" value="${esc(d.reason)}" aria-label="理由"></td>
+    <td>${noteRowFieldHtml('note-d-text', id, d.text, '決めたこと')}</td>
+    <td>${noteRowFieldHtml('note-d-reason', id, d.reason, '理由')}</td>
     <td class="nt-end">${noteDelBtn('sys-note-del-d', d.id)}</td></tr>`;
 }
 // 札を切り替える（進み具合のメニューは閉じる）
@@ -9356,8 +9369,14 @@ function commitKeepSide(fn) {
   try { fn(); } finally { keepSideOnNotify = false; }
 }
 
-// 右の欄の変更（文字は、欄を離れたときか Enter を押したときに保存する）
+// 右の欄の変更（文字は、欄を離れたときか Enter を押したときに保存する）。打っている途中の文字の保存（flushSideField）もここを通る。
+// 人が打っていない文字の欄は保存しない（fieldUntyped）。保存した後は、欄の今の値を控え直す
 function onSidePanelChange(e) {
+  if (fieldUntyped(e.target)) return;
+  saveSideField(e);
+  rememberFieldValue(e.target);
+}
+function saveSideField(e) {
   if (e.target.dataset.sy) { onSystemFieldChange(e.target); return; } // システムの画面の真ん中の欄（第 9 段階）
   if (e.target.dataset.sw) { onStepFieldChange(e.target); return; } // システムの画面の右の欄の作業・矢印の設定（第 9 段階の T6b）
   if (e.target.dataset.co) { onCalloutFieldChange(e.target); return; }
@@ -9748,6 +9767,19 @@ function readPartField(el) {
   // 1 行の欄は前後の空白を取る。複数行の欄（説明の文字・メモ・押したとき）は書いたまま
   return el.tagName === 'TEXTAREA' ? el.value : el.value.trim();
 }
+
+// 人が打っていない文字の欄は保存しない（第 10 段階の前半・終わりの見直し A の Important 1）。欄に出した文は、保存してある文と違う形になる
+// ことがある（1 行の欄は改行を消す・複数行の欄は CRLF の改行を LF にそろえる・前後の空白を取って保存する欄がある・設計ノートの読み取ったこと
+// とメモは NOTE_TEXT_MAX を超える分を保存するときに切る）。そのような文を読み込んだ欄にフォーカスして離れるだけで、文が書き換わって
+// 元に戻すの履歴に積まれないように、欄にフォーカスしたとき（focusin）の値を控え、今の値が控えと同じ欄は保存しない（onSidePanelChange）。
+// 控えは、その欄で保存した後にも今の値で付け直す（打って保存した後に元の文へ打ち戻したときに保存するため。窓を離れて戻ったときは focusin が
+// 出ないことがあるので、focusin だけには頼らない）。描いたときの文（el.defaultValue）とは比べない（打って保存した後に、描いたときの文へ
+// 打ち戻すと、保存されなくなるため）
+const fieldValueAtFocus = new WeakMap();
+function rememberFieldValue(el) {
+  if (el && el.matches && isTextInput(el)) fieldValueAtFocus.set(el, el.value);
+}
+const fieldUntyped = (el) => fieldValueAtFocus.has(el) && fieldValueAtFocus.get(el) === el.value;
 
 // 右の欄（システムの画面では真ん中の欄と右の欄。第 9 段階）で打ちかけの文字（まだ change が起きていない）を保存する。
 // 右の欄を作り直す操作（高さのドラッグ・部品を選ぶ）・命令・窓を離れる前に呼ぶ（呼ばないと、作り直しで打った文字が消える）。
@@ -14193,7 +14225,7 @@ async function aiSetStage(args, ctx) {
     const id = tx.system.id;
     actions.setNoteStage(id, stage, state);
     const y = findSystem(store.state, id);
-    const open = state === 'done' ? y.notes.questions.filter((q) => q.stage === stage && !q.answer.trim()).length : 0;
+    const open = state === 'done' ? y.notes.questions.filter((q) => q.stage === stage && !noteQuestionDecided(q)).length : 0;
     if (open) tx.warnings.push(`段階 ${aiStageLabel(stage)}に、まだ決まっていないことが ${open} つ残っています。人の答えは update_notes の answer_question で書いてください。`);
     return { stage, ...aiStageOf(y, stage) };
   });
@@ -14756,6 +14788,8 @@ function bindGlobalEvents() {
   app.addEventListener('change', (e) => {
     if (e.target.closest('#side-panel, #sys-view, #sys-side') && !e.target.closest('.target-picker')) onSidePanelChange(e);
   });
+  // 文字の欄にフォーカスしたときの値を控える（人が打っていない欄は保存しない。fieldUntyped）
+  app.addEventListener('focusin', (e) => rememberFieldValue(e.target));
   // システムの画面のスイムレーン図のダブルクリック（文字の欄・作業を足す）と右クリック（消す。ブラウザのメニューを出さない）（第 9 段階の T6b）
   app.addEventListener('dblclick', (e) => { if (ui.view === 'system' && !isDialogOpen()) onSwimDblClick(e); });
   app.addEventListener('contextmenu', (e) => { if (ui.view === 'system' && !isDialogOpen()) onSwimContextMenu(e); });
@@ -14887,7 +14921,7 @@ function exposeForTest() {
     changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
     SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
     MATERIAL_KINDS, MATERIAL_KIND_NAMES, normalizeMaterials, isLegacyMaterial, fmtMaterialSize,
-    NOTE_STAGES, NOTE_STAGE_NAMES, NOTE_STATES, NOTE_STATE_NAMES, NOTE_TEXT_MAX, normalizeNotes,
+    NOTE_STAGES, NOTE_STAGE_NAMES, NOTE_STATES, NOTE_STATE_NAMES, NOTE_TEXT_MAX, normalizeNotes, noteQuestionDecided,
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
     swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,

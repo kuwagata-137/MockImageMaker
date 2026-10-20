@@ -1,6 +1,7 @@
 // tools/shoot-app.js の設計ノートの場面（--only=notes。場面 150〜157）。第 10 段階の前半の「設計ノート」の入口（画像 k75 の「段階ごとの札と進み具合のボタン」）のとおりかを撮る。
 // 見本は架空の出張申請システム。AI の道具（テスト用の窓口 window.__test__ の aiDispatch）で、役割・画面設計・設計ノートの中身
 // （① ② 確認済み・③ 確認待ち・④ ⑤ まだ。読み取ったこと・決めたこと 4 つ・まだ決まっていないこと 3 つ〔① の 1 つは決まった〕・メモ）を組み立てる。
+// ③ の決めたことの理由は長い文（約 60 字）で、150 で行の欄が折り返すのを見る（1 行の文の欄は、前の 1 行の欄と同じ高さ）。
 // 札・進み具合のボタン・メニューは、Puppeteer で実際にマウスを押して動かす（headless・窓を出さない）。画像は screenshots/ に置く。
 // どの場面も、撮るたびに、大事な所が出ているかを need() で確かめる（出ていなければ止まる）。
 //  150 ③ の札（最初に開く札）／ 151 ① の札（読み取ったこと）／ 152 進み具合のメニューを開いたところ／ 153 メニューで「確認済みにする」を押した後／
@@ -58,6 +59,7 @@ async function buildSystem(opts) {
       { id: 'm-2', name: '旅費規程.pdf', kind: 'pdf', size: 1200000, file: 'm-2.pdf' },
       { id: 'm-3', name: '出張申請の流れ.html', kind: 'bdm', size: 2100000, file: 'm-3.html' },
     ]);
+    const LONG_REASON = '精算は経理が確かめ、出張のない経費（会議の交通費・備品の立て替えなど）も入るため。出張申請に入れると、項目が多くなりすぎる';
     const FINDINGS = '業務: 社員が出張の前に申請し、上長が承認する。出張から戻ったら 7 日以内に旅費を精算し、経理が確かめて支払う。\n'
       + '登場人物（役割）: 申請者（社員）・上長・経理\n今の手順: 紙の出張申請書に書いて上長の印をもらい、総務に回す。\n'
       + '様式「出張申請書」の欄: 申請者（必須）・行き先（必須）・出発日と帰着日（必須）・概算の金額（円）・出張の目的';
@@ -70,7 +72,8 @@ async function buildSystem(opts) {
       { op: 'add_decision', stage: 'read', text: '役割は、申請者・上長・経理の 3 つにする', reason: '旅費規程の第 5 条と、出張申請書の承認の欄から' },
       { op: 'add_decision', stage: 'flow', text: '承認は上長の 1 段にする', reason: '理念の「現場の手間を減らす」から。部長の承認は、金額が 10 万円以上のときだけにする' },
       { op: 'add_decision', stage: 'flow', text: '差し戻すと、申請者の「申請」に戻す', reason: '今の流れ（資料の「出張申請の流れ.html」）と同じにした' },
-      { op: 'add_decision', stage: 'items', text: '経費精算は、出張申請と別の画面設計にする', reason: '精算は経理が確かめ、出張のない経費も入るため' },
+      // ③ の理由は長い文（約 60 字）。行の欄の中で折り返して、行が高くなる（終わりの見直し A の Minor 1）
+      { op: 'add_decision', stage: 'items', text: '経費精算は、出張申請と別の画面設計にする', reason: LONG_REASON },
     ] });
     const qRead = w.added.filter((a) => a.op === 'add_question')[2].id; // ① の、まだ決まっていないこと（答えを書いて「決まった」にする）
     await call('update_notes', { system: sys, ops: [{ op: 'answer_question', id: qRead, answer: '国内だけにする（総務に確かめた）' }] });
@@ -122,6 +125,8 @@ const readNotes = (page) => page.evaluate((states) => {
     findings: val('note-findings'), memo: val('note-memo'),
     openQ: all('#sys-view .nt-qs tbody tr:not(.resolved)').length, doneQ: all('#sys-view .nt-qs tbody tr.resolved').length, decisions: all('#sys-view .nt-ds tbody tr').length,
     tables: all('#sys-view .nt-tbl').length,
+    // 表の行の文字の欄（要素の名前・data-sy・高さ・文字の数）
+    rows: all('#sys-view .nt-tbl [data-note]').map((el) => ({ tag: el.tagName, sy: el.dataset.sy, h: Math.round(el.getBoundingClientRect().height), len: el.value.length })),
     menu: all('#sys-menu-root .nt-menu [role="menuitem"]').map((b) => b.dataset.state), menuRect: rect(document.querySelector('#sys-menu-root .nt-menu')),
     undoDisabled: (document.querySelector('#toolbar [data-action="undo"]') || {}).disabled,
     band: txt(document.querySelector('#ai-band')), bandBtn: (document.querySelector('#ai-band [data-action^="ai-open"]') || { dataset: {} }).dataset.action || null,
@@ -146,6 +151,11 @@ async function shootTabs(ctx) {
   need(r.tabs.length === 5 && stagesOf(r) === 'done,done,review,todo,todo' && openTab(r) === 'items', `最初の札の並びが見本と違う: ${JSON.stringify(r.tabs)}`);
   need(/^確認待ち ▾$/.test(r.pill) && r.entry === '③ 確認待ち' && r.activeEntry === 'notes', `進み具合のボタン・入口の小さな字が違う: ${r.pill} ／ ${r.entry}`);
   need(r.findings === null && /ベンダーとの打ち合わせ/.test(r.memo) && r.openQ === 2 && r.doneQ === 0 && r.decisions === 1, `③ の札の中身が違う（読み取ったこと ${r.findings}・まだ決まっていない ${r.openQ}・決まった ${r.doneQ}・決めたこと ${r.decisions}）`);
+  // 行の欄は 1 行の textarea: 1 行の文は 1 行の欄（前の input）と同じ高さ（約 29 ドット）、長い理由（約 60 字）は折り返して 2 行以上の高さ（1 行増えるごとに字の行の高さ約 19 ドット）
+  const oneLine = Math.min(...r.rows.map((x) => x.h));
+  const long = r.rows.find((x) => x.sy === 'note-d-reason' && x.len > 50);
+  need(r.rows.length && r.rows.every((x) => x.tag === 'TEXTAREA') && oneLine >= 27 && oneLine <= 32 && long && long.h >= oneLine + 15,
+    `行の欄が、1 行の文で 1 行の高さ・長い文で折り返した高さになっていない: ${JSON.stringify(r.rows)}`);
   await shot(page, '150_設計ノート_③の札（確認待ち。最初に開く札）');
   // 151: ① の札（読み取ったこと・決まった行）
   await tabClick(page, 'read');

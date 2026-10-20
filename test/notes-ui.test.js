@@ -348,7 +348,9 @@ test('表: まだ決まっていないこと（開いている札の段階だけ
     ['nq-4', '③', '日当を払うか', '払う', '10/18 に決まった', true],
   ]);
   assert.equal(field('note-q-answer', 'nq-1').placeholder, '答えを書くと「決まった」になる');
-  assert.equal(field('note-q-text', 'nq-1').type, 'text');
+  // 行の欄は 1 行の textarea（改行を残し、長い文は折り返す。終わりの見直し A の Important 1・Minor 1）
+  assert.deepEqual([['note-q-text', 'nq-1'], ['note-q-answer', 'nq-1'], ['note-d-text', 'nd-3'], ['note-d-reason', 'nd-3']].map(([sy, id]) => [field(sy, id).tagName, field(sy, id).rows]),
+    [['TEXTAREA', 1], ['TEXTAREA', 1], ['TEXTAREA', 1], ['TEXTAREA', 1]]);
   assert.deepEqual($$('#sys-view .nt-qs [data-action="sys-note-del-q"]').map((b) => [b.dataset.id, b.textContent]), [['nq-1', '✕'], ['nq-3', '✕'], ['nq-4', '✕']]);
   assert.match($('#sys-view [data-action="sys-note-del-q"]').title, /^この行を消す/);
   assert.equal($('#sys-view [data-action="sys-note-add-q"]').textContent, '＋ まだ決まっていないことを足す');
@@ -449,6 +451,27 @@ test('答えを書いて欄を離れると「決まった」になる。離れ�
   assert.deepEqual(qRows().map((r) => [r[0], r[5]]), [['nq-1', false], ['nq-3', false], ['nq-4', true]]);
 });
 
+test('答えがあって resolvedAt が null の行（読み込んだデータ）も「決まった」（日付なし）で表の下に出る。AI の set_stage の warnings に数えない（終わりの見直し A の Minor 2）', async (t) => {
+  const state = sampleState();
+  state.systems[0].notes.questions.push({ id: 'nq-5', date: '2026-10-19', stage: 'items', text: '日当の額を、行き先で変えるか', answer: '変えない', resolvedAt: null });
+  // 答えが空で resolvedAt だけがある行は、まだ決まっていない
+  state.systems[0].notes.questions.push({ id: 'nq-6', date: '2026-10-19', stage: 'items', text: '前払いを認めるか', answer: ' ', resolvedAt: at(18, 10, 0) });
+  const { api, heads, qRows, call } = await boot(t, { state });
+  assert.deepEqual(qRows(), [
+    ['nq-1', '③', '宿泊費の上限を、役職で変えるか', '', '', false],
+    ['nq-3', '③', '「出張の目的」の欄を、必ず書く欄にするか', '', '', false],
+    ['nq-6', '③', '前払いを認めるか', ' ', '', false],
+    ['nq-4', '③', '日当を払うか', '払う', '10/18 に決まった', true],
+    ['nq-5', '③', '日当の額を、行き先で変えるか', '変えない', '決まった', true],
+  ]);
+  assert.deepEqual(heads()[0], ['まだ決まっていないこと（③）', '3 つ（決まったもの 2 つ）']);
+  assert.equal(api.noteQuestionDecided({ answer: '変えない', resolvedAt: null }), true);
+  assert.equal(api.noteQuestionDecided({ answer: ' ', resolvedAt: at(18, 10, 0) }), false);
+  const r = ok(await call('set_stage', { system: 'y-trip', stage: 'items', state: 'done' }));
+  assert.equal(r.warnings.length, 1);
+  assert.match(r.warnings[0], /^段階 ③（データベースの項目）に、まだ決まっていないことが 3 つ残っています。/);
+});
+
 test('打ちかけの文字（読み取ったこと・メモ・行の文字・答え・理由）は、札の切り替え・入口の切り替え・行を足す・一覧へ戻るで保存する', async (t) => {
   const { $, api, field, tab, entry, sys } = await boot(t);
   const type = (el, v) => { el.focus(); el.value = v; };
@@ -471,6 +494,90 @@ test('打ちかけの文字（読み取ったこと・メモ・行の文字・�
   assert.equal(sys().notes.decisions.find((x) => x.id === 'nd-2').text, '打ちかけの決めたこと', '一覧へ戻る');
 });
 
+// ── 人が打っていない欄は保存しない（終わりの見直し A の Important 1）──
+// 欄に出した文は、保存してある文と違う形になることがある（CRLF の改行は LF にそろう・8,000 字を超える文は保存するときに切る。
+// 前は行の欄が 1 行の欄で、改行が消えていた）。欄にフォーカスして離れるだけでは保存しない
+const NL = '理由A\n理由B';
+const CRLF = '一行目\r\n二行目';
+const LONG = '出張の手順。'.repeat(1335); // 8,010 字
+// 6 つの欄 [data-sy, 行の id, 開く札, 設計ノートから読む]
+const SIX_FIELDS = [
+  ['note-findings', null, 'read', (n) => n.findings],
+  ['note-memo', null, 'items', (n) => n.memo],
+  ['note-q-text', 'nq-x', 'items', (n) => n.questions[0].text],
+  ['note-q-answer', 'nq-x', 'items', (n) => n.questions[0].answer],
+  ['note-d-text', 'nd-x', 'items', (n) => n.decisions[0].text],
+  ['note-d-reason', 'nd-x', 'items', (n) => n.decisions[0].reason],
+];
+// 読み取ったこと・メモが text、行の文が row の設計ノート（③ 確認待ち）
+const oddNotes = (text, row = text) => ({
+  stages: { read: stage('done', at(19, 10, 0)), flow: stage('todo'), items: stage('review'), screens: stage('todo'), docs: stage('todo') },
+  findings: text, memo: text,
+  decisions: [{ id: 'nd-x', date: '2026-10-19', stage: 'items', text: row, reason: row }],
+  questions: [{ id: 'nq-x', date: '2026-10-19', stage: 'items', text: row, answer: row, resolvedAt: at(19, 9, 0) }],
+});
+const oddState = (notes) => plain({ ...sampleState(), systems: [system('y-trip', '出張申請システム', { notes }), system('y-exp', '経費精算システム')] });
+
+for (const [label, text, row, fields] of [
+  ['改行を含む文', NL, NL, SIX_FIELDS],
+  ['CRLF の改行を含む文', CRLF, CRLF, SIX_FIELDS],
+  ['8,000 字を超える文', LONG, '宿泊費の上限を、役職で変えるか', SIX_FIELDS.slice(0, 2)],
+]) {
+  test(`人が打っていない欄は保存しない（${label}）: 欄にフォーカスして ② の札を押すだけでは、文も元に戻すの履歴の数も更新日時も変わらない`, async (t) => {
+    const { api, field, tab, sys } = await boot(t, { state: oddState(oddNotes(text, row)) });
+    for (const [sy, note, open] of fields) {
+      click(tab(open));
+      const before = JSON.stringify(sys().notes);
+      const [u0, t0] = [api.store.undoStack.length, sys().updatedAt];
+      field(sy, note).focus();
+      click(tab('flow'));
+      assert.equal(JSON.stringify(sys().notes), before, sy);
+      assert.equal(api.store.undoStack.length, u0, `${sy}: 履歴に積まない`);
+      assert.equal(sys().updatedAt, t0, `${sy}: 更新日時を変えない`);
+    }
+  });
+}
+
+test('行の欄（まだ決まっていないことの文と答え・決めたことの文と理由）は改行をそのまま出す。高さは中身に合わせる（field-sizing:content）', async (t) => {
+  const { api, field } = await boot(t, { state: oddState(oddNotes('', NL)) });
+  for (const [sy, note] of SIX_FIELDS.slice(2)) assert.equal(field(sy, note).value, NL, sy);
+  assert.match(api.appStyle(), /\.nt-tbl textarea\{[^}]*field-sizing:content/);
+});
+
+test('打って変えた文は保存する。打って保存した後に元の文へ打ち戻すと、元の文を保存する（窓を離れて戻ったときに focusin が出なくても・欄を離れたとき）', async (t) => {
+  const { app, api, field, tab, sys } = await boot(t);
+  const undo = () => api.store.undoStack.length;
+  const fields = [
+    ['note-findings', null, 'read', (n) => n.findings],
+    ['note-memo', null, 'items', (n) => n.memo],
+    ['note-q-text', 'nq-1', 'items', (n) => n.questions.find((q) => q.id === 'nq-1').text],
+    ['note-q-answer', 'nq-1', 'items', (n) => n.questions.find((q) => q.id === 'nq-1').answer],
+    ['note-d-text', 'nd-3', 'items', (n) => n.decisions.find((d) => d.id === 'nd-3').text],
+    ['note-d-reason', 'nd-3', 'items', (n) => n.decisions.find((d) => d.id === 'nd-3').reason],
+  ];
+  for (const [sy, note, open, read] of fields) {
+    click(tab(open));
+    const el = field(sy, note);
+    el.focus();
+    const orig = el.value;
+    const u0 = undo();
+    el.value = orig + '（直した）';
+    app.window.dispatchEvent(new app.window.Event('blur')); // ほかの窓へ移る（打ちかけの文字を保存する。戻っても focusin は出さない）
+    assert.equal(read(sys().notes), orig + '（直した）', sy);
+    el.value = orig; // 元の文へ打ち戻す
+    click(tab('flow'));
+    assert.equal(read(sys().notes), orig, `${sy}: 打ち戻した元の文を保存する`);
+    assert.equal(undo(), u0 + 2, sy);
+  }
+  // 欄を離れたとき（change）も同じ
+  const memo = field('note-memo');
+  memo.focus();
+  setValue(memo, 'メモを直した');
+  assert.equal(sys().notes.memo, 'メモを直した');
+  setValue(memo, 'ベンダーとの打ち合わせは 10/25。');
+  assert.equal(sys().notes.memo, 'ベンダーとの打ち合わせは 10/25。', '打ち戻した元の文を保存する');
+});
+
 test('描き直してもフォーカスは同じ行の同じ欄に戻る（行の id〔data-note〕で見分ける）。AI が設計ノートを直すと真ん中を描き直す', async (t) => {
   const { app, field, qRows, call } = await boot(t);
   const el = field('note-q-text', 'nq-3');
@@ -480,7 +587,7 @@ test('描き直してもフォーカスは同じ行の同じ欄に戻る（行�
   assert.deepEqual(qRows().map((r) => r[2]).slice(0, 3), ['宿泊費の上限を、役職で変えるか', '「出張の目的」の欄を、必ず書く欄にするか', 'AI が足した問い'], '真ん中を描き直した');
   const now = app.document.activeElement;
   assert.notEqual(now, el, '作り直した欄');
-  assert.deepEqual([now.dataset.sy, now.dataset.note, now.selectionStart, now.selectionEnd], ['note-q-text', 'nq-3', 2, 5]);
+  assert.deepEqual([now.tagName, now.dataset.sy, now.dataset.note, now.selectionStart, now.selectionEnd], ['TEXTAREA', 'note-q-text', 'nq-3', 2, 5], '行の欄の textarea でも戻る');
   // 答えの欄・理由の欄
   field('note-d-reason', 'nd-3').focus();
   ok(await call('update_notes', { system: 'y-trip', ops: [{ op: 'set_memo', text: 'AI のメモ' }] }));
