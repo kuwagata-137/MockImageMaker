@@ -5690,7 +5690,7 @@ function sysBlockHtml(g) {
       <h2>${esc(y.name)}</h2><span class="meta">画面設計 ${designsOfSystem(S, y).length} つ・役割 ${y.roles.length} つ</span><span class="spacer"></span>
       <button class="btn small primary" data-action="open-system" data-id="${id}" title="「${esc(y.name)}」のシステムの画面を開きます">開く</button>
       <span class="sys-pop-wrap"><button class="btn small" data-action="sys-add-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('add')}">＋ 画面設計を入れる ▾</button>${open('add') ? sysAddMenuHtml(y) : ''}</span>
-      <span class="sys-pop-wrap"><button class="btn small" data-action="sys-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('more')}" aria-label="「${esc(y.name)}」の操作" title="名前と説明を変える・ごみ箱へ移す">…</button>${open('more') ? sysMoreMenuHtml(y) : ''}</span>
+      <span class="sys-pop-wrap"><button class="btn small" data-action="sys-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('more')}" aria-label="「${esc(y.name)}」の操作" title="${window.exportAPI ? '名前と説明を変える・説明書を出力する・ごみ箱へ移す' : '名前と説明を変える・ごみ箱へ移す'}">…</button>${open('more') ? sysMoreMenuHtml(y) : ''}</span>
     </div>
     ${y.description ? `<p class="sys-desc">${esc(y.description)}</p>` : ''}
     ${g.designs.length ? `<div class="cards">${g.designs.map((d) => renderCard(d, { sys: y })).join('')}</div>` : '<p class="empty">まだ画面設計が入っていません。「＋ 画面設計を入れる」から入れます。</p>'}
@@ -5705,10 +5705,12 @@ function sysAddMenuHtml(y, cls = '') {
     <button role="menuitem" data-action="sys-add-copy" data-id="${id}"><b>今ある画面設計を複製して入れる</b><small>別のもの。新しい id。同期しない</small></button>
   </div>`;
 }
+// 「説明書を出力…」はデスクトップ版だけ（第 10 段階の後半。q76）
 function sysMoreMenuHtml(y) {
   const id = esc(y.id);
   return `<div class="pop-menu sys-pop" role="menu">
     <button role="menuitem" data-action="sys-edit" data-id="${id}">名前と説明を変える…</button>
+    ${window.exportAPI ? `<button role="menuitem" data-action="sys-doc" data-id="${id}">説明書を出力…</button>` : ''}
     <button role="menuitem" class="danger" data-action="sys-trash" data-id="${id}">ごみ箱へ移す</button>
   </div>`;
 }
@@ -6139,7 +6141,7 @@ async function onDesignAction(action, d, btn = null) {
 }
 
 // システムのまとまり・ごみ箱のシステムの行で押したもの
-const SYSTEM_HOME_ACTIONS = ['open-system', 'sys-add-menu', 'sys-menu', 'sys-add-new', 'sys-add-same', 'sys-add-copy', 'sys-edit', 'sys-trash', 'restore-system', 'delete-system-forever'];
+const SYSTEM_HOME_ACTIONS = ['open-system', 'sys-add-menu', 'sys-menu', 'sys-add-new', 'sys-add-same', 'sys-add-copy', 'sys-edit', 'sys-doc', 'sys-trash', 'restore-system', 'delete-system-forever'];
 async function onSystemAction(action, y) {
   if (action === 'sys-add-menu' || action === 'sys-menu') { toggleSysMenu(action === 'sys-menu' ? 'more' : 'add', y.id); return; }
   closeSysMenu();
@@ -6152,6 +6154,7 @@ async function onSystemAction(action, y) {
       if (r) actions.updateSystem(y.id, r);
       return;
     }
+    case 'sys-doc': await openSystemDocDialog(y.id); return;
     // ごみ箱へ移すのは確かめない（画面設計と同じ。元に戻すで戻せる）
     case 'sys-trash':
       if (actions.trashSystem(y.id)) toast(`「${y.name}」をごみ箱へ移しました。入っていた画面設計は残っています。`);
@@ -6220,7 +6223,9 @@ function mountSystem() {
 function sysToolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
   return [
-    group('ファイル', '<button class="bigbtn" data-action="home" title="システムと画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>'),
+    // 「出力」は説明書（PDF）の窓（デスクトップ版だけ。第 10 段階の後半。q76）
+    group('ファイル', '<button class="bigbtn" data-action="home" title="システムと画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>'
+      + (window.exportAPI ? '<button class="bigbtn" data-action="export" title="このシステムの説明書（PDF）を出力します"><span class="ico">⇪</span>出力</button>' : '')),
     group('履歴', `<div class="stack">
       <button class="tbtn" data-action="undo" id="sys-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" id="sys-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
@@ -7111,7 +7116,7 @@ function sysSideHtml(y) {
       + hint('① の札を押すと、① で資料から読み取ったこと（業務の要約・登場人物・今の手順・様式の欄）が出ます。')
       + hint('AI とつないでいないときは、「この段階の進み具合」のボタンを押して、進み具合を変えられます。')
       + hint('まだ決まっていないことに答えを書くと「決まった」になり、表の下へ移ります。')
-      + hint('決めたことと理由は、システムの説明書（PDF）の最後のページに入ります。');
+      + hint('決めたことと理由と、まだ決まっていないこと（答えのある行も）は、システムの説明書（PDF）の最後のページに入ります（⑤ の行は入りません）。');
   }
   if (!y.roles.length) return `<div class="panel-title">作業の設定</div>${hint('役割を足すと、スイムレーン図に作業の箱を置けます。')}`;
   const w = ui.stepSel ? findStep(y, ui.stepSel) : null;
@@ -11632,6 +11637,16 @@ const EXPORT_KINDS = [
   ['html', '🌐', 'HTML', 'ブラウザで開いて、見る・直すことができる。直したものはアプリで取り込める'],
   ['png', '🖼', 'PNG（画像）', '画面ごとに 1 枚の画像。資料に貼るとき'],
 ];
+// 用紙・向きなどの並んだボタン（ラジオ）。choices は [値, 名前] の並び
+const xpSeg = (name, value, choices) => `<div class="seg">${choices.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}"${value === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
+// 用紙がスライドのときは、向きを横にして押せなくする（スライドは横だけ）
+function syncSlideOrient(m, paperName, orientName) {
+  const slide = (m.querySelector(`[name="${paperName}"]:checked`) || {}).value === 'slide';
+  m.querySelectorAll(`[name="${orientName}"]`).forEach((x) => {
+    x.disabled = slide;
+    if (slide && x.value === 'landscape') x.checked = true;
+  });
+}
 function exportDialogBody(d, desk, kind, hasMap) {
   const o = exportOpts;
   const kinds = EXPORT_KINDS.map(([k, ic, name, note]) => {
@@ -11639,7 +11654,6 @@ function exportDialogBody(d, desk, kind, hasMap) {
     return `<button type="button" class="xp-kind${k === kind ? ' on' : ''}" data-xkind="${k}" aria-pressed="${k === kind}"${off ? ' disabled' : ''}>`
       + `<b><i>${ic}</i>${name}</b><small>${off ? 'デスクトップ版のアプリで出力できます' : note}</small></button>`;
   }).join('');
-  const seg = (name, value, choices) => `<div class="seg">${choices.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}"${value === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
   const screens = d.screens.map((s, i) => `<label class="check"><input type="checkbox" data-xscreen value="${esc(s.id)}" checked><span>${i + 1}　${esc(s.name)}<small class="dev">${DEVICES[s.device].label}</small></span></label>`).join('');
   const pick = `<div class="xp-sub">出力する画面<span class="spacer"></span><button type="button" class="link-btn" data-xall="1">すべて選ぶ</button><button type="button" class="link-btn" data-xall="0">すべて外す</button></div><div class="xp-screens">${screens}</div>`;
   const page = (key, label, ok, why) => `<label class="check"><input type="checkbox" data-xpage="${key}"${ok && o[key] ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${label}${ok ? '' : `<small class="sub">${why}</small>`}</span></label>`;
@@ -11657,8 +11671,8 @@ function exportDialogBody(d, desk, kind, hasMap) {
   return `<div class="xp-kinds">${kinds}</div>
     <div class="xp-box" data-xbox="pdf"${kind === 'pdf' ? '' : ' hidden'}>
       <div class="xp-row">
-        <div class="field"><span>用紙</span>${seg('xp-paper', o.paper, Object.entries(PAPERS).map(([k, p]) => [k, p.label]))}</div>
-        <div class="field"><span>向き</span>${seg('xp-orient', slide ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
+        <div class="field"><span>用紙</span>${xpSeg('xp-paper', o.paper, Object.entries(PAPERS).map(([k, p]) => [k, p.label]))}</div>
+        <div class="field"><span>向き</span>${xpSeg('xp-orient', slide ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
       </div>
       <div class="xp-sub">入れるページ</div>
       <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', 'つながりの図', hasMap, 'ほかの画面設計とのつながりがないので、出しません')}${page('items', 'データベースの項目の一覧表', d.items.length > 0, '項目がないので、出しません')}${page('process', 'ステータスの移り方', hasProcessPage(d), 'ステータスを進める操作がないので、出しません')}${page('flow', '画面の移り方', hasFlowPage(d, store.state), 'ボタン・リンクの文字の移る先がないので、出しません')}</div>
@@ -11694,13 +11708,7 @@ async function openExportDialog(designId) {
     width: 640,
     body: exportDialogBody(d, desk, kind, hasMap),
     init(m) {
-      const syncOrient = () => {
-        const slide = (m.querySelector('[name="xp-paper"]:checked') || {}).value === 'slide';
-        m.querySelectorAll('[name="xp-orient"]').forEach((x) => {
-          x.disabled = slide;
-          if (slide && x.value === 'landscape') x.checked = true;
-        });
-      };
+      const syncOrient = () => syncSlideOrient(m, 'xp-paper', 'xp-orient');
       m.addEventListener('click', (e) => {
         const card = e.target.closest('[data-xkind]');
         if (card && !card.disabled) {
@@ -11777,6 +11785,99 @@ async function runExport(designId, r) {
   res = await api.savePng({ files: exportPngDocs(d, store.state, r.screenIds, r.diffRevId) });
   reportExport(res, 'PNG');
   return res;
+}
+
+// ── システムの説明書の窓（第 10 段階の後半。q76・q77・画像 q81_1）──
+// 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない。画面設計の出力の窓の設定 exportOpts とは別）。
+// ページの名前は、窓・exportSystemDocument の opts・AI の export_system_doc の入力と返事で同じ
+const docOpts = { paper: 'A4', orient: 'landscape', systemCover: true, swimlane: true, notes: true, cover: true, map: true, items: true, process: true, flow: true, openAfter: true };
+const DOC_SYSTEM_PAGES = [['systemCover', '表紙'], ['swimlane', 'スイムレーン図'], ['notes', '設計ノート（決めたことと理由・まだ決まっていないこと）']];
+const DOC_DESIGN_PAGES = [['cover', '表紙'], ['map', 'つながりの図'], ['items', 'データベースの項目の一覧表'], ['process', 'ステータスの移り方'], ['flow', '画面の移り方']];
+const DOC_PAGE_KEYS = [...DOC_SYSTEM_PAGES, ...DOC_DESIGN_PAGES].map(([k]) => k);
+// 説明書の出力を待っているシステムの id（待つ間に命令がもう 1 回来ても、窓を開かずに無視する）
+const docWaiting = new Set();
+// 押せないページの理由（押せるときは ''）。can は systemDocCan の戻り値
+function systemDocWhy(key, can) {
+  if (key === 'swimlane' && !can.swimlane) return '作業の箱がないので、出しません';
+  if (key === 'notes' && !can.notes) return '設計ノートに行がないので、出しません';
+  if (!can.designs && DOC_DESIGN_PAGES.some(([k]) => k === key)) return 'このシステムには画面設計が入っていません';
+  return '';
+}
+function systemDocDialogBody(y, can) {
+  const o = docOpts;
+  const page = ([key, label]) => {
+    const why = systemDocWhy(key, can);
+    return `<label class="check"><input type="checkbox" data-dpage="${key}"${!why && o[key] ? ' checked' : ''}${why ? ' disabled' : ''}><span>${label}${why ? `<small class="sub">${why}</small>` : ''}</span></label>`;
+  };
+  const dl = designsOfSystem(store.state, y);
+  const names = dl.slice(0, 5).map((d) => esc(d.name)).join('・') + (dl.length > 5 ? ` ほか ${dl.length - 5} つ` : '');
+  const note = dl.length ? `入っている画面設計 ${dl.length} つ（${names}）の画面のページは、全部入れます。` : 'このシステムには、まだ画面設計が入っていません。';
+  return `<p class="xp-note">システム 1 つ分を、1 つの PDF（説明書）にします。${note}</p>
+    <div class="xp-box">
+      <div class="xp-row">
+        <div class="field"><span>用紙</span>${xpSeg('dp-paper', o.paper, Object.entries(PAPERS).map(([k, p]) => [k, p.label]))}</div>
+        <div class="field"><span>向き</span>${xpSeg('dp-orient', o.paper === 'slide' ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
+      </div>
+      <div class="xp-sub">入れるページ（システム）</div>
+      <div class="xp-pages">${DOC_SYSTEM_PAGES.map(page).join('')}</div>
+      <div class="xp-sub">入れるページ（画面設計ごと。入っている画面設計の全部に効く）</div>
+      <div class="xp-pages">${DOC_DESIGN_PAGES.map(page).join('')}</div>
+      <label class="check xp-open"><input type="checkbox" data-dopen${o.openAfter ? ' checked' : ''}><span>出力したら PDF を開く</span></label>
+    </div>`;
+}
+// 説明書の窓を開き、選んだ形で出力する。戻り値は出力の結果（出力しなかったときは null）。デスクトップ版だけ
+async function openSystemDocDialog(sysId) {
+  if (standalone || docWaiting.has(sysId)) return null;
+  if (!window.exportAPI) { toast('説明書の PDF は、デスクトップ版のアプリで出力できます。'); return null; }
+  flushSideField();
+  const y = findSystem(store.state, sysId);
+  if (!y || y.trashedAt) return null;
+  const can = systemDocCan(y, store.state);
+  const r = await showDialog({
+    title: `「${y.name}」の説明書を出力`,
+    okLabel: '出力…',
+    width: 680,
+    body: systemDocDialogBody(y, can),
+    init(m) {
+      m.addEventListener('change', (e) => { if (e.target.name === 'dp-paper') syncSlideOrient(m, 'dp-paper', 'dp-orient'); });
+      syncSlideOrient(m, 'dp-paper', 'dp-orient');
+    },
+    collect(m) {
+      const r2 = {
+        paper: (m.querySelector('[name="dp-paper"]:checked') || {}).value || 'A4',
+        orient: (m.querySelector('[name="dp-orient"]:checked') || {}).value || 'landscape',
+        openAfter: !!m.querySelector('[data-dopen]').checked,
+      };
+      DOC_PAGE_KEYS.forEach((k) => { const x = m.querySelector(`[data-dpage="${k}"]`); r2[k] = !!x && !x.disabled && x.checked; });
+      // 画面設計が入っていれば、画面のページがいつも入る
+      if (!can.designs && !DOC_SYSTEM_PAGES.some(([k]) => r2[k])) return { error: '入れるページを 1 つ以上選んでください。' };
+      return r2;
+    },
+  });
+  if (!r) return null;
+  // 覚える（押せなかった印は、前の設定のままにする）
+  Object.assign(docOpts, { paper: r.paper, orient: r.paper === 'slide' ? docOpts.orient : r.orient, openAfter: r.openAfter });
+  DOC_PAGE_KEYS.forEach((k) => { if (!systemDocWhy(k, can)) docOpts[k] = r[k]; });
+  // 窓を開いている間に、ごみ箱へ移った・消えたときは出力しない（人の操作で起きうる。窓が開いている間、AI の書く頼みは断る）
+  const now = findSystem(store.state, sysId);
+  if (!now || now.trashedAt) { toast(`「${y.name}」がごみ箱へ移ったので、出力をやめました。`); return null; }
+  return runSystemDoc(sysId, r);
+}
+// 説明書を出力する。r は説明書の窓の結果（docOpts と同じ名前）。保存の窓の結果はお知らせで伝える（キャンセルは何も出さない）
+async function runSystemDoc(sysId, r) {
+  const y = findSystem(store.state, sysId);
+  const api = window.exportAPI;
+  if (!y || !api) return null;
+  docWaiting.add(sysId);
+  try {
+    toast('説明書（PDF）を作っています…');
+    const doc = exportSystemDocument(y, store.state, r);
+    const res = await api.savePdf({ name: `${safeFileName(y.name, 'システム')}_説明書.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
+    if (res && !res.canceled) toast(res.ok ? `説明書（PDF）を出力しました（${res.path}）。` : `説明書（PDF）を出力できませんでした（${res.error || 'わからない理由'}）。`);
+    return res;
+  } finally {
+    docWaiting.delete(sysId);
+  }
 }
 
 // ── HTML の取り込み（q39）──
@@ -12094,10 +12195,13 @@ function runCommand(cmd) {
       return true;
     }
     // 出力と取り込み（第 5 段階）。単体で開いた HTML では、出力の窓と取り込みは出さず、HTML を保存し直すだけ（q37）
+    // システムの画面では、説明書（PDF）の窓（第 10 段階の後半。q76）
     case 'exportDialog':
       if (standalone) return true;
       if (ui.view === 'editor') openExportDialog(ui.designId).catch(reportPageError);
-      else toast('出力する画面設計を開くか、カードの「…」から「出力…」を選んでください。');
+      else if (ui.view === 'system') openSystemDocDialog(ui.systemId).catch(reportPageError);
+      else toast(window.exportAPI ? '出力する画面設計かシステムを開くか、カードの「…」から「出力…」、システムの「…」から「説明書を出力…」を選んでください。'
+        : '出力する画面設計を開くか、カードの「…」から「出力…」を選んでください。');
       return true;
     case 'importHtml':
       if (standalone) return true;
@@ -15176,7 +15280,7 @@ function exposeForTest() {
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, hasFlowPage, minScreenHeight, selectPart, currentScreen,
     currentDesign, currentPart, openScreen, openItemsPanel, selectItem, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
-    exportDocument, exportSystemDocument, noteDocRows, systemDocCan, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport,
+    exportDocument, exportSystemDocument, noteDocRows, systemDocCan, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport, openSystemDocDialog, docOpts,
     paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
