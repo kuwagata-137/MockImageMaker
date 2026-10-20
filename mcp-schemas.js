@@ -209,9 +209,45 @@ const materialInputs = {
 
 const opsOf = (union) => z.array(union).min(1).describe('操作の並び（まとめて 1 回の変更になる）');
 
+// ── 設計ノート（get_notes・update_notes・set_stage。第 10 段階の前半）──
+// 段階の鍵と、AI が set_stage に書ける状態。ページの NOTE_STAGES と、NOTE_STATES から todo（まだ）を除いたものと同じ（test/mcp.test.js で比べる）
+const NOTE_STAGES = ['read', 'flow', 'items', 'screens', 'docs'];
+const NOTE_AI_STATES = ['doing', 'review', 'done', 'skipped'];
+const noteStage = z.enum(NOTE_STAGES).describe('段階: "read"（① 資料から読み取る）・"flow"（② 業務の流れ）・"items"（③ データベースの項目）・"screens"（④ 画面）・"docs"（⑤ 説明書と出力）');
+const noteRow = (what) => z.string().describe(`${what}の行の id（get_notes の id）`);
+const noteOps = z.discriminatedUnion('op', [
+  op('set_findings', { text: z.string().describe('読み取ったことの全体（8000 字まで。空の文で消す）') },
+    '① で資料から読み取ったこと（業務の要約・登場人物・今の手順・様式ごとの欄の一覧）を書く（今の文を全部置き換える。足すときは get_notes で読んだ文に足して書く）'),
+  op('set_memo', { text: z.string().describe('メモの全体（8000 字まで。空の文で消す）') }, 'メモを書く（今の文を全部置き換える）'),
+  op('add_decision', {
+    stage: noteStage, text: z.string().describe('決めたこと'),
+    reason: opt(z.string().describe('理由（理念・概要の文を判断に使ったときは、そのことも書く）')),
+  }, '決めたことと理由の行を足す'),
+  op('edit_decision', { id: noteRow('決めたこと'), stage: opt(noteStage), text: opt(z.string()), reason: opt(z.string()) }, '決めたことの行を直す（書いた欄だけ変える）'),
+  op('remove_decision', { id: noteRow('決めたこと') }, '決めたことの行を消す'),
+  op('add_question', { stage: noteStage, text: z.string().describe('まだ決まっていないこと（資料でわからないこと・人に聞きたいこと）') }, 'まだ決まっていないことの行を足す'),
+  op('edit_question', { id: noteRow('まだ決まっていないこと'), stage: opt(noteStage), text: opt(z.string()) }, 'まだ決まっていないことの行を直す（書いた欄だけ変える。答えは answer_question で書く）'),
+  op('answer_question', { id: noteRow('まだ決まっていないこと'), answer: z.string().describe('人の答え（空の文にすると、まだ決まっていないことに戻る）') },
+    'まだ決まっていないことに、人の答えを書く（人の答えで決まったとき）'),
+  op('remove_question', { id: noteRow('まだ決まっていないこと') }, 'まだ決まっていないことの行を消す'),
+]);
+// 入力の形の欄（materialInputs と同じく、mcp-tools.js の read・write が obj で包み、知らない欄を断る）
+const noteInputs = {
+  get: { system: S.system, cursor: S.cursor },
+  update: { system: S.system, expect: S.expect, ops: opsOf(noteOps) },
+  stage: {
+    system: S.system, stage: noteStage,
+    state: z.enum(NOTE_AI_STATES).describe('進み具合: "doing"（作業中）・"review"（確認待ち）・"done"（確認済み）・"skipped"（確認を飛ばした）。"todo"（まだ）には戻せない'),
+    expect: S.expect,
+  },
+};
+
+// prompts（mcp-server.js の registerPrompt）の引数の形。args は mcp-guide.js の PROMPTS の { 名前: { required, description } }。引数は文字だけ
+const promptArgs = (args) => Object.fromEntries(Object.entries(args).map(([k, a]) => [k, (a.required ? z.string() : z.string().optional()).describe(a.description)]));
+
 module.exports = {
   z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps), processOps: opsOf(processOps),
   roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('作業の並び（今のスイムレーンの作業を全部置き換える。空の並びで作業を全部消す）'),
   swimEdges: z.array(swimEdge).describe('矢印の並び（今の矢印を全部置き換える。省くと、今の矢印のうち両端の作業が残っているものを残す。[] で全部消す）'),
-  materialInputs, DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS,
+  materialInputs, noteInputs, promptArgs, DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, NOTE_STAGES, NOTE_AI_STATES,
 };
