@@ -2745,7 +2745,7 @@ function normalizeMapPos(src) {
 // いくつかの画面設計をまとめる入れ物（例: 出張申請システム）。{ id（y-）, name, description, createdAt, updatedAt, trashedAt,
 //   designIds（入れている画面設計の id。並び順が表示の順）, roles: [{ id（l-）, name, memo }]（並び順がスイムレーンのレーンの順）,
 //   swimlane: { steps: [{ id（w-）, roleId, col, kind, text, memo, ref: { designId, screenId, stateId }, src（BDM の箱。normalizeStep）}], edges: [{ id（e-）, from, to, label }] },
-//   materials（資料。行の形は下の normalizeMaterial）, notes（設計ノート。中身は第 10 段階）}。
+//   materials（資料。行の形は下の normalizeMaterial）, notes（設計ノート。形は下の normalizeNotes）}。
 // 1 つの画面設計を 2 つ以上のシステムに入れられる（案B）。どのシステムに入っているかは、システムの designIds だけに持つ（画面設計の側には持たない）。
 // 画面設計をごみ箱へ移しても designIds からは外さない（戻したときに元のシステムに戻るように）。完全に削除したときに、全部のシステムから外す
 const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end']; // 始まり・作業・システムへの入力・判断・書類・終わり
@@ -2757,7 +2757,7 @@ const MATERIAL_KIND_NAMES = { text: '文字', image: '画像', pdf: 'PDF', word:
 function createSystemData({ name, description = '' } = {}, now = nowIso()) {
   return {
     id: newId('y'), name, description, createdAt: now, updatedAt: now, trashedAt: null,
-    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: {}, revisions: [],
+    designIds: [], roles: [], swimlane: { steps: [], edges: [] }, materials: [], notes: normalizeNotes({}), revisions: [],
   };
 }
 // 役割の並び。名前のない役割は「名前なし」。id の重なりを直す。知らない欄は残す
@@ -2826,6 +2826,49 @@ function normalizeMaterial(m) {
 const normalizeMaterials = (list) => uniqueIds((Array.isArray(list) ? list : []).filter(isObj).map(normalizeMaterial), 'm');
 // 古い形（.doc・.xls）のファイルの資料か（中身を読めない）。行には持たず、保存したファイルの名前の拡張子で見る
 const isLegacyMaterial = (row) => isObj(row) && /\.(doc|xls)$/i.test(str(row.file));
+// 設計ノート（第 10 段階。設計書の 5-3・10 章）。AI が資料からシステムを作るときの 5 つの段階の進み具合と、読み取ったこと・決めたことと理由・
+// まだ決まっていないこと・メモを、システムごとに持つ。{ stages: { read・flow・items・screens・docs: { state, confirmedAt } }, findings,
+//   decisions: [{ id（nd-）, date, stage, text, reason }], questions: [{ id（nq-）, date, stage, text, answer, resolvedAt }], memo }。
+// システムの履歴の写しには入れない（SYSTEM_CONTENT_KEYS）。データの形の版は 3 のまま（読み込みで足りない欄を補う）
+const NOTE_STAGES = ['read', 'flow', 'items', 'screens', 'docs']; // 段階の鍵と順
+const NOTE_STAGE_NAMES = { read: '① 資料から読み取る', flow: '② 業務の流れ', items: '③ データベースの項目', screens: '④ 画面', docs: '⑤ 説明書と出力' };
+// 段階の状態: まだ・作業中・確認待ち・確認済み・確認を飛ばした（人の指示で）
+const NOTE_STATES = ['todo', 'doing', 'review', 'done', 'skipped'];
+// 「読み取ったこと」「メモ」の 1 つの長さの上限（人の欄の長さと、AI が断る長さ）。行（決めたこと・まだ決まっていないこと）の文には設けない
+const NOTE_TEXT_MAX = 8000;
+// 段階 1 つ。知らない状態は todo。confirmedAt は文字だけ残し、ほかは null（読み込みでは付け直さない）。知らない欄は残す
+function normalizeNoteStage(src) {
+  const s = isObj(src) ? src : {};
+  return { ...s, state: NOTE_STATES.includes(s.state) ? s.state : 'todo', confirmedAt: typeof s.confirmedAt === 'string' ? s.confirmedAt : null };
+}
+// 段階の入れ物。5 つの鍵を決まった順に必ず持たせる。知らない段階の鍵は、直さずに後ろへ残す（消さない）
+function normalizeNoteStages(src) {
+  const st = isObj(src) ? src : {};
+  const out = {};
+  NOTE_STAGES.forEach((k) => { out[k] = normalizeNoteStage(st[k]); });
+  Object.keys(st).forEach((k) => { if (!NOTE_STAGES.includes(k)) out[k] = st[k]; });
+  return out;
+}
+// 行（決めたこと・まだ決まっていないこと）。id がなければ付け、文字の欄は文字にする。知らない欄と知らない段階の行は残す
+const normalizeNoteDecision = (r) => ({ ...r, id: str(r.id) || newId('nd'), date: str(r.date), stage: str(r.stage), text: str(r.text), reason: str(r.reason) });
+const normalizeNoteQuestion = (r) => ({
+  ...r, id: str(r.id) || newId('nq'), date: str(r.date), stage: str(r.stage), text: str(r.text),
+  answer: str(r.answer), resolvedAt: typeof r.resolvedAt === 'string' ? r.resolvedAt : null,
+});
+// 行の並び。オブジェクトでない行は外し、id の重なりを直す（片方を消すと両方消えるのを防ぐため）
+const noteRows = (list, normalizeRow, prefix) => uniqueIds((Array.isArray(list) ? list : []).filter(isObj).map(normalizeRow), prefix);
+// 設計ノートを読み込める形に直す。オブジェクトでなければ既定の形（5 つの段階が todo・文と行は空）。読み取ったこと・メモの長さは読み込みでは切らない。知らない欄は残す
+function normalizeNotes(raw) {
+  const n = isObj(raw) ? raw : {};
+  return {
+    ...n,
+    stages: normalizeNoteStages(n.stages),
+    findings: str(n.findings),
+    decisions: noteRows(n.decisions, normalizeNoteDecision, 'nd'),
+    questions: noteRows(n.questions, normalizeNoteQuestion, 'nq'),
+    memo: str(n.memo),
+  };
+}
 // システム 1 つを読み込める形に直す。designIds は state にある画面設計（ごみ箱のものも含む）の id だけを、重ねずに残す。知らない欄は残す
 function normalizeSystem(raw, designIds) {
   const y = isObj(raw) ? raw : {};
@@ -2843,7 +2886,7 @@ function normalizeSystem(raw, designIds) {
     roles: normalizeRoles(y.roles),
     swimlane: normalizeSwimlane(y.swimlane),
     materials: normalizeMaterials(y.materials),
-    notes: isObj(y.notes) ? y.notes : {},
+    notes: normalizeNotes(y.notes),
     // 履歴の行の id が重なっていれば、2 つ目からは新しい id にする（どの行に戻すかを id で決めるため）
     revisions: uniqueIds((Array.isArray(y.revisions) ? y.revisions : []).filter(isObj).map(normalizeSystemRevision), 'r'),
   };
@@ -3310,6 +3353,30 @@ function mutateSystem(id, fn, { touch = true } = {}) {
   });
   return true;
 }
+// ── 設計ノートの操作の下請け（第 10 段階。actions の setNote…・editNote…・removeNote… が使う）。どれも、変わらないとき・直せないときは false ──
+// 読み取ったこと・メモ（key は 'findings'・'memo'）。前後の空白と改行はそのまま入れ、NOTE_TEXT_MAX を超える分は切る
+function setNoteText(sysId, key, text) {
+  const y = editableSystem(sysId);
+  const next = str(text).slice(0, NOTE_TEXT_MAX);
+  if (!y || y.notes[key] === next) return false;
+  return mutateSystem(sysId, (yy) => { yy.notes[key] = next; });
+}
+// 行（listKey は 'decisions'・'questions'）の欄を直す。書いた欄（fields のうち patch にあるもの）だけ変える。
+// stage を書いたときは NOTE_STAGES の値だけ受ける（知らない段階は、今と同じ値でも断る）。文は前後の空白を取らずにそのまま入れる
+function editNoteRow(sysId, listKey, rowId, patch, fields) {
+  const y = editableSystem(sysId);
+  const row = y && isObj(patch) ? y.notes[listKey].find((r) => r.id === rowId) : null;
+  if (!row || ('stage' in patch && !NOTE_STAGES.includes(patch.stage))) return false;
+  const next = {};
+  fields.forEach((k) => { if (k in patch) next[k] = str(patch[k]); });
+  if (Object.keys(next).every((k) => row[k] === next[k])) return false;
+  return mutateSystem(sysId, (yy) => { Object.assign(yy.notes[listKey].find((r) => r.id === rowId), next); });
+}
+function removeNoteRow(sysId, listKey, rowId) {
+  const y = editableSystem(sysId);
+  if (!y || !y.notes[listKey].some((r) => r.id === rowId)) return false;
+  return mutateSystem(sysId, (yy) => { yy.notes[listKey] = yy.notes[listKey].filter((r) => r.id !== rowId); });
+}
 // ── BDM の案からスイムレーン図を作る（第 9 段階の後半。actions.swimlaneFromPlan が使う）──
 // 案（plan）は資料の窓口の bdmPlan の返事 { roles: [名前], steps: [{ key, role, col, kind, text, memo, src }], edges: [{ from, to, label }] }。
 // 役割の名前は、名前と同じく前後の空白を取り、続く空白を 1 つにして比べる（cleanName）。名前のない役割は「名前なし」（読み込むときと同じ）
@@ -3676,6 +3743,54 @@ const actions = {
     if (!y || !y.materials.some((m) => m.id === matId)) return false;
     return mutateSystem(sysId, (yy) => { yy.materials = yy.materials.filter((m) => m.id !== matId); });
   },
+  // ── 設計ノート（第 10 段階。設計書の 5-3。形は normalizeNotes）──
+  // 段階の状態を変える。done・skipped に変わったときだけ確認の日時（confirmedAt）を入れ（done ↔ skipped も、変わったので入れ直す）、
+  // ほかの状態に変わったら null にする。知らない段階・状態・今と同じ状態のときは何も変えず false
+  setNoteStage(sysId, stage, state) {
+    const y = editableSystem(sysId);
+    if (!y || !NOTE_STAGES.includes(stage) || !NOTE_STATES.includes(state) || y.notes.stages[stage].state === state) return false;
+    return mutateSystem(sysId, (yy) => {
+      const st = yy.notes.stages[stage];
+      st.state = state;
+      st.confirmedAt = state === 'done' || state === 'skipped' ? nowIso() : null;
+    });
+  },
+  // ① で資料から読み取ったこと・メモ。前後の空白と改行はそのまま入れ、NOTE_TEXT_MAX を超える分は切る
+  setNoteFindings(sysId, text) { return setNoteText(sysId, 'findings', text); },
+  setNoteMemo(sysId, text) { return setNoteText(sysId, 'memo', text); },
+  // 決めたことと理由の行を足す。spec は { stage, text, reason }（stage は NOTE_STAGES の値。文は省ける）。日付は今日。戻り値は行の id（足せなければ null）
+  addNoteDecision(sysId, spec = {}) {
+    if (!editableSystem(sysId) || !isObj(spec) || !NOTE_STAGES.includes(spec.stage)) return null;
+    const row = { id: newId('nd'), date: todayDay(), stage: spec.stage, text: str(spec.text), reason: str(spec.reason) };
+    mutateSystem(sysId, (yy) => { yy.notes.decisions.push(row); });
+    return row.id;
+  },
+  // 決めたことの行を直す。patch は { stage, text, reason } のどれか（書いた欄だけ変える）
+  editNoteDecision(sysId, rowId, patch = {}) { return editNoteRow(sysId, 'decisions', rowId, patch, ['stage', 'text', 'reason']); },
+  removeNoteDecision(sysId, rowId) { return removeNoteRow(sysId, 'decisions', rowId); },
+  // まだ決まっていないことの行を足す。spec は { stage, text }。答えは空・解決の日時は null。戻り値は行の id（足せなければ null）
+  addNoteQuestion(sysId, spec = {}) {
+    if (!editableSystem(sysId) || !isObj(spec) || !NOTE_STAGES.includes(spec.stage)) return null;
+    const row = { id: newId('nq'), date: todayDay(), stage: spec.stage, text: str(spec.text), answer: '', resolvedAt: null };
+    mutateSystem(sysId, (yy) => { yy.notes.questions.push(row); });
+    return row.id;
+  },
+  // まだ決まっていないことの行を直す。patch は { stage, text }（答えは answerNoteQuestion で変える）
+  editNoteQuestion(sysId, rowId, patch = {}) { return editNoteRow(sysId, 'questions', rowId, patch, ['stage', 'text']); },
+  // 答えを入れる。前後の空白を取って空でなければ、解決の日時（resolvedAt）を入れる。すでに入っているときは、答えだけを変えても付け直さない。空にしたら null
+  answerNoteQuestion(sysId, rowId, answer) {
+    const y = editableSystem(sysId);
+    const q = y ? y.notes.questions.find((r) => r.id === rowId) : null;
+    const next = str(answer);
+    if (!q || q.answer === next) return false;
+    return mutateSystem(sysId, (yy) => {
+      const r = yy.notes.questions.find((x) => x.id === rowId);
+      r.answer = next;
+      if (!next.trim()) r.resolvedAt = null;
+      else if (!r.resolvedAt) r.resolvedAt = nowIso();
+    });
+  },
+  removeNoteQuestion(sysId, rowId) { return removeNoteRow(sysId, 'questions', rowId); },
   // システムの履歴の行（AI が直す前の状態・戻す前の状態）の中身に戻す（q65。人がシステムの画面の「履歴」から戻す。AI の道具はない）。
   // 今の中身を「戻す前の状態」の行に残してから、写しの中身（名前・説明・役割・スイムレーン・画面設計の並び）で置き換える。
   // 写しにあって今ない画面設計は外し、作業の指す先も今の中身で検める（systemFromSnapshot）。1 回の変更なので、元に戻す 1 回で戻る。
@@ -14362,6 +14477,7 @@ function exposeForTest() {
     changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
     SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
     MATERIAL_KINDS, MATERIAL_KIND_NAMES, normalizeMaterials, isLegacyMaterial, fmtMaterialSize,
+    NOTE_STAGES, NOTE_STAGE_NAMES, NOTE_STATES, NOTE_TEXT_MAX, normalizeNotes,
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
     swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,
