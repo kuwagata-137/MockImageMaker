@@ -63,7 +63,7 @@ async function boot(t, state = sampleState()) {
 const notesOf = (sys, id) => plain(sys(id).notes);
 
 // ── 定数 ──
-test('定数: 段階の鍵と順・段階の名前・状態・文の上限。SCHEMA_VERSION は 3 のまま', async (t) => {
+test('定数: 段階の鍵と順・段階の名前・進み具合・文の上限。SCHEMA_VERSION は 3 のまま', async (t) => {
   const { api } = await boot(t);
   assert.equal(api.SCHEMA_VERSION, 3);
   assert.deepEqual(plain(api.NOTE_STAGES), ['read', 'flow', 'items', 'screens', 'docs']);
@@ -97,7 +97,7 @@ test('読み込み: 設計ノートがオブジェクトでない（null・配�
   assert.deepEqual(plain(api.migrate(plain(raw)).state.systems[0].notes), emptyNotes(), 'notes の欄がないシステム');
 });
 
-test('読み込み: 段階は 5 つの鍵を必ず持ち、知らない状態は todo・confirmedAt は空でない文字だけ残す（付け直さない）。知らない段階の鍵と知らない欄は残る', async (t) => {
+test('読み込み: 段階は 5 つの鍵を必ず持ち、知らない進み具合は todo・confirmedAt は空でない文字だけ残す（付け直さない）。知らない段階の鍵と知らない欄は残る', async (t) => {
   const { api } = await boot(t);
   const out = plain(api.normalizeNotes({
     stages: {
@@ -111,7 +111,7 @@ test('読み込み: 段階は 5 つの鍵を必ず持ち、知らない状態は
     future: { keep: 1 },
   }));
   assert.deepEqual(Object.keys(out.stages), ['read', 'flow', 'items', 'screens', 'docs', 'extra', 'other'], '5 つの鍵が順に並び、知らない鍵はその後ろ');
-  assert.deepEqual(out.stages.read, { state: 'todo', confirmedAt: null, future: 1 }, '知らない状態は todo・数の confirmedAt は null・段階の中の知らない欄は残る');
+  assert.deepEqual(out.stages.read, { state: 'todo', confirmedAt: null, future: 1 }, '知らない進み具合は todo・数の confirmedAt は null・段階の中の知らない欄は残る');
   assert.deepEqual(out.stages.flow, todo(), '段階がオブジェクトでなければ todo');
   assert.deepEqual(out.stages.items, { state: 'done', confirmedAt: DONE_AT });
   assert.deepEqual(out.stages.screens, { state: 'done', confirmedAt: null }, 'done でも confirmedAt は読み込みでは付け直さない');
@@ -185,8 +185,8 @@ test('読み込み: こわれた設計ノートでも起動でき（ページの
   assert.equal(sys('y-trip').updatedAt, OLD, '読み込みで更新日時は変えない');
 });
 
-// ── 段階の状態 ──
-test('setNoteStage: done・skipped になったときだけ confirmedAt を入れ、ほかの状態では null。同じ状態・知らない段階／状態・ないシステムは false', async (t) => {
+// ── 段階の進み具合 ──
+test('setNoteStage: done・skipped になったときだけ confirmedAt を入れ、ほかの進み具合では null。同じ進み具合・知らない段階／進み具合・ないシステムは false', async (t) => {
   const { api, sys } = await boot(t);
   const stage = (k) => plain(sys('y-trip').notes.stages[k]);
   assert.deepEqual(stage('items'), todo());

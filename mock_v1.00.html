@@ -2884,7 +2884,7 @@ const NOTE_STATES = ['todo', 'doing', 'review', 'done', 'skipped'];
 const NOTE_STATE_NAMES = { todo: 'まだ', doing: '作業中', review: '確認待ち', done: '確認済み', skipped: '確認を飛ばした' };
 // 「読み取ったこと」「メモ」の 1 つの長さの上限（人の欄の長さと、AI が断る長さ）。行（決めたこと・まだ決まっていないこと）の文には設けない
 const NOTE_TEXT_MAX = 8000;
-// 段階 1 つ。知らない状態は todo。confirmedAt は空でない文字だけ残し、ほかは null（trashedAt と同じ。読み込みでは付け直さない）。知らない欄は残す
+// 段階 1 つ。知らない進み具合は todo。confirmedAt は空でない文字だけ残し、ほかは null（trashedAt と同じ。読み込みでは付け直さない）。知らない欄は残す
 function normalizeNoteStage(src) {
   const s = isObj(src) ? src : {};
   return { ...s, state: NOTE_STATES.includes(s.state) ? s.state : 'todo', confirmedAt: str(s.confirmedAt) || null };
@@ -3795,8 +3795,8 @@ const actions = {
     return mutateSystem(sysId, (yy) => { yy.materials = yy.materials.filter((m) => m.id !== matId); });
   },
   // ── 設計ノート（第 10 段階。設計書の 5-3。形は normalizeNotes）──
-  // 段階の状態を変える。done・skipped に変わったときだけ確認の日時（confirmedAt）を入れ（done ↔ skipped も、変わったので入れ直す）、
-  // ほかの状態に変わったら null にする。知らない段階・状態・今と同じ状態のときは何も変えず false
+  // 段階の進み具合を変える。done・skipped に変わったときだけ確認の日時（confirmedAt）を入れ（done ↔ skipped も、変わったので入れ直す）、
+  // ほかの進み具合に変わったら null にする。知らない段階・進み具合・今と同じ進み具合のときは何も変えず false
   setNoteStage(sysId, stage, state) {
     const y = editableSystem(sysId);
     if (!y || !NOTE_STAGES.includes(stage) || !NOTE_STATES.includes(state) || y.notes.stages[stage].state === state) return false;
@@ -6265,7 +6265,7 @@ function renderSystem({ keepMain = false, keepSide = false } = {}) {
   menuFocus();
 }
 // 設計ノートの進み具合のメニューの中にフォーカスがあれば、描き直した後（メニューは左の一覧と真ん中の描き直しで作り直される）、同じ項目
-// （data-state）へフォーカスを戻す関数を返す。同じ項目がなくなった（AI がその状態にした）・メニューが閉じたときは、進み具合のボタンへ戻す
+// （data-state）へフォーカスを戻す関数を返す。同じ項目がなくなった（AI がその進み具合にした）・メニューが閉じたときは、進み具合のボタンへ戻す
 // （AI が書いて描き直したときに、フォーカスが body に落ちないように。終わりの見直し A の Minor 5）
 function keepNoteMenuFocus() {
   const el = document.activeElement;
@@ -6941,7 +6941,7 @@ const NOTE_STATE_TEXTS = {
   review: 'AI が案を出して、あなたの答えを待っています。', doing: 'AI がこの段階を進めています。', todo: 'まだ始めていません。',
   done: 'この段階の案は確かめました。', skipped: '確かめずに次へ進めました。',
 };
-// 進み具合のメニューの項目 [状態, 名前, 小さな字]（今の状態の項目は出さない）
+// 進み具合のメニューの項目 [進み具合, 名前, 小さな字]（今の進み具合の項目は出さない）
 const NOTE_STAGE_MENU = [
   ['done', '✓ 確認済みにする', 'この段階の案でよい（AI は次の段階へ進める）'],
   ['skipped', '⤼ 確かめずに進めたことにする', '「確認を飛ばした」にする'],
@@ -6982,7 +6982,7 @@ function sysNotesHtml(y) {
     <div class="nt-tabbody">${noteStateHtml(y, k)}${k === 'read' ? noteFindingsHtml(y) : ''}${noteQuestionsHtml(y, k)}${noteDecisionsHtml(y, k)}</div>
     <div class="nt-sec"><h4>メモ<small>段階によらない</small></h4>${noteTextHtml('note-memo', 'nt-memo', 'メモ', y.notes.memo)}</div></div>`;
 }
-// 札 1 つ（段階の名前と、状態の印。選んだ札は濃い紺）
+// 札 1 つ（段階の名前と、進み具合の印。選んだ札は濃い紺）
 function noteTabHtml(y, k, on) {
   const s = noteStateOf(y, k);
   return `<button class="nt-tab ${s}${on ? ' on' : ''}" data-action="sys-note-tab" data-stage="${k}" aria-pressed="${on}" title="${esc(NOTE_STAGE_NAMES[k])}（${NOTE_STATE_NAMES[s]}）を開きます">${esc(NOTE_STAGE_NAMES[k])}<i>${NOTE_STATE_MARKS[s]}</i></button>`;
@@ -6990,7 +6990,7 @@ function noteTabHtml(y, k, on) {
 // 読み取ったこと・メモの欄（長さの上限は NOTE_TEXT_MAX）。textarea の最初の改行は HTML で消えるので、改行を 1 つ足して文の頭の改行を残す
 const noteTextHtml = (sy, cls, label, text) => `<textarea class="nt-text ${cls}" data-sy="${sy}" maxlength="${NOTE_TEXT_MAX}" aria-label="${label}">
 ${esc(text)}</textarea>`;
-// 「この段階の進み具合:」のボタン（状態の名前と ▾。確認済み・確認を飛ばしたは確認の日付も）と、状態の説明の文。押すとメニュー（noteStageMenuHtml）
+// 「この段階の進み具合:」のボタン（進み具合の名前と ▾。確認済み・確認を飛ばしたは確認の日付も）と、進み具合の説明の文。押すとメニュー（noteStageMenuHtml）
 function noteStateHtml(y, k) {
   const st = y.notes.stages[k];
   const day = noteSettled(st.state) && st.confirmedAt ? noteDay(st.confirmedAt) : '';
@@ -6999,7 +6999,7 @@ function noteStateHtml(y, k) {
       title="この段階の進み具合を変えます">${NOTE_STATE_NAMES[st.state]}${day ? `（${day}）` : ''} ▾</button>
     <span class="nt-state-text">${NOTE_STATE_TEXTS[st.state]}</span></div>`;
 }
-// 進み具合のメニュー（開いている札の段階。今の状態の項目は出さない）。窓に対して置く（renderSysMenus）
+// 進み具合のメニュー（開いている札の段階。今の進み具合の項目は出さない）。窓に対して置く（renderSysMenus）
 function noteStageMenuHtml(y) {
   const k = noteOpenStage(y);
   const now = noteStateOf(y, k);

@@ -80,12 +80,12 @@ async function boot(t, { state = sampleState(), materials = false, sysId = 'y-tr
     // 左の入口 [絵, 名前, 小さな字]
     entries: () => $$('#sys-list .db-entry').map((b) => [b.querySelector('.ic').textContent, b.querySelector('b').textContent, b.querySelector('small').textContent]),
     entry: (p) => $(`#sys-list .db-entry[data-panel="${p}"]`),
-    // 札 [段階, 印, 状態の class, 選んでいるか]
+    // 札 [段階, 印, 進み具合の class, 選んでいるか]
     tabs: () => $$('#sys-view .nt-tab').map((b) => [b.dataset.stage, b.querySelector('i').textContent, ['done', 'review', 'doing', 'todo', 'skipped'].find((c) => b.classList.contains(c)), b.classList.contains('on')]),
     tab: (k) => $(`#sys-view .nt-tab[data-stage="${k}"]`),
     pill: () => $('#sys-view [data-action="sys-note-stage-menu"]'),
     stateText: () => $('#sys-view .nt-state-text').textContent,
-    // 進み具合のメニュー [状態, 名前, 小さな字]
+    // 進み具合のメニュー [進み具合, 名前, 小さな字]
     menu: () => $$('#sys-menu-root [role="menuitem"]').map((b) => [b.dataset.state, b.querySelector('b').textContent, b.querySelector('small').textContent]),
     menuItem: (s) => $(`#sys-menu-root [data-action="sys-note-stage-set"][data-state="${s}"]`),
     // 小見出し [見出し, 小さな字]
@@ -225,7 +225,7 @@ test('真ん中の見出しと案内の文、右の欄「設計ノートにつ�
 });
 
 // ── この段階の進み具合 ──
-test('進み具合: ボタン（状態の名前と ▾）と説明の文。押すとメニュー（確認待ちなら 3 つ）。外を押す・Esc で閉じる', async (t) => {
+test('進み具合: ボタン（進み具合の名前と ▾）と説明の文。押すとメニュー（確認待ちなら 3 つ）。外を押す・Esc で閉じる', async (t) => {
   const { app, api, $, pill, stateText, menu, tab } = await boot(t);
   assert.equal(pill().textContent, '確認待ち ▾');
   assert.ok(pill().classList.contains('nt-pill') && pill().classList.contains('review'));
@@ -290,7 +290,7 @@ test('進み具合: メニューを開いたまま真ん中を送ると閉じる
   assert.ok($('#sys-menu-root .sys-pop'));
 });
 
-test('進み具合: メニューで押すと状態が変わる（確認済み・確認を飛ばしたは日付も）。メニューは今の状態を除いた 2 つ。元に戻すで戻る', async (t) => {
+test('進み具合: メニューで押すと進み具合が変わる（確認済み・確認を飛ばしたは日付も）。メニューは今の進み具合を除いた 2 つ。元に戻すで戻る', async (t) => {
   const { app, api, pill, stateText, menu, menuItem, tabs, sys } = await boot(t);
   const today = api.todayDay();
   click(pill());

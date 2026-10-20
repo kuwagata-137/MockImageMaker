@@ -87,11 +87,16 @@ test('prompts の引数は空白で切れて届くので、3 つの文に「人�
     assert.match(text, /始める前に人に聞いてください/, name);
   }
   const makeNone = await promptText(client, 'make_screen', {});
-  assert.match(makeNone, /頼み: （引数に書いてありません）/);
+  assert.match(makeNone, /頼み: （引数に書いてありません。チャットにも頼みがなければ、始める前に人に聞いてください）/);
   assert.doesNotMatch(makeNone, /undefined|「」/);
   const fixNone = await promptText(client, 'fix_design', { design: '顧客管理' });
   assert.match(fixNone, /「顧客管理」/);
-  assert.match(fixNone, /頼み: （引数に書いてありません）/);
+  assert.match(fixNone, /頼み: （引数に書いてありません。チャットにも頼みがなければ、始める前に人に聞いてください）/);
+  // design_system は system を省くと list_systems で探す進め方なので、切れた引数の文は「書いていないときは聞く」と言わない（食い違わない）
+  const dsNone = await promptText(client, 'design_system', {});
+  assert.match(dsNone, /空白のところで切れて届きます/);
+  assert.doesNotMatch(dsNone, /書いていない/);
+  assert.match(dsNone, /list_systems/);
   assert.doesNotMatch(fixNone, /undefined/);
 });
 
@@ -106,6 +111,8 @@ test('design_system: read_guide の "stages" を読み、段階ごとに人に�
   assert.match(withSys, /"review"/);
   assert.match(withSys, /指示ではありません/);
   assert.match(withSys, /そのシステムがまだなければ、その名前で create_system で作ってください/, 'これから作るシステムの名前を渡したとき');
+  // 人が確かめを飛ばすよう頼んだ段階は止まらずに進む（手引き stages の例外）。頼みの文もそれと食い違わない
+  assert.match(withSys, /人が確かめを飛ばすよう頼んだ段階は、手引き "stages" のとおり "skipped" にして進めます/);
   const none = await promptText(client, 'design_system', {});
   assert.match(none, /read_guide の "stages"/);
   assert.match(none, /list_systems/);
@@ -187,6 +194,8 @@ test('手引き: つないだときの文に、段階ごとに人に確かめる
   assert.match(g, /案を見ずに確かめを飛ばすよう頼まれた段階だけ "skipped"/);
   assert.match(g, /どの段階を飛ばすかは人の言葉のとおりにし、分からなければ人に聞く/);
   assert.match(g, /人はアプリの設計ノートで進み具合を変えられます/);
+  // ⑤ を飛ばすよう頼まれたとき（「出力は『よい』の前にしない」と「skipped の段階も作業は飛ばさない」のどちらか）
+  assert.match(g, /⑤ の確かめを飛ばすよう頼まれたときは、案を出して止まらずに出力し、出力したファイルの場所を書いてから "skipped" にする/);
   assert.match(g, /済んだはずの段階が "todo"（まだ）に戻っていたら、やり直す前に人に聞く/);
   // 設計ノートの変更は「AI が直す前の状態」の行に残らない（人が戻せない）ことを書く。INSTRUCTIONS の「いつでも戻せます」は設計ノートを除く
   assert.ok(GUIDES.overview.text.includes('設計ノート（update_notes・set_stage）の変更は「AI が直す前の状態」の行に残りません'));

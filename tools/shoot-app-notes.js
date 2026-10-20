@@ -108,7 +108,7 @@ async function openPage(ctx, opts = {}) {
 const toastGone = (page) => page.waitForFunction(() => document.querySelector('#toast').hidden, { timeout: 8000 });
 
 // ── 画面を読む・押す ──
-// 札（段階・状態・開いているか・高さ）・進み具合のボタンの文字・左の入口の小さな字・表の行の数・欄の文字・開いているメニューの項目と四角
+// 札（段階・進み具合・開いているか・高さ）・進み具合のボタンの文字・左の入口の小さな字・表の行の数・欄の文字・開いているメニューの項目と四角
 const readNotes = (page) => page.evaluate((states) => {
   const all = (s) => [...document.querySelectorAll(s)];
   const txt = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : null);
@@ -142,7 +142,7 @@ const pillClick = (page) => click(page, '#sys-view [data-action="sys-note-stage-
 const tabClick = (page, stage) => click(page, `#sys-view .nt-tab[data-stage="${stage}"]`);
 const DATE = /（\d{4}-\d{2}-\d{2}）/;
 
-// 150〜154: 1 つのページで、札を押す・メニューを開く・状態を変える（状態が順に変わるので、同じページで続けて撮る）
+// 150〜154: 1 つのページで、札を押す・メニューを開く・進み具合を変える（進み具合が順に変わるので、同じページで続けて撮る）
 async function shootTabs(ctx) {
   const { shot } = ctx;
   const { page } = await openPage(ctx);
@@ -163,7 +163,7 @@ async function shootTabs(ctx) {
   need(openTab(r) === 'read' && DATE.test(r.pill) && /^確認済み（/.test(r.pill), `① の札を押しても、① が開いて「確認済み（日付）」にならない: ${openTab(r)} ／ ${r.pill}`);
   need(/^業務: 社員が出張の前に申請し/.test(r.findings) && r.openQ === 0 && r.doneQ === 1 && r.decisions === 1, `① の札の中身が違う（読み取ったこと「${(r.findings || '').slice(0, 20)}」・まだ決まっていない ${r.openQ}・決まった ${r.doneQ}・決めたこと ${r.decisions}）`);
   await shot(page, '151_設計ノート_①の札（読み取ったこと・決まった行）');
-  // 152: ③ に戻って「確認待ち ▾」を押し、メニューを開く（ボタンの左下に、今の状態を除いた 3 つの項目）
+  // 152: ③ に戻って「確認待ち ▾」を押し、メニューを開く（ボタンの左下に、今の進み具合を除いた 3 つの項目）
   await tabClick(page, 'items');
   await pillClick(page);
   r = await readNotes(page);
@@ -178,7 +178,7 @@ async function shootTabs(ctx) {
   need(r.undoDisabled === false, '進み具合を変えたのに、元に戻す（Ctrl+Z）のボタンが使えない状態のまま');
   await toastGone(page);
   await shot(page, '153_設計ノート_メニューで「確認済みにする」を押した後（③ が確認済み）');
-  // 154: ④ の札で「確かめずに進めたことにする」を押す → 点線の枠の札（⤼）。今の状態を除いた項目は 2 つ
+  // 154: ④ の札で「確かめずに進めたことにする」を押す → 点線の枠の札（⤼）。今の進み具合を除いた項目は 2 つ
   await tabClick(page, 'screens');
   r = await readNotes(page);
   need(openTab(r) === 'screens' && /^まだ ▾$/.test(r.pill), `④ の札が開かない: ${openTab(r)} ／ ${r.pill}`);
