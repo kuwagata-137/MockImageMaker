@@ -758,7 +758,7 @@ test('拡大縮小しても、点から帯と列を正しく求める（倍率�
   assert.deepEqual([added.roleId, added.col], ['l-c', 9]);
 });
 
-test('ほかの図（つながりの図・ステータスの移り方の図・画面の移り方の図）と書き出しのスイムレーン図には、押す所を描かない', async (t) => {
+test('ほかの図（つながりの図・ステータスの移り方の図・画面の移り方の図）と出力のスイムレーン図には、押す所を描かない', async (t) => {
   const { api, S } = await boot(t, sampleState(), null);
   const y = S().systems[0];
   const html = api.swimlaneHtml(S(), y, { idPrefix: 'xi-swim', bare: true });

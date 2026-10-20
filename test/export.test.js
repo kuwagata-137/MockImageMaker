@@ -1,6 +1,6 @@
 'use strict';
-// 書き出しと受け渡し（第 5 段階）のテスト。書き出しの窓、PDF・PNG にするページ（表紙・つながりの図・項目の一覧表・画面）、
-// 単体で開いて編集できる HTML（書き出し・単体で開いたとき・保存し直す）、HTML の取り込み（確かめの窓・置き換え・足す）。
+// 出力と受け渡し（第 5 段階）のテスト。出力の窓、PDF・PNG にするページ（表紙・つながりの図・項目の一覧表・画面）、
+// 単体で開いて編集できる HTML（出力・単体で開いたとき・保存し直す）、HTML の取り込み（確かめの窓・置き換え・足す）。
 // jsdom では要素の大きさを測れないので、ページの縮め方と表の分け方は tools/shoot-app.js（--only=export）と tools/check-export.js で確かめる。
 // 画面設計の名前は架空の業務（顧客管理など）だけを使う。
 
@@ -56,7 +56,7 @@ function sampleState() {
   };
 }
 
-// 書き出しの窓口の身代わり（デスクトップ版のとき）。呼ばれた中身を calls に残す
+// 出力の窓口の身代わり（デスクトップ版のとき）。呼ばれた中身を calls に残す
 function fakeExportAPI(result = {}) {
   const calls = [];
   return {
@@ -75,18 +75,18 @@ async function bootSample(t, { exportAPI = null, state = sampleState(), storage 
   return { app, api };
 }
 
-// 書き出しの窓を開き、init(m) で窓を操作してから「書き出す…」を押す。戻り値は書き出しの結果
+// 出力の窓を開き、init(m) で窓を操作してから「出力…」を押す。戻り値は出力の結果
 async function exportVia(app, api, designId, init = () => {}) {
   const done = api.openExportDialog(designId);
   await tick();
   const m = $(app, '.modal');
-  assert.ok(m, '書き出しの窓が開く');
+  assert.ok(m, '出力の窓が開く');
   init(m);
   click($(app, '[data-dlg="ok"]'));
   return done;
 }
 
-// 単体で開いて編集できる HTML を作る（書き出しの窓で HTML を選ぶ）
+// 単体で開いて編集できる HTML を作る（出力の窓で HTML を選ぶ）
 async function exportHtmlText(t, state = sampleState(), designId = 'd1') {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi, state });
@@ -96,7 +96,7 @@ async function exportHtmlText(t, state = sampleState(), designId = 'd1') {
   return { html: call[1].html, name: call[1].name, app, api };
 }
 
-// 起動済みのアプリ（ブラウザで開いたとき）から、書き出しの窓で HTML を書き出して、その文字を返す
+// 起動済みのアプリ（ブラウザで開いたとき）から、出力の窓で HTML を出力して、その文字を返す
 async function exportHtmlTextFrom(app, api, designId = 'd1') {
   const written = [];
   app.window.showSaveFilePicker = async (opts) => ({ name: opts.suggestedName, createWritable: async () => ({ write: async (s) => written.push(s), close: async () => {} }) });
@@ -111,16 +111,16 @@ async function bootStandalone(t, html) {
   return { app, api };
 }
 
-// ── 書き出しの窓 ──
-test('書き出しの窓: メニューバー・カードの「…」・アプリのメニューから開き、PDF・HTML・PNG を選ぶ。最初は PDF・A4 横・ページは全部', async (t) => {
+// ── 出力の窓 ──
+test('出力の窓: メニューバー・カードの「…」・アプリのメニューから開き、PDF・HTML・PNG を選ぶ。最初は PDF・A4 横・ページは全部', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   // カードの「…」
   click($(app, '.card-more[data-id="d1"]'));
-  assert.ok($(app, '.card-menu [data-action="export-design"]'), 'カードの「…」に「書き出す…」');
+  assert.ok($(app, '.card-menu [data-action="export-design"]'), 'カードの「…」に「出力…」');
   click($(app, '.card-menu [data-action="export-design"]'));
   await tick();
-  assert.equal($(app, '.modal h2').textContent, '「顧客管理」を書き出す');
+  assert.equal($(app, '.modal h2').textContent, '「顧客管理」を出力');
   assert.deepEqual($$(app, '.xp-kind').map((b) => [b.dataset.xkind, b.disabled]), [['pdf', false], ['html', false], ['png', false]]);
   assert.equal($(app, '.xp-kind.on').dataset.xkind, 'pdf');
   assert.equal($(app, '[name="xp-paper"]:checked').value, 'A4');
@@ -134,9 +134,9 @@ test('書き出しの窓: メニューバー・カードの「…」・アプリ
   click($(app, '[data-dlg="cancel"]'));
   await tick();
   assert.equal($(app, '.modal'), null);
-  // メニューバーとアプリのメニュー（開いている画面設計を書き出す）
+  // メニューバーとアプリのメニュー（開いている画面設計を出力する）
   api.openDesign('d1');
-  assert.ok($(app, '#toolbar [data-action="export"]'), 'メニューバーの「ファイル」に「書き出す」');
+  assert.ok($(app, '#toolbar [data-action="export"]'), 'メニューバーの「ファイル」に「出力」');
   click($(app, '#toolbar [data-action="export"]'));
   await tick();
   assert.ok($(app, '.modal .xp-kinds'), 'メニューバーから開く');
@@ -148,7 +148,7 @@ test('書き出しの窓: メニューバー・カードの「…」・アプリ
   click($(app, '[data-dlg="cancel"]'));
 });
 
-test('書き出しの窓: つながりがない・項目がないときは、そのページのチェックを外して押せない。スライドは横だけ。選んだ設定はアプリを閉じるまで覚える', async (t) => {
+test('出力の窓: つながりがない・項目がないときは、そのページのチェックを外して押せない。スライドは横だけ。選んだ設定はアプリを閉じるまで覚える', async (t) => {
   const state = sampleState();
   state.designs.push(design('d9', '日報', 'kintone'));
   const xapi = fakeExportAPI();
@@ -179,7 +179,7 @@ test('書き出しの窓: つながりがない・項目がないときは、そ
   assert.equal(await again, null);
 });
 
-test('書き出しの窓: ブラウザで開いたアプリでは PDF・PNG は選べず（デスクトップ版だけ）、HTML を選んだ形で開く', async (t) => {
+test('出力の窓: ブラウザで開いたアプリでは PDF・PNG は選べず（デスクトップ版だけ）、HTML を選んだ形で開く', async (t) => {
   const { app, api } = await bootSample(t);
   const done = api.openExportDialog('d1');
   await tick();
@@ -196,7 +196,7 @@ test('書き出しの窓: ブラウザで開いたアプリでは PDF・PNG は�
   assert.match(written[0], /id="mim-embedded"/);
 });
 
-test('書き出しの窓: 画面を全部外して PNG は書き出せない。PDF もページが 1 つもなければ書き出せない', async (t) => {
+test('出力の窓: 画面を全部外して PNG は出力できない。PDF もページが 1 つもなければ出力できない', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   const done = api.openExportDialog('d1');
@@ -261,12 +261,12 @@ test('PDF: 編集の画面だけの印（札・マス目・一覧表の案内・
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi, state });
   api.openDesign('d1');
-  api.selectPart('p1'); // 編集の画面で選んでいても、書き出しには選んだ印を出さない
+  api.selectPart('p1'); // 編集の画面で選んでいても、出力には選んだ印を出さない
   await exportVia(app, api, 'd1');
   const { html } = xapi.calls.find((c) => c[0] === 'savePdf')[1];
   const body = html.slice(html.indexOf('<body'));
   for (const mark of ['class="tag', 'screen grid', 'ptable-empty', 'data-action', 'co-handle', 'class="grip', 'co-zone', 'screen-resize', 'part sel', ' sel"']) {
-    assert.ok(!body.includes(mark), `書き出しに「${mark}」がない`);
+    assert.ok(!body.includes(mark), `出力に「${mark}」がない`);
   }
   const doc = new app.window.DOMParser().parseFromString(html, 'text/html');
   const ids = [...doc.querySelectorAll('[id]')].map((el) => el.id);
@@ -297,7 +297,7 @@ test('PDF: 用紙は A4・A3 の縦横とスライド（16:9）。外したペ�
   const b = doc({ paper: 'A4', items: false, screenIds: ['s2'] });
   assert.equal(b.total, 3, '表紙・図・新規登録');
   assert.match(b.pages[0], /2　新規登録/);
-  assert.ok(!b.pages[0].includes('1　詳細'), '書き出さない画面は表紙の一覧にも出さない');
+  assert.ok(!b.pages[0].includes('1　詳細'), '出力しない画面は表紙の一覧にも出さない');
 });
 
 test('PNG: 選んだ画面ごとに 1 枚。ファイルの名前は「顧客管理_01_詳細.png」で、使えない字は「_」にする', async (t) => {
@@ -313,8 +313,8 @@ test('PNG: 選んだ画面ごとに 1 枚。ファイルの名前は「顧客管
   assert.equal(api.safeFileName(' a<b>:c. '), 'a_b__c');
 });
 
-// ── HTML の書き出しと、単体で開いたとき ──
-test('HTML の書き出し: アプリと同じ骨組みに、画面設計を埋め込む（script の文字はファイルと同じ。名前はほかのアプリと別）', async (t) => {
+// ── HTML の出力と、単体で開いたとき ──
+test('HTML の出力: アプリと同じ骨組みに、画面設計を埋め込む（script の文字はファイルと同じ。名前はほかのアプリと別）', async (t) => {
   const { html, name, api } = await exportHtmlText(t);
   assert.equal(name, '顧客管理.html');
   assert.equal(api.appScript().length > 1000, true);
@@ -335,13 +335,13 @@ test('HTML の書き出し: アプリと同じ骨組みに、画面設計を埋�
   assert.ok(!/swimlane-state|clm-data/.test(html.replace(api.appScript(), '')), 'ほかのアプリの埋め込みの名前は使わない');
 });
 
-test('アプリの script の中に、script の始まりと終わりの印・<!-- がない（書き出す HTML にそのまま入れるため）', () => {
+test('アプリの script の中に、script の始まりと終わりの印・<!-- がない（出力する HTML にそのまま入れるため）', () => {
   const start = ORIGINAL.indexOf('<script>\n') + '<script>\n'.length;
   const body = ORIGINAL.slice(start, ORIGINAL.lastIndexOf('</script>')).toLowerCase();
   for (const mark of ['</script', '<script', '<!--']) assert.equal(body.split(mark).length - 1, 0, `script の中に「${mark}」がある`);
 });
 
-test('単体で開いたとき: その画面設計の編集の画面がすぐ開き、一覧へ戻る・書き出す・取り込みは出さない。ブラウザの保存領域は使わない', async (t) => {
+test('単体で開いたとき: その画面設計の編集の画面がすぐ開き、一覧へ戻る・出力・取り込みは出さない。ブラウザの保存領域は使わない', async (t) => {
   const { html } = await exportHtmlText(t);
   const { app, api } = await bootStandalone(t, html);
   assert.equal(api.ui.view, 'editor');
@@ -360,7 +360,7 @@ test('単体で開いたとき: その画面設計の編集の画面がすぐ開
   api.runCommand('importHtml');
   api.runCommand('exportDialog');
   await tick();
-  assert.equal($(app, '.modal'), null, '書き出しの窓も取り込みも開かない');
+  assert.equal($(app, '.modal'), null, '出力の窓も取り込みも開かない');
   api.actions.updateDesignInfo(api.currentDesign().id, { description: '直した説明' });
   assert.equal(app.window.localStorage.getItem(STORAGE_KEY), null, 'localStorage に書かない');
   assert.equal(api.isStandaloneDirty(), true);
@@ -415,14 +415,14 @@ test('単体で開いたとき: 「HTML を保存」（Ctrl+S も）で、直し
   await waitFor(() => !api.isStandaloneDirty(), { label: '保存した印' });
   assert.match($(app, '#sa-state').textContent, /保存しました/);
   const payload = JSON.parse(written[0].match(/id="mim-embedded">([^\n]*)<\/script>/)[1]);
-  assert.equal(payload.baseUpdatedAt, '2026-10-05T00:00:00.000Z', '書き出したときの更新日時を持ち回る');
+  assert.equal(payload.baseUpdatedAt, '2026-10-05T00:00:00.000Z', '出力したときの更新日時を持ち回る');
   assert.equal(payload.peers.length, 3, 'ほかの画面設計の写しも持ち回る');
   // 保存し直した HTML も、単体で開ける
   const again = await bootStandalone(t, written[0]);
   assert.equal(again.api.currentDesign().screens[1].name, '新規登録（直した）');
 });
 
-test('単体で開いたとき: 名前に「</script>」を含む画面設計も、書き出して開き直せる', async (t) => {
+test('単体で開いたとき: 名前に「</script>」を含む画面設計も、出力して開き直せる', async (t) => {
   const state = sampleState();
   state.designs[0].name = '顧客</script><b>管理';
   state.designs[0].screens[0].name = '<!-- 詳細 -->';
@@ -476,7 +476,7 @@ test('取り込み: 一覧にある画面設計なら確かめの窓（今と取
 
 test('取り込み: 中身が同じなら取り込まない。一覧になければ同じ id のまま足す。「別の画面設計として足す」は名前に（取り込み）を付ける', async (t) => {
   const { html, app, api } = await exportHtmlText(t);
-  assert.equal((await api.importHtmlText(html)).status, 'same', '書き出したままの HTML は同じ中身');
+  assert.equal((await api.importHtmlText(html)).status, 'same', '出力したままの HTML は同じ中身');
   assert.equal($(app, '.modal'), null, '確かめの窓は出さない');
   // 別として足す
   const changed = html.replace('取引先と顧客の連絡先を管理する。', '直した説明');
@@ -503,9 +503,9 @@ test('取り込み: 中身が同じなら取り込まない。一覧になけれ
   assert.equal(api.store.state.designs.find((x) => x.id === 'd4').items[0].lookup.db.designId, 'd1');
 });
 
-test('取り込み: ごみ箱にあれば置き換えて一覧に戻す。書き出した後にこちらでも変えていたら、赤で知らせる', async (t) => {
+test('取り込み: ごみ箱にあれば置き換えて一覧に戻す。出力した後にこちらでも変えていたら、赤で知らせる', async (t) => {
   const { html, app, api } = await exportHtmlText(t);
-  api.actions.updateDesignInfo('d1', { description: 'こちらで直した説明' }); // 書き出した後に変えた
+  api.actions.updateDesignInfo('d1', { description: 'こちらで直した説明' }); // 出力した後に変えた
   api.actions.trashDesign('d1');
   const done = api.importHtmlText(html);
   await tick();
@@ -519,15 +519,15 @@ test('取り込み: ごみ箱にあれば置き換えて一覧に戻す。書き
   assert.equal(d.revisions[0].snapshot.description, 'こちらで直した説明');
 });
 
-test('取り込み: このアプリの書き出しでない HTML・新しい版のアプリの書き出し・壊れたデータは、知らせて止める', async (t) => {
+test('取り込み: このアプリの出力でない HTML・新しい版のアプリの出力・壊れたデータは、知らせて止める', async (t) => {
   const { html, app, api } = await exportHtmlText(t);
   const before = JSON.stringify(api.store.state);
   assert.equal((await api.importHtmlText('<!DOCTYPE html><html><body>ほかの HTML</body></html>')).status, 'error');
-  assert.match($(app, '#toast').textContent, /モックイメージメーカーで書き出した HTML ではありません/);
+  assert.match($(app, '#toast').textContent, /モックイメージメーカーで出力した HTML ではありません/);
   const newer = html.replace('"format":"mockimagemaker-design","schemaVersion":3', '"format":"mockimagemaker-design","schemaVersion":99');
   const r = await api.importHtmlText(newer);
   assert.equal(r.status, 'error');
-  assert.match(r.error, /新しい版のアプリで書き出した HTML/);
+  assert.match(r.error, /新しい版のアプリで出力した HTML/);
   assert.equal((await api.importHtmlText(html.replace('id="mim-embedded">{', 'id="mim-embedded">{{'))).status, 'error');
   assert.equal((await api.importHtmlText(html.replace('"format":"mockimagemaker-design"', '"format":"swimlane-state"'))).status, 'error');
   assert.equal(JSON.stringify(api.store.state), before, '何も変えない');
@@ -566,19 +566,19 @@ test('ブラウザの印刷では、アプリの画面の代わりに案内の�
 });
 
 // ── 見直しで見つかった不具合（2026-10-13）──
-test('取り込み: 書き出した後に「元に戻す」で変えたときも、こちらでも変えたと赤で知らせる（更新日時でなく中身の印で比べる）', async (t) => {
+test('取り込み: 出力した後に「元に戻す」で変えたときも、こちらでも変えたと赤で知らせる（更新日時でなく中身の印で比べる）', async (t) => {
   const { app, api } = await bootSample(t);
-  api.actions.updateDesignInfo('d1', { description: '書き出す前に直した説明' });
+  api.actions.updateDesignInfo('d1', { description: '出力する前に直した説明' });
   const xapi = await exportHtmlTextFrom(app, api);
-  api.store.undo(); // 書き出した後に、こちらで取り消した
-  const done = api.importHtmlText(xapi.replace('書き出す前に直した説明', 'ベンダーが直した説明'));
+  api.store.undo(); // 出力した後に、こちらで取り消した
+  const done = api.importHtmlText(xapi.replace('出力する前に直した説明', 'ベンダーが直した説明'));
   await tick();
   assert.ok($(app, '.modal .warn'), '赤の注意が出る');
   click($(app, '[data-dlg="cancel"]'));
   assert.equal((await done).status, 'canceled');
 });
 
-test('取り込み: 1 回取り込んだ後、同じ書き出しから直し続けた HTML を取り込んでも、こちらで変えていなければ赤の注意は出ない', async (t) => {
+test('取り込み: 1 回取り込んだ後、同じ出力から直し続けた HTML を取り込んでも、こちらで変えていなければ赤の注意は出ない', async (t) => {
   const { html, app, api } = await exportHtmlText(t);
   const v1 = html.replace('取引先と顧客の連絡先を管理する。', 'ベンダーの 1 回目');
   const first = api.importHtmlText(v1);
@@ -599,13 +599,13 @@ test('取り込み: 1 回取り込んだ後、同じ書き出しから直し続�
   await third;
 });
 
-test('取り込み: 書き出した後にルックアップ元の名前を変えても、そのまま返ってきた HTML は「同じ中身」', async (t) => {
+test('取り込み: 出力した後にルックアップ元の名前を変えても、そのまま返ってきた HTML は「同じ中身」', async (t) => {
   const { html, api } = await exportHtmlText(t);
   api.actions.renameDesign('d3', '取引先の台帳');
   assert.equal((await api.importHtmlText(html)).status, 'same');
 });
 
-test('取り込み: 取り込んだ項目の元にルックアップがあり、その控えの名前が古くても、書き出したままなら「同じ中身」', async (t) => {
+test('取り込み: 取り込んだ項目の元にルックアップがあり、その控えの名前が古くても、出力したままなら「同じ中身」', async (t) => {
   const state = sampleState();
   // 住所の共通項目の郵便番号にルックアップを付け（控えの名前は古い）、顧客管理がそれを取り込んでいる
   state.designs[1].items[0].lookup = { db: { designId: 'd3', name: '取引先マスタ（古い名前）', free: false }, key: { itemId: 'b1', name: '古いコード' }, copies: [] };

@@ -45,8 +45,8 @@ function createMainStorage() {
 //   storage      … createMainStorage() の戻り値。渡すと Electron で動いているとき（window.storageAPI あり）として起動する。
 //                  省略するとブラウザで開いたときとして起動する（保存先は localStorage）。
 //   localStorage … 起動前に localStorage へ入れる { キー: 値 }
-//   html         … アプリの HTML の代わりに起動する HTML の文字（書き出した HTML を単体で開いたときのテストに使う）
-//   exportAPI    … 書き出しの窓口（preload.js の exportAPI）の身代わり。渡すとデスクトップ版として PDF・PNG も選べる
+//   html         … アプリの HTML の代わりに起動する HTML の文字（出力した HTML を単体で開いたときのテストに使う）
+//   exportAPI    … 出力の窓口（preload.js の exportAPI）の身代わり。渡すとデスクトップ版として PDF・PNG も選べる
 //   aiAPI        … AI の窓口（preload.js の aiAPI）の身代わり。{ onRequest(cb), ready() }（第 7 段階）
 //   materialsAPI … 資料の窓口（preload.js の materialsAPI）の身代わり。{ available, pick, addDropped, read, bdmPlan, sweep, removeSystem }
 //                  （どれも Promise を返す。第 9 段階の後半）。渡すとデスクトップ版として資料の置き場が使える

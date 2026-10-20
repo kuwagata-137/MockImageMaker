@@ -1,16 +1,16 @@
 // 使い方: node tools/check-export.js
 //   クラウドのセッション（Linux・root）では ELECTRON_DISABLE_SANDBOX=1 xvfb-run -a node tools/check-export.js
-// Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、書き出しと取り込み（第 5 段階）を確かめる。
+// Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、出力と取り込み（第 5 段階）を確かめる。
 //  1. 架空の見本（顧客管理・住所の共通項目・取引先マスタ・受注管理）の designs.json で起動し、顧客管理を開いて、
 //     （顧客管理には、操作 3 つのステータスの項目と、移る先を持つボタンがあるので、ステータスの移り方と画面の移り方のページも入る。第 8 段階）
-//     メニューバーの「書き出す」の窓から PDF・PNG・HTML を書き出す（MIM_EXPORT_DIR で、保存の窓を出さずに .devdata/check-export/out へ書く）
+//     メニューバーの「出力」の窓から PDF・PNG・HTML を出力する（MIM_EXPORT_DIR で、保存の窓を出さずに .devdata/check-export/out へ書く）
 //  2. PDF: A4 横・A3 縦・スライド（16:9）の 3 つ。ページ数と用紙の大きさ（pdfinfo）、表紙と画面の名前が入っているか（pdftotext）、
 //     表紙のほかのページの中身が用紙いっぱいに入っているか（いちばん下の文字〔下の端の行〕が、ページの下の 1 割の中にあるか。pdftotext -bbox）。
 //     画面のページを transform で縮めていたときは、画面のページが 2 つ以上あると、印刷が全部のページを約 0.67 倍に縮めていた（2026-10-13）
 //  3. PNG: 画面ごとに 1 枚。大きさが 2 倍か、白だけの小さなファイルでないか
-//  4. HTML: 書き出した HTML を最初の画面の「HTML を取り込む」で取り込み直すと「同じ中身」と出て、何も変わらない（MIM_IMPORT_FILE で開く窓を出さない）。
+//  4. HTML: 出力した HTML を最初の画面の「HTML を取り込む」で取り込み直すと「同じ中身」と出て、何も変わらない（MIM_IMPORT_FILE で開く窓を出さない）。
 //     説明を直した HTML を取り込むと確かめの窓が出て、置き換えると designs.json に直した説明と「取り込む前の状態」が残る
-//  5. 違いの印（第 6 段階）: メニューバーの ▼ の「改訂する」で第 1 版を作り、部品を 1 つ消してから、第 1 版と比べた PDF を書き出す。
+//  5. 違いの印（第 6 段階）: メニューバーの ▼ の「改訂する」で第 1 版を作り、部品を 1 つ消してから、第 1 版と比べた PDF を出力する。
 //     変更内容のページで 1 ページ増え、「からの変更内容」「削除」と消した部品の名前が入る（5 の後に 3・4 を行う）
 // pdfinfo・pdftotext（poppler-utils）がないとき（社内の Windows PC など）は、PDF はファイルの頭とページの数え方だけで確かめる。
 // 保存先は作業フォルダの .devdata/check-export（毎回消してから始める。npm start のデータとは別）。
@@ -117,7 +117,7 @@ async function waitFile(file, label, timeout = 60000) {
   throw new Error(`時間切れ: ${label}（${path.relative(ROOT, file)} ができない）`);
 }
 
-// 書き出しの窓を開き、pick(page) で選んでから「書き出す…」を押す
+// 出力の窓を開き、pick(page) で選んでから「出力…」を押す
 async function exportVia(page, pick) {
   await page.click('#toolbar [data-action="export"]');
   await page.waitForSelector('.modal .xp-kinds');
@@ -228,7 +228,7 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
     const sizes = pngs.map(pngSize);
     check('PNG の大きさ（2 倍）と中身', sizes.every((s) => s.w >= 2 * 1280 && s.h >= 2 * 800 && s.bytes > 20000),
       sizes.map((s, i) => `${path.basename(pngs[i])} ${s.w}×${s.h}（${Math.round(s.bytes / 1024)}KB）`).join('、'));
-    // 4. HTML（書き出して、取り込み直す）
+    // 4. HTML（出力して、取り込み直す）
     await exportVia(page, async (p) => { await p.click('[data-xkind="html"]'); });
     const htmlFile = await waitFile(path.join(OUT, '顧客管理.html'), 'HTML');
     const html = fs.readFileSync(htmlFile, 'utf8');
@@ -238,7 +238,7 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
     await page.waitForSelector('[data-action="import-html"]');
     await page.click('[data-action="import-html"]');
     await page.waitForFunction(() => /同じ中身なので/.test(document.querySelector('#toast').textContent), { timeout: 15000 });
-    check('書き出したままの HTML は「同じ中身」で取り込まない', true);
+    check('出力したままの HTML は「同じ中身」で取り込まない', true);
     fs.writeFileSync(IMPORT_FILE, html.replace('取引先と顧客の連絡先を管理する。', 'ベンダーが直した説明。'));
     await page.click('[data-action="import-html"]');
     await page.waitForSelector('.modal .imp-cmp', { timeout: 15000 });
@@ -258,7 +258,7 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
   }
   const ok = results.length > 0 && results.every(Boolean);
   console.log(ok ? 'OK' : 'NG');
-  console.log('書き出したファイル:', path.relative(ROOT, OUT));
+  console.log('出力したファイル:', path.relative(ROOT, OUT));
   process.exit(ok ? 0 : 1);
 })().catch((e) => {
   console.error('NG', e);

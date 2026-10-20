@@ -15,13 +15,13 @@ const { connectInfo } = require('./automation-connect');
 
 const READY_WAIT_MS = 30000; // ページの準備を待つ時間
 const IDLE_QUIT_MS = 30000; // AI のつながりが 0 で窓が見えていないとき、終わるまでの時間
-// 時間のかかる道具（書き出し・画像・資料を読む）。受け口の時間切れを 5 分にする
+// 時間のかかる道具（出力・画像・資料を読む）。受け口の時間切れを 5 分にする
 const SLOW_TOOLS = new Set(['export_design', 'get_screen_image', 'get_view_image', 'read_material', 'swimlane_from_bdm']);
 
 const fail = (code, message) => ({ ok: false, error: { code, message } });
 
 // background: --background で起動したか。headless: 確かめのための起動（MIM_HEADLESS=1）か。
-// renderer: export.js の createPageRenderer（画面の画像と書き出しを PNG・PDF にする）。
+// renderer: export.js の createPageRenderer（画面の画像と出力を PNG・PDF にする）。
 // materials: materials-main.js の initMaterials の戻り値（AI の read_material で資料を読む。第 9 段階の後半）
 function initAutomation({ app, ipcMain, getWindow, background = false, headless = false, appVersion, renderer, materials = null }) {
   const render = createRenderFinisher({ app, renderer, headless, materials });
@@ -97,7 +97,7 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
       pending.set(id, resolve);
       wc.send('ai:request', { rid: id, tool, args, session, client });
     });
-    return render.finish(res); // 画面の画像・書き出しは、ここで PNG・PDF にする
+    return render.finish(res); // 画面の画像・出力は、ここで PNG・PDF にする
   }
 
   // ── つながりの数と、終わる時 ──────────────────────────────

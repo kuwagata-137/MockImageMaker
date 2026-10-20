@@ -1,6 +1,6 @@
 // preload.js — メインプロセスとページ（mock_v*.html）の橋渡し（CheckListMaker の preload.js から写した）。
 // contextIsolation:true・nodeIntegration:false のもとで、決めた窓口だけをページに出す。
-// ブラウザで HTML を開いたときは、どの窓口も undefined になる（保存先は localStorage。PDF・PNG は書き出せない）。
+// ブラウザで HTML を開いたときは、どの窓口も undefined になる（保存先は localStorage。PDF・PNG は出力できない）。
 'use strict';
 
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('storageAPI', {
   save: (json) => ipcRenderer.invoke('storage:save', json),
 });
 
-// 書き出しと取り込み（export.js）。どれも戻り値は { ok, path } か { ok: false, canceled: true } か { ok: false, error }
+// 出力と取り込み（export.js）。どれも戻り値は { ok, path } か { ok: false, canceled: true } か { ok: false, error }
 contextBridge.exposeInMainWorld('exportAPI', {
   // HTML の文字を、保存の窓で選んだ所に書く。payload は { name: 最初のファイル名, html }
   saveHtml: (payload) => ipcRenderer.invoke('export:saveHtml', payload),

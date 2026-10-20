@@ -152,7 +152,7 @@ test('貼り付け: ほかの画面設計へ貼ると、元の画面設計の画
   assert.deepEqual(plain(d(A).screens[0].parts.map((p) => [p.type, p.props.designId, p.props.screenId])), [['button', '', a1], ['link', B, b2]]);
 });
 
-test('書き出す HTML: 移る先のほかの画面設計と、入ってくる移る先の名前を screenPeers に入れ、単体で開いても設定の文に名前が出る', async (t) => {
+test('出力する HTML: 移る先のほかの画面設計と、入ってくる移る先の名前を screenPeers に入れ、単体で開いても設定の文に名前が出る', async (t) => {
   const { api, A, B, a1, a2, b1, b2, put } = await bootTwo(t);
   const out = put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
   put(B, b2, 'link', { to: 'screen', designId: A, screenId: a1 }, '出張申請の一覧へ戻る');
@@ -242,7 +242,7 @@ test('画面の移り方の図: 単体で開いた HTML では、ほかの画面
 });
 
 // ── 見直し（第 8 段階）で見つけた不具合 ──
-test('書き出す HTML: ごみ箱にある画面設計は screenPeers に「ごみ箱」の印を付けて入れ、単体で開いたときは図に描かず、移る先の画面設計の選択肢にも出さない', async (t) => {
+test('出力する HTML: ごみ箱にある画面設計は screenPeers に「ごみ箱」の印を付けて入れ、単体で開いたときは図に描かず、移る先の画面設計の選択肢にも出さない', async (t) => {
   const { api, A, B, a1, a2, b1, put } = await bootTwo(t);
   const out = put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
   api.actions.trashDesign(B);

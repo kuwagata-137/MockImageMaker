@@ -257,7 +257,7 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .pbox.calc{background:#f1f5f9;border-style:dashed}
 .pval{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .pbox .pr{margin-left:auto;color:#475569;font-size:13px;flex-shrink:0}
-/* ルックアップの印（画像 q22）: 項目名の後ろの黄色い札、探す項目の「取得」、一緒に写される項目の灰色の入力欄。書き出しにも出す */
+/* ルックアップの印（画像 q22）: 項目名の後ろの黄色い札、探す項目の「取得」、一緒に写される項目の灰色の入力欄。出力にも出す */
 .reftag{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;border-radius:4px;padding:0 5px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;white-space:nowrap;line-height:1.6;flex-shrink:0}
 .pbox .pget{margin-left:auto;margin-right:-10px;align-self:stretch;display:flex;align-items:center;gap:3px;padding:0 10px;border-left:1px solid #94a3b8;background:#f8fafc;font-size:12px;color:#1d4ed8;font-weight:600;flex-shrink:0}
 .pbox.copied{background:#f1f5f9;color:#64748b}
@@ -493,7 +493,7 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 .pick-none{color:#64748b;font-size:12.5px;padding:14px 4px}
 .pick-note{margin-top:12px;border:1px solid #86efac;background:#f0fdf4;color:#166534;border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.7}
 body.sorting,body.sorting *{cursor:grabbing!important}
-/* 部品や項目に付ける小さな札（編集の画面だけ。ルックアップの札は書き出しにも出す） */
+/* 部品や項目に付ける小さな札（編集の画面だけ。ルックアップの札は出力にも出す） */
 .tag{display:inline-block;font-size:10.5px;font-weight:700;border-radius:4px;padding:0 5px;white-space:nowrap;line-height:1.6;vertical-align:middle}
 .tag.link{background:#dcfce7;color:#166534;border:1px solid #86efac}
 .tag.lost,.tag.gone{background:#f1f5f9;color:#475569;border:1px solid #94a3b8}
@@ -698,8 +698,8 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .rd-foot{margin-top:8px}
 .rp-name{display:inline-block;max-width:100%;overflow-wrap:anywhere}
 .sys-step{border:1px solid #e2e8f0;border-radius:7px;background:#f8fafc;padding:8px 10px;margin-bottom:10px;font-size:12.5px;line-height:1.6;overflow-wrap:anywhere}
-/* ── 書き出しと取り込み（第 5 段階）───────────────────────────── */
-/* 書き出しの窓（画像 q33） */
+/* ── 出力と取り込み（第 5 段階）───────────────────────────── */
+/* 出力の窓（画像 q33） */
 .xp-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
 .xp-kind{border:1.5px solid #cbd5e1;border-radius:9px;padding:10px 12px;background:#fff;text-align:left;cursor:pointer}
 .xp-kind b{display:flex;align-items:center;gap:6px;font-size:14px;color:#0f172a}
@@ -887,11 +887,11 @@ body.xp-doc{display:block;height:auto;overflow:visible;background:#fff;-webkit-p
 body.xp-doc .pg{box-shadow:none}
 body.xp-doc .pg+.pg{break-before:page}
 .xp-png{background:#fff;position:relative}
-/* ブラウザの印刷（q38）。アプリの画面の代わりに案内の文だけを出す（PDF・PNG はデスクトップ版の「書き出す」で作る） */
+/* ブラウザの印刷（q38）。アプリの画面の代わりに案内の文だけを出す（PDF・PNG はデスクトップ版の「出力」で作る） */
 @media print{
   body:not(.xp-doc){display:block;height:auto;overflow:visible;background:#fff}
   body:not(.xp-doc)>*{display:none!important}
-  body:not(.xp-doc)::before{content:'この画面は印刷できません。PDF は、デスクトップ版のモックイメージメーカーの「書き出す」で作ります（HTML を受け取った人は、画面設計を作った人に PDF を頼んでください）。';display:block;padding:24px;font-size:14px;line-height:1.8;color:#1e293b}
+  body:not(.xp-doc)::before{content:'この画面は印刷できません。PDF は、デスクトップ版のモックイメージメーカーの「出力」で作ります（HTML を受け取った人は、画面設計を作った人に PDF を頼んでください）。';display:block;padding:24px;font-size:14px;line-height:1.8;color:#1e293b}
 }
 </style>
 </head>
@@ -914,7 +914,7 @@ body.xp-doc .pg+.pg{break-before:page}
 //                              入れる窓。第 9 段階）・システムの画面（第 9 段階）
 //   7. 編集の画面            … メニューバー・画面の一覧・画面（帯・マス目・高さ）・部品の箱・設定の欄・拡大縮小・ハンド・
 //                              部品のドラッグ（置く・動かす・大きさ）・コピーと貼り付け
-//   8. 書き出しと取り込み    … 書き出しの窓（PDF・HTML・PNG）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面）・
+//   8. 出力と取り込み    … 出力の窓（PDF・HTML・PNG）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面）・
 //                              単体で開いて編集できる HTML（埋め込み・保存し直す）・HTML の取り込み（確かめの窓）
 //   9. 命令（runCommand）    … ボタン・キー・アプリのメニューからの命令を 1 か所で受ける
 //  10. AI の窓口            … AI（Claude Code など）の頼みを受けて実行する（第 7 段階。AI設計基盤_設計書.md の 8・9 章）
@@ -926,7 +926,7 @@ body.xp-doc .pg+.pg{break-before:page}
 
 // ── 1. 版 ─────────────────────────────────────────────────────────────────────
 const APP_VERSION = '1.00';
-// 書き出す HTML（単体で開いて編集できる HTML）の材料にする、このアプリの script の文字。
+// 出力する HTML（単体で開いて編集できる HTML）の材料にする、このアプリの script の文字。
 // document.currentScript は script を実行している間しか取れないので、いちばん初めに取っておく（style の文字は起動のときに取る）
 const APP_SCRIPT = document.currentScript ? document.currentScript.textContent : '';
 
@@ -1161,7 +1161,7 @@ function clearDesignRefs(state, designId) {
     if (hasMoveTarget(p) && p.props.designId === designId) Object.assign(p.props, { designId: '', screenId: '' });
   })));
 }
-// 移る先の画面設計の名前と画面（{ name, screens }）。単体で開いた HTML では、書き出したときに入れた screenPeers から引く
+// 移る先の画面設計の名前と画面（{ name, screens }）。単体で開いた HTML では、出力したときに入れた screenPeers から引く
 function screenOwner(state, designId) {
   return findDesign(state, designId) || (standalone && standalone.screenPeers.find((p) => p.id === designId)) || null;
 }
@@ -1175,7 +1175,7 @@ function moveTargetText(ctx, pr) {
   if (!s) return '（ない画面）';
   return (own ? '' : `${owner.name} ／ `) + `${s.name}の画面`;
 }
-// 書き出す HTML に入れる、移る先のほかの画面設計（この画面設計のボタン・リンクの文字が指す画面設計と、この画面設計の画面を指す
+// 出力する HTML に入れる、移る先のほかの画面設計（この画面設計のボタン・リンクの文字が指す画面設計と、この画面設計の画面を指す
 // ボタン・リンクの文字のある画面設計〔ごみ箱にないもの〕）。名前・画面の名前と、入ってくる移る先（from: 相手の画面・to: この画面設計の画面）だけを入れる。
 // 指す先の画面設計がごみ箱にあるときは trashed の印を付ける（設定の文には名前を出し、図と移る先の選択肢には出さない。アプリと同じ）。
 // つながりの図の peers とは分ける（つながりの図に箱を増やさないため）
@@ -1866,7 +1866,7 @@ function minScreenHeight(screen) {
 //   kind: 'revision'（改訂する。no に版の番号）・'import'（取り込む前の状態）・'restore'（戻す前の状態）・'ai'（AI が直す前の状態。第 7 段階）。
 //     自動の行（import・restore・ai）の no は null。
 //   snapshot: revisions を除いた画面設計の写し。ほかのモックから取り込んだ項目も、そのときの中身のまま写る（後で元が変わっても、前の版の中身は変わらない）。
-//     書き出した HTML には写しを入れないので、HTML から足した画面設計の行には写しがない（見る・戻すができない）。
+//     出力した HTML には写しを入れないので、HTML から足した画面設計の行には写しがない（見る・戻すができない）。
 //   changes: 改訂したときに、ひとつ前の版（第 baseNo 版）と比べて作った変更内容の一覧（designDiff の rows）。第 1 版と、前の版の写しがないときは null
 const REV_AUTO = { import: '取り込む前の状態', restore: '戻す前の状態', ai: 'AI が直す前の状態' };
 const isVersionRow = (r) => isObj(r) && r.kind === 'revision' && Number.isInteger(r.no);
@@ -2185,7 +2185,7 @@ function normalizePart(src, items = []) {
   return withStateView({ ...common, itemId, ...fields, lookup: isInputType(itemType) ? normalizeLookup(p.lookup) : null, link: normalizeLink(p.link) }, fields.props);
 }
 // ステータスの印・進み具合の矢印の、見本で出すステータス（view.current）を、ステータスの id にそろえる（データの形の版 2 では名前で持っていた）。
-// 並びにない値は消さずに残す（版 2 で並びの名前を変えた後に残った名前。版 2 の書き出しの印と比べるときに、中身が変わらないように）
+// 並びにない値は消さずに残す（版 2 で並びの名前を変えた後に残った名前。版 2 の出力の印と比べるときに、中身が変わらないように）
 function withStateView(part, props) {
   if (!part.view || !('current' in part.view) || !isObj(props) || !Array.isArray(props.states)) return part;
   return { ...part, view: { ...part.view, current: resolveStateRef(props.states, part.view.current) || part.view.current } };
@@ -2231,7 +2231,7 @@ function normalizeItemProps(type, src) {
 // ── ステータスと操作（プロセス管理。データの形の版 3・第 8 段階）──
 // ステータスは { id, name }。操作は { id, name, from, to, role, cond }（from・to はステータスの id。role は操作する人、cond は条件）。
 // データの形の版 2 の文字のステータスには、名前から id を作る（毎回同じ id になるように。改訂履歴の版 2 の写しと今を比べるとき・
-// 版 2 で書き出した HTML を取り込むとき・取り込んだ項目で、同じステータスが同じ id になる）。同じ名前の 2 つ目からは「-2」「-3」を付ける。
+// 版 2 で出力した HTML を取り込むとき・取り込んだ項目で、同じステータスが同じ id になる）。同じ名前の 2 つ目からは「-2」「-3」を付ける。
 // 版 3 で新しく足すステータスは newId('t')、操作は newId('a')
 function stateIdFromName(name, seen) {
   const base = 't-' + shortHash(name);
@@ -2438,7 +2438,7 @@ function syncLinkedItems(state) {
       const srcDesign = designs.get(it.link.designId);
       const src = srcDesign ? findItem(srcDesign, it.link.itemId) : null;
       if (!src || src === it) {
-        // 単体で開いた HTML には、元の画面設計が入っていない。「元なし」にせず、書き出したときの中身とつながりのまま残す
+        // 単体で開いた HTML には、元の画面設計が入っていない。「元なし」にせず、出力したときの中身とつながりのまま残す
         // （直して返してもらった HTML を取り込んだときに、一覧にある元とつなぎ直すため）
         if (!srcDesign && standalone) return;
         if (!it.link.lost) { it.link.lost = true; changed = true; }
@@ -4483,7 +4483,7 @@ function targetChip(target) {
 }
 
 // 画面を、編集の画面と同じ HTML で描く（縮小画像にも使う）。selectedId の部品には、選んだ印と縁のつまみを付ける。
-// marks のとき（編集の画面）は、項目を消した後に残った部品などに小さな札を付ける（書き出しと縮小画像には付けない）
+// marks のとき（編集の画面）は、項目を消した後に残った部品などに小さな札を付ける（出力と縮小画像には付けない）
 // selected（部品の id の Set）を渡すと、それらに選んだ印を付ける。縁のつまみは gripId の部品だけ（1 つだけ選んだとき）
 // diff（designDiff の screens の 1 つ）を渡すと、前の版から足した・変えた部品の右上に「新」「変」の札を付ける
 function screenHtml(design, screen, { grid = false, height = screen.height, selectedId = null, selected = null, gripId = selectedId, marks = false, diff = null } = {}) {
@@ -4743,7 +4743,7 @@ function partFieldHtml(p, t) {
 }
 
 // 部品の設定の一覧表。editor のときは、行を押すとその部品を選べるようにし、番号の付いた部品がなければ案内を出す。
-// 書き出し（editor でないとき）では、番号の付いた部品がなければ表を出さない
+// 出力（editor でないとき）では、番号の付いた部品がなければ表を出さない
 // diff（{ info: designDiff の screens の 1 つ, label: 「第 2 版」 }）を渡すと、番号の前に「新」「変」の札を付け、表の下に「削除した部品」を並べる
 function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null, diff = null } = {}) {
   const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
@@ -4757,7 +4757,7 @@ function partTableHtml(design, screen, { editor = false, selectedId = null, sele
     ? `<table>${head}<tbody>${rows.map((r) => `
         <tr${editor ? ` data-action="select-part" data-id="${esc(r.id)}"` : ''}${isSel(r.id) || r.branch ? ` class="${[isSel(r.id) ? 'sel' : '', r.branch ? 'br' : ''].join(' ').trim()}"` : ''}>
           <td class="c-no">${mark(r)}${r.no}</td><td>${esc(r.label)}</td><td>${esc(r.kind)}</td><td class="c-set">${esc(r.setting)}</td></tr>`).join('')}</tbody></table>`
-    : editor ? '<div class="ptable-empty">番号の付いた部品はまだありません。<br>部品を置くと、ここに番号ごとの設定が並びます。<br>（この案内は書き出しには出ません）</div>' : '';
+    : editor ? '<div class="ptable-empty">番号の付いた部品はまだありません。<br>部品を置くと、ここに番号ごとの設定が並びます。<br>（この案内は出力には出ません）</div>' : '';
   return `<div class="ptable" style="width:${width}px"><h3>部品の設定</h3>${body}${info ? diffTableFoot(info, diff.label) : ''}</div>`;
 }
 // 一覧表の下の「削除した部品」の表と、札の説明
@@ -4856,7 +4856,7 @@ function renderHome() {
           ${ui.homeMap ? '' : `<label class="search"><span aria-hidden="true">🔍</span><input type="search" id="home-search" placeholder="名前で探す" aria-label="名前で探す" value="${esc(ui.query)}"></label>`}
           <button class="btn${ui.homeMap ? '' : ' on'}" data-action="home-cards" aria-pressed="${!ui.homeMap}">▦ カードで並べる</button>
           <button class="btn${ui.homeMap ? ' on' : ''}" data-action="home-map" aria-pressed="${ui.homeMap}">⇄ つながりの図</button>
-          <button class="btn" data-action="import-html" title="このアプリで書き出した HTML（ベンダーが直して返したものなど）を取り込みます。HTML ファイルをこの画面へ落としても取り込めます（システムのまとまりの上へ落とすと、そのシステムに入れます）">⇩ HTML を取り込む</button>
+          <button class="btn" data-action="import-html" title="このアプリで出力した HTML（ベンダーが直して返したものなど）を取り込みます。HTML ファイルをこの画面へ落としても取り込めます（システムのまとまりの上へ落とすと、そのシステムに入れます）">⇩ HTML を取り込む</button>
           <button class="btn" data-action="new" title="新しい画面設計を作って開きます">＋ 新しい画面設計</button>
           <button class="btn primary" data-action="new-system" title="いくつかの画面設計をまとめる入れ物（システム）を作ります">＋ 新しいシステム</button>
           </div>
@@ -4885,7 +4885,7 @@ function keepScroll(selectors) {
   });
 }
 
-// つながりの図の HTML。focusId（編集の画面の画面設計）があればその画面設計の図。saved は覚えた箱の位置。o.idPrefix は矢印の印の id の頭（書き出し）
+// つながりの図の HTML。focusId（編集の画面の画面設計）があればその画面設計の図。saved は覚えた箱の位置。o.idPrefix は矢印の印の id の頭（出力）
 function mapHtml(state, focusId, saved, o = {}) {
   const model = mapModel(state, focusId);
   if (!model.nodes.length) return '<p class="map-empty">まだ画面設計がありません。</p>';
@@ -5206,8 +5206,8 @@ function flowModel(state, d) {
   flowIncoming(state, d).forEach((r) => { if (index.has(r.to)) add(extKey(r.owner, r.from), 's:' + r.to, r.type, r.label, 1); });
   return { nodes: [...nodes.values()], edges: [...edges.values()] };
 }
-// ステータスの移り方の図・画面の移り方の図の HTML（編集の画面・書き出し・AI の画像で使う）。saved は覚えた箱の位置。
-// o: idPrefix（矢印の印の id の頭。書き出しでは編集の画面と重ならない頭にする）・bare（id="map-inner" を付けない）
+// ステータスの移り方の図・画面の移り方の図の HTML（編集の画面・出力・AI の画像で使う）。saved は覚えた箱の位置。
+// o: idPrefix（矢印の印の id の頭。出力では編集の画面と重ならない頭にする）・bare（id="map-inner" を付けない）
 function viewHtml(view, state, d, saved = {}, o = {}) {
   const model = view === 'process' ? processModel(d) : flowModel(state, d);
   if (!model.nodes.length) return `<p class="map-empty">${view === 'process' ? 'ステータスの項目がまだありません（部品の箱から「ステータスの印」か「進み具合の矢印」を置くと作られます）。' : '画面がありません。'}</p>`;
@@ -5575,7 +5575,7 @@ function renderCard(d, { sys = null } = {}) {
           <div class="card-date">更新 ${fmtDateTime(d.updatedAt)}</div>
         </div>
       </button>
-      <button class="card-more" data-action="card-menu" data-id="${esc(d.id)}" aria-label="「${esc(d.name)}」の操作" title="${sys ? '名前の変更・複製・書き出し・このシステムから外す・削除' : '名前の変更・複製・書き出し・削除'}">…</button>
+      <button class="card-more" data-action="card-menu" data-id="${esc(d.id)}" aria-label="「${esc(d.name)}」の操作" title="${sys ? '名前の変更・複製・出力・このシステムから外す・削除' : '名前の変更・複製・出力・削除'}">…</button>
       ${ui.menuFor === d.id ? cardMenuHtml(d, sys) : ''}
     </article>`;
 }
@@ -5587,7 +5587,7 @@ function cardMenuHtml(d, sys = null) {
     <div class="card-menu" role="menu">
       <button role="menuitem" data-action="rename" data-id="${id}">名前の変更</button>
       <button role="menuitem" data-action="duplicate" data-id="${id}"${inSys}>複製</button>
-      <button role="menuitem" data-action="export-design" data-id="${id}">書き出す…</button>
+      <button role="menuitem" data-action="export-design" data-id="${id}">出力…</button>
       ${sys ? `<button role="menuitem" data-action="remove-from-system" data-id="${id}"${inSys}>このシステムから外す</button>` : ''}
       <button role="menuitem" class="danger" data-action="trash" data-id="${id}">削除（ごみ箱へ移す）</button>
     </div>`;
@@ -7576,7 +7576,7 @@ function toolbarHtml() {
     group('ファイル', (standalone
       ? '<button class="bigbtn" data-action="save-html" title="直した中身を HTML ファイルに保存します（Ctrl+S）"><span class="ico">💾</span>HTML を<br>保存</button>'
       : `<button class="bigbtn" data-action="home" id="tb-home" title="画面設計の一覧へ戻ります"><span class="ico">←</span><span id="tb-home-label">一覧へ</span></button>
-      <button class="bigbtn" data-action="export" title="PDF・HTML・PNG に書き出します"><span class="ico">⇪</span>書き出す</button>`)
+      <button class="bigbtn" data-action="export" title="PDF・HTML・PNG に出力します"><span class="ico">⇪</span>出力</button>`)
       // 改訂履歴のボタンと、その下の ▼（改訂する・改訂履歴のメニュー。改訂の機能が増えたら、このメニューに足す。q40c）
       + `<div class="rv-split" id="tb-rev"><button class="bigbtn rv-main" data-action="open-revisions" title="改訂履歴の窓を開きます（版の一覧・前の版を見る・前の版に戻す）"><span class="ico">◷</span>改訂<br>履歴</button>
       <button class="rv-arrow" data-action="rev-menu" id="tb-rev-arrow" aria-haspopup="menu" aria-expanded="false" aria-label="改訂のメニュー" title="改訂のメニュー（改訂する・改訂履歴）">▼</button></div>`),
@@ -7940,7 +7940,7 @@ function renderMapView(d) {
   el.dataset.view = 'map';
   el.innerHTML = `<div class="itable"><div class="itable-head"><h3>つながりの図（${esc(d.name)}）</h3></div>
     <p class="map-note">「${esc(d.name)}」と、直接つながる画面設計を描きます。箱をドラッグで動かすと、その位置を覚えます。
-      ${standalone ? 'ほかの画面設計は、この HTML に入っていないので開けません（書き出したときの写しで描いています）。'
+      ${standalone ? 'ほかの画面設計は、この HTML に入っていないので開けません（出力したときの写しで描いています）。'
     : 'ほかの画面設計の箱を押すと、その画面設計を開きます。全部の画面設計の図は、最初の画面の「つながりの図」で見られます。'}</p>${mapLegendHtml()}
     <div class="map-canvas" id="design-map">${mapHtml(store.state, d.id, d.mapPos || {})}</div></div>`;
   keep();
@@ -8260,7 +8260,7 @@ function lockForViewing() {
   document.querySelectorAll('#db-view [data-drag]').forEach((x) => { x.style.visibility = 'hidden'; });
 }
 
-// 単体で開いた HTML で出す違い（違いの印を付けて書き出したとき。q44d）。戻り値 { result, label } か null
+// 単体で開いた HTML で出す違い（違いの印を付けて出力したとき。q44d）。戻り値 { result, label } か null
 function editorDiff() {
   if (!standalone || !standalone.diffBase || ui.diffHidden || store.isViewing) return null;
   const d = currentDesign();
@@ -8550,7 +8550,7 @@ function partCommonFieldsHtml(p) {
 // 取り込んだ項目の知らせ（画像 q20 の 2）。元を直すとここも変わること、ここでは直せないことと、元を開く・つながりを切るボタン
 function linkBannerHtml(item) {
   if (standalone) {
-    return `<div class="pf-banner link">🔗 この項目は、モック「<b>${esc(item.link.designName)}</b>」の「${esc(item.name)}」から取り込んだ項目です（書き出したときの中身）。
+    return `<div class="pf-banner link">🔗 この項目は、モック「<b>${esc(item.link.designName)}</b>」の「${esc(item.name)}」から取り込んだ項目です（出力したときの中身）。
       元のモックで直す項目なので、ここでは直せません。</div>`;
   }
   const btns = `<div class="btns">${item.link.lost ? '' : `<button class="btn small primary" data-action="open-link-source" data-id="${esc(item.id)}">元のモックを開く</button>`}
@@ -8825,7 +8825,7 @@ function partTypeFieldsHtml(p) {
 }
 
 // 移る先の欄（ボタンとリンクの文字。画像 q53 の案A）。「画面」を選ぶと、画面設計（最初は「この画面設計」）と画面の 2 つの選ぶ欄を出す。
-// 画面設計はこの画面設計が先、ほかは名前の順（ごみ箱のものは出さない）。単体で開いた HTML では、書き出したときに入れた screenPeers の画面設計も選べる。
+// 画面設計はこの画面設計が先、ほかは名前の順（ごみ箱のものは出さない）。単体で開いた HTML では、出力したときに入れた screenPeers の画面設計も選べる。
 // この画面設計の画面では、開いている画面は出さない（読み込んだデータで自分を指しているときだけ残す）
 function moveFieldsHtml(p) {
   const pr = p.props;
@@ -10241,10 +10241,10 @@ function nudgePart(dx, dy) {
   if (ui.sel.length) actions.moveMany(ui.designId, currentScreen().id, ui.sel, dx * GRID, dy * GRID);
 }
 
-// ── 8. 書き出しと取り込み ─────────────────────────────────────────────────────
-// 書き出しの窓（PDF・HTML・PNG。画像 q33）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面。q34〜q36）・
-// HTML の書き出しと、単体で開いたとき（q37）・HTML の取り込み（q39）。PDF・PNG のファイルは、デスクトップ版の main（export.js）が作る（q38）
-const EMBED_ID = 'mim-embedded'; // 書き出した HTML に画面設計を埋め込む script の id（ビジネスダイアグラムメーカー・CheckListMaker と別の名前）
+// ── 8. 出力と取り込み ─────────────────────────────────────────────────────
+// 出力の窓（PDF・HTML・PNG。画像 q33）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面。q34〜q36）・
+// HTML の出力と、単体で開いたとき（q37）・HTML の取り込み（q39）。PDF・PNG のファイルは、デスクトップ版の main（export.js）が作る（q38）
+const EMBED_ID = 'mim-embedded'; // 出力した HTML に画面設計を埋め込む script の id（ビジネスダイアグラムメーカー・CheckListMaker と別の名前）
 const EMBED_FORMAT = 'mockimagemaker-design';
 const IMPORT_MAX_CHARS = 50 * 1024 * 1024; // 取り込む HTML の大きさの上限
 const PNG_MARGIN = 24; // PNG のまわりの白
@@ -10308,7 +10308,7 @@ function pageBodySize(P, measured) {
   return { aw: Math.floor(r.width), ah: Math.floor(r.height) };
 }
 
-// 表紙（q34 案A）。名前・作る先・書き出した日・最終更新・数・説明と、2 列で「画面の一覧」と「改訂履歴」。縦の用紙では上下に積む
+// 表紙（q34 案A）。名前・作る先・出力した日・最終更新・数・説明と、2 列で「画面の一覧」と「改訂履歴」。縦の用紙では上下に積む
 function coverListRows(plan) {
   const rows = [];
   if (plan.changesPage) rows.push(`<tr class="lead"><td class="nm">${esc(plan.changesTitle)}</td><td class="dev"></td><td class="no">${plan.changesPage}</td></tr>`);
@@ -10319,7 +10319,7 @@ function coverListRows(plan) {
   plan.screens.forEach(({ s, i, page }) => rows.push(`<tr><td class="nm">${i + 1}　${esc(s.name)}</td><td class="dev">${DEVICES[s.device].label}</td><td class="no">${page}</td></tr>`));
   return rows;
 }
-const coverListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面の名前</th><th>機器</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('') || '<tr><td class="empty" colspan="3">（書き出す画面はありません）</td></tr>'}</tbody></table>`;
+const coverListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面の名前</th><th>機器</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('') || '<tr><td class="empty" colspan="3">（出力する画面はありません）</td></tr>'}</tbody></table>`;
 function coverRevisionTable(d) {
   const revs = versionRows(d).sort((a, b) => a.no - b.no); // 自動で残した行（取り込む前の状態・戻す前の状態）は出さない
   const rows = revs.length
@@ -10330,12 +10330,12 @@ function coverRevisionTable(d) {
 function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false } = {}) {
   const max = Math.round(P.h * 0.24);
   const desc = d.description.trim()
-    ? `<div class="cv-desc" style="max-height:${max}px">${esc(d.description)}</div>${descCut ? '<p class="cv-desc-cut">（説明が長いため、続きを省略しました。全文はアプリか、書き出した HTML で見られます）</p>' : ''}`
+    ? `<div class="cv-desc" style="max-height:${max}px">${esc(d.description)}</div>${descCut ? '<p class="cv-desc-cut">（説明が長いため、続きを省略しました。全文はアプリか、出力した HTML で見られます）</p>' : ''}`
     : '<div class="cv-desc none">（説明は書かれていません）</div>';
   return `<div class="pg" style="width:${P.w}px;height:${P.h}px"><div class="pg-cover">
     <div class="cv-kicker">画面設計書</div>
     <h1 class="cv-title">${esc(d.name)}</h1>
-    <div class="cv-meta">${targetChip(d.target)}<span>書き出した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span><span>最終更新 ${esc(fmtDateTime(d.updatedAt))}</span><span>画面 ${d.screens.length} つ・データベースの項目 ${d.items.length} 個</span></div>
+    <div class="cv-meta">${targetChip(d.target)}<span>出力した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span><span>最終更新 ${esc(fmtDateTime(d.updatedAt))}</span><span>画面 ${d.screens.length} つ・データベースの項目 ${d.items.length} 個</span></div>
     <hr class="cv-rule">
     <div class="cv-sec"><h3>説明</h3>${desc}</div>
     <div class="cv-cols${P.h > P.w ? ' stack' : ''}">
@@ -10343,7 +10343,7 @@ function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false } = {}) 
       <div class="cv-sec cv-revs"><h3>改訂履歴</h3>${coverRevisionTable(d)}</div>
     </div>
     <div class="cv-spacer"></div>
-    <div class="cv-foot"><span>モックイメージメーカー v${APP_VERSION} で書き出し</span><span>全 ${total} ページ</span></div>
+    <div class="cv-foot"><span>モックイメージメーカー v${APP_VERSION} で出力</span><span>全 ${total} ページ</span></div>
   </div></div>`;
 }
 const coverContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '画面の一覧（続き）', body: coverListTable(rows),
@@ -10566,7 +10566,7 @@ function printDocumentHtml(title, P, pagesHtml) {
     + '\n@page{size:' + P.wmm.toFixed(3) + 'mm ' + P.hmm.toFixed(3) + 'mm;margin:0}\n</style>\n</head>\n<body class="xp-doc">\n' + pagesHtml + '\n</body>\n</html>\n';
 }
 
-// 書き出しで比べる版（第 6 段階）。戻り値 { result（designDiff）, label（「第 2 版」）, title（「第 2 版（2026-10-10）」） } か null
+// 出力で比べる版（第 6 段階）。戻り値 { result（designDiff）, label（「第 2 版」）, title（「第 2 版（2026-10-10）」） } か null
 function exportDiff(d, state, revId) {
   const r = findRevision(d, revId);
   if (!isVersionRow(r) || !hasSnapshot(r)) return null;
@@ -10746,7 +10746,7 @@ function diagramImageDoc(title, legend, html, counts, minW = 480) {
   return { html: pngDocHtml(title, body), width, height, ...counts };
 }
 
-// ── 書き出す HTML（単体で開いて編集できる HTML。q37）──
+// ── 出力する HTML（単体で開いて編集できる HTML。q37）──
 // 写しの中の、ほかの画面設計を指す名前（ルックアップ元・関連レコード一覧の元）を今の名前に直す。
 // 名前は選んだときの控えで、後の名前の変更に追いついていない。単体で開いたときは元がないので、この控えの名前で出す
 function refreshRefNames(copy, state) {
@@ -10805,7 +10805,7 @@ function peerDesigns(state) {
     screens: [{ id: 'peer-' + p.id, parts: p.related.map((r) => ({ type: 'table', tableKind: 'related', label: r.label, props: { db: r.db } })) }],
   }));
 }
-// 画面設計の写し。改訂履歴の行は残し、版の写し（snapshot）は外す（書き出す HTML には入れない）
+// 画面設計の写し。改訂履歴の行は残し、版の写し（snapshot）は外す（出力する HTML には入れない）
 const withoutSnapshots = (d) => clone({ ...d, revisions: d.revisions.filter(isObj).map((r) => ({ ...r, snapshot: undefined })) });
 // 埋め込むデータ。revisions の写し（snapshot）は入れない。作る先の自由な名前は、この画面設計の作る先だけを入れる。
 // diffRevId（比べる版の行の id）を渡すと、その版の写しだけを diffBase として入れる（開いたときに「新」「変」の札を出すため。第 6 段階）
@@ -10818,14 +10818,14 @@ function embedPayload(d, state, { diffRevId = null } = {}) {
   if (diffSnap) refreshRefNames(diffSnap, state);
   return {
     format: EMBED_FORMAT, schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION, exportedAt: nowIso(), baseUpdatedAt: d.updatedAt,
-    baseHash: shortHash(comparableContent(d, state)), // 書き出したときの中身の印（取り込むときに、こちらでも変えたかを見る）
+    baseHash: shortHash(comparableContent(d, state)), // 出力したときの中身の印（取り込むときに、こちらでも変えたかを見る）
     data: { schemaVersion: SCHEMA_VERSION, settings: { customTargets: d.target && !builtinTarget(d.target) ? [d.target] : [], mapPos: {} }, designs: [copy] },
     peers: peersOf(d, state),
     screenPeers: screenPeersOf(d, state), // 移る先のほかの画面設計の名前と画面（第 8 段階）
     ...(diffSnap ? { diffBase: { title: revisionTitle(r), day: revisionDay(r), snapshot: diffSnap } } : {}),
   };
 }
-// 単体で開いた HTML を保存し直すときのデータ（書き出したときの日時・元の更新日時・ほかの画面設計の写しは、そのまま持ち回る）
+// 単体で開いた HTML を保存し直すときのデータ（出力したときの日時・元の更新日時・ほかの画面設計の写しは、そのまま持ち回る）
 function resavePayload(d, state) {
   const copy = withoutSnapshots(d);
   return {
@@ -10916,7 +10916,7 @@ function createStandaloneStore(el) {
   standalone.diffBase = readDiffBase(payload.diffBase, standalone.designId);
   return { store: new Store(new MemoryAdapter(), state), blockReason, failed: false };
 }
-// 違いの札の元にする版（書き出すときに選んだ版の写し）。読めないときは札を出さない
+// 違いの札の元にする版（出力するときに選んだ版の写し）。読めないときは札を出さない
 function readDiffBase(raw, designId) {
   if (!isObj(raw) || !isObj(raw.snapshot)) return null;
   try {
@@ -10937,7 +10937,7 @@ function standaloneFileName() {
   return safeFileName(d ? d.name : '') + '.html';
 }
 function standaloneBarHtml() {
-  // 違いの印を付けて書き出したときは、比べた版との違いの数・変更内容の一覧・印を隠すのボタンも出す（q44d）
+  // 違いの印を付けて出力したときは、比べた版との違いの数・変更内容の一覧・印を隠すのボタンも出す（q44d）
   const diff = standalone.diffBase ? `<span class="sa-diff" id="sa-diff"></span><button class="btn small" data-action="diff-list">変更内容の一覧</button>
     <button class="btn small" data-action="diff-toggle" id="sa-diff-toggle">印を隠す</button>` : '';
   return `<div class="sa-bar" id="sa-bar"><span class="sa-msg">この HTML は「<b id="sa-name"></b>」の画面設計です。直したら「HTML を保存」で保存して、送り返してください。</span>
@@ -10991,7 +10991,7 @@ async function saveStandalone() {
   return res;
 }
 
-// ── 書き出しの窓（q33）──
+// ── 出力の窓（q33）──
 // 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない）
 const exportOpts = { kind: 'pdf', paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, process: true, flow: true, openAfter: true, diff: false };
 const EXPORT_KINDS = [
@@ -11004,11 +11004,11 @@ function exportDialogBody(d, desk, kind, hasMap) {
   const kinds = EXPORT_KINDS.map(([k, ic, name, note]) => {
     const off = !desk && k !== 'html'; // PDF・PNG はデスクトップ版だけ（q38）
     return `<button type="button" class="xp-kind${k === kind ? ' on' : ''}" data-xkind="${k}" aria-pressed="${k === kind}"${off ? ' disabled' : ''}>`
-      + `<b><i>${ic}</i>${name}</b><small>${off ? 'デスクトップ版のアプリで書き出せます' : note}</small></button>`;
+      + `<b><i>${ic}</i>${name}</b><small>${off ? 'デスクトップ版のアプリで出力できます' : note}</small></button>`;
   }).join('');
   const seg = (name, value, choices) => `<div class="seg">${choices.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}"${value === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
   const screens = d.screens.map((s, i) => `<label class="check"><input type="checkbox" data-xscreen value="${esc(s.id)}" checked><span>${i + 1}　${esc(s.name)}<small class="dev">${DEVICES[s.device].label}</small></span></label>`).join('');
-  const pick = `<div class="xp-sub">書き出す画面<span class="spacer"></span><button type="button" class="link-btn" data-xall="1">すべて選ぶ</button><button type="button" class="link-btn" data-xall="0">すべて外す</button></div><div class="xp-screens">${screens}</div>`;
+  const pick = `<div class="xp-sub">出力する画面<span class="spacer"></span><button type="button" class="link-btn" data-xall="1">すべて選ぶ</button><button type="button" class="link-btn" data-xall="0">すべて外す</button></div><div class="xp-screens">${screens}</div>`;
   const page = (key, label, ok, why) => `<label class="check"><input type="checkbox" data-xpage="${key}"${ok && o[key] ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${label}${ok ? '' : `<small class="sub">${why}</small>`}</span></label>`;
   // 違いの印（第 6 段階。q42b）。比べられる版（写しのある版）がなければ、押せなくして理由を添える
   const vers = versionRows(d).filter(hasSnapshot).sort((a, b) => b.no - a.no);
@@ -11031,7 +11031,7 @@ function exportDialogBody(d, desk, kind, hasMap) {
       <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', 'つながりの図', hasMap, 'ほかの画面設計とのつながりがないので、出しません')}${page('items', 'データベースの項目の一覧表', d.items.length > 0, '項目がないので、出しません')}${page('process', 'ステータスの移り方', hasProcessPage(d), 'ステータスを進める操作がないので、出しません')}${page('flow', '画面の移り方', hasFlowPage(d, store.state), 'ボタン・リンクの文字の移る先がないので、出しません')}</div>
       ${pick}
       ${diffPick('pdf')}
-      <label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>書き出したら PDF を開く</span></label>
+      <label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>出力したら PDF を開く</span></label>
     </div>
     <div class="xp-box" data-xbox="html"${kind === 'html' ? '' : ' hidden'}>
       <p class="xp-note">画面設計 1 つ分（画面 ${d.screens.length} つ・項目 ${d.items.length} 個）を、アプリごと 1 つの HTML ファイルにします。<br>
@@ -11043,11 +11043,11 @@ function exportDialogBody(d, desk, kind, hasMap) {
     <div class="xp-box" data-xbox="png"${kind === 'png' ? '' : ' hidden'}>
       ${pick}
       ${diffPick('png')}
-      <p class="xp-note">1 画面＝1 枚（画面・吹き出し・部品の設定の一覧表が入る大きさ）。2 倍の細かさで書き出します。<br>
+      <p class="xp-note">1 画面＝1 枚（画面・吹き出し・部品の設定の一覧表が入る大きさ）。2 倍の細かさで出力します。<br>
         画面が 2 つ以上のときは、保存するフォルダを選びます（ファイルの名前は「${esc(safeFileName(d.name))}_01_${esc(safeFileName(d.screens[0].name, '画面'))}.png」のようにします）。</p>
     </div>`;
 }
-// 書き出しの窓を開き、選んだ形で書き出す。戻り値は書き出しの結果（キャンセルは null）
+// 出力の窓を開き、選んだ形で出力する。戻り値は出力の結果（キャンセルは null）
 async function openExportDialog(designId) {
   const d = findDesign(store.state, designId);
   if (!d || standalone) return null;
@@ -11056,8 +11056,8 @@ async function openExportDialog(designId) {
   const kind = desk ? exportOpts.kind : 'html';
   const hasMap = hasMapLinks(d, store.state);
   const r = await showDialog({
-    title: `「${d.name}」を書き出す`,
-    okLabel: '書き出す…',
+    title: `「${d.name}」を出力`,
+    okLabel: '出力…',
     width: 640,
     body: exportDialogBody(d, desk, kind, hasMap),
     init(m) {
@@ -11085,7 +11085,7 @@ async function openExportDialog(designId) {
       const k = m.querySelector('.xp-kind.on').dataset.xkind;
       const box = m.querySelector(`[data-xbox="${k}"]`);
       const screenIds = [...box.querySelectorAll('[data-xscreen]:checked')].map((x) => x.value);
-      if (k === 'png' && !screenIds.length) return { error: '書き出す画面を 1 つ以上選んでください。' };
+      if (k === 'png' && !screenIds.length) return { error: '出力する画面を 1 つ以上選んでください。' };
       const xd = box.querySelector('[data-xdiff]');
       const diffOn = !!xd && !xd.disabled && xd.checked;
       const diffRevId = diffOn ? box.querySelector('[data-xdiffrev]').value : null;
@@ -11097,7 +11097,7 @@ async function openExportDialog(designId) {
         cover: checked('cover'), map: checked('map'), items: checked('items'), process: checked('process'), flow: checked('flow'),
         openAfter: !!box.querySelector('[data-xopen]').checked, diffRevId, diffOn,
       };
-      if (!screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((key) => r2[key])) return { error: '入れるページか、書き出す画面を 1 つ以上選んでください。' };
+      if (!screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((key) => r2[key])) return { error: '入れるページか、出力する画面を 1 つ以上選んでください。' };
       return r2;
     },
   });
@@ -11116,10 +11116,10 @@ async function openExportDialog(designId) {
 }
 function reportExport(res, what) {
   if (!res || res.canceled) return;
-  if (!res.ok) { toast(`${what} を書き出せませんでした（${res.error || 'わからない理由'}）。`); return; }
-  toast(res.count > 1 ? `${res.count} 枚の ${what} を書き出しました（${res.dir}）。` : `${what} を書き出しました（${res.path}）。`);
+  if (!res.ok) { toast(`${what} を出力できませんでした（${res.error || 'わからない理由'}）。`); return; }
+  toast(res.count > 1 ? `${res.count} 枚の ${what} を出力しました（${res.dir}）。` : `${what} を出力しました（${res.path}）。`);
 }
-// 書き出す。r は書き出しの窓の結果（{ kind, screenIds, paper, orient, cover, map, items, process, flow, openAfter, diffRevId（比べる版。違いの印を付けないときは null） }）
+// 出力する。r は出力の窓の結果（{ kind, screenIds, paper, orient, cover, map, items, process, flow, openAfter, diffRevId（比べる版。違いの印を付けないときは null） }）
 async function runExport(designId, r) {
   const d = findDesign(store.state, designId);
   if (!d) return null;
@@ -11147,7 +11147,7 @@ async function runExport(designId, r) {
 }
 
 // ── HTML の取り込み（q39）──
-// 書き出した HTML を読む。戻り値 { payload, design, customTargets } か { error }
+// 出力した HTML を読む。戻り値 { payload, design, customTargets } か { error }
 function parseExportedHtml(text) {
   if (typeof text !== 'string' || !text.trim()) return { error: 'ファイルが空です。' };
   if (text.length > IMPORT_MAX_CHARS) return { error: 'ファイルが大きすぎます（50MB まで）。' };
@@ -11158,17 +11158,17 @@ function parseExportedHtml(text) {
     return { error: 'HTML として読めませんでした。' };
   }
   const el = doc.getElementById(EMBED_ID);
-  if (!el) return { error: 'モックイメージメーカーで書き出した HTML ではありません（画面設計のデータが入っていません）。' };
+  if (!el) return { error: 'モックイメージメーカーで出力した HTML ではありません（画面設計のデータが入っていません）。' };
   let payload;
   try {
     payload = JSON.parse(el.textContent);
   } catch (_) {
     return { error: 'HTML に入っている画面設計のデータが壊れています。' };
   }
-  if (!isObj(payload) || payload.format !== EMBED_FORMAT) return { error: 'モックイメージメーカーで書き出した HTML ではありません。' };
+  if (!isObj(payload) || payload.format !== EMBED_FORMAT) return { error: 'モックイメージメーカーで出力した HTML ではありません。' };
   const v = Number(payload.schemaVersion);
   if (!Number.isInteger(v) || v < 1) return { error: 'HTML に入っている画面設計のデータの版が正しくありません。' };
-  if (v > SCHEMA_VERSION) return { error: `新しい版のアプリで書き出した HTML です（データの形の版 ${v}。この版のアプリが分かるのは ${SCHEMA_VERSION} まで）。新しい版のアプリで取り込んでください。` };
+  if (v > SCHEMA_VERSION) return { error: `新しい版のアプリで出力した HTML です（データの形の版 ${v}。この版のアプリが分かるのは ${SCHEMA_VERSION} まで）。新しい版のアプリで取り込んでください。` };
   let migrated;
   try {
     migrated = migrate(payload.data);
@@ -11186,13 +11186,13 @@ function canonicalJson(v) {
   return JSON.stringify(v === undefined ? null : v);
 }
 const designContent = (d) => canonicalJson(designContentOf(d));
-// 比べるための中身。形を整え、ほかの画面設計を指す控えの名前を今の名前に直してから作る（書き出した HTML の写しと同じ直し方）
+// 比べるための中身。形を整え、ほかの画面設計を指す控えの名前を今の名前に直してから作る（出力した HTML の写しと同じ直し方）
 function comparableContent(d, state) {
   const c = normalizeDesign(clone({ ...d, revisions: [] }));
   refreshRefNames(c, state);
   return designContent(c);
 }
-// 中身の短い印（受け渡しで「書き出した後に、こちらでも変えたか」を見るため。FNV-1a を 2 本並べた 16 桁）
+// 中身の短い印（受け渡しで「出力した後に、こちらでも変えたか」を見るため。FNV-1a を 2 本並べた 16 桁）
 function shortHash(text) {
   let a = 0x811c9dc5;
   let b = 0x9e3779b9;
@@ -11204,7 +11204,7 @@ function shortHash(text) {
   }
   return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
 }
-// データの形の版 2 の形に戻した中身（版 2 のアプリで書き出した HTML・取り込んだときの中身の印と比べるため。第 8 段階）。
+// データの形の版 2 の形に戻した中身（版 2 のアプリで出力した HTML・取り込んだときの中身の印と比べるため。第 8 段階）。
 // ステータスは名前の並び、見本で出すステータスは名前に戻し、版 3 で足した欄は空なら外す（中身の入った欄は残すので、そのときは印が合わない）
 function legacyContent(d, state) {
   const c = normalizeDesign(clone({ ...d, revisions: [] }));
@@ -11229,7 +11229,7 @@ function legacyContent(d, state) {
   ['processPos', 'flowPos'].forEach((k) => { if (isObj(out[k]) && !Object.keys(out[k]).length) delete out[k]; });
   return canonicalJson(out);
 }
-// 書き出した後に、こちらでも変えたか。書き出したときの中身の印（baseHash）か、前に取り込んだときの中身の印（画面設計の exchangeHash）と
+// 出力した後に、こちらでも変えたか。出力したときの中身の印（baseHash）か、前に取り込んだときの中身の印（画面設計の exchangeHash）と
 // 今の中身が同じなら、変えていない（元に戻すで戻した変更や、2 回目の取り込みも正しく分かるように、更新日時でなく中身で比べる）。
 // 印は、データの形の版 2 のアプリで作ったものもあるので、版 2 の形に戻した中身の印とも比べる
 function changedSinceExport(cur, payload) {
@@ -11248,7 +11248,7 @@ function replaceWithImported(s, incoming) {
   d.exchangeHash = shortHash(comparableContent(d, s)); // 取り込んだ中身の印（次に取り込むとき、こちらで変えていないと分かるように）
 }
 // 置き換えても中身が変わらないか（つながった項目は、一覧にある元にそろえてから比べる。
-// 書き出した HTML ではルックアップ元などの名前を今の名前に直しているので、手元の写しも同じように直してから比べる）
+// 出力した HTML ではルックアップ元などの名前を今の名前に直しているので、手元の写しも同じように直してから比べる）
 function sameAfterImport(existing, incoming) {
   const trial = cloneState(store.state);
   replaceWithImported(trial, incoming);
@@ -11266,12 +11266,12 @@ function openImportConfirmDialog(cur, inc, payload) {
     okLabel: '取り込む',
     okClass: 'danger',
     width: 560,
-    body: `<p>一覧${cur.trashedAt ? 'の「ごみ箱」' : ''}にある画面設計「${esc(cur.name)}」から書き出した HTML です。</p>
+    body: `<p>一覧${cur.trashedAt ? 'の「ごみ箱」' : ''}にある画面設計「${esc(cur.name)}」から出力した HTML です。</p>
       <table class="imp-cmp"><thead><tr><th></th><th>今の中身</th><th>取り込む中身</th></tr></thead><tbody>
         ${row('名前', esc(cur.name), esc(inc.name))}${row('更新日時', fmtDateTime(cur.updatedAt), fmtDateTime(inc.updatedAt))}
         ${row('画面', `${a.screens} つ`, `${b.screens} つ`)}${row('部品', `${a.parts} 個`, `${b.parts} 個`)}${row('項目', `${a.items} 個`, `${b.items} 個`)}
       </tbody></table>
-      ${changedHere ? `<p class="warn">書き出した後（${esc(fmtDateTime(payload.baseUpdatedAt))} より後）に、こちらでも変えています。置き換えると、こちらで変えた所は消えます（今の中身は改訂履歴に残ります）。</p>` : ''}
+      ${changedHere ? `<p class="warn">出力した後（${esc(fmtDateTime(payload.baseUpdatedAt))} より後）に、こちらでも変えています。置き換えると、こちらで変えた所は消えます（今の中身は改訂履歴に残ります）。</p>` : ''}
       <div class="imp-choice">
         <label class="check"><input type="radio" name="imp-how" value="replace" checked><span><b>置き換える</b><small class="sub">今の中身は、改訂履歴に「取り込む前の状態」として残ります。${cur.trashedAt ? 'ごみ箱から一覧に戻します。' : ''}元に戻す（Ctrl+Z）でも戻せます。</small></span></label>
         <label class="check"><input type="radio" name="imp-how" value="copy"><span><b>別の画面設計として足す</b><small class="sub">「${esc(importedCopyName(inc.name))}」として一覧に足します。今の中身はそのままです。</small></span></label>
@@ -11279,7 +11279,7 @@ function openImportConfirmDialog(cur, inc, payload) {
     collect: (m) => (m.querySelector('[name="imp-how"]:checked') || {}).value || 'replace',
   });
 }
-// 書き出した HTML の文字を取り込む。戻り値 { status: 'added'|'replaced'|'copied'|'same'|'canceled'|'error', designId?, error? }。
+// 出力した HTML の文字を取り込む。戻り値 { status: 'added'|'replaced'|'copied'|'same'|'canceled'|'error', designId?, error? }。
 // systemId を渡すと、新しく足すとき（一覧にない・別の画面設計として足す）だけ、そのシステムに入れる（システムのまとまりの上にファイルを落としたとき。
 // 置き換え・中身が同じときは、入っているシステムを変えない。設計書の 5-6）
 async function importHtmlText(text, { systemId = null } = {}) {
@@ -11460,11 +11460,11 @@ function runCommand(cmd) {
       (cmd === 'newDesign' ? newDesignWithDialog(from) : newSystemWithDialog()).catch(reportPageError);
       return true;
     }
-    // 書き出しと取り込み（第 5 段階）。単体で開いた HTML では、書き出しの窓と取り込みは出さず、HTML を保存し直すだけ（q37）
+    // 出力と取り込み（第 5 段階）。単体で開いた HTML では、出力の窓と取り込みは出さず、HTML を保存し直すだけ（q37）
     case 'exportDialog':
       if (standalone) return true;
       if (ui.view === 'editor') openExportDialog(ui.designId).catch(reportPageError);
-      else toast('書き出す画面設計を開くか、カードの「…」から「書き出す…」を選んでください。');
+      else toast('出力する画面設計を開くか、カードの「…」から「出力…」を選んでください。');
       return true;
     case 'importHtml':
       if (standalone) return true;
@@ -11770,7 +11770,7 @@ function onStoreChange() {
 // AI（Claude Code など）の頼みを main から preload の aiAPI で受け、actions.* に直して実行し、返事を返す。
 // 道具の決まりはここ 1 か所に置く（入口の mcp-server.js は、頼みをそのまま渡すだけ）。確かめの窓・ファイルを選ぶ窓を出す関数は呼ばない（8-5）。
 // 読む道具は本当の中身（前の版を見ている間は store.realState）を読む。書く道具は store.batch() で 1 回の変更にする（8-1）。
-// 返事は { ok: true, result } か { ok: false, error: { code, message, candidates? } }。画像と書き出しは render も返す（main が画像・PDF にする）。
+// 返事は { ok: true, result } か { ok: false, error: { code, message, candidates? } }。画像と出力は render も返す（main が画像・PDF にする）。
 
 // 断るときの例外。message は AI に返す日本語の文（理由と、人がすること）
 class AiRefusal extends Error {
@@ -11809,7 +11809,7 @@ function aiError(e) {
   if (e.candidates) error.candidates = e.candidates;
   return { ok: false, error };
 }
-// 画像・書き出しの返事（main が render の HTML を PNG・PDF にする）
+// 画像・出力の返事（main が render の HTML を PNG・PDF にする）
 class AiRendered {
   constructor(result, render) {
     this.result = result;
@@ -13716,13 +13716,13 @@ async function aiBdmPlan(api, y, m) {
   throw new AiRefusal(str(err.code) || 'read_failed', str(err.message) || `「${m.name}」を読めませんでした。もう一度頼んでください。`);
 }
 
-// ── 画像と書き出し（main が render の HTML を PNG・PDF にし、決めたフォルダへ書く。ファイルの窓は出さない。設計書の 8-7）──
+// ── 画像と出力（main が render の HTML を PNG・PDF にし、決めたフォルダへ書く。ファイルの窓は出さない。設計書の 8-7）──
 const aiDesignBrief = (d) => ({ id: d.id, name: d.name, updatedAt: d.updatedAt });
 // 右の欄の打ちかけの文字を入れてから写す（8-5）。ただし日本語の変換中は確定しない（未確定のかなが人の 1 回の変更として履歴に入り、紫の帯も閉じるため）
 function aiFlushBeforeRead() {
   if (!imeComposing) flushSideField();
 }
-// 画面の画像。withTable が true なら、部品の設定の一覧表と吹き出しも写す（書き出しの PNG と同じ形）。false なら画面だけ
+// 画面の画像。withTable が true なら、部品の設定の一覧表と吹き出しも写す（出力の PNG と同じ形）。false なら画面だけ
 async function aiGetScreenImage(args) {
   aiFlushBeforeRead();
   const S = aiState();
@@ -13770,7 +13770,7 @@ function aiSwimlaneImage(S, args) {
   );
 }
 const AI_EXPORT_FORMATS = ['pdf', 'html', 'png'];
-// 書き出す。設定は書き出しの窓と同じ（PDF: 用紙・向き・表紙・つながりの図・項目の一覧表、PDF と PNG: 画面、全部: 違いの印を付ける版）
+// 出力する。設定は出力の窓と同じ（PDF: 用紙・向き・表紙・つながりの図・項目の一覧表、PDF と PNG: 画面、全部: 違いの印を付ける版）
 async function aiExportDesign(args) {
   aiFlushBeforeRead();
   const S = aiState();
@@ -13791,7 +13791,7 @@ async function aiExportDesign(args) {
   }
   if (format === 'png') {
     const docs = exportPngDocs(d, S, screenIds, diffRevId);
-    if (!docs.length) throw aiBad('書き出す画面を 1 つ以上選んでください。');
+    if (!docs.length) throw aiBad('出力する画面を 1 つ以上選んでください。');
     return new AiRendered({ ...result, screens: docs.length }, { kind: 'png', files: docs.map(({ name, html, width, height }) => ({ name, html, width, height })) });
   }
   const paper = args.paper == null ? 'A4' : str(args.paper);
@@ -13803,7 +13803,7 @@ async function aiExportDesign(args) {
     cover: args.cover !== false, map: args.map !== false && hasMapLinks(d, S), items: args.items !== false && d.items.length > 0,
     process: args.process !== false && hasProcessPage(d), flow: args.flow !== false && hasFlowPage(d, S),
   };
-  if (screenIds && !screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((k) => opts[k])) throw aiBad('入れるページか、書き出す画面を 1 つ以上選んでください。');
+  if (screenIds && !screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((k) => opts[k])) throw aiBad('入れるページか、出力する画面を 1 つ以上選んでください。');
   const doc = exportDocument(d, S, opts);
   return new AiRendered(
     { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items, process: opts.process, flow: opts.flow },
@@ -14311,7 +14311,7 @@ function bindGlobalEvents() {
 async function boot() {
   const styleEl = document.querySelector('head > style');
   APP_STYLE = styleEl ? styleEl.textContent : '';
-  // 書き出した HTML（画面設計が埋め込まれている）を開いたときは、単体で開いたときの形で起動する（q37。どこにも保存しない）
+  // 出力した HTML（画面設計が埋め込まれている）を開いたときは、単体で開いたときの形で起動する（q37。どこにも保存しない）
   const embedded = document.getElementById(EMBED_ID);
   const created = embedded ? createStandaloneStore(embedded) : await createAppStore();
   store = created.store;

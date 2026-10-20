@@ -1,5 +1,5 @@
 'use strict';
-// AI の窓口の画面の画像（get_screen_image）と書き出し（export_design）のテスト（第 7 段階の T6）。
+// AI の窓口の画面の画像（get_screen_image）と出力（export_design）のテスト（第 7 段階の T6）。
 // ページはファイルに書かず、印刷用の HTML（render）を返す（PNG・PDF にして決めたフォルダへ書くのは main。tools/check-mcp.js で確かめる）。
 
 const test = require('node:test');
@@ -14,7 +14,7 @@ async function boot(state = sampleState()) {
   return { app, T, call };
 }
 
-test('get_screen_image: 既定は画面だけ（一覧表と吹き出しを入れない）。withTable で、書き出しの PNG と同じく一覧表と吹き出しも入れる', async () => {
+test('get_screen_image: 既定は画面だけ（一覧表と吹き出しを入れない）。withTable で、出力の PNG と同じく一覧表と吹き出しも入れる', async () => {
   const { app, call } = await boot();
   const r = await call('get_screen_image', { design: '顧客管理', screen: '新規登録' });
   assert.equal(r.ok, true);
@@ -78,7 +78,7 @@ test('export_design: PNG は画面ごとに 1 つ、HTML は単体で開いて�
   assert.equal(html.render.files[0].name, '顧客管理.html');
   assert.match(html.render.files[0].text, /<script type="application\/json" id="mim-embedded">/);
   assert.equal((await call('export_design', { design: 'd1', format: 'docx' })).error.code, 'bad_request');
-  // 改訂して第 1 版を作ると、第 1 版と比べて書き出せる。ない版は断る
+  // 改訂して第 1 版を作ると、第 1 版と比べて出力できる。ない版は断る
   await call('add_revision', { design: 'd1', note: '最初の版' });
   const diff = await call('export_design', { design: 'd1', format: 'pdf', diffWith: '第 1 版' });
   assert.equal(diff.ok, true);

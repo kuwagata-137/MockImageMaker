@@ -1,6 +1,6 @@
 'use strict';
 // 改訂履歴（第 6 段階）のテスト。改訂する（版の番号・写し・変更内容の一覧）、改訂履歴の窓（書き直す・消す）、前の版を見る（見るだけ）、
-// 前の版に戻す（戻す前の状態・元に戻す・取り込んだ項目のつなぎ直し）、違いの判定（designDiff）、書き出しの違いの印（PDF・PNG・HTML）。
+// 前の版に戻す（戻す前の状態・元に戻す・取り込んだ項目のつなぎ直し）、違いの判定（designDiff）、出力の違いの印（PDF・PNG・HTML）。
 // jsdom では要素の大きさを測れないので、札の位置とページの縮め方は tools/shoot-app.js（--only=revisions）と tools/check-export.js で確かめる。
 // 画面設計の名前は架空の業務（顧客管理など）だけを使う。
 
@@ -437,8 +437,8 @@ test('複製: 画面設計を複製しても、改訂履歴は写さない（部
   assert.deepEqual(plain(api.store.state.designs.find((d) => d.id === id).revisions), []);
 });
 
-// ── 書き出しの違いの印 ──
-// 書き出しの窓で kind を選び、revId（比べる版）を渡したときは「違いの印」に印を付けて、その版を選ぶ
+// ── 出力の違いの印 ──
+// 出力の窓で kind を選び、revId（比べる版）を渡したときは「違いの印」に印を付けて、その版を選ぶ
 async function exportWith(app, api, kind, revId = null) {
   const done = api.openExportDialog('d1');
   await tick();
@@ -453,7 +453,7 @@ async function exportWith(app, api, kind, revId = null) {
   return { res: await done, box };
 }
 
-test('書き出し: 版がないときは「違いの印」を押せない。版があれば、比べる版を選べる（新しい版が上）', async (t) => {
+test('出力: 版がないときは「違いの印」を押せない。版があれば、比べる版を選べる（新しい版が上）', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   api.openExportDialog('d1');
@@ -474,7 +474,7 @@ test('書き出し: 版がないときは「違いの印」を押せない。版
   click($(app, '.modal [data-dlg="cancel"]'));
 });
 
-test('書き出し（PDF）: 表紙の次に変更内容のページ。画面のページに札・違いの数・削除した部品。表紙の見出しは「改訂履歴」', async (t) => {
+test('出力（PDF）: 表紙の次に変更内容のページ。画面のページに札・違いの数・削除した部品。表紙の見出しは「改訂履歴」', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   const { r1 } = makeTwoVersions(api);
@@ -502,7 +502,7 @@ test('書き出し（PDF）: 表紙の次に変更内容のページ。画面の
   assert.ok(screenPage.querySelector('.ptable .df-in.df-chg'), '一覧表の番号の前にも札');
 });
 
-test('書き出し（PNG）: 違いの印を選ぶと、画面ごとの画像に札と削除した部品が入る', async (t) => {
+test('出力（PNG）: 違いの印を選ぶと、画面ごとの画像に札と削除した部品が入る', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   const { r1 } = makeTwoVersions(api);
@@ -512,7 +512,7 @@ test('書き出し（PNG）: 違いの印を選ぶと、画面ごとの画像に
   assert.match(files[0].html, /削除した部品/);
 });
 
-test('書き出し（HTML）: 比べる版の写しだけを入れ、開いたときから札と帯（違いの数・変更内容の一覧・印を隠す）。直すと比べ直す', async (t) => {
+test('出力（HTML）: 比べる版の写しだけを入れ、開いたときから札と帯（違いの数・変更内容の一覧・印を隠す）。直すと比べ直す', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   const { r2 } = makeTwoVersions(api);
@@ -555,7 +555,7 @@ test('書き出し（HTML）: 比べる版の写しだけを入れ、開いた�
   click($(sa, '.modal [data-dlg="cancel"]'));
 });
 
-test('書き出し（HTML）: 違いの印を選ばなければ、写しも帯も入らない', async (t) => {
+test('出力（HTML）: 違いの印を選ばなければ、写しも帯も入らない', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   makeTwoVersions(api);
@@ -565,7 +565,7 @@ test('書き出し（HTML）: 違いの印を選ばなければ、写しも帯�
   assert.ok(!html.includes('"snapshot"'));
 });
 
-test('書き出し（HTML）: 版の後にルックアップ元の名前を変えても、開いた HTML で「変」にしない（比べる版の写しの名前の控えも今の名前に直す）', async (t) => {
+test('出力（HTML）: 版の後にルックアップ元の名前を変えても、開いた HTML で「変」にしない（比べる版の写しの名前の控えも今の名前に直す）', async (t) => {
   const xapi = fakeExportAPI();
   const state = sampleState();
   state.designs[0].items[0].lookup = { db: { designId: 'd2', name: '住所の共通項目' }, key: { itemId: 'a1', name: '郵便番号' }, copies: [] };
@@ -581,7 +581,7 @@ test('書き出し（HTML）: 版の後にルックアップ元の名前を変�
   assert.ok(!$(sa, '#stage .df'), '札は出ない');
 });
 
-test('書き出し: 画面の上・右の端にある部品の札は、画面の外で切れないように内側に寄せる', async (t) => {
+test('出力: 画面の上・右の端にある部品の札は、画面の外で切れないように内側に寄せる', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   const r1 = api.actions.addRevision('d1');

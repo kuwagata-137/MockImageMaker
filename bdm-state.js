@@ -9,7 +9,7 @@
 //    ① は印の script の直後だけ・② は script とコメントの外の本物の body だけ・③ は右が { のものだけを見る
 //  - Electron に触らない。node だけでテストできる
 // JSON の切り出しは、BDM の「;</script>」を探す方法ではなく、JSON の文字列を数えて対の } まで読む
-// （箱の文字に「;</script>」があっても、BDM の「<\/script>」でも、アプリの書き出しの「<」の escape でも切り出せる）。
+// （箱の文字に「;</script>」があっても、BDM の「<\/script>」でも、アプリの出力の「<」の escape でも切り出せる）。
 'use strict';
 
 const { MaterialError } = require('./material-error');

@@ -351,7 +351,7 @@ test('列で待つ間に期限（時間切れ＋queueGraceMs）を過ぎた頼�
   });
   const a = await greet(info);
   const b = await greet(info);
-  a.send({ id: 1, tool: 'export_pdf', args: { ms: 500 } }); // 長い書き出しが列の先にある
+  a.send({ id: 1, tool: 'export_pdf', args: { ms: 500 } }); // 長い出力が列の先にある
   await delay(20);
   b.send({ id: 2, tool: 'create_design' }); // 150＋100ms を過ぎても順番が来ない
   assert.deepEqual(await a.next(), { id: 1, ok: true, result: 'export_pdf' });
@@ -530,7 +530,7 @@ test('removeAutomationFile は自分の pid のファイルだけを消す。rea
 });
 
 test('writeUnique: 同じ名前なら「名前 (2).拡張子」「名前 (3).拡張子」にする', async (t) => {
-  const dir = path.join(makeDir(), 'AI の書き出し');
+  const dir = path.join(makeDir(), 'AI の出力');
   t.after(() => removeDir(path.dirname(dir)));
   const p1 = await writeUnique(dir, '顧客管理.pdf', Buffer.from('1'));
   const p2 = await writeUnique(dir, '顧客管理.pdf', Buffer.from('2'));

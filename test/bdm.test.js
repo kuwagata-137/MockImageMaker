@@ -113,7 +113,7 @@ test('extractBdmState — 中身に「</script>」の字がある文', async (t)
     assert.ok(html.includes('<' + BACKSLASH + '/script>'));
     assert.equal(extractBdmState(html).nodes[0].text, TEXT);
   });
-  await t.test('アプリの書き出しの形（「<」を u003c の escape にした形）', () => {
+  await t.test('アプリの出力の形（「<」を u003c の escape にした形）', () => {
     const json = JSON.stringify(withText(TEXT)).replace(/</g, BACKSLASH + 'u003c');
     const html = page(`<script id="swimlane-state">window.__SWIMLANE_STATE__=${json};</script>`);
     assert.ok(html.includes(BACKSLASH + 'u003c/script>'));

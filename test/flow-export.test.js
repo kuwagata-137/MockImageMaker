@@ -1,5 +1,5 @@
 'use strict';
-// 第 8 段階の書き出しのテスト: PDF の「ステータスの移り方」「画面の移り方」のページと、書き出しの窓の「入れるページ」の 2 つのチェック（画像 q59）。
+// 第 8 段階の出力のテスト: PDF の「ステータスの移り方」「画面の移り方」のページと、出力の窓の「入れるページ」の 2 つのチェック（画像 q59）。
 // 画面設計の名前は架空の業務（出張申請・経費精算）だけを使う。
 
 const test = require('node:test');
@@ -62,19 +62,19 @@ async function exportVia(app, api, designId, init = () => {}) {
   init($(app, '.modal'));
   click($(app, '[data-dlg="ok"]'));
   await tick();
-  // 書き出せないとき（窓に赤い文字が出て閉じない）は、窓を閉じてテストを失敗にする（待ち続けないように）
+  // 出力できないとき（窓に赤い文字が出て閉じない）は、窓を閉じてテストを失敗にする（待ち続けないように）
   const err = $(app, '.modal .modal-error');
   if (err && err.textContent.trim()) {
     const msg = err.textContent;
     click($(app, '[data-dlg="cancel"]'));
     await done;
-    throw new Error('書き出しの窓が閉じない: ' + msg);
+    throw new Error('出力の窓が閉じない: ' + msg);
   }
   return done;
 }
 const pageChecks = (app) => plain($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => [x.dataset.xpage, x.checked, x.disabled]));
 
-test('書き出しの窓: 「入れるページ」に「ステータスの移り方」「画面の移り方」。操作がない・移る先がないときは、外して押せなくし、理由を添える', async (t) => {
+test('出力の窓: 「入れるページ」に「ステータスの移り方」「画面の移り方」。操作がない・移る先がないときは、外して押せなくし、理由を添える', async (t) => {
   const empty = await boot(t, { full: false });
   const done = empty.api.openExportDialog(empty.A);
   await tick();
@@ -154,7 +154,7 @@ test('PDF: 「ステータスの移り方」「画面の移り方」のチェッ
   await done;
 });
 
-test('PDF: ステータスの移り方と画面の移り方のページだけでも書き出せる（画面を全部外しても）', async (t) => {
+test('PDF: ステータスの移り方と画面の移り方のページだけでも出力できる（画面を全部外しても）', async (t) => {
   const { app, api, A, pdfPages } = await boot(t);
   await exportVia(app, api, A, (m) => {
     m.querySelectorAll('[data-xpage]').forEach((x) => { x.checked = ['process'].includes(x.dataset.xpage); });
