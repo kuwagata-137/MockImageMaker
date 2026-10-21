@@ -63,8 +63,11 @@ contextBridge.exposeInMainWorld('materialsAPI', {
   addDropped: (systemId, files) => ipcRenderer.invoke('materials:addPaths', { systemId, paths: Array.from(files || []).map((f) => webUtils.getPathForFile(f)).filter(Boolean) }),
   // 資料の中身を読む。req は { systemId, file, kind, name, cursor }。戻り値は { ok, result: { notice, part, text, images: [{ page, width, height, data: PNG の base64 }], nextCursor } }
   read: (req) => ipcRenderer.invoke('materials:read', req),
-  // BDM の HTML の資料から、スイムレーン図の案を作る。req は { systemId, file }。戻り値は { ok, plan }
+  // MPD（MultipurposeDiagramMaker で保存した HTML）の資料から、スイムレーン図の案を作る。req は { systemId, file }。戻り値は { ok, plan }
   bdmPlan: (req) => ipcRenderer.invoke('materials:bdmPlan', req),
+  // スイムレーン図を、資料の MPD を元にした HTML に出力する（保存の窓を出す。第 11 段階）。req は { systemId, file, plan（渡す形）, name（ファイルの名前の案）}。
+  // 戻り値は { ok, path, warnings: [読み直しの食い違いの文], counts: { lanes, steps, edges } }（取りやめは { ok: false, canceled: true }）
+  bdmExport: (req) => ipcRenderer.invoke('materials:bdmExport', req),
   // ページの一覧にない資料のファイルを消す。keep は { [システムの id]: [file, …] }。戻り値は { ok, removedFiles, removedDirs }
   sweep: (keep) => ipcRenderer.invoke('materials:sweep', { keep }),
   // システムを完全に削除したあと、そのシステムの資料のフォルダを消す。戻り値は { ok, removed: 消したファイルの数 }

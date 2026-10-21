@@ -197,6 +197,8 @@ function initExport(app, ipcMain, { headless = false, renderer = createPageRende
       return { ok: false, error: errText(err) };
     }
   });
+
+  return { askSavePath }; // 資料の置き場の「MPD に出力」（bdm-materials-main.js）も同じ保存の窓を使う（前のフォルダを覚える・確かめの起動では MIM_EXPORT_DIR）
 }
 
 module.exports = { initExport, createPageRenderer, safeName };

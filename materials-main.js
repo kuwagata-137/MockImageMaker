@@ -1,8 +1,9 @@
 // materials-main.js — メインプロセス側の資料（システムに入れるファイル）の受け口（第 9 段階の後半）
 // 役割:
-//  - ページから IPC で届く資料の頼み 6 つを受ける: materials:pick（開く窓で選んで入れる）・materials:addPaths（落としたファイルを入れる）・
-//    materials:read（資料の中身を読む）・materials:bdmPlan（BDM の HTML からスイムレーン図の案を作る）・
+//  - ページから IPC で届く資料の頼み 7 つを受ける: materials:pick（開く窓で選んで入れる）・materials:addPaths（落としたファイルを入れる）・
+//    materials:read（資料の中身を読む）・materials:bdmPlan（MPD からスイムレーン図の案を作る）・materials:bdmExport（スイムレーン図を MPD に出力する。第 11 段階）・
 //    materials:sweep（一覧にないファイルの掃除）・materials:removeSystem（システムを完全に削除したときのフォルダ消し）
+//    MPD（MultipurposeDiagramMaker で保存した HTML）の案と出力の中身は bdm-materials-main.js
 //  - ファイルの置き場（material-files.js）は <userData>/data/files/<システムの id>/。資料の中身は designs.json に入れない
 //  - 読む部品 reader（material-reader.js）と BDM を読む部品 bdm（bdm-swimlane.js）は、main.js が createReadingParts() の戻り値で渡す。
 //    渡さない（null の）ときの読む頼みは unavailable の失敗を返す
@@ -19,6 +20,7 @@ const fsp = require('fs').promises;
 const { createMaterialFiles, checkSystemId, SYSTEM_ID_PATTERN } = require('./material-files');
 const { MaterialError } = require('./material-error');
 const { STATE_FILE_NAME } = require('./storage');
+const { createBdmMaterials } = require('./bdm-materials-main');
 
 const DIALOG_FILTERS = [
   {
@@ -28,7 +30,7 @@ const DIALOG_FILTERS = [
   { name: 'すべてのファイル', extensions: ['*'] },
 ];
 const UNAVAILABLE_MESSAGE = '資料を読む機能は、まだ使えません。';
-const FAILED = { add: '資料を入れられませんでした。', read: '資料を読めませんでした。', cleanup: '資料のファイルを片付けられませんでした。' };
+const FAILED = { add: '資料を入れられませんでした。', read: '資料を読めませんでした。', cleanup: '資料のファイルを片付けられませんでした。', export: 'MPD に出力できませんでした。' };
 
 // 失敗を { code, message } にする。MaterialError の文はそのまま（読む部品が残した元の例外 cause があれば console に残す）。
 // ほかは fallbackMessage の定型文（原因は console に残す）。どちらも返事にはパスを入れない
@@ -107,14 +109,16 @@ function createReadingParts() {
   };
   return {
     reader: { read: async (request) => loadReader().read(request) },
-    bdm: { planFromHtml: (html) => require('./bdm-swimlane').planFromHtml(html) },
+    bdm: { planFromHtml: (html) => require('./bdm-swimlane').planFromHtml(html), exportHtml: (html, plan) => require('./bdm-export').exportBdmHtml(html, plan) },
   };
 }
 
-// storage は initStorage の戻り値（whenIdle・dataDir）。reader は { read }、bdm は { planFromHtml }（createReadingParts() の戻り値。渡さなければ null）。
-// 戻り値は { files（置き場）, finishRead(render)（AI の read_material の仕上げ）}
-function initMaterials({ app, ipcMain, storage, headless = false, reader = null, bdm = null, dialog = null }) {
+// storage は initStorage の戻り値（whenIdle・dataDir）。reader は { read }、bdm は { planFromHtml, exportHtml }（createReadingParts() の戻り値。渡さなければ null）。
+// askSavePath は保存の窓（export.js の initExport の戻り値。MPD に出力するときに使う）。
+// 戻り値は { files（置き場）, finishRead(render)（AI の read_material の仕上げ）, bdmExport(req)（AI の export_bdm の仕上げ。出力する HTML を作る）}
+function initMaterials({ app, ipcMain, storage, headless = false, reader = null, bdm = null, dialog = null, askSavePath = null }) {
   const files = createMaterialFiles({ root: path.join(storage.dataDir(), 'files') });
+  const mpd = createBdmMaterials({ files, bdm, fileFailure, unavailableMessage: UNAVAILABLE_MESSAGE, askSavePath, dataDir: storage.dataDir() });
   const checking = headless || !app.isPackaged; // 確かめの起動か
   let lastDir = null; // 前に資料を選んだフォルダ（アプリを閉じるまで覚える）
 
@@ -148,22 +152,11 @@ function initMaterials({ app, ipcMain, storage, headless = false, reader = null,
     return plainResult(await reader.read({ path: filePath, kind, name, cursor: cursor == null ? null : cursor }));
   }
 
-  async function bdmPlan({ systemId, file }) {
-    if (!bdm) throw new MaterialError('unavailable', UNAVAILABLE_MESSAGE);
-    const filePath = files.pathOf(systemId, file);
-    let html;
-    try {
-      html = await fsp.readFile(filePath, 'utf8');
-    } catch (err) {
-      throw fileFailure(err);
-    }
-    return bdm.planFromHtml(html);
-  }
-
   ipcMain.handle('materials:pick', (e, req) => guarded(FAILED.add, () => pick(e, req)));
   ipcMain.handle('materials:addPaths', (_e, req) => guarded(FAILED.add, async () => ({ ok: true, ...(await files.addFromPaths(req && req.systemId, req && req.paths)) })));
   ipcMain.handle('materials:read', (_e, req) => guarded(FAILED.read, async () => ({ ok: true, result: await readMaterial(req || {}) })));
-  ipcMain.handle('materials:bdmPlan', (_e, req) => guarded(FAILED.read, async () => ({ ok: true, plan: await bdmPlan(req || {}) })));
+  ipcMain.handle('materials:bdmPlan', (_e, req) => guarded(FAILED.read, async () => ({ ok: true, plan: await mpd.plan(req || {}) })));
+  ipcMain.handle('materials:bdmExport', (e, req) => guarded(FAILED.export, () => mpd.saveExport(e, req || {})));
   // 保存の書き込みが終わってから行う（掃除は、1 つ前の保存〔.bak〕の資料と、この起動で入れた資料〔files.sweep が控えている〕も残す）
   ipcMain.handle('materials:sweep', (_e, req) => guarded(FAILED.cleanup, async () => {
     await storage.whenIdle();
@@ -184,7 +177,10 @@ function initMaterials({ app, ipcMain, storage, headless = false, reader = null,
     });
   }
 
-  return { files, finishRead };
+  // AI の export_bdm の仕上げ（automation-render.js から呼ぶ）。req は { systemId, file, plan }。書くのは automation-render.js（AI の出力のフォルダ）
+  const bdmExport = (req) => guarded(FAILED.export, async () => ({ ok: true, ...(await mpd.build(req || {})) }));
+
+  return { files, finishRead, bdmExport };
 }
 
 module.exports = { initMaterials, createReadingParts };

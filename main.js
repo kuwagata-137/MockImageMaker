@@ -250,9 +250,10 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
 
   app.whenReady().then(() => {
     storage = initStorage(app, ipcMain);
-    materials = initMaterials({ app, ipcMain, storage, headless: HEADLESS, ...createReadingParts() }); // 資料を読む部品と BDM を読む部品をつなぐ（読む部品は最初の頼みで読み込む）
     const renderer = createPageRenderer(app); // PDF・PNG を作る（出力の窓と AI の出力で同じものを使う）
-    initExport(app, ipcMain, { headless: HEADLESS, renderer });
+    const exporter = initExport(app, ipcMain, { headless: HEADLESS, renderer });
+    // 資料を読む部品と MPD を読む・出力する部品をつなぐ（読む部品は最初の頼みで読み込む）。MPD に出力するときは、出力の窓と同じ保存の窓を使う
+    materials = initMaterials({ app, ipcMain, storage, headless: HEADLESS, askSavePath: exporter.askSavePath, ...createReadingParts() });
     automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION, renderer, materials });
     buildAppMenu();
     createMainWindow();
