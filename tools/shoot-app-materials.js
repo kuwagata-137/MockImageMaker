@@ -1,5 +1,6 @@
-// tools/shoot-app.js の資料の場面（--only=materials。場面 138〜149・164〜167）。第 9 段階の後半の「資料」の入口（画像 q67 の案A「表」）と、
-// 第 11 段階の「MPD に出力」（画像 q82。メニューバーの「出力」の小さなメニュー・元にする MPD を選ぶ窓）のとおりかを撮る。
+// tools/shoot-app.js の資料の場面（--only=materials。場面 138〜149・164〜170）。第 9 段階の後半の「資料」の入口（画像 q67 の案A「表」）と、
+// 第 11 段階の「MPD に出力」（画像 q82。メニューバーの「出力」の小さなメニュー・元にする MPD を選ぶ窓）と、
+// デバッグとリリースの直し①（画像 q86。返事を待つ間の印と時間切れ）のとおりかを撮る。
 // 窓口 window.materialsAPI（デスクトップ版の preload.js が出す）は、ここで身代わりを置く。見本は架空の出張申請（make-material-samples.js が作る資料）。
 //  - 「読む」の窓: 場面 142・143 は身代わりの 2 つの部分（続きを読む）、場面 144・145 は本物の読む部品（material-reader.js）で読んだ旅費規程.pdf（node 側の関数を ページから呼ぶ）
 //  - 「スイムレーン図にする」: 本物の BDM を読む部品（bdm-swimlane.js）が出張申請の流れ.html から作った案
@@ -147,6 +148,43 @@ async function shootMpdExport(ctx) {
   await none.close();
 }
 
+// 168〜170: 資料の窓口の返事を待つ間の印と時間切れ（デバッグとリリースの直し①。画像 q86）。窓口の身代わりの read・bdmExport を、返事を返さない形に
+// 差し替えて撮る。時間切れは待つ長さを短くして撮る（お知らせの文は 2 分のまま）。押したボタンの文字が言葉の途中で折り返さないか（ほかのボタンと同じ高さか）も確かめる
+async function shootWaiting(ctx) {
+  const { shot } = ctx;
+  const never = (name) => (pg) => pg.evaluate((n) => { window.materialsAPI[n] = () => new Promise(() => {}); }, name);
+  const opsOf = (pg, id) => pg.$eval(`#sys-view tr[data-id="${id}"] .mat-ops`, (ops) => [...ops.querySelectorAll('button')].map((b) => b.textContent + (b.disabled ? '（×）' : '')));
+  const oneLine = (pg) => pg.evaluate(() => {
+    const hs = [...document.querySelectorAll('#sys-view .mat-ops button')].map((b) => Math.round(b.getBoundingClientRect().height));
+    return Math.max(...hs) - Math.min(...hs) <= 1;
+  });
+  const page = await openPage(ctx);
+  await never('read')(page);
+  await page.click(`#sys-view [data-action="sys-mat-read"][data-id="${ID.pdf}"]`);
+  await page.waitForSelector(`#sys-view .mat-busy[data-id="${ID.pdf}"]`);
+  const busy = await opsOf(page, ID.pdf);
+  need(busy.join() === '読んでいます…（×）,消す（×）' && await oneLine(page), `待つ間の行のボタンが違う・折り返している: ${busy.join()}`);
+  await shot(page, '168_資料_「読む」を押して返事を待つ間（押したボタンが「読んでいます…」・その行のボタンは押せない）');
+  await page.close();
+  const late = await openPage(ctx);
+  await late.evaluate(() => window.__test__.setMaterialWaitMs(300));
+  await never('read')(late);
+  await late.click(`#sys-view [data-action="sys-mat-read"][data-id="${ID.pdf}"]`);
+  await late.waitForFunction(() => /待つのをやめました/.test(document.querySelector('#toast').textContent) && !document.querySelector('#toast').hidden, { timeout: 4000 });
+  const back = await opsOf(late, ID.pdf);
+  need(back.join() === '読む,消す', `時間切れの後にボタンが戻らない: ${back.join()}`);
+  await shot(late, '169_資料_返事が 2 分来ないとき（待つのをやめてお知らせ。ボタンは押せる形に戻る）');
+  await late.close();
+  const out = await openPage(ctx, { width: 1280, height: 800 });
+  await never('bdmExport')(out);
+  await out.click(`#sys-view [data-action="sys-mat-export"][data-id="${ID.bdm}"]`);
+  await out.waitForSelector(`#sys-view .mat-busy[data-id="${ID.bdm}"]`);
+  const exp = await opsOf(out, ID.bdm);
+  need(exp.join() === '読む（×）,スイムレーン図にする（×）,出力しています…（×）,消す（×）' && await oneLine(out), `出力を待つ間の行のボタンが違う・折り返している: ${exp.join()}`);
+  await shot(out, '170_資料_「MPD に出力…」の返事を待つ間（幅 1280。押したボタンが「出力しています…」）');
+  await out.close();
+}
+
 module.exports = async function shootMaterials(browser, env) {
   await ensureSamples();
   const ctx = { browser, real: realReading(), root: env.ROOT, htmlName: env.HTML_NAME, shot: async (p, name) => { await sleep(120); await env.shot(p, name); } };
@@ -155,4 +193,5 @@ module.exports = async function shootMaterials(browser, env) {
   await shootReplace(ctx);
   await shootNarrow(ctx);
   await shootMpdExport(ctx);
+  await shootWaiting(ctx);
 };

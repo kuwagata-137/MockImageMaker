@@ -489,13 +489,14 @@ test('materials:bdmPlan — bdm の MaterialError はそのまま { code, messag
 function loadPreload() {
   const exposed = {};
   const invocations = [];
+  const listeners = {}; // main からの知らせの受け手（channel → 関数）
   const fakeElectron = {
     contextBridge: { exposeInMainWorld: (name, api) => { exposed[name] = api; } },
     ipcRenderer: {
       invoke: async (channel, payload) => { invocations.push([channel, payload]); return { ok: true }; },
       send() {},
-      on() {},
-      removeAllListeners() {},
+      on(channel, fn) { listeners[channel] = fn; },
+      removeAllListeners(channel) { delete listeners[channel]; },
     },
     webUtils: { getPathForFile: (file) => file.fakePath },
   };
@@ -511,15 +512,21 @@ function loadPreload() {
     if (savedElectron) require.cache[electronPath] = savedElectron;
     else delete require.cache[electronPath];
   }
-  return { api: exposed.materialsAPI, invocations, exposed };
+  return { api: exposed.materialsAPI, invocations, exposed, listeners };
 }
 
 test('preload の materialsAPI — 受け口の名前と渡す値が、materials-main.js の登録と合っている', async (t) => {
   const env = setup(t);
-  const { api, invocations, exposed } = loadPreload();
+  const { api, invocations, exposed, listeners } = loadPreload();
   assert.ok(exposed.storageAPI && exposed.exportAPI && exposed.aiAPI && exposed.menuAPI, 'これまでの窓口は残っている');
   assert.equal(api.available, true);
-  assert.deepEqual(Object.keys(api).sort(), ['addDropped', 'available', 'bdmExport', 'bdmPlan', 'pick', 'read', 'removeSystem', 'sweep']);
+  assert.deepEqual(Object.keys(api).sort(), ['addDropped', 'available', 'bdmExport', 'bdmPlan', 'onSaveDialog', 'pick', 'read', 'removeSystem', 'sweep']);
+  // 保存の窓の知らせ（bdm-materials-main.js の tellSaveDialog が送る materials:saveDialog）を、ページの関数に渡す。2 回目の登録は前の受け手を外す
+  const told = [];
+  api.onSaveDialog(() => told.push('前の受け手'));
+  api.onSaveDialog((info) => told.push(info));
+  listeners['materials:saveDialog']({}, { open: true });
+  assert.deepEqual(told, [{ open: true }]);
 
   await api.pick(SYS);
   await api.read({ systemId: SYS, file: 'm-a.pdf', kind: 'pdf', name: 'a.pdf', cursor: null });

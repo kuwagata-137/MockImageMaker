@@ -4,7 +4,8 @@
 //  - build({ systemId, file, plan }): 資料の MPD を元に、出力する HTML を作る → { html, warnings, counts }（bdm-export.js。AI の export_bdm の仕上げと saveExport が使う）
 //  - saveExport(e, { systemId, file, plan, name }): build してから保存の窓（export.js の askSavePath）で書く → { ok, path, warnings, counts }（materials:bdmExport）
 //    HTML を作れないとき（図の中身がない・作業がないなど）は、保存の窓を出す前に断る。保存の先がアプリのデータのフォルダ（<userData>/data）の中なら断る
-//    （資料の元のファイルを上書きしないため）。元の資料のファイルは書き換えない
+//    （資料の元のファイルを上書きしないため）。元の資料のファイルは書き換えない。
+//    保存の窓を開く前と閉じた後に、頼んだページへ materials:saveDialog（{ open }）を送る（ページは、開いている間は返事を待つ時間を数えない）
 // 失敗は MaterialError で投げる（materials-main.js の guarded が { ok: false, error } にする）。文にパスを入れない。
 'use strict';
 
@@ -62,7 +63,13 @@ function createBdmMaterials({ files, bdm, fileFailure, unavailableMessage, askSa
   async function saveExport(e, req) {
     if (!askSavePath) throw new MaterialError('unavailable', '保存の窓を使えません。アプリを起動し直してください。');
     const out = await build(req);
-    const file = await askSavePath(e, { title: 'MPD に出力する', name: req.name, ext: 'html', label: 'HTML ファイル' });
+    tellSaveDialog(e, true);
+    let file;
+    try {
+      file = await askSavePath(e, { title: 'MPD に出力する', name: req.name, ext: 'html', label: 'HTML ファイル' });
+    } finally {
+      tellSaveDialog(e, false);
+    }
     if (!file) return { ok: false, canceled: true };
     if (await isInside(dataDir, file)) throw new MaterialError('bad_name', 'アプリのデータのフォルダには保存できません。別のフォルダを選んでください。');
     try {
@@ -75,6 +82,14 @@ function createBdmMaterials({ files, bdm, fileFailure, unavailableMessage, askSa
   }
 
   return { plan, build, saveExport };
+}
+
+// 保存の窓を開く前（open: true）と閉じた後（open: false）に、頼んだページへ知らせる（ページは、保存の窓が開いている間は返事を待つ時間を数えない。
+// デバッグとリリースの直し①。preload.js の materialsAPI.onSaveDialog）。頼んだページがない（e が null）・閉じた窓には送らない
+function tellSaveDialog(e, open) {
+  const sender = e && e.sender;
+  if (!sender || (typeof sender.isDestroyed === 'function' && sender.isDestroyed())) return;
+  sender.send('materials:saveDialog', { open });
 }
 
 module.exports = { createBdmMaterials };

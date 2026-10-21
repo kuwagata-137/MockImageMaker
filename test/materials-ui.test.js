@@ -637,6 +637,89 @@ test('待っている資料の「読む」「スイムレーン図にする」�
   await waitFor(() => $('.modal'), { label: '読むの窓' });
 });
 
+// ── 待つ間の印と時間切れ（デバッグとリリースの直し①。q86。画像 screenshots/q86_1〜3）──
+const opsOf = (rows, name) => rows().find((x) => x.name === name).ops;
+
+test('待つ間の印: 押したボタンは「読んでいます…」になり、その行のボタンは押せない（ほかの行は押せる）。描き直しても残り、返事の後は戻る', async (t) => {
+  const { api, $, rows, btn, materials } = await boot(t);
+  const r = held();
+  materials.set('read', r.fn);
+  click(btn('sys-mat-read', 'm-pdf'));
+  await waitFor(() => r.resolve, { label: 'read' });
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読んでいます…（×）', '消す（×）']);
+  assert.equal(btn('sys-mat-read', 'm-pdf').getAttribute('aria-busy'), 'true');
+  assert.ok(btn('sys-mat-read', 'm-pdf').querySelector('.mat-spin'), '回る印');
+  assert.deepEqual(opsOf(rows, '出張申請書.xlsx'), ['読む', '消す'], 'ほかの行は押せる');
+  api.renderSystem();
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読んでいます…（×）', '消す（×）'], '描き直しても残る');
+  r.resolve({ ok: true, result: plain(PART1) });
+  await waitFor(() => $('.modal'), { label: '読むの窓' });
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読む', '消す']);
+});
+
+test('待つ間の印: 「スイムレーン図にする」も「読んでいます…」。印を付け外ししても、同じ行のメモの欄の打ちかけの文字とフォーカスは残る', async (t) => {
+  const { app, rows, btn, memo, materials } = await boot(t);
+  const h = held();
+  materials.set('bdmPlan', h.fn);
+  const el = memo('m-bdm');
+  click(btn('sys-mat-swim', 'm-bdm'));
+  await waitFor(() => h.resolve, { label: 'bdmPlan' });
+  assert.deepEqual(opsOf(rows, '出張申請の流れ.html'), ['読む（×）', '読んでいます…（×）', '消す（×）']);
+  el.focus();
+  el.value = '待つ間に打った文字';
+  h.resolve({ ok: false, error: { code: 'read_failed', message: '読めませんでした（テスト）。' } });
+  await waitFor(() => !btn('sys-mat-swim', 'm-bdm').disabled, { label: 'ボタンが戻る' });
+  assert.equal(memo('m-bdm'), el, 'メモの欄は描き直さない');
+  assert.equal(el.value, '待つ間に打った文字');
+  assert.equal(app.document.activeElement, el);
+});
+
+test('時間切れ: 待っても返事が来なければ（2 分。テストでは短くする）、待つのをやめて知らせ、ボタンを戻す。遅れて届いた返事は捨て、もう一度押せる', async (t) => {
+  const { api, $, rows, btn, calls, materials, toast } = await boot(t);
+  api.setMaterialWaitMs(30);
+  const r = held();
+  materials.set('read', r.fn);
+  click(btn('sys-mat-read', 'm-pdf'));
+  await waitFor(() => toast().includes('待つのをやめました'), { label: '時間切れのお知らせ' });
+  assert.equal(toast(), '「旅費規程.pdf」を 2 分待っても読み終わらなかったため、待つのをやめました。もう一度「読む」を押してください。何度も止まるときは、アプリを起動し直してください。');
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読む', '消す']);
+  r.resolve({ ok: true, result: plain(PART1) });
+  await tick();
+  await tick();
+  assert.equal($('.modal'), null, '遅れて届いた返事では窓を開かない');
+  materials.set('read', async () => ({ ok: true, result: plain(PART2) }));
+  click(btn('sys-mat-read', 'm-pdf'));
+  await waitFor(() => $('.modal'), { label: '読むの窓' });
+  assert.equal(calls.read.length, 2);
+  click($('[data-dlg="cancel"]'));
+  materials.set('bdmPlan', held().fn);
+  click(btn('sys-mat-swim', 'm-bdm'));
+  await waitFor(() => toast().startsWith('「出張申請の流れ.html」を 2 分'), { label: 'スイムレーン図にするの時間切れ' });
+  assert.match(toast(), /もう一度「スイムレーン図にする」を押してください。/);
+  assert.equal(btn('sys-mat-swim', 'm-bdm').disabled, false);
+});
+
+test('時間切れ: 読むの窓の「続きを読む」も、待っても続きが来なければ知らせてボタンを戻す（遅れて届いた続きは捨てる）', async (t) => {
+  const { api, $, btn, materials, toast } = await boot(t);
+  materials.set('read', async () => ({ ok: true, result: plain(PART1) }));
+  click(btn('sys-mat-read', 'm-pdf'));
+  await waitFor(() => $('.modal'), { label: '読むの窓' });
+  api.setMaterialWaitMs(30);
+  const r = held();
+  materials.set('read', r.fn);
+  const more = $('[data-rd="more"]');
+  click(more);
+  assert.equal(more.disabled, true);
+  await waitFor(() => toast().includes('待つのをやめました'), { label: 'お知らせ' });
+  assert.equal(toast(), '「旅費規程.pdf」の続きを 2 分待っても読み終わらなかったため、待つのをやめました。もう一度「続きを読む」を押してください。何度も止まるときは、アプリを起動し直してください。');
+  assert.equal(more.disabled, false);
+  assert.equal($('.rd-foot').textContent, '1〜3 / 8 の部分', '中身は前の部分のまま');
+  r.resolve({ ok: true, result: plain(PART2) });
+  await tick();
+  await tick();
+  assert.equal($('.rd-foot').textContent, '1〜3 / 8 の部分', '遅れて届いた続きは捨てる');
+});
+
 test('スイムレーン図にする: 待った後にほかの窓が開いていたら、置き換えずに知らせる（今の図に作業があるときも、空のときも）', async (t) => {
   const { api, $, sys, btn, materials, toast, entry } = await boot(t);
   const before = sys().swimlane;

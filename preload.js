@@ -68,6 +68,11 @@ contextBridge.exposeInMainWorld('materialsAPI', {
   // スイムレーン図を、資料の MPD を元にした HTML に出力する（保存の窓を出す。第 11 段階）。req は { systemId, file, plan（渡す形）, name（ファイルの名前の案）}。
   // 戻り値は { ok, path, warnings: [読み直しの食い違いの文], counts: { lanes, steps, edges } }（取りやめは { ok: false, canceled: true }）
   bdmExport: (req) => ipcRenderer.invoke('materials:bdmExport', req),
+  // bdmExport の保存の窓を開く前と閉じた後の知らせ（{ open: true / false }）を受け取る（ページは、保存の窓が開いている間は返事を待つ時間を数えない）
+  onSaveDialog: (cb) => {
+    ipcRenderer.removeAllListeners('materials:saveDialog');
+    ipcRenderer.on('materials:saveDialog', (_e, info) => cb(info));
+  },
   // ページの一覧にない資料のファイルを消す。keep は { [システムの id]: [file, …] }。戻り値は { ok, removedFiles, removedDirs }
   sweep: (keep) => ipcRenderer.invoke('materials:sweep', { keep }),
   // システムを完全に削除したあと、そのシステムの資料のフォルダを消す。戻り値は { ok, removed: 消したファイルの数 }

@@ -43,6 +43,8 @@ function setup(t, extra = {}) {
   const ipcMain = { handle: (name, fn) => { handlers[name] = fn; } };
   const materials = initMaterials({ app, ipcMain, storage, headless: false, ...createReadingParts(), ...extra });
   const ipc = (name, req) => handlers[name](null, req);
+  // 頼んだページ（e.sender）を渡して呼ぶ（main からページへの知らせを確かめるとき）
+  const ipcFrom = (name, e, req) => handlers[name](e, req);
   // 見本のファイルを書いて、置き場に入れる。戻り値は入れた資料（{ id, name, kind, size, file, legacy }）
   async function addSample(name, bytes) {
     const source = path.join(dir, 'src', name);
@@ -54,7 +56,7 @@ function setup(t, extra = {}) {
     return r.added[0];
   }
   const readOf = (m, cursor = null) => ipc('materials:read', { systemId: SYS, file: m.file, kind: m.kind, name: m.name, cursor });
-  return { dir, dataDir, materials, ipc, addSample, readOf };
+  return { dir, dataDir, materials, ipc, ipcFrom, addSample, readOf };
 }
 
 const sizeOf = (png) => ({ width: png.readUInt32BE(16), height: png.readUInt32BE(20) });
@@ -284,4 +286,26 @@ test('materials:bdmExport — 保存の窓を渡さないと unavailable（AI �
   const r = await env.ipc('materials:bdmExport', { systemId: SYS, file: bdm.file, plan: EXPORT_PLAN, name: 'a.html' });
   assert.deepEqual([r.ok, r.error.code], [false, 'unavailable']);
   assert.equal((await env.materials.bdmExport({ systemId: SYS, file: bdm.file, plan: EXPORT_PLAN })).ok, true);
+});
+
+test('materials:bdmExport — 保存の窓を開く前と閉じた後に、頼んだページへ知らせる（ページは、開いている間は待つ時間を数えない。デバッグとリリースの直し①）', async (t) => {
+  const log = [];
+  let target = null;
+  const env = setup(t, { askSavePath: async () => { log.push('保存の窓'); return target; } });
+  const bdm = await env.addSample('出張申請の流れ.html', BDM_HTML);
+  const req = { systemId: SYS, file: bdm.file, plan: EXPORT_PLAN, name: '出張申請システム_スイムレーン.html' };
+  const page = { sender: { send: (channel, info) => log.push([channel, JSON.parse(JSON.stringify(info))]), isDestroyed: () => false } };
+  target = path.join(env.dir, 'out', '出張申請システム_スイムレーン.html');
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  assert.equal((await env.ipcFrom('materials:bdmExport', page, req)).ok, true);
+  const told = [['materials:saveDialog', { open: true }], '保存の窓', ['materials:saveDialog', { open: false }]];
+  assert.deepEqual(log, told);
+  log.length = 0;
+  target = null;
+  assert.deepEqual(await env.ipcFrom('materials:bdmExport', page, req), { ok: false, canceled: true });
+  assert.deepEqual(log, told, '取りやめでも、閉じたことを知らせる');
+  log.length = 0;
+  const gone = { sender: { send: () => { throw new Error('閉じた窓に送った'); }, isDestroyed: () => true } };
+  assert.deepEqual(await env.ipcFrom('materials:bdmExport', gone, req), { ok: false, canceled: true }, '閉じた窓には送らない');
+  assert.deepEqual(await env.ipc('materials:bdmExport', req), { ok: false, canceled: true }, '頼んだページがない（e が null）ときは知らせない');
 });
