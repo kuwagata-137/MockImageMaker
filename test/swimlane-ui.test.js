@@ -249,6 +249,19 @@ test('置き場からドラッグして図に落とす（4 ドットより動か
   assert.equal(sys().swimlane.steps.length, 9);
 });
 
+test('作業の文字を打ちかけのまま置き場の箱を図へドラッグしても、打った文字は消えない（デバッグとリリースの見直し⑤-2）', async (t) => {
+  const { $, pal, node, inner, step, sys, cellAt } = await boot(t);
+  press(node('w-3'));
+  const text = $('#sys-side [data-sw="text"]');
+  text.focus();
+  text.value = '申請の中身を確かめる';
+  fire(pal('doc'), 'mousedown', { clientX: 0, clientY: 0 });
+  fire(inner(), 'mousemove', cellAt(2, 9));
+  fire(inner(), 'mouseup', cellAt(2, 9));
+  assert.equal(sys().swimlane.steps.length, 9, '箱は置ける');
+  assert.equal(step('w-3').text, '申請の中身を確かめる', '打ちかけの文字を保存する');
+});
+
 test('箱の上に落とす・押すと、その箱の種類を置き換える（同じ種類なら、その枠に足して積む）', async (t) => {
   const { api, pal, node, inner, sys, step, cellAt, geom } = await boot(t);
   fire(pal('end'), 'mousedown', { clientX: 0, clientY: 0 });

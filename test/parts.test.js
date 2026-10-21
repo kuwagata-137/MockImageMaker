@@ -1006,6 +1006,25 @@ test('吹き出しをドラッグしている間も、その吹き出しの線�
   assert.equal($$(app, '#co-lines line').length, 1);
 });
 
+test('吹き出しの文字を打ちかけのまま、線の先の ○ をドラッグしても、打った文字は消えない（デバッグとリリースの見直し⑤-1）', async (t) => {
+  const { app, api, add, screen } = await bootEditor(t);
+  const p = add('text1');
+  api.selectPart(p.id);
+  click($(app, '.pal-btn[data-type="callout"]'));
+  const id = screen().callouts[0].id;
+  const text = $(app, '#side-settings [data-co="text"]');
+  text.focus();
+  text.value = '必ず入れる';
+  mouse(app, $(app, '#stage [data-co-handle]'), 'mousedown', { clientX: 100, clientY: 100 });
+  mouse(app, app.document, 'mousemove', { clientX: 300, clientY: 300 });
+  mouse(app, app.document, 'mouseup', { clientX: 300, clientY: 300 });
+  const c = screen().callouts[0];
+  assert.equal(c.text, '必ず入れる', '打ちかけの文字を保存する');
+  assert.equal(c.target, null, '何もない所で放したので、つながりを外す');
+  assert.equal(api.ui.calloutId, id);
+  assert.equal($(app, '#side-settings [data-co="text"]').value, '必ず入れる', '作り直した欄にも残る');
+});
+
 test('グラフの見本の値: 全角の数字・桁の区切り・単位を読み、数字のない行は描かない。0 でない値が 1 つの円グラフは円で描く', async (t) => {
   const { api, add, screen, partEl } = await bootEditor(t);
   const g = add('graph');

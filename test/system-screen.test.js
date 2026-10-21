@@ -310,6 +310,22 @@ test('カードのドラッグで並べ替える（放したカードの上半�
   assert.deepEqual(cards(), ['取引先マスタ', '出張申請', '社員マスタ'], '並べ替えは元に戻すの 1 回分');
 });
 
+test('真ん中の欄に打ちかけのまま左のカードを並べ替えても、打った文字は消えない（デバッグとリリースの見直し⑤-2）', async (t) => {
+  const { app, api, $, $$, cards } = await boot(t);
+  api.openSystem('y-trip', { panel: 'overview' });
+  const desc = $('#sys-view [data-sy="desc"]');
+  desc.focus();
+  desc.value = '出張の申請から精算までを扱う';
+  const card = (i) => $$('#sys-list .sys-dcard')[i];
+  mouse(card(1), 'mousedown', { clientX: 50, clientY: 300 });
+  mouse(card(0), 'mousemove', { clientX: 50, clientY: -10 });
+  mouse(app.document, 'mouseup', { clientX: 50, clientY: -10 });
+  assert.deepEqual(cards(), ['社員マスタ', '出張申請'], '並べ替えはできる');
+  const y = api.store.state.systems.find((x) => x.id === 'y-trip');
+  assert.equal(y.description, '出張の申請から精算までを扱う', '打ちかけの文字を保存する');
+  assert.equal($('#sys-view [data-sy="desc"]').value, '出張の申請から精算までを扱う', '描き直した欄にも残る');
+});
+
 test('「＋ 画面設計を入れる ▾」: 最初の画面と同じ 3 つのメニュー。入れたら左のカードを描き直す', async (t) => {
   const { app, api, $, $$, cards } = await boot(t);
   click($('#sys-list .sys-add'));

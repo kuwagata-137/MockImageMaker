@@ -6471,6 +6471,9 @@ function dragSysDesignSort(ev) {
 // done.to は「この位置のカードの前に入れる」位置。moveDesignInSystem には、動かした後の位置を渡す
 function endSysDesignSort(done) {
   if (!done.moved) return;
+  // 真ん中・右の欄の打ちかけの文字を先に保存する（並べ替えた後の描き直しで消えないように。押しただけのときは、開く click の処理の初めに保存する。
+  // ドラッグの始めに保存すると、左の欄が描き直されて、動かしている間のカードの印が外れる。デバッグとリリースの見直し⑤-2）
+  flushSideField();
   sysSortEndedAt = Date.now();
   const from = designsOfSystem(store.state, ui.systemId).findIndex((d) => d.id === done.id);
   const to = done.to == null || from < 0 ? null : done.to > from ? done.to - 1 : done.to;
@@ -7970,6 +7973,7 @@ function dragSwimPlace(ev) {
   if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
   if (!drag.moved) {
     drag.moved = true;
+    flushSideField(); // 右の欄の打ちかけの文字（作業の文字など）を先に保存する（置いた後の描き直しで消えないように。見直し⑤-2）
     if (ui.swimPal || ui.swimLink) setSwimPal(null); // ドラッグを始めたら、押してから置く・つなぐ途中をやめる（BDM と同じ）
     document.body.insertAdjacentHTML('beforeend', `<div class="swim-ghost">${esc(SWIM_KIND_NAMES[drag.swimKind])}</div>`);
   }
@@ -10356,6 +10360,8 @@ function redrawCalloutLines(overrides) {
 // 線の先の ○ をドラッグして、部品に重ねたところでつなぐ
 function startCalloutLink(ev, id) {
   ev.preventDefault();
+  flushSideField(); // 右の欄の打ちかけの文字（吹き出しの文字など）を先に保存する（放したときの描き直しで消えないように。デバッグとリリースの見直し⑤-1）
+  blurSidePanel();
   drag = { kind: 'co-link', id, target: undefined };
   document.body.classList.add('linking');
 }
