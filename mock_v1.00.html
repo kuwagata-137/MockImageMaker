@@ -10449,8 +10449,7 @@ function dragPart(ev) {
 // itemId を渡したとき（部品の箱の「データベースの項目」の組）は、その項目を指す部品を置く
 function startPlace(ev, type, itemId = null) {
   if (ev.button !== 0 || !paletteEntry(type)) return;
-  ev.preventDefault();
-  flushSideField();
+  ev.preventDefault(); // 押した時点では右の欄を離れない。打ちかけの文字は、ドラッグを始めたとき（dragPlace）か click の処理の初め（onAppClick）に保存する
   drag = { kind: 'place', type, itemId, sx: ev.clientX, sy: ev.clientY, moved: false, ghost: null };
 }
 
@@ -10460,6 +10459,7 @@ function dragPlace(ev) {
   const t = paletteEntry(drag.type);
   if (!drag.ghost) {
     drag.moved = true;
+    flushSideField();
     drag.ghost = document.createElement('div');
     drag.ghost.className = 'place-ghost';
     const item = drag.itemId ? findItem(currentDesign(), drag.itemId) : null;
@@ -12642,6 +12642,7 @@ function onAppClick(e) {
   const { action, id } = btn.dataset;
   if (ACTION_COMMANDS[action]) { runCommand(ACTION_COMMANDS[action]); return; }
   if (onAiClick(action, btn)) return;
+  if (ui.view === 'editor') flushSideField(); // 押した時点で右の欄を離れなかったボタン（mousedown を止めた）の、打ちかけの文字を先に保存する（見直し⑤-4）
   if (ui.view === 'editor' && onEditorClick(action, btn)) return;
   if (ui.view === 'system' && onSystemScreenClick(action, btn)) return;
   onHomeAction(action, id, btn).catch(reportPageError);
@@ -15467,6 +15468,9 @@ function bindGlobalEvents() {
     // 「…」・「＋ 画面を足す」・「…」のメニューの項目は、押した時点で右の欄を離れない（離れると打ちかけの文字の保存で画面の一覧が描き直され、
     // 押したボタンが click の前に消えて、1 回目の押しが効かないため）。打ちかけの文字は、押したときの処理の初めに保存する
     if (e.target.closest('.sl-more, .sl-add, .screen-menu button')) { e.preventDefault(); return; }
+    // 部品の箱と真ん中の欄（項目の一覧表・3 つの図）のボタンも同じ（変更のたびに作り直す所。組の見出し・一覧表の ✕・「自動で並べ直す」など。
+    // デバッグとリリースの見直し⑤-4）。打ちかけの文字は、click の処理の初め（onAppClick）に保存する
+    if (e.target.closest('#side-box button, #db-view button')) e.preventDefault();
     if (ui.screenMenu) closeScreenMenu();
     // 前の版を見ている間は、置く・並べ替えるのドラッグを始めない（押して切り替える・選ぶだけ）
     if (store.isViewing) {

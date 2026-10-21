@@ -1006,6 +1006,64 @@ test('吹き出しをドラッグしている間も、その吹き出しの線�
   assert.equal($$(app, '#co-lines line').length, 1);
 });
 
+// ブラウザ（Chromium）と同じように押す。mousedown を止めなければ、押したボタンへフォーカスが移り、打ちかけの欄は change を出す。
+// 押したボタンが click の前に作り直されて文書から外れたら、click は起きない（デバッグとリリースの見直し⑤-4）
+function pressLikeBrowser(app, el) {
+  const down = new app.window.MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 });
+  el.dispatchEvent(down);
+  if (!down.defaultPrevented) {
+    const a = app.document.activeElement;
+    if (a && a !== el && /^(INPUT|TEXTAREA)$/.test(a.tagName)) a.dispatchEvent(new app.window.Event('change', { bubbles: true }));
+    el.focus();
+  }
+  if (!el.isConnected) {
+    mouse(app, app.document.body, 'mouseup', {});
+    return;
+  }
+  mouse(app, el, 'mouseup', {});
+  click(el);
+}
+
+test('右の欄に打ちかけのまま、部品の箱のボタン・組の見出し・項目の一覧表の ✕・「自動で並べ直す」を押しても、1 回目で効き、打った文字も残る（デバッグとリリースの見直し⑤-4）', async (t) => {
+  const { app, api, add, screen } = await bootEditor(t);
+  add('status');
+  api.selectPart(null);
+  const typeIn = (sel, text) => {
+    const el = $(app, sel);
+    el.focus();
+    el.value = text;
+  };
+  const desc = () => api.currentDesign().description;
+  const status = () => api.currentDesign().items[0];
+  typeIn('#side-settings [data-field="design-desc"]', '出張の申請を管理する');
+  pressLikeBrowser(app, $(app, '.pal-btn[data-type="button"]'));
+  assert.equal(screen().parts.length, 2, '部品の箱のボタン: 1 回目で部品を置く');
+  assert.equal(desc(), '出張の申請を管理する');
+
+  api.selectPart(null);
+  typeIn('#side-settings [data-field="design-desc"]', '出張の申請と精算を管理する');
+  const head = $(app, '.pal-head[data-action="toggle-palette"]');
+  const group = head.dataset.id;
+  pressLikeBrowser(app, head);
+  assert.equal(api.ui.paletteClosed[group], true, '組の見出し: 1 回目で組を閉じる');
+  assert.equal(desc(), '出張の申請と精算を管理する');
+
+  click($(app, '[data-action="open-items"]'));
+  click($(app, '#db-view [data-action="select-item"]'));
+  typeIn('#side-settings [data-pf="label"]', '申請の状態');
+  pressLikeBrowser(app, $(app, '#db-view .del-x[data-action="delete-item"]'));
+  assert.ok($(app, '.modal'), '項目の一覧表の ✕: 1 回目で確かめの窓を出す');
+  assert.equal(status().name, '申請の状態');
+  click($(app, '.modal [data-dlg="cancel"]'));
+
+  click($(app, '[data-action="open-process"]'));
+  api.actions.setViewPos(api.ui.designId, 'process', 'x', { x: 80, y: 80 });
+  typeIn('#side-settings [data-ps]', '下書き');
+  pressLikeBrowser(app, $(app, '#db-view [data-action="view-reset"]'));
+  assert.deepEqual(plain(api.currentDesign().processPos), {}, '「自動で並べ直す」: 1 回目で覚えた位置を消す');
+  assert.equal(status().props.states[0].name, '下書き');
+});
+
 test('縮小して見ているとき、押しただけで手が少し（4 ドットより少なく）動いても、部品・吹き出し・選んだもの・つながりは変わらない（デバッグとリリースの見直し⑤-3）', async (t) => {
   const { app, api, add, screen, partEl } = await bootEditor(t);
   const a = add('text1');
