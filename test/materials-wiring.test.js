@@ -252,6 +252,21 @@ test('materials:bdmExport — 取りやめ・アプリのデータのフォル�
   assert.deepEqual([inside.ok, inside.error.code], [false, 'bad_name']);
   assert.match(inside.error.message, /アプリのデータのフォルダには保存できません/);
   assert.equal(fs.existsSync(target), false);
+  // 「..」で始まる名前・ジャンクションの先（8.3 形式の短い名前と同じく、本当の場所にそろえてから比べる）・大文字と小文字の違い（Windows）も、中として断る
+  const link = path.join(env.dir, 'data-link');
+  fs.symlinkSync(env.dataDir, link, 'junction');
+  t.after(() => { if (fs.existsSync(link)) fs.unlinkSync(link); });
+  const sneaky = [path.join(env.dataDir, '..memo.html'), path.join(link, 'files', SYS, 'm-overwrite.html')];
+  if (process.platform === 'win32') sneaky.push(path.join(env.dataDir.toUpperCase(), 'm-upper.html'));
+  for (const p of sneaky) {
+    target = p;
+    const r = await env.ipc('materials:bdmExport', req);
+    assert.deepEqual([r.ok, r.error && r.error.code], [false, 'bad_name'], p);
+    assert.equal(fs.existsSync(p), false);
+  }
+  target = path.join(env.dir, 'out', '..memo.html');
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  assert.equal((await env.ipc('materials:bdmExport', req)).ok, true, '外のフォルダなら「..」で始まる名前でも書ける');
   asked = 0;
   const noSteps = await env.ipc('materials:bdmExport', { ...req, plan: { ...EXPORT_PLAN, steps: [], edges: [] } });
   assert.deepEqual([noSteps.ok, noSteps.error.code], [false, 'bad_request']);

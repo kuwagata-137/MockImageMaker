@@ -12,10 +12,25 @@ const path = require('path');
 const fsp = require('fs').promises;
 const { MaterialError } = require('./material-error');
 
-// file が dir の中（dir そのものを含む）か
-function isInside(dir, file) {
-  const rel = path.relative(path.resolve(dir), path.resolve(file));
-  return !rel.startsWith('..') && !path.isAbsolute(rel);
+// p の本当の場所（ジャンクション・シンボリックリンク・8.3 形式の短い名前をほどく）。まだないファイルは、入るフォルダの本当の場所に名前をつなぐ。
+// フォルダもなければ path.resolve のまま
+async function realPathOf(p) {
+  const abs = path.resolve(p);
+  try {
+    return await fsp.realpath(abs);
+  } catch {
+    try {
+      return path.join(await fsp.realpath(path.dirname(abs)), path.basename(abs));
+    } catch {
+      return abs;
+    }
+  }
+}
+
+// file が dir の中（dir そのものを含む）か。どちらも本当の場所にそろえてから比べる。「..memo.html」のような「..」で始まる名前は中に数える
+async function isInside(dir, file) {
+  const rel = path.relative(await realPathOf(dir), await realPathOf(file));
+  return rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
 }
 
 // files: 置き場（material-files.js）・bdm: { planFromHtml, exportHtml }（createReadingParts()。null なら unavailable）・
@@ -49,7 +64,7 @@ function createBdmMaterials({ files, bdm, fileFailure, unavailableMessage, askSa
     const out = await build(req);
     const file = await askSavePath(e, { title: 'MPD に出力する', name: req.name, ext: 'html', label: 'HTML ファイル' });
     if (!file) return { ok: false, canceled: true };
-    if (isInside(dataDir, file)) throw new MaterialError('bad_name', 'アプリのデータのフォルダには保存できません。別のフォルダを選んでください。');
+    if (await isInside(dataDir, file)) throw new MaterialError('bad_name', 'アプリのデータのフォルダには保存できません。別のフォルダを選んでください。');
     try {
       await fsp.writeFile(file, out.html, 'utf8');
     } catch (err) {
