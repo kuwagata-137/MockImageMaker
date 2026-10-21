@@ -74,3 +74,59 @@ test('storage.js — ファイルへの保存', async (t) => {
     assert.match(r.error, /読めません/);
   });
 });
+
+// デバッグとリリースの見直し①-1: Windows では、ほかのアプリ（ウイルス対策・エクスプローラーのプレビューなど）が一瞬ファイルをつかんでいると、
+// rename・writeFile が EPERM・EBUSY・EACCES で失敗する。少し待ってやり直す。やり直しても本体へ置き換えられなかったときは、
+// 書き終わった .tmp が残るので、次の起動で本体がなければ .tmp を読む（.bak より新しい）
+test('storage.js — 一時的に書けないときのやり直しと、書きかけの .tmp からの読み込み（見直し①-1）', async (t) => {
+  const st = createMainStorage();
+  t.after(() => st.cleanup());
+  const fsp = fs.promises;
+  const file = path.join(st.dataDir, 'designs.json');
+  const state = (id) => JSON.stringify({ schemaVersion: 1, settings: { customTargets: [] }, designs: [{ id }] });
+  const busy = (code) => Object.assign(new Error(`${code}: resource busy or locked`), { code });
+  // fs.promises の関数を、条件に合う呼び出しで n 回だけ失敗させる
+  const failNext = (name, n, code, when = () => true) => {
+    const orig = fsp[name];
+    let left = n;
+    fsp[name] = async (...args) => {
+      if (left > 0 && when(...args)) { left -= 1; throw busy(code); }
+      return orig.apply(fsp, args);
+    };
+    return () => { fsp[name] = orig; };
+  };
+  assert.equal((await st.ipc('storage:save', state('a'))).ok, true);
+
+  await t.test('tmp を本体へ置き換える rename が 2 回 EPERM で失敗しても、やり直して保存できる', async () => {
+    const restore = failNext('rename', 2, 'EPERM', (from) => from.endsWith('.tmp'));
+    try {
+      assert.equal((await st.ipc('storage:save', state('b'))).ok, true);
+    } finally { restore(); }
+    assert.equal(fs.readFileSync(file, 'utf8'), state('b'));
+    assert.equal(fs.readFileSync(file + '.bak', 'utf8'), state('a'));
+    assert.equal(fs.existsSync(file + '.tmp'), false);
+  });
+
+  await t.test('tmp を書く writeFile が EBUSY で 1 回失敗しても、やり直して保存できる', async () => {
+    const restore = failNext('writeFile', 1, 'EBUSY');
+    try {
+      assert.equal((await st.ipc('storage:save', state('c'))).ok, true);
+    } finally { restore(); }
+    assert.equal(fs.readFileSync(file, 'utf8'), state('c'));
+  });
+
+  await t.test('本体を .bak へ回した後に置き換えられず本体がないときは、次の起動で書き終わった .tmp を読む', async () => {
+    fs.writeFileSync(file + '.tmp', state('d'));
+    fs.renameSync(file, file + '.bak');
+    const r = await st.ipc('storage:load');
+    assert.equal(r.ok, true);
+    assert.equal(r.json, state('d'), '.bak（c）より新しい .tmp（d）を読む');
+  });
+
+  await t.test('.tmp が書きかけ（JSON が壊れている）なら、今までどおり .bak を読む', async () => {
+    fs.writeFileSync(file + '.tmp', '{"schemaVersion":1,"desi');
+    const r = await st.ipc('storage:load');
+    assert.equal(r.json, state('c'));
+    assert.match(r.notice, /見つからない/);
+  });
+});
