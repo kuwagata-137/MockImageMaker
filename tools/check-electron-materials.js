@@ -19,7 +19,7 @@ const { removeTree, ensureSamples, SAMPLE_FILES, SAMPLES_DIR } = require('./mate
 const { report, readAll, checkReads, checkParallelReads, SIX } = require('./check-electron-materials-read');
 const { open, closeApp, killLeftovers, waitFor, listFiles, saved, materialsOf } = require('./check-electron-materials-app');
 
-const KIND_NAMES = ['Excel', 'Word', 'PDF', 'BDM の図', '文字', '画像'];
+const KIND_NAMES = ['Excel', 'Word', 'PDF', 'MPD', '文字', '画像'];
 const DELETED = SAMPLE_FILES.image; // 1 回目で消す行
 const DROPPED = SAMPLE_FILES.legacy; // 2 回目で落とすファイル（古い形の Excel）
 

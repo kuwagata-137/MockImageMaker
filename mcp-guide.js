@@ -40,8 +40,8 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
   その作業で使う画面設計・画面・ステータスを ref で指せる。
 - 共通の画面設計: 2 つ以上のシステムに入っている 1 つの画面設計（例: 社員マスタ）。データは 1 件で、どのシステムから直しても同じものが変わる（add_to_system の mode "same"）。
   別のものとして使うときは mode "copy" で複製して入れる。
-- 資料・資料の置き場: 資料は、人がアプリでシステムに入れた業務の資料のファイル（様式・規程・業務の流れの図など。文字・画像・PDF・Word・Excel・BDM の図）。資料の置き場は、システムごとの資料の入れ物。
-  list_materials で一覧し、read_material で中身を読む（AI は資料を入れる・消すことはできない）。BDM の図は、ビジネスダイアグラムメーカーで保存した業務の流れの図の HTML。
+- 資料・資料の置き場: 資料は、人がアプリでシステムに入れた業務の資料のファイル（様式・規程・業務の流れの図など。文字・画像・PDF・Word・Excel・MPD）。資料の置き場は、システムごとの資料の入れ物。
+  list_materials で一覧し、read_material で中身を読む（AI は資料を入れる・消すことはできない）。MPD は、MultipurposeDiagramMaker（旧名 ビジネスダイアグラムメーカー・BDM）で保存した業務の流れの図の HTML（資料の種類 kind は bdm。道具の名前の bdm も MPD のこと）。
 - 設計ノート: システムごとの、資料からシステムを作るときの記録。5 つの段階（read・flow・items・screens・docs）の進み具合・読み取ったこと・決めたことと理由・
   まだ決まっていないこと・メモを持つ。get_notes で読み、update_notes・set_stage で書く（進め方は read_guide の "stages"）。
 
@@ -66,7 +66,7 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
    create_design に system を書くと、システムの更新の印も変わる。返事の system.updatedAt を、次の set_swimlane などの expect に使う
    （add_to_system の返事の updatedAt もシステムの更新の印。入れた画面設計の更新の印は design.updatedAt）。
 6. 置き場の資料から下書きする: 2 と同じく read_guide の "stages" の段階で進める（段階ごとに止まって人に確かめる）。道具は
-   list_materials → read_material（nextCursor で続き）→ BDM の HTML があれば swimlane_from_bdm（② 業務の流れで、人に確かめてから使う。今の図があれば replace: true）の順に使う。
+   list_materials → read_material（nextCursor で続き）→ MPD があれば swimlane_from_bdm（② 業務の流れで、人に確かめてから使う。今の図があれば replace: true）の順に使う。
    ③ で画面設計を作ってシステムに入れ、④ で set_swimlane の作業の ref に画面を指し、get_view_image（view "swimlane"）で見て確かめる。
 
 ## 書くときの決まり

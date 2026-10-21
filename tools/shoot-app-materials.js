@@ -27,7 +27,7 @@ async function shootTable(ctx) {
   const page = await openPage(ctx);
   const rows = await page.$$eval('#sys-view .mat-tbl tbody tr', (trs) => trs.map((tr) => ({ old: tr.classList.contains('old'), swim: !!tr.querySelector('[data-action="sys-mat-swim"]') })));
   need(rows.length === 8 && rows.filter((r) => r.old).length === 1 && rows.filter((r) => r.swim).length === 1, `資料の表の行が見本と違う: ${JSON.stringify(rows)}`);
-  await shot(page, '138_資料_表（資料 8 つ・古い形の札・BDM の図だけ「スイムレーン図にする」）');
+  await shot(page, '138_資料_表（資料 8 つ・古い形の札・MPD だけ「スイムレーン図にする」「MPD に出力…」）');
   await dragFiles(page, 'dragover', ['申請書の記入例（2）.png']);
   need(await page.$eval('#sys-view .mat-drop', (e) => e.classList.contains('drop-on')), 'ファイルを乗せても落とす枠が青くならない');
   await shot(page, '139_資料_ファイルを落とす枠の上に乗せたとき（枠が青い）');

@@ -14,7 +14,7 @@
 
 const { MaterialError } = require('./material-error');
 
-const NOT_FOUND = 'ビジネスダイアグラムメーカーで保存した図の中身が見つかりません。';
+const NOT_FOUND = 'MultipurposeDiagramMaker で保存した図の中身が見つかりません。';
 const BROKEN = '図の中身を読めません（保存した HTML が壊れているようです）。';
 const NO_NODES = '図の中身に箱の一覧（nodes）がありません。';
 

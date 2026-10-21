@@ -2809,7 +2809,7 @@ const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end']; // 始�
 const SWIM_KIND_NAMES = { start: '始まり', task: '作業', input: 'システムへの入力', decision: '判断', doc: '書類', end: '終わり' };
 // 資料（第 9 段階の後半）の種類。資料のファイルの見分け（material-kind.js の MATERIAL_KINDS）と同じ並び
 const MATERIAL_KINDS = ['text', 'image', 'pdf', 'word', 'excel', 'bdm', 'other'];
-const MATERIAL_KIND_NAMES = { text: '文字', image: '画像', pdf: 'PDF', word: 'Word', excel: 'Excel', bdm: 'BDM の図', other: 'そのほか' };
+const MATERIAL_KIND_NAMES = { text: '文字', image: '画像', pdf: 'PDF', word: 'Word', excel: 'Excel', bdm: 'MPD', other: 'そのほか' }; // bdm は MultipurposeDiagramMaker（旧名 ビジネスダイアグラムメーカー・BDM）で保存した図の HTML。画面の文では MPD（2026-10-21 q84）
 
 function createSystemData({ name, description = '' } = {}, now = nowIso()) {
   return {
@@ -14419,7 +14419,7 @@ function aiReadMaterial(args) {
   const m = aiResolveMaterial(y, args.material);
   aiMaterialsApi();
   if (isLegacyMaterial(m)) throw new AiRefusal('old_format', '古い形（.doc・.xls）のファイルは読めません。新しい形（.docx・.xlsx）で保存し直して入れてください。');
-  if (m.kind === 'other') throw new AiRefusal('unsupported', `「${m.name}」は中身を読めない種類のファイルです（読めるのは 文字・画像・PDF・Word・Excel・BDM の図）。`);
+  if (m.kind === 'other') throw new AiRefusal('unsupported', `「${m.name}」は中身を読めない種類のファイルです（読めるのは 文字・画像・PDF・Word・Excel・MPD）。`);
   aiCheckMaterialFile(m);
   const cursor = aiMaterialCursor(args.cursor);
   return new AiRendered(
@@ -14437,7 +14437,7 @@ async function aiSwimlaneFromBdm(args, ctx) {
   const y = aiResolveSystem(store.state, args.system, { write: true });
   aiCheckExpect(y, args.expect);
   const m = aiResolveMaterial(y, args.material);
-  if (m.kind !== 'bdm') throw aiBad(`「${m.name}」は BDM の HTML の資料ではありません（種類: ${MATERIAL_KIND_NAMES[m.kind]}）。スイムレーン図を作れるのは、ビジネスダイアグラムメーカーで保存した HTML の資料だけです。`);
+  if (m.kind !== 'bdm') throw aiBad(`「${m.name}」は MPD の資料ではありません（種類: ${MATERIAL_KIND_NAMES[m.kind]}）。スイムレーン図を作れるのは、MPD（MultipurposeDiagramMaker で保存した HTML）の資料だけです。`);
   const api = aiMaterialsApi();
   aiCheckMaterialFile(m);
   aiCheckReplace(y, args.replace);

@@ -37,7 +37,7 @@ function summaryLines(plan) {
   const byKey = new Map(numbered.map((n) => [n.step.key, n]));
   const ref = (key) => `#${byKey.get(key).number}${quoted(byKey.get(key).step.text)}`;
   const lines = [
-    `ビジネスダイアグラムメーカーの図（${diagramInfo(plan.diagramType).name}）`,
+    `MPD（MultipurposeDiagramMaker で保存した図。${diagramInfo(plan.diagramType).name}）`,
     `図の名前: ${plan.diagramName || '（なし）'}`,
     `向き: ${ORIENTATION_TEXT[plan.orientation]}`,
     `レーン（役割）: ${plan.roles.join('・') || '（なし）'}`,

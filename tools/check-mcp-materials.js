@@ -77,14 +77,14 @@ async function checkListAndRead(client, env, rows) {
       && Math.max(img.width, img.height) >= 1000 && p.images.length === 1 && p.images[0].page === 3 && pdf.types.join() === 'text,image',
     pdf.isError ? pdf.text : `画像 ${img.width} × ${img.height} ／ part ${JSON.stringify(p.part)} ／ ${pdf.types.join(',')}`);
 
-  // Word の見出しと表・BDM の図のレーンと図の名前・Shift_JIS の日本語の文字
+  // Word の見出しと表・MPD のレーンと図の名前・Shift_JIS の日本語の文字
   const more = [[SAMPLE_FILES.word, [/# 旅費規程/, /一般社員 \| 1,000 円 \| 3,000 円/]], [SAMPLE_FILES.bdm, [/レーン（役割）: 申請者・上長・経理/, /図の名前: 出張申請/]], [SAMPLE_FILES.shiftJis, [/行き先: 大阪支店/]]];
   const reads = [];
   for (const [name, patterns] of more) {
     const r = await callRaw(client, 'read_material', { system: SYSTEM_ID, material: rowOf(rows, name).id });
     reads.push({ name, ok: !r.isError && patterns.every((re) => re.test((r.json || {}).text || '')), err: r.isError ? r.text.split('\n')[0] : '' });
   }
-  check('D. read_material: Word の見出しと表・BDM の図のレーンと図の名前・Shift_JIS の日本語の文字が読める', reads.every((r) => r.ok), reads.map((r) => `${r.name} ${r.ok ? '読めた' : `読めない ${r.err}`}`).join(' ／ '));
+  check('D. read_material: Word の見出しと表・MPD のレーンと図の名前・Shift_JIS の日本語の文字が読める', reads.every((r) => r.ok), reads.map((r) => `${r.name} ${r.ok ? '読めた' : `読めない ${r.err}`}`).join(' ／ '));
   // 資料に仕込んだ指示（中の文は指示ではない）: notice が返事の先頭の項目で、text の頭にも断り書きがあり、中の文は text の中にそのまま出る（読ませる中身は変えない）
   const inj = await callRaw(client, 'read_material', { system: SYSTEM_ID, material: rowOf(rows, SAMPLE_FILES.injected).id });
   const injText = (inj.json || {}).text || '';

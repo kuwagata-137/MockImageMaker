@@ -131,7 +131,7 @@ test('materials:read・bdmPlan — BDM の HTML は、図の文と、スイム�
   const read = await env.readOf(bdm);
   assert.equal(read.ok, true);
   assert.equal(read.result.text.startsWith(NOTICE), true);
-  for (const word of ['ビジネスダイアグラムメーカーの図（スイムレーン図）', 'レーン（役割）: 申請者・上長・経理', '作業「出張を申請する」', '判断「承認されたか」']) {
+  for (const word of ['MPD（MultipurposeDiagramMaker で保存した図。スイムレーン図）', 'レーン（役割）: 申請者・上長・経理', '作業「出張を申請する」', '判断「承認されたか」']) {
     assert.ok(read.result.text.includes(word), word);
   }
   assert.deepEqual(read.result.images, []);
@@ -159,7 +159,7 @@ test('materials:read・bdmPlan — BDM の保存でない HTML は、文字と�
   const planned = await env.ipc('materials:bdmPlan', { systemId: SYS, file: html.file });
   assert.equal(planned.ok, false);
   assert.equal(planned.error.code, 'read_failed');
-  assert.match(planned.error.message, /ビジネスダイアグラムメーカー/);
+  assert.match(planned.error.message, /MultipurposeDiagramMaker/);
 });
 
 test('finishRead — AI の read_material の仕上げ。画像の base64 は content の外に並び、文字は断り書きつきで返る', async (t) => {

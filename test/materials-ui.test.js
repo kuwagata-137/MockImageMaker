@@ -178,7 +178,7 @@ test('真ん中: 見出し・説明・「＋ ファイルを入れる…」・�
   assert.deepEqual(rows(), [
     { name: '出張申請書.xlsx', tag: '', kind: 'Excel', size: '48 KB', date: '2026-10-19', memo: '今の紙の様式', ops: ['読む', '消す'] },
     { name: '旅費規程.pdf', tag: '', kind: 'PDF', size: '1.2 MB', date: '2026-10-19', memo: '日当の決まりは 3 ページ', ops: ['読む', '消す'] },
-    { name: '出張申請の流れ.html', tag: '', kind: 'BDM の図', size: '2.1 MB', date: '2026-10-19', memo: '総務が BDM で描いた今の流れ', ops: ['読む', 'スイムレーン図にする', '消す'] },
+    { name: '出張申請の流れ.html', tag: '', kind: 'MPD', size: '2.1 MB', date: '2026-10-19', memo: '総務が BDM で描いた今の流れ', ops: ['読む', 'スイムレーン図にする', '消す'] },
     { name: '申請書の記入例.png', tag: '', kind: '画像', size: '320 KB', date: '2026-10-19', memo: '', ops: ['読む', '消す'] },
     { name: '旧様式.xls', tag: '古い形のため読めません', kind: 'Excel（古い形）', size: '96 KB', date: '2026-10-18', memo: '', ops: ['読む（×）', '消す'] },
   ]);
