@@ -241,3 +241,77 @@ test('入口 B: 打ちかけの役割の名前を、メニューを開く前に�
   await ticks();
   assert.deepEqual(calls[0].plan.lanes, ['申請する人', '上長']);
 });
+
+// ── 見直し（T7）で足した場面 ──
+test('役割のある作業がない図（役割の見つからない作業だけ）は、押せない理由と断りの文に「役割のある作業」と書く。選ぶ窓の作業と矢印の数は、出力に入るものだけ数える', async (t) => {
+  const state = sampleState();
+  state.systems[1].roles = [];
+  state.systems[1].swimlane = { steps: [step('w-8', 'l-gone', 0, 'task', '領収書を出す')], edges: [] };
+  const exp = await boot(t, { state, sysId: 'y-exp' });
+  click(exp.btn('sys-mat-export', 'm-flow'));
+  await ticks();
+  assert.equal(exp.calls.length, 0);
+  assert.equal(exp.toast(), 'スイムレーン図に役割のある作業がないので、MPD に出力しません。');
+  exp.openExportMenu();
+  assert.deepEqual(exp.menu()[1], ['MPD に出力…', 'スイムレーン図に役割のある作業がありません', true]);
+  const trip = sampleState();
+  trip.systems[0].swimlane.steps[2].roleId = 'l-gone';
+  const b = await boot(t, { state: trip, panel: 'swimlane' });
+  b.openExportMenu();
+  click(b.$('.sys-pop [data-action="sys-export-mpd"]'));
+  await tick();
+  assert.match(b.$('.modal .xp-note').textContent, /^スイムレーン図（役割 2・作業 2・矢印 1）を/);
+});
+
+test('入口 B: 選んだ MPD の処理を待っている間（入口 A で出力している間など）は、窓で選んだ後に頼みを重ねず、終わってからもう一度押すよう知らせる', async (t) => {
+  const { $, btn, calls, materials, toast, openExportMenu } = await boot(t);
+  let release = null;
+  materials.reply(() => new Promise((r) => { release = () => r({ ok: true, path: 'C:\\出力\\a.html', warnings: [] }); }));
+  click(btn('sys-mat-export', 'm-bdm'));
+  await tick();
+  openExportMenu();
+  click($('.sys-pop [data-action="sys-export-mpd"]'));
+  await tick();
+  click($('[data-dlg="ok"]'));
+  await ticks();
+  assert.equal(calls.length, 1, '頼みは重ねない');
+  assert.equal(toast(), '「出張申請の流れ.html」の処理が終わってから、もう一度押してください。');
+  release();
+  await ticks();
+  assert.equal(toast(), 'MPD に出力しました（C:\\出力\\a.html）。');
+});
+
+test('入口 B: 「出力」の aria-expanded は開け閉めで変わる。開くと最初の項目にフォーカスし、Esc で閉じるとメニューバーの「出力」へ戻す', async (t) => {
+  const { app, $, openExportMenu } = await boot(t, { panel: 'swimlane' });
+  const expBtn = () => $('#toolbar [data-action="export"]');
+  assert.equal(expBtn().getAttribute('aria-expanded'), 'false');
+  openExportMenu();
+  assert.equal(expBtn().getAttribute('aria-expanded'), 'true');
+  assert.equal(app.document.activeElement, $('.sys-pop [data-action="sys-export-doc"]'));
+  app.document.dispatchEvent(new app.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal($('.sys-pop'), null);
+  assert.equal(expBtn().getAttribute('aria-expanded'), 'false');
+  assert.equal(app.document.activeElement, expBtn());
+});
+
+test('入口 B: メニューを開いた後に押せない理由ができたら、選ぶ窓を開かずに知らせる。選ぶ窓を開いている間に、選んだ MPD の行が消えた・システムがごみ箱に入ったときは頼まない', async (t) => {
+  const a = await boot(t, { panel: 'swimlane' });
+  a.openExportMenu();
+  const bdmExport = a.materials.api.bdmExport;
+  delete a.materials.api.bdmExport;
+  click(a.$('.sys-pop [data-action="sys-export-mpd"]'));
+  await tick();
+  assert.equal(a.$('.modal'), null);
+  assert.equal(a.toast(), 'MPD に出力できません（デスクトップ版のアプリで使えます）。');
+  a.materials.api.bdmExport = bdmExport;
+  for (const gone of [(api) => api.actions.deleteMaterial('y-trip', 'm-bdm'), (api) => api.actions.trashSystem('y-trip')]) {
+    const b = await boot(t, { panel: 'swimlane' });
+    b.openExportMenu();
+    click(b.$('.sys-pop [data-action="sys-export-mpd"]'));
+    await tick();
+    gone(b.api);
+    click(b.$('[data-dlg="ok"]'));
+    await ticks();
+    assert.equal(b.calls.length, 0);
+  }
+});

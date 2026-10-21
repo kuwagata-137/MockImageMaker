@@ -76,7 +76,7 @@ test('export_bdm: MPD でない資料・作業がないスイムレーン図は 
   none.app.close();
 });
 
-test('export_bdm: 役割の見つからない作業とその矢印は外し、返事の droppedSteps に数を書く', async () => {
+test('export_bdm: 役割の見つからない作業とその矢印は外し、返事の droppedSteps に数を書く。役割のある作業がなければ、そう書いて断る', async () => {
   const state = exportState();
   state.systems[0].swimlane.steps[2].roleId = 'l-gone';
   const { app, call } = await boot({ state });
@@ -85,6 +85,11 @@ test('export_bdm: 役割の見つからない作業とその矢印は外し、�
   assert.deepEqual(r.render.plan.steps.map((s) => s.key), ['w1', 'w2']);
   assert.deepEqual(r.render.plan.edges, [{ from: 'w1', to: 'w2', label: '' }]);
   app.close();
+  const orphan = exportState();
+  orphan.systems[0].swimlane.steps.forEach((w) => { w.roleId = 'l-gone'; });
+  const b = await boot({ state: orphan });
+  assert.equal(ng(await b.call('export_bdm', { system: 'y1', material: 'm2' }), 'bad_request').message, 'スイムレーン図に役割のある作業がないので、MPD に出力しません。', '作業はあるが、どれも役割が見つからない');
+  b.app.close();
 });
 
 test('export_bdm: 入口の道具は system と material を受け取り、時間のかかる道具。手引きの守ることと段階 ⑤ に export_bdm を書く', () => {

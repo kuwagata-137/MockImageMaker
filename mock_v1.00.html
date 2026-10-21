@@ -6968,6 +6968,9 @@ function swimFromMaterialText(m, r, warnings) {
 // 入口は 2 つ: 資料の MPD の行の「MPD に出力…」（押した行の MPD が元）と、メニューバーの「出力」の小さなメニューの「MPD に出力…」（元にする MPD を選ぶ窓）。
 // 資料の窓口（bdmExport）が、元の MPD の中の図だけを今のスイムレーン図に入れ替えた HTML を作り、保存の窓で選んだ所に書く（元の資料のファイルは書き換えない）
 const MPD_NO_STEPS = 'スイムレーン図に作業がないので、MPD に出力しません。';
+const MPD_NO_ROLE_STEPS = 'スイムレーン図に役割のある作業がないので、MPD に出力しません。';
+// 出力する作業がないときの断りの文。作業はあるが、どれも役割が見つからないとき（役割の見つからない作業は出力に入れない）は、そう書く
+const mpdNoStepsText = (y) => (y.swimlane.steps.length ? MPD_NO_ROLE_STEPS : MPD_NO_STEPS);
 const mpdExportApi = () => {
   const api = window.materialsAPI;
   return api && typeof api.bdmExport === 'function' ? api : null;
@@ -6994,6 +6997,7 @@ function mpdExportWhy(y) {
   if (!mpdExportApi()) return 'デスクトップ版のアプリで使えます';
   if (!y.materials.some((m) => m.kind === 'bdm')) return '資料に MPD がありません（左の「資料」から入れます）';
   if (!y.swimlane.steps.length) return 'スイムレーン図に作業がありません';
+  if (!bdmExportPlan(y, null).plan.steps.length) return 'スイムレーン図に役割のある作業がありません';
   return '';
 }
 // メニューバーの「出力」の小さなメニュー（画像 q82_2）。窓に対して置く（renderSysMenus）
@@ -7005,7 +7009,7 @@ function sysExportMenuHtml(y) {
   </div>`;
 }
 // 「MPD に出力…」。打ちかけの文字を先に保存してから（出力する図に入れるため）、システムと資料の行を引き直す（ごみ箱に入った・行が消えたときは何もしない）。
-// 作業がない図は出力しない。待つ間は、同じ資料の 2 回目の頼みを重ねない（materialsWaiting）。保存の窓を取りやめたときは知らせない（askMaterialsApi）。
+// 出力する作業（役割のある作業）がない図は出力しない。待つ間は、同じ資料の 2 回目の頼みを重ねない（materialsWaiting）。保存の窓を取りやめたときは知らせない（askMaterialsApi）。
 // 戻り値は資料の窓口の返事（出力しなかったときは null）
 async function exportToMpd(sysId, matId) {
   const api = mpdExportApi();
@@ -7014,7 +7018,7 @@ async function exportToMpd(sysId, matId) {
   const m = y && !y.trashedAt && y.materials.find((x) => x.id === matId);
   if (!api || !m || m.kind !== 'bdm' || materialsWaiting.has(m.id)) return null;
   const { plan, dropped } = bdmExportPlan(y, m.id);
-  if (!plan.steps.length) { toast(MPD_NO_STEPS); return null; }
+  if (!plan.steps.length) { toast(mpdNoStepsText(y)); return null; }
   const req = { systemId: y.id, file: m.file, plan, name: `${safeFileName(y.name, 'システム')}_スイムレーン.html` };
   const res = await whileMaterialWaits(m.id, () => askMaterialsApi(() => api.bdmExport(req), (r) => typeof r.path === 'string', `「${m.name}」を元に、MPD に出力できませんでした。`));
   if (res) toast(mpdExportText(res, dropped));
@@ -7028,7 +7032,8 @@ function mpdExportText(res, dropped) {
     + (notes.length ? `注意: ${notes[0]}${notes.length > 1 ? `（ほか ${notes.length - 1} 件）` : ''}` : '');
 }
 // 小さなメニューの「MPD に出力…」の、元にする MPD を選ぶ窓（画像 q82_3）。肯定の「出力…」を左、「キャンセル」を右。選んだら exportToMpd（保存の窓）へ進む。
-// 押せない理由があるとき（メニューを開いた後に資料の行や作業が消えたなど）は、窓を開かずに知らせる
+// 押せない理由があるとき（メニューを開いた後に資料の行や作業が消えたなど）は、窓を開かずに知らせる。選んだ MPD の「読む」「スイムレーン図にする」「MPD に出力…」を
+// 待っている間は、黙って終わらずに知らせる（入口 A の 2 回目の押しは黙るが、こちらは窓で選んだ後なので、何も起きないと分からない）
 async function chooseMpdAndExport(sysId) {
   flushSideField();
   const y = findSystem(store.state, sysId);
@@ -7045,16 +7050,20 @@ async function chooseMpdAndExport(sysId) {
       return c ? c.value : { error: '元にする MPD を選んでください。' };
     },
   });
-  return matId ? exportToMpd(sysId, matId) : null;
+  if (!matId) return null;
+  const now = findSystem(store.state, sysId);
+  const m = now && now.materials.find((x) => x.id === matId);
+  if (m && materialsWaiting.has(m.id)) { toast(`「${m.name}」の処理が終わってから、もう一度押してください。`); return null; }
+  return exportToMpd(sysId, matId);
 }
-// 選ぶ窓の中身: 説明と、資料の MPD の行（資料の表の順。名前・メモ・入れた日。最初は 1 つ目を選ぶ）
+// 選ぶ窓の中身: 説明と、資料の MPD の行（資料の表の順。名前・メモ・入れた日。最初は 1 つ目を選ぶ）。作業と矢印の数は出力に入るもの（役割のある作業）で数える
 function mpdPickHtml(y) {
-  const sw = y.swimlane;
+  const { plan } = bdmExportPlan(y, null);
   const rows = y.materials.filter((m) => m.kind === 'bdm').map((m, i) => {
     const sub = [str(m.memo).trim(), `${fmtDateTime(m.addedAt).slice(0, 10)} に入れた`].filter(Boolean).join('・');
     return `<label><input type="radio" name="mpd-pick" value="${esc(m.id)}"${i ? '' : ' checked'}><b>${esc(m.name)}</b><small>${esc(sub)}</small></label>`;
   });
-  return `<p class="xp-note">スイムレーン図（役割 ${y.roles.length}・作業 ${sw.steps.length}・矢印 ${sw.edges.length}）を、MultipurposeDiagramMaker で開いて直せる HTML ファイルに出力します。`
+  return `<p class="xp-note">スイムレーン図（役割 ${y.roles.length}・作業 ${plan.steps.length}・矢印 ${plan.edges.length}）を、MultipurposeDiagramMaker で開いて直せる HTML ファイルに出力します。`
     + `元にする MPD を、資料から選んでください。選んだ MPD の中の図だけを入れ替えて、別の名前で保存します（元のファイルは書き換えません）。</p><div class="mpd-pick">${rows.join('')}</div>`;
 }
 
@@ -14864,7 +14873,7 @@ async function aiExportSystemDoc(args) {
 }
 // スイムレーン図を MPD に出力する（export_bdm。第 11 段階。設計書の 11-3）。資料の MPD を元に、中の図だけを今のスイムレーン図に入れ替えた HTML を、
 // main の資料の窓口が作り、AI の出力のフォルダに書く（render kind 'bdm'。automation-render.js の finishBdm）。元の資料のファイルは書き換えない。
-// 渡す形は人の道と同じ（bdmExportPlan）。作業がない図は断る。ごみ箱のシステムも出力できる（説明書と同じ）。
+// 渡す形は人の道と同じ（bdmExportPlan）。出力する作業（役割のある作業）がない図は断る。ごみ箱のシステムも出力できる（説明書と同じ）。
 // 返事の warnings（出力した HTML を読み直したときの食い違い）は main が足す
 function aiExportBdm(args) {
   aiFlushBeforeRead();
@@ -14874,7 +14883,7 @@ function aiExportBdm(args) {
   aiMaterialsApi();
   aiCheckMaterialFile(m);
   const { plan, dropped } = bdmExportPlan(y, m.id);
-  if (!plan.steps.length) throw aiBad(MPD_NO_STEPS);
+  if (!plan.steps.length) throw aiBad(mpdNoStepsText(y));
   return new AiRendered(
     { system: aiSystemBrief(y), material: { id: m.id, name: m.name }, lanes: plan.lanes.length, steps: plan.steps.length, edges: plan.edges.length, ...(dropped ? { droppedSteps: dropped } : {}) },
     { kind: 'bdm', systemId: y.id, file: m.file, plan, name: `${safeFileName(y.name, 'システム')}_スイムレーン.html` },
