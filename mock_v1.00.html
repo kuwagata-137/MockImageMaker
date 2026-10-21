@@ -12730,12 +12730,15 @@ function onKeyDown(e) {
     return;
   }
   const inField = e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
-  if (ui.view === 'editor' && !inField && !e.altKey && !e.isComposing) {
+  // 開いたメニュー（画面の一覧の「…」・改訂の ▼・メニューバーのたたんだ組など）の中で押した矢印・Delete では、選んだ部品・作業を動かしたり消したりしない
+  // （メニューが閉じて部品が動く・消えていた。デバッグとリリースの見直し⑤-6）
+  const inMenu = e.target && e.target.closest && e.target.closest('[role="menu"], .fold-pop');
+  if (ui.view === 'editor' && !inField && !inMenu && !e.altKey && !e.isComposing) {
     const partCmd = editorKeyCommand(e);
     if (partCmd) { e.preventDefault(); runCommand(partCmd); return; }
   }
   // システムの画面のスイムレーン図（T6b）: Delete・Backspace で選んだものを消す・Esc でつなぐ途中と置き場の種類と選んだものをやめる・c と v でモード
-  if (ui.view === 'system' && !inField && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
+  if (ui.view === 'system' && !inField && !inMenu && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
     const swimCmd = swimKeyCommand(e);
     if (swimCmd) { e.preventDefault(); runCommand(swimCmd); return; }
   }

@@ -1064,6 +1064,31 @@ test('右の欄に打ちかけのまま、部品の箱のボタン・組の見�
   assert.equal(status().props.states[0].name, '下書き');
 });
 
+test('部品を選んだまま画面の一覧の「…」・改訂の ▼・「揃える」のメニューを開いて矢印・Delete を押しても、部品は動かず消えない（デバッグとリリースの見直し⑤-6）', async (t) => {
+  const { app, api, add, screen, partEl } = await bootEditor(t);
+  const a = add('button');
+  const b = add('text1');
+  api.selectPart(a.id);
+  mouse(app, partEl(b.id), 'mousedown', { ctrlKey: true }); // 2 つ選ぶ（「揃える」のボタンを押せるように）
+  mouse(app, app.document, 'mouseup', {});
+  assert.equal(api.ui.sel.length, 2);
+  const before = JSON.stringify(screen());
+  const keysInMenu = (label) => {
+    const focused = app.document.activeElement;
+    assert.ok(focused && focused.closest('.screen-menu, .rv-menu, .fold-pop'), `${label}: メニューの項目にフォーカスがある`);
+    ['ArrowDown', 'ArrowLeft', 'Delete'].forEach((k) => key(app, app.document.activeElement, { key: k }));
+    assert.equal(JSON.stringify(screen()), before, `${label}: 部品は動かず消えない`);
+  };
+  click($(app, `.sl-more[data-id="${screen().id}"]`));
+  keysInMenu('画面の一覧の「…」');
+  key(app, app.document.activeElement, { key: 'Escape' });
+  click($(app, '#tb-rev-arrow'));
+  keysInMenu('改訂の ▼');
+  key(app, app.document.activeElement, { key: 'Escape' });
+  click($(app, '#toolbar .fold-btn[data-fold="align"]'));
+  keysInMenu('「揃える」');
+});
+
 test('縮小して見ているとき、押しただけで手が少し（4 ドットより少なく）動いても、部品・吹き出し・選んだもの・つながりは変わらない（デバッグとリリースの見直し⑤-3）', async (t) => {
   const { app, api, add, screen, partEl } = await bootEditor(t);
   const a = add('text1');
