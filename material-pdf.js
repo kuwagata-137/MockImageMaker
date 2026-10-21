@@ -2,7 +2,8 @@
 // 役割:
 //  - ページごとに、文字のあるページは「── 3 ページ ──」の見出しと文字の塊 { text }、
 //    文字のないページ（白紙・スキャンなどの画像だけのページ）は画像の塊 { image: { page, caption, render } } にする
-//  - 画像の塊は、返すときに render() で初めて @napi-rs/canvas に描く（長い辺 1566 に合う倍率）。ここでは描かない
+//  - 画像の塊は、返すときに render() で初めて @napi-rs/canvas に描く（長い辺 1566 に合う倍率）。ここでは描かない。
+//    画像の部品も、そのときに初めて読む（material-image.js の loadCanvas。文字のページだけの PDF は、画像の部品が動かなくても読める）
 //  - pdfjs-dist（legacy の ESM）を await import で読む。字体・cMap・wasm はパッケージの中のフォルダを指し、ネットに行かない。
 //    cmaps・standard_fonts のフォルダがあるかを、その場所で最初に読むときに 1 回だけ確かめ、なければ MaterialError('unavailable')
 //    （ないまま読むと、pdfjs は警告も出さずに日本語のページから文字を取れず、全ページが画像の塊になるため）
@@ -12,9 +13,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { createCanvas } = require('@napi-rs/canvas');
 const { MaterialError } = require('./material-error');
-const { IMAGE_MAX_SIDE } = require('./material-image');
+const { IMAGE_MAX_SIDE, loadCanvas } = require('./material-image');
 const { normalizeRadicals } = require('./material-text');
 
 // pdfjs の警告（字体・wasm の場所など）を出さない。値は pdfjs の VerbosityLevel.ERRORS と同じ
@@ -99,9 +99,10 @@ async function pageText(page) {
   }
 }
 
-// ページを、長い辺が IMAGE_MAX_SIDE の PNG に描く。描けないときは read_failed（元の例外は cause）。
-// 読む部品（material-reader.js）は、その塊を「（N ページの画像を作れませんでした）」の文の行にして、後ろのページへ進む
+// ページを、長い辺が IMAGE_MAX_SIDE の PNG に描く。描けないときは read_failed（元の例外は cause）。画像の部品が動かないときは loadCanvas の unavailable。
+// 読む部品（material-reader.js）は、その塊を「（N ページの画像を作れませんでした）」などの文の行にして、後ろのページへ進む
 async function renderPage(pdf, pageNumber) {
+  const { createCanvas } = loadCanvas();
   try {
     const page = await pdf.getPage(pageNumber);
     const base = page.getViewport({ scale: 1 });

@@ -3,10 +3,12 @@
 //  - toPng: 画像（png・jpg・gif・webp・bmp）を、長い辺が maxSide 以下の PNG にする（長い辺が超えるときだけ縮める。大きくはしない）
 //  - fitPngToBase64Limit: base64 にして上限（既定 5MB）を超える PNG を、長い辺を 0.75 倍ずつ縮めて作り直す
 //  - pngSize: PNG の頭から幅と高さを読む（material-reader.js が、描き終えた PNG の大きさを知るために使う）
+//  - loadCanvas: 画像の部品（@napi-rs/canvas）を、画像を描くときに初めて読む（material-pdf.js も使う）。読めないときは、何が使えないかを書いた
+//    MaterialError('unavailable')。先頭で読まないのは、パソコンの守りの設定などが .node のファイルを止めたとき、画像の部品を使わない
+//    文字・Word・Excel・MPD の資料まで読めなくなるのを防ぐため（デバッグとリリースの直し②。q86）
 //  - Electron に触らない。@napi-rs/canvas だけで動く（node だけでテストできる）
 'use strict';
 
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const { MaterialError } = require('./material-error');
 
 const IMAGE_MAX_SIDE = 1566;
@@ -24,12 +26,33 @@ function readFailed() {
   return new MaterialError('read_failed', 'この画像は読めませんでした。ファイルが壊れているか、対応していない形式かもしれません。');
 }
 
+const IMAGE_PART_MISSING = '画像の部品が、このパソコンでは動きません。画像の資料と、PDF の文字のないページは読めません（文字・Word・Excel・MPD の資料と、PDF の文字は読めます）。';
+
+// 画像の部品。読めたものは 2 回目から使い回す（読めなかったときは控えないので、次に描くときにもう一度読む）。元の例外は cause に残す
+let canvasLib = null;
+function loadCanvas() {
+  if (canvasLib) return canvasLib;
+  try {
+    canvasLib = require('@napi-rs/canvas');
+  } catch (err) {
+    const failure = new MaterialError('unavailable', IMAGE_PART_MISSING);
+    failure.imagePartMissing = true;
+    failure.cause = err;
+    throw failure;
+  }
+  return canvasLib;
+}
+
+// 画像の部品が動かないための失敗か（material-reader.js が、PDF の文字のないページの行の文を選ぶために使う）
+const isImagePartMissing = (err) => Boolean(err && err.imagePartMissing);
+
 function pngSize(png) {
   if (png.length < HEIGHT_OFFSET + 4) return { width: 0, height: 0 };
   return { width: png.readUInt32BE(WIDTH_OFFSET), height: png.readUInt32BE(HEIGHT_OFFSET) };
 }
 
 async function decodeImage(bytes) {
+  const { loadImage } = loadCanvas();
   try {
     return await loadImage(bytes);
   } catch (_) {
@@ -38,7 +61,7 @@ async function decodeImage(bytes) {
 }
 
 function drawPng(image, width, height) {
-  const canvas = createCanvas(width, height);
+  const canvas = loadCanvas().createCanvas(width, height);
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(image, 0, 0, width, height);
@@ -69,4 +92,4 @@ async function fitPngToBase64Limit(png, maxBase64Bytes = MAX_BASE64_BYTES) {
   }
 }
 
-module.exports = { IMAGE_MAX_SIDE, toPng, fitPngToBase64Limit, pngSize };
+module.exports = { IMAGE_MAX_SIDE, toPng, fitPngToBase64Limit, pngSize, loadCanvas, isImagePartMissing };
