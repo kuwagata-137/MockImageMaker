@@ -60,6 +60,10 @@ function initStorage(app, ipcMain) {
     return path.basename(copy);
   }
 
+  // 本体が読めず .bak から読んだか。そのときの最初の保存では、読めない本体を .bak へ回さない（回すと良い .bak を上書きする。
+  // 読めない本体は keepUnreadable で別の名前に写してある。デバッグとリリースの見直し①-6）
+  let mainUnreadable = false;
+
   // 戻り値 { json, notice }。json が null なら初めての起動。notice があれば、ページの上の帯に出す。
   // 本体が読めず .bak も読めないとき、読めない本体を写せないときは例外（ページは保存を止める）。
   // CheckListMaker は「どちらも読めなければ初めての起動」とみなすため、壊れたデータを次の保存で上書きして消す。
@@ -80,6 +84,7 @@ function initStorage(app, ipcMain) {
     let notice = `${STATE_FILE_NAME} が見つからないため、1 つ前の保存（.bak）から読み込みました。最後の変更が抜けているかもしれません。`;
     if (main.status === 'bad') {
       const kept = await keepUnreadable(stateFile());
+      mainUnreadable = true;
       notice = `${STATE_FILE_NAME} を読めなかった（${main.error}）ため、1 つ前の保存（.bak）から読み込みました。最後の変更が抜けているかもしれません。読めなかったファイルは ${kept} として残しました。`;
     }
     return { json: bak.text, notice };
@@ -93,12 +98,15 @@ function initStorage(app, ipcMain) {
     const file = stateFile();
     const tmp = file + '.tmp';
     await retryBusy(() => fsp.writeFile(tmp, json, 'utf8'));
-    try {
-      await retryBusy(() => fsp.rename(file, file + '.bak'));
-    } catch (_) {
-      /* 初回は本体が無い（つかまれたまま回せないときも、.bak を新しくせずに続ける。次の rename が本体を置き換える） */
+    if (!mainUnreadable) {
+      try {
+        await retryBusy(() => fsp.rename(file, file + '.bak'));
+      } catch (_) {
+        /* 初回は本体が無い（つかまれたまま回せないときも、.bak を新しくせずに続ける。次の rename が本体を置き換える） */
+      }
     }
     await retryBusy(() => fsp.rename(tmp, file));
+    mainUnreadable = false;
   }
 
   ipcMain.handle('storage:load', async () => {

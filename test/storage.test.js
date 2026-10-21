@@ -130,3 +130,21 @@ test('storage.js — 一時的に書けないときのやり直しと、書き�
     assert.match(r.notice, /見つからない/);
   });
 });
+
+// デバッグとリリースの見直し①-6: 本体が読めず .bak から起動した後の最初の保存で、読めない本体が .bak に回り、良い .bak を上書きしていた
+test('storage.js — 本体が読めず .bak から起動した後の最初の保存では、良い .bak を残す（見直し①-6）', async (t) => {
+  const st = createMainStorage();
+  t.after(() => st.cleanup());
+  const file = path.join(st.dataDir, 'designs.json');
+  const state = (id) => JSON.stringify({ schemaVersion: 1, settings: { customTargets: [] }, designs: [{ id }] });
+  await st.ipc('storage:save', state('a'));
+  await st.ipc('storage:save', state('b'));
+  fs.writeFileSync(file, '{broken');
+  const r = await st.ipc('storage:load');
+  assert.equal(r.json, state('a'), '.bak から読む');
+  assert.equal((await st.ipc('storage:save', state('c'))).ok, true);
+  assert.equal(fs.readFileSync(file, 'utf8'), state('c'));
+  assert.equal(fs.readFileSync(file + '.bak', 'utf8'), state('a'), '読めない本体を .bak へ回さない');
+  assert.equal((await st.ipc('storage:save', state('d'))).ok, true);
+  assert.equal(fs.readFileSync(file + '.bak', 'utf8'), state('c'), '2 回目からは今までどおり本体を .bak へ回す');
+});
