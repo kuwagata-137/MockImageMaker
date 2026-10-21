@@ -14861,6 +14861,24 @@ async function aiExportSystemDoc(args) {
     { kind: 'pdf', files: [{ name: `${safeFileName(y.name, 'システム')}_説明書.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi } }] },
   );
 }
+// スイムレーン図を MPD に出力する（export_bdm。第 11 段階。設計書の 11-3）。資料の MPD を元に、中の図だけを今のスイムレーン図に入れ替えた HTML を、
+// main の資料の窓口が作り、AI の出力のフォルダに書く（render kind 'bdm'。automation-render.js の finishBdm）。元の資料のファイルは書き換えない。
+// 渡す形は人の道と同じ（bdmExportPlan）。作業がない図は断る。ごみ箱のシステムも出力できる（説明書と同じ）。
+// 返事の warnings（出力した HTML を読み直したときの食い違い）は main が足す
+function aiExportBdm(args) {
+  aiFlushBeforeRead();
+  const y = aiResolveSystem(aiState(), args.system);
+  const m = aiResolveMaterial(y, args.material);
+  if (m.kind !== 'bdm') throw aiBad(`「${m.name}」は MPD の資料ではありません（種類: ${MATERIAL_KIND_NAMES[m.kind]}）。元にできるのは、MPD（MultipurposeDiagramMaker で保存した HTML）の資料だけです。`);
+  aiMaterialsApi();
+  aiCheckMaterialFile(m);
+  const { plan, dropped } = bdmExportPlan(y, m.id);
+  if (!plan.steps.length) throw aiBad(MPD_NO_STEPS);
+  return new AiRendered(
+    { system: aiSystemBrief(y), material: { id: m.id, name: m.name }, lanes: plan.lanes.length, steps: plan.steps.length, edges: plan.edges.length, ...(dropped ? { droppedSteps: dropped } : {}) },
+    { kind: 'bdm', systemId: y.id, file: m.file, plan, name: `${safeFileName(y.name, 'システム')}_スイムレーン.html` },
+  );
+}
 
 // 道具の一覧（名前は入口 mcp-server.js の道具と同じ。read_guide は入口だけで返す）。write は書く道具
 const AI_TOOLS = {
@@ -14873,6 +14891,7 @@ const AI_TOOLS = {
   get_view_image: { write: false, run: aiGetViewImage },
   export_design: { write: false, run: aiExportDesign },
   export_system_doc: { write: false, run: aiExportSystemDoc },
+  export_bdm: { write: false, run: aiExportBdm },
   create_design: { write: true, run: aiCreateDesign },
   update_design: { write: true, run: aiUpdateDesign },
   edit_items: { write: true, run: aiEditItems },

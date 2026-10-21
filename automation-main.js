@@ -16,7 +16,7 @@ const { connectInfo } = require('./automation-connect');
 const READY_WAIT_MS = 30000; // ページの準備を待つ時間
 const IDLE_QUIT_MS = 30000; // AI のつながりが 0 で窓が見えていないとき、終わるまでの時間
 // 時間のかかる道具（出力・画像・資料を読む）。受け口の時間切れを 5 分にする
-const SLOW_TOOLS = new Set(['export_design', 'export_system_doc', 'get_screen_image', 'get_view_image', 'read_material', 'swimlane_from_bdm']);
+const SLOW_TOOLS = new Set(['export_design', 'export_system_doc', 'export_bdm', 'get_screen_image', 'get_view_image', 'read_material', 'swimlane_from_bdm']);
 
 const fail = (code, message) => ({ ok: false, error: { code, message } });
 

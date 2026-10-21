@@ -196,7 +196,7 @@ const swimEdge = obj({
   label: opt(z.string().describe('矢印の文字（例 "差し戻し"）。省くと、今の矢印の文字のまま（新しい矢印は文字なし）')),
 });
 
-// ── 資料の置き場（list_materials・read_material・swimlane_from_bdm。第 9 段階の後半）──
+// ── 資料の置き場（list_materials・read_material・swimlane_from_bdm。第 9 段階の後半。export_bdm は第 11 段階）──
 // 入力の形の欄（mcp-tools.js の read・write が obj で包み、知らない欄を断る）。ファイルの場所を受け取る欄は作らない（設計書の 1-4）
 const materialInputs = {
   list: { system: S.system, cursor: S.cursor },
@@ -205,6 +205,7 @@ const materialInputs = {
     system: S.system, material: S.material, expect: S.expect,
     replace: opt(z.boolean().describe('今のスイムレーン図に作業があるとき、置き換えてよいか。人に確かめてから true を書く（省くと、今の図に作業があれば断る）')),
   },
+  exportBdm: { system: S.system, material: S.material },
 };
 
 const opsOf = (union) => z.array(union).min(1).describe('操作の並び（まとめて 1 回の変更になる）');
