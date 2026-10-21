@@ -185,7 +185,7 @@ test('手引き: つないだときの文に、段階ごとに人に確かめる
   assert.match(g, /^# 資料からシステムを作るときの段階/);
   for (const name of ['① 資料から読み取る', '② 業務の流れ', '③ データベースの項目', '④ 画面', '⑤ 説明書と出力']) assert.ok(g.includes(name), name);
   for (const re of [/get_notes/, /"doing"/, /"review"/, /"done"/, /"skipped"/, /人が答える前に done にしない/, /set_findings/, /add_question/, /add_decision/, /answer_question/,
-    /export_design で画面設計ごとに出力/, /理念の『現場の手間を減らす』から、承認は上長の 1 段にした/, /1 つの頼み/, /確かめなくてよいので進めて/]) assert.match(g, re);
+    /export_system_doc でシステムの説明書（PDF）を出力する/, /画面設計ごとの HTML・PNG が要るときは export_design/, /理念の『現場の手間を減らす』から、承認は上長の 1 段にした/, /1 つの頼み/, /確かめなくてよいので進めて/]) assert.match(g, re);
   assert.match(g, /済んだ段階（"done"（確認済み）・"skipped"（確認を飛ばした））は繰り返さず/);
   // ⑤ は、案を出して review → 人が「よい」と答えたら出力し、ファイルの場所を書いてから done（ほかの段階は、アプリに入れてから review）
   assert.match(g, /⑤ 説明書と出力だけは、案（出力するもの）を出して "review" にし、人が「よい」と答えたら出力して、出力したファイルの場所を add_decision（段階 docs）で書いてから "done" にする/);

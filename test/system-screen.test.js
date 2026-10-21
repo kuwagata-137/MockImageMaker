@@ -660,7 +660,7 @@ test('オレンジの帯の「〇〇の履歴を開く」: 開いているシス
 test('命令: 編集の画面だけの命令は、この画面で来ても何もしない（落ちない）。Ctrl+Z・Ctrl+Y・アプリのメニューの元に戻す・やり直す', async (t) => {
   const { app, api, sys, $ } = await boot(t);
   for (const cmd of ['addScreen', 'duplicateScreen', 'deleteScreen', 'deletePart', 'selectAll', 'copyPart', 'pastePart', 'openItems', 'openMap', 'openProcess',
-    'openFlow', 'addItemMenu', 'deleteItem', 'renumber', 'alignLeft', 'moveLeft', 'modeHand', 'prevScreen', 'addRevision', 'openRevisions', 'exportDialog']) {
+    'openFlow', 'addItemMenu', 'deleteItem', 'renumber', 'alignLeft', 'moveLeft', 'modeHand', 'prevScreen', 'addRevision', 'openRevisions']) {
     api.runCommand(cmd);
     assert.equal(api.ui.view, 'system', cmd);
   }

@@ -913,6 +913,15 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .xp-itable td.set{white-space:pre-line}
 .xp-itable .none{color:#94a3b8}
 .xp-itable small{color:#64748b;font-size:11px}
+.xp-itable td.nw{white-space:nowrap}
+/* システムの説明書の設計ノートのページ（q80 案C）と、システムの表紙の札（q81） */
+.xp-itable tr.done td{color:#94a3b8;background:#f8fafc}
+.xp-nt-key{font-size:11.5px;color:#64748b;margin:0 0 10px}
+.xp-doc-h3{font-size:14px;color:#0f172a;margin:0 0 6px;display:flex;align-items:baseline;gap:8px}
+.xp-doc-h3 small{font-weight:400;color:#64748b;font-size:12px}
+.xp-itable + .xp-doc-h3{margin-top:18px}
+.cv-table .share-tag,.cv-table .share-tag:hover{cursor:default;margin:0 0 0 8px;font-size:10.5px;padding:0 6px;background:#f0fdf4;white-space:normal}
+.cv-table .share-tag .nw{white-space:nowrap}
 .xp-legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:11.5px;color:#475569;margin:0 0 8px}
 .xp-legend i{display:inline-block;width:30px;height:0;border-top:2.5px solid #1d3f6e;vertical-align:middle;margin-right:5px}
 .xp-legend i.d{border-top:2.5px dashed #16a34a}
@@ -962,6 +971,7 @@ body.xp-doc .pg+.pg{break-before:page}
 //   7. 編集の画面            … メニューバー・画面の一覧・画面（帯・マス目・高さ）・部品の箱・設定の欄・拡大縮小・ハンド・
 //                              部品のドラッグ（置く・動かす・大きさ）・コピーと貼り付け
 //   8. 出力と取り込み        … 出力の窓（PDF・HTML・PNG）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面）・
+//                              システムの説明書（PDF。表紙・スイムレーン図・設計ノートのページ。第 10 段階の後半）・
 //                              単体で開いて編集できる HTML（埋め込み・保存し直す）・HTML の取り込み（確かめの窓）
 //   9. 命令（runCommand）    … ボタン・キー・アプリのメニューからの命令を 1 か所で受ける
 //  10. AI の窓口            … AI（Claude Code など）の頼みを受けて実行する（第 7 段階。AI設計基盤_設計書.md の 8・9 章）
@@ -5681,7 +5691,7 @@ function sysBlockHtml(g) {
       <h2>${esc(y.name)}</h2><span class="meta">画面設計 ${designsOfSystem(S, y).length} つ・役割 ${y.roles.length} つ</span><span class="spacer"></span>
       <button class="btn small primary" data-action="open-system" data-id="${id}" title="「${esc(y.name)}」のシステムの画面を開きます">開く</button>
       <span class="sys-pop-wrap"><button class="btn small" data-action="sys-add-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('add')}">＋ 画面設計を入れる ▾</button>${open('add') ? sysAddMenuHtml(y) : ''}</span>
-      <span class="sys-pop-wrap"><button class="btn small" data-action="sys-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('more')}" aria-label="「${esc(y.name)}」の操作" title="名前と説明を変える・ごみ箱へ移す">…</button>${open('more') ? sysMoreMenuHtml(y) : ''}</span>
+      <span class="sys-pop-wrap"><button class="btn small" data-action="sys-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('more')}" aria-label="「${esc(y.name)}」の操作" title="${window.exportAPI ? '名前と説明を変える・説明書を出力する・ごみ箱へ移す' : '名前と説明を変える・ごみ箱へ移す'}">…</button>${open('more') ? sysMoreMenuHtml(y) : ''}</span>
     </div>
     ${y.description ? `<p class="sys-desc">${esc(y.description)}</p>` : ''}
     ${g.designs.length ? `<div class="cards">${g.designs.map((d) => renderCard(d, { sys: y })).join('')}</div>` : '<p class="empty">まだ画面設計が入っていません。「＋ 画面設計を入れる」から入れます。</p>'}
@@ -5696,10 +5706,12 @@ function sysAddMenuHtml(y, cls = '') {
     <button role="menuitem" data-action="sys-add-copy" data-id="${id}"><b>今ある画面設計を複製して入れる</b><small>別のもの。新しい id。同期しない</small></button>
   </div>`;
 }
+// 「説明書を出力…」はデスクトップ版だけ（第 10 段階の後半。q76）
 function sysMoreMenuHtml(y) {
   const id = esc(y.id);
   return `<div class="pop-menu sys-pop" role="menu">
     <button role="menuitem" data-action="sys-edit" data-id="${id}">名前と説明を変える…</button>
+    ${window.exportAPI ? `<button role="menuitem" data-action="sys-doc" data-id="${id}">説明書を出力…</button>` : ''}
     <button role="menuitem" class="danger" data-action="sys-trash" data-id="${id}">ごみ箱へ移す</button>
   </div>`;
 }
@@ -6130,7 +6142,7 @@ async function onDesignAction(action, d, btn = null) {
 }
 
 // システムのまとまり・ごみ箱のシステムの行で押したもの
-const SYSTEM_HOME_ACTIONS = ['open-system', 'sys-add-menu', 'sys-menu', 'sys-add-new', 'sys-add-same', 'sys-add-copy', 'sys-edit', 'sys-trash', 'restore-system', 'delete-system-forever'];
+const SYSTEM_HOME_ACTIONS = ['open-system', 'sys-add-menu', 'sys-menu', 'sys-add-new', 'sys-add-same', 'sys-add-copy', 'sys-edit', 'sys-doc', 'sys-trash', 'restore-system', 'delete-system-forever'];
 async function onSystemAction(action, y) {
   if (action === 'sys-add-menu' || action === 'sys-menu') { toggleSysMenu(action === 'sys-menu' ? 'more' : 'add', y.id); return; }
   closeSysMenu();
@@ -6143,6 +6155,7 @@ async function onSystemAction(action, y) {
       if (r) actions.updateSystem(y.id, r);
       return;
     }
+    case 'sys-doc': await openSystemDocDialog(y.id); return;
     // ごみ箱へ移すのは確かめない（画面設計と同じ。元に戻すで戻せる）
     case 'sys-trash':
       if (actions.trashSystem(y.id)) toast(`「${y.name}」をごみ箱へ移しました。入っていた画面設計は残っています。`);
@@ -6211,7 +6224,9 @@ function mountSystem() {
 function sysToolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
   return [
-    group('ファイル', '<button class="bigbtn" data-action="home" title="システムと画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>'),
+    // 「出力」は説明書（PDF）の窓（デスクトップ版だけ。第 10 段階の後半。q76）
+    group('ファイル', '<button class="bigbtn" data-action="home" title="システムと画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>'
+      + (window.exportAPI ? '<button class="bigbtn" data-action="export" title="このシステムの説明書（PDF）を出力します"><span class="ico">⇪</span>出力</button>' : '')),
     group('履歴', `<div class="stack">
       <button class="tbtn" data-action="undo" id="sys-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" id="sys-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
@@ -7102,7 +7117,7 @@ function sysSideHtml(y) {
       + hint('① の札を押すと、① で資料から読み取ったこと（業務の要約・登場人物・今の手順・様式の欄）が出ます。')
       + hint('AI とつないでいないときは、「この段階の進み具合」のボタンを押して、進み具合を変えられます。')
       + hint('まだ決まっていないことに答えを書くと「決まった」になり、表の下へ移ります。')
-      + hint('決めたことと理由は、システムの説明書（PDF）の最後のページに入ります。');
+      + hint('決めたことと理由と、まだ決まっていないこと（答えのある行も）は、システムの説明書（PDF）の最後のページに入ります（⑤ の行は入りません）。');
   }
   if (!y.roles.length) return `<div class="panel-title">作業の設定</div>${hint('役割を足すと、スイムレーン図に作業の箱を置けます。')}`;
   const w = ui.stepSel ? findStep(y, ui.stepSel) : null;
@@ -10719,35 +10734,53 @@ function coverRevisionTable(d) {
     : '<tr><td class="empty" colspan="3">（まだ改訂履歴はありません）</td></tr>';
   return `<table class="cv-table"><thead><tr><th style="width:70px">版</th><th style="width:96px">日付</th><th>変えた内容</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false } = {}) {
-  const max = Math.round(P.h * 0.24);
-  const desc = d.description.trim()
-    ? `<div class="cv-desc" style="max-height:${max}px">${esc(d.description)}</div>${descCut ? '<p class="cv-desc-cut">（説明が長いため、続きを省略しました。全文はアプリか、出力した HTML で見られます）</p>' : ''}`
-    : '<div class="cv-desc none">（説明は書かれていません）</div>';
+// 表紙の骨組み（画面設計の表紙と、システムの説明書の表紙〔第 10 段階の後半〕で同じ形。splitCoverRows が .cv-list・.cv-revs・.cv-foot を名前で探す）。
+// c: { kicker（小見出し）, title（名前）, meta（名前の下の行の HTML）, desc（説明の HTML）, list: [左の列の見出し, 表], side: [右の列の見出し, 表], total }
+function coverShell(P, c) {
   return `<div class="pg" style="width:${P.w}px;height:${P.h}px"><div class="pg-cover">
-    <div class="cv-kicker">画面設計書</div>
-    <h1 class="cv-title">${esc(d.name)}</h1>
-    <div class="cv-meta">${targetChip(d.target)}<span>出力した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span><span>最終更新 ${esc(fmtDateTime(d.updatedAt))}</span><span>画面 ${d.screens.length} つ・データベースの項目 ${d.items.length} 個</span></div>
+    <div class="cv-kicker">${c.kicker}</div>
+    <h1 class="cv-title">${esc(c.title)}</h1>
+    <div class="cv-meta">${c.meta}</div>
     <hr class="cv-rule">
-    <div class="cv-sec"><h3>説明</h3>${desc}</div>
+    <div class="cv-sec"><h3>説明</h3>${c.desc}</div>
     <div class="cv-cols${P.h > P.w ? ' stack' : ''}">
-      <div class="cv-sec cv-list"><h3>画面の一覧</h3>${coverListTable(rows)}</div>
-      <div class="cv-sec cv-revs"><h3>改訂履歴</h3>${coverRevisionTable(d)}</div>
+      <div class="cv-sec cv-list"><h3>${c.list[0]}</h3>${c.list[1]}</div>
+      <div class="cv-sec cv-revs"><h3>${c.side[0]}</h3>${c.side[1]}</div>
     </div>
     <div class="cv-spacer"></div>
-    <div class="cv-foot"><span>モックイメージメーカー v${APP_VERSION} で出力</span><span>全 ${total} ページ</span></div>
+    <div class="cv-foot"><span>モックイメージメーカー v${APP_VERSION} で出力</span><span>全 ${c.total} ページ</span></div>
   </div></div>`;
+}
+// 表紙の説明（高さの上限は用紙の高さの 24%）。cut なら、続きを省略したと書く（where は全文を見られる所。「〇〇で」まで）
+function coverDescHtml(P, text, cut, where) {
+  if (!text.trim()) return '<div class="cv-desc none">（説明は書かれていません）</div>';
+  return `<div class="cv-desc" style="max-height:${Math.round(P.h * 0.24)}px">${esc(text)}</div>`
+    + (cut ? `<p class="cv-desc-cut">（説明が長いため、続きを省略しました。全文は${where}見られます）</p>` : '');
+}
+// 表紙の HTML の説明が、決めた高さに入りきらないか（測れるときだけ呼ぶ）
+function coverDescOver(html) {
+  const probe = measureBox(html);
+  const el = probe.querySelector('.cv-desc');
+  const over = el.scrollHeight > el.clientHeight + 1;
+  probe.remove();
+  return over;
+}
+function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false } = {}) {
+  const meta = `${targetChip(d.target)}<span>出力した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span><span>最終更新 ${esc(fmtDateTime(d.updatedAt))}</span>`
+    + `<span>画面 ${d.screens.length} つ・データベースの項目 ${d.items.length} 個</span>`;
+  return coverShell(P, { kicker: '画面設計書', title: d.name, meta, desc: coverDescHtml(P, d.description, descCut, 'アプリか、出力した HTML で'),
+    list: ['画面の一覧', coverListTable(rows)], side: ['改訂履歴', coverRevisionTable(d)], total });
 }
 const coverContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '画面の一覧（続き）', body: coverListTable(rows),
   left: `${esc(d.name)} ／ 画面の一覧（続き）`, right: `${page} / ${total}` });
-// 表紙の画面の一覧を、1 ページ目と続きのページに分ける（行の高さを測る。続きのページでは見出しの行を繰り返す）。測れないときは全部を 1 ページ目に
-function splitCoverRows(d, P, rows, measured, bodyH, opts = {}) {
+// 表紙の画面の一覧を、1 ページ目と続きのページに分ける（行の高さを測る。続きのページでは見出しの行を繰り返す）。測れないときは全部を 1 ページ目に。
+// coverHtml(rows) は、その行を一覧に入れた表紙の HTML を返す関数（画面設計の表紙と、システムの説明書の表紙〔第 10 段階の後半〕で使う）。
+// 表紙は、左の列 .cv-list・右の列 .cv-revs・下の端 .cv-foot を持つこと（名前で探して測るため）
+function splitCoverRows(coverHtml, P, rows, measured, bodyH) {
   if (!measured || !rows.length) return [rows];
-  const probe = measureBox(coverPageHtml(d, P, rows, 99, nowIso(), opts));
-  const pgTop = probe.querySelector('.pg').getBoundingClientRect().top;
-  const footH = probe.querySelector('.cv-foot').getBoundingClientRect().height;
-  // 1 ページ目の一覧が入る下の端（下の余白と下の端の行を引く。縦の用紙では、一覧の下の改訂履歴の分も引く）
-  let limit = pgTop + P.h - 36 - footH - 12;
+  const probe = measureBox(coverHtml(rows));
+  // 1 ページ目の一覧が入る下の端（縦の用紙では、一覧の下の改訂履歴の分も引く）
+  let limit = coverLimit(probe, P);
   if (P.h > P.w) limit -= probe.querySelector('.cv-revs').getBoundingClientRect().height + 18;
   const trs = [...probe.querySelectorAll('.cv-list tbody tr')].map((tr) => tr.getBoundingClientRect());
   const headH = probe.querySelector('.cv-list thead').getBoundingClientRect().height;
@@ -10766,6 +10799,9 @@ function splitCoverRows(d, P, rows, measured, bodyH, opts = {}) {
   if (cur.length) chunks.push(cur);
   return chunks;
 }
+
+// 表紙の 1 ページ目で、表が入る下の端（下の余白と下の端の行を引く）。probe は measureBox で描いた表紙
+const coverLimit = (probe, P) => probe.querySelector('.pg').getBoundingClientRect().top + P.h - 36 - probe.querySelector('.cv-foot').getBoundingClientRect().height - 12;
 
 // データベースの項目の一覧表（q35 案A。つまみ・消すボタン・足すボタンなし。元は札でなく文字で書く）
 function itemSourceText(d, it, state) {
@@ -10821,10 +10857,11 @@ function splitItemRows(rows, aw, ah, measured, tableFn = printItemTable) {
 
 // つながりの図のページ（q35 案A）。凡例だけ出し（案内の文・並べ直すボタンなし）、箱のある所を切り出して本文に収まるように縮める（拡大しない）
 const hasMapLinks = (d, state) => mapModel(state, d.id).nodes.length > 1;
-function mapPageBody(d, state, aw, ah) {
+// idTag は矢印の印の id の頭に足す字（システムの説明書で、画面設計ごとに変える。第 10 段階の後半）
+function mapPageBody(d, state, aw, ah, idTag = '') {
   const legend = `<div class="xp-legend">${VIEW_LEGENDS.map}</div>`;
   // 矢印の印の id は、編集の画面の図と重ならない名前にする（同じ id があると矢印が消えるため）
-  const html = mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xp-map' }).replace(' id="map-inner"', '');
+  const html = mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xp-map' + idTag }).replace(' id="map-inner"', '');
   const boxes = [...html.matchAll(/class="mnode[^"]*"[^>]*style="left:(-?[\d.]+)px;top:(-?[\d.]+)px;width:([\d.]+)px;height:([\d.]+)px"/g)].map((m) => m.slice(1).map(Number));
   const m = html.match(/class="map-inner"[^>]*style="width:([\d.]+)px;height:([\d.]+)px"/);
   if (!m || !boxes.length) return legend + html;
@@ -10858,9 +10895,9 @@ function actionRowsHtml(it) {
 // 右に置くと表の幅が PROC_TABLE_MIN より狭くなるとき（縦の用紙）は、図（本文の高さの 6 割まで縮める）の下に、本文の幅いっぱいの表を置く。
 // 表が入りきらないときは、続きのページに表だけを出す。戻り値 { sub, body, rest（続きのページごとの表の行） }
 const PROC_TABLE_MIN = 520;
-function processPagePlan(d, state, aw, ah, measured) {
+function processPagePlan(d, state, aw, ah, measured, idTag = '') {
   const it = d.items.find((x) => x.type === 'status');
-  const html = viewHtml('process', state, d, d.processPos || {}, { idPrefix: 'xp-proc', bare: true });
+  const html = viewHtml('process', state, d, d.processPos || {}, { idPrefix: 'xp-proc' + idTag, bare: true });
   const c = diagramCrop(html);
   const bh = ah - 28; // 凡例の分
   const fw = Math.floor(aw * 0.45);
@@ -10880,8 +10917,8 @@ function processPagePlan(d, state, aw, ah, measured) {
     rest,
   };
 }
-function flowPageBody(d, state, aw, ah) {
-  const html = viewHtml('flow', state, d, d.flowPos || {}, { idPrefix: 'xp-flow', bare: true });
+function flowPageBody(d, state, aw, ah, idTag = '') {
+  const html = viewHtml('flow', state, d, d.flowPos || {}, { idPrefix: 'xp-flow' + idTag, bare: true });
   const c = diagramCrop(html);
   return `<div class="xp-legend">${VIEW_LEGENDS.flow}</div>${c ? fitDiagram(html, c, aw, ah - 28) : html}`;
 }
@@ -10975,22 +11012,36 @@ function diffSumHtml(df, info) {
 // PDF の中身を組む。opts { paper, orient, cover, map, items, process, flow, screenIds（省略するとすべての画面）, diffRevId（比べる版の行の id） }。
 // 表紙（入りきらなければ「画面の一覧（続き）」）→ 比べた版からの変更内容（違いの印を選んだときだけ）→ つながりの図（つながりがあるときだけ）→
 // 項目の一覧表（項目があるときだけ）→ ステータスの移り方（操作があるときだけ）→ 画面の移り方（移る先があるときだけ）→ 選んだ画面。
-// 戻り値 { html（印刷用の文書）, P（用紙）, pages（ページの HTML）, total }
+// システムの説明書（第 10 段階の後半）に画面設計のページを並べるときは、opts に pageStart（最初のページの番号。既定 1）・grandTotal（「n / N」と
+// 表紙の「全 N ページ」の N。既定はこの画面設計のページ数）・idTag（矢印の印の id の頭に足す字。既定 ''）を渡す。countOnly なら、ページを組まずに数だけ返す。
+// 戻り値 { html（印刷用の文書）, P（用紙）, pages（ページの HTML）, total（この画面設計のページ数）, included（本当に入れたページ { cover, map, items, process, flow }） }。
+// countOnly のときは { P, total }
 function exportDocument(d, state, opts, exportedAt = nowIso()) {
+  const L = exportLayout(d, state, opts, exportedAt);
+  if (opts.countOnly) return { P: L.P, total: L.plan.total };
+  const pages = [...exportCoverPages(d, L, exportedAt), ...exportViewPages(d, state, L), ...exportScreenPages(d, L)];
+  const included = { cover: !!opts.cover, map: L.withMap, items: L.itemChunks.length > 0, process: !!L.proc, flow: L.withFlow };
+  return { P: L.P, pages, total: L.plan.total, included, html: printDocumentHtml(d.name, L.P, pages.join('\n')) };
+}
+// ページの並べ方を決める（どのページを何ページ目に置くか・表紙と表をどこで分けるか）。番号は pageStart からの通し番号、plan.total はこの画面設計のページ数。
+// 戻り値 { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, descCut, base（最初のページの番号 - 1）, grand（「n / N」の N）, idTag }
+function exportLayout(d, state, opts, exportedAt) {
   const P = paperSize(opts.paper, opts.orient);
   const measured = canMeasure();
   const { aw, ah } = pageBodySize(P, measured);
+  const idTag = opts.idTag || '';
   const screens = d.screens.map((s, i) => ({ s, i })).filter(({ s }) => !opts.screenIds || opts.screenIds.includes(s.id));
   const withMap = !!opts.map && hasMapLinks(d, state);
   const itemChunks = opts.items ? splitItemRows(itemRowsHtml(d, state), aw, ah, measured) : [];
   const df = opts.diffRevId ? exportDiff(d, state, opts.diffRevId) : null;
   const changesTitle = df ? `${df.title}からの変更内容` : '';
   const changeChunks = !df ? [] : df.result.rows.length ? splitItemRows(changeRowsHtml(df.result.rows), aw, ah, measured, printChangeTable) : [[]];
-  const proc = opts.process && hasProcessPage(d) ? processPagePlan(d, state, aw, ah, measured) : null;
+  const proc = opts.process && hasProcessPage(d) ? processPagePlan(d, state, aw, ah, measured, idTag) : null;
   const withFlow = !!opts.flow && hasFlowPage(d, state);
+  const base = (opts.pageStart || 1) - 1;
   // ページ番号は、表紙が何ページになるかで変わる。番号の桁で行の高さは変わらないので、仮の番号で 1 回分けてから決め直す
   const numbering = (coverPages) => {
-    let n = coverPages;
+    let n = base + coverPages;
     const changesPage = changeChunks.length ? n + 1 : 0;
     n += changeChunks.length;
     const mapPage = withMap ? ++n : 0;
@@ -10999,56 +11050,276 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
     const processPage = proc ? n + 1 : 0;
     n += proc ? 1 + proc.rest.length : 0;
     const flowPage = withFlow ? ++n : 0;
-    return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n };
+    return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n - base };
   };
   let plan = numbering(opts.cover ? 1 : 0);
   let coverChunks = [];
   // 表紙の説明が、決めた高さに入りきるか（入りきらなければ、省略したと書く）
-  let descCut = false;
-  if (opts.cover && measured && d.description.trim()) {
-    const probe = measureBox(coverPageHtml(d, P, [], 1, exportedAt));
-    const el = probe.querySelector('.cv-desc');
-    descCut = el.scrollHeight > el.clientHeight + 1;
-    probe.remove();
-  }
+  const descCut = !!opts.cover && measured && !!d.description.trim() && coverDescOver(coverPageHtml(d, P, [], 1, exportedAt));
   if (opts.cover) {
-    coverChunks = splitCoverRows(d, P, coverListRows(plan), measured, ah, { descCut });
+    const coverHtml = (rows) => coverPageHtml(d, P, rows, 99, nowIso(), { descCut });
+    coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     if (coverChunks.length > 1) {
       plan = numbering(coverChunks.length);
-      coverChunks = splitCoverRows(d, P, coverListRows(plan), measured, ah, { descCut });
+      coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     }
   }
-  const { total } = plan;
+  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag };
+}
+// 表紙と「画面の一覧（続き）」のページ
+function exportCoverPages(d, L, exportedAt) {
+  const { P, grand } = L;
+  return L.coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, grand, exportedAt, { descCut: L.descCut }) : coverContHtml(d, P, rows, L.base + k + 1, grand)));
+}
+// 変更内容・つながりの図・項目の一覧表・ステータスの移り方・画面の移り方のページ
+function exportViewPages(d, state, L) {
+  const { P, aw, ah, df, plan, proc, grand } = L;
   const left = (t) => `${esc(d.name)} ／ ${t}`;
-  const pages = coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, total, exportedAt, { descCut }) : coverContHtml(d, P, rows, k + 1, total)));
-  changeChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: esc(changesTitle) + (k ? '（続き）' : ''),
+  const pages = [];
+  L.changeChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: esc(plan.changesTitle) + (k ? '（続き）' : ''),
     sub: `${df.result.rows.length} 件${rows.cut ? '・長い行は途中まで' : ''}`,
     body: rows.length ? printChangeTable(rows) : `<p class="cg-none">${esc(df.label)}から変わった所はありません。</p>`,
-    left: left('変更内容'), right: `${plan.changesPage + k} / ${total}` })));
-  if (withMap) {
-    pages.push(pageFrame({ P, title: 'つながりの図', sub: `「${esc(d.name)}」と、直接つながる画面設計`, body: mapPageBody(d, state, aw, ah),
-      left: left('つながりの図'), right: `${plan.mapPage} / ${total}` }));
+    left: left('変更内容'), right: `${plan.changesPage + k} / ${grand}` })));
+  if (L.withMap) {
+    pages.push(pageFrame({ P, title: 'つながりの図', sub: `「${esc(d.name)}」と、直接つながる画面設計`, body: mapPageBody(d, state, aw, ah, L.idTag),
+      left: left('つながりの図'), right: `${plan.mapPage} / ${grand}` }));
   }
-  itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`,
+  L.itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`,
     sub: `項目 ${d.items.length} 個${rows.cut ? '・長い行は途中まで（全文はアプリか HTML で見られます）' : ''}`,
-    body: printItemTable(rows), left: left('データベースの項目の一覧表'), right: `${plan.itemsPage + k} / ${total}` })));
+    body: printItemTable(rows), left: left('データベースの項目の一覧表'), right: `${plan.itemsPage + k} / ${grand}` })));
   if (proc) {
-    pages.push(pageFrame({ P, title: 'ステータスの移り方', sub: proc.sub, body: proc.body, left: left('ステータスの移り方'), right: `${plan.processPage} / ${total}` }));
+    pages.push(pageFrame({ P, title: 'ステータスの移り方', sub: proc.sub, body: proc.body, left: left('ステータスの移り方'), right: `${plan.processPage} / ${grand}` }));
     proc.rest.forEach((rows, k) => pages.push(pageFrame({ P, title: 'ステータスの移り方（続き）', sub: '操作の一覧表', body: printActionTable(rows),
-      left: left('ステータスの移り方'), right: `${plan.processPage + 1 + k} / ${total}` })));
+      left: left('ステータスの移り方'), right: `${plan.processPage + 1 + k} / ${grand}` })));
   }
-  if (withFlow) {
-    pages.push(pageFrame({ P, title: '画面の移り方', sub: `画面 ${d.screens.length} つ・${flowEntryNote(state, d)}`, body: flowPageBody(d, state, aw, ah),
-      left: left('画面の移り方'), right: `${plan.flowPage} / ${total}` }));
+  if (L.withFlow) {
+    pages.push(pageFrame({ P, title: '画面の移り方', sub: `画面 ${d.screens.length} つ・${flowEntryNote(state, d)}`, body: flowPageBody(d, state, aw, ah, L.idTag),
+      left: left('画面の移り方'), right: `${plan.flowPage} / ${grand}` }));
   }
-  plan.screens.forEach(({ s, i, page }) => {
+  return pages;
+}
+// 画面のページ（吹き出しの矢印の印の id の頭 'p' + ページの番号は、通し番号なので、説明書の中でも重ならない）
+function exportScreenPages(d, L) {
+  const { P, aw, ah, df, measured, grand } = L;
+  return L.plan.screens.map(({ s, i, page }) => {
     const info = df ? df.result.screens[s.id] : null;
     const body = screenPageBody(screenComposite(d, s, 'p' + page, measured, info && { info, label: df.label }), aw, ah, measured);
     const name = `${i + 1}　${esc(s.name)}`;
     const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`;
-    pages.push(pageFrame({ P, title: name, sub, body: body.html, left: left(name), right: `${page} / ${total}`, headExtra: diffSumHtml(df, info) }));
+    return pageFrame({ P, title: name, sub, body: body.html, left: `${esc(d.name)} ／ ${name}`, right: `${page} / ${grand}`, headExtra: diffSumHtml(df, info) });
   });
-  return { P, pages, total, html: printDocumentHtml(d.name, P, pages.join('\n')) };
+}
+
+// ── システムの説明書（PDF。第 10 段階の後半。q76・q77・q80・q81。仕様_細かい決めごと.md の「説明書（PDF）の細かい決めごと」）──
+// システムの表紙（入りきらなければ「画面設計の一覧（続き）」）→ スイムレーン図 → 画面設計ごとに、画面設計を 1 つ出力したときと同じページ → 設計ノート。
+// ページの番号はすべて説明書の全体の通し番号。出せないページ（作業の箱がない・設計ノートに行がない）は黙って外す
+// 設計ノートのページに入れる段階。⑤（説明書と出力）の行は入れない（AI が出力したファイルの場所〔使う人の名前が入った PC のフォルダ〕を書く行で、
+// 説明書を作ること自体の記録のため。ベンダーに渡す PDF に載らないように）
+const NOTE_DOC_STAGES = NOTE_STAGES.filter((k) => k !== 'docs');
+// 説明書に入れる設計ノートの行 { decisions, open（答えのない行）, decided（答えのある行） }。段階 ①〜④ の行のうち、文（決めたこと・理由・
+// まだ決まっていないこと・答えのどれか）が空でない行を、段階の順（同じ段階の中は書いた順）に。窓・AI・ページの組み方の 3 か所は、これで見分ける
+function noteDocRows(y) {
+  const pick = (rows, keys) => NOTE_DOC_STAGES.flatMap((k) => rows.filter((r) => r.stage === k && keys.some((f) => str(r[f]).trim())));
+  const qs = pick(y.notes.questions, ['text', 'answer']);
+  return { decisions: pick(y.notes.decisions, ['text', 'reason']), open: qs.filter((q) => !noteQuestionDecided(q)), decided: qs.filter(noteQuestionDecided) };
+}
+// 説明書に出せるページ { swimlane（作業の箱がある）, notes（設計ノートに入れる行がある）, designs（入っている画面設計の数。ごみ箱のものは除く） }
+function systemDocCan(y, state) {
+  const r = noteDocRows(y);
+  return { swimlane: swimlaneModel(state, y).nodes.length > 0, notes: r.decisions.length + r.open.length + r.decided.length > 0, designs: designsOfSystem(state, y).length };
+}
+// システムの表紙の「画面設計の一覧」の行。plan { swimlanePage, notesPage, designs: [{ d, firstPage, pages, others（ほかのシステムの名前） }] }
+function systemCoverRows(plan) {
+  const lead = (name, page) => `<tr class="lead"><td class="nm">${name}</td><td class="dev"></td><td class="no">${page}</td></tr>`;
+  const rows = plan.swimlanePage ? [lead('スイムレーン図', plan.swimlanePage)] : [];
+  plan.designs.forEach((r) => rows.push(`<tr><td class="nm">${esc(r.d.name)}${r.others.length ? systemShareTag(r.others) : ''}</td>`
+    + `<td class="dev">${targetChip(r.d.target)}</td><td class="no">${r.pages ? r.firstPage : ''}</td></tr>`));
+  if (!plan.designs.length) rows.push('<tr><td class="empty" colspan="3">（画面設計は入っていません）</td></tr>');
+  if (plan.notesPage) rows.push(lead('設計ノート', plan.notesPage));
+  return rows;
+}
+// 表紙の札「〇〇でも使っている」。ほかのシステムの名前は 2 つまで出し、残りは「ほか N つ」にまとめる。
+// 札は名前の切れ目（「・」の後）でだけ折り返す（名前の長いシステムが多くても、左の列を押し広げない。見直しの B-5）
+function systemShareTag(others) {
+  const names = others.slice(0, 2).map(esc);
+  const last = `<span class="nw">${names.pop()}${others.length > 2 ? `ほか ${others.length - 2} つ` : ''}でも使っている</span>`;
+  return `<span class="share-tag">${[...names.map((n) => `<span class="nw">${n}</span>`), last].join('・')}</span>`;
+}
+const systemListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面設計</th><th>作る先</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+// 表紙の役割の表。max は表紙に入る役割の数（null は全部。coverRoleFit が測る）。入りきらない役割は省き、表の下にそう書く（見直しの B-2）
+function systemRoleTable(y, max = null) {
+  const shown = max == null ? y.roles : y.roles.slice(0, max);
+  const rows = y.roles.length
+    ? shown.map((r) => `<tr><td>${esc(r.name)}</td><td style="white-space:pre-wrap">${esc(r.memo)}</td></tr>`).join('')
+    : '<tr><td class="empty" colspan="2">（役割はまだありません）</td></tr>';
+  const left = y.roles.length - shown.length;
+  const more = left ? `<p class="cv-desc-cut">（表紙に入りきらないため、残りの役割 ${left} つを省略しました。全部はアプリのシステムの「役割」で見られます）</p>` : '';
+  return `<table class="cv-table"><thead><tr><th style="width:96px">役割</th><th>メモ</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
+}
+// 表紙の役割の表に入る役割の数（測れるときだけ呼ぶ）。全部入るときは null。入りきらないときは、表の下の断り書きの 1 行の分を空けて入る数。
+// html は、画面設計の一覧を 1 行だけ入れた表紙（縦の用紙では、役割の表は一覧の下にあるため。一覧は splitCoverRows が役割の表の分を引いて分ける）
+function coverRoleFit(html, P) {
+  const probe = measureBox(html);
+  const limit = coverLimit(probe, P);
+  const bottoms = [...probe.querySelectorAll('.cv-revs tbody tr')].map((tr) => tr.getBoundingClientRect().bottom);
+  probe.remove();
+  if (!bottoms.length || bottoms[bottoms.length - 1] <= limit) return null;
+  return bottoms.filter((b) => b <= limit - COVER_MORE_H).length;
+}
+const COVER_MORE_H = 26; // 表の下の断り書きの 1 行の高さ（.cv-desc-cut）
+// システムの表紙（画像 q81_2）。左に「画面設計の一覧」、右に「役割」（縦の用紙では上下）
+function systemCoverHtml(y, state, P, rows, total, exportedAt, { descCut = false, roleMax = null } = {}) {
+  const counts = `役割 ${y.roles.length} つ・画面設計 ${designsOfSystem(state, y).length} つ・作業 ${swimlaneModel(state, y).nodes.length} つ`;
+  const updated = y.updatedAt ? `<span>最終更新 ${esc(fmtDateTime(y.updatedAt))}</span>` : ''; // 読み込んだデータで日時がないとき（new Date(null) は 1970 年になる）は出さない
+  const meta = `<span>出力した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span>${updated}<span>${counts}</span>`;
+  return coverShell(P, { kicker: 'システムの説明書', title: y.name, meta, desc: coverDescHtml(P, y.description, descCut, 'アプリのシステムの「概要」で'),
+    list: ['画面設計の一覧', systemListTable(rows)], side: ['役割', systemRoleTable(y, roleMax)], total });
+}
+const systemCoverContHtml = (y, P, rows, page, total) => pageFrame({ P, title: '画面設計の一覧（続き）', body: systemListTable(rows),
+  left: `${esc(y.name)} ／ 画面設計の一覧（続き）`, right: `${page} / ${total}` });
+// スイムレーン図のページ（画像 q81_3）。上に凡例（測れるときは凡例の高さを測って引く）、図は本文に収まるように縮める（拡大しない）
+function swimlanePageHtml(y, state, P, L, page, total) {
+  const legend = `<div class="xp-legend">${VIEW_LEGENDS.swimlane}</div>`;
+  let lh = 28;
+  if (L.measured) {
+    const probe = measureBox(legend, L.aw);
+    lh = Math.ceil(probe.firstElementChild.getBoundingClientRect().height) + 8; // 8 は凡例の下の空き
+    probe.remove();
+  }
+  const html = swimlaneHtml(state, y, { idPrefix: 'xp-swim', bare: true });
+  const c = diagramCrop(html);
+  return pageFrame({ P, title: 'スイムレーン図', sub: '役割ごとの帯に、作業の箱を左から順に並べた業務の流れ', body: legend + (c ? fitDiagram(html, c, L.aw, L.ah - lh) : html),
+    left: `${esc(y.name)} ／ スイムレーン図`, right: `${page} / ${total}` });
+}
+
+// 設計ノートのページ（画像 q80_3）。「決めたことと理由」の表と、「まだ決まっていないこと」の表（答えのない行 → 答えのある行を灰色で）
+const NOTE_KEY_HTML = `<p class="xp-nt-key">段階: ${NOTE_DOC_STAGES.map((k) => esc(NOTE_STAGE_NAMES[k])).join('　')}</p>`;
+const NOTE_DEC_COLS = '<colgroup><col style="width:11%"><col style="width:6%"><col style="width:38%"><col></colgroup>';
+const NOTE_Q_COLS = '<colgroup><col style="width:6%"><col style="width:38%"><col><col style="width:15%"></colgroup>';
+const noteDecTable = (rows) => `<table class="xp-itable">${NOTE_DEC_COLS}<thead><tr><th>日付</th><th>段階</th><th>決めたこと</th><th>理由</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+const noteQTable = (rows) => `<table class="xp-itable">${NOTE_Q_COLS}<thead><tr><th>段階</th><th>まだ決まっていないこと</th><th>答え</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+const noteDecRowHtml = (r) => `<tr><td class="nw">${esc(r.date)}</td><td>${noteStageNo(r.stage)}</td><td class="set">${esc(r.text)}</td><td class="set">${esc(r.reason)}</td></tr>`;
+function noteQRowHtml(q) {
+  if (!noteQuestionDecided(q)) return `<tr><td>${noteStageNo(q.stage)}</td><td class="set">${esc(q.text)}</td><td></td><td></td></tr>`;
+  const md = q.resolvedAt ? noteMonthDay(q.resolvedAt) : '';
+  return `<tr class="done"><td>${noteStageNo(q.stage)}</td><td class="set">${esc(q.text)}</td><td class="set">${esc(q.answer)}</td><td class="nw">${md ? `${md} に決まった` : '決まった'}</td></tr>`;
+}
+// 設計ノートのページの表 { sub（見出しの右の小さな字）, sections: [{ title, count, rows（行の HTML）, table（表を組む関数） }] }。行のない表は入れない
+function noteDocSections(y) {
+  const r = noteDocRows(y);
+  const sections = [];
+  const sub = [];
+  if (r.decisions.length) {
+    sections.push({ title: '決めたことと理由', count: `${r.decisions.length} つ`, rows: r.decisions.map(noteDecRowHtml), table: noteDecTable });
+    sub.push(`決めたことと理由 ${r.decisions.length} つ`);
+  }
+  if (r.open.length + r.decided.length) {
+    const count = `${r.open.length} つ${r.decided.length ? `（決まったもの ${r.decided.length} つ）` : ''}`;
+    sections.push({ title: 'まだ決まっていないこと', count, rows: [...r.open, ...r.decided].map(noteQRowHtml), table: noteQTable });
+    sub.push(`まだ決まっていないこと ${count}`);
+  }
+  return { sub: sub.join('・'), sections };
+}
+// 設計ノートの表を、ページに入る行ごとに分ける。戻り値はページごとの [{ sec, rows, cont（前のページから続く表）, cut（1 行だけでも入らない行を途中まで出す） }]。
+// 1 ページ目は段階の読み方の高さを引き、表ごとに見出し（h3）と表の見出しの行の高さを引く。見出しの後に 1 行も入らないなら、その表は次のページから
+// （見出しだけをページの下に残さない）。測れないときは 1 ページ
+function splitNoteSections(sections, aw, ah, measured) {
+  if (!sections.length) return [];
+  if (!measured) return [sections.map((sec) => ({ sec, rows: sec.rows, cont: false, cut: false }))];
+  const m = measureNoteSections(sections, aw);
+  const pages = [];
+  let cur = [];
+  let used = m.key;
+  sections.forEach((sec, s) => {
+    const { head, hs } = m.secs[s];
+    let i = 0;
+    while (i < sec.rows.length) {
+      let h = used + (cur.length ? NOTE_SEC_GAP : 0) + head;
+      let n = 0;
+      while (i + n < sec.rows.length && h + hs[i + n] <= ah) h += hs[i + n++];
+      const cut = !n && !cur.length; // 空のページにも入らない行は、途中まで出す
+      if (!n && !cut) { pages.push(cur); cur = []; used = 0; continue; }
+      if (cut) { n = 1; h = ah; }
+      cur.push({ sec, rows: sec.rows.slice(i, i + n), cont: i > 0, cut });
+      used = h;
+      i += n;
+    }
+  });
+  if (cur.length) pages.push(cur);
+  return pages;
+}
+const NOTE_SEC_GAP = 18; // 表と次の表の見出しの間（CSS の .xp-itable + .xp-doc-h3 の margin-top）
+// 設計ノートの表の高さを測る { key（段階の読み方と下の空き）, secs: [{ head（表の見出し〔h3〕と表の見出しの行）, hs（行の高さ） }] }
+function measureNoteSections(sections, aw) {
+  const probe = measureBox(NOTE_KEY_HTML + sections.map((sec) => `<div>${noteSecHead(sec, false)}${sec.table(sec.rows)}</div>`).join(''), aw);
+  const top = (el) => el.getBoundingClientRect().top;
+  const blocks = [...probe.children].slice(1);
+  const out = {
+    key: top(blocks[0]) - top(probe.firstElementChild),
+    secs: blocks.map((b) => ({
+      head: top(b.querySelector('tbody')) - top(b),
+      hs: [...b.querySelectorAll('tbody tr')].map((tr) => tr.getBoundingClientRect().height),
+    })),
+  };
+  probe.remove();
+  return out;
+}
+const noteSecHead = (sec, cont) => `<h3 class="xp-doc-h3">${sec.title}${cont ? '（続き）' : ''}<small>${sec.count}</small></h3>`;
+// 設計ノートのページ（分けたページごと）。firstPage はこのページの番号、total は説明書の全体のページ数
+function noteDocPagesHtml(y, P, pages, sub, firstPage, total) {
+  return pages.map((chunks, k) => pageFrame({ P, title: k ? '設計ノート（続き）' : '設計ノート',
+    sub: (chunks.some((c) => c.cut) ? '長い行は途中まで（全文はアプリの設計ノートで見られます）・' : '') + sub,
+    body: (k ? '' : NOTE_KEY_HTML) + chunks.map((c) => noteSecHead(c.sec, c.cont) + c.sec.table(c.rows)).join(''),
+    left: `${esc(y.name)} ／ 設計ノート`, right: `${firstPage + k} / ${total}` }));
+}
+
+// 説明書の中身を組む。opts { paper, orient, systemCover, swimlane, notes（システムのページ）, cover, map, items, process, flow（画面設計ごとのページ） }。
+// 戻り値 { P, pages, total, html, included: { systemCover, swimlane, notes }, designs: [{ id, name, firstPage, pages, included: { cover, map, items, process, flow } }] }。
+// 画面設計ごとのページは exportDocument で組み（番号は通し番号、矢印の印の id の頭は画面設計ごとに '-d1'・'-d2'…）、画面のページはいつも全部入れる
+function exportSystemDocument(y, state, opts, exportedAt = nowIso()) {
+  const P = paperSize(opts.paper, opts.orient);
+  const measured = canMeasure();
+  const { aw, ah } = pageBodySize(P, measured);
+  const can = systemDocCan(y, state);
+  const included = { systemCover: !!opts.systemCover, swimlane: !!opts.swimlane && can.swimlane, notes: !!opts.notes && can.notes };
+  const per = { paper: opts.paper, orient: opts.orient, cover: !!opts.cover, map: !!opts.map, items: !!opts.items, process: !!opts.process, flow: !!opts.flow };
+  const notes = included.notes ? noteDocSections(y) : { sub: '', sections: [] };
+  const notePages = splitNoteSections(notes.sections, aw, ah, measured);
+  const plan = systemDocPlan(y, state, P, { included, per, notePages: notePages.length, measured, ah, exportedAt });
+  const pages = plan.coverChunks.map((rows, k) => (k === 0 ? systemCoverHtml(y, state, P, rows, plan.total, exportedAt, { descCut: plan.descCut, roleMax: plan.roleMax })
+    : systemCoverContHtml(y, P, rows, k + 1, plan.total)));
+  if (included.swimlane) pages.push(swimlanePageHtml(y, state, P, { aw, ah, measured }, plan.swimlanePage, plan.total));
+  const designs = plan.designs.map((r, k) => {
+    const doc = exportDocument(r.d, state, { ...per, pageStart: r.firstPage, grandTotal: plan.total, idTag: '-d' + (k + 1) }, exportedAt);
+    pages.push(...doc.pages);
+    return { id: r.d.id, name: r.d.name, firstPage: r.firstPage, pages: doc.pages.length, included: doc.included };
+  });
+  pages.push(...noteDocPagesHtml(y, P, notePages, notes.sub, plan.notesPage, plan.total));
+  return { P, pages, total: plan.total, included, designs, html: printDocumentHtml(`${y.name}_説明書`, P, pages.join('\n')) };
+}
+// 説明書のページの並べ方。画面設計ごとのページの数を数え（countOnly）、表紙を分けてから番号を決め直す（exportLayout と同じ 2 回の形）。
+// 戻り値 { swimlanePage, designs: [{ d, firstPage, pages, others }], notesPage, total, coverChunks, descCut, roleMax（表紙に入る役割の数。null は全部） }
+function systemDocPlan(y, state, P, { included, per, notePages, measured, ah, exportedAt }) {
+  const dl = designsOfSystem(state, y).map((d) => ({ d, pages: exportDocument(d, state, { ...per, countOnly: true }).total,
+    others: systemsOf(state, d.id).filter((x) => x.id !== y.id).map((x) => x.name) }));
+  const numbering = (coverPages) => {
+    let n = coverPages;
+    const swimlanePage = included.swimlane ? ++n : 0;
+    const designs = dl.map((r) => { const firstPage = n + 1; n += r.pages; return { ...r, firstPage }; });
+    const notesPage = notePages ? n + 1 : 0;
+    return { swimlanePage, designs, notesPage, total: n + notePages };
+  };
+  let plan = numbering(included.systemCover ? 1 : 0);
+  if (!included.systemCover) return { ...plan, coverChunks: [], descCut: false, roleMax: null };
+  const descCut = measured && !!y.description.trim() && coverDescOver(systemCoverHtml(y, state, P, [], 1, exportedAt));
+  const roleMax = measured ? coverRoleFit(systemCoverHtml(y, state, P, systemCoverRows(plan).slice(0, 1), 1, exportedAt, { descCut }), P) : null;
+  const coverHtml = (rows) => systemCoverHtml(y, state, P, rows, 99, exportedAt, { descCut, roleMax });
+  let coverChunks = splitCoverRows(coverHtml, P, systemCoverRows(plan), measured, ah);
+  if (coverChunks.length > 1) {
+    plan = numbering(coverChunks.length);
+    coverChunks = splitCoverRows(coverHtml, P, systemCoverRows(plan), measured, ah);
+  }
+  return { ...plan, coverChunks, descCut, roleMax };
 }
 
 // PNG にする文書（画面ごとに 1 つ。ページの枠なし・縮めない・まわりに白の余白）。戻り値 [{ name, html, width, height }]。
@@ -11391,6 +11662,16 @@ const EXPORT_KINDS = [
   ['html', '🌐', 'HTML', 'ブラウザで開いて、見る・直すことができる。直したものはアプリで取り込める'],
   ['png', '🖼', 'PNG（画像）', '画面ごとに 1 枚の画像。資料に貼るとき'],
 ];
+// 用紙・向きなどの並んだボタン（ラジオ）。choices は [値, 名前] の並び
+const xpSeg = (name, value, choices) => `<div class="seg">${choices.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}"${value === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
+// 用紙がスライドのときは、向きを横にして押せなくする（スライドは横だけ）
+function syncSlideOrient(m, paperName, orientName) {
+  const slide = (m.querySelector(`[name="${paperName}"]:checked`) || {}).value === 'slide';
+  m.querySelectorAll(`[name="${orientName}"]`).forEach((x) => {
+    x.disabled = slide;
+    if (slide && x.value === 'landscape') x.checked = true;
+  });
+}
 function exportDialogBody(d, desk, kind, hasMap) {
   const o = exportOpts;
   const kinds = EXPORT_KINDS.map(([k, ic, name, note]) => {
@@ -11398,7 +11679,6 @@ function exportDialogBody(d, desk, kind, hasMap) {
     return `<button type="button" class="xp-kind${k === kind ? ' on' : ''}" data-xkind="${k}" aria-pressed="${k === kind}"${off ? ' disabled' : ''}>`
       + `<b><i>${ic}</i>${name}</b><small>${off ? 'デスクトップ版のアプリで出力できます' : note}</small></button>`;
   }).join('');
-  const seg = (name, value, choices) => `<div class="seg">${choices.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}"${value === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
   const screens = d.screens.map((s, i) => `<label class="check"><input type="checkbox" data-xscreen value="${esc(s.id)}" checked><span>${i + 1}　${esc(s.name)}<small class="dev">${DEVICES[s.device].label}</small></span></label>`).join('');
   const pick = `<div class="xp-sub">出力する画面<span class="spacer"></span><button type="button" class="link-btn" data-xall="1">すべて選ぶ</button><button type="button" class="link-btn" data-xall="0">すべて外す</button></div><div class="xp-screens">${screens}</div>`;
   const page = (key, label, ok, why) => `<label class="check"><input type="checkbox" data-xpage="${key}"${ok && o[key] ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${label}${ok ? '' : `<small class="sub">${why}</small>`}</span></label>`;
@@ -11416,8 +11696,8 @@ function exportDialogBody(d, desk, kind, hasMap) {
   return `<div class="xp-kinds">${kinds}</div>
     <div class="xp-box" data-xbox="pdf"${kind === 'pdf' ? '' : ' hidden'}>
       <div class="xp-row">
-        <div class="field"><span>用紙</span>${seg('xp-paper', o.paper, Object.entries(PAPERS).map(([k, p]) => [k, p.label]))}</div>
-        <div class="field"><span>向き</span>${seg('xp-orient', slide ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
+        <div class="field"><span>用紙</span>${xpSeg('xp-paper', o.paper, Object.entries(PAPERS).map(([k, p]) => [k, p.label]))}</div>
+        <div class="field"><span>向き</span>${xpSeg('xp-orient', slide ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
       </div>
       <div class="xp-sub">入れるページ</div>
       <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', 'つながりの図', hasMap, 'ほかの画面設計とのつながりがないので、出しません')}${page('items', 'データベースの項目の一覧表', d.items.length > 0, '項目がないので、出しません')}${page('process', 'ステータスの移り方', hasProcessPage(d), 'ステータスを進める操作がないので、出しません')}${page('flow', '画面の移り方', hasFlowPage(d, store.state), 'ボタン・リンクの文字の移る先がないので、出しません')}</div>
@@ -11453,13 +11733,7 @@ async function openExportDialog(designId) {
     width: 640,
     body: exportDialogBody(d, desk, kind, hasMap),
     init(m) {
-      const syncOrient = () => {
-        const slide = (m.querySelector('[name="xp-paper"]:checked') || {}).value === 'slide';
-        m.querySelectorAll('[name="xp-orient"]').forEach((x) => {
-          x.disabled = slide;
-          if (slide && x.value === 'landscape') x.checked = true;
-        });
-      };
+      const syncOrient = () => syncSlideOrient(m, 'xp-paper', 'xp-orient');
       m.addEventListener('click', (e) => {
         const card = e.target.closest('[data-xkind]');
         if (card && !card.disabled) {
@@ -11536,6 +11810,99 @@ async function runExport(designId, r) {
   res = await api.savePng({ files: exportPngDocs(d, store.state, r.screenIds, r.diffRevId) });
   reportExport(res, 'PNG');
   return res;
+}
+
+// ── システムの説明書の窓（第 10 段階の後半。q76・q77・画像 q81_1）──
+// 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない。画面設計の出力の窓の設定 exportOpts とは別）。
+// ページの名前は、窓・exportSystemDocument の opts・AI の export_system_doc の入力と返事で同じ
+const docOpts = { paper: 'A4', orient: 'landscape', systemCover: true, swimlane: true, notes: true, cover: true, map: true, items: true, process: true, flow: true, openAfter: true };
+const DOC_SYSTEM_PAGES = [['systemCover', '表紙'], ['swimlane', 'スイムレーン図'], ['notes', '設計ノート（決めたことと理由・まだ決まっていないこと）']];
+const DOC_DESIGN_PAGES = [['cover', '表紙'], ['map', 'つながりの図'], ['items', 'データベースの項目の一覧表'], ['process', 'ステータスの移り方'], ['flow', '画面の移り方']];
+const DOC_PAGE_KEYS = [...DOC_SYSTEM_PAGES, ...DOC_DESIGN_PAGES].map(([k]) => k);
+// 説明書の出力を待っているシステムの id（待つ間に命令がもう 1 回来ても、窓を開かずに無視する）
+const docWaiting = new Set();
+// 押せないページの理由（押せるときは ''）。can は systemDocCan の戻り値
+function systemDocWhy(key, can) {
+  if (key === 'swimlane' && !can.swimlane) return '作業の箱がないので、出しません';
+  if (key === 'notes' && !can.notes) return '設計ノートに行がないので、出しません';
+  if (!can.designs && DOC_DESIGN_PAGES.some(([k]) => k === key)) return 'このシステムには画面設計が入っていません';
+  return '';
+}
+function systemDocDialogBody(y, can) {
+  const o = docOpts;
+  const page = ([key, label]) => {
+    const why = systemDocWhy(key, can);
+    return `<label class="check"><input type="checkbox" data-dpage="${key}"${!why && o[key] ? ' checked' : ''}${why ? ' disabled' : ''}><span>${label}${why ? `<small class="sub">${why}</small>` : ''}</span></label>`;
+  };
+  const dl = designsOfSystem(store.state, y);
+  const names = dl.slice(0, 5).map((d) => esc(d.name)).join('・') + (dl.length > 5 ? ` ほか ${dl.length - 5} つ` : '');
+  const note = dl.length ? `入っている画面設計 ${dl.length} つ（${names}）の画面のページは、全部入れます。` : 'このシステムには、まだ画面設計が入っていません。';
+  return `<p class="xp-note">システム 1 つ分を、1 つの PDF（説明書）にします。${note}</p>
+    <div class="xp-box">
+      <div class="xp-row">
+        <div class="field"><span>用紙</span>${xpSeg('dp-paper', o.paper, Object.entries(PAPERS).map(([k, p]) => [k, p.label]))}</div>
+        <div class="field"><span>向き</span>${xpSeg('dp-orient', o.paper === 'slide' ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
+      </div>
+      <div class="xp-sub">入れるページ（システム）</div>
+      <div class="xp-pages">${DOC_SYSTEM_PAGES.map(page).join('')}</div>
+      <div class="xp-sub">入れるページ（画面設計ごと。入っている画面設計の全部に効く）</div>
+      <div class="xp-pages">${DOC_DESIGN_PAGES.map(page).join('')}</div>
+      <label class="check xp-open"><input type="checkbox" data-dopen${o.openAfter ? ' checked' : ''}><span>出力したら PDF を開く</span></label>
+    </div>`;
+}
+// 説明書の窓を開き、選んだ形で出力する。戻り値は出力の結果（出力しなかったときは null）。デスクトップ版だけ
+async function openSystemDocDialog(sysId) {
+  if (standalone || docWaiting.has(sysId)) return null;
+  if (!window.exportAPI) { toast('説明書（PDF）は、デスクトップ版のアプリで出力できます。'); return null; }
+  flushSideField();
+  const y = findSystem(store.state, sysId);
+  if (!y || y.trashedAt) return null;
+  const can = systemDocCan(y, store.state);
+  const r = await showDialog({
+    title: `「${y.name}」の説明書を出力`,
+    okLabel: '出力…',
+    width: 680,
+    body: systemDocDialogBody(y, can),
+    init(m) {
+      m.addEventListener('change', (e) => { if (e.target.name === 'dp-paper') syncSlideOrient(m, 'dp-paper', 'dp-orient'); });
+      syncSlideOrient(m, 'dp-paper', 'dp-orient');
+    },
+    collect(m) {
+      const r2 = {
+        paper: (m.querySelector('[name="dp-paper"]:checked') || {}).value || 'A4',
+        orient: (m.querySelector('[name="dp-orient"]:checked') || {}).value || 'landscape',
+        openAfter: !!m.querySelector('[data-dopen]').checked,
+      };
+      DOC_PAGE_KEYS.forEach((k) => { const x = m.querySelector(`[data-dpage="${k}"]`); r2[k] = !!x && !x.disabled && x.checked; });
+      // 画面設計が入っていれば、画面のページがいつも入る
+      if (!can.designs && !DOC_SYSTEM_PAGES.some(([k]) => r2[k])) return { error: '入れるページを 1 つ以上選んでください。' };
+      return r2;
+    },
+  });
+  if (!r) return null;
+  // 覚える（押せなかった印は、前の設定のままにする）
+  Object.assign(docOpts, { paper: r.paper, orient: r.paper === 'slide' ? docOpts.orient : r.orient, openAfter: r.openAfter });
+  DOC_PAGE_KEYS.forEach((k) => { if (!systemDocWhy(k, can)) docOpts[k] = r[k]; });
+  // 窓を開いている間に、ごみ箱へ移った・消えたときは出力しない（人の操作で起きうる。窓が開いている間、AI の書く頼みは断る）
+  const now = findSystem(store.state, sysId);
+  if (!now || now.trashedAt) { toast(`「${y.name}」がごみ箱へ移ったので、出力をやめました。`); return null; }
+  return runSystemDoc(sysId, r);
+}
+// 説明書を出力する。r は説明書の窓の結果（docOpts と同じ名前）。保存の窓の結果はお知らせで伝える（キャンセルは何も出さない）
+async function runSystemDoc(sysId, r) {
+  const y = findSystem(store.state, sysId);
+  const api = window.exportAPI;
+  if (!y || !api) return null;
+  docWaiting.add(sysId);
+  try {
+    toast('説明書（PDF）を作っています…');
+    const doc = exportSystemDocument(y, store.state, r);
+    const res = await api.savePdf({ name: `${safeFileName(y.name, 'システム')}_説明書.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
+    if (res && !res.canceled) toast(res.ok ? `説明書（PDF）を出力しました（${res.path}）。` : `説明書（PDF）を出力できませんでした（${res.error || 'わからない理由'}）。`);
+    return res;
+  } finally {
+    docWaiting.delete(sysId);
+  }
 }
 
 // ── HTML の取り込み（q39）──
@@ -11853,10 +12220,13 @@ function runCommand(cmd) {
       return true;
     }
     // 出力と取り込み（第 5 段階）。単体で開いた HTML では、出力の窓と取り込みは出さず、HTML を保存し直すだけ（q37）
+    // システムの画面では、説明書（PDF）の窓（第 10 段階の後半。q76）
     case 'exportDialog':
       if (standalone) return true;
       if (ui.view === 'editor') openExportDialog(ui.designId).catch(reportPageError);
-      else toast('出力する画面設計を開くか、カードの「…」から「出力…」を選んでください。');
+      else if (ui.view === 'system') openSystemDocDialog(ui.systemId).catch(reportPageError);
+      else toast(window.exportAPI ? '出力する画面設計かシステムを開くか、カードの「…」から「出力…」、システムの「…」から「説明書を出力…」を選んでください。'
+        : '出力する画面設計を開くか、カードの「…」から「出力…」を選んでください。');
       return true;
     case 'importHtml':
       if (standalone) return true;
@@ -14335,10 +14705,7 @@ async function aiExportDesign(args) {
     if (!docs.length) throw aiBad('出力する画面を 1 つ以上選んでください。');
     return new AiRendered({ ...result, screens: docs.length }, { kind: 'png', files: docs.map(({ name, html, width, height }) => ({ name, html, width, height })) });
   }
-  const paper = args.paper == null ? 'A4' : str(args.paper);
-  if (!['A4', 'A3', 'slide'].includes(paper)) throw aiBad('paper は "A4"・"A3"・"slide"（16:9 の横）です。');
-  const orient = paper === 'slide' ? 'landscape' : args.orient == null ? 'landscape' : str(args.orient);
-  if (!['landscape', 'portrait'].includes(orient)) throw aiBad('orient は "landscape"（横）か "portrait"（縦）です。');
+  const { paper, orient } = aiPaperOrient(args);
   const opts = {
     paper, orient, screenIds, diffRevId,
     cover: args.cover !== false, map: args.map !== false && hasMapLinks(d, S), items: args.items !== false && d.items.length > 0,
@@ -14349,6 +14716,31 @@ async function aiExportDesign(args) {
   return new AiRendered(
     { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items, process: opts.process, flow: opts.flow },
     { kind: 'pdf', files: [{ name: `${base}.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi } }] },
+  );
+}
+// PDF の用紙と向き（export_design・export_system_doc。既定は A4 の横。スライドは横だけ）
+function aiPaperOrient(args) {
+  const paper = args.paper == null ? 'A4' : str(args.paper);
+  if (!['A4', 'A3', 'slide'].includes(paper)) throw aiBad('paper は "A4"・"A3"・"slide"（16:9 の横）です。');
+  const orient = paper === 'slide' ? 'landscape' : args.orient == null ? 'landscape' : str(args.orient);
+  if (!['landscape', 'portrait'].includes(orient)) throw aiBad('orient は "landscape"（横）か "portrait"（縦）です。');
+  return { paper, orient };
+}
+// システムの説明書（PDF）を出力する（第 10 段階の後半。設計書の 9-2）。ページの名前は説明書の窓と同じ（DOC_PAGE_KEYS。既定は全部入れる）。
+// 出せないページ（作業の箱がない・設計ノートに行がない・画面設計につながりがないなど）は黙って外し、返事の included・designs に入れたページを書く。
+// ごみ箱のシステムも出せる（get_view_image の swimlane と同じ）。ファイルを書くのは main（export_design と同じ）
+async function aiExportSystemDoc(args) {
+  aiFlushBeforeRead();
+  const S = aiState();
+  const y = aiResolveSystem(S, args.system);
+  const { paper, orient } = aiPaperOrient(args);
+  const opts = { paper, orient };
+  DOC_PAGE_KEYS.forEach((k) => { opts[k] = args[k] !== false; });
+  const doc = exportSystemDocument(y, S, opts);
+  if (!doc.pages.length) throw aiBad('入れるページが 1 つもありません。');
+  return new AiRendered(
+    { system: aiSystemBrief(y), format: 'pdf', paper, orient, pages: doc.total, included: doc.included, designs: doc.designs },
+    { kind: 'pdf', files: [{ name: `${safeFileName(y.name, 'システム')}_説明書.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi } }] },
   );
 }
 
@@ -14362,6 +14754,7 @@ const AI_TOOLS = {
   get_flow: { write: false, run: aiGetFlow },
   get_view_image: { write: false, run: aiGetViewImage },
   export_design: { write: false, run: aiExportDesign },
+  export_system_doc: { write: false, run: aiExportSystemDoc },
   create_design: { write: true, run: aiCreateDesign },
   update_design: { write: true, run: aiUpdateDesign },
   edit_items: { write: true, run: aiEditItems },
@@ -14935,7 +15328,7 @@ function exposeForTest() {
     visibleDesigns, trashedDesigns, resolveTargetName, DEVICES, SCHEMA_VERSION, STORAGE_KEY, APP_VERSION,
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, hasFlowPage, minScreenHeight, selectPart, currentScreen,
     currentDesign, currentPart, openScreen, openItemsPanel, selectItem, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
-    exportDocument, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport,
+    exportDocument, exportSystemDocument, noteDocRows, systemDocCan, systemCoverHtml, systemShareTag, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport, openSystemDocDialog, docOpts,
     paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,

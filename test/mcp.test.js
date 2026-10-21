@@ -68,8 +68,8 @@ async function startApp(t, dir, onRequest, opts = {}) {
   return { srv, calls };
 }
 
-test('道具は 33 個（第 9 段階の前半でシステムの 7 個、後半で資料の 3 個、第 10 段階の前半で設計ノートの 3 個を足した）で、説明は日本語。入口の道具は、read_guide のほかはページの AI_TOOLS とぴったり同じ', () => {
-  assert.equal(TOOLS.length, 33);
+test('道具は 34 個（第 9 段階の前半でシステムの 7 個、後半で資料の 3 個、第 10 段階の前半で設計ノートの 3 個、後半で説明書の 1 個を足した）で、説明は日本語。入口の道具は、read_guide のほかはページの AI_TOOLS とぴったり同じ', () => {
+  assert.equal(TOOLS.length, 34);
   for (const t of TOOLS) {
     assert.match(t.name, /^[a-z_]+$/, t.name);
     assert.ok(isJa(t.description) && isJa(t.title), `${t.name} の説明が日本語でない`);
@@ -79,8 +79,8 @@ test('道具は 33 個（第 9 段階の前半でシステムの 7 個、後半�
   const page = [...block.matchAll(/^\s+([a-z_]+): \{ write/mg)].map((m) => m[1]);
   // 入口だけにあるのは read_guide（入口の中で返す）だけ
   assert.deepEqual(TOOLS.map((t) => t.name).filter((n) => n !== 'read_guide').sort(), [...page].sort());
-  // 読むだけの道具（readOnlyHint）は、ページで write: false の道具と同じ。ただし export_design はファイルを書くので読むだけにしない
-  const readOnly = [...block.matchAll(/^\s+([a-z_]+): \{ write: false/mg)].map((m) => m[1]).filter((n) => n !== 'export_design').sort();
+  // 読むだけの道具（readOnlyHint）は、ページで write: false の道具と同じ。ただし export_design・export_system_doc はファイルを書くので読むだけにしない
+  const readOnly = [...block.matchAll(/^\s+([a-z_]+): \{ write: false/mg)].map((m) => m[1]).filter((n) => !['export_design', 'export_system_doc'].includes(n)).sort();
   assert.deepEqual(TOOLS.filter((t) => t.readOnly && !t.local).map((t) => t.name).sort(), readOnly);
   // 時間のかかる道具は、アプリの側（automation-main.js の SLOW_TOOLS。時間切れを 5 分にする）と同じ
   const { SLOW_TOOLS } = require('../automation-main');
@@ -110,7 +110,7 @@ test('アプリがなくても、道具の一覧・read_guide・resources は返
   const app = JSON.stringify([process.execPath, '-e', `require('fs').appendFileSync(${JSON.stringify(marker)}, 'x')`, '--']);
   const client = await openEntry(t, dir, { MIM_APP_CMD: app, MIM_TIMEOUT_MS: '1500' });
   const { tools } = await client.listTools();
-  assert.equal(tools.length, 33);
+  assert.equal(tools.length, 34);
   assert.ok(tools.every((x) => x.inputSchema && x.inputSchema.type === 'object'));
   const g = await call(client, 'read_guide', { topic: 'overview' });
   assert.match(textOf(g), /^# モックイメージメーカーの使い方/);

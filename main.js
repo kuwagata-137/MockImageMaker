@@ -65,7 +65,8 @@ function buildAppMenu() {
         commandItem('新しい画面設計…', 'newDesign'),
         commandItem('新しいシステム…', 'newSystem'),
         { type: 'separator' },
-        // 出力する（PDF・HTML・PNG）は開いている画面設計を、取り込むは一覧へ戻ってから（第 5 段階）
+        // 出力する（PDF・HTML・PNG）は開いている画面設計を、取り込むは一覧へ戻ってから（第 5 段階）。
+        // システムの画面では、出力するはシステムの説明書（PDF）の窓（第 10 段階の後半）
         commandItem('出力…', 'exportDialog'),
         commandItem('HTML を取り込む…', 'importHtml'),
         { type: 'separator' },
