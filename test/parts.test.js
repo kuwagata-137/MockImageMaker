@@ -1089,6 +1089,22 @@ test('部品を選んだまま画面の一覧の「…」・改訂の ▼・「�
   keysInMenu('「揃える」');
 });
 
+test('画面の高さをドラッグしている途中に Ctrl+Z で画面が消えても、放したときにほかの画面の高さを変えない（デバッグとリリースの見直し⑤-7）', async (t) => {
+  const { app, api, screen } = await bootEditor(t);
+  const first = screen().id;
+  const id = api.actions.addScreen(api.ui.designId, 'blank', first);
+  api.openScreen(id);
+  assert.equal(screen().id, id);
+  const M = app.window.MouseEvent;
+  $(app, '[data-drag="resize"]').dispatchEvent(new M('mousedown', { bubbles: true, cancelable: true, button: 0, clientY: 500 }));
+  app.document.dispatchEvent(new M('mousemove', { bubbles: true, clientY: 600 }));
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  assert.equal(api.currentDesign().screens.length, 1, '足した画面は元に戻すで消えた');
+  app.document.dispatchEvent(new M('mouseup', { bubbles: true, clientY: 600 }));
+  assert.equal(screen().id, first);
+  assert.equal(screen().height, 800, '前の画面の高さは変えない');
+});
+
 test('縮小して見ているとき、押しただけで手が少し（4 ドットより少なく）動いても、部品・吹き出し・選んだもの・つながりは変わらない（デバッグとリリースの見直し⑤-3）', async (t) => {
   const { app, api, add, screen, partEl } = await bootEditor(t);
   const a = add('text1');

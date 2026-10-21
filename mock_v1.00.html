@@ -10147,7 +10147,7 @@ function startResize(ev, wrap) {
   ev.preventDefault();
   flushSideField();
   const s = currentScreen();
-  drag = { kind: 'resize', wrap, sy: ev.clientY, st: wrap.scrollTop, h0: s.height, device: s.device, minH: minScreenHeight(s) };
+  drag = { kind: 'resize', wrap, screenId: s.id, sy: ev.clientY, st: wrap.scrollTop, h0: s.height, device: s.device, minH: minScreenHeight(s) };
   document.body.classList.add('resizing');
 }
 
@@ -10826,7 +10826,8 @@ function onDragEnd(ev) {
   if (done.kind !== 'resize') return;
   const h = ui.previewHeight;
   ui.previewHeight = null;
-  if (h != null && h !== done.h0) actions.updateScreen(ui.designId, currentScreen().id, { height: h });
+  // 始めたときの画面に書く（ドラッグの途中に元に戻すで画面が消えると、今の画面がほかの画面に変わるため。デバッグとリリースの見直し⑤-7）
+  if (h != null && h !== done.h0 && done.screenId === currentScreen().id) actions.updateScreen(ui.designId, done.screenId, { height: h });
   else renderStage();
 }
 
