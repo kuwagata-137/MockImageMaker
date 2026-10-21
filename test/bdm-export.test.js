@@ -306,8 +306,14 @@ test('exportBdmHtml — 元にする図の形', async (t) => {
       assertSameFlow(out.html, payload, out);
     }
   });
-  await t.test('図の中身がない HTML（保存していない MultipurposeDiagramMaker の本体）は read_failed', () => {
-    failsWith(() => exportBdmHtml(BDM_APP, payload), 'read_failed', /MultipurposeDiagramMaker で保存した図の中身が見つかりません/);
+  await t.test('図の中身の印がない HTML（保存していない MultipurposeDiagramMaker の本体）は、空の縦の図として出力する。MultipurposeDiagramMaker の HTML でなければ read_failed', () => {
+    const out = exportBdmHtml(BDM_APP, payload);
+    assertSameFlow(out.html, payload, out);
+    const st = extractBdmState(out.html);
+    assert.equal(st.orientation, 'vertical');
+    assert.equal(st.docId, null);
+    assert.equal(st.uid, st.lanes.length + st.nodes.length + st.edges.length, '番号は 1 から振る');
+    failsWith(() => exportBdmHtml(page(), payload), 'read_failed', /MultipurposeDiagramMaker で保存した図の中身が見つかりません/);
   });
   await t.test('作業がない・形の違う渡す形は bad_request', () => {
     failsWith(() => exportBdmHtml(saved(TRIP), flow(['申請者'], [])), 'bad_request', /作業がないので、MPD に出力しません/);
