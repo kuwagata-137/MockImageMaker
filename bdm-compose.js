@@ -30,6 +30,10 @@ const ROUTE_KEYS = ['waypoints', 'orthoWps', 'midPos']; // 矢印の経路の欄
 const E_ID = /^e(\d+)$/;
 
 const listOf = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
+// レーンと役割の名前を比べる形。アプリの役割の名前（mock_v*.html の cleanName）と同じく、前後の空白を取り、続く空白（全角の空白・改行も）を
+// 半角の空白 1 つにし、100 字で切る（取り込んだ役割の名前はこの形になるので、元のレーンの名前もそろえてから比べる）
+const NAME_MAX = 100;
+const nameKey = (v) => cleanText(v).replace(/\s+/g, ' ').slice(0, NAME_MAX);
 const useLanesOf = (diagramType) => {
   try {
     return diagramInfo(diagramType).useLanes;
@@ -64,7 +68,7 @@ function composeLanes(orig, names, ids) {
   const origLanes = useLanesOf(orig.diagramType) ? listOf(orig.lanes) : [];
   const taken = new Set();
   return names.map((name, i) => {
-    const j = origLanes.findIndex((l, k) => !taken.has(k) && cleanText(l.name) === cleanText(name));
+    const j = origLanes.findIndex((l, k) => !taken.has(k) && nameKey(l.name) === nameKey(name));
     if (j < 0) return { lane: { id: ids.fresh(), name, ...LANE_COLORS[i % LANE_COLORS.length], w: DEFAULT_LANE_SIZE }, from: null };
     taken.add(j);
     const l = origLanes[j];
@@ -87,7 +91,7 @@ function reuseOf(node, step, lane, ctx) {
   if (!was || was.col !== ctx.rankOf.get(step.col) || !lane.from) return null;
   const box = { laneId: idOf(node.lid), x: finiteNumber(node.x, 0), y: finiteNumber(node.y, 0), w: finiteNumber(node.w, 0), h: finiteNumber(node.h, 0) };
   const origLane = laneOf(ctx.origLaneMap, box, ctx.vertical);
-  if (!origLane || origLane.id !== lane.from || cleanText(was.role) !== cleanText(lane.lane.name)) return null;
+  if (!origLane || origLane.id !== lane.from || nameKey(was.role) !== nameKey(lane.lane.name)) return null;
   const [main, mainSize, cross, crossSize] = ctx.vertical ? [box.y, box.h, box.x, box.w] : [box.x, box.w, box.y, box.h];
   return { mainCenter: main + mainSize / 2, crossRatio: (cross + crossSize / 2 - origLane.start) / (origLane.end - origLane.start) };
 }

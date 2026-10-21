@@ -157,6 +157,20 @@ test('exportBdmHtml — 列とレーン', async (t) => {
     assert.ok(Number(st.lanes[0].id.slice(1)) > TRIP.uid, '総務は新しいレーン');
     assert.equal(st.lanes.length, 2, 'アプリにない役割（上長・経理）のレーンは入れない');
   });
+  await t.test('全角の空白・続く空白・改行・100 字より長い名前のレーンも、アプリの役割の名前（cleanName と同じそろえ方）と比べて使い回し、箱の元の位置も使う', () => {
+    const orig = { ...TRIP, lanes: [{ ...TRIP.lanes[0], name: '申請　 者' }, { ...TRIP.lanes[1], name: '上\n\n長' }, { ...TRIP.lanes[2], name: `経理${'部'.repeat(120)}` }] };
+    const appName = (s) => s.trim().replace(/\s+/g, ' ').slice(0, 100); // アプリの cleanName と同じ（取り込んだ役割の名前はこの形）
+    const payload = payloadOf(bdmPlan(orig));
+    payload.lanes = payload.lanes.map(appName);
+    const out = exportBdmHtml(saved(orig), payload);
+    const st = extractBdmState(out.html);
+    assert.deepEqual(st.lanes.map((l) => l.id), ['e1', 'e2', 'e3'], '元のレーンを使い回す');
+    assert.deepEqual(st.lanes.map((l) => l.name), payload.lanes, '名前はアプリの役割の名前');
+    for (const n of TRIP.nodes) {
+      const got = st.nodes.find((x) => x.id === n.id);
+      assert.deepEqual([got.x, got.y], [n.x, n.y], `箱 ${n.id} は元の位置`);
+    }
+  });
   await t.test('元の図に同じ名前のレーンが 2 つあれば、順に使い回す', () => {
     const orig = { ...TRIP, lanes: [{ ...TRIP.lanes[0], id: 'e1' }, { ...TRIP.lanes[0], id: 'e2', bg: '#000000' }] };
     const payload = flow(['申請者', '申請者'], [step('a', 0, 0, 'task', '申請する'), step('b', 1, 1, 'task', '直す')], [['a', 'b']]);
