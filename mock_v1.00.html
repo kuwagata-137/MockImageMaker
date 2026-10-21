@@ -12742,9 +12742,10 @@ function onKeyDown(e) {
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
   const cmd = keyCommand(e);
   if (!cmd) return;
-  // 文字の欄の中の元に戻す・やり直すは、ブラウザの文字の取り消しに任せる。radio・checkbox（押した後もフォーカスが見えないまま残る）では、
-  // 画面の元に戻す・やり直すにする（T9 の見直し。どの画面でも。Delete・Backspace は、今までどおり欄の中の扱い）
-  if ((cmd === 'undo' || cmd === 'redo') && inField && !inField.matches('input[type="radio"], input[type="checkbox"]')) return;
+  // 文字の欄の中の元に戻す・やり直すは、ブラウザの文字の取り消しに任せる。radio・checkbox（押した後もフォーカスが見えないまま残る）と
+  // 選ぶ欄（select。ブラウザの取り消しがない。デバッグとリリースの見直し⑤-5）では、画面の元に戻す・やり直すにする
+  // （T9 の見直し。どの画面でも。Delete・Backspace は、今までどおり欄の中の扱い）
+  if ((cmd === 'undo' || cmd === 'redo') && inField && !inField.matches('select, input[type="radio"], input[type="checkbox"]')) return;
   // 拡大縮小のキーは、編集の画面と、システムの画面のスイムレーン図だけ（ほかではブラウザに任せる）
   if (cmd.startsWith('zoom') && ui.view !== 'editor' && !sysZoomable()) return;
   e.preventDefault();

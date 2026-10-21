@@ -249,6 +249,17 @@ test('置き場からドラッグして図に落とす（4 ドットより動か
   assert.equal(sys().swimlane.steps.length, 9);
 });
 
+test('右の欄の選ぶ欄（役割）を変えた直後に Ctrl+Z を押すと、元に戻す（デバッグとリリースの見直し⑤-5）', async (t) => {
+  const { app, $, node, step } = await boot(t);
+  press(node('w-3'));
+  const role = $('#sys-side [data-sw="role"]');
+  role.focus();
+  setValue(role, 'l-c');
+  assert.equal(step('w-3').roleId, 'l-c');
+  key(app, app.document.activeElement, { key: 'z', ctrlKey: true });
+  assert.equal(step('w-3').roleId, 'l-b', '選ぶ欄にフォーカスがあっても、画面の元に戻すにする');
+});
+
 test('作業の文字を打ちかけのまま置き場の箱を図へドラッグしても、打った文字は消えない（デバッグとリリースの見直し⑤-2）', async (t) => {
   const { $, pal, node, inner, step, sys, cellAt } = await boot(t);
   press(node('w-3'));
