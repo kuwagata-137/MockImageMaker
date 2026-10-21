@@ -81,6 +81,8 @@ async function shootDialogs(ctx, page, ids) {
   await page.evaluate((id) => window.__test__.openSystem(id), ids.main);
   await toastGone(page);
   await page.click('#toolbar [data-action="export"]');
+  await page.waitForSelector('#sys-menu-root [data-action="sys-export-doc"]'); // 第 11 段階から、「出力」は小さなメニューを開く
+  await page.click('#sys-menu-root [data-action="sys-export-doc"]');
   await page.waitForSelector('.modal [data-dpage]');
   let d = await readDialog(page);
   need(d.title === '「出張申請システム」の説明書を出力' && d.buttons.join() === '出力…,キャンセル', `窓の題・ボタンの並びが違う: ${d.title} ／ ${d.buttons.join()}`);
@@ -103,6 +105,8 @@ async function shootDialogs(ctx, page, ids) {
   // 160: 作業の箱がなく、設計ノートに行がないシステム（経費精算システム）の窓
   await page.evaluate((id) => window.__test__.openSystem(id), ids.other);
   await page.click('#toolbar [data-action="export"]');
+  await page.waitForSelector('#sys-menu-root [data-action="sys-export-doc"]'); // 第 11 段階から、「出力」は小さなメニューを開く
+  await page.click('#sys-menu-root [data-action="sys-export-doc"]');
   await page.waitForSelector('.modal [data-dpage]');
   d = await readDialog(page);
   const off = d.pages.filter(([, , dis]) => dis).map(([k, , , why]) => `${k}:${why}`);

@@ -100,6 +100,8 @@ async function checkSystemDoc({ page, OUT, check, waitFile, enableTestHooks }) {
   const file = path.join(OUT, '出張申請システム_説明書.pdf');
   if (fs.existsSync(file)) fs.unlinkSync(file); // fs.rmSync は日本語の名前で Node ごと落ちる（2026-10-14）
   await page.click('#toolbar [data-action="export"]');
+  await page.waitForSelector('#sys-menu-root [data-action="sys-export-doc"]'); // 第 11 段階から、「出力」は小さなメニューを開く
+  await page.click('#sys-menu-root [data-action="sys-export-doc"]');
   await page.waitForSelector('.modal [data-dpage]');
   const shown = await page.evaluate(() => [...document.querySelectorAll('.modal [data-dpage]')].map((x) => `${x.dataset.dpage}:${x.checked ? '入れる' : '外す'}`));
   check('6. 説明書の窓が開き、最初は 8 つのページを全部入れる', shown.length === 8 && shown.every((s) => s.endsWith('入れる')), shown.join('・'));

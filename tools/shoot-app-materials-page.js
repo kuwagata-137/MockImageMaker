@@ -1,7 +1,7 @@
 // tools/shoot-app-materials.js が使う、アプリのページの用意（資料の場面の撮影用）。
 //  - installApi: ページの中で動かす、資料の窓口 window.materialsAPI の身代わり（デスクトップ版の preload.js が出す窓口の代わり）
 //  - buildSample: 見本の画面設計 2 つとシステム 1 つ（役割 3・作業 7・矢印 8）と資料の行（種類と大きさは見本のファイルから読む）を、ページの中で作る
-//  - realReading: 本物の読む部品（material-reader.js）と BDM を読む部品（bdm-swimlane.js）。ページの __materialRead から呼ぶ
+//  - realReading: 本物の読む部品（material-reader.js）と BDM を読む部品（bdm-swimlane.js）と MPD に出力する部品（bdm-export.js）。ページの __materialRead・__mpdExport から呼ぶ
 //  - openPage: ページを開いて見本を作り、資料の入口（または指定の入口）を開く
 'use strict';
 
@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { sampleInfo, SAMPLE_FILES, SAMPLES_DIR, SCHEMA_VERSION } = require('./material-sample-place');
+const { exportBdmHtml } = require('../bdm-export');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // 見本の資料の行（名前・メモ）。id は m-1〜m-8（この順）。古い形の行と BDM の図の行を含む
@@ -19,7 +20,8 @@ const ROWS = [
 const ID = { pdf: 'm-3', bdm: 'm-4' };
 
 // ── ページの中で動かす（起動の前に置く）: 資料の窓口の身代わり ──
-// opts: { api（窓口を置くか）, plan（BDM の案）, schemaVersion（データの形の版。mock_v*.html から読んだもの）}。読むは、window.__readReal が真なら node 側の本物の読む部品（__materialRead）、偽なら身代わりの 2 つの部分
+// opts: { api（窓口を置くか）, plan（BDM の案）, schemaVersion（データの形の版。mock_v*.html から読んだもの）}。読むは、window.__readReal が真なら node 側の本物の読む部品（__materialRead）、偽なら身代わりの 2 つの部分。
+// MPD に出力（第 11 段階）は node 側の本物の部品（__mpdExport）。窓口を置くときは、出力の窓口 window.exportAPI の身代わりも置く（メニューバーの「出力」が出るように。どれも取りやめを返す）
 function installApi(opts) {
   window.__test__ = {};
   localStorage.clear();
@@ -51,9 +53,12 @@ function installApi(opts) {
     },
     read: async (req) => (window.__readReal ? window.__materialRead(req) : { ok: true, result: req.cursor ? part2() : part1() }),
     bdmPlan: async () => ({ ok: true, plan: opts.plan }),
+    bdmExport: async (req) => { window.__materialCalls.push(['bdmExport', req.file, req.name]); return window.__mpdExport(req); },
     sweep: async () => ({ ok: true, removedFiles: 0, removedDirs: 0 }),
     removeSystem: async () => ({ ok: true, removed: 0 }),
   };
+  const canceled = async () => ({ ok: false, canceled: true });
+  window.exportAPI = { saveHtml: canceled, savePdf: canceled, savePng: canceled, openHtml: canceled };
 }
 
 // ── ページの中で動かす: 見本の画面設計 2 つとシステム（役割 3・作業 7・矢印 8）と資料の行 ──
@@ -102,7 +107,15 @@ function realReading() {
     const images = r.images.map((i) => ({ page: i.page, width: i.width, height: i.height, data: Buffer.from(i.png).toString('base64') }));
     return { ok: true, result: { notice: r.notice, part: r.part, text: r.text, images, nextCursor: r.nextCursor == null ? null : r.nextCursor } };
   };
-  return { read, plan };
+  // MPD に出力: 見本の出張申請の流れ.html を元に作り、.devdata/shoot-mpd-export に書く。お知らせに出す場所は、見本の場所（利用者の名前の入らない形）にする
+  const mpdExport = async (req) => {
+    const out = exportBdmHtml(fs.readFileSync(path.join(SAMPLES_DIR, SAMPLE_FILES.bdm), 'utf8'), req.plan);
+    const dir = path.join(__dirname, '..', '.devdata', 'shoot-mpd-export');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, req.name), out.html, 'utf8');
+    return { ok: true, path: `C:\\Users\\sample\\Documents\\${req.name}`, warnings: out.warnings, counts: out.counts };
+  };
+  return { read, plan, mpdExport };
 }
 
 // アプリのページを開く。api が偽ならデスクトップ版の窓口なし（ブラウザで開いたとき）。withRows が偽なら資料の行なし
@@ -111,6 +124,7 @@ async function openPage(ctx, { width = 1440, height = 900, api = true, withRows 
   const page = await browser.newPage();
   await page.setViewport({ width, height });
   await page.exposeFunction('__materialRead', real.read);
+  await page.exposeFunction('__mpdExport', real.mpdExport);
   await page.evaluateOnNewDocument(installApi, { api, plan: real.plan, schemaVersion: SCHEMA_VERSION });
   page.on('pageerror', (e) => console.log('[pageerror]', e.message));
   page.on('console', (m) => { if (m.type() === 'error') console.log('[page]', m.text()); });

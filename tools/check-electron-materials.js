@@ -3,7 +3,8 @@
 //  1 回目: システムを 1 つ作り、システムの資料の入口の「＋ ファイルを入れる…」を押す（窓を出さず、環境変数 MIM_MATERIAL_FILES の見本の 6 種類を入れる）。
 //     表に 6 行・<userData>/data/files/<システムの id>/ に 6 つのファイル（見本と同じ中身）。本物の Electron で materialsAPI.read（Excel の番地・Word の見出し・
 //     PDF の日本語の文字と 3 ページ目の画像・BDM の文・Shift_JIS の文字・PNG）。6 つを同時に頼んでも全部読めて、1 つずつ読んだときと同じ文が返る。
-//     bdmPlan と「スイムレーン図にする」で役割と作業が入る。
+//     bdmPlan と「スイムレーン図にする」で役割と作業が入る。MPD の行の「MPD に出力…」（第 11 段階）で、保存の窓の代わりに MIM_EXPORT_DIR に
+//     <システムの名前>_スイムレーン.html を書き、読み直すと同じ役割・作業・矢印（箱は元の MPD の箱の id のまま）で、元の資料のファイルは変わらない。
 //     1 行を消して閉じる → 消した行のファイルは残る（元に戻すで行が戻ったときにファイルが要るため）
 //  2 回目（起動し直す）: 行は 5 つ。1 つ前の保存（.bak）に消した行が残っているので、消した行のファイルはまだ残る（設計どおり）。
 //     ファイルを落とす操作を CDP の Input.dispatchDragEvent で試し（1 つ落として 2 行以上入れば NG。0 行なら「手で確かめる」と出す）、次の保存（メモ）を挟んで閉じる
@@ -18,15 +19,17 @@ const path = require('path');
 const { removeTree, ensureSamples, SAMPLE_FILES, SAMPLES_DIR } = require('./material-sample-place');
 const { report, readAll, checkReads, checkParallelReads, SIX } = require('./check-electron-materials-read');
 const { open, closeApp, killLeftovers, waitFor, listFiles, saved, materialsOf } = require('./check-electron-materials-app');
+const { planFromHtml } = require('../bdm-swimlane');
 
 const KIND_NAMES = ['Excel', 'Word', 'PDF', 'MPD', '文字', '画像'];
 const DELETED = SAMPLE_FILES.image; // 1 回目で消す行
 const DROPPED = SAMPLE_FILES.legacy; // 2 回目で落とすファイル（古い形の Excel）
+const MPD_EXPORT_DIR = path.join(__dirname, '..', '.devdata', 'check-electron-mpd-export'); // 「MPD に出力…」の書く先（窓を出さない起動の MIM_EXPORT_DIR）
 
 // 1 回目: 入れる → 表と置き場 → 読む → スイムレーン図にする → 1 行を消す
 async function buildRun(h) {
   const files = SIX.map((n) => path.join(SAMPLES_DIR, n));
-  const app = await open(h, h.USER_DATA_MAT, { MIM_MATERIAL_FILES: JSON.stringify(files) });
+  const app = await open(h, h.USER_DATA_MAT, { MIM_MATERIAL_FILES: JSON.stringify(files), MIM_EXPORT_DIR: MPD_EXPORT_DIR });
   const { page } = app;
   const sysId = await page.evaluate(() => {
     const T = window.__test__;
@@ -48,6 +51,7 @@ async function buildRun(h) {
   ok = checkReads(sequential) && ok;
   ok = checkParallelReads(await page.evaluate(readAll, rows, sysId, true), sequential) && ok;
   ok = (await swimFromBdm(page, rows)) && ok;
+  ok = (await mpdExport(page, rows, dir)) && ok;
   await page.evaluate(() => window.__test__.openSystemPanel('materials'));
   const image = rows.find((m) => m.name === DELETED);
   await page.click(`#sys-view [data-action="sys-mat-del"][data-id="${image.id}"]`);
@@ -74,6 +78,25 @@ async function swimFromBdm(page, rows) {
   return report(plan.ok && plan.plan.roles.join() === '申請者,上長,経理' && plan.plan.steps.length === 8 && y.roles.join() === '申請者,上長,経理' && y.steps.length === 8 && y.edges === 8
     && y.steps.every((w) => w.src && w.src.material === bdm.id),
   '本物の Electron の bdmPlan の案から、「スイムレーン図にする」で役割 3・作業 8・矢印 8 が入り、作業の src に資料の id が入る', `案 ${plan.ok ? `役割 ${plan.plan.roles.length}・作業 ${plan.plan.steps.length}` : JSON.stringify(plan.error)} ／ 図 役割 ${y.roles.join('・')}・作業 ${y.steps.length}・矢印 ${y.edges}`);
+}
+
+// 「MPD に出力…」（第 11 段階。資料の MPD の行）。窓を出さない起動では、保存の窓の代わりに MIM_EXPORT_DIR に書く（export.js の askSavePath）。
+// 書いたファイルを読み直すと、取り込んだ図と同じ役割・作業・矢印で、作業の箱は元の MPD の箱の id のまま。元の資料のファイルは変わらない
+async function mpdExport(page, rows, dir) {
+  const bdm = rows.find((m) => m.kind === 'bdm');
+  const src = path.join(dir, bdm.file);
+  const before = fs.readFileSync(src);
+  await page.evaluate(() => window.__test__.openSystemPanel('materials'));
+  await page.click(`#sys-view [data-action="sys-mat-export"][data-id="${bdm.id}"]`);
+  await page.waitForFunction(() => /MPD に出力しました/.test(document.querySelector('#toast').textContent), { timeout: 30000 });
+  const toast = await page.$eval('#toast', (el) => el.textContent);
+  const file = path.join(MPD_EXPORT_DIR, '出張申請システム（資料の確かめ）_スイムレーン.html');
+  const read = fs.existsSync(file) ? planFromHtml(fs.readFileSync(file, 'utf8')) : { roles: [], steps: [], edges: [] };
+  const keys = (p) => p.steps.map((s) => s.key).sort().join();
+  return report(toast.includes(file) && read.roles.join() === '申請者,上長,経理' && read.steps.length === 8 && read.edges.length === 8
+    && keys(read) === keys(planFromHtml(before.toString('utf8'))) && before.equals(fs.readFileSync(src)),
+  '「MPD に出力…」で <システムの名前>_スイムレーン.html を書き、読み直すと役割 3・作業 8・矢印 8（箱は元の MPD の箱の id のまま）。元の資料のファイルは変わらない',
+  `${toast} ／ 読み直し 役割 ${read.roles.join('・')}・作業 ${read.steps.length}・矢印 ${read.edges.length}`);
 }
 
 // ファイルを落とす操作を CDP で試す。戻り値は { added: 入った行の数, error: 失敗の文（なければ ''） }
@@ -177,6 +200,7 @@ async function blockedRun(h) {
 // h は check-electron.js の道具 { launch, connect, appPage, enableTestHooks, withTimeout, sleep, PORT, USER_DATA_MAT }
 module.exports = async function checkMaterials(h) {
   removeTree(h.USER_DATA_MAT);
+  removeTree(MPD_EXPORT_DIR);
   try {
     await ensureSamples();
     const built = await buildRun(h);
