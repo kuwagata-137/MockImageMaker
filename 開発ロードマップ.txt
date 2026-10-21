@@ -46,7 +46,7 @@
 - 第 10 段階の後半（システムの説明書〔PDF〕・AI の道具 export_system_doc）を作った（2026-10-20。下の「済んだ段階」。ブランチ stage10b/doc。
   npm test 1090 個。道具 34 個）。説明書の設計ノートのページに入れる行（q80 案C）と、説明書の窓・システムの表紙・スイムレーン図のページの見た目（q81）をモックで聞いた（開発記録.txt）。
   次は第 11 段階（スイムレーンを BDM の HTML に出力する）。PR #13 でマージした。
-- 第 11 段階（スイムレーン図を MPD に出力する・AI の道具 export_bdm）を作った（2026-10-21。下の「済んだ段階」。ブランチ stage11/bdm-export。npm test 1140 個。道具 35 個）。
+- 第 11 段階（スイムレーン図を MPD に出力する・AI の道具 export_bdm）を作った（2026-10-21。下の「済んだ段階」。ブランチ stage11/bdm-export。npm test 1145 個。道具 35 個）。
   作業の途中で、ビジネスダイアグラムメーカー（BDM）が MultipurposeDiagramMaker に改名したと知らされ、画面の文の略称を MPD（図を指す）にした（q84）。
   入口の見た目をモックで聞いた（q82。q83・q84 は文で聞いた）。これで AI 設計基盤の第 7〜11 段階を全部作った。次はデバッグとリリース（読む所は 次の開発の引継.md）。
 - 2026-10-15: CLAUDE.md の「現行ステータス」を短い要約にした（ユーザー決定。細かい決めごとは 仕様_細かい決めごと.md、ファイルの役割は 作りの地図.md へ移した）。
@@ -71,8 +71,11 @@
    - 元の MPD の中の図だけを今のスイムレーン図に入れ替えた HTML を、別の名前で保存する（元の資料は書き換えない）。MultipurposeDiagramMaker の整列と同じ寸法で箱を置き、
      元の箱・レーン・矢印は使い回せるときだけ使い回す。docId は null。出力するたびに読み直して、食い違いを知らせる。
    - AI の道具 export_bdm（34 → 35 個）。手引きの ⑤ で、資料に MPD があるときは MPD にも出力するかを人に確かめる。
-   - テストは全部で 1140 個。test/bdm-export.test.js・test/mpd-export-ui.test.js・test/ai-mpd-export.test.js を足した。
+   - テストは全部で 1145 個。test/bdm-export.test.js・test/mpd-export-ui.test.js・test/ai-mpd-export.test.js を足した。
      確かめの道具 tools/check-bdm-export.js（出力した HTML を MultipurposeDiagramMaker で開いて読めるか・保存し直しても同じか）を足した。
+   - 見直し役のエージェントの指摘 8 つのうち 7 つを直した（レーンの名前の比べ方・保存の先の判定・役割のある作業がない図など。開発記録.txt）。
+   - 終わりの確かめ（2026-10-21）: npm test・check-electron・check-export・check-mcp（全部と --packaged）・check-bdm-export・shoot-app の materials・doc がすべて通った。
+     Claude Code（claude -p）の場面 14（MPD に出力して）は判定が全部 OK。場面 12（資料から ①〜⑤ と MPD）は 判定 14 項目すべて OK（約 18 分・人の答え 5 回・約 7.5 ドル。⑤ で説明書の PDF と MPD を出力し、どちらの場所も設計ノートの段階 docs の決めたことに書いた。1 回目は Claude の利用の上限で途中で切れたので、上限が戻ってから動かし直した）（開発記録.txt）。
 第 10 段階の後半　システムの説明書（PDF）・export_system_doc（2026-10-20。版は v1.00 のまま。設計は AI設計基盤_設計書.md の 6・9-2・10・16 章。
    細かい決めごとは 仕様_細かい決めごと.md の「説明書（PDF）の細かい決めごと」）
    - システムの説明書（PDF）: システムの表紙（画面設計の一覧と役割。q81_2）→ スイムレーン図（q81_3）→ 画面設計ごとに、画面設計を 1 つ出力したときと同じページ →

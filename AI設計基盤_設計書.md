@@ -1079,7 +1079,7 @@ claude mcp add --scope user mockimagemaker-dev node 'C:\<作業フォルダ>\mcp
 | 第 8 段階: ステータスの移り方と画面の移り方 | データの形の版 3（`systems` の入れ物も含めて全部。5 章）・プロセス管理・ボタンの移る先・2 つの図・出力のページ・第 8 段階の道具 | 人と AI の両方が、ステータスの移り方と画面の移り方を描ける。版 2 のデータを版 3 に直して読める |
 | 第 9 段階: システム・資料・スイムレーン | システムのまとまり（案B・今ある画面設計を入れる窓）・システムの画面・資料の置き場（画像・PDF・Word・Excel・BDM を読む）・スイムレーン図・BDM を読む・第 9 段階の道具 | 架空の業務の資料（BDM の図・様式の Excel）から、AI がシステム・スイムレーンを作れる |
 | 第 10 段階: 段階ごとの手順・設計ノート・説明書（前半・後半に分けた。どちらも作った〔2026-10-20〕） | 前半: 「出力」の名前のそろえ（q79）・設計ノート・手引き `stages` と prompts・道具 3 個。後半: システムの説明書（PDF。q80・q81）・`export_system_doc`（道具 34 個） | 架空の出張申請の資料から、10 章の手順で最後まで作れる |
-| 第 11 段階: MPD に描く（作った〔2026-10-21〕） | `export_bdm`（道具 35 個）と、アプリの「MPD に出力」（q82〜q84） | 出力した HTML を BDM で開ける。出力した HTML をアプリで読み直すと、元と同じスイムレーンになる |
+| 第 11 段階: MPD に描く（作った〔2026-10-21〕） | `export_bdm`（道具 35 個）と、アプリの「MPD に出力」（q82〜q84） | 出力した HTML を MultipurposeDiagramMaker で開ける。出力した HTML をアプリで読み直すと、元と同じスイムレーンになる |
 
 第 7 段階の終わりの確かめ（2026-10-14）: 作った版（`dist/win-unpacked`。インストーラが入れるものと同じ中身）の入口を、登録の文と同じ動かし方で公式 SDK の客からつなぎ、
 4 つの場面で 17 個の道具を呼び、窓を出さない裏の起動・保存・終わる時を確かめた（`tools/check-mcp.js --packaged`）。Claude Code（モデル）から試すこと
@@ -1089,6 +1089,12 @@ claude mcp add --scope user mockimagemaker-dev node 'C:\<作業フォルダ>\mcp
 `tools/check-export.js`（ステータスの移り方と画面の移り方のページで 7 ページ）・`tools/check-mcp.js`（20 個の道具。edit_process・get_flow・get_view_image）がすべて OK。
 Claude Code（`claude -p`）から 4 つの場面（頼んだ画面を作る・資料から下書き・今ある画面設計を直す・読んで答える）を試し、すべてできた。
 AI が迷ったのは、まだない画面を to に書いた 1 か所だけで、手引きと断る文を直した（`開発記録.txt`）。
+
+第 11 段階の終わりの確かめ（2026-10-21）: `npm test`（テスト 1145 個）・`tools/check-electron.js`・`tools/check-export.js`・`tools/check-mcp.js`（35 個の道具。全部と `--packaged`）・
+`tools/check-bdm-export.js`（出力した HTML を headless の Chrome の MultipurposeDiagramMaker で開き、`init()` が読んだレーン・箱・矢印の id が出力したものと同じ。
+MultipurposeDiagramMaker で保存し直しても、読み取りの案が同じ。4 場面）・`tools/shoot-app.js --only=materials,doc` がすべて OK。
+Claude Code（`claude -p`）の場面 14（「MPD に出力して」と頼む）で、AI が資料の MPD を探して `export_bdm` を呼び、書いたファイルを読み直すとシステムのスイムレーン図と同じだった。
+場面 12（資料から ①〜⑤ を最後まで作り、⑤ で人が「MPD にも出力して」と答える）は、判定 14 項目すべて OK（約 18 分・人の答え 5 回・約 7.5 ドル。⑤ で説明書の PDF と MPD を出力し、どちらの場所も設計ノートの段階 docs の決めたことに書いた。1 回目は Claude の利用の上限で途中で切れたので、上限が戻ってから動かし直した）（`開発記録.txt`）。
 
 この順にした理由:
 
