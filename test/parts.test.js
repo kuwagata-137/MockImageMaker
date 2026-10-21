@@ -1006,6 +1006,34 @@ test('吹き出しをドラッグしている間も、その吹き出しの線�
   assert.equal($$(app, '#co-lines line').length, 1);
 });
 
+test('縮小して見ているとき、押しただけで手が少し（4 ドットより少なく）動いても、部品・吹き出し・選んだもの・つながりは変わらない（デバッグとリリースの見直し⑤-3）', async (t) => {
+  const { app, api, add, screen, partEl } = await bootEditor(t);
+  const a = add('text1');
+  const b = add('button');
+  api.selectPart(a.id);
+  click($(app, '.pal-btn[data-type="callout"]'));
+  for (let i = 0; i < 5; i++) api.runCommand('zoomOut');
+  assert.equal(api.ui.zoom, 0.5);
+  const before = JSON.stringify(screen());
+  const undo0 = api.store.undoStack.length;
+  const press = (el, init = {}) => {
+    mouse(app, el, 'mousedown', { clientX: 100, clientY: 100, ...init });
+    mouse(app, app.document, 'mousemove', { clientX: 102, clientY: 101 });
+    mouse(app, app.document, 'mouseup', { clientX: 102, clientY: 101 });
+  };
+  press(partEl(b.id));
+  assert.equal(JSON.stringify(screen()), before, '部品');
+  press($(app, '#stage .callout'));
+  assert.equal(JSON.stringify(screen()), before, '吹き出し');
+  press($(app, '#stage [data-co-handle]'));
+  assert.equal(JSON.stringify(screen()), before, '線の先の ○（つながりを外さない）');
+  press(partEl(a.id), { ctrlKey: true });
+  assert.equal(api.ui.sel.length, 2, '部品 2 つを選んだ');
+  press(partEl(b.id));
+  assert.equal(JSON.stringify(screen()), before, '選んだものをまとめて');
+  assert.equal(api.store.undoStack.length, undo0, '履歴に積まない');
+});
+
 test('吹き出しの文字を打ちかけのまま、線の先の ○ をドラッグしても、打った文字は消えない（デバッグとリリースの見直し⑤-1）', async (t) => {
   const { app, api, add, screen } = await bootEditor(t);
   const p = add('text1');

@@ -10229,8 +10229,8 @@ function selElement(x) {
 }
 // まとめて動かしている間は、要素だけを動かす（保存は放したとき）。複製のときは、写しの影を動かす
 function dragGroup(ev) {
+  if (!dragStarted(ev)) return;
   const s = currentScreen();
-  if (Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) >= 4) drag.moved = true;
   const [dx, dy] = clampGroupMove(s, drag.rects, snapGrid((ev.clientX - drag.sx) / ui.zoom), snapGrid((ev.clientY - drag.sy) / ui.zoom));
   drag.dx = dx;
   drag.dy = dy;
@@ -10340,6 +10340,7 @@ function startCalloutDrag(ev, id, grip) {
 
 // ドラッグ中は、その吹き出しの要素と線だけを描き直す（保存は放したとき）
 function dragCallout(ev) {
+  if (!dragStarted(ev)) return;
   const s = currentScreen();
   const dx = (ev.clientX - drag.sx) / ui.zoom;
   const dy = (ev.clientY - drag.sy) / ui.zoom;
@@ -10362,10 +10363,11 @@ function startCalloutLink(ev, id) {
   ev.preventDefault();
   flushSideField(); // 右の欄の打ちかけの文字（吹き出しの文字など）を先に保存する（放したときの描き直しで消えないように。デバッグとリリースの見直し⑤-1）
   blurSidePanel();
-  drag = { kind: 'co-link', id, target: undefined };
+  drag = { kind: 'co-link', id, target: undefined, sx: ev.clientX, sy: ev.clientY };
   document.body.classList.add('linking');
 }
 function dragCalloutLink(ev) {
+  if (!dragStarted(ev)) return; // 押しただけなら、つながりを変えない（target は undefined のまま）
   const s = currentScreen();
   const c = findCallout(s, drag.id);
   const zone = $('#co-zone');
@@ -10420,8 +10422,17 @@ function startPartDrag(ev, partId, grip) {
   if (!grip) document.body.classList.add('moving');
 }
 
+// 押したところから窓の上で 4 ドットより動かしたら、ドラッグを始めたとみなす（drag.moved）。それまでは動かさない
+// （縮小して見ているときは、押しただけの手の揺れでも升目 1 つ分ずれ、元に戻すの履歴に残っていた。デバッグとリリースの見直し⑤-3）
+function dragStarted(ev) {
+  if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return false;
+  drag.moved = true;
+  return true;
+}
+
 // 部品のドラッグ中は、その部品の要素だけを動かす（保存は放したとき）
 function dragPart(ev) {
+  if (!dragStarted(ev)) return;
   const s = currentScreen();
   const dx = (ev.clientX - drag.sx) / ui.zoom;
   const dy = (ev.clientY - drag.sy) / ui.zoom;
