@@ -37,10 +37,15 @@ function laneAt(list, cross) {
 // （BDM の nodeLaneIdx と同じ。'__virtual__' は BDM がレーンのある図でもフリー配置の箱〔step_num など〕に付ける lid で、BDM はそれも位置のレーンに描く）。
 // レーンなし（null）になるのは、レーンの一覧が空（フローチャートなどレーンを使わない図を含む）のときだけ
 function laneRoleOf(laneMap, box, vertical) {
+  const lane = laneOf(laneMap, box, vertical);
+  return lane ? lane.role : null;
+}
+
+// 箱のレーン { id, role, start, end }（決め方は laneRoleOf と同じ。レーンの一覧が空なら null）。MPD へ出力するとき、元の位置を使うかの判定に使う（第 11 段階）
+function laneOf(laneMap, box, vertical) {
   if (!laneMap.list.length) return null;
   const byId = box.laneId ? laneMap.list.find((lane) => lane.id === box.laneId) : null;
-  if (byId) return byId.role;
-  return laneAt(laneMap.list, vertical ? box.x + box.w / 2 : box.y + box.h / 2).role;
+  return byId || laneAt(laneMap.list, vertical ? box.x + box.w / 2 : box.y + box.h / 2);
 }
 
 // 複数レーンの箱がまたがるレーンの役割の名前（fromLid から toLid まで・レーンの並びの順・同じ名前は 1 つ）
@@ -80,4 +85,4 @@ function groupNamesOf(box, groups) {
     .map((g) => g.text);
 }
 
-module.exports = { createLaneMap, laneRoleOf, spanRoles, assignColumns, groupNamesOf };
+module.exports = { createLaneMap, laneRoleOf, laneOf, spanRoles, assignColumns, groupNamesOf, DEFAULT_LANE_SIZE };

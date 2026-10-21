@@ -82,6 +82,17 @@ function parseState(json) {
   return { state };
 }
 
+// ① の印の script の JSON の場所を、見つかった順に [{ start, end }] で返す（第 11 段階。MPD へ出力するとき、この場所を差し替える）。
+// 切り出せない（閉じていない・壊れている）ものは end が null
+function locateStateScripts(html) {
+  if (typeof html !== 'string') return [];
+  return [...html.matchAll(STATE_SCRIPT)].map((m) => {
+    const start = m.index + m[0].length;
+    const json = sliceJsonObject(html, start);
+    return { start, end: json === null ? null : start + json.length };
+  });
+}
+
 // BDM の保存 HTML（文字）から図の中身を返す。見つからない・壊れている・nodes が配列でないときは MaterialError('read_failed')
 function extractBdmState(html) {
   if (typeof html !== 'string') throw new MaterialError('read_failed', NOT_FOUND);
@@ -94,4 +105,4 @@ function extractBdmState(html) {
   throw new MaterialError('read_failed', problem || NOT_FOUND);
 }
 
-module.exports = { extractBdmState };
+module.exports = { extractBdmState, locateStateScripts, BROKEN };
