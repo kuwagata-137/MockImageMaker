@@ -73,4 +73,4 @@ function supplementTexts(boxes, attached, warnings) {
   return supplementsOf;
 }
 
-module.exports = { readEdges };
+module.exports = { readEdges, labelOf };

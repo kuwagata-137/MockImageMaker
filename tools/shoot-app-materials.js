@@ -1,8 +1,10 @@
-// tools/shoot-app.js の資料の場面（--only=materials。場面 138〜149）。第 9 段階の後半の「資料」の入口（画像 q67 の案A「表」）のとおりかを撮る。
+// tools/shoot-app.js の資料の場面（--only=materials。場面 138〜149・164〜167）。第 9 段階の後半の「資料」の入口（画像 q67 の案A「表」）と、
+// 第 11 段階の「MPD に出力」（画像 q82。メニューバーの「出力」の小さなメニュー・元にする MPD を選ぶ窓）のとおりかを撮る。
 // 窓口 window.materialsAPI（デスクトップ版の preload.js が出す）は、ここで身代わりを置く。見本は架空の出張申請（make-material-samples.js が作る資料）。
 //  - 「読む」の窓: 場面 142・143 は身代わりの 2 つの部分（続きを読む）、場面 144・145 は本物の読む部品（material-reader.js）で読んだ旅費規程.pdf（node 側の関数を ページから呼ぶ）
 //  - 「スイムレーン図にする」: 本物の BDM を読む部品（bdm-swimlane.js）が出張申請の流れ.html から作った案
 //  - ファイルを落とす: 実際のファイルは落とせないので、DataTransfer に File を入れた dragover・drop をページへ送る（Chrome の headless）
+//  - MPD に出力: 本物の出力の部品（bdm-export.js）が出張申請の流れ.html を元に作る（保存の窓は出さず、.devdata/shoot-mpd-export に書く）
 // どの場面も headless で撮る（窓を出さない）。画像は screenshots/ に置く。
 'use strict';
 
@@ -25,9 +27,10 @@ const need = (ok, message) => { if (!ok) throw new Error(message); };
 async function shootTable(ctx) {
   const { shot } = ctx;
   const page = await openPage(ctx);
-  const rows = await page.$$eval('#sys-view .mat-tbl tbody tr', (trs) => trs.map((tr) => ({ old: tr.classList.contains('old'), swim: !!tr.querySelector('[data-action="sys-mat-swim"]') })));
-  need(rows.length === 8 && rows.filter((r) => r.old).length === 1 && rows.filter((r) => r.swim).length === 1, `資料の表の行が見本と違う: ${JSON.stringify(rows)}`);
-  await shot(page, '138_資料_表（資料 8 つ・古い形の札・BDM の図だけ「スイムレーン図にする」）');
+  const rows = await page.$$eval('#sys-view .mat-tbl tbody tr', (trs) => trs.map((tr) => ({ old: tr.classList.contains('old'), swim: !!tr.querySelector('[data-action="sys-mat-swim"]'),
+    mpd: !!tr.querySelector('[data-action="sys-mat-export"]') })));
+  need(rows.length === 8 && rows.filter((r) => r.old).length === 1 && rows.filter((r) => r.swim).length === 1 && rows.filter((r) => r.mpd).length === 1, `資料の表の行が見本と違う: ${JSON.stringify(rows)}`);
+  await shot(page, '138_資料_表（資料 8 つ・古い形の札・MPD だけ「スイムレーン図にする」「MPD に出力…」）');
   await dragFiles(page, 'dragover', ['申請書の記入例（2）.png']);
   need(await page.$eval('#sys-view .mat-drop', (e) => e.classList.contains('drop-on')), 'ファイルを乗せても落とす枠が青くならない');
   await shot(page, '139_資料_ファイルを落とす枠の上に乗せたとき（枠が青い）');
@@ -114,6 +117,36 @@ async function shootNarrow(ctx) {
   await narrow.close();
 }
 
+// 164〜167: MPD に出力（第 11 段階。画像 q82）。メニューバーの「出力」の小さなメニュー・元にする MPD を選ぶ窓・出力した後のお知らせ・資料に MPD がないとき
+async function shootMpdExport(ctx) {
+  const { shot } = ctx;
+  const page = await openPage(ctx, { panel: 'swimlane' });
+  await page.click('#toolbar [data-action="export"]');
+  await page.waitForSelector('#sys-menu-root .sys-pop');
+  const items = await page.$$eval('#sys-menu-root [role="menuitem"]', (bs) => bs.map((b) => `${b.querySelector('b').textContent}${b.disabled ? '（×）' : ''}`));
+  need(items.join() === '説明書（PDF）を出力…,MPD に出力…', `小さなメニューの項目が違う: ${items.join()}`);
+  await shot(page, '164_MPD_メニューバーの「出力」の小さなメニュー');
+  await page.click('#sys-menu-root [data-action="sys-export-mpd"]');
+  await page.waitForSelector('.modal .mpd-pick');
+  const d = await page.evaluate(() => ({ title: document.querySelector('.modal h2').textContent, rows: document.querySelectorAll('.mpd-pick label').length,
+    buttons: [...document.querySelectorAll('.modal-actions button')].filter((b) => !b.hidden).map((b) => b.textContent) }));
+  need(d.title === '「出張申請システム」のスイムレーン図を MPD に出力' && d.buttons.join() === '出力…,キャンセル' && d.rows === 1, `元にする MPD を選ぶ窓が違う: ${JSON.stringify(d)}`);
+  await shot(page, '165_MPD_元にする MPD を選ぶ窓');
+  await page.click('.modal [data-dlg="ok"]');
+  await waitToast(page);
+  const toast = await page.$eval('#toast', (e) => e.textContent);
+  need(/^MPD に出力しました（.+出張申請システム_スイムレーン\.html）。$/.test(toast), `出力した後のお知らせが違う（読み直しの注意が出た？）: ${toast}`);
+  await shot(page, '166_MPD_出力した後のお知らせ');
+  await page.close();
+  const none = await openPage(ctx, { withRows: false, panel: 'swimlane' });
+  await none.click('#toolbar [data-action="export"]');
+  await none.waitForSelector('#sys-menu-root .sys-pop');
+  const why = await none.$eval('#sys-menu-root [data-action="sys-export-mpd"]', (b) => [b.disabled, b.querySelector('small').textContent]);
+  need(why[0] && why[1] === '資料に MPD がありません（左の「資料」から入れます）', `資料に MPD がないときの項目が違う: ${why.join(' ／ ')}`);
+  await shot(none, '167_MPD_資料に MPD がないとき（「MPD に出力…」は押せず、理由を小さな字で出す）');
+  await none.close();
+}
+
 module.exports = async function shootMaterials(browser, env) {
   await ensureSamples();
   const ctx = { browser, real: realReading(), root: env.ROOT, htmlName: env.HTML_NAME, shot: async (p, name) => { await sleep(120); await env.shot(p, name); } };
@@ -121,4 +154,5 @@ module.exports = async function shootMaterials(browser, env) {
   await shootReader(ctx);
   await shootReplace(ctx);
   await shootNarrow(ctx);
+  await shootMpdExport(ctx);
 };

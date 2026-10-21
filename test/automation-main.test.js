@@ -191,3 +191,39 @@ test('read_material の仕上げ: 資料の窓口がなければ unavailable。f
   const thrown = await createRenderFinisher({ app, renderer: {}, headless: true, materials: { finishRead: async () => { throw new Error('壊れた'); } } }).finish(materialPage());
   assert.deepEqual([thrown.ok, thrown.error.code], [false, 'read_failed']);
 });
+
+// ── AI の export_bdm の仕上げ（第 11 段階。render.kind 'bdm' を資料の窓口の bdmExport で作り、AI の出力のフォルダに書く）──
+const BDM_RENDER = { kind: 'bdm', systemId: 'y1', file: 'm4.html', plan: { name: '出張申請システム', lanes: ['申請者'], steps: [], edges: [] }, name: '出張申請システム_スイムレーン.html' };
+const bdmPage = () => ({ ok: true, result: { system: { id: 'y1', name: '出張申請システム' }, material: { id: 'm4', name: '出張申請の流れ.html' } }, render: BDM_RENDER });
+
+test('export_bdm の仕上げ: 資料の窓口の bdmExport で HTML を作り、AI の出力のフォルダに書く（同じ名前は番号を付ける）。読み直しの食い違い warnings を返事に入れる', async (t) => {
+  const dir = makeDir();
+  t.after(() => removeDir(dir));
+  const saved = process.env.MIM_AI_EXPORT_DIR;
+  process.env.MIM_AI_EXPORT_DIR = dir;
+  t.after(() => {
+    if (saved === undefined) delete process.env.MIM_AI_EXPORT_DIR;
+    else process.env.MIM_AI_EXPORT_DIR = saved;
+  });
+  const seen = [];
+  const materials = { bdmExport: async (req) => { seen.push(req); return { ok: true, html: '<html>出力</html>', warnings: ['作業「受付」は…'], counts: { lanes: 1, steps: 1, edges: 0 } }; } };
+  const { finish } = createRenderFinisher({ app: { isPackaged: false, getPath: () => dir }, renderer: {}, headless: true, materials });
+  const first = await finish(bdmPage());
+  const second = await finish(bdmPage());
+  assert.deepEqual(seen, [{ systemId: 'y1', file: 'm4.html', plan: BDM_RENDER.plan }, { systemId: 'y1', file: 'm4.html', plan: BDM_RENDER.plan }]);
+  assert.equal(first.render, undefined);
+  assert.deepEqual(first.result, { system: { id: 'y1', name: '出張申請システム' }, material: { id: 'm4', name: '出張申請の流れ.html' }, files: [path.join(dir, '出張申請システム_スイムレーン.html')], folder: dir, warnings: ['作業「受付」は…'] });
+  assert.deepEqual(second.result.files, [path.join(dir, '出張申請システム_スイムレーン (2).html')]);
+  assert.equal(fs.readFileSync(first.result.files[0], 'utf8'), '<html>出力</html>');
+});
+
+test('export_bdm の仕上げ: 資料の窓口がなければ unavailable。bdmExport の失敗はその code と文で返し、例外は render_failed にする', async () => {
+  const app = { isPackaged: false, getPath: () => ROOT };
+  const none = await createRenderFinisher({ app, renderer: {}, headless: true }).finish(bdmPage());
+  assert.deepEqual([none.ok, none.error.code], [false, 'unavailable']);
+  const noSteps = { ok: false, error: { code: 'bad_request', message: 'スイムレーン図に作業がないので、MPD に出力しません。' } };
+  const failed = await createRenderFinisher({ app, renderer: {}, headless: true, materials: { bdmExport: async () => noSteps } }).finish(bdmPage());
+  assert.deepEqual(failed, noSteps);
+  const thrown = await createRenderFinisher({ app, renderer: {}, headless: true, materials: { bdmExport: async () => { throw new Error('壊れた'); } } }).finish(bdmPage());
+  assert.deepEqual([thrown.ok, thrown.error.code], [false, 'render_failed']);
+});

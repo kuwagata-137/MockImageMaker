@@ -2,7 +2,7 @@
 // export_system_doc を本物のアプリで確かめる。
 // 起動の前に、保存先へ見本のシステム 1 つ（役割 2・作業 2。資料は置かない）を置く（check-mcp-materials.js の場面 D と同じ置き方。--only=notes で E だけを動かせる）。
 //  0. アプリを起動する前に、入口だけで返る物を確かめる（アプリは起動しない）:
-//     道具は 34 個で、get_notes（読むだけ）・update_notes・set_stage（書く）がある ／ prompts は 3 つ（design_system・make_screen・fix_design）で引数の必須と省略が合う ／
+//     道具は 35 個で、get_notes（読むだけ）・update_notes・set_stage（書く）がある ／ prompts は 3 つ（design_system・make_screen・fix_design）で引数の必須と省略が合う ／
 //     design_system（引数なし・system あり）は user の文 1 つで、read_guide の "stages" を読む指示がある ／ make_screen・fix_design は必須の引数がないと断られ、
 //     文に "stages" を読ませる文も set_stage もない ／ resources は 5 つで、mim://guide/stages が読めて read_guide の "stages" と同じ文
 //  1. 最初の get_notes（アプリを裏で起動する）: 段階 5 つが todo・読み取ったこと・メモ・決めたこと・まだ決まっていないことが空 ／ list_systems の行の stages も todo

@@ -4,16 +4,17 @@
 // （窓の × は、check-electron と同じく BrowserWindow.close() を inspector から呼んで再現する。ページの window.close() は close の知らせを通らないため）。
 //  A. 最初の頼みで、アプリを --background で起動する（かかった時間を出す）。画面設計を作って部品を並べると、designs.json に残る。
 //     画面の画像は長い辺が 1568 以下の PNG。出力（PDF・PNG・HTML）は MIM_AI_EXPORT_DIR に書き、同じ名前には番号を付ける。
-//     道具は 34 個。edit_process でステータスと操作を書き、移る先を持つボタンを並べると、get_flow で読め、get_view_image は PNG（長い辺が 1568 以下。第 8 段階）。
+//     道具は 35 個。edit_process でステータスと操作を書き、移る先を持つボタンを並べると、get_flow で読め、get_view_image は PNG（長い辺が 1568 以下。第 8 段階）。
 //     システムを作って役割・画面設計・スイムレーンを書くと、get_system・list_systems で読め、designs.json に残り、スイムレーン図の画像は PNG（第 9 段階）。
 //     status で、窓が見えていない・裏の起動・ページの準備ができている。2 つ目の起動（--background）では窓を出す印が付かない。
 //     前に人が窓を最大化して閉じていても（window-state.json の isMaximized）、裏の起動では窓が画面に出ない（status の onScreen）。
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり始め（automation.json が消える）、プロセスも消える
 //  B. 次の入口で、アプリをまた起動し、A で作った画面設計が一覧に出る。入口を強制終了しても、5 秒たってアプリが終わる
 //  C. 2 つ目の起動（--background なし。人がアプリを起動した）では窓を出す印が付き、入口を閉じても終わらない。AI のつながりがないときの窓の × では終わる
-//  D. 資料の置き場（第 9 段階の後半。check-mcp-materials.js）: 起動の前に見本のシステムと資料 8 つを置き、道具が 34 個・list_materials・read_material
-//     （7 つ同時に頼んでも読める・仕込んだ指示の文字・Excel の番地・PDF の日本語の文字と 3 ページ目の画像・古い形の old_format）・swimlane_from_bdm（replace なしは断られ、replace: true で入る）・get_system
-//  E. 設計ノート（第 10 段階の前半。check-mcp-notes.js）と説明書（第 10 段階の後半。export_system_doc）: 起動の前に見本のシステムを置き、アプリを起動する前に、道具が 34 個・prompts が 3 つ（design_system・make_screen・fix_design。
+//  D. 資料の置き場（第 9 段階の後半。check-mcp-materials.js）: 起動の前に見本のシステムと資料 8 つを置き、道具が 35 個・list_materials・read_material
+//     （7 つ同時に頼んでも読める・仕込んだ指示の文字・Excel の番地・PDF の日本語の文字と 3 ページ目の画像・古い形の old_format）・swimlane_from_bdm（replace なしは断られ、replace: true で入る）・get_system・
+//     export_bdm（第 11 段階。入れた図を元の MPD に入れて MIM_AI_EXPORT_DIR に書く。読み直すと同じで、元の資料は変わらない）
+//  E. 設計ノート（第 10 段階の前半。check-mcp-notes.js）と説明書（第 10 段階の後半。export_system_doc）: 起動の前に見本のシステムを置き、アプリを起動する前に、道具が 35 個・prompts が 3 つ（design_system・make_screen・fix_design。
 //     引数の必須と省略、文の中身）・resources が 5 つ（mim://guide/stages が読める）を確かめる。そのあと update_notes（set_findings・add_question・add_decision・set_memo）→ set_stage（read を doing → review → done。
 //     todo は断られる）→ get_notes・list_systems・get_system の stages で読め、入口を閉じた後の designs.json に残る
 //  最後に、窓を出さなかった起動では window-state.json を書き換えていない（人が最大化して使っていたことが残る）
@@ -41,7 +42,7 @@ const PACKAGED = ((process.argv.find((a) => a.startsWith('--packaged=')) || '').
 const ONLY = ((process.argv.find((a) => a.startsWith('--only=')) || '').slice(7)) || null; // 'materials'（場面 D）か 'notes'（場面 E）だけを確かめる
 if (ONLY && !['materials', 'notes'].includes(ONLY)) { console.error('--only= は materials か notes'); process.exit(2); }
 const wants = (scene) => !ONLY || ONLY === scene; // scene: 'materials'（場面 D）・'notes'（場面 E）。場面 A〜C は --only= がないときだけ
-const TOOL_COUNT = 34; // 入口の道具の数（第 10 段階の前半で設計ノートの 3 個が増えて 33 個、後半で説明書の export_system_doc が増えて 34 個）
+const TOOL_COUNT = 35; // 入口の道具の数（第 10 段階の前半で設計ノートの 3 個が増えて 33 個、後半で説明書の export_system_doc が増えて 34 個、第 11 段階で export_bdm が増えて 35 個）
 const PKG_DIR = PACKAGED ? path.resolve(ROOT, PACKAGED) : null;
 const PKG_EXE = PKG_DIR ? path.join(PKG_DIR, 'MockImageMaker.exe') : null;
 // アプリの起動の文（2 つ目の起動と、入口がアプリを起動するときの差し替え）
@@ -196,8 +197,8 @@ async function phaseA() {
   // 第 8 段階の道具（ステータスの移り方と画面の移り方）
   const tl = await client.listTools();
   const NEW_TOOLS = ['edit_process', 'get_flow', 'get_view_image', 'list_systems', 'get_system', 'create_system', 'update_system', 'add_to_system', 'remove_from_system', 'set_swimlane',
-    'list_materials', 'read_material', 'swimlane_from_bdm', 'get_notes', 'update_notes', 'set_stage', 'export_system_doc'];
-  check(`A. 道具は ${TOOL_COUNT} 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個・資料の 3 個、第 10 段階の設計ノートの 3 個・説明書の 1 個を含む）`,
+    'list_materials', 'read_material', 'swimlane_from_bdm', 'get_notes', 'update_notes', 'set_stage', 'export_system_doc', 'export_bdm'];
+  check(`A. 道具は ${TOOL_COUNT} 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個・資料の 3 個、第 10 段階の設計ノートの 3 個・説明書の 1 個、第 11 段階の MPD への出力の 1 個を含む）`,
     tl.tools.length === TOOL_COUNT && NEW_TOOLS.every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
   await tool(client, 'edit_process', { design: made.id, ops: [
     { op: 'set_states', states: ['申請', '承認待ち', '完了'] },

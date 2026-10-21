@@ -685,7 +685,8 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .mat-tbl tr.old td b{color:#64748b}
 .mat-memo{width:100%;min-width:120px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;font-size:12.5px;background:#fff}
 .mat-memo::placeholder{color:#94a3b8}
-.mat-ops{display:flex;flex-wrap:wrap;gap:4px}
+/* 操作の欄は 168px まで（MPD の行のボタン 4 つを［読む］［スイムレーン図にする］／［MPD に出力…］［消す］の 2 段に分け、名前の欄に幅を回す。第 11 段階。画像 q82_1） */
+.mat-ops{display:flex;flex-wrap:wrap;gap:4px;max-width:168px}
 .mat-ops .btn.small{padding:4px 8px}
 /* 設計ノートの入口（第 10 段階の前半。画像 k75〔q75 の案B「段階ごとの札」と q78 の案A「人も変えられる」〕）: 段階ごとの札（選んだ札は濃い紺）・
    札の下の欄（この段階の進み具合のボタン・読み取ったこと・まだ決まっていないことと決めたことと理由の表）・札の外の下のメモ。
@@ -766,6 +767,12 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .xp-sub .link-btn{font-weight:400}
 .xp-note{font-size:12px;color:#475569;line-height:1.6;margin:2px 0 10px}
 .xp-open{margin-bottom:10px}
+/* MPD に出力する窓の、元にする MPD を選ぶ並び（第 11 段階。画像 q82_3）。選んだ行は青い枠 */
+.mpd-pick{display:flex;flex-direction:column;gap:6px;margin:8px 0 2px;max-height:240px;overflow:auto}
+.mpd-pick label{display:flex;align-items:center;gap:10px;border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px;font-size:13px;background:#fff;cursor:pointer}
+.mpd-pick label:has(input:checked){border-color:#2563eb;background:#eff6ff}
+.mpd-pick b{min-width:0;overflow-wrap:anywhere}
+.mpd-pick small{color:#64748b;font-size:11.5px;margin-left:auto;text-align:right}
 /* 取り込みの確かめの窓（q39） */
 .imp-cmp{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 10px}
 .imp-cmp th,.imp-cmp td{border:1px solid #e2e8f0;padding:5px 8px;text-align:left}
@@ -2809,7 +2816,7 @@ const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end']; // 始�
 const SWIM_KIND_NAMES = { start: '始まり', task: '作業', input: 'システムへの入力', decision: '判断', doc: '書類', end: '終わり' };
 // 資料（第 9 段階の後半）の種類。資料のファイルの見分け（material-kind.js の MATERIAL_KINDS）と同じ並び
 const MATERIAL_KINDS = ['text', 'image', 'pdf', 'word', 'excel', 'bdm', 'other'];
-const MATERIAL_KIND_NAMES = { text: '文字', image: '画像', pdf: 'PDF', word: 'Word', excel: 'Excel', bdm: 'BDM の図', other: 'そのほか' };
+const MATERIAL_KIND_NAMES = { text: '文字', image: '画像', pdf: 'PDF', word: 'Word', excel: 'Excel', bdm: 'MPD', other: 'そのほか' }; // bdm は MultipurposeDiagramMaker（旧名 ビジネスダイアグラムメーカー・BDM）で保存した図の HTML。画面の文では MPD（2026-10-21 q84）
 
 function createSystemData({ name, description = '' } = {}, now = nowIso()) {
   return {
@@ -4966,7 +4973,7 @@ const ui = {
   // 最初の画面の左の一覧で人が選んだまとまり（システムの id か 'lone'〔システムに入っていない〕。null は選んでいない〔いちばん上を出す〕。
   // アプリを閉じるまで覚える。一覧へ戻ったときもそのまま。第 9 段階）
   homeGroup: null,
-  sysMenu: null, // 最初の画面のシステムのまとまりで開いているメニュー（'add:システムの id'〔＋ 画面設計を入れる〕か 'more:システムの id'〔…〕）。システムの画面の「＋ 画面設計を入れる ▾」も同じ。
+  sysMenu: null, // 最初の画面のシステムのまとまりで開いているメニュー（'add:システムの id'〔＋ 画面設計を入れる〕か 'more:システムの id'〔…〕）。システムの画面の「＋ 画面設計を入れる ▾」も同じ。設計ノートの進み具合のボタン（'stage:'）とメニューバーの「出力」（'export:'。第 11 段階）も同じ形。
   //   システムの画面の設計ノートの「この段階の進み具合」のボタンのメニューは 'stage:システムの id'（第 10 段階）
   // システムの画面（第 9 段階の T6a）。どれも保存しない
   sysPanel: 'swimlane', // 真ん中に出している入口: 'overview'（概要）・'roles'（役割）・'swimlane'（スイムレーン図）・'materials'（資料。デスクトップ版だけ）・
@@ -5717,7 +5724,8 @@ function sysMoreMenuHtml(y) {
 }
 // システムのまとまりの「＋ 画面設計を入れる ▾」・「…」のメニューを開く・閉じる（ui.sysMenu は 'add:システムの id' か 'more:システムの id'）。
 // システムの画面の左の「＋ 画面設計を入れる ▾」も同じメニュー（システムの画面では、左の一覧とメニューを描き直す）。
-// 設計ノートの「この段階の進み具合」のボタンのメニュー（'stage:システムの id'。第 10 段階）も同じ作り（真ん中は描き直さず、メニューだけを描き直す）
+// 設計ノートの「この段階の進み具合」のボタンのメニュー（'stage:システムの id'。第 10 段階）と、メニューバーの「出力」の小さなメニュー（'export:システムの id'。第 11 段階）も
+// 同じ作り（真ん中とメニューバーは描き直さず、メニューだけを描き直す）
 function toggleSysMenu(kind, id) {
   const key = `${kind}:${id}`;
   Object.assign(ui, { sysMenu: ui.sysMenu === key ? null : key, menuFor: null, sysDesignMenu: null });
@@ -5732,7 +5740,7 @@ function closeSysMenu() {
 }
 const refreshSysMenuOwner = () => (ui.view === 'system' ? refreshSysList() : refreshCards());
 // メニューの種類（ui.sysMenu の頭）→ メニューを開くボタンの data-action（Esc で閉じたときに、フォーカスを戻す先・外を押したかの見分け）
-const SYS_MENU_OPENERS = { add: 'sys-add-menu', more: 'sys-menu', stage: 'sys-note-stage-menu' };
+const SYS_MENU_OPENERS = { add: 'sys-add-menu', more: 'sys-menu', stage: 'sys-note-stage-menu', export: 'export' };
 // メニューと、メニューを開くボタン（ここの外を押すとメニューを閉じる。onAppClick）
 const SYS_MENU_INSIDE = ['.sys-pop', ...Object.values(SYS_MENU_OPENERS).map((a) => `[data-action="${a}"]`)].join(', ');
 
@@ -6224,9 +6232,10 @@ function mountSystem() {
 function sysToolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
   return [
-    // 「出力」は説明書（PDF）の窓（デスクトップ版だけ。第 10 段階の後半。q76）
+    // 「出力」は小さなメニュー（説明書（PDF）を出力…・MPD に出力…。デスクトップ版だけ。第 10 段階の後半の q76・第 11 段階の q82）。
+    // data-id は、Esc でメニューを閉じたときにフォーカスを戻す先の見分け（SYS_MENU_OPENERS）
     group('ファイル', '<button class="bigbtn" data-action="home" title="システムと画面設計の一覧へ戻ります"><span class="ico">←</span>一覧へ</button>'
-      + (window.exportAPI ? '<button class="bigbtn" data-action="export" title="このシステムの説明書（PDF）を出力します"><span class="ico">⇪</span>出力</button>' : '')),
+      + (window.exportAPI ? `<button class="bigbtn" data-action="export" data-id="${esc(ui.systemId || '')}" aria-haspopup="menu" aria-expanded="false" title="このシステムの説明書（PDF）か MPD に出力します"><span class="ico">⇪</span>出力</button>` : '')),
     group('履歴', `<div class="stack">
       <button class="tbtn" data-action="undo" id="sys-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" id="sys-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
@@ -6362,9 +6371,9 @@ function sysDesignCardHtml(d) {
     <button class="sl-more${ui.sysDesignMenu === d.id ? ' open' : ''}" data-action="sys-design-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${ui.sysDesignMenu === d.id}" aria-label="「${esc(d.name)}」の操作" title="開く・並べ替え・このシステムから外す">…</button>
   </div>`;
 }
-// 左の欄のメニュー（カードの「…」と「＋ 画面設計を入れる ▾」）と、設計ノートの「この段階の進み具合」のボタンのメニュー（第 10 段階）。
-// 欄の外まではみ出せるように、窓に対して置く。窓の下からはみ出すときは上に開く。進み具合のボタンは真ん中にあり、メニューを開け閉めしても
-// 真ん中を描き直さないので、ボタンの aria-expanded はここで付け直す
+// 左の欄のメニュー（カードの「…」と「＋ 画面設計を入れる ▾」）と、設計ノートの「この段階の進み具合」のボタンのメニュー（第 10 段階）と、
+// メニューバーの「出力」の小さなメニュー（第 11 段階）。欄の外まではみ出せるように、窓に対して置く。窓の下からはみ出すときは上に開く。
+// 進み具合のボタン（真ん中）と「出力」（メニューバー）は、メニューを開け閉めしても描き直さないので、ボタンの aria-expanded はここで付け直す
 function renderSysMenus() {
   const root = $('#sys-menu-root');
   if (!root) return;
@@ -6374,10 +6383,13 @@ function renderSysMenus() {
   const stage = !!y && ui.sysMenu === `stage:${y.id}`;
   const stageBtn = $('#sys-view [data-action="sys-note-stage-menu"]');
   if (stageBtn) stageBtn.setAttribute('aria-expanded', String(stage));
+  const exp = !!y && ui.sysMenu === `export:${y.id}`;
+  const expBtn = $('#toolbar [data-action="export"]');
+  if (expBtn) expBtn.setAttribute('aria-expanded', String(exp));
   const anchor = ui.sysDesignMenu ? [...document.querySelectorAll('#sys-list .sl-more')].find((b) => b.dataset.id === ui.sysDesignMenu)
-    : y && ui.sysMenu === `add:${y.id}` ? $('#sys-list .sys-add') : stage ? stageBtn : null;
+    : y && ui.sysMenu === `add:${y.id}` ? $('#sys-list .sys-add') : stage ? stageBtn : exp ? expBtn : null;
   if (!anchor) { root.innerHTML = ''; return; }
-  root.innerHTML = ui.sysDesignMenu ? sysDesignMenuHtml(shown, ui.sysDesignMenu) : stage ? noteStageMenuHtml(y) : sysAddMenuHtml(y, ' sys-fixed');
+  root.innerHTML = ui.sysDesignMenu ? sysDesignMenuHtml(shown, ui.sysDesignMenu) : stage ? noteStageMenuHtml(y) : exp ? sysExportMenuHtml(y) : sysAddMenuHtml(y, ' sys-fixed');
   const menu = root.firstElementChild;
   const r = anchor.getBoundingClientRect();
   menu.style.left = Math.round(r.left) + 'px';
@@ -6732,7 +6744,8 @@ function sysMaterialsHtml(y) {
     ${table}</div>`;
 }
 // 表の 1 行。メモは 1 行の欄（data-sy="mat-memo"。欄を離れると保存する。onSystemFieldChange）。古い形（.doc・.xls）の行は、名前の横に灰色の札・
-// 種類に「（古い形）」を付け、「読む」は押せない。種類が「そのほか」（読めない種類）の行も「読む」は押せない。「スイムレーン図にする」は BDM の図の行だけ
+// 種類に「（古い形）」を付け、「読む」は押せない。種類が「そのほか」（読めない種類）の行も「読む」は押せない。「スイムレーン図にする」と
+// 「MPD に出力…」（第 11 段階。資料の窓口に bdmExport があるときだけ）は MPD の行だけ
 function sysMaterialRowHtml(m) {
   const id = esc(m.id);
   const name = esc(m.name);
@@ -6742,13 +6755,16 @@ function sysMaterialRowHtml(m) {
     : m.kind === 'other' ? ' disabled title="この種類のファイルは読めません"' : ` title="「${name}」の中身を読みます"`;
   const swim = m.kind === 'bdm'
     ? `<button class="btn small" data-action="sys-mat-swim" data-id="${id}" title="この図から、スイムレーン図を作ります">スイムレーン図にする</button>` : '';
+  const mpd = m.kind === 'bdm' && mpdExportApi()
+    ? `<button class="btn small" data-action="sys-mat-export" data-id="${id}" title="スイムレーン図を、この MPD を元にした HTML ファイルに出力します（元のファイルは書き換えません）">MPD に出力…</button>` : '';
   return `<tr${old ? ' class="old"' : ''} data-id="${id}">
     <td><span class="mat-name"><span class="mat-nm"><span class="mat-ic" aria-hidden="true">${MATERIAL_KIND_ICONS[m.kind] || MATERIAL_KIND_ICONS.other}</span><b>${name}</b></span>${old ? '<span class="tag gone">古い形のため読めません</span>' : ''}</span></td>
     <td class="nw">${esc(old ? `${kind}（古い形）` : kind)}</td><td class="nw">${esc(fmtMaterialSize(m.size))}</td><td class="nw">${esc(fmtDateTime(m.addedAt).slice(0, 10))}</td>
     <td><input type="text" class="mat-memo" data-sy="mat-memo" data-mat="${id}" value="${esc(m.memo)}" placeholder="メモを書く" aria-label="「${name}」のメモ"></td>
-    <td><div class="mat-ops"><button class="btn small" data-action="sys-mat-read" data-id="${id}"${read}>読む</button>${swim}<button class="btn small danger-text" data-action="sys-mat-del" data-id="${id}" title="この資料を消します（元に戻す〔Ctrl+Z〕で戻せます）">消す</button></div></td></tr>`;
+    <td><div class="mat-ops"><button class="btn small" data-action="sys-mat-read" data-id="${id}"${read}>読む</button>${swim}${mpd}<button class="btn small danger-text" data-action="sys-mat-del" data-id="${id}" title="この資料を消します（元に戻す〔Ctrl+Z〕で戻せます）">消す</button></div></td></tr>`;
 }
-// 資料の窓口を呼ぶ（読む・BDM の案）。返事が ok で valid(返事) が真ならその返事、そうでなければお知らせ（返事の message。ないときは fallback）を出して null
+// 資料の窓口を呼ぶ（読む・BDM の案・MPD に出力）。返事が ok で valid(返事) が真ならその返事、そうでなければお知らせ（返事の message。ないときは fallback）を出して null。
+// 取りやめの返事（canceled。MPD に出力の保存の窓）は、知らせずに null
 async function askMaterialsApi(call, valid, fallback) {
   let res = null;
   try {
@@ -6757,10 +6773,11 @@ async function askMaterialsApi(call, valid, fallback) {
     console.warn('資料の窓口を呼べませんでした:', (e && e.message) || e);
   }
   if (res && res.ok === true && valid(res)) return res;
+  if (res && res.canceled === true) return null;
   toast(materialFailMessage(res) || fallback);
   return null;
 }
-// 資料の窓口の返事を待っている資料の id（待つ間に、同じ資料の「読む」「スイムレーン図にする」を 2 回目に押しても、頼みを重ねない）
+// 資料の窓口の返事を待っている資料の id（待つ間に、同じ資料の「読む」「スイムレーン図にする」「MPD に出力…」を 2 回目に押しても、頼みを重ねない）
 const materialsWaiting = new Set();
 async function whileMaterialWaits(matId, fn) {
   materialsWaiting.add(matId);
@@ -6945,6 +6962,109 @@ function swimFromMaterialText(m, r, warnings) {
   return `「${m.name}」の図でスイムレーン図を作りました（作業の箱 ${r.steps} つ・矢印 ${r.edges} 本）。`
     + (r.addedRoles.length ? `足した役割: ${r.addedRoles.join('・')}。` : '')
     + (notes.length ? `注意: ${notes[0]}${notes.length > 1 ? `（ほか ${notes.length - 1} 件）` : ''}` : '');
+}
+
+// ── MPD に出力（第 11 段階。画像 q82。設計書の 11-3。仕様_細かい決めごと.md の「MPD への出力の細かい決めごと」）──
+// 入口は 2 つ: 資料の MPD の行の「MPD に出力…」（押した行の MPD が元）と、メニューバーの「出力」の小さなメニューの「MPD に出力…」（元にする MPD を選ぶ窓）。
+// 資料の窓口（bdmExport）が、元の MPD の中の図だけを今のスイムレーン図に入れ替えた HTML を作り、保存の窓で選んだ所に書く（元の資料のファイルは書き換えない）
+const MPD_NO_STEPS = 'スイムレーン図に作業がないので、MPD に出力しません。';
+const MPD_NO_ROLE_STEPS = 'スイムレーン図に役割のある作業がないので、MPD に出力しません。';
+// 出力する作業がないときの断りの文。作業はあるが、どれも役割が見つからないとき（役割の見つからない作業は出力に入れない）は、そう書く
+const mpdNoStepsText = (y) => (y.swimlane.steps.length ? MPD_NO_ROLE_STEPS : MPD_NO_STEPS);
+const mpdExportApi = () => {
+  const api = window.materialsAPI;
+  return api && typeof api.bdmExport === 'function' ? api : null;
+};
+// 資料の窓口に渡す形（bdm-export.js の readExportPlan）。lanes は役割の並びの名前、作業の lane はその番号。box は、作業を同じ資料（src.material）の
+// MPD の箱から読んだときだけ、その箱の id（元の箱の位置と見た目を使い回す）。役割の見つからない作業と、その作業につながる矢印は外し、外した作業の数を dropped に返す
+function bdmExportPlan(y, materialId) {
+  const laneOf = new Map(y.roles.map((r, i) => [r.id, i]));
+  const steps = y.swimlane.steps.filter((w) => laneOf.has(w.roleId));
+  const keys = new Set(steps.map((w) => w.id));
+  const boxOf = (w) => (isObj(w.src) && w.src.material === materialId && w.src.id != null ? String(w.src.id) : null);
+  return {
+    plan: {
+      name: y.name,
+      lanes: y.roles.map((r) => r.name),
+      steps: steps.map((w) => ({ key: w.id, lane: laneOf.get(w.roleId), col: w.col, kind: w.kind, text: w.text, box: boxOf(w) })),
+      edges: y.swimlane.edges.filter((e) => keys.has(e.from) && keys.has(e.to)).map((e) => ({ from: e.from, to: e.to, label: e.label })),
+    },
+    dropped: y.swimlane.steps.length - steps.length,
+  };
+}
+// 「MPD に出力…」を押せない理由（押せるときは空の文）。小さなメニューの項目の小さな字に出す
+function mpdExportWhy(y) {
+  if (!mpdExportApi()) return 'デスクトップ版のアプリで使えます';
+  if (!y.materials.some((m) => m.kind === 'bdm')) return '資料に MPD がありません（左の「資料」から入れます）';
+  if (!y.swimlane.steps.length) return 'スイムレーン図に作業がありません';
+  if (!bdmExportPlan(y, null).plan.steps.length) return 'スイムレーン図に役割のある作業がありません';
+  return '';
+}
+// メニューバーの「出力」の小さなメニュー（画像 q82_2）。窓に対して置く（renderSysMenus）
+function sysExportMenuHtml(y) {
+  const why = mpdExportWhy(y);
+  return `<div class="pop-menu sys-pop sys-fixed" role="menu" aria-label="出力">
+    <button role="menuitem" data-action="sys-export-doc"><b>説明書（PDF）を出力…</b><small>システム 1 つ分を、1 つの PDF にする</small></button>
+    <button role="menuitem" data-action="sys-export-mpd"${why ? ' disabled' : ''}><b>MPD に出力…</b><small>${esc(why || '資料の MPD を元にして、スイムレーン図を入れる')}</small></button>
+  </div>`;
+}
+// 「MPD に出力…」。打ちかけの文字を先に保存してから（出力する図に入れるため）、システムと資料の行を引き直す（ごみ箱に入った・行が消えたときは何もしない）。
+// 出力する作業（役割のある作業）がない図は出力しない。待つ間は、同じ資料の 2 回目の頼みを重ねない（materialsWaiting）。保存の窓を取りやめたときは知らせない（askMaterialsApi）。
+// 戻り値は資料の窓口の返事（出力しなかったときは null）
+async function exportToMpd(sysId, matId) {
+  const api = mpdExportApi();
+  flushSideField();
+  const y = findSystem(store.state, sysId);
+  const m = y && !y.trashedAt && y.materials.find((x) => x.id === matId);
+  if (!api || !m || m.kind !== 'bdm' || materialsWaiting.has(m.id)) return null;
+  const { plan, dropped } = bdmExportPlan(y, m.id);
+  if (!plan.steps.length) { toast(mpdNoStepsText(y)); return null; }
+  const req = { systemId: y.id, file: m.file, plan, name: `${safeFileName(y.name, 'システム')}_スイムレーン.html` };
+  const res = await whileMaterialWaits(m.id, () => askMaterialsApi(() => api.bdmExport(req), (r) => typeof r.path === 'string', `「${m.name}」を元に、MPD に出力できませんでした。`));
+  if (res) toast(mpdExportText(res, dropped));
+  return res;
+}
+// 出力した後のお知らせ: 場所・外した作業の数・読み直しの食い違い（1 つ目と、ほかの数）
+function mpdExportText(res, dropped) {
+  const notes = (Array.isArray(res.warnings) ? res.warnings : []).filter((w) => typeof w === 'string' && w);
+  return `MPD に出力しました（${res.path}）。`
+    + (dropped ? `役割の見つからない作業 ${dropped} つは入れませんでした。` : '')
+    + (notes.length ? `注意: ${notes[0]}${notes.length > 1 ? `（ほか ${notes.length - 1} 件）` : ''}` : '');
+}
+// 小さなメニューの「MPD に出力…」の、元にする MPD を選ぶ窓（画像 q82_3）。肯定の「出力…」を左、「キャンセル」を右。選んだら exportToMpd（保存の窓）へ進む。
+// 押せない理由があるとき（メニューを開いた後に資料の行や作業が消えたなど）は、窓を開かずに知らせる。選んだ MPD の「読む」「スイムレーン図にする」「MPD に出力…」を
+// 待っている間は、黙って終わらずに知らせる（入口 A の 2 回目の押しは黙るが、こちらは窓で選んだ後なので、何も起きないと分からない）
+async function chooseMpdAndExport(sysId) {
+  flushSideField();
+  const y = findSystem(store.state, sysId);
+  if (!y || y.trashedAt) return null;
+  const why = mpdExportWhy(y);
+  if (why) { toast(`MPD に出力できません（${why}）。`); return null; }
+  const matId = await showDialog({
+    title: `「${y.name}」のスイムレーン図を MPD に出力`,
+    okLabel: '出力…',
+    width: 640,
+    body: mpdPickHtml(y),
+    collect: (modal) => {
+      const c = $('input[name="mpd-pick"]:checked', modal);
+      return c ? c.value : { error: '元にする MPD を選んでください。' };
+    },
+  });
+  if (!matId) return null;
+  const now = findSystem(store.state, sysId);
+  const m = now && now.materials.find((x) => x.id === matId);
+  if (m && materialsWaiting.has(m.id)) { toast(`「${m.name}」の処理が終わってから、もう一度押してください。`); return null; }
+  return exportToMpd(sysId, matId);
+}
+// 選ぶ窓の中身: 説明と、資料の MPD の行（資料の表の順。名前・メモ・入れた日。最初は 1 つ目を選ぶ）。作業と矢印の数は出力に入るもの（役割のある作業）で数える
+function mpdPickHtml(y) {
+  const { plan } = bdmExportPlan(y, null);
+  const rows = y.materials.filter((m) => m.kind === 'bdm').map((m, i) => {
+    const sub = [str(m.memo).trim(), `${fmtDateTime(m.addedAt).slice(0, 10)} に入れた`].filter(Boolean).join('・');
+    return `<label><input type="radio" name="mpd-pick" value="${esc(m.id)}"${i ? '' : ' checked'}><b>${esc(m.name)}</b><small>${esc(sub)}</small></label>`;
+  });
+  return `<p class="xp-note">スイムレーン図（役割 ${y.roles.length}・作業 ${plan.steps.length}・矢印 ${plan.edges.length}）を、MultipurposeDiagramMaker で開いて直せる HTML ファイルに出力します。`
+    + `元にする MPD を、資料から選んでください。選んだ MPD の中の図だけを入れ替えて、別の名前で保存します（元のファイルは書き換えません）。</p><div class="mpd-pick">${rows.join('')}</div>`;
 }
 
 // ── 設計ノート（第 10 段階の前半。画像 k75〔q75 の案B「段階ごとの札」と q78 の案A「人も変えられる」〕。設計書の 5-3・10 章）──
@@ -7349,10 +7469,11 @@ function onSystemScreenClick(action, btn) {
     case 'sys-step-add': addStepAfter(y, id); return true;
     case 'sys-step-del': deleteSwimStep(id); return true;
     case 'sys-edge-del': deleteSwimEdge(id); return true;
-    // 資料（第 9 段階の後半）: ファイルを入れる・読む・スイムレーン図にする・消す
+    // 資料（第 9 段階の後半）: ファイルを入れる・読む・スイムレーン図にする・MPD に出力（第 11 段階）・消す
     case 'sys-mat-pick': addMaterialFiles(y.id, (api) => api.pick(y.id)).catch(reportPageError); return true;
     case 'sys-mat-read': openMaterialReader(y.id, id).catch(reportPageError); return true;
     case 'sys-mat-swim': swimlaneFromMaterial(y.id, id).catch(reportPageError); return true;
+    case 'sys-mat-export': exportToMpd(y.id, id).catch(reportPageError); return true;
     case 'sys-mat-del': deleteMaterialRow(y, id); return true;
     // 設計ノート（第 10 段階の前半）: 札・進み具合のボタンとメニュー・行を足す・行を消す（元に戻す〔Ctrl+Z〕で戻せる）
     case 'sys-note-tab': openNoteStage(y, btn.dataset.stage); return true;
@@ -7364,6 +7485,9 @@ function onSystemScreenClick(action, btn) {
       if (pill) pill.focus(); // 描き直した進み具合のボタンへ戻す（Esc で閉じたときと同じ。キーボードで続けて使えるように）
       return true;
     }
+    // メニューバーの「出力」の小さなメニュー（第 11 段階。q82）: 説明書（PDF）の窓・元にする MPD を選ぶ窓
+    case 'sys-export-doc': closeSysMenu(); openSystemDocDialog(y.id).catch(reportPageError); return true;
+    case 'sys-export-mpd': closeSysMenu(); chooseMpdAndExport(y.id).catch(reportPageError); return true;
     case 'sys-note-add-q': addNoteRowAndFocus(y, 'q'); return true;
     case 'sys-note-add-d': addNoteRowAndFocus(y, 'd'); return true;
     case 'sys-note-del-q': actions.removeNoteQuestion(y.id, id); return true;
@@ -12220,11 +12344,15 @@ function runCommand(cmd) {
       return true;
     }
     // 出力と取り込み（第 5 段階）。単体で開いた HTML では、出力の窓と取り込みは出さず、HTML を保存し直すだけ（q37）
-    // システムの画面では、説明書（PDF）の窓（第 10 段階の後半。q76）
+    // システムの画面では、メニューバーの「出力」の小さなメニュー（説明書（PDF）を出力…・MPD に出力…。第 11 段階。q82）。ブラウザで開いたときは
+    // メニューを出さず、説明書の窓の入口で、デスクトップ版で使えることを知らせる（openSystemDocDialog）
     case 'exportDialog':
       if (standalone) return true;
       if (ui.view === 'editor') openExportDialog(ui.designId).catch(reportPageError);
-      else if (ui.view === 'system') openSystemDocDialog(ui.systemId).catch(reportPageError);
+      else if (ui.view === 'system' && window.exportAPI) {
+        flushSideField(); // メニューの項目へフォーカスが移る前に、打ちかけの文字を保存する
+        toggleSysMenu('export', ui.systemId);
+      } else if (ui.view === 'system') openSystemDocDialog(ui.systemId).catch(reportPageError);
       else toast(window.exportAPI ? '出力する画面設計かシステムを開くか、カードの「…」から「出力…」、システムの「…」から「説明書を出力…」を選んでください。'
         : '出力する画面設計を開くか、カードの「…」から「出力…」を選んでください。');
       return true;
@@ -14419,7 +14547,7 @@ function aiReadMaterial(args) {
   const m = aiResolveMaterial(y, args.material);
   aiMaterialsApi();
   if (isLegacyMaterial(m)) throw new AiRefusal('old_format', '古い形（.doc・.xls）のファイルは読めません。新しい形（.docx・.xlsx）で保存し直して入れてください。');
-  if (m.kind === 'other') throw new AiRefusal('unsupported', `「${m.name}」は中身を読めない種類のファイルです（読めるのは 文字・画像・PDF・Word・Excel・BDM の図）。`);
+  if (m.kind === 'other') throw new AiRefusal('unsupported', `「${m.name}」は中身を読めない種類のファイルです（読めるのは 文字・画像・PDF・Word・Excel・MPD）。`);
   aiCheckMaterialFile(m);
   const cursor = aiMaterialCursor(args.cursor);
   return new AiRendered(
@@ -14437,7 +14565,7 @@ async function aiSwimlaneFromBdm(args, ctx) {
   const y = aiResolveSystem(store.state, args.system, { write: true });
   aiCheckExpect(y, args.expect);
   const m = aiResolveMaterial(y, args.material);
-  if (m.kind !== 'bdm') throw aiBad(`「${m.name}」は BDM の HTML の資料ではありません（種類: ${MATERIAL_KIND_NAMES[m.kind]}）。スイムレーン図を作れるのは、ビジネスダイアグラムメーカーで保存した HTML の資料だけです。`);
+  if (m.kind !== 'bdm') throw aiBad(`「${m.name}」は MPD の資料ではありません（種類: ${MATERIAL_KIND_NAMES[m.kind]}）。スイムレーン図を作れるのは、MPD（MultipurposeDiagramMaker で保存した HTML）の資料だけです。`);
   const api = aiMaterialsApi();
   aiCheckMaterialFile(m);
   aiCheckReplace(y, args.replace);
@@ -14743,6 +14871,24 @@ async function aiExportSystemDoc(args) {
     { kind: 'pdf', files: [{ name: `${safeFileName(y.name, 'システム')}_説明書.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi } }] },
   );
 }
+// スイムレーン図を MPD に出力する（export_bdm。第 11 段階。設計書の 11-3）。資料の MPD を元に、中の図だけを今のスイムレーン図に入れ替えた HTML を、
+// main の資料の窓口が作り、AI の出力のフォルダに書く（render kind 'bdm'。automation-render.js の finishBdm）。元の資料のファイルは書き換えない。
+// 渡す形は人の道と同じ（bdmExportPlan）。出力する作業（役割のある作業）がない図は断る。ごみ箱のシステムも出力できる（説明書と同じ）。
+// 返事の warnings（出力した HTML を読み直したときの食い違い）は main が足す
+function aiExportBdm(args) {
+  aiFlushBeforeRead();
+  const y = aiResolveSystem(aiState(), args.system);
+  const m = aiResolveMaterial(y, args.material);
+  if (m.kind !== 'bdm') throw aiBad(`「${m.name}」は MPD の資料ではありません（種類: ${MATERIAL_KIND_NAMES[m.kind]}）。元にできるのは、MPD（MultipurposeDiagramMaker で保存した HTML）の資料だけです。`);
+  aiMaterialsApi();
+  aiCheckMaterialFile(m);
+  const { plan, dropped } = bdmExportPlan(y, m.id);
+  if (!plan.steps.length) throw aiBad(mpdNoStepsText(y));
+  return new AiRendered(
+    { system: aiSystemBrief(y), material: { id: m.id, name: m.name }, lanes: plan.lanes.length, steps: plan.steps.length, edges: plan.edges.length, ...(dropped ? { droppedSteps: dropped } : {}) },
+    { kind: 'bdm', systemId: y.id, file: m.file, plan, name: `${safeFileName(y.name, 'システム')}_スイムレーン.html` },
+  );
+}
 
 // 道具の一覧（名前は入口 mcp-server.js の道具と同じ。read_guide は入口だけで返す）。write は書く道具
 const AI_TOOLS = {
@@ -14755,6 +14901,7 @@ const AI_TOOLS = {
   get_view_image: { write: false, run: aiGetViewImage },
   export_design: { write: false, run: aiExportDesign },
   export_system_doc: { write: false, run: aiExportSystemDoc },
+  export_bdm: { write: false, run: aiExportBdm },
   create_design: { write: true, run: aiCreateDesign },
   update_design: { write: true, run: aiUpdateDesign },
   edit_items: { write: true, run: aiEditItems },

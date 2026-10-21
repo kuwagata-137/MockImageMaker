@@ -31,8 +31,8 @@ function removeTree(dir) {
   fs.rmdirSync(dir);
 }
 
-// 身代わりの main 側を作り、本物の読む部品をつないで initMaterials を呼ぶ（main.js と同じ createReadingParts() を渡す）
-function setup(t) {
+// 身代わりの main 側を作り、本物の読む部品をつないで initMaterials を呼ぶ（main.js と同じ createReadingParts() を渡す。extra は保存の窓 askSavePath など）
+function setup(t, extra = {}) {
   fs.mkdirSync(BASE, { recursive: true });
   const dir = fs.mkdtempSync(path.join(BASE, 'w-'));
   t.after(() => removeTree(dir));
@@ -41,7 +41,7 @@ function setup(t) {
   const app = { isPackaged: true, getPath: (name) => path.join(dir, name) };
   const storage = { whenIdle: async () => {}, dataDir: () => dataDir };
   const ipcMain = { handle: (name, fn) => { handlers[name] = fn; } };
-  const materials = initMaterials({ app, ipcMain, storage, headless: false, ...createReadingParts() });
+  const materials = initMaterials({ app, ipcMain, storage, headless: false, ...createReadingParts(), ...extra });
   const ipc = (name, req) => handlers[name](null, req);
   // 見本のファイルを書いて、置き場に入れる。戻り値は入れた資料（{ id, name, kind, size, file, legacy }）
   async function addSample(name, bytes) {
@@ -131,7 +131,7 @@ test('materials:read・bdmPlan — BDM の HTML は、図の文と、スイム�
   const read = await env.readOf(bdm);
   assert.equal(read.ok, true);
   assert.equal(read.result.text.startsWith(NOTICE), true);
-  for (const word of ['ビジネスダイアグラムメーカーの図（スイムレーン図）', 'レーン（役割）: 申請者・上長・経理', '作業「出張を申請する」', '判断「承認されたか」']) {
+  for (const word of ['MPD（MultipurposeDiagramMaker で保存した図。スイムレーン図）', 'レーン（役割）: 申請者・上長・経理', '作業「出張を申請する」', '判断「承認されたか」']) {
     assert.ok(read.result.text.includes(word), word);
   }
   assert.deepEqual(read.result.images, []);
@@ -159,7 +159,7 @@ test('materials:read・bdmPlan — BDM の保存でない HTML は、文字と�
   const planned = await env.ipc('materials:bdmPlan', { systemId: SYS, file: html.file });
   assert.equal(planned.ok, false);
   assert.equal(planned.error.code, 'read_failed');
-  assert.match(planned.error.message, /ビジネスダイアグラムメーカー/);
+  assert.match(planned.error.message, /MultipurposeDiagramMaker/);
 });
 
 test('finishRead — AI の read_material の仕上げ。画像の base64 は content の外に並び、文字は断り書きつきで返る', async (t) => {
@@ -209,4 +209,79 @@ test('materials:read — 置き場のファイルがなくなっていたら fil
   assert.equal(r.ok, false);
   assert.equal(r.error.code, 'file_missing');
   assert.equal(JSON.stringify(r).includes(env.dir), false);
+});
+
+// ── MPD に出力する（第 11 段階。materials:bdmExport と、AI の export_bdm の仕上げ bdmExport）──
+const { planFromHtml } = require('../bdm-swimlane');
+const EXPORT_PLAN = {
+  name: '出張申請システム', lanes: ['申請者', '上長'],
+  steps: [{ key: 'w1', lane: 0, col: 0, kind: 'start', text: '出張が決まる', box: null }, { key: 'w2', lane: 1, col: 1, kind: 'task', text: '承認する', box: null }],
+  edges: [{ from: 'w1', to: 'w2', label: '' }],
+};
+
+test('materials:bdmExport — 資料の MPD を元に作った HTML を、保存の窓で選んだ場所に書く（元の資料のファイルは変えない）', async (t) => {
+  const asked = [];
+  let target = null;
+  const env = setup(t, { askSavePath: async (e, opts) => { asked.push(opts); return target; } });
+  const bdm = await env.addSample('出張申請の流れ.html', BDM_HTML);
+  const original = path.join(env.dataDir, 'files', SYS, bdm.file);
+  target = path.join(env.dir, 'out', '出張申請システム_スイムレーン.html');
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  const r = await env.ipc('materials:bdmExport', { systemId: SYS, file: bdm.file, plan: EXPORT_PLAN, name: '出張申請システム_スイムレーン.html' });
+  assert.deepEqual(r, { ok: true, path: target, warnings: [], counts: { lanes: 2, steps: 2, edges: 1 } });
+  assert.deepEqual(asked, [{ title: 'MPD に出力する', name: '出張申請システム_スイムレーン.html', ext: 'html', label: 'HTML ファイル' }]);
+  const read = planFromHtml(fs.readFileSync(target, 'utf8'));
+  assert.deepEqual(read.roles, ['申請者', '上長']);
+  assert.deepEqual(read.steps.map((s) => [s.role, s.kind, s.text]), [['申請者', 'start', '出張が決まる'], ['上長', 'task', '承認する']]);
+  assert.equal(fs.readFileSync(original, 'utf8'), BDM_HTML, '元の資料のファイルは変えない');
+
+  const ai = await env.materials.bdmExport({ systemId: SYS, file: bdm.file, plan: EXPORT_PLAN });
+  assert.equal(ai.ok, true);
+  assert.equal(ai.html, fs.readFileSync(target, 'utf8'), 'AI の仕上げも同じ HTML を作る（書くのは automation-render.js）');
+});
+
+test('materials:bdmExport — 取りやめ・アプリのデータのフォルダへの保存・作れない HTML（保存の窓を出す前に断る）', async (t) => {
+  let target = null;
+  let asked = 0;
+  const env = setup(t, { askSavePath: async () => { asked += 1; return target; } });
+  const bdm = await env.addSample('出張申請の流れ.html', BDM_HTML);
+  const req = { systemId: SYS, file: bdm.file, plan: EXPORT_PLAN, name: '出張申請システム_スイムレーン.html' };
+  assert.deepEqual(await env.ipc('materials:bdmExport', req), { ok: false, canceled: true });
+  target = path.join(env.dataDir, 'files', SYS, 'm-overwrite.html');
+  const inside = await env.ipc('materials:bdmExport', req);
+  assert.deepEqual([inside.ok, inside.error.code], [false, 'bad_name']);
+  assert.match(inside.error.message, /アプリのデータのフォルダには保存できません/);
+  assert.equal(fs.existsSync(target), false);
+  // 「..」で始まる名前・ジャンクションの先（8.3 形式の短い名前と同じく、本当の場所にそろえてから比べる）・大文字と小文字の違い（Windows）も、中として断る
+  const link = path.join(env.dir, 'data-link');
+  fs.symlinkSync(env.dataDir, link, 'junction');
+  t.after(() => { if (fs.existsSync(link)) fs.unlinkSync(link); });
+  const sneaky = [path.join(env.dataDir, '..memo.html'), path.join(link, 'files', SYS, 'm-overwrite.html')];
+  if (process.platform === 'win32') sneaky.push(path.join(env.dataDir.toUpperCase(), 'm-upper.html'));
+  for (const p of sneaky) {
+    target = p;
+    const r = await env.ipc('materials:bdmExport', req);
+    assert.deepEqual([r.ok, r.error && r.error.code], [false, 'bad_name'], p);
+    assert.equal(fs.existsSync(p), false);
+  }
+  target = path.join(env.dir, 'out', '..memo.html');
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  assert.equal((await env.ipc('materials:bdmExport', req)).ok, true, '外のフォルダなら「..」で始まる名前でも書ける');
+  asked = 0;
+  const noSteps = await env.ipc('materials:bdmExport', { ...req, plan: { ...EXPORT_PLAN, steps: [], edges: [] } });
+  assert.deepEqual([noSteps.ok, noSteps.error.code], [false, 'bad_request']);
+  const other = await env.addSample('案内.html', '<html><head></head><body>出張申請の案内 __SAVED_STATE__</body></html>');
+  const notMpd = await env.ipc('materials:bdmExport', { ...req, file: other.file });
+  assert.deepEqual([notMpd.ok, notMpd.error.code], [false, 'read_failed']);
+  const missing = await env.ipc('materials:bdmExport', { ...req, file: 'm-none.html' });
+  assert.deepEqual([missing.ok, missing.error.code], [false, 'file_missing']);
+  assert.equal(asked, 0, '作れないときは保存の窓を出さない');
+});
+
+test('materials:bdmExport — 保存の窓を渡さないと unavailable（AI の bdmExport は使える）', async (t) => {
+  const env = setup(t);
+  const bdm = await env.addSample('出張申請の流れ.html', BDM_HTML);
+  const r = await env.ipc('materials:bdmExport', { systemId: SYS, file: bdm.file, plan: EXPORT_PLAN, name: 'a.html' });
+  assert.deepEqual([r.ok, r.error.code], [false, 'unavailable']);
+  assert.equal((await env.materials.bdmExport({ systemId: SYS, file: bdm.file, plan: EXPORT_PLAN })).ok, true);
 });

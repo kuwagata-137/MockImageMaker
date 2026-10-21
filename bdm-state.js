@@ -14,7 +14,7 @@
 
 const { MaterialError } = require('./material-error');
 
-const NOT_FOUND = 'ビジネスダイアグラムメーカーで保存した図の中身が見つかりません。';
+const NOT_FOUND = 'MultipurposeDiagramMaker で保存した図の中身が見つかりません。';
 const BROKEN = '図の中身を読めません（保存した HTML が壊れているようです）。';
 const NO_NODES = '図の中身に箱の一覧（nodes）がありません。';
 
@@ -82,8 +82,20 @@ function parseState(json) {
   return { state };
 }
 
-// BDM の保存 HTML（文字）から図の中身を返す。見つからない・壊れている・nodes が配列でないときは MaterialError('read_failed')
-function extractBdmState(html) {
+// ① の印の script の JSON の場所を、見つかった順に [{ start, end }] で返す（第 11 段階。MPD へ出力するとき、この場所を差し替える）。
+// 切り出せない（閉じていない・壊れている）ものは end が null
+function locateStateScripts(html) {
+  if (typeof html !== 'string') return [];
+  return [...html.matchAll(STATE_SCRIPT)].map((m) => {
+    const start = m.index + m[0].length;
+    const json = sliceJsonObject(html, start);
+    return { start, end: json === null ? null : start + json.length };
+  });
+}
+
+// BDM の保存 HTML（文字）から図の中身を返す。印が 1 つもないときは null（保存していない本体だけの HTML など。第 11 段階の MPD への出力は、空の図として扱う）。
+// 印はあるが壊れている・nodes が配列でないときは MaterialError('read_failed')
+function findBdmState(html) {
   if (typeof html !== 'string') throw new MaterialError('read_failed', NOT_FOUND);
   let problem = null;
   for (const json of candidateJsons(html)) {
@@ -91,7 +103,15 @@ function extractBdmState(html) {
     if (parsed.state) return parsed.state;
     problem = problem || parsed.problem;
   }
-  throw new MaterialError('read_failed', problem || NOT_FOUND);
+  if (problem) throw new MaterialError('read_failed', problem);
+  return null;
 }
 
-module.exports = { extractBdmState };
+// findBdmState と同じ。印が 1 つもないときも MaterialError('read_failed')（資料を読む・スイムレーン図にする）
+function extractBdmState(html) {
+  const state = findBdmState(html);
+  if (!state) throw new MaterialError('read_failed', NOT_FOUND);
+  return state;
+}
+
+module.exports = { extractBdmState, findBdmState, locateStateScripts, BROKEN, NOT_FOUND };

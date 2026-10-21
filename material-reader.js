@@ -60,7 +60,7 @@ function createLoaders({ bdmBlocks, pdfAssetsDir }) {
     word: officeLoader('Word', '.doc', '.docx', readWordBlocks),
     excel: officeLoader('Excel', '.xls', '.xlsx', readExcelBlocks),
     bdm: async (bytes) => {
-      if (typeof bdmBlocks !== 'function') throw fail('unsupported', 'この種類の資料（BDM の HTML）はまだ読めません。');
+      if (typeof bdmBlocks !== 'function') throw fail('unsupported', 'この種類の資料（MPD）はまだ読めません。');
       const blocks = await bdmBlocks(decodeText(bytes));
       if (!Array.isArray(blocks)) throw fail('unsupported', 'この HTML からは、図の中身を取り出せませんでした。');
       return blocks;

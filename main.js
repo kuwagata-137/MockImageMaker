@@ -66,7 +66,7 @@ function buildAppMenu() {
         commandItem('新しいシステム…', 'newSystem'),
         { type: 'separator' },
         // 出力する（PDF・HTML・PNG）は開いている画面設計を、取り込むは一覧へ戻ってから（第 5 段階）。
-        // システムの画面では、出力するはシステムの説明書（PDF）の窓（第 10 段階の後半）
+        // システムの画面では、出力するは小さなメニュー（説明書〔PDF〕・MPD に出力）を開け閉めする（第 10 段階の後半・第 11 段階）
         commandItem('出力…', 'exportDialog'),
         commandItem('HTML を取り込む…', 'importHtml'),
         { type: 'separator' },
@@ -250,9 +250,10 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
 
   app.whenReady().then(() => {
     storage = initStorage(app, ipcMain);
-    materials = initMaterials({ app, ipcMain, storage, headless: HEADLESS, ...createReadingParts() }); // 資料を読む部品と BDM を読む部品をつなぐ（読む部品は最初の頼みで読み込む）
     const renderer = createPageRenderer(app); // PDF・PNG を作る（出力の窓と AI の出力で同じものを使う）
-    initExport(app, ipcMain, { headless: HEADLESS, renderer });
+    const exporter = initExport(app, ipcMain, { headless: HEADLESS, renderer });
+    // 資料を読む部品と MPD を読む・出力する部品をつなぐ（読む部品は最初の頼みで読み込む）。MPD に出力するときは、出力の窓と同じ保存の窓を使う
+    materials = initMaterials({ app, ipcMain, storage, headless: HEADLESS, askSavePath: exporter.askSavePath, ...createReadingParts() });
     automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION, renderer, materials });
     buildAppMenu();
     createMainWindow();

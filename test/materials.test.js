@@ -102,7 +102,7 @@ test('読み込み: オブジェクトでない行は外し、知らない欄は
   const { api } = await boot(t);
   assert.equal(api.SCHEMA_VERSION, 3);
   assert.deepEqual(plain(api.MATERIAL_KINDS), ['text', 'image', 'pdf', 'word', 'excel', 'bdm', 'other']);
-  assert.deepEqual(plain(api.MATERIAL_KIND_NAMES), { text: '文字', image: '画像', pdf: 'PDF', word: 'Word', excel: 'Excel', bdm: 'BDM の図', other: 'そのほか' });
+  assert.deepEqual(plain(api.MATERIAL_KIND_NAMES), { text: '文字', image: '画像', pdf: 'PDF', word: 'Word', excel: 'Excel', bdm: 'MPD', other: 'そのほか' });
   const raw = sampleState();
   raw.systems[0].materials = [
     material('m-1', '出張申請書.xlsx', 'excel', 'm-1.xlsx', { size: 48213, future: { keep: 1 } }),
