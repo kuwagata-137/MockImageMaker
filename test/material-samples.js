@@ -160,6 +160,28 @@ async function makeXlsx() {
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
+// 日本の組み込みの書式番号（numFmtId 27〜36・50〜58。styles.xml に書式の文字がなく、番号だけで日付・時刻を表す）のセルを持つ .xlsx
+// （デバッグとリリースの見直し③-1）。exceljs は組み込みでない書式しか書かないので、仮の書式「x31」などで書いてから、
+// styles.xml の書式の番号を組み込みの番号に置き換え、仮の書式の定義を消す
+async function makeXlsxJapaneseFormats() {
+  const JSZip = require('jszip');
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('申請書');
+  const cells = [['A1', 45296, 31], ['A2', 9.5 / 24, 32], ['A3', 45296, 27], ['A4', 45296, 58], ['A5', 45292, 55], ['A6', 45296, 35]];
+  for (const [at, value, id] of cells) {
+    sheet.getCell(at).value = value;
+    sheet.getCell(at).numFmt = `x${id}`;
+  }
+  sheet.getCell('A7').value = 45296; // 書式なし（標準）は数のまま
+  const zip = await JSZip.loadAsync(await workbook.xlsx.writeBuffer());
+  let styles = await zip.file('xl/styles.xml').async('string');
+  const ids = {};
+  for (const m of styles.matchAll(/<numFmt numFmtId="(\d+)" formatCode="x(\d+)"\/>/g)) ids[m[1]] = m[2];
+  styles = styles.replace(/<numFmts[\s\S]*?<\/numFmts>/, '').replace(/numFmtId="(\d+)"/g, (all, id) => (ids[id] ? `numFmtId="${ids[id]}"` : all));
+  zip.file('xl/styles.xml', styles);
+  return zip.generateAsync({ type: 'nodebuffer' });
+}
+
 // 古い Word・Excel（OLE2）の頭に見える中身
 function ole2Bytes() {
   return Buffer.concat([OLE2_SIGNATURE, Buffer.alloc(512)]);
@@ -181,5 +203,6 @@ module.exports = {
   makeDocx,
   makeRichDocx,
   makeXlsx,
+  makeXlsxJapaneseFormats,
   ole2Bytes,
 };
