@@ -53,6 +53,16 @@ contextBridge.exposeInMainWorld('aiAPI', {
   copyText: (text) => ipcRenderer.invoke('ai:copy', text),
 });
 
+// 落としたファイルのうち、このパソコンの中に場所がないもの（ブラウザや圧縮ファイルの中から落としたものなど。webUtils の場所が空）の、
+// 入れられなかった理由（ページのお知らせ「「<名前>」は入れられませんでした。<理由>。」に出す。黙って外れていた。デバッグとリリースの見直し③-2）
+const NO_PATH_REASON = 'このパソコンの中に場所がないファイルです（ブラウザや圧縮ファイルの中から落としたものなど）。いったんフォルダに保存してから入れてください';
+function addDroppedFiles(systemId, files) {
+  const list = Array.from(files || []).map((f) => ({ name: String((f && f.name) || ''), path: webUtils.getPathForFile(f) }));
+  const noPath = list.filter((x) => !x.path).map((x) => ({ name: x.name, reason: NO_PATH_REASON }));
+  return ipcRenderer.invoke('materials:addPaths', { systemId, paths: list.map((x) => x.path).filter(Boolean) })
+    .then((res) => (res && res.ok === true && noPath.length ? { ...res, skipped: [...(Array.isArray(res.skipped) ? res.skipped : []), ...noPath] } : res));
+}
+
 // 資料の置き場（第 9 段階の後半。materials-main.js）。どれも Promise。戻り値は { ok: true, … } か { ok: false, error: { code, message } }
 // （pick の取りやめは { ok: false, canceled: true }）。ファイルの場所（パス）はページに渡さず、システムの id と保存したファイルの名前（file）で指す
 contextBridge.exposeInMainWorld('materialsAPI', {
@@ -60,7 +70,8 @@ contextBridge.exposeInMainWorld('materialsAPI', {
   // 開く窓で資料を選んで、システムに入れる。戻り値は { ok, added: [{ id, name, kind, size, file, legacy }], skipped: [{ name, reason }] }
   pick: (systemId) => ipcRenderer.invoke('materials:pick', { systemId }),
   // 窓へ落としたファイル（File の並び）を、システムに入れる。パスは webUtils で取る（File.path は Electron 32 でなくなった）。戻り値は pick と同じ
-  addDropped: (systemId, files) => ipcRenderer.invoke('materials:addPaths', { systemId, paths: Array.from(files || []).map((f) => webUtils.getPathForFile(f)).filter(Boolean) }),
+  // （場所のないファイルは、skipped に理由を付けて足す。addDroppedFiles）
+  addDropped: (systemId, files) => addDroppedFiles(systemId, files),
   // 資料の中身を読む。req は { systemId, file, kind, name, cursor }。戻り値は { ok, result: { notice, part, text, images: [{ page, width, height, data: PNG の base64 }], nextCursor } }
   read: (req) => ipcRenderer.invoke('materials:read', req),
   // MPD（MultipurposeDiagramMaker で保存した HTML）の資料から、スイムレーン図の案を作る。req は { systemId, file }。戻り値は { ok, plan }

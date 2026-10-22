@@ -545,6 +545,16 @@ test('preload の materialsAPI — 受け口の名前と渡す値が、materials
   for (const [channel] of invocations) assert.ok(env.handlers[channel], `${channel} の受け口がある`);
 });
 
+test('preload の materialsAPI — addDropped は、場所のないファイル（ブラウザ・圧縮ファイルの中から落としたもの）を、理由を付けて入れられなかったファイルにする（デバッグとリリースの見直し③-2）', async () => {
+  const { api, invocations } = loadPreload();
+  const reason = 'このパソコンの中に場所がないファイルです（ブラウザや圧縮ファイルの中から落としたものなど）。いったんフォルダに保存してから入れてください';
+  const r = await api.addDropped(SYS, [{ name: '出張申請書.docx', fakePath: 'C:\\申請\\出張申請書.docx' }, { name: '写真.png', fakePath: '' }]);
+  assert.deepEqual(invocations, [['materials:addPaths', { systemId: SYS, paths: ['C:\\申請\\出張申請書.docx'] }]]);
+  assert.deepEqual(r.skipped, [{ name: '写真.png', reason }], 'main の返事の skipped の後ろに足す');
+  const none = await api.addDropped(SYS, [{ name: '写真.png', fakePath: '' }]);
+  assert.deepEqual(none.skipped, [{ name: '写真.png', reason }], '1 つも入らないときも知らせる');
+});
+
 test('preload の materialsAPI — addDropped は webUtils でパスにし、空のパスは外す', async () => {
   const { api, invocations } = loadPreload();
   await api.addDropped(SYS, [{ fakePath: 'C:\\申請\\出張申請書.docx' }, { fakePath: '' }, { fakePath: undefined }, { fakePath: 'C:\\申請\\旅費規程.pdf' }]);
