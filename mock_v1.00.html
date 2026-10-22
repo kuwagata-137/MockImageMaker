@@ -3289,12 +3289,18 @@ class Store {
     this.notify();
   }
   get isViewing() { return !!this.realState; }
-  // 何も変わらなかったときは、履歴に積まない（打ちかけの欄を保存し直しただけで、元に戻すが 1 回空振りし、やり直すが消えないように）
+  // 何も変わらなかったときは、履歴に積まない（打ちかけの欄を保存し直しただけで、元に戻すが 1 回空振りし、やり直すが消えないように）。
+  // mutator が例外を投げたら、batch と同じく始める前の中身に戻して投げ直す（途中まで変わった中身が、次の保存で書かれていた。デバッグとリリースの見直し①-4）
   commit(mutator, { history = true } = {}) {
     if (this.realState) return; // 前の版を見ている間は直せない
     if (this.batching) { mutator(this.state); return; } // batch の中では、積む・保存・描き直しを batch に任せる
-    const before = history ? stateWithRefs(this.state) : null;
-    mutator(this.state);
+    const before = stateWithRefs(this.state);
+    try {
+      mutator(this.state);
+    } catch (e) {
+      this.state = stateFromRefs(before);
+      throw e;
+    }
     if (history && stateWithRefs(this.state).json !== before.json) {
       this.undoStack.push(stateFromRefs(before));
       if (this.undoStack.length > HISTORY_LIMIT) this.undoStack.shift();

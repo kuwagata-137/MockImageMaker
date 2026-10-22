@@ -66,6 +66,25 @@ test('batch の中で例外が出たら、始める前の中身に戻し、保�
   app.close();
 });
 
+test('commit の中で例外が出たら、始める前の中身に戻し、保存も描き直しもしない（history: false でも。デバッグとリリースの見直し①-4）', async () => {
+  const { app, T, saves, notes } = await bootSample();
+  const before = T.stateWithRefs(T.store.state).json;
+  const undo0 = T.store.undoStack.length;
+  for (const history of [true, false]) {
+    assert.throws(() => T.store.commit((s) => {
+      s.designs[0].description = '途中まで';
+      throw new Error('途中で失敗');
+    }, { history }), /途中で失敗/);
+    assert.equal(T.stateWithRefs(T.store.state).json, before, `history: ${history}`);
+  }
+  assert.equal(T.store.undoStack.length, undo0);
+  assert.equal(saves.n, 0);
+  assert.equal(notes.n, 0);
+  T.actions.updateDesignInfo('d1', { description: '次の変更' });
+  assert.equal(saves.n, 1, 'その後の変更は今までどおり通る');
+  app.close();
+});
+
 test('batch の fn が Promise を返したら、戻して例外にする（待つ処理は batch の外で行う）', async () => {
   const { app, T, saves } = await bootSample();
   const before = T.stateWithRefs(T.store.state).json;
