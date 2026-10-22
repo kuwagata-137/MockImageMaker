@@ -11006,10 +11006,13 @@ function coverShell(P, c) {
     <div class="cv-foot"><span>モックイメージメーカー v${APP_VERSION} で出力</span><span>全 ${c.total} ページ</span></div>
   </div></div>`;
 }
-// 表紙の説明（高さの上限は用紙の高さの 24%）。cut なら、続きを省略したと書く（where は全文を見られる所。「〇〇で」まで）
+// 表紙の説明（高さの上限は用紙の高さの 24% に入る行の数の分）。cut なら、続きを省略したと書く（where は全文を見られる所。「〇〇で」まで）。
+// 上限は行の高さ（.cv-desc の 13px × 1.75）の倍数にする。倍数でないと、省くときに最後の行の字が上だけ見えて残った（デバッグとリリースの見直し②-3）
+const COVER_DESC_LINE = 13 * 1.75;
 function coverDescHtml(P, text, cut, where) {
   if (!text.trim()) return '<div class="cv-desc none">（説明は書かれていません）</div>';
-  return `<div class="cv-desc" style="max-height:${Math.round(P.h * 0.24)}px">${esc(text)}</div>`
+  const maxH = Math.floor((P.h * 0.24) / COVER_DESC_LINE) * COVER_DESC_LINE;
+  return `<div class="cv-desc" style="max-height:${maxH}px">${esc(text)}</div>`
     + (cut ? `<p class="cv-desc-cut">（説明が長いため、続きを省略しました。全文は${where}見られます）</p>` : '');
 }
 // 表紙の HTML の説明が、決めた高さに入りきらないか（測れるときだけ呼ぶ）

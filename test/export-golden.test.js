@@ -77,13 +77,14 @@ const CASES = [
   ['顧客管理・A4 横・画面 1 つだけ', 'd1', { paper: 'A4', orient: 'landscape', ...ALL, screenIds: ['s2'] }],
   ['受注管理・A4 横・全部', 'd4', { paper: 'A4', orient: 'landscape', ...ALL }],
 ];
-// 直す前のコード（0fd1bde）で取った値。{ total, sha }
+// 直す前のコード（0fd1bde）で取った値。{ total, sha }。表紙のある 4 つは、表紙の説明の高さの上限を行の高さの倍数にしたとき（デバッグとリリースの見直し②-3）に
+// 取り直した（変わったのは .cv-desc の max-height の数字だけ。前の値に戻すと、前の sha と同じになることを確かめた）
 const GOLDEN = {
-  '顧客管理・A4 横・全部': { total: 7, sha: '470345ee0568e28616847484f389b4d0952b0957bb39b04e5bf9ff6132080ce7' },
-  '顧客管理・A3 縦・全部': { total: 7, sha: '367ca9e6d530f60b5fcbf0f5188794499f4898149b8b823d91db7984a3da8fb4' },
+  '顧客管理・A4 横・全部': { total: 7, sha: '09f747d55f48ef7b756b2516836cc437baee697da5a68d453b561ff8529eece1' },
+  '顧客管理・A3 縦・全部': { total: 7, sha: '9777c583e79826d61c7bf13e216cc26c34b9f9b2378631a179f71e9c02bf5e7a' },
   '顧客管理・スライド・表紙なし': { total: 6, sha: '9d51de731edbd75fee34d6e0cedc1563564f0f82c4ce169bc1c221deab26425d' },
-  '顧客管理・A4 横・第 1 版との違いの印': { total: 8, sha: '5666a4b356406e389456fe7e35ed6ab2e4fa307520312447b8e3f91992321bc7' },
-  '顧客管理・A4 横・画面 1 つだけ': { total: 6, sha: '928f8b79108af7e91dc00bacb795ba9ebaceafecbaad3f0c40c1bf58d8437710' },
+  '顧客管理・A4 横・第 1 版との違いの印': { total: 8, sha: '833123eb6690cc68030539c250530c5487d5cfa393b3b020248fe4bb6e285267' },
+  '顧客管理・A4 横・画面 1 つだけ': { total: 6, sha: '3c99394e06b263f90c7f46ebf7e30264d7e934a153e02ca5a5a947fae8279366' },
   '受注管理・A4 横・全部': { total: 4, sha: '030309505da3eba6f7ab26102bc54b94ab4e9d6ef2f32f69eca1cbe8e9361241' },
 };
 

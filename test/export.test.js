@@ -216,6 +216,20 @@ test('出力の窓: 画面を全部外して PNG は出力できない。PDF も
 });
 
 // ── PDF・PNG のページ ──
+// デバッグとリリースの見直し②-3: 説明の高さの上限（用紙の高さの 24%）が行の高さの倍数でなく、省くときに最後の行の字が上だけ見えて残った
+test('PDF の表紙: 説明の高さの上限は、行の高さ（13 × 1.75 ドット）の倍数（省くときに、字が上だけ見える行を残さない）', async (t) => {
+  const { app, api } = await bootSample(t);
+  const d = api.store.state.designs.find((x) => x.id === 'd1');
+  for (const [paper, orient] of [['A4', 'landscape'], ['A4', 'portrait'], ['A3', 'landscape'], ['A3', 'portrait'], ['slide', 'landscape']]) {
+    const page = api.exportDocument(d, api.store.state, { paper, orient, cover: true }).pages[0];
+    const desc = new app.window.DOMParser().parseFromString(page, 'text/html').querySelector('.cv-desc');
+    const lines = parseFloat(desc.style.maxHeight) / (13 * 1.75);
+    assert.ok(Math.abs(lines - Math.round(lines)) < 0.01 && lines >= 3, `${paper} ${orient}: ${desc.style.maxHeight}（${lines.toFixed(2)} 行分）`);
+    const P = api.paperSize(paper, orient);
+    assert.ok(parseFloat(desc.style.maxHeight) <= P.h * 0.24, `${paper} ${orient}: 用紙の高さの 24% を超えない`);
+  }
+});
+
 test('PDF: 表紙・つながりの図・項目の一覧表・画面の順のページ。ページ番号・用紙の大きさ（@page とインチ）・書いたら開く', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
