@@ -161,6 +161,17 @@ test('add_screen: ひな形・複製・機器・名前・置く位置。パソ�
   app.close();
 });
 
+test('add_screen: copyOf でスマホ・タブレットの画面を複製するとき、device を書かなければ同じ機器のまま（デバッグとリリースの見直し④-1）', async () => {
+  const { app, call, d } = await boot();
+  ok(await call('add_screen', { design: 'd1', device: 'phone', name: 'スマホの入力' }));
+  const c = ok(await call('add_screen', { design: 'd1', copyOf: 'スマホの入力', name: 'スマホの確認' }));
+  assert.deepEqual([c.screen.device, c.screen.width], ['phone', 375]);
+  assert.equal(d('d1').screens.find((s) => s.id === c.screen.id).device, 'phone');
+  const pc = ok(await call('add_screen', { design: 'd1', copyOf: 'スマホの入力', name: 'パソコンの確認', device: 'pc' }));
+  assert.equal(pc.screen.device, 'pc', 'device を書いたときは、その機器にする');
+  app.close();
+});
+
 test('edit_screen: 名前・機器・高さ・帯・一覧表の位置を直す・並べ替える・消す。最後の 1 つは消せない', async () => {
   const { app, call, d } = await boot();
   ok(await call('edit_screen', { design: 'd1', ops: [

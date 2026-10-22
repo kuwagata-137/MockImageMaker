@@ -13668,7 +13668,8 @@ async function aiAddScreen(args, ctx) {
   return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
     const id = tx.design.id;
     const d = () => findDesign(store.state, id);
-    const device = aiDevice(args.device);
+    // 複製（copyOf）で device を書かないときは、複製した画面の機器のまま（null。既定の "pc" にすると、スマホの画面がパソコンの画面に変わっていた。見直し④-1）
+    const device = args.device == null && args.copyOf != null ? null : aiDevice(args.device);
     const after = args.after != null ? aiResolveScreen(d(), args.after).id : d().screens[d().screens.length - 1].id;
     let sid;
     if (args.copyOf != null) {
@@ -13682,7 +13683,7 @@ async function aiAddScreen(args, ctx) {
     }
     const patch = {};
     if (args.name != null) patch.name = aiScreenName(tx, d(), args.name, sid);
-    if (device !== findScreen(id, sid).device) patch.device = device;
+    if (device && device !== findScreen(id, sid).device) patch.device = device;
     if (Object.keys(patch).length) actions.updateScreen(id, sid, patch);
     const placed = args.layout != null ? aiLayout(tx, id, sid, args.layout, 'append') : { parts: [], createdItems: [] };
     const sc = findScreen(id, sid);

@@ -91,7 +91,7 @@ const TOOLS = [
       template: z.string().optional().describe('ひな形（get_catalog の templates の id。例 "input"・"list"。既定は "blank"）'),
       copyOf: S.screen.optional().describe('複製する画面'), name: z.string().optional().describe('画面の名前'),
       after: S.screen.optional().describe('この画面の後ろに入れる（既定はいちばん後ろ）'),
-      device: z.enum(['pc', 'tablet', 'phone']).optional().describe('機器（既定は "pc"）'), layout: layout.optional(),
+      device: z.enum(['pc', 'tablet', 'phone']).optional().describe('機器（既定は "pc"。copyOf のときは複製する画面と同じ機器）'), layout: layout.optional(),
     }),
   write('edit_screen', '画面を直す',
     '画面の名前・機器・高さ・帯・一覧表の位置を直す・並べ替える・画面を消す（ops に並べて 1 回で行う）。',
