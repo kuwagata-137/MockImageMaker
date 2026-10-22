@@ -17,6 +17,7 @@
     "@napi-rs/canvas": "1.0.11",
     "electron-window-state": "^5.0.3",
     "exceljs": "4.4.0",
+    "image-size": "2.0.4",
     "mammoth": "1.13.0",
     "pdfjs-dist": "6.4.299",
     "zod": "3.25.76"

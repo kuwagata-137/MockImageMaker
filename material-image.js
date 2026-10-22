@@ -6,14 +6,18 @@
 //  - loadCanvas: 画像の部品（@napi-rs/canvas）を、画像を描くときに初めて読む（material-pdf.js も使う）。読めないときは、何が使えないかを書いた
 //    MaterialError('unavailable')。先頭で読まないのは、パソコンの守りの設定などが .node のファイルを止めたとき、画像の部品を使わない
 //    文字・Word・Excel・MPD の資料まで読めなくなるのを防ぐため（デバッグとリリースの直し②。q86）
-//  - Electron に触らない。@napi-rs/canvas だけで動く（node だけでテストできる）
+//  - 画素が 1 億を超える画像は、まるごと読み込む前に、頭（image-size で読む）の幅と高さで断る（MaterialError('too_large')。
+//    読み込むと幅×高さ×4 バイトのメモリを使い、main が止まるおそれがあった。デバッグとリリースの見直し③-7）
+//  - Electron に触らない。@napi-rs/canvas と image-size だけで動く（node だけでテストできる）
 'use strict';
 
+const { imageSize } = require('image-size');
 const { MaterialError } = require('./material-error');
 
 const IMAGE_MAX_SIDE = 1566;
 const MAX_BASE64_BYTES = 5 * 1024 * 1024;
 const SHRINK_FACTOR = 0.75;
+const MAX_IMAGE_PIXELS = 100000000; // 1 億画素（読み込むと約 400 MB のメモリを使う）
 // PNG の頭: 署名 8 バイト + 長さ 4 バイト + 'IHDR' 4 バイトの次に、幅（4 バイト）と高さ（4 バイト）が続く
 const WIDTH_OFFSET = 16;
 const HEIGHT_OFFSET = 20;
@@ -51,7 +55,21 @@ function pngSize(png) {
   return { width: png.readUInt32BE(WIDTH_OFFSET), height: png.readUInt32BE(HEIGHT_OFFSET) };
 }
 
+// 画像の頭から幅と高さを読む。読めないとき（壊れている・知らない形）は null（読み込む部品に任せる）
+function headerSize(bytes) {
+  try {
+    const size = imageSize(bytes);
+    return size && size.width > 0 && size.height > 0 ? size : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 async function decodeImage(bytes) {
+  const size = headerSize(bytes);
+  if (size && size.width * size.height > MAX_IMAGE_PIXELS) {
+    throw new MaterialError('too_large', `この画像は画素が多すぎるため（${size.width}×${size.height}）、読めません。画素が 1 億より少なくなるように小さくして保存し直してから、入れ直してください。`);
+  }
   const { loadImage } = loadCanvas();
   try {
     return await loadImage(bytes);
