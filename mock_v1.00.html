@@ -13821,7 +13821,8 @@ function aiLayoutSpec(tx, d, e, used, plan) {
   } else if (!item && (isInputType(type) || (type === 'table' && e.tableKind === 'subtable'))) {
     item = aiLayoutNewItem(d, type, cleanName(str(e.label)) || (type === 'table' ? '明細' : partType(type).label), e, plan);
   } else if (!item && (type === 'status' || type === 'steps')) {
-    item = d.items.find((it) => it.type === 'status') || plan.created.find((it) => it.type === 'status') || aiLayoutNewItem(d, 'status', 'ステータス', {}, plan);
+    // まだなければ、書いた props（states）・required・memo で作る（{} を渡すと見本の並びになり、書いたステータスが捨てられていた。見直し④-2）
+    item = d.items.find((it) => it.type === 'status') || plan.created.find((it) => it.type === 'status') || aiLayoutNewItem(d, 'status', 'ステータス', e, plan);
   }
   const spec = { span: e.span === 2 ? 2 : undefined, fields: {}, unnumbered: e.no === null };
   if (item) {

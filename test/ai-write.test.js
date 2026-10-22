@@ -213,6 +213,19 @@ test('layout_screen: 2 列・span・幅の広い部品・ボタンの行（右�
   app.close();
 });
 
+test('layout_screen: ステータスの項目がまだないとき、status・steps に書いた props.states で項目を作り、current もその中から選べる（デバッグとリリースの見直し④-2）', async () => {
+  const { app, call, d } = await boot();
+  ok(await call('layout_screen', { design: 'd1', screen: '新規登録', layout: { rows: [[{ type: 'status', props: { states: ['受付', '対応中', '完了'] }, current: '対応中' }]] } }));
+  const st = d('d1').items.find((x) => x.type === 'status');
+  assert.deepEqual(st.props.states.map((s) => s.name), ['受付', '対応中', '完了'], '書いたステータスで作る（見本の並びにしない）');
+  const part = d('d1').screens[0].parts.find((p) => p.type === 'status');
+  assert.equal(part.view.current, st.props.states[1].id);
+  const r = ok(await call('create_design', { name: '問い合わせ管理' }));
+  ok(await call('layout_screen', { design: r.id, screen: r.firstScreen.id, layout: { rows: [[{ type: 'steps', props: { states: ['受付', '回答'] } }]] } }));
+  assert.deepEqual(d(r.id).items.find((x) => x.type === 'status').props.states.map((s) => s.name), ['受付', '回答'], 'steps も同じ');
+  app.close();
+});
+
 test('layout_screen: append は今の部品の下から置く。同じ項目を同じ画面に 2 回は断る。ステータスの印は見本の状態を選べる', async () => {
   const { app, call, d } = await boot();
   const r = ok(await call('layout_screen', { design: 'd1', screen: '新規登録', layout: { rows: [[{ type: 'status', current: '承認済み' }], [{ type: 'date', label: '契約日', labelPos: 'left', sample: '2026-10-14' }]] } }));
