@@ -186,6 +186,10 @@ async function makeXlsxJapaneseFormats() {
 function ole2Bytes() {
   return Buffer.concat([OLE2_SIGNATURE, Buffer.alloc(512)]);
 }
+// パスワードで守った .docx・.xlsx の頭に見える中身（OLE2 の中に、UTF-16LE の名前の EncryptionInfo・EncryptedPackage の流れがある。見直し③-4）
+function encryptedOfficeBytes() {
+  return Buffer.concat([OLE2_SIGNATURE, Buffer.alloc(512), Buffer.from('EncryptionInfo', 'utf16le'), Buffer.alloc(64), Buffer.from('EncryptedPackage', 'utf16le'), Buffer.alloc(512)]);
+}
 
 module.exports = {
   makeSampleDir,
@@ -205,4 +209,5 @@ module.exports = {
   makeXlsx,
   makeXlsxJapaneseFormats,
   ole2Bytes,
+  encryptedOfficeBytes,
 };

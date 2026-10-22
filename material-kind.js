@@ -56,6 +56,8 @@ function result(kind, legacy = false) {
 
 // 名前と先頭のバイトから { kind, legacy } を返す。buf は先頭の 8 バイト以上（HTML のときはファイル全体）。
 // legacy は古い形の Word・Excel（.doc・.xls。読めないので、呼ぶ側が断る）のとき true。
+// 中身が OLE2 の .docx・.xlsx・.xlsm（パスワードで守ったファイルか、名前だけ変えた古い形）は Word・Excel にする（legacy にはしない）。
+// 読むときに material-reader.js が理由（パスワード・古い形）を伝える（そのほかにすると、なぜ読めないかが分からなかった。デバッグとリリースの見直し③-4）
 function detectKind(name, bytes) {
   const ext = extensionOf(name);
   const buf = toBuffer(bytes);
@@ -63,6 +65,8 @@ function detectKind(name, bytes) {
   if (startsWith(buf, OLE2_SIGNATURE) || ext === 'doc' || ext === 'xls') {
     if (ext === 'doc') return result('word', true);
     if (ext === 'xls') return result('excel', true);
+    if (ext === 'docx') return result('word');
+    if (ext === 'xlsx' || ext === 'xlsm') return result('excel');
     return result('other');
   }
   if (ext === 'pdf' || startsWith(buf, PDF_SIGNATURE)) return result('pdf');

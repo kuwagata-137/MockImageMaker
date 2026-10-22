@@ -11,7 +11,8 @@
 //  - read は 1 つずつ実行する（待ち行列）。同時に頼まれても、前の読みが終わってから次を始める。
 //    別の資料の読み込みが控えを押し出して、返事を組んでいる途中の PDF を閉じてしまうのを防ぐため
 //  - Electron に触らない。bdm は bdmBlocks（bdm-swimlane.js の関数）を引数で受け取って呼ぶ
-// 失敗は MaterialError（code: unsupported・file_missing・not_file・old_format・read_failed・bad_cursor・unavailable〔PDF を読む部品の cmaps・standard_fonts がない〕）。文にパスを入れない。
+// 失敗は MaterialError（code: unsupported・file_missing・not_file・old_format・encrypted〔パスワードで守った Word・Excel〕・read_failed・bad_cursor・
+// unavailable〔PDF を読む部品の cmaps・standard_fonts がない〕）。文にパスを入れない。
 // read_failed には、元の例外を cause に残す（調べるため。ページには code と message だけが渡る）。
 'use strict';
 
@@ -35,14 +36,19 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const CACHE_SIZE = 3;
 
 const OLE2_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+// パスワードで守った .docx・.xlsx は、OLE2 の中に EncryptedPackage という名前（UTF-16LE）の流れを持つ
+const ENCRYPTED_PACKAGE = Buffer.from('EncryptedPackage', 'utf16le');
 const MISSING_CODES = new Set(['ENOENT', 'ENOTDIR', 'ERR_INVALID_ARG_TYPE']);
 
 const fail = (code, message) => new MaterialError(code, message);
 
-// Word・Excel の読み取り。中身が古い形（OLE2）なら、名前が .docx・.xlsx でも読めないので断る
+// Word・Excel の読み取り。中身が OLE2（古い形か、パスワードで守ったファイル）なら、名前が .docx・.xlsx でも読めないので、どちらかを伝えて断る
 function officeLoader(label, oldExtension, newExtension, read) {
   return async (bytes) => {
     if (bytes.subarray(0, OLE2_SIGNATURE.length).equals(OLE2_SIGNATURE)) {
+      if (bytes.includes(ENCRYPTED_PACKAGE)) {
+        throw fail('encrypted', `この ${label} のファイルはパスワードで守られているため、読めません。パスワードを外して保存し直してから入れ直してください。`);
+      }
       throw fail('old_format', `この資料は古い形の ${label}（${oldExtension}）です。読めません。${newExtension} に保存し直してから入れ直してください。`);
     }
     return read(bytes);

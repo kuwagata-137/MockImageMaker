@@ -89,10 +89,17 @@ test('material-kind.js — OLE2 の印（古い Word・Excel）', async (t) => {
     assert.deepEqual(detectKind('旅費.doc', null), { kind: 'word', legacy: true });
   });
 
-  await t.test('OLE2 の印があっても、拡張子が .doc・.xls でなければ other（.ppt など）', () => {
-    for (const name of ['発表.ppt', '発表.docx', '旅費.xlsx', '資料.pdf', '資料', '図.png']) {
+  await t.test('OLE2 の印があっても、拡張子が Word・Excel でなければ other（.ppt など）', () => {
+    for (const name of ['発表.ppt', '資料.pdf', '資料', '図.png']) {
       assert.deepEqual(detectKind(name, OLE2), { kind: 'other', legacy: false }, name);
     }
+  });
+
+  // パスワードで守った .docx・.xlsx は、中身が OLE2 の形になる。Word・Excel として入れ、読むときに理由を伝える（material-reader.js。デバッグとリリースの見直し③-4）
+  await t.test('OLE2 の印のある .docx は word・.xlsx と .xlsm は excel（古い形の印は付けない）', () => {
+    assert.deepEqual(detectKind('発表.docx', OLE2), { kind: 'word', legacy: false });
+    assert.deepEqual(detectKind('旅費.xlsx', OLE2), { kind: 'excel', legacy: false });
+    assert.deepEqual(detectKind('旅費.XLSM', OLE2), { kind: 'excel', legacy: false });
   });
 
   await t.test('8 バイトに足りない先頭は OLE2 の印とみなさない', () => {
