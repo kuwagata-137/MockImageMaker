@@ -274,6 +274,33 @@ test('新しい版のデータ・壊れたデータを読んだときは、警�
   t.diagnostic('2 通りとも確かめた');
 });
 
+// デバッグとリリースの見直し①-2: 2 つのタブで開くと、古い中身のタブの保存が、ほかのタブの変更を黙って上書きしていた
+test('ブラウザ: ほかのタブが保存したら、このタブの保存を止めて読み込み直すよう知らせる（ほかのタブの変更を上書きしない）', async (t) => {
+  const { app, api } = await boot();
+  t.after(() => app.close());
+  api.actions.createDesign('顧客管理アプリ', 'kintone');
+  // ほかのタブが、備品貸出アプリを足して保存した（storage の知らせは、保存したタブでない方にだけ届く）
+  const other = saved(app);
+  other.designs.push({ ...other.designs[0], id: 'd-other', name: '備品貸出アプリ' });
+  const otherJson = JSON.stringify(other);
+  app.window.localStorage.setItem(KEY, otherJson);
+  app.window.dispatchEvent(new app.window.StorageEvent('storage', { key: KEY, newValue: otherJson, storageArea: app.window.localStorage }));
+  assert.equal($(app, '#banner').hidden, false);
+  assert.match($(app, '#banner').textContent, /ほかのタブ.*保存を止めました.*読み込み直して/);
+  assert.ok(api.store.blockReason, 'AI の書く頼みも断る');
+  api.actions.createDesign('問い合わせ管理', 'kintone');
+  assert.equal(app.window.localStorage.getItem(KEY), otherJson, 'ほかのタブの変更を上書きしない');
+});
+
+test('ブラウザ: 別のキーの storage の知らせでは、保存を止めない', async (t) => {
+  const { app, api } = await boot();
+  t.after(() => app.close());
+  app.window.dispatchEvent(new app.window.StorageEvent('storage', { key: 'ほかのアプリ', newValue: '1', storageArea: app.window.localStorage }));
+  assert.equal($(app, '#banner').hidden, true);
+  api.actions.createDesign('顧客管理アプリ', 'kintone');
+  assert.equal(saved(app).designs.length, 1);
+});
+
 test('Electron: designs.json に保存し、起動し直しても残る。アプリのメニューの命令も受ける', async (t) => {
   const st = createMainStorage();
   t.after(() => st.cleanup());

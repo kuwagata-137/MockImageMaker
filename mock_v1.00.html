@@ -3175,6 +3175,20 @@ class BlockedAdapter {
   }
 }
 
+// ブラウザで開いているとき、ほかのタブ（窓）が同じ保存データを保存したら、このタブの保存を止める。
+// このタブの中身は古いので、次の保存で、ほかのタブの変更を黙って上書きしていた（デバッグとリリースの見直し①-2）。
+// storage の知らせは、保存したタブでない方にだけ届く。キーが null の知らせは、保存領域を全部消したとき
+function watchOtherTabs() {
+  if (!(store.adapter instanceof LocalStorageAdapter)) return;
+  window.addEventListener('storage', (e) => {
+    if (e.storageArea !== localStorage || (e.key !== null && e.key !== store.adapter.key)) return;
+    if (store.blockReason) return;
+    store.adapter = new BlockedAdapter();
+    store.blockReason = 'ほかのタブ（窓）で、このアプリのデータが保存されました。';
+    showBanner(store.blockReason + ' このタブで直すと、ほかのタブの変更を消してしまうため、このタブの保存を止めました。このタブを読み込み直してください。');
+  });
+}
+
 // 戻り値 { store, blockReason, notice }。blockReason があるときは保存を止める。notice は知らせるだけ（保存は続ける）
 async function createAppStore() {
   let raw;
@@ -15596,6 +15610,7 @@ async function boot() {
   if (!embedded) sweepMaterialFiles(created);
   store.subscribe(onStoreChange);
   bindGlobalEvents();
+  watchOtherTabs();
   if (window.menuAPI) window.menuAPI.onCommand(runCommand);
   if (window.materialsAPI && typeof window.materialsAPI.onSaveDialog === 'function') window.materialsAPI.onSaveDialog(onMaterialSaveDialog);
   if (!embedded) renderHome();
