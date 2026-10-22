@@ -113,7 +113,7 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 
 /* ── 小さな窓（名前を聞く・確かめる）────────────────── */
 .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:40}
-.modal{background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(15,23,42,.35);width:min(440px,calc(100vw - 32px));padding:20px 22px 18px}
+.modal{background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(15,23,42,.35);width:min(440px,calc(100vw - 32px));padding:20px 22px 18px;max-height:calc(100vh - 32px);overflow-y:auto}
 .modal.wide{width:min(920px,calc(100vw - 32px))}
 /* ほかのモックから項目を取り込む窓（画像 q21） */
 .imp{display:flex;gap:14px;height:min(380px,calc(100vh - 260px))}
