@@ -4658,8 +4658,9 @@ function showDialog({ title, body, okLabel = 'OK', okClass = 'primary', init, co
     $('[data-dlg="ok"]', modal).addEventListener('click', ok);
     appEl().setAttribute('inert', '');
     if (init) init(modal);
-    // 窓の中にフォーカスを移す。危ない操作の窓では「キャンセル」に置く（Enter の押し間違いで実行しないため）
-    if (!modal.contains(document.activeElement)) $(okClass === 'danger' || okHidden ? '[data-dlg="cancel"]' : '[data-dlg="ok"]', modal).focus();
+    // 窓の中にフォーカスを移す。危ない操作の窓では「キャンセル」に置く（Enter の押し間違いで実行しないため）。
+    // 窓が画面より高くて中を送れるときも、窓の上（題）を見せたままにする（下の端のボタンへ送らない。見直し⑥-13）
+    if (!modal.contains(document.activeElement)) $(okClass === 'danger' || okHidden ? '[data-dlg="cancel"]' : '[data-dlg="ok"]', modal).focus({ preventScroll: true });
   });
 }
 const isDialogOpen = () => !!$('#dialog-root .modal-overlay');
