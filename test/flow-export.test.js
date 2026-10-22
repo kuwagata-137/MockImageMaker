@@ -139,6 +139,39 @@ test('PDF のステータスの移り方のページ: 横の用紙は図の右�
   assert.equal(port.querySelector('.xp-proc-tbl').style.width, '', '表は本文の幅いっぱい');
 });
 
+// デバッグとリリースの見直し②-2: 操作の一覧表の 1 行がページに入らず途中までになっても、断り書きが出なかった（項目の一覧表は出る）。
+// jsdom では大きさを測れないので、測る関数を差し替える（本文は 1000×600、「とても長い条件」の行だけ 5000 の高さ、ほかは 20）
+test('PDF のステータスの移り方のページ: 操作の一覧表の行が 1 行でもページに入らないときは「長い行は途中まで」と小見出しに書く（続きのページも）', async (t) => {
+  const { app, api, A, d } = await boot(t);
+  app.window.Element.prototype.getBoundingClientRect = function () {
+    const [width, height] = this.classList.contains('pg-body') ? [1000, 600]
+      : this.tagName === 'TR' && this.textContent.includes('とても長い条件') ? [1000, 5000] : [100, 20];
+    return { x: 0, y: 0, left: 0, top: 0, width, height, right: width, bottom: height };
+  };
+  const NOTE = '長い行は途中まで（全文はアプリか HTML で見られます）';
+  const subsWithLong = (k) => {
+    api.store.commit((s) => {
+      const it = s.designs.find((x) => x.id === A).items.find((x) => x.type === 'status');
+      it.props.actions.forEach((a, i) => { a.cond = i === k ? 'とても長い条件。'.repeat(20) : ''; });
+    });
+    const doc = api.exportDocument(d(A), api.store.state, { paper: 'A4', orient: 'landscape', cover: false, process: true });
+    const parse = (h) => new app.window.DOMParser().parseFromString(h, 'text/html');
+    return doc.pages.map(parse).filter((p) => /^ステータスの移り方/.test(p.querySelector('.pg-head h2').textContent))
+      .map((p) => [p.querySelector('.pg-head h2').textContent, p.querySelector('.pg-head span').textContent]);
+  };
+  // 1 つ目の操作が長いとき: 図の横の表（1 ページ目）がその行で切れる
+  const first = subsWithLong(0);
+  assert.equal(first[0][0], 'ステータスの移り方');
+  assert.ok(first[0][1].endsWith('・' + NOTE), first[0][1]);
+  assert.ok(first.slice(1).every(([, sub]) => !sub.includes(NOTE)), JSON.stringify(first));
+  // 4 つ目の操作が長いとき: 1 ページ目には入らず、続きのページでその行が切れる
+  const last = subsWithLong(3);
+  assert.ok(!last[0][1].includes(NOTE), last[0][1]);
+  const cont = last.filter(([h]) => h === 'ステータスの移り方（続き）');
+  assert.equal(cont.length, 1, JSON.stringify(last));
+  assert.equal(cont[0][1], '操作の一覧表・' + NOTE);
+});
+
 test('PDF: 「ステータスの移り方」「画面の移り方」のチェックを外すと、そのページを入れない。選んだ設定はアプリを閉じるまで覚える', async (t) => {
   const { app, api, A, pdfPages } = await boot(t);
   await exportVia(app, api, A, (m) => {

@@ -11102,6 +11102,9 @@ function itemRowsHtml(d, state) {
   });
 }
 const ITEM_COLS = '<colgroup><col style="width:15%"><col style="width:12%"><col style="width:33%"><col style="width:24%"><col style="width:16%"></colgroup>';
+// 表の 1 行がページに入らず途中までになったページの、小見出しの断り書き（項目の一覧表と、ステータスの移り方の操作の一覧表）
+const LONG_ROW_NOTE = '長い行は途中まで（全文はアプリか HTML で見られます）';
+const cutNote = (rows) => (rows.cut ? '・' + LONG_ROW_NOTE : '');
 const printItemTable = (rows) => `<table class="xp-itable">${ITEM_COLS}<thead><tr><th>項目名</th><th>部品の種類</th><th>設定</th><th>ルックアップ元・取り込み元</th><th>置いている画面</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
 // 変更内容の一覧のページの表（第 6 段階。q44c）
 const CHANGE_COLS = '<colgroup><col style="width:14%"><col style="width:7%"><col style="width:16%"><col style="width:11%"><col style="width:52%"></colgroup>';
@@ -11183,7 +11186,7 @@ function processPagePlan(d, state, aw, ah, measured, idTag = '') {
   const first = splitItemRows(rows, stack ? aw : side, th, measured, printActionTable)[0] || [];
   const rest = first.length < rows.length ? splitItemRows(rows.slice(first.length), aw, ah, measured, printActionTable) : [];
   return {
-    sub: `ステータス ${it.props.states.length} つ・操作 ${it.props.actions.length} つ`,
+    sub: `ステータス ${it.props.states.length} つ・操作 ${it.props.actions.length} つ${cutNote(first)}`, // 1 行でも入らない行は途中まで（デバッグとリリースの見直し②-2）
     body: `<div class="xp-legend">${VIEW_LEGENDS.process}</div><div class="xp-proc${stack ? ' stack' : ''}">${fig ? `<div>${fig}</div>` : ''}`
       + `<div class="xp-proc-tbl"${stack ? '' : ` style="width:${side}px"`}>${printActionTable(first)}</div></div>`,
     rest,
@@ -11365,11 +11368,11 @@ function exportViewPages(d, state, L) {
       left: left('つながりの図'), right: `${plan.mapPage} / ${grand}` }));
   }
   L.itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`,
-    sub: `項目 ${d.items.length} 個${rows.cut ? '・長い行は途中まで（全文はアプリか HTML で見られます）' : ''}`,
+    sub: `項目 ${d.items.length} 個${cutNote(rows)}`,
     body: printItemTable(rows), left: left('データベースの項目の一覧表'), right: `${plan.itemsPage + k} / ${grand}` })));
   if (proc) {
     pages.push(pageFrame({ P, title: 'ステータスの移り方', sub: proc.sub, body: proc.body, left: left('ステータスの移り方'), right: `${plan.processPage} / ${grand}` }));
-    proc.rest.forEach((rows, k) => pages.push(pageFrame({ P, title: 'ステータスの移り方（続き）', sub: '操作の一覧表', body: printActionTable(rows),
+    proc.rest.forEach((rows, k) => pages.push(pageFrame({ P, title: 'ステータスの移り方（続き）', sub: '操作の一覧表' + cutNote(rows), body: printActionTable(rows),
       left: left('ステータスの移り方'), right: `${plan.processPage + 1 + k} / ${grand}` })));
   }
   if (L.withFlow) {
