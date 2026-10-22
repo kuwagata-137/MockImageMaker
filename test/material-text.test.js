@@ -32,6 +32,13 @@ test('decodeText — 文字コードの見分け', async (t) => {
     assert.equal(decodeText(samples.SHIFT_JIS_BYTES), '出張申請\nOK');
   });
 
+  // デバッグとリリースの見直し③-5: 1 バイトでも壊れた所があると、ファイル全体を Shift_JIS で読んで化けていた
+  await t.test('UTF-8 の文の中に壊れたバイトが少しだけあるときは、UTF-8 で読み、壊れた所だけを � にする', () => {
+    const bytes = Buffer.concat([samples.utf8Bytes('出張の申請と、上長の承認の流れ。\n'.repeat(3)), Buffer.from([0xff]), samples.utf8Bytes('旅費の精算。')]);
+    const text = decodeText(bytes);
+    assert.equal(text, '出張の申請と、上長の承認の流れ。\n'.repeat(3) + '�旅費の精算。');
+  });
+
   await t.test('空のバイト列は空の文字', () => {
     assert.equal(decodeText(Buffer.alloc(0)), '');
   });
