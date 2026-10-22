@@ -594,6 +594,35 @@ test('入れる: 待つ間にほかの画面へ移っていて、その画面に
   assert.equal(toast(), '「出張申請システム」に資料を 1 つ入れました。「設定」は入れられませんでした。ふつうのファイルではありません。');
 });
 
+test('入れる: 待つ間にシステムがごみ箱に入った・画面設計の前の版を見始めたときは、行を作らず、そう知らせる（デバッグとリリースの見直し③-3・①-3）', async (t) => {
+  const { app, api, $, sys, materials, toast } = await boot(t);
+  const added = [{ id: 'm-d1', name: '出張の写真.jpg', kind: 'image', size: 5000, file: 'm-d1.jpg', legacy: false }];
+  const drop = async () => {
+    const h = held();
+    materials.set('addDropped', h.fn);
+    api.openSystem('y-trip', { panel: 'materials' });
+    fileEvent(app, $('#sys-view .mat-drop'), 'drop', [{ name: '出張の写真.jpg', size: 5000, text: async () => '' }]);
+    await waitFor(() => h.resolve, { label: 'addDropped' });
+    return h;
+  };
+  const h1 = await drop();
+  api.openDesign('d-trip');
+  const rev = api.actions.addRevision('d-trip', { note: '最初の版。' });
+  assert.ok(api.startViewRevision(rev));
+  h1.resolve({ ok: true, added, skipped: [] });
+  await waitFor(() => /前の版を見ている間/.test(toast()), { label: 'お知らせ' });
+  assert.equal(toast(), '画面設計の前の版を見ている間に写し終わったため、資料を入れませんでした。見るのをやめてから、もう一度入れてください。');
+  assert.equal(sys().materials.length, 5);
+  api.leaveViewing();
+
+  const h2 = await drop();
+  api.actions.trashSystem('y-trip');
+  h2.resolve({ ok: true, added, skipped: [] });
+  await waitFor(() => /ごみ箱/.test(toast()), { label: 'お知らせ' });
+  assert.equal(toast(), '「出張申請システム」がごみ箱に入ったため、資料を入れませんでした。');
+  assert.equal(sys().materials.length, 5);
+});
+
 test('読む: 読み終えたときにほかの窓が開いていたら、読むの窓を出さずに知らせる', async (t) => {
   const { $, btn, materials, toast, entry } = await boot(t);
   const r = held();

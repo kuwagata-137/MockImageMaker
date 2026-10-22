@@ -6896,13 +6896,20 @@ async function addMaterialFiles(sysId, request) {
   if (!res || res.ok !== true) { toast(`ファイルを入れられませんでした（${materialFailText(res).replace(/。$/, '')}）。`); return; }
   flushSideField();
   const y = editableSystem(sysId);
-  if (!y || y.trashedAt) return;
+  if (!y || y.trashedAt) { toast(materialsNotAddedText(sysId)); return; }
   const here = ui.view === 'system' && ui.systemId === sysId;
   const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
   const done = store.batch(() => actions.addMaterials(sysId, res.added), { history: here ? true : 'clear' });
   const where = here ? null : { name: y.name, cleared: hadHistory && done.changed };
   const text = materialsAddedText(done.result, Array.isArray(res.skipped) ? res.skipped.filter(isObj) : [], where);
   if (text) toast(text);
+}
+// 写す間に、資料の行を作れなくなったときのお知らせ（行は作らない。写したファイルは起動時の掃除で消える）。
+// 前の版を見ている間（保存を止めている）・システムがごみ箱に入った・消えた（黙って戻っていた。デバッグとリリースの見直し③-3・①-3）
+function materialsNotAddedText(sysId) {
+  if (store.isViewing) return '画面設計の前の版を見ている間に写し終わったため、資料を入れませんでした。見るのをやめてから、もう一度入れてください。';
+  const y = findSystem(store.state, sysId);
+  return y ? `「${y.name}」がごみ箱に入ったため、資料を入れませんでした。` : 'システムが消えたため、資料を入れませんでした。';
 }
 // 入れた結果のお知らせ: 入れた数・入れられなかったファイル（3 つまでは名前と理由、ほかは数）・古い形を入れたときの注意。
 // where は、待つ間にほかの画面へ移っていたときの { name（入れた先のシステムの名前）, cleared（元に戻すの履歴を消したか）}（移っていなければ null）
