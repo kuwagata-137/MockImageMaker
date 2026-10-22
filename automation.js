@@ -24,7 +24,7 @@ const UNIQUE_MAX = 999; // writeUnique で番号を付ける上限
 const QUEUE_GRACE_MS = 10000;
 const MSG = {
   protocol: 'アプリの版が変わりました。AI のアプリを起動し直してください。',
-  timeout: 'アプリが応えません（時間切れ）。',
+  timeout: P.TIMEOUT_MESSAGE,
   queueTimeout: 'ほかの頼みを実行していて、順番が来る前に時間切れになりました。この頼みは実行していません。もう一度頼んでください。',
 };
 const TIMEOUT = Symbol('timeout');
