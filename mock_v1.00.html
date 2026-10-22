@@ -4576,12 +4576,28 @@ function showBanner(message) {
 }
 
 let toastTimer = null;
-function toast(message) {
+// stay なら、時間で消さずに出したままにする（次のお知らせで置き換えるか、endWorking で消す）
+function toast(message, { stay = false } = {}) {
   const el = $('#toast');
   el.textContent = message;
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; }, 3500);
+  if (!stay) toastTimer = setTimeout(() => { el.hidden = true; }, 3500);
+}
+// 時間のかかる出力（PDF・PNG を組む）の間のお知らせ。出したままにし、画面が描かれてから先へ進む。
+// 組む処理は重く、お知らせを出してすぐ組むと、組み終わるまで描かれず、組み終わった時にはお知らせの時間（3.5 秒）が過ぎて消えていた
+// （デバッグとリリースの見直し②-4）。窓が隠れていて描かれないときも、100 ミリ秒で先へ進む
+function startWorking(message) {
+  toast(message, { stay: true });
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => setTimeout(resolve, 0));
+    setTimeout(resolve, 100);
+  });
+}
+// 結果のお知らせを出さずに終わったとき（保存の窓でキャンセルした・組めなかった）、startWorking のお知らせがまだ出ていれば消す
+function endWorking(message) {
+  const el = $('#toast');
+  if (!el.hidden && el.textContent === message) el.hidden = true;
 }
 
 // 小さな窓。OK で collect(窓) の結果（{ error } なら窓に出して閉じない）、キャンセルで null を返す。
@@ -12085,17 +12101,22 @@ async function runExport(designId, r) {
     return res;
   }
   if (!api) return null; // PDF・PNG はデスクトップ版だけ
-  if (r.kind === 'pdf') {
-    toast('PDF を作っています…');
-    const doc = exportDocument(d, store.state, r);
-    res = await api.savePdf({ name: safeFileName(d.name) + '.pdf', html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
-    reportExport(res, 'PDF');
+  const what = r.kind === 'pdf' ? 'PDF' : 'PNG';
+  const working = `${what} を作っています…`;
+  await startWorking(working);
+  try {
+    const cur = findDesign(store.state, designId) || d; // 描かれるのを待つ間に直っていれば、直した中身で組む
+    if (r.kind === 'pdf') {
+      const doc = exportDocument(cur, store.state, r);
+      res = await api.savePdf({ name: safeFileName(cur.name) + '.pdf', html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
+    } else {
+      res = await api.savePng({ files: exportPngDocs(cur, store.state, r.screenIds, r.diffRevId) });
+    }
+    reportExport(res, what);
     return res;
+  } finally {
+    endWorking(working);
   }
-  toast('PNG を作っています…');
-  res = await api.savePng({ files: exportPngDocs(d, store.state, r.screenIds, r.diffRevId) });
-  reportExport(res, 'PNG');
-  return res;
 }
 
 // ── システムの説明書の窓（第 10 段階の後半。q76・q77・画像 q81_1）──
@@ -12180,13 +12201,16 @@ async function runSystemDoc(sysId, r) {
   const api = window.exportAPI;
   if (!y || !api) return null;
   docWaiting.add(sysId);
+  const working = '説明書（PDF）を作っています…';
   try {
-    toast('説明書（PDF）を作っています…');
-    const doc = exportSystemDocument(y, store.state, r);
-    const res = await api.savePdf({ name: `${safeFileName(y.name, 'システム')}_説明書.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
+    await startWorking(working);
+    const cur = findSystem(store.state, sysId) || y; // 描かれるのを待つ間に直っていれば、直した中身で組む
+    const doc = exportSystemDocument(cur, store.state, r);
+    const res = await api.savePdf({ name: `${safeFileName(cur.name, 'システム')}_説明書.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
     if (res && !res.canceled) toast(res.ok ? `説明書（PDF）を出力しました（${res.path}）。` : `説明書（PDF）を出力できませんでした（${res.error || 'わからない理由'}）。`);
     return res;
   } finally {
+    endWorking(working);
     docWaiting.delete(sysId);
   }
 }

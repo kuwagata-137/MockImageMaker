@@ -216,6 +216,53 @@ test('出力の窓: 画面を全部外して PNG は出力できない。PDF も
 });
 
 // ── PDF・PNG のページ ──
+// デバッグとリリースの見直し②-4: お知らせを出してすぐ組むと、組み終わるまで描かれず、組み終わった時にはお知らせの時間（3.5 秒）が過ぎて消えていた
+test('PDF・PNG: 「作っています…」のお知らせが描かれてから組み、保存し終わるまで出したまま。保存の窓でキャンセルしたら消す', async (t) => {
+  const xapi = fakeExportAPI();
+  let release = null;
+  xapi.savePdf = (p) => { xapi.calls.push(['savePdf', p]); return new Promise((r) => { release = r; }); };
+  const { app, api } = await bootSample(t, { exportAPI: xapi });
+  const frames = [];
+  app.window.requestAnimationFrame = (cb) => { frames.push(cb); return frames.length; };
+  const toastEl = $(app, '#toast');
+  const pdf = api.openExportDialog('d1');
+  await tick();
+  click($(app, '.modal [data-xkind="pdf"]'));
+  click($(app, '[data-dlg="ok"]'));
+  await tick();
+  await tick();
+  assert.equal(toastEl.textContent, 'PDF を作っています…');
+  assert.equal(toastEl.hidden, false);
+  assert.equal(xapi.calls.length, 0, '画面が描かれる前には組まない');
+  frames.splice(0).forEach((cb) => cb(0));
+  await waitFor(() => xapi.calls.length === 1, { label: 'savePdf' });
+  await new Promise((r) => setTimeout(r, 3700));
+  assert.equal(toastEl.hidden, false, '保存し終わるまで出したまま');
+  assert.equal(toastEl.textContent, 'PDF を作っています…');
+  release({ ok: true, path: '/tmp/顧客管理.pdf' });
+  await pdf;
+  assert.match(toastEl.textContent, /PDF を出力しました/);
+  // 保存の窓でキャンセルしたら、「作っています…」を消す（ほかのお知らせは出さない）
+  xapi.savePdf = async (p) => { xapi.calls.push(['savePdf', p]); return { ok: false, canceled: true }; };
+  const cancel = api.openExportDialog('d1');
+  await tick();
+  click($(app, '[data-dlg="ok"]'));
+  await cancel;
+  assert.equal(toastEl.hidden, true, 'キャンセルしたら消す');
+  // PNG も、描かれてから組む
+  const png = api.openExportDialog('d1');
+  await tick();
+  click($(app, '.modal [data-xkind="png"]'));
+  click($(app, '[data-dlg="ok"]'));
+  await tick();
+  await tick();
+  assert.equal(toastEl.textContent, 'PNG を作っています…');
+  assert.equal(xapi.calls.filter((c) => c[0] === 'savePng').length, 0, '画面が描かれる前には組まない');
+  frames.splice(0).forEach((cb) => cb(0));
+  await png;
+  assert.match(toastEl.textContent, /PNG を出力しました/);
+});
+
 // デバッグとリリースの見直し②-3: 説明の高さの上限（用紙の高さの 24%）が行の高さの倍数でなく、省くときに最後の行の字が上だけ見えて残った
 test('PDF の表紙: 説明の高さの上限は、行の高さ（13 × 1.75 ドット）の倍数（省くときに、字が上だけ見える行を残さない）', async (t) => {
   const { app, api } = await bootSample(t);
