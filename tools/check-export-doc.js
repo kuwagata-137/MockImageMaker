@@ -3,10 +3,10 @@
 //  1. 最初の画面から出張申請システムを開き、メニューバーの「出力」→ 説明書の窓 →「出力…」で 出張申請システム_説明書.pdf を書く（MIM_EXPORT_DIR）
 //  2. 同じ設定でアプリの中で組んだページ（exportSystemDocument）を正しい答えにして、PDF を pdfjs-dist で読み、
 //     ①ページ数が同じ（はみ出したページがない）②ページごとに見出し（表紙は小見出しと名前）がある ③下の端の「n / N」が 1〜N の通し ④表紙の「全 N ページ」
-//     ⑤表紙の一覧の始まりのページの番号が、その画面設計の表紙のページ ⑥続きのページに分かれた表（画面の一覧・項目の一覧表・設計ノート）の全部の行の文字がある
+//     ⑤表紙の一覧の始まりのページの番号が、その画面設計の表紙のページ ⑥続きのページに分かれた表（画面の一覧・改訂履歴・項目の一覧表・設計ノート）の全部の行の文字がある
 //     ⑦設計ノートの ⑤（docs）の行の文字（出力したファイルの場所）がない、を確かめる
-// 見本は架空の業務（出張申請システム）だけ。社員マスタ（画面 24 個）で表紙の画面の一覧が、旅費規程（項目 40 個）で項目の一覧表が、
-// 設計ノートの行 50 個で設計ノートが、それぞれ続きのページに分かれる。
+// 見本は架空の業務（出張申請システム）だけ。社員マスタ（画面 24 個）で表紙の画面の一覧が、旅費規程（項目 40 個・版 20 個）で項目の一覧表と
+// 表紙の改訂履歴（デバッグとリリースの見直し②-1）が、設計ノートの行 50 個で設計ノートが、それぞれ続きのページに分かれる。
 'use strict';
 
 const fs = require('fs');
@@ -20,7 +20,7 @@ const DOCS_PATH = 'C:\\Users\\someone\\Documents\\モックイメージメーカ
 // 続きのページに分かれる表の、全部の行の文字（どの行も、ほかの行の文字の頭にならない名前にする。「〇〇 1 番」と「〇〇 10 番」）
 const n = (count, f) => Array.from({ length: count }, (_, i) => f(i + 1));
 const ROWS = { screens: n(24, (k) => `社員の画面 ${k} 番`), items: n(40, (k) => `規程の項目 ${k} 番`), decisions: n(40, (k) => `決めたこと ${k} の文`),
-  questions: n(10, (k) => `まだ決まっていないこと ${k} の文`) };
+  questions: n(10, (k) => `まだ決まっていないこと ${k} の文`), revisions: n(20, (k) => `版の内容 ${k} 番`) };
 
 // 見本（check-export.js の SAMPLE。画面設計の helper を受け取る）に、画面設計 2 つと出張申請システム（顧客管理・社員マスタ・旅費規程を入れる）を足す
 function addDocSample(sample, { design, screen, item }) {
@@ -28,6 +28,8 @@ function addDocSample(sample, { design, screen, item }) {
   const rule = design('d6', '旅費規程', 'kintone', {
     description: '社員の出張と、その旅費の精算をまとめて扱う。'.repeat(40),
     items: ROWS.items.map((nm, i) => item(`L${i + 1}`, nm, i % 3 ? 'text1' : 'text2', { memo: '役職ごとに金額が違う。'.repeat(i % 4) })),
+    revisions: ROWS.revisions.map((t, i) => ({ id: `rv${i + 1}`, kind: 'revision', no: i + 1, date: '2026-10-20T01:00:00.000Z',
+      note: `${t}。` + '日当の額を見直した。'.repeat(i % 3), changes: null, baseNo: null })),
   });
   const stages = ['read', 'flow', 'items', 'screens'];
   const decisions = ROWS.decisions.map((t, i) => ({ id: `nd${i + 1}`, date: '2026-10-20', stage: stages[Math.floor(i / 10)],
@@ -124,12 +126,12 @@ async function checkSystemDoc({ page, OUT, check, waitFile, enableTestHooks }) {
   check('6. 説明書のページの見出しの順と、下の端の「n / N」・表紙の「全 N ページ」', !bad.length, bad.slice(0, 5).join('／') || app.pages.map((x) => x.head).filter((h, i, a) => a.indexOf(h) === i).slice(0, 12).join(' → '));
   check('6. 表紙の一覧の始まりのページの番号が、その画面設計の表紙のページ', !app.wrong.length, app.wrong.join('／') || '社員マスタ・旅費規程・顧客管理');
   const heads = app.pages.map((x) => x.head);
-  const split = ['画面の一覧（続き）', 'データベースの項目の一覧表（続き）', '設計ノート（続き）'].filter((h) => !heads.includes(h));
-  check('6. 表紙の画面の一覧・項目の一覧表・設計ノートが、続きのページに分かれる', !split.length, split.length ? `分かれていない: ${split.join('・')}` : '3 つとも分かれた');
+  const split = ['画面の一覧（続き）', '改訂履歴（続き）', 'データベースの項目の一覧表（続き）', '設計ノート（続き）'].filter((h) => !heads.includes(h));
+  check('6. 表紙の画面の一覧・改訂履歴・項目の一覧表・設計ノートが、続きのページに分かれる', !split.length, split.length ? `分かれていない: ${split.join('・')}` : '4 つとも分かれた');
   const all = texts.join('');
   const lost = Object.values(ROWS).flat().filter((w) => !all.includes(w.replace(/\s+/g, '')));
   check('6. 分かれた表の全部の行の文字が PDF にある（ページの下の端で切れて消えていない）', !lost.length, lost.length ? `見つからない: ${lost.slice(0, 8).join('・')}`
-    : `画面 ${ROWS.screens.length}・項目 ${ROWS.items.length}・決めたこと ${ROWS.decisions.length}・まだ決まっていないこと ${ROWS.questions.length} の行`);
+    : `画面 ${ROWS.screens.length}・版 ${ROWS.revisions.length}・項目 ${ROWS.items.length}・決めたこと ${ROWS.decisions.length}・まだ決まっていないこと ${ROWS.questions.length} の行`);
   const leak = ['someone', '説明書を出力した場所の行'].filter((w) => all.includes(w));
   check('6. 設計ノートの ⑤（docs）の行（出力したファイルの場所）は PDF に入らない', !leak.length, leak.length ? `入っている: ${leak.join('・')}` : '入っていない');
 }

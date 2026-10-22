@@ -10955,12 +10955,12 @@ function coverListRows(plan) {
   return rows;
 }
 const coverListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面の名前</th><th>機器</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('') || '<tr><td class="empty" colspan="3">（出力する画面はありません）</td></tr>'}</tbody></table>`;
-function coverRevisionTable(d) {
-  const revs = versionRows(d).sort((a, b) => a.no - b.no); // 自動で残した行（取り込む前の状態・戻す前の状態）は出さない
-  const rows = revs.length
-    ? revs.map((r) => `<tr><td>第 ${esc(r.no)} 版</td><td>${esc(revisionDay(r))}</td><td style="white-space:pre-wrap">${esc(r.note)}</td></tr>`).join('')
-    : '<tr><td class="empty" colspan="3">（まだ改訂履歴はありません）</td></tr>';
-  return `<table class="cv-table"><thead><tr><th style="width:70px">版</th><th style="width:96px">日付</th><th>変えた内容</th></tr></thead><tbody>${rows}</tbody></table>`;
+// 表紙と「改訂履歴（続き）」に出す版の行（古い順。自動で残した行〔取り込む前の状態・戻す前の状態〕は出さない）
+const coverRevisionRows = (d) => versionRows(d).sort((a, b) => a.no - b.no)
+  .map((r) => `<tr><td>第 ${esc(r.no)} 版</td><td>${esc(revisionDay(r))}</td><td style="white-space:pre-wrap">${esc(r.note)}</td></tr>`);
+function coverRevisionTable(rows) {
+  const body = rows.length ? rows.join('') : '<tr><td class="empty" colspan="3">（まだ改訂履歴はありません）</td></tr>';
+  return `<table class="cv-table"><thead><tr><th style="width:70px">版</th><th style="width:96px">日付</th><th>変えた内容</th></tr></thead><tbody>${body}</tbody></table>`;
 }
 // 表紙の骨組み（画面設計の表紙と、システムの説明書の表紙〔第 10 段階の後半〕で同じ形。splitCoverRows が .cv-list・.cv-revs・.cv-foot を名前で探す）。
 // c: { kicker（小見出し）, title（名前）, meta（名前の下の行の HTML）, desc（説明の HTML）, list: [左の列の見出し, 表], side: [右の列の見出し, 表], total }
@@ -10993,14 +10993,31 @@ function coverDescOver(html) {
   probe.remove();
   return over;
 }
-function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false } = {}) {
+// revRows は表紙に出す版の行（既定は全部。入りきらない行は「改訂履歴（続き）」のページへ。splitCoverRevisions）
+function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false, revRows = coverRevisionRows(d) } = {}) {
   const meta = `${targetChip(d.target)}<span>出力した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span><span>最終更新 ${esc(fmtDateTime(d.updatedAt))}</span>`
     + `<span>画面 ${d.screens.length} つ・データベースの項目 ${d.items.length} 個</span>`;
   return coverShell(P, { kicker: '画面設計書', title: d.name, meta, desc: coverDescHtml(P, d.description, descCut, 'アプリか、出力した HTML で'),
-    list: ['画面の一覧', coverListTable(rows)], side: ['改訂履歴', coverRevisionTable(d)], total });
+    list: ['画面の一覧', coverListTable(rows)], side: ['改訂履歴', coverRevisionTable(revRows)], total });
 }
 const coverContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '画面の一覧（続き）', body: coverListTable(rows),
   left: `${esc(d.name)} ／ 画面の一覧（続き）`, right: `${page} / ${total}` });
+const revisionContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '改訂履歴（続き）', body: coverRevisionTable(rows),
+  left: `${esc(d.name)} ／ 改訂履歴（続き）`, right: `${page} / ${total}` });
+// 表紙の改訂履歴の表を、表紙に入る行と「改訂履歴（続き）」のページの行に分ける（[表紙の行, 続きの 1 ページ目の行, …]）。測れないときは全部を表紙に。
+// 版が多い・変えた内容が長いと、表が表紙の下の端で切れていた（デバッグとリリースの見直し②-1。仕様「表紙」の「入りきらないときは次のページへ続ける」）。
+// html(revRows) は、画面の一覧を 1 行だけ入れ、版の行に revRows を入れた表紙（縦の用紙では、改訂履歴の表は一覧の下にあるため。一覧は splitCoverRows が分ける）。
+// 表紙には少なくとも 1 行を出す（1 行だけでも入らないときは、その行は表紙で途中までになる）
+function splitCoverRevisions(html, P, rows, measured, aw, ah) {
+  if (!measured || !rows.length) return [rows];
+  const probe = measureBox(html(rows));
+  const limit = coverLimit(probe, P);
+  const bottoms = [...probe.querySelectorAll('.cv-revs tbody tr')].map((tr) => tr.getBoundingClientRect().bottom);
+  probe.remove();
+  const fit = Math.max(1, bottoms.filter((b) => b <= limit).length);
+  if (fit >= rows.length) return [rows];
+  return [rows.slice(0, fit), ...splitItemRows(rows.slice(fit), aw, ah, measured, coverRevisionTable)];
+}
 // 表紙の画面の一覧を、1 ページ目と続きのページに分ける（行の高さを測る。続きのページでは見出しの行を繰り返す）。測れないときは全部を 1 ページ目に。
 // coverHtml(rows) は、その行を一覧に入れた表紙の HTML を返す関数（画面設計の表紙と、システムの説明書の表紙〔第 10 段階の後半〕で使う）。
 // 表紙は、左の列 .cv-list・右の列 .cv-revs・下の端 .cv-foot を持つこと（名前で探して測るため）
@@ -11238,7 +11255,7 @@ function diffSumHtml(df, info) {
 }
 
 // PDF の中身を組む。opts { paper, orient, cover, map, items, process, flow, screenIds（省略するとすべての画面）, diffRevId（比べる版の行の id） }。
-// 表紙（入りきらなければ「画面の一覧（続き）」）→ 比べた版からの変更内容（違いの印を選んだときだけ）→ つながりの図（つながりがあるときだけ）→
+// 表紙（入りきらなければ「画面の一覧（続き）」「改訂履歴（続き）」）→ 比べた版からの変更内容（違いの印を選んだときだけ）→ つながりの図（つながりがあるときだけ）→
 // 項目の一覧表（項目があるときだけ）→ ステータスの移り方（操作があるときだけ）→ 画面の移り方（移る先があるときだけ）→ 選んだ画面。
 // システムの説明書（第 10 段階の後半）に画面設計のページを並べるときは、opts に pageStart（最初のページの番号。既定 1）・grandTotal（「n / N」と
 // 表紙の「全 N ページ」の N。既定はこの画面設計のページ数）・idTag（矢印の印の id の頭に足す字。既定 ''）を渡す。countOnly なら、ページを組まずに数だけ返す。
@@ -11252,7 +11269,8 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
   return { P: L.P, pages, total: L.plan.total, included, html: printDocumentHtml(d.name, L.P, pages.join('\n')) };
 }
 // ページの並べ方を決める（どのページを何ページ目に置くか・表紙と表をどこで分けるか）。番号は pageStart からの通し番号、plan.total はこの画面設計のページ数。
-// 戻り値 { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, descCut, base（最初のページの番号 - 1）, grand（「n / N」の N）, idTag }
+// 戻り値 { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, revChunks（[表紙の版の行, 「改訂履歴（続き）」の行, …]）,
+//   descCut, base（最初のページの番号 - 1）, grand（「n / N」の N）, idTag }
 function exportLayout(d, state, opts, exportedAt) {
   const P = paperSize(opts.paper, opts.orient);
   const measured = canMeasure();
@@ -11280,24 +11298,31 @@ function exportLayout(d, state, opts, exportedAt) {
     const flowPage = withFlow ? ++n : 0;
     return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n - base };
   };
-  let plan = numbering(opts.cover ? 1 : 0);
   let coverChunks = [];
   // 表紙の説明が、決めた高さに入りきるか（入りきらなければ、省略したと書く）
   const descCut = !!opts.cover && measured && !!d.description.trim() && coverDescOver(coverPageHtml(d, P, [], 1, exportedAt));
+  // 表紙の改訂履歴の表に入る行と、「改訂履歴（続き）」のページ（画面の一覧を 1 行だけ入れた表紙で測る）
+  const revChunks = !opts.cover ? []
+    : splitCoverRevisions((revRows) => coverPageHtml(d, P, coverListRows(numbering(1)).slice(0, 1), 99, nowIso(), { descCut, revRows }), P, coverRevisionRows(d), measured, aw, ah);
+  const revCont = Math.max(0, revChunks.length - 1);
+  let plan = numbering(opts.cover ? 1 + revCont : 0);
   if (opts.cover) {
-    const coverHtml = (rows) => coverPageHtml(d, P, rows, 99, nowIso(), { descCut });
+    const coverHtml = (rows) => coverPageHtml(d, P, rows, 99, nowIso(), { descCut, revRows: revChunks[0] });
     coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     if (coverChunks.length > 1) {
-      plan = numbering(coverChunks.length);
+      plan = numbering(coverChunks.length + revCont);
       coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     }
   }
-  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag };
+  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, revChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag };
 }
-// 表紙と「画面の一覧（続き）」のページ
+// 表紙と「画面の一覧（続き）」「改訂履歴（続き）」のページ
 function exportCoverPages(d, L, exportedAt) {
   const { P, grand } = L;
-  return L.coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, grand, exportedAt, { descCut: L.descCut }) : coverContHtml(d, P, rows, L.base + k + 1, grand)));
+  const list = L.coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, grand, exportedAt, { descCut: L.descCut, revRows: L.revChunks[0] })
+    : coverContHtml(d, P, rows, L.base + k + 1, grand)));
+  const revs = L.revChunks.slice(1).map((rows, k) => revisionContHtml(d, P, rows, L.base + L.coverChunks.length + k + 1, grand));
+  return [...list, ...revs];
 }
 // 変更内容・つながりの図・項目の一覧表・ステータスの移り方・画面の移り方のページ
 function exportViewPages(d, state, L) {
