@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>使い方 — モックイメージメーカー v1.00</title>
+<!-- このファイルは manual/作成ツール/build.js が content.js から作る。直接は直さない -->
+<style>
+:root{--navy:#1d3f6e;--line:#e2e8f0;--ink:#1e293b;--sub:#64748b;--red:#dc2626}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:'Segoe UI','Yu Gothic UI','Meiryo',sans-serif;color:var(--ink);background:#f1f5f9;font-size:14px;line-height:1.75}
+.top{position:fixed;left:0;right:0;top:0;height:44px;display:flex;align-items:center;gap:10px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);z-index:2}
+.top b{font-size:15px}.top span{color:var(--sub);font-size:12px}
+nav{position:fixed;left:0;top:44px;bottom:0;width:268px;overflow:auto;background:#fff;border-right:1px solid var(--line);padding:10px 0 24px}
+nav ol{list-style:none;margin:0;padding:0}
+nav a{display:block;padding:3px 14px 3px 18px;color:var(--ink);text-decoration:none;font-size:13px;line-height:1.5;border-left:3px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+nav li.ch>a{font-weight:700;margin-top:6px}
+nav li.ch ol a{padding-left:34px;color:#334155;font-size:12.5px}
+nav li.ch:not(.open) ol{display:none}
+nav a:hover{background:#f1f5f9}
+nav a.on{border-left-color:var(--navy);background:#eef2f8;color:var(--navy)}
+main{margin:44px 0 0 268px;padding:24px 40px 80px;height:calc(100% - 44px);overflow:auto}
+.doc{max-width:900px}
+h2{font-size:22px;color:var(--navy);border-bottom:2px solid var(--navy);padding-bottom:4px;margin:36px 0 12px}
+h3{font-size:17px;color:var(--navy);margin:28px 0 8px;padding-left:8px;border-left:4px solid var(--navy)}
+h4{font-size:15px;margin:20px 0 6px}
+p{margin:6px 0}
+.note{color:var(--sub);font-size:13px}
+.todo{color:#94a3b8;font-style:italic}
+ul{margin:4px 0;padding-left:22px}ul.l1{padding-left:44px}
+kbd{font-family:inherit;font-size:12px;border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#fff}
+.red{color:#b91c1c}.gray{color:var(--sub)}
+figure{margin:14px 0 6px;text-align:center}
+figure img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:4px;background:#fff}
+figcaption{font-size:12px;color:var(--sub);margin-top:4px}
+table{border-collapse:collapse;width:100%;margin:8px 0 14px;background:#fff}
+td,th{border:1px solid var(--line);padding:6px 10px;vertical-align:middle;text-align:left}
+td p{margin:2px 0}
+th{background:var(--navy);color:#fff;font-weight:600}
+.co td.n{background:var(--red);color:#fff;font-weight:700;text-align:center;width:34px;font-family:Arial,sans-serif}
+.co td.nm{background:#f3f6fa;font-weight:700;width:170px}
+.st td.n{background:var(--navy);color:#fff;font-size:18px;font-weight:700;text-align:center;width:40px;font-family:Arial,sans-serif}
+.st td.im{width:440px;text-align:center}
+.box{display:flex;gap:10px;border:1px solid;border-left-width:5px;border-radius:4px;padding:8px 12px;margin:10px 0}
+.box .tag{flex-shrink:0}
+.box.tip{border-color:#2563eb;background:#eff6ff}.box.tip .tag{color:#1d4ed8}
+.box.warn{border-color:#dc2626;background:#fef2f2}.box.warn .tag{color:#b91c1c}
+.cover{background:#fff;border:1px solid var(--line);border-radius:8px;padding:28px 32px;margin-bottom:8px}
+.cover .t{font-size:26px;font-weight:700;color:var(--navy)}
+.cover .s{color:var(--sub)}
+@media print{.top,nav{display:none}main{margin:0;height:auto;overflow:visible}}
+
+</style>
+</head>
+<body>
+<div class="top"><b>モックイメージメーカー 使い方</b><span>v1.00・2026年10月23日 更新</span></div>
+<nav aria-label="目次"><ol><li class="ch"><a href="#s1">1. はじめに</a><ol><li><a href="#s1-1">1.1 できること</a></li><li><a href="#s1-2">1.2 入れ方と起動</a></li><li><a href="#s1-3">1.3 このマニュアルで使う言葉</a></li><li><a href="#s1-4">1.4 このマニュアルの見方</a></li></ol></li><li class="ch"><a href="#s2">2. 最初の画面</a><ol><li><a href="#s2-1">2.1 画面の各部</a></li><li><a href="#s2-2">2.2 新しい画面設計を作る</a></li><li><a href="#s2-3">2.3 名前の変更・複製・削除</a></li><li><a href="#s2-4">2.4 ごみ箱</a></li><li><a href="#s2-5">2.5 つながりの図</a></li></ol></li><li class="ch"><a href="#s3">3. 画面設計を描く</a><ol><li><a href="#s3-1">3.1 編集の画面の各部</a></li><li><a href="#s3-2">3.2 部品を置く</a></li><li><a href="#s3-3">3.3 選ぶ・動かす・揃える</a></li><li><a href="#s3-4">3.4 部品の設定と一覧表</a></li><li><a href="#s3-5">3.5 データベースの項目</a></li><li><a href="#s3-6">3.6 ルックアップと取り込み</a></li><li><a href="#s3-7">3.7 表とグラフ</a></li><li><a href="#s3-8">3.8 吹き出し</a></li><li><a href="#s3-9">3.9 元に戻す・拡大と縮小</a></li></ol></li><li class="ch"><a href="#s4">4. 複数の画面と移り方</a><ol><li><a href="#s4-1">4.1 画面を足す（ひな形）</a></li><li><a href="#s4-2">4.2 画面の一覧の操作</a></li><li><a href="#s4-3">4.3 ステータスの移り方</a></li><li><a href="#s4-4">4.4 画面の移り方</a></li></ol></li><li class="ch"><a href="#s5">5. 改訂履歴</a><ol><li><a href="#s5-1">5.1 改訂する</a></li><li><a href="#s5-2">5.2 前の版を見る・戻す</a></li><li><a href="#s5-3">5.3 違いの印</a></li></ol></li><li class="ch"><a href="#s6">6. 出力と受け渡し</a><ol><li><a href="#s6-1">6.1 PDF</a></li><li><a href="#s6-2">6.2 PNG</a></li><li><a href="#s6-3">6.3 HTML</a></li><li><a href="#s6-4">6.4 直して返された HTML を取り込む</a></li></ol></li><li class="ch"><a href="#s7">7. システム</a><ol><li><a href="#s7-1">7.1 システムを作る・画面設計を入れる</a></li><li><a href="#s7-2">7.2 システムの画面</a></li><li><a href="#s7-3">7.3 役割</a></li><li><a href="#s7-4">7.4 スイムレーン図</a></li><li><a href="#s7-5">7.5 資料</a></li><li><a href="#s7-6">7.6 MPD からスイムレーン図を作る</a></li><li><a href="#s7-7">7.7 設計ノート</a></li><li><a href="#s7-8">7.8 説明書（PDF）</a></li><li><a href="#s7-9">7.9 MPD に出力</a></li><li><a href="#s7-10">7.10 履歴</a></li></ol></li><li class="ch"><a href="#s8">8. AI とつなぐ</a><ol><li><a href="#s8-1">8.1 登録のしかた</a></li><li><a href="#s8-2">8.2 つながっている印</a></li><li><a href="#s8-3">8.3 AI に頼めること・頼めないこと</a></li><li><a href="#s8-4">8.4 資料からシステムを作る流れ（①〜⑤）</a></li><li><a href="#s8-5">8.5 AI が直したものを確かめる・戻す</a></li></ol></li><li class="ch"><a href="#s9">9. ベンダーの方へ</a><ol><li><a href="#s9-1">9.1 受け取った HTML を開く・直して返す</a></li><li><a href="#s9-2">9.2 PDF の読み方</a></li></ol></li><li class="ch"><a href="#s10">10. 困ったとき</a><ol><li><a href="#s10-1">10.1 保存の場所と控え</a></li><li><a href="#s10-2">10.2 ブラウザで開いたときにできないこと</a></li></ol></li><li class="ch"><a href="#s59">付録</a><ol><li><a href="#sapp-A">付録 A キーの一覧</a></li><li><a href="#sapp-B">付録 B アプリのメニューの一覧</a></li></ol></li></ol></nav>
+<main>
+<div class="doc">
+
+<div class="cover"><div class="t">使用説明書</div><div class="s">モックイメージメーカー v1.00　業務アプリの画面設計（モック）を描き、ベンダーと共有する</div></div>
+<h2 id="s1">1. はじめに</h2>
+<p class="todo">（この章はこれから書きます: できること・入れ方と起動・言葉（画面設計・システム・部品・レコード・MPD）・このマニュアルの見方）</p>
+<h3 id="s1-1">1.1 できること</h3>
+<h3 id="s1-2">1.2 入れ方と起動</h3>
+<h3 id="s1-3">1.3 このマニュアルで使う言葉</h3>
+<h3 id="s1-4">1.4 このマニュアルの見方</h3>
+<h2 id="s2">2. 最初の画面</h2>
+<p>アプリを起動すると、最初に「システムと画面設計」の画面が開きます。作った画面設計とシステムは、すべてこの画面に並びます。描いたものはアプリの中に自動で保存されるため、保存の操作は要りません。</p>
+<h3 id="s2-1">2.1 画面の各部</h3>
+<figure><img src="images/home_overview.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 1　最初の画面の各部</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">見出し</td><td><p>この画面の名前です</p></td></tr><tr><td class="n">2</td><td class="nm">ボタンの並び</td><td><p>名前で探す欄と、カードで並べる・つながりの図（2.5）・HTML を取り込む（6.4）・新しい画面設計（2.2）・新しいシステム（7.1）のボタンです</p></td></tr><tr><td class="n">3</td><td class="nm">システムの一覧</td><td><p>押したシステムに入っている画面設計だけを、右に並べます。「システムに入っていない」を押すと、どのシステムにも入れていない画面設計が並びます</p></td></tr><tr><td class="n">4</td><td class="nm">システムの見出し</td><td><p>システムの名前と中身の数です。<b>開く</b> を押すと、システムの画面が開きます（第 7 章）</p></td></tr><tr><td class="n">5</td><td class="nm">画面設計のカード</td><td><p>押すと、その画面設計の編集の画面が開きます（第 3 章）</p></td></tr><tr><td class="n">6</td><td class="nm">ごみ箱</td><td><p>消した画面設計とシステムが入ります（2.4）</p></td></tr></table>
+<p>画面設計のカードには、上に最初の画面の縮小画像、下に名前・作る先・画面の数・最新の版・更新日時が出ます。右下の <b>…</b> から、名前の変更・複製・出力・削除ができます（2.3）。</p>
+<h3 id="s2-2">2.2 新しい画面設計を作る</h3>
+<p>画面設計は、業務アプリ 1 つ分の画面をまとめたものです。顧客管理アプリなら、一覧・新規登録・詳細の画面を 1 つの画面設計に描きます。</p>
+<figure class="steps"><table class="st"><tr><td class="n">1</td><td class="tx"><p><b>＋ 新しい画面設計</b> を押します（①）。</p></td><td class="im"><img src="images/new_step1.png" width="315" height="102" alt="" loading="lazy"></td></tr><tr><td class="n">2</td><td class="tx"><p>名前（①）を書き、作る先を選んで <b>作成して開く</b> を押します（②）。</p><p>作る先は、kintone・Salesforce・Claude で作るアプリ・その他から選びます。作る先によって部品の見た目は変わらず、一覧と PDF に文字で出るだけです。</p></td><td class="im"><img src="images/new_step2.png" width="420" height="317" alt="" loading="lazy"></td></tr><tr><td class="n">3</td><td class="tx"><p>白紙の画面が 1 つ入った編集の画面が開きます。</p><p>ここから部品を置いて画面を描きます（第 3 章）。</p></td><td class="im"><img src="images/new_step3.jpg" width="420" height="263" alt="" loading="lazy"></td></tr></table><figcaption>図 2　新しい画面設計を作る手順</figcaption></figure>
+<div class="box tip"><b class="tag">ヒント</b><div>左のシステムの一覧でシステムを選んでいるときは、「入れるシステム」の欄に、最初からそのシステムが入っています。どのシステムにも入れないときは「（入れない）」を選びます。</div></div>
+<h3 id="s2-3">2.3 名前の変更・複製・削除</h3>
+<h3 id="s2-4">2.4 ごみ箱</h3>
+<h3 id="s2-5">2.5 つながりの図</h3>
+<h2 id="s3">3. 画面設計を描く</h2>
+<p class="todo">（この章はこれから書きます: 編集の画面の各部・部品を置く・選ぶ・動かす・揃える・部品の設定と一覧表・データベースの項目・ルックアップと取り込み・表とグラフ・吹き出し・元に戻す・拡大と縮小）</p>
+<h3 id="s3-1">3.1 編集の画面の各部</h3>
+<h3 id="s3-2">3.2 部品を置く</h3>
+<h3 id="s3-3">3.3 選ぶ・動かす・揃える</h3>
+<h3 id="s3-4">3.4 部品の設定と一覧表</h3>
+<h3 id="s3-5">3.5 データベースの項目</h3>
+<h3 id="s3-6">3.6 ルックアップと取り込み</h3>
+<h3 id="s3-7">3.7 表とグラフ</h3>
+<h3 id="s3-8">3.8 吹き出し</h3>
+<h3 id="s3-9">3.9 元に戻す・拡大と縮小</h3>
+<h2 id="s4">4. 複数の画面と移り方</h2>
+<p class="todo">（この章はこれから書きます: 画面を足す（ひな形）・画面の一覧の操作・ステータスの移り方・画面の移り方）</p>
+<h3 id="s4-1">4.1 画面を足す（ひな形）</h3>
+<h3 id="s4-2">4.2 画面の一覧の操作</h3>
+<h3 id="s4-3">4.3 ステータスの移り方</h3>
+<h3 id="s4-4">4.4 画面の移り方</h3>
+<h2 id="s5">5. 改訂履歴</h2>
+<p class="todo">（この章はこれから書きます: 改訂する・前の版を見る・戻す・違いの印）</p>
+<h3 id="s5-1">5.1 改訂する</h3>
+<h3 id="s5-2">5.2 前の版を見る・戻す</h3>
+<h3 id="s5-3">5.3 違いの印</h3>
+<h2 id="s6">6. 出力と受け渡し</h2>
+<p class="todo">（この章はこれから書きます: PDF・PNG・HTML・直して返された HTML を取り込む）</p>
+<h3 id="s6-1">6.1 PDF</h3>
+<h3 id="s6-2">6.2 PNG</h3>
+<h3 id="s6-3">6.3 HTML</h3>
+<h3 id="s6-4">6.4 直して返された HTML を取り込む</h3>
+<h2 id="s7">7. システム</h2>
+<p class="todo">（この章はこれから書きます: システムを作る・画面設計を入れる・システムの画面・役割・スイムレーン図・資料・MPD からスイムレーン図を作る・設計ノート・説明書（PDF）・MPD に出力・履歴）</p>
+<h3 id="s7-1">7.1 システムを作る・画面設計を入れる</h3>
+<h3 id="s7-2">7.2 システムの画面</h3>
+<h3 id="s7-3">7.3 役割</h3>
+<h3 id="s7-4">7.4 スイムレーン図</h3>
+<h3 id="s7-5">7.5 資料</h3>
+<h3 id="s7-6">7.6 MPD からスイムレーン図を作る</h3>
+<h3 id="s7-7">7.7 設計ノート</h3>
+<h3 id="s7-8">7.8 説明書（PDF）</h3>
+<h3 id="s7-9">7.9 MPD に出力</h3>
+<h3 id="s7-10">7.10 履歴</h3>
+<h2 id="s8">8. AI とつなぐ</h2>
+<p class="todo">（この章はこれから書きます: 登録のしかた・つながっている印・AI に頼めること・頼めないこと・資料からシステムを作る流れ（①〜⑤）・AI が直したものを確かめる・戻す）</p>
+<h3 id="s8-1">8.1 登録のしかた</h3>
+<h3 id="s8-2">8.2 つながっている印</h3>
+<h3 id="s8-3">8.3 AI に頼めること・頼めないこと</h3>
+<h3 id="s8-4">8.4 資料からシステムを作る流れ（①〜⑤）</h3>
+<h3 id="s8-5">8.5 AI が直したものを確かめる・戻す</h3>
+<h2 id="s9">9. ベンダーの方へ</h2>
+<p class="todo">（この章はこれから書きます: 受け取った HTML を開く・直して返す・PDF の読み方）</p>
+<h3 id="s9-1">9.1 受け取った HTML を開く・直して返す</h3>
+<h3 id="s9-2">9.2 PDF の読み方</h3>
+<h2 id="s10">10. 困ったとき</h2>
+<p class="todo">（この章はこれから書きます: 保存の場所と控え・ブラウザで開いたときにできないこと）</p>
+<h3 id="s10-1">10.1 保存の場所と控え</h3>
+<h3 id="s10-2">10.2 ブラウザで開いたときにできないこと</h3>
+<h2 id="s59">付録</h2>
+<p class="todo">（この章はこれから書きます: キーの一覧・アプリのメニューの一覧）</p>
+<h3 id="sapp-A">付録 A キーの一覧</h3>
+<h3 id="sapp-B">付録 B アプリのメニューの一覧</h3>
+</div>
+</main>
+<script>
+// 目次: 読んでいる節に印を付け、その章の節を開く
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav a'));
+  var heads = links.map(function (a) { return document.getElementById(a.getAttribute('href').slice(1)); });
+  var main = document.querySelector('main');
+  function mark() {
+    var top = main.getBoundingClientRect().top + 24, cur = 0;
+    heads.forEach(function (h, i) { if (h && h.getBoundingClientRect().top <= top) cur = i; });
+    links.forEach(function (a, i) { a.classList.toggle('on', i === cur); });
+    var ch = links[cur] && links[cur].closest('li.ch');
+    document.querySelectorAll('nav li.ch').forEach(function (li) { li.classList.toggle('open', li === ch); });
+  }
+  main.addEventListener('scroll', mark);
+  mark();
+})();
+</script>
+</body>
+</html>
