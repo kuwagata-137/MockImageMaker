@@ -361,6 +361,44 @@ test('PDF: 用紙は A4・A3 の縦横とスライド（16:9）。外したペ�
   assert.ok(!b.pages[0].includes('1　詳細'), '出力しない画面は表紙の一覧にも出さない');
 });
 
+// デバッグとリリースの見直し q92: 部品の設定の表が幅 560 のまま縦に長くなり、画面のページが画面ごと小さく縮んで読めなかった。
+// jsdom では大きさを測れないので、測る関数を差し替える。本文は 1000×600。部品の設定の表の高さは「行の数 × 280000 ÷ 幅」（広げると低くなる）。
+// 画面・表は、style の大きさに、外側の箱の zoom（縮める倍率）を掛けた位置に置く。ほかの要素は 100×20
+function fakeMeasure(app) {
+  app.window.Element.prototype.getBoundingClientRect = function () {
+    const st = (el, k) => parseFloat(el && el.style && el.style[k]) || 0;
+    let z = 1;
+    for (let e = this.parentElement; e; e = e.parentElement) z *= st(e, 'zoom') || 1;
+    let [x, y, width, height] = [0, 0, 100, 20];
+    if (this.classList.contains('pg-body')) [width, height] = [1000, 600];
+    else if (this.classList.contains('ptable')) {
+      width = st(this, 'width');
+      height = 40 + this.querySelectorAll('tbody tr').length * 280000 / width;
+      [x, y] = [st(this.parentElement, 'left'), st(this.parentElement, 'top')];
+    } else if (this.style.width) [width, height] = [st(this, 'width'), st(this, 'height')];
+    [x, y, width, height] = [x * z, y * z, width * z, height * z];
+    return { x, y, left: x, top: y, width, height, right: x + width, bottom: y + height };
+  };
+}
+
+test('PDF の画面のページ: 部品の設定の表が縦に長くて画面ごと小さく縮むときは、表を広げて低くし、いちばん大きく出せる幅にする（PNG は 560 のまま）', async (t) => {
+  const { app, api } = await bootSample(t);
+  fakeMeasure(app);
+  const d = api.store.state.designs.find((x) => x.id === 'd1');
+  const doc = api.exportDocument(d, api.store.state, { paper: 'A4', orient: 'landscape', cover: false, map: false, items: false });
+  const pages = doc.pages.map((h) => new app.window.DOMParser().parseFromString(h, 'text/html'));
+  const tableW = (p) => parseFloat(p.querySelector('.ptable').style.width);
+  const shrink = (p) => Number((p.querySelector('.pg-head span').textContent.match(/(\d+)% に縮小/) || [])[1]);
+  // 詳細（行 4 つ）: 幅 560 では表の高さ 2040 で 29% に縮む。広げると、画面と表の横の長さで決まる倍率と釣り合う所まで大きくなる
+  assert.equal(pages[0].querySelector('.pg-head h2').textContent, '1　詳細');
+  assert.ok(tableW(pages[0]) > 560, `表の幅 ${tableW(pages[0])}`);
+  assert.ok(shrink(pages[0]) >= 35, pages[0].querySelector('.pg-head span').textContent);
+  // 新規登録（行 1 つ）: 表は低く、横の長さで縮むので、広げると小さくなる。560 のまま
+  assert.equal(tableW(pages[1]), 560);
+  // PNG は縮めないので、表は 560 のまま
+  assert.deepEqual(plain(api.exportPngDocs(d, api.store.state).map((f) => Number(f.html.match(/class="ptable" style="width:(\d+)px"/)[1]))), [560, 560]);
+});
+
 test('PNG: 選んだ画面ごとに 1 枚。ファイルの名前は「顧客管理_01_詳細.png」で、使えない字は「_」にする', async (t) => {
   const state = sampleState();
   state.designs[0].screens[1].name = '新規/登録?';

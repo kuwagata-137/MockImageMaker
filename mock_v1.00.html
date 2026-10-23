@@ -4972,12 +4972,12 @@ function partFieldHtml(p, t) {
 // 部品の設定の一覧表。editor のときは、行を押すとその部品を選べるようにし、番号の付いた部品がなければ案内を出す。
 // 出力（editor でないとき）では、番号の付いた部品がなければ表を出さない
 // diff（{ info: designDiff の screens の 1 つ, label: 「第 2 版」 }）を渡すと、番号の前に「新」「変」の札を付け、表の下に「削除した部品」を並べる
-function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null, diff = null } = {}) {
+function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null, diff = null, width: tableWidth = null } = {}) {
   const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
   const rows = tableRows(screen, design, store.state);
   const info = diff && !diff.info.isNew ? diff.info : null;
   if (!rows.length && !editor && !(info && info.deleted.length)) return '';
-  const width = screen.tablePos === 'bottom' ? screen.width : TABLE_W;
+  const width = tableWidth || (screen.tablePos === 'bottom' ? screen.width : TABLE_W);
   const head = '<thead><tr><th class="c-no">番号</th><th class="c-label">項目名</th><th class="c-kind">部品の種類</th><th>設定</th></tr></thead>';
   const mark = (r) => (info && !r.branch ? diffBadgeInline(info.parts[r.id]) : '');
   const body = rows.length
@@ -11225,8 +11225,8 @@ function flowPageBody(d, state, aw, ah, idTag = '') {
 // 画面と吹き出しを囲む範囲で切り取り、一覧表をその外側に 32 ドット空けて置く（右なら上の端を画面の上の端に、下なら左の端を画面の左の端にそろえる）。
 // 戻り値 { html, cw, ch }（縮める前の大きさ）。key は矢印の印の id の頭（ページごとに変える。同じ id が編集の画面にもあると矢印が消えるため）
 // diff（{ info: designDiff の screens の 1 つ, label }）を渡すと、部品・吹き出しの札と、一覧表の札・削除した部品を入れる（第 6 段階）
-// table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）
-function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true } = {}) {
+// table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）。tableWidth は一覧表の幅（PDF の画面のページ。q92）
+function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true, tableWidth = null } = {}) {
   const Z = CALLOUT_ZONE;
   const zoneW = s.width + Z * 2;
   const zoneH = s.height + Z * 2;
@@ -11244,7 +11244,7 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
   const zone = `<div class="xp-zone" style="position:absolute;left:0;top:0;width:${cropW}px;height:${cropH}px;overflow:hidden">`
     + `<div style="position:absolute;left:${-x0}px;top:${-y0}px;width:${zoneW}px;height:${zoneH}px">`
     + `<div style="position:absolute;left:${Z}px;top:${Z}px">${screenHtml(d, s, { grid: false, marks: false, diff: info })}</div>${lines}${boxes}</div></div>`;
-  const table = withTable ? partTableHtml(d, s, { editor: false, diff: info && diff }) : '';
+  const table = withTable ? partTableHtml(d, s, { editor: false, diff: info && diff, width: tableWidth }) : '';
   let [tw, th] = [0, 0];
   if (table && measured) {
     const probe = measureBox(table);
@@ -11252,7 +11252,7 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
     [tw, th] = [Math.ceil(r.width), Math.ceil(r.height)];
     probe.remove();
   } else if (table) {
-    tw = s.tablePos === 'bottom' ? s.width : TABLE_W;
+    tw = tableWidth || (s.tablePos === 'bottom' ? s.width : TABLE_W);
   }
   const right = s.tablePos !== 'bottom';
   const tx = right ? cropW + TABLE_GAP : Z - x0;
@@ -11260,6 +11260,21 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
   const cw = table ? Math.max(cropW, tx + tw) : cropW;
   const ch = table ? Math.max(cropH, ty + th) : cropH;
   return { cw, ch, html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
+}
+// PDF の画面のページで、右に置く部品の設定の一覧表の幅の候補（q92）。表が縦に長くて画面ごと小さく縮むときは、表を広げて低くし、
+// 画面をいちばん大きく出せる幅を選ぶ（倍率がほとんど同じなら狭い方）。表を下に置く画面と、測れないときは今の幅のまま。PNG は縮めないので広げない
+const PRINT_TABLE_WIDTHS = [TABLE_W, 720, 880, 1040, 1200, 1360];
+function printScreenComposite(d, s, key, measured, diff, aw, ah) {
+  const make = (w) => screenComposite(d, s, key, measured, diff, { tableWidth: w });
+  if (!measured || s.tablePos === 'bottom') return make(null);
+  let best = null;
+  for (const w of PRINT_TABLE_WIDTHS) {
+    const c = make(w);
+    const k = Math.min(1, aw / c.cw, ah / c.ch);
+    if (!best || k > best.k + 0.005) best = { c, k };
+    if (best.k >= 1) break;
+  }
+  return best.c;
 }
 // 画面のページの本文。本文に収まるように縮め（拡大しない）、左右・上下の真ん中に置く。測れないときは縮めない。
 // 縮めるのは transform でなく zoom にする（transform だと、縮める前の幅が残り、画面のページが 2 つ以上あると、
@@ -11409,7 +11424,7 @@ function exportScreenPages(d, L) {
   const { P, aw, ah, df, measured, grand } = L;
   return L.plan.screens.map(({ s, i, page }) => {
     const info = df ? df.result.screens[s.id] : null;
-    const body = screenPageBody(screenComposite(d, s, 'p' + page, measured, info && { info, label: df.label }), aw, ah, measured);
+    const body = screenPageBody(printScreenComposite(d, s, 'p' + page, measured, info && { info, label: df.label }, aw, ah), aw, ah, measured);
     const name = `${i + 1}　${esc(s.name)}`;
     const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`;
     return pageFrame({ P, title: name, sub, body: body.html, left: `${esc(d.name)} ／ ${name}`, right: `${page} / ${grand}`, headExtra: diffSumHtml(df, info) });
