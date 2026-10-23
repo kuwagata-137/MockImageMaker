@@ -5875,7 +5875,7 @@ function openNewDesignDialog({ systemId = null } = {}) {
     ? `<label class="field"><span>入れるシステム</span><select name="system">${opt('', '（入れない）')}${systems.map((y) => opt(y.id, y.name)).join('')}</select></label>` : '';
   return showDialog({
     title: '新しい画面設計',
-    okLabel: '作成して開く',
+    okLabel: '作って開く', // アプリの画面の文はほかの所も「作る」（「作成」はここだけだった。デバッグとリリースの見直し⑥-16）
     body: `
       <label class="field"><span>名前（業務アプリの名前）</span><input type="text" name="name" maxlength="${NAME_MAX}" placeholder="例: 顧客管理アプリ"></label>
       <div class="field"><span>作る先</span>${targetPickerHtml(store.state, 'kintone')}</div>
