@@ -243,7 +243,7 @@ test('カードの「…」: 開く・上へ動かす・下へ動かす・この
   click(more(0));
   assert.equal(api.ui.sysDesignMenu, 'd-trip');
   const items = () => $$('#sys-menu-root [role="menuitem"]');
-  assert.deepEqual(items().map((b) => b.textContent), ['開く', '上へ動かす', '下へ動かす', 'このシステムから外す']);
+  assert.deepEqual(items().map((b) => b.textContent), ['開く', '上へ移動', '下へ移動', 'このシステムから外す']);
   assert.deepEqual(items().map((b) => b.disabled), [false, true, false, false]);
   assert.equal(more(0).getAttribute('aria-expanded'), 'true');
   click(items()[2]);
@@ -467,10 +467,10 @@ test('役割: 作業の箱のある役割の ✕ は確かめの窓（一緒に�
   const del = (i) => $$('#sys-view .sys-role')[i].querySelector('[data-action="sys-role-del"]');
   click(del(2));
   await waitFor(() => $('.modal'));
-  assert.equal($('.modal h2').textContent, '役割「経理」を消しますか？');
+  assert.equal($('.modal h2').textContent, '役割「経理」を削除しますか？');
   assert.match($('.modal-body').textContent, /役割「経理」の帯に入っている作業の箱 3 つと、その箱につながる矢印 3 本も一緒に消えます。/);
   assert.match($('.modal-body').textContent, /消した後でも、元に戻す（Ctrl\+Z）で戻せます。/);
-  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['消す', 'キャンセル']);
+  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['削除する', 'キャンセル']);
   assert.ok($('[data-dlg="ok"]').classList.contains('danger'));
   assert.equal(app.document.activeElement, $('[data-dlg="cancel"]'));
   click($('[data-dlg="cancel"]'));

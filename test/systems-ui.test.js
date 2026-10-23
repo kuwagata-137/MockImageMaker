@@ -222,15 +222,15 @@ test('「＋ 新しいシステム」の窓: 名前は要る・説明は書か�
 test('「…」のメニュー: 名前と説明を変える（元に戻すで戻る）・ごみ箱へ移す（確かめの窓は出さない）', async (t) => {
   const { app, api, $, $$, sys, rows } = await boot(t);
   click($('.sys-head [data-action="sys-menu"]'));
-  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明を変える…', 'ごみ箱へ移す']);
+  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明の変更…', '削除（ごみ箱へ移す）']);
   key(app, app.document.body, { key: 'Escape' });
   assert.equal($('.sys-pop'), null, 'Esc で閉じる');
   click($('.sys-head [data-action="sys-menu"]'));
   click($('.sys-pop [data-action="sys-edit"]'));
   await waitFor(() => $('.modal'));
   assert.equal($('.sys-pop'), null, 'メニューは閉じる');
-  assert.equal($('.modal h2').textContent, '名前と説明を変える');
-  assert.deepEqual(dialogButtons($$), ['変える', 'キャンセル']);
+  assert.equal($('.modal h2').textContent, '名前と説明の変更');
+  assert.deepEqual(dialogButtons($$), ['変更する', 'キャンセル']);
   assert.equal($('.modal [name=name]').value, '出張申請システム');
   assert.equal($('.modal [name=description]').value, '出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム');
   setValue($('.modal [name=name]'), ' ');

@@ -157,7 +157,7 @@ async function firstRun() {
   await page.mouse.down();
   await page.mouse.move(box.x + 120, box.y + 60, { steps: 8 });
   await page.mouse.up();
-  // ひな形から「一覧」と「入力」を足し（足した画面のすぐ後ろに入る）、「入力」を「…」のメニューで上へ動かす → 画面 1・入力・一覧
+  // ひな形から「一覧」と「入力」を足し（足した画面のすぐ後ろに入る）、「入力」を「…」のメニューの「上へ移動」で上へ → 画面 1・入力・一覧
   for (const tpl of ['list', 'input']) {
     await page.click('.sl-add');
     await page.waitForSelector(`.modal .tpl[data-tpl="${tpl}"]`);

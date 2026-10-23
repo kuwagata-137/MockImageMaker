@@ -212,7 +212,7 @@ test('画面を消す: 確かめの窓に部品・吹き出し・リンクの文
   api.runCommand('deleteScreen');
   await waitFor(() => $(app, '.modal'));
   const text = $(app, '.modal').textContent;
-  assert.match(text, /「画面 2」の画面を消しますか/);
+  assert.match(text, /「画面 2」の画面を削除しますか/);
   assert.match(text, /部品 1 個と吹き出し 1 個が消えます/);
   assert.match(text, /項目の一覧表に残ります/);
   assert.match(text, /リンクの文字 1 個が、この画面を移る先にしています/);

@@ -109,7 +109,7 @@ test('説明書の窓: アプリのメニューの命令 exportDialog でも、�
   const more = $(`.sys-block [data-action="sys-menu"][data-id="${sysId}"]`);
   assert.match(more.title, /説明書を出力/);
   click(more);
-  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明を変える…', '説明書を出力…', 'ごみ箱へ移す']);
+  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明の変更…', '説明書を出力…', '削除（ごみ箱へ移す）']);
   click($('.sys-pop [data-action="sys-doc"]'));
   await tick();
   assert.equal($('.modal h2').textContent, '「出張申請システム」の説明書を出力');

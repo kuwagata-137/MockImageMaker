@@ -377,7 +377,7 @@ test('表: まだ決まっていないこと（開いている札の段階だけ
   assert.deepEqual([['note-q-text', 'nq-1'], ['note-q-answer', 'nq-1'], ['note-d-text', 'nd-3'], ['note-d-reason', 'nd-3']].map(([sy, id]) => [field(sy, id).tagName, field(sy, id).rows]),
     [['TEXTAREA', 1], ['TEXTAREA', 1], ['TEXTAREA', 1], ['TEXTAREA', 1]]);
   assert.deepEqual($$('#sys-view .nt-qs [data-action="sys-note-del-q"]').map((b) => [b.dataset.id, b.textContent]), [['nq-1', '✕'], ['nq-3', '✕'], ['nq-4', '✕']]);
-  assert.match($('#sys-view [data-action="sys-note-del-q"]').title, /^この行を消す/);
+  assert.match($('#sys-view [data-action="sys-note-del-q"]').title, /^この行を削除/);
   assert.equal($('#sys-view [data-action="sys-note-add-q"]').textContent, '＋ まだ決まっていないことを足す');
   assert.deepEqual($$('#sys-view .nt-ds th').map((th) => th.textContent), ['日付', '段階', '決めたこと', '理由', '']);
   assert.deepEqual(dRows(), [['nd-3', '2026-10-19', '③', '経費精算は、出張申請と別の画面設計にする', '精算は経理が確かめ、出張のない経費も入るため']]);

@@ -103,7 +103,7 @@ test('ステータスを消す: 使う操作があれば確かめの窓（最初
   await tick();
   const dlg = $(app, '#dialog-root .modal');
   assert.ok(dlg, '確かめの窓を出す');
-  assert.match(dlg.textContent, /ステータス「承認待ち」を消しますか/);
+  assert.match(dlg.textContent, /ステータス「承認待ち」を削除しますか/);
   assert.match(dlg.textContent, /「申請する」・「承認する」・「差し戻す」/);
   assert.equal(app.document.activeElement.dataset.dlg, 'cancel');
   click($(app, '[data-dlg="cancel"]'));

@@ -423,7 +423,7 @@ test('改訂履歴の窓: 行を消す確かめの窓。写しのない行の「
   assert.equal(tr.querySelector('[data-rv="restore"]').disabled, true);
   click(tr.querySelector('[data-rv="delete"]'));
   await tick();
-  assert.match($(app, '.modal h2').textContent, /「第 1 版（2026-10-02）」の行を消しますか/);
+  assert.match($(app, '.modal h2').textContent, /「第 1 版（2026-10-02）」の行を削除しますか/);
   click($(app, '.modal [data-dlg="ok"]'));
   await waitFor(() => real(api).revisions.length === 0);
   await waitFor(() => $(app, '.modal .rv-empty'));

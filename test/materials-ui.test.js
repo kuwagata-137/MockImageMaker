@@ -176,11 +176,11 @@ test('真ん中: 見出し・説明・「＋ ファイルを入れる…」・�
   assert.equal($('#sys-view .mat-drop').textContent, 'ここにファイルを落としても入れられます（1 つ 50 MB まで）');
   assert.deepEqual($$('#sys-view .mat-tbl th').map((th) => th.textContent), ['名前', '種類', '大きさ', '入れた日', 'メモ', '操作']);
   assert.deepEqual(rows(), [
-    { name: '出張申請書.xlsx', tag: '', kind: 'Excel', size: '48 KB', date: '2026-10-19', memo: '今の紙の様式', ops: ['読む', '消す'] },
-    { name: '旅費規程.pdf', tag: '', kind: 'PDF', size: '1.2 MB', date: '2026-10-19', memo: '日当の決まりは 3 ページ', ops: ['読む', '消す'] },
-    { name: '出張申請の流れ.html', tag: '', kind: 'MPD', size: '2.1 MB', date: '2026-10-19', memo: '総務が BDM で描いた今の流れ', ops: ['読む', 'スイムレーン図にする', '消す'] },
-    { name: '申請書の記入例.png', tag: '', kind: '画像', size: '320 KB', date: '2026-10-19', memo: '', ops: ['読む', '消す'] },
-    { name: '旧様式.xls', tag: '古い形のため読めません', kind: 'Excel（古い形）', size: '96 KB', date: '2026-10-18', memo: '', ops: ['読む（×）', '消す'] },
+    { name: '出張申請書.xlsx', tag: '', kind: 'Excel', size: '48 KB', date: '2026-10-19', memo: '今の紙の様式', ops: ['読む', '削除'] },
+    { name: '旅費規程.pdf', tag: '', kind: 'PDF', size: '1.2 MB', date: '2026-10-19', memo: '日当の決まりは 3 ページ', ops: ['読む', '削除'] },
+    { name: '出張申請の流れ.html', tag: '', kind: 'MPD', size: '2.1 MB', date: '2026-10-19', memo: '総務が BDM で描いた今の流れ', ops: ['読む', 'スイムレーン図にする', '削除'] },
+    { name: '申請書の記入例.png', tag: '', kind: '画像', size: '320 KB', date: '2026-10-19', memo: '', ops: ['読む', '削除'] },
+    { name: '旧様式.xls', tag: '古い形のため読めません', kind: 'Excel（古い形）', size: '96 KB', date: '2026-10-18', memo: '', ops: ['読む（×）', '削除'] },
   ]);
   // 種類の絵・メモの欄（1 行の入力欄・薄い字の案内）・消すは赤い字
   assert.deepEqual($$('#sys-view .mat-ic').map((e) => e.textContent), ['📗', '📕', '🔷', '🖼️', '📗']);
@@ -190,7 +190,7 @@ test('真ん中: 見出し・説明・「＋ ファイルを入れる…」・�
   assert.equal(memo.getAttribute('aria-label'), '「申請書の記入例.png」のメモ');
   const del = $('#sys-view [data-action="sys-mat-del"][data-id="m-png"]');
   assert.ok(del.classList.contains('danger-text'));
-  assert.equal(del.title, 'この資料を消します（元に戻す〔Ctrl+Z〕で戻せます）', 'ボタンの名前「消す」と同じ言葉');
+  assert.equal(del.title, 'この資料を削除します（元に戻す〔Ctrl+Z〕で戻せます）', 'ボタンの名前「削除」と同じ言葉');
   assert.equal($('#sys-view tr.old [data-action="sys-mat-read"]').title, '古い形のため読めません');
 });
 
@@ -198,7 +198,7 @@ test('種類が「そのほか」（読めない種類）の行は「読む」�
   const state = sampleState();
   state.systems[2].materials = [material('m-zip', '出張の写真.zip', 'other', 'm-zip.zip', 4096, at(19, 11, 0))];
   const { $, rows, btn, calls } = await boot(t, { state, sysId: 'y-eq' });
-  assert.deepEqual(rows(), [{ name: '出張の写真.zip', tag: '', kind: 'そのほか', size: '4 KB', date: '2026-10-19', memo: '', ops: ['読む（×）', '消す'] }]);
+  assert.deepEqual(rows(), [{ name: '出張の写真.zip', tag: '', kind: 'そのほか', size: '4 KB', date: '2026-10-19', memo: '', ops: ['読む（×）', '削除'] }]);
   const read = btn('sys-mat-read', 'm-zip');
   assert.equal(read.title, 'この種類のファイルは読めません');
   read.disabled = false;
@@ -248,8 +248,8 @@ test('「＋ ファイルを入れる…」: pick の返事の行を足す（元
   assert.deepEqual(calls.pick, ['y-trip']);
   assert.equal(api.store.undoStack.length, undo0 + 1, '1 回の変更');
   assert.deepEqual(rows().slice(5).map((r) => [r.name, r.kind, r.tag, r.ops]), [
-    ['出張報告書.docx', 'Word', '', ['読む', '消す']],
-    ['古い報告書.doc', 'Word（古い形）', '古い形のため読めません', ['読む（×）', '消す']],
+    ['出張報告書.docx', 'Word', '', ['読む', '削除']],
+    ['古い報告書.doc', 'Word（古い形）', '古い形のため読めません', ['読む（×）', '削除']],
   ]);
   assert.equal(entries()[3][2], 'ファイル 7 つ');
   assert.equal(toast(), '資料を 2 つ入れました。「出張の動画.mp4」は入れられませんでした。ファイルが大きすぎます（50MB まで）。'
@@ -635,7 +635,7 @@ test('読む: 読み終えたときにほかの窓が開いていたら、読む
   r.resolve({ ok: true, result: plain(PART1) });
   await waitFor(() => toast().includes('ほかの窓'), { label: 'お知らせ' });
   assert.equal(toast(), '「旅費規程.pdf」を読み終えましたが、ほかの窓が開いているため表示しませんでした。窓を閉じてからもう一度押してください。');
-  assert.equal($('.modal h2').textContent, '役割「申請者」を消しますか？', '開いていた窓はそのまま');
+  assert.equal($('.modal h2').textContent, '役割「申請者」を削除しますか？', '開いていた窓はそのまま');
 });
 
 test('待っている資料の「読む」「スイムレーン図にする」は、2 回目を無視する（返事の後はまた押せる）', async (t) => {
@@ -675,15 +675,15 @@ test('待つ間の印: 押したボタンは「読んでいます…」になり
   materials.set('read', r.fn);
   click(btn('sys-mat-read', 'm-pdf'));
   await waitFor(() => r.resolve, { label: 'read' });
-  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読んでいます…（×）', '消す（×）']);
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読んでいます…（×）', '削除（×）']);
   assert.equal(btn('sys-mat-read', 'm-pdf').getAttribute('aria-busy'), 'true');
   assert.ok(btn('sys-mat-read', 'm-pdf').querySelector('.mat-spin'), '回る印');
-  assert.deepEqual(opsOf(rows, '出張申請書.xlsx'), ['読む', '消す'], 'ほかの行は押せる');
+  assert.deepEqual(opsOf(rows, '出張申請書.xlsx'), ['読む', '削除'], 'ほかの行は押せる');
   api.renderSystem();
-  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読んでいます…（×）', '消す（×）'], '描き直しても残る');
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読んでいます…（×）', '削除（×）'], '描き直しても残る');
   r.resolve({ ok: true, result: plain(PART1) });
   await waitFor(() => $('.modal'), { label: '読むの窓' });
-  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読む', '消す']);
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読む', '削除']);
 });
 
 test('待つ間の印: 「スイムレーン図にする」も「読んでいます…」。印を付け外ししても、同じ行のメモの欄の打ちかけの文字とフォーカスは残る', async (t) => {
@@ -693,7 +693,7 @@ test('待つ間の印: 「スイムレーン図にする」も「読んでいま
   const el = memo('m-bdm');
   click(btn('sys-mat-swim', 'm-bdm'));
   await waitFor(() => h.resolve, { label: 'bdmPlan' });
-  assert.deepEqual(opsOf(rows, '出張申請の流れ.html'), ['読む（×）', '読んでいます…（×）', '消す（×）']);
+  assert.deepEqual(opsOf(rows, '出張申請の流れ.html'), ['読む（×）', '読んでいます…（×）', '削除（×）']);
   el.focus();
   el.value = '待つ間に打った文字';
   h.resolve({ ok: false, error: { code: 'read_failed', message: '読めませんでした（テスト）。' } });
@@ -711,7 +711,7 @@ test('時間切れ: 待っても返事が来なければ（2 分。テストで�
   click(btn('sys-mat-read', 'm-pdf'));
   await waitFor(() => toast().includes('待つのをやめました'), { label: '時間切れのお知らせ' });
   assert.equal(toast(), '「旅費規程.pdf」を 2 分待っても読み終わらなかったため、待つのをやめました。もう一度「読む」を押してください。何度も止まるときは、アプリを起動し直してください。');
-  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読む', '消す']);
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読む', '削除']);
   r.resolve({ ok: true, result: plain(PART1) });
   await tick();
   await tick();
@@ -762,7 +762,7 @@ test('スイムレーン図にする: 待った後にほかの窓が開いてい
   h.resolve({ ok: true, plan: plain(PLAN) });
   await waitFor(() => toast().includes('ほかの窓'), { label: 'お知らせ' });
   assert.equal(toast(), '「出張申請の流れ.html」の図を読み終えましたが、ほかの窓が開いているため置き換えませんでした。窓を閉じてからもう一度押してください。');
-  assert.equal($('.modal h2').textContent, '役割「申請者」を消しますか？', '開いていた窓はそのまま');
+  assert.equal($('.modal h2').textContent, '役割「申請者」を削除しますか？', '開いていた窓はそのまま');
   assert.deepEqual(sys().swimlane, before);
   click($('[data-dlg="cancel"]'));
   // 今の図が空のシステム（待つ間に、別の資料の読むの窓を開いた）

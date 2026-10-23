@@ -687,7 +687,7 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .mat-tbl tr.old td b{color:#64748b}
 .mat-memo{width:100%;min-width:120px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;font-size:12.5px;background:#fff}
 .mat-memo::placeholder{color:#94a3b8}
-/* 操作の欄は 168px まで（MPD の行のボタン 4 つを［読む］［スイムレーン図にする］／［MPD に出力…］［消す］の 2 段に分け、名前の欄に幅を回す。第 11 段階。画像 q82_1） */
+/* 操作の欄は 168px まで（MPD の行のボタン 4 つを［読む］［スイムレーン図にする］／［MPD に出力…］［削除］の 2 段に分け、名前の欄に幅を回す。第 11 段階。画像 q82_1） */
 .mat-ops{display:flex;flex-wrap:wrap;gap:4px;max-width:168px}
 .mat-ops .btn.small{padding:4px 8px}
 .mat-ops .btn.mat-busy:disabled{opacity:1}
@@ -5742,7 +5742,7 @@ function sysBlockHtml(g) {
       <h2>${esc(y.name)}</h2><span class="meta">画面設計 ${designsOfSystem(S, y).length} つ・役割 ${y.roles.length} つ</span><span class="spacer"></span>
       <button class="btn small primary" data-action="open-system" data-id="${id}" title="「${esc(y.name)}」のシステムの画面を開きます">開く</button>
       <span class="sys-pop-wrap"><button class="btn small" data-action="sys-add-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('add')}">＋ 画面設計を入れる ▾</button>${open('add') ? sysAddMenuHtml(y) : ''}</span>
-      <span class="sys-pop-wrap"><button class="btn small" data-action="sys-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('more')}" aria-label="「${esc(y.name)}」の操作" title="${window.exportAPI ? '名前と説明を変える・説明書を出力する・ごみ箱へ移す' : '名前と説明を変える・ごみ箱へ移す'}">…</button>${open('more') ? sysMoreMenuHtml(y) : ''}</span>
+      <span class="sys-pop-wrap"><button class="btn small" data-action="sys-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('more')}" aria-label="「${esc(y.name)}」の操作" title="${window.exportAPI ? '名前と説明の変更・説明書を出力・削除' : '名前と説明の変更・削除'}">…</button>${open('more') ? sysMoreMenuHtml(y) : ''}</span>
     </div>
     ${y.description ? `<p class="sys-desc">${esc(y.description)}</p>` : ''}
     ${g.designs.length ? `<div class="cards">${g.designs.map((d) => renderCard(d, { sys: y })).join('')}</div>` : '<p class="empty">まだ画面設計が入っていません。「＋ 画面設計を入れる」から入れます。</p>'}
@@ -5761,9 +5761,9 @@ function sysAddMenuHtml(y, cls = '') {
 function sysMoreMenuHtml(y) {
   const id = esc(y.id);
   return `<div class="pop-menu sys-pop" role="menu">
-    <button role="menuitem" data-action="sys-edit" data-id="${id}">名前と説明を変える…</button>
+    <button role="menuitem" data-action="sys-edit" data-id="${id}">名前と説明の変更…</button>
     ${window.exportAPI ? `<button role="menuitem" data-action="sys-doc" data-id="${id}">説明書を出力…</button>` : ''}
-    <button role="menuitem" class="danger" data-action="sys-trash" data-id="${id}">ごみ箱へ移す</button>
+    <button role="menuitem" class="danger" data-action="sys-trash" data-id="${id}">削除（ごみ箱へ移す）</button>
   </div>`;
 }
 // システムのまとまりの「＋ 画面設計を入れる ▾」・「…」のメニューを開く・閉じる（ui.sysMenu は 'add:システムの id' か 'more:システムの id'）。
@@ -5905,7 +5905,7 @@ async function newDesignWithDialog(systemId) {
   if (id) openDesign(id);
 }
 
-// システムの名前と説明の窓（「＋ 新しいシステム」と「名前と説明を変える」）。戻り値 { name, description } か null。
+// システムの名前と説明の窓（「＋ 新しいシステム」と「名前と説明の変更」）。戻り値 { name, description } か null。
 // 名前は前後の空白を削り、説明は削らない（actions・AI の道具と同じ。何も変えずに「変える」を押したときに、中身が変わらないように）
 function openSystemDialog({ title, okLabel, name = '', description = '', hint = '' }) {
   return showDialog({
@@ -6203,7 +6203,7 @@ async function onSystemAction(action, y) {
     case 'sys-add-new': await newDesignWithDialog(y.id); return;
     case 'sys-add-same': case 'sys-add-copy': await pickDesignsIntoSystem(y.id, action === 'sys-add-same' ? 'same' : 'copy'); return;
     case 'sys-edit': {
-      const r = await openSystemDialog({ title: '名前と説明を変える', okLabel: '変える', name: y.name, description: y.description });
+      const r = await openSystemDialog({ title: '名前と説明の変更', okLabel: '変更する', name: y.name, description: y.description });
       if (r) actions.updateSystem(y.id, r);
       return;
     }
@@ -6286,7 +6286,7 @@ function sysToolbarHtml() {
     group('編集', `
       <button class="bigbtn" data-action="swim-select" id="sys-mode-select" title="作業の箱と矢印を選んで、動かす・直すモード（V キー）"><span class="ico">▶</span>選択</button>
       <button class="bigbtn" data-action="swim-connect" id="sys-mode-connect" title="つなぐ元とつなぐ先の作業の箱を順に押して、矢印でつなぐモード（C キー）"><span class="ico">→</span>接続</button>
-      <button class="bigbtn" data-action="swim-delete" id="sys-del" title="選んだ作業の箱か矢印を消します（Delete キー）"><span class="ico">✕</span>削除</button>`),
+      <button class="bigbtn" data-action="swim-delete" id="sys-del" title="選んだ作業の箱か矢印を削除します（Delete キー）"><span class="ico">✕</span>削除</button>`),
     group('表示', `<div class="stack">
       <button class="tbtn" data-action="zoom-in" data-sys-zoom title="スイムレーン図を拡大（Ctrl+＋）">＋ 拡大</button>
       <button class="tbtn" data-action="zoom-out" data-sys-zoom title="スイムレーン図を縮小（Ctrl+－）">－ 縮小</button></div>
@@ -6446,8 +6446,8 @@ function sysDesignMenuHtml(shown, designId) {
   return `<div class="screen-menu sys-dmenu" role="menu">
     <button role="menuitem" data-action="sys-dm-open" data-id="${id}">開く</button>
     <hr>
-    <button role="menuitem" data-action="sys-dm-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ動かす</button>
-    <button role="menuitem" data-action="sys-dm-down" data-id="${id}"${i === shown.length - 1 ? ' disabled' : ''}>下へ動かす</button>
+    <button role="menuitem" data-action="sys-dm-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ移動</button>
+    <button role="menuitem" data-action="sys-dm-down" data-id="${id}"${i === shown.length - 1 ? ' disabled' : ''}>下へ移動</button>
     <hr>
     <button role="menuitem" data-action="sys-dm-remove" data-id="${id}">このシステムから外す</button>
   </div>`;
@@ -6591,7 +6591,7 @@ function sysRolesHtml(y) {
       <input type="text" data-sy="role-name" data-role="${esc(r.id)}" maxlength="${NAME_MAX}" value="${esc(r.name)}" aria-label="${i + 1} つ目の役割の名前">
       <input type="text" data-sy="role-memo" data-role="${esc(r.id)}" value="${esc(r.memo)}" placeholder="この役割の人・部署など" aria-label="${what}のメモ">
       <span class="cnt">${k ? `作業 ${k} つ` : '作業なし'}</span>
-      ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を消す`, '✕', false)}</div>`;
+      ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を削除`, '✕', false)}</div>`;
   }).join('');
   return `<div class="itable" style="max-width:760px">${sysHead('役割', y)}
     <p class="map-note">役割は、スイムレーン図の横の帯になります。上から順に帯を並べます。</p>
@@ -6624,8 +6624,8 @@ async function deleteRoleWithConfirm(sysId, roleId) {
     const edges = y.swimlane.edges.filter((e) => gone.has(e.from) || gone.has(e.to)).length;
     const what = `<b>作業の箱 ${gone.size} つ</b>${edges ? `と、その箱につながる<b>矢印 ${edges} 本</b>` : ''}`;
     const ok = await showDialog({
-      title: `役割「${r.name}」を消しますか？`,
-      okLabel: '消す',
+      title: `役割「${r.name}」を削除しますか？`,
+      okLabel: '削除する',
       okClass: 'danger',
       body: `<p>役割「${esc(r.name)}」の帯に入っている${what}も一緒に消えます。</p><p class="hint" style="margin-top:8px">消した後でも、元に戻す（Ctrl+Z）で戻せます。</p>`,
     });
@@ -6825,7 +6825,7 @@ function sysMaterialOpsHtml(m) {
   const mpd = m.kind === 'bdm' && mpdExportApi()
     ? button('export', 'sys-mat-export', 'MPD に出力…', ' title="スイムレーン図を、この MPD を元にした HTML ファイルに出力します（元のファイルは書き換えません）"') : '';
   return `<div class="mat-ops">${button('read', 'sys-mat-read', '読む', read)}${swim}${mpd}`
-    + `${button('', 'sys-mat-del', '消す', ' title="この資料を消します（元に戻す〔Ctrl+Z〕で戻せます）"', ' danger-text')}</div>`;
+    + `${button('', 'sys-mat-del', '削除', ' title="この資料を削除します（元に戻す〔Ctrl+Z〕で戻せます）"', ' danger-text')}</div>`;
 }
 // 待ち始め・終わりに、その資料の行の操作の欄だけを描き直す（行を丸ごと描き直すと、メモの欄の打ちかけの文字とフォーカスが消えるため）。
 // 資料の表が見えていないとき（ほかの画面・ほかの入口）は何もしない（表を開いたときに sysMaterialRowHtml が印を描く）
@@ -7282,7 +7282,7 @@ const noteFindingsHtml = (y) => `<div class="nt-sec"><h4>読み取ったこと<s
   ${noteTextHtml('note-findings', 'nt-findings', '読み取ったこと', y.notes.findings)}</div>`;
 // 段階の丸数字の札と、行の ✕（どの行も元に戻す〔Ctrl+Z〕で戻せる）
 const noteStageChip = (k) => `<span class="nt-stg">${NOTE_STAGES.includes(k) ? noteStageNo(k) : esc(k)}</span>`;
-const noteDelBtn = (action, id) => `<button class="del-x" data-action="${action}" data-id="${esc(id)}" title="この行を消す（元に戻す〔Ctrl+Z〕で戻せます）" aria-label="この行を消す">✕</button>`;
+const noteDelBtn = (action, id) => `<button class="del-x" data-action="${action}" data-id="${esc(id)}" title="この行を削除（元に戻す〔Ctrl+Z〕で戻せます）" aria-label="この行を削除">✕</button>`;
 // まだ決まっていないこと（開いている札の段階の行）。決まっていない行を上に、決まった行（答えのある行。noteQuestionDecided）を表の下に灰色で並べる。
 // 行がなければ表は出さない
 function noteQuestionsHtml(y, k) {
@@ -7434,7 +7434,7 @@ function sysStepSettingsHtml(y, w) {
   const outs = y.swimlane.edges.filter((e) => e.from === w.id);
   const next = outs.map((e) => `<div class="sw-next"><span class="to" title="${esc(swimStepName(findStep(y, e.to)))}">→ ${esc(swimStepName(findStep(y, e.to)))}</span>
       <input type="text" data-sw="edge-label" data-edge="${esc(e.id)}" value="${esc(e.label)}" placeholder="矢印の文字" aria-label="「${esc(swimStepName(findStep(y, e.to)))}」への矢印の文字">
-      <button class="del-x" data-action="sys-edge-del" data-id="${esc(e.id)}" title="この矢印を消す" aria-label="「${esc(swimStepName(findStep(y, e.to)))}」への矢印を消す">✕</button></div>`).join('');
+      <button class="del-x" data-action="sys-edge-del" data-id="${esc(e.id)}" title="この矢印を削除" aria-label="「${esc(swimStepName(findStep(y, e.to)))}」への矢印を削除">✕</button></div>`).join('');
   const linked = new Set(outs.map((e) => e.to));
   const roleName = (x) => (y.roles.find((r) => r.id === x.roleId) || {}).name;
   const cands = y.swimlane.steps.filter((x) => x.id !== w.id && !linked.has(x.id) && roleName(x));
@@ -7448,7 +7448,7 @@ function sysStepSettingsHtml(y, w) {
         ${cands.map((x) => `<option value="${esc(x.id)}">${esc(swimStepName(x))}（${esc(roleName(x))}）</option>`).join('')}</select></div>
     <label class="field"><span>メモ</span><textarea data-sw="memo" data-step="${id}" placeholder="例: 金額が 10 万円以上なら部長も見る">${esc(w.memo)}</textarea></label>
     <div class="sw-btns"><button class="btn small" data-action="sys-step-add" data-id="${id}" title="この作業と同じ役割の、いちばん右の次の列に「作業」の箱を足します">＋ 作業を足す</button>
-      <button class="btn small danger" data-action="sys-step-del" data-id="${id}" title="この作業の箱と、つながる矢印を消します（元に戻す〔Ctrl+Z〕で戻せます）">この作業を消す</button></div>`;
+      <button class="btn small danger" data-action="sys-step-del" data-id="${id}" title="この作業の箱と、つながる矢印を削除します（元に戻す〔Ctrl+Z〕で戻せます）">この作業を削除</button></div>`;
 }
 // 「この作業で使う画面とステータス」の枠: 画面設計（このシステムに入っている画面設計）・画面（その画面設計の画面）・ステータス（その画面設計のステータスの並び）。
 // 今の指す先が選べるものの中にないとき（このシステムに入っていない・ごみ箱・もうない）も、その名前で出す
@@ -7478,7 +7478,7 @@ function sysEdgeSettingsHtml(y, e) {
   return `<div class="panel-title">矢印の設定</div>
     <p class="sw-edge-names">${esc(swimStepName(findStep(y, e.from)))} → ${esc(swimStepName(findStep(y, e.to)))}</p>
     <label class="field"><span>文字</span><input type="text" data-sw="edge-label" data-edge="${esc(e.id)}" value="${esc(e.label)}" placeholder="例: 差し戻し"></label>
-    <div class="sw-btns"><button class="btn small danger" data-action="sys-edge-del" data-id="${esc(e.id)}" title="この矢印を消します（元に戻す〔Ctrl+Z〕で戻せます）">この矢印を消す</button></div>`;
+    <div class="sw-btns"><button class="btn small danger" data-action="sys-edge-del" data-id="${esc(e.id)}" title="この矢印を削除します（元に戻す〔Ctrl+Z〕で戻せます）">この矢印を削除</button></div>`;
 }
 // 右の欄の作業の設定で打っている欄（data-sw）を控え、描き直した後に同じ欄へフォーカスと文字の位置を戻す関数を返す
 function keepSysSideFocus() {
@@ -8232,7 +8232,7 @@ function toolbarHtml() {
     group('画面', `
       <button class="bigbtn" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します"><span class="ico">＋</span>画面を<br>足す</button>
       <button data-screen-only class="bigbtn" data-action="duplicate-screen" title="開いている画面を、部品も吹き出しもそのまま写して、すぐ後ろに足します"><span class="ico">❐</span>画面を<br>複製</button>
-      <button data-screen-only class="bigbtn" data-action="delete-screen" id="tb-del-screen" title="開いている画面を消します（最後の 1 つは消せません）"><span class="ico">✕</span>画面を<br>消す</button>`),
+      <button data-screen-only class="bigbtn" data-action="delete-screen" id="tb-del-screen" title="開いている画面を削除します（最後の 1 つは削除できません）"><span class="ico">✕</span>画面を<br>削除</button>`),
     group('履歴', `<div class="stack">
       <button class="tbtn" data-action="undo" id="tb-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" id="tb-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
@@ -8241,7 +8241,7 @@ function toolbarHtml() {
       <button class="tbtn" data-action="paste-part" id="tb-paste" title="コピーした部品を貼り付けます（Ctrl+V）">📋 貼り付け</button></div>
       <div class="stack">
       <button class="tbtn" data-action="duplicate-part" id="tb-dup" title="選んだ部品を複製します（Ctrl+D）">❐ 複製</button>
-      <button class="tbtn" data-action="delete-part" id="tb-del" title="選んだ部品を消します（Delete）">✕ 削除</button></div>
+      <button class="tbtn" data-action="delete-part" id="tb-del" title="選んだ部品を削除します（Delete）">✕ 削除</button></div>
       <div class="stack"><button class="tbtn" data-action="select-all" id="tb-select-all" data-screen-only title="この画面の部品と吹き出しを、すべて選びます（Ctrl+A）">☐ すべて選ぶ</button></div>
       <button class="bigbtn" data-action="renumber" id="tb-renumber" title="赤い番号を、上から下・左から右の順に 1 から付け直します"><span class="ico">①</span>番号を<br>振り直す</button>`),
     foldGroup('align', '揃える', alignSvg(ALIGN_BUTTONS[0][3]), '揃える（最初に選んだものに合わせる）', '揃えるボタン（左・右・上・下・中央・等間隔）を出します',
@@ -8362,7 +8362,7 @@ function screenListHtml(d) {
         <div class="sl-thumb">${thumbHtml(d, s, 148, 94)}${aiDot(s)}</div>
         <div class="sl-name">${i + 1}　${esc(s.name)}</div>
       </button>
-      <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-haspopup="menu" aria-expanded="${ui.screenMenu === s.id}" aria-label="「${esc(s.name)}」の画面の操作" title="名前を変える・複製・並べ替え・消す">…</button>
+      <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-haspopup="menu" aria-expanded="${ui.screenMenu === s.id}" aria-label="「${esc(s.name)}」の画面の操作" title="名前の変更・複製・並べ替え・削除">…</button>
     </div>`).join('')
     + '<button class="sl-add" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します">＋ 画面を足す</button>';
 }
@@ -8394,13 +8394,13 @@ function renderScreenMenu(d) {
   const id = esc(ui.screenMenu);
   root.innerHTML = `
     <div class="screen-menu" role="menu" style="left:${Math.round(r.left)}px;top:${Math.round(r.bottom + 4)}px">
-      <button role="menuitem" data-action="screen-rename" data-id="${id}">名前を変える</button>
-      <button role="menuitem" data-action="screen-dup" data-id="${id}">複製する</button>
+      <button role="menuitem" data-action="screen-rename" data-id="${id}">名前の変更</button>
+      <button role="menuitem" data-action="screen-dup" data-id="${id}">複製</button>
       <hr>
-      <button role="menuitem" data-action="screen-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ動かす</button>
-      <button role="menuitem" data-action="screen-down" data-id="${id}"${i === d.screens.length - 1 ? ' disabled' : ''}>下へ動かす</button>
+      <button role="menuitem" data-action="screen-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ移動</button>
+      <button role="menuitem" data-action="screen-down" data-id="${id}"${i === d.screens.length - 1 ? ' disabled' : ''}>下へ移動</button>
       <hr>
-      <button role="menuitem" class="danger" data-action="screen-del" data-id="${id}"${d.screens.length < 2 ? ' disabled title="最後の 1 つの画面は消せません"' : ''}>この画面を消す</button>
+      <button role="menuitem" class="danger" data-action="screen-del" data-id="${id}"${d.screens.length < 2 ? ' disabled title="最後の 1 つの画面は削除できません"' : ''}>この画面を削除</button>
     </div>`;
   // 窓の下からはみ出すときは、「…」の上に開く
   const menu = root.firstElementChild;
@@ -8483,8 +8483,8 @@ async function deleteScreenWithConfirm(screenId) {
     ? '（' + refs.map((r) => `${r.design.id === d.id ? 'この画面設計' : `「${esc(r.design.name)}」`}から ${r.count} 個`).join('・') + '）' : '';
   const what = [s.parts.length ? `部品 ${s.parts.length} 個` : '', s.callouts.length ? `吹き出し ${s.callouts.length} 個` : ''].filter(Boolean).join('と');
   const ok = await showDialog({
-    title: `「${s.name}」の画面を消しますか`,
-    okLabel: '消す',
+    title: `「${s.name}」の画面を削除しますか`,
+    okLabel: '削除する',
     okClass: 'danger',
     body: `<p>${what ? `この画面の${what}が消えます。` : 'この画面には、部品も吹き出しもありません。'}</p>
       <p>データベースの項目は、項目の一覧表に残ります（ほかの画面に置いた部品もそのままです）。</p>
@@ -8774,7 +8774,7 @@ function revisionTrHtml(r) {
   const ops = standalone ? '' : `<button class="btn small" data-rv="view" data-id="${id}"${can ? '' : ' disabled'}${noSnap}>見る</button>`
     + `<button class="btn small" data-rv="restore" data-id="${id}"${can ? '' : ' disabled'}${noSnap}>この版に戻す…</button>`
     + (ver ? `<button class="btn small" data-rv="edit" data-id="${id}" title="変えた内容と日付を書き直す" aria-label="${esc(revisionTitle(r))}を書き直す">✎</button>` : '')
-    + `<button class="del-x" data-rv="delete" data-id="${id}" title="この行を消す" aria-label="${esc(revisionTitle(r))}の行を消す">✕</button>`;
+    + `<button class="del-x" data-rv="delete" data-id="${id}" title="この行を削除" aria-label="${esc(revisionTitle(r))}の行を削除">✕</button>`;
   const note = ver ? (r.note ? esc(r.note) : '<span class="rv-none">（書いていません）</span>')
     : `${esc(r.note || REV_AUTO[r.kind] || '')}${REV_AUTO_HINT[r.kind] ? `<br><small>${REV_AUTO_HINT[r.kind]}</small>` : ''}`;
   return `<tr data-rev="${id}"${ver ? '' : ' class="auto"'}><td class="nw">${ver ? `<b>${esc(revisionTitle(r))}</b>` : '<span class="tag lost">自動</span>'}</td>`
@@ -8817,8 +8817,8 @@ async function deleteRevisionWithConfirm(revId) {
   const r = findRevision(d, revId);
   if (!r) return;
   const ok = await showDialog({
-    title: `「${revisionTitle(r)}（${revisionDay(r)}）」の行を消しますか？`,
-    okLabel: '消す',
+    title: `「${revisionTitle(r)}（${revisionDay(r)}）」の行を削除しますか？`,
+    okLabel: '削除する',
     okClass: 'danger',
     width: 520,
     body: `<p>その版の写しも消え、見る・戻すができなくなります。版の番号は付け直しません。</p>
@@ -8935,7 +8935,7 @@ function itemTableHtml(d) {
       <td class="c-set">${esc(isItemType(it.type) ? describeItem(it, { design: d, state: store.state }) : '')}</td>
       <td>${itemSourceHtml(d, it)}</td>
       <td>${scr.length ? esc(scr.join('・')) : '<span class="none">どの画面にもない</span>'}</td>
-      <td class="c-del"><button class="del-x" data-action="delete-item" data-id="${esc(it.id)}" title="この項目を消します" aria-label="「${esc(it.name)}」を消す">✕</button></td>
+      <td class="c-del"><button class="del-x" data-action="delete-item" data-id="${esc(it.id)}" title="この項目を削除します" aria-label="「${esc(it.name)}」を削除">✕</button></td>
     </tr>`;
   }).join('');
   const body = d.items.length
@@ -9168,7 +9168,7 @@ function partSettingsHtml(p) {
   const t = partType(p.type);
   if (t && p.type === 'table') return tableSettingsHtml(p, t);
   if (t && isItemPart(p)) return itemPartSettingsHtml(p, t);
-  const del = '<div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を消す</button></div>';
+  const del = '<div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を削除</button></div>';
   if (!t) return `<div class="panel-title">選んだ部品</div><p class="hint">${esc(partTypeName(p.type))}です。新しい版のアプリで足した部品のため、この版では設定を変えられません。</p>${del}`;
   const typeFields = partTypeFieldsHtml(p);
   const setting = describePart(p, fieldCtx());
@@ -9238,7 +9238,7 @@ function itemPartSettingsHtml(p, t) {
       ${here}
       ${pfCheck('numbered', '番号を付ける', p.no != null)}
     </div></div>
-    <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を消す</button></div>
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を削除</button></div>
     ${gone ? '' : '<div class="pf-note">（項目は、データベースの項目の一覧表に残ります）</div>'}`;
 }
 
@@ -9351,7 +9351,7 @@ function multiSettingsHtml(d) {
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn small" data-action="number-on"${parts ? '' : ' disabled'}>番号を付ける</button>
       <button class="btn small" data-action="number-off"${parts ? '' : ' disabled'}>番号を外す</button>
-      <button class="btn small danger-text" data-action="delete-many">まとめて消す</button>
+      <button class="btn small danger-text" data-action="delete-many">まとめて削除</button>
     </div>
     <p class="hint" style="margin-top:12px">Ctrl を押しながら押すと、選ぶものを足したり外したりできます。何もない所からドラッグして囲むと、枠に全部入ったものを選びます。</p>`;
 }
@@ -9373,7 +9373,7 @@ function calloutSettingsHtml(c) {
     <div class="field"><span>線の先の形</span>${seg('tip', c.tip, [['dot', '● 点'], ['arrow', '➤ 矢印'], ['none', 'なし']])}</div>
     <div class="field"><span>色</span>${seg('color', c.color, Object.entries(CALLOUT_COLORS).map(([k, [n, col]]) => [k, `<i class="co-swatch" style="border-color:${col};background:${col}22"></i>${n}`]))}</div>
     <p class="hint">吹き出しには赤い番号を付けず、部品の設定の一覧表にも入りません。つないだ部品を消したときは、吹き出しは残り、線だけが消えます。</p>
-    <div class="pf-del"><button class="btn small danger-text" data-action="delete-callout">この吹き出しを消す</button></div>`;
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-callout">この吹き出しを削除</button></div>`;
 }
 
 // データベースの項目の一覧表で項目を選んだときの右の欄（画像 q20 の 4）
@@ -9383,7 +9383,7 @@ function itemSettingsHtml(d, p) {
     <div class="panel-title">選んだ項目の設定（${esc(p.label || '名前なし')}）</div>
     ${linked ? linkBannerHtml(p.item) : ''}
     ${itemSectionHtml(d, p, { withType: true, locked: linked, note: linked ? '元のモックの中身' : 'どの画面でも同じ' })}
-    <div class="pf-del"><button class="btn small danger-text" data-action="delete-item" data-id="${esc(p.id)}">この項目を消す</button></div>`;
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-item" data-id="${esc(p.id)}">この項目を削除</button></div>`;
 }
 
 // ステータスの移り方の図を出している間の右の欄（q54。図を見ながらステータスと操作を直す）。項目を消すボタンは出さない（データベースの項目の一覧表で消す）
@@ -9501,7 +9501,7 @@ function processFieldsHtml(p) {
   const at = (id) => st.findIndex((s) => s.id === id);
   const btns = (kind, id, i, n, what, delOff = false) => `<button class="del-x" data-action="${kind}-up" data-id="${esc(id)}" title="上へ" aria-label="${what}を上へ"${i ? '' : ' disabled'}>↑</button>`
     + `<button class="del-x" data-action="${kind}-down" data-id="${esc(id)}" title="下へ" aria-label="${what}を下へ"${i < n - 1 ? '' : ' disabled'}>↓</button>`
-    + `<button class="del-x" data-action="${kind}-del" data-id="${esc(id)}" title="${delOff ? '最後の 1 つは消せません' : `${what}を消す`}" aria-label="${what}を消す"${delOff ? ' disabled' : ''}>✕</button>`;
+    + `<button class="del-x" data-action="${kind}-del" data-id="${esc(id)}" title="${delOff ? '最後の 1 つは削除できません' : `${what}を削除`}" aria-label="${what}を削除"${delOff ? ' disabled' : ''}>✕</button>`;
   const rows = st.map((s, i) => `<div class="ps-row"><span class="no">${i + 1}</span><input type="text" data-ps="${esc(s.id)}" value="${esc(s.name)}" aria-label="${i + 1} つ目のステータスの名前">`
     + `${btns('ps', s.id, i, st.length, `ステータス「${esc(s.name)}」`, st.length < 2)}</div>`).join('');
   const sel = (a, k, label) => `<select data-pa="${esc(a.id)}" data-k="${k}" aria-label="${label}">${[['', '（なし）'], ...st.map((s) => [s.id, s.name])]
@@ -9560,7 +9560,7 @@ function tableSettingsHtml(p, t) {
     return `${title}${kind}${banner}
       ${itemSectionHtml(d, p, { locked: gone || linked, note: gone ? '消したときの中身' : linked ? '元のモックの中身' : 'どの画面でも同じ' })}
       ${here}
-      <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を消す</button></div>`;
+      <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を削除</button></div>`;
   }
   const pr = p.props;
   let source = '';
@@ -9596,7 +9596,7 @@ function tableSettingsHtml(p, t) {
       ${pfOutHtml(p)}
     </div></div>
     ${here}
-    <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を消す</button></div>`;
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を削除</button></div>`;
 }
 
 // 表の列の欄。押した列を選び（選んだ列の見本の値と幅を、この画面だけの設定で書く）、↑↓ で並べ替え、✕ で外す。
@@ -9815,8 +9815,8 @@ async function deleteStateWithConfirm(it, s) {
   if (used.length) {
     const shown = currentDesign().screens.reduce((n, sc) => n + sc.parts.filter((p) => p.itemId === it.id && p.view && p.view.current === s.id).length, 0);
     const ok = await showDialog({
-      title: `ステータス「${s.name}」を消しますか`,
-      okLabel: '消す',
+      title: `ステータス「${s.name}」を削除しますか`,
+      okLabel: '削除する',
       okClass: 'danger',
       body: `<p>このステータスを使う操作 ${used.length} つ（${used.map((a) => `「${esc(a.name)}」`).join('・')}）も消えます。</p>
         ${shown ? `<p>このステータスを見本で出している部品 ${shown} 個は、ステータスを出さない形になります。</p>` : ''}
@@ -10707,8 +10707,8 @@ async function deleteItemWithConfirm(itemId) {
   const scr = screensWithItem(d, itemId).map((s) => s.name);
   if (scr.length) {
     const ok = await showDialog({
-      title: '項目を消す',
-      okLabel: '消す',
+      title: '項目の削除',
+      okLabel: '削除する',
       okClass: 'danger',
       body: `<p>データベースの項目の一覧表から「${esc(item.name)}」を消します。</p>
         <p class="warn">${esc(scr.join('・'))}の画面にある部品は残り、消したときの項目名と設定で固定されます（部品の設定の欄の「項目の一覧表に戻す」で戻せます）。</p>`,
