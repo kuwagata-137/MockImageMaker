@@ -313,7 +313,7 @@ test('画面設計をごみ箱へ移す: システムに入っていれば確か
   // システムに入っている（社員マスタ）
   trashFromCard('d-emp');
   await waitFor(() => $('.modal'));
-  assert.equal($('.modal h2').textContent, '「社員マスタ」をごみ箱に移しますか？');
+  assert.equal($('.modal h2').textContent, '「社員マスタ」をごみ箱へ移しますか？');
   assert.match($('.modal-body').textContent, /「社員マスタ」は、出張申請システム・経費精算システムで使っています。ごみ箱へ移すと、どのシステムからも見えなくなります。ごみ箱から戻すと、元のシステムに戻ります。/);
   assert.doesNotMatch($('.modal-body').textContent, /取り込んでいます/);
   assert.deepEqual(dialogButtons($$), ['ごみ箱へ移す', 'キャンセル']);

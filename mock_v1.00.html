@@ -6118,7 +6118,7 @@ function openTrashDesignDialog(d, { systems = [], importers = [] } = {}) {
       ごみ箱の中にある間は、つながったままです。完全に削除すると、取り込んだ側の項目は、そのときの中身で固定されます。</p>`
     : '';
   return showDialog({
-    title: `「${d.name}」をごみ箱に移しますか？`,
+    title: `「${d.name}」をごみ箱へ移しますか？`,
     okLabel: 'ごみ箱へ移す',
     okClass: 'danger',
     body: `<p>ごみ箱からいつでも戻せます。</p>${sysNote}${importNote}`,
