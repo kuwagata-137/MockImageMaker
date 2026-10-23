@@ -95,9 +95,15 @@ test('ひな形の中身: 項目の一覧表の項目を全部並べ、テーブ
   assert.equal(table.tableKind, 'subtable');
   assert.ok(input.height > 800, '画面を下へ伸ばす');
   assert.ok(input.parts.every((p) => p.y + p.h <= input.height), '部品は画面からはみ出さない');
+  // 項目名のない部品（ボタン・検索・絞り込みなど）の番号の札は、部品の左の外（左 28 ドットから 24 ドットの幅）に付く。札が隣の部品に重ならないこと
+  // （一覧のひな形で、絞り込みの札が検索の欄の「検索」ボタンに重なっていた。デバッグとリリースの見直し⑥-1）
+  const OUT_NO_TYPES = ['button', 'search', 'filter', 'pager', 'status', 'steps', 'tabs', 'link'];
+  const outNoRect = (p) => ({ x: p.x - 28, y: p.y + p.h / 2 - 10, w: 24, h: 20 });
   for (const tid of ['input', 'detail', 'list', 'graph', 'agg', 'steps']) {
     const s = screenOf(api.actions.addScreen(id, tid, s1));
     s.parts.forEach((a, i) => s.parts.slice(i + 1).forEach((b) => assert.ok(!overlaps(a, b), `${tid}: ${a.type} と ${b.type} が重なる`)));
+    s.parts.filter((a) => a.no != null && a.x >= 28 && OUT_NO_TYPES.includes(a.type)).forEach((a) => s.parts.filter((b) => b !== a)
+      .forEach((b) => assert.ok(!overlaps(outNoRect(a), b), `${tid}: ${a.type} の番号の札が ${b.type} に重なる`)));
   }
 });
 

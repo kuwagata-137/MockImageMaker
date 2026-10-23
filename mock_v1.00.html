@@ -1413,7 +1413,8 @@ function screenFromTemplate(design, templateId, name) {
       break;
     case 'list': {
       put('search', TPL_LEFT, 64);
-      put('filter', 368, 64);
+      // 絞り込みの番号の札は部品の左の外（28 ドット）に付くので、検索の欄（幅 320）の右に 48 空ける（16 だと札が「検索」ボタンに重なった。見直し⑥-1）
+      put('filter', TPL_LEFT + PART_TYPES.search.w + 48, 64);
       put('button', right(128), 64, { label: '＋ 新規登録', w: 128 });
       const t = put('table', TPL_LEFT, 128, { tableKind: 'records', w: sc.width - TPL_LEFT * 2, h: tableHeight(8), view: { rows: 8 } });
       put('pager', right(PART_TYPES.pager.w), t.y + t.h + 16);
