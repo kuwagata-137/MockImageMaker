@@ -1,5 +1,5 @@
 // tools/check-export-doc.js — check-export.js の場面 6: システムの説明書（PDF。第 10 段階の後半。仕様_細かい決めごと.md の「説明書（PDF）の細かい決めごと」）
-// check-export.js から呼ぶ（単体では動かさない）。見本に足す画面設計 2 つとシステム 1 つ（addDocSample）と、説明書の PDF を確かめる場面（checkSystemDoc）。
+// check-export.js から呼ぶ（単体では動かさない）。見本に足す画面設計 2 つとシステム 1 つ（addDocSample）と、説明書の PDF を確かめる場面（checkSystemDoc）。PDF のページごとの文字を読む pdfPageTexts は、check-electron-through.js も使う。
 //  1. 最初の画面から出張申請システムを開き、メニューバーの「出力」→ 説明書の窓 →「出力…」で 出張申請システム_説明書.pdf を書く（MIM_EXPORT_DIR）
 //  2. 同じ設定でアプリの中で組んだページ（exportSystemDocument）を正しい答えにして、PDF を pdfjs-dist で読み、
 //     ①ページ数が同じ（はみ出したページがない）②ページごとに見出し（表紙は小見出しと名前）がある ③下の端の「n / N」が 1〜N の通し ④表紙の「全 N ページ」
@@ -136,4 +136,4 @@ async function checkSystemDoc({ page, OUT, check, waitFile, enableTestHooks }) {
   check('6. 設計ノートの ⑤（docs）の行（出力したファイルの場所）は PDF に入らない', !leak.length, leak.length ? `入っている: ${leak.join('・')}` : '入っていない');
 }
 
-module.exports = { addDocSample, checkSystemDoc };
+module.exports = { addDocSample, checkSystemDoc, pdfPageTexts };
