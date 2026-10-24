@@ -7,8 +7,8 @@
  },
  "ai_cards": {
   "file": "ai_cards.png",
-  "w": 812,
-  "h": 630,
+  "w": 972,
+  "h": 610,
   "dsf": 2
  },
  "ai_chip": {
@@ -127,13 +127,13 @@
  },
  "home_card": {
   "file": "home_card.png",
-  "w": 410,
+  "w": 490,
   "h": 274,
   "dsf": 2
  },
  "home_cardmenu": {
   "file": "home_cardmenu.png",
-  "w": 397,
+  "w": 477,
   "h": 266,
   "dsf": 2
  },
@@ -151,14 +151,14 @@
  },
  "home_trash": {
   "file": "home_trash.png",
-  "w": 1092,
+  "w": 1252,
   "h": 140,
   "dsf": 2
  },
  "new_step1": {
   "file": "new_step1.png",
-  "w": 315,
-  "h": 102,
+  "w": 446,
+  "h": 67,
   "dsf": 2
  },
  "new_step2": {
