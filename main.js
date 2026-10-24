@@ -9,6 +9,7 @@
 //  - 2 つ目の起動を止める（2 つ動くと、互いの designs.json を丸ごと上書きするため）
 //  - AI（Claude Code など）の頼みの受け口（automation-main.js。第 7 段階）。--background の起動では窓を出さずに動き、
 //    AI がつながっている間の窓の × は、終わらずに窓を隠す。タスクトレイのアイコン（automation-tray.js）とアプリのメニューの「ヘルプ > AI とつなぐ…」
+//  - 使い方の窓（「ヘルプ > 使い方」。manual/manual.html を別の窓で開く。中身は manual/作成ツール/build.js が作る）
 // CheckListMaker の録画・ガジェット・Word・Excel の出力は写していない。
 'use strict';
 
@@ -43,6 +44,7 @@ let materials = null; // 資料の置き場（materials-main.js の戻り値 { f
 let quitWaiting = false; // 終わる前の待ち（受け口を止める・保存を待つ）の途中か
 let automation = null;
 let tray = null; // タスクトレイのアイコン（AI がつながっている間と、裏で動いている間だけ出す。automation-tray.js）
+let manualWin = null; // 使い方の窓（開いている間だけ）
 
 // ── メニュー ───────────────────────────────────────────────
 // registerAccelerator:false は、キーの表示だけをしてキーは横取りしない指定。
@@ -164,9 +166,9 @@ function buildAppMenu() {
       submenu: [{ role: 'minimize', label: '最小化' }, { role: 'close', label: '閉じる' }],
     },
     {
-      // AI（Claude Code など）とつなぐ方法の窓（第 7 段階。q49）
+      // 使い方（使用説明書。2026-10-24）と、AI（Claude Code など）とつなぐ方法の窓（第 7 段階。q49）
       label: 'ヘルプ',
-      submenu: [commandItem('AI とつなぐ…', 'aiConnect')],
+      submenu: [commandItem('使い方', 'openManual'), { type: 'separator' }, commandItem('AI とつなぐ…', 'aiConnect')],
     },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -214,6 +216,37 @@ function createMainWindow() {
   mainWin.loadFile(APP_HTML);
   mainWin.on('closed', () => {
     mainWin = null;
+    // アプリの窓を閉じたら、使い方の窓も閉じる（使い方の窓だけが残って、アプリが終わらないのを防ぐ）
+    if (manualWin) manualWin.close();
+  });
+}
+
+// 使い方の窓（ヘルプ > 使い方）。manual/manual.html を読むだけの窓で開く（ページへの窓口は渡さない）。
+// 開いているときは、もう 1 つ開かずに前に出す。中の目次は同じページの中を動くだけなので、ほかのページへは移らせない
+function openManualWindow() {
+  if (manualWin) {
+    if (!HEADLESS) {
+      if (manualWin.isMinimized()) manualWin.restore();
+      manualWin.show();
+      manualWin.focus();
+    }
+    return;
+  }
+  manualWin = new BrowserWindow({
+    width: 1180,
+    height: 820,
+    minWidth: 640,
+    minHeight: 480,
+    title: '使い方 — ' + APP_TITLE,
+    show: !HEADLESS,
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  manualWin.removeMenu(); // アプリのメニューは出さない（命令の送り先のアプリの窓ではないため）
+  manualWin.webContents.on('will-navigate', (e) => e.preventDefault());
+  manualWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  manualWin.loadFile(path.join('manual', 'manual.html'));
+  manualWin.on('closed', () => {
+    manualWin = null;
   });
 }
 
@@ -255,6 +288,10 @@ if (!app.requestSingleInstanceLock({ background: BACKGROUND })) {
     // 資料を読む部品と MPD を読む・出力する部品をつなぐ（読む部品は最初の頼みで読み込む）。MPD に出力するときは、出力の窓と同じ保存の窓を使う
     materials = initMaterials({ app, ipcMain, storage, headless: HEADLESS, askSavePath: exporter.askSavePath, ...createReadingParts() });
     automation = initAutomation({ app, ipcMain, getWindow: () => mainWin, background: BACKGROUND, headless: HEADLESS, appVersion: APP_VERSION, renderer, materials });
+    ipcMain.handle('manual:open', () => {
+      openManualWindow();
+      return true;
+    });
     buildAppMenu();
     createMainWindow();
     automation.windowCreated();
