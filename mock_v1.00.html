@@ -45,7 +45,8 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 
 /* ── 最初の画面（画面設計の一覧）─────────────────────── */
 .home-scroll{flex:1;overflow:auto}
-.home{max-width:1120px;margin:0 auto;padding:22px 24px 40px}
+/* 最初の画面の幅の上限。窓の幅 1280（初めて開いたときの大きさ）で、見出しの右の探す欄とボタンが 1 段に収まる幅（q94。2026-10-24） */
+.home{max-width:1280px;margin:0 auto;padding:22px 24px 40px}
 .home.wide{max-width:none}
 .home-head{display:flex;align-items:flex-start;gap:10px}
 .home-head h1{font-size:22px;line-height:34px;font-weight:700;color:#0f172a;white-space:nowrap}
