@@ -1181,7 +1181,8 @@ Claude が決めたこと（細かい所は 仕様_細かい決めごと.md の�
 - 窓の幅 1280 で、最初の画面の「＋ 新しいシステム」のボタンが 2 段目に落ちる。
 確かめ（2026-10-24。クラウドのセッション。npm の取得先 registry.npmjs.org がネットワークの決まりで断られ、npm install ができなかった）:
 - test/manual.test.js（7 個。jsdom なし）は通った。test/app.test.js に足した 2 個は jsdom がないので流せず、同じ手順を Chromium（playwright）で動かして同じ結果になることを確かめた。
-  npm test の全部と tools/check-electron.js の場面 13（--only=manual）は、Electron と jsdom がないので流せていない（次のセッションで流す）。
+  npm test の全部は、PR #15 の CI（GitHub の ubuntu・node 22）で流し、1154 個すべて通った（8079ab4。test/app.test.js に足した 2 個も通った）。
+  CI の build-win（Windows で npm run dist）も通った。tools/check-electron.js の場面 13（--only=manual）は CI でも動かないので、次のセッションで流す。
 - Word は LibreOffice で PDF にして 46 ページを見た（表の折り返し・図・目次）。/mnt/skills/public/docx の validate.py で形の検証が通った。
 - HTML は Chromium で幅 1280 を撮り、画像 52 枚がすべて読め、目次の飛び先がすべてあることを確かめた。
 
