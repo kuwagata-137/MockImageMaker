@@ -17,7 +17,7 @@ const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 const HTML_NAME = PKG.build.files.find((f) => /^mock_v.*\.html$/.test(f));
 const APP_VERSION = 'v' + fs.readFileSync(path.join(ROOT, HTML_NAME), 'utf8').match(/const APP_VERSION = '([^']+)'/)[1];
 // 原稿を直したら、この日付も直す（作るたびに今日の日付にすると、中身が同じでも manual.html が変わるため）
-const LAST_UPDATED = '2026年10月23日';
+const LAST_UPDATED = '2026年10月24日';
 const DOCX_NAME = `モックイメージメーカー_使用説明書_${APP_VERSION}.docx`;
 
 function loadContent() {
@@ -58,7 +58,7 @@ function dispSize(m, o, d) {
 // ===================================================================
 //  アプリの中の使い方（HTML）
 // ===================================================================
-function buildHtml(content, shots, opts = {}) {
+function buildHtml(content, shots) {
   const DIM = { maxW: 880, cropScale: 1 };
   let fig = 0;
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -90,17 +90,14 @@ function buildHtml(content, shots, opts = {}) {
   const toc = [];
   function render(b) {
     switch (b.t) {
-      case 'br': case 'toc': return '';
       case 'h': {
         const id = idOf(b.text);
         if (b.l <= 2) toc.push({ l: b.l, id, text: b.text });
         return `<h${b.l + 1} id="${id}">${esc(b.text)}</h${b.l + 1}>`;
       }
       case 'p': return '<p>' + runs(b.parts) + '</p>';
-      case 'note': return '<p class="note">※ ' + runs(b.parts) + '</p>';
       case 'bullet': return `<ul class="l${b.level}"><li>${runs(b.parts)}</li></ul>`;
       case 'box': return `<div class="box ${b.kind}"><b class="tag">${b.kind === 'warn' ? '注意' : 'ヒント'}</b><div>${runs(b.parts)}</div></div>`;
-      case 'todo': return `<p class="todo">（この章はこれから書きます: ${esc(b.text)}）</p>`;
       case 'fig': {
         let s = '<figure>' + img(b.img, b.o) + (b.cap ? cap(b.cap) : '') + '</figure>';
         if (b.o.callouts) s += '<table class="co">' + b.o.callouts.map((c, i) => `<tr><td class="n">${c.n || i + 1}</td><td class="nm">${esc(c.name)}</td><td>${paras(c.desc || '')}</td></tr>`).join('') + '</table>';
@@ -130,7 +127,6 @@ function buildHtml(content, shots, opts = {}) {
   }
   if (open) tocHtml.push('</ol></li>');
   const c = content.cover;
-  const layout = opts.layout || 'side';
   return `<!doctype html>
 <html lang="ja">
 <head>
@@ -141,7 +137,7 @@ function buildHtml(content, shots, opts = {}) {
 <style>
 :root{--navy:#1d3f6e;--line:#e2e8f0;--ink:#1e293b;--sub:#64748b;--red:#dc2626}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%}
+html,body{margin:0;height:100%;overflow:hidden}
 body{font-family:'Segoe UI','Yu Gothic UI','Meiryo',sans-serif;color:var(--ink);background:#f1f5f9;font-size:14px;line-height:1.75}
 .top{position:fixed;left:0;right:0;top:0;height:44px;display:flex;align-items:center;gap:10px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);z-index:2}
 .top b{font-size:15px}.top span{color:var(--sub);font-size:12px}
@@ -153,14 +149,13 @@ nav li.ch ol a{padding-left:34px;color:#334155;font-size:12.5px}
 nav li.ch:not(.open) ol{display:none}
 nav a:hover{background:#f1f5f9}
 nav a.on{border-left-color:var(--navy);background:#eef2f8;color:var(--navy)}
-main{margin:44px 0 0 268px;padding:24px 40px 80px;height:calc(100% - 44px);overflow:auto}
+main{position:fixed;top:44px;left:268px;right:0;bottom:0;padding:24px 40px 80px;overflow:auto}
 .doc{max-width:900px}
+h2,h3{scroll-margin-top:8px}
 h2{font-size:22px;color:var(--navy);border-bottom:2px solid var(--navy);padding-bottom:4px;margin:36px 0 12px}
 h3{font-size:17px;color:var(--navy);margin:28px 0 8px;padding-left:8px;border-left:4px solid var(--navy)}
 h4{font-size:15px;margin:20px 0 6px}
 p{margin:6px 0}
-.note{color:var(--sub);font-size:13px}
-.todo{color:#94a3b8;font-style:italic}
 ul{margin:4px 0;padding-left:22px}ul.l1{padding-left:44px}
 kbd{font-family:inherit;font-size:12px;border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#fff}
 .red{color:#b91c1c}.gray{color:var(--sub)}
@@ -182,16 +177,14 @@ th{background:var(--navy);color:#fff;font-weight:600}
 .cover{background:#fff;border:1px solid var(--line);border-radius:8px;padding:28px 32px;margin-bottom:8px}
 .cover .t{font-size:26px;font-weight:700;color:var(--navy)}
 .cover .s{color:var(--sub)}
-@media print{.top,nav{display:none}main{margin:0;height:auto;overflow:visible}}
-${layout === 'one' ? `nav{position:static;width:auto;border:1px solid var(--line);border-radius:8px;margin:0 0 16px;max-height:none}main{margin-left:0}nav li.ch ol{display:block!important}nav{columns:2;padding:12px}` : ''}
+@media print{html,body{height:auto;overflow:visible}.top,nav{display:none}main{position:static;overflow:visible}}
 </style>
 </head>
 <body>
 <div class="top"><b>モックイメージメーカー 使い方</b><span>${esc(APP_VERSION)}・${esc(LAST_UPDATED)} 更新</span></div>
-${layout === 'one' ? '' : `<nav aria-label="目次"><ol>${tocHtml.join('')}</ol></nav>`}
+<nav aria-label="目次"><ol>${tocHtml.join('')}</ol></nav>
 <main>
 <div class="doc">
-${layout === 'one' ? `<nav aria-label="目次"><ol>${tocHtml.join('')}</ol></nav>` : ''}
 <div class="cover"><div class="t">${esc(c.title)}</div><div class="s">${esc(c.app)}　${esc(c.sub)}</div></div>
 ${body}
 </div>
@@ -229,14 +222,12 @@ function requireDocx() {
   throw new Error('docx が見つかりません。リポジトリのルートで npm install を実行してください。');
 }
 
-// style: 'manual'（写し元の MultipurposeDiagramMaker の操作マニュアルと同じ見た目）／'company'（社内の Word 文書の書式に寄せる。q87 の見比べ用）
-function buildDocx(content, shots, style = 'manual') {
+// 見た目は写し元の MultipurposeDiagramMaker の操作マニュアルと同じ（Meiryo UI・紺の見出し。2026-10-23 の q87 で決めた）
+function buildDocx(content, shots) {
   const X = requireDocx();
   const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, Header, Footer, AlignmentType, LevelFormat,
     HeadingLevel, BorderStyle, WidthType, ShadingType, PageBreak, PageNumber, VerticalAlign, TableOfContents, TableLayoutType } = X;
-  const S = style === 'company'
-    ? { font: '游明朝', h: ['000000', '000000', '000000'], head: 'D9D9D9', headInk: '000000', step: 'D9D9D9', stepInk: '000000', line: '808080' }
-    : { font: 'Meiryo UI', h: ['1D3F6E', '1D3F6E', '404040'], head: '1D3F6E', headInk: 'FFFFFF', step: '1D3F6E', stepInk: 'FFFFFF', line: 'CCCCCC' };
+  const S = { font: 'Meiryo UI', h: ['1D3F6E', '1D3F6E', '404040'], head: '1D3F6E', headInk: 'FFFFFF', step: '1D3F6E', stepInk: 'FFFFFF', line: 'CCCCCC' };
   const FONT = S.font;
   const DIM = { maxW: 640, cropScale: 0.75 };
   const FULL_W = 10200;
@@ -264,7 +255,7 @@ function buildDocx(content, shots, style = 'manual') {
     margins: o.m || { top: 50, bottom: 50, left: 100, right: 100 }, children,
   });
   const table = (widths, rows) => new Table({ width: { size: widths.reduce((a, b) => a + b, 0), type: WidthType.DXA }, columnWidths: widths, layout: TableLayoutType.FIXED, rows });
-  const headRow = (heads, widths) => new TableRow({ tableHeader: true, cantSplit: true, children: heads.map((h, i) => cell(widths[i], [new Paragraph({ alignment: style === 'company' ? AlignmentType.CENTER : AlignmentType.LEFT, children: [new TextRun({ text: h, font: FONT, size: 19, bold: true, color: S.headInk })] })], { fill: S.head })) });
+  const headRow = (heads, widths) => new TableRow({ tableHeader: true, cantSplit: true, children: heads.map((h, i) => cell(widths[i], [new Paragraph({ alignment: AlignmentType.LEFT, children: [new TextRun({ text: h, font: FONT, size: 19, bold: true, color: S.headInk })] })], { fill: S.head })) });
   const sp = (n = 160) => new Paragraph({ spacing: { before: n }, children: [] });
   function box(kind, parts) {
     const c = kind === 'warn' ? { line: 'C00000', fill: 'FDECEC', tag: '注意　' } : { line: '2563EB', fill: 'EFF6FF', tag: 'ヒント　' };
@@ -277,18 +268,14 @@ function buildDocx(content, shots, style = 'manual') {
   }
   function render(b) {
     switch (b.t) {
-      case 'toc': return [new TableOfContents('目次', { hyperlink: true, headingStyleRange: '1-2' })];
-      case 'br': return [new Paragraph({ children: [new PageBreak()] })];
       case 'h': {
         const sizes = { 1: 32, 2: 26, 3: 23 };
         const hl = b.l === 1 ? HeadingLevel.HEADING_1 : b.l === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3;
         return [new Paragraph({ heading: hl, keepNext: true, pageBreakBefore: !!b.o.newPage, spacing: { before: b.l === 1 ? 360 : 240, after: 120 }, children: [new TextRun({ text: b.text, font: FONT, size: sizes[b.l], bold: true, color: S.h[b.l - 1] })] })];
       }
       case 'p': return [new Paragraph({ spacing: { before: 80, after: 80 }, keepNext: !!b.o.keepNext, children: runs(b.parts) })];
-      case 'note': return [new Paragraph({ spacing: { before: 60, after: 60 }, children: runs([{ gray: '※ ' }, ...b.parts.map((x) => (typeof x === 'string' ? { gray: x } : x))], 20) })];
       case 'bullet': return [new Paragraph({ numbering: { reference: 'bullets', level: b.level }, spacing: { before: 40, after: 40 }, children: runs(b.parts) })];
       case 'box': return [box(b.kind, b.parts), sp(60)];
-      case 'todo': return [new Paragraph({ children: [new TextRun({ text: '（この章はこれから書きます: ' + b.text + '）', font: FONT, size: 20, italics: true, color: '94A3B8' })] })];
       case 'fig': {
         const out = [new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, spacing: { before: 160, after: 60 }, children: [imgRun(b.img, b.o)] })];
         if (b.cap) out.push(caption(b.cap));
@@ -296,7 +283,7 @@ function buildDocx(content, shots, style = 'manual') {
           const w = [560, 2400, FULL_W - 2960];
           out.push(table(w, b.o.callouts.map((it, i) => new TableRow({ cantSplit: true, children: [
             cell(w[0], [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(it.n || i + 1), font: 'Arial', size: 20, bold: true, color: 'FFFFFF' })] })], { fill: 'DC2626', m: { top: 40, bottom: 40, left: 60, right: 60 } }),
-            cell(w[1], [new Paragraph({ children: runs([{ b: it.name }], 19) })], { fill: style === 'company' ? 'D9D9D9' : 'F3F6FA' }),
+            cell(w[1], [new Paragraph({ children: runs([{ b: it.name }], 19) })], { fill: 'F3F6FA' }),
             cell(w[2], paras(it.desc || '', 19)),
           ] }))));
           out.push(sp(80));
@@ -314,7 +301,7 @@ function buildDocx(content, shots, style = 'manual') {
       }
       case 'tab': {
         const w = b.o.w || [2800, FULL_W - 2800];
-        const rows = b.rows.map((r) => new TableRow({ cantSplit: true, children: r.map((c, i) => cell(w[i], paras(i === 0 && typeof c === 'string' ? [{ b: c }] : c, 19), i === 0 && style === 'company' ? { fill: 'D9D9D9' } : {})) }));
+        const rows = b.rows.map((r) => new TableRow({ cantSplit: true, children: r.map((c, i) => cell(w[i], paras(i === 0 && typeof c === 'string' ? [{ b: c }] : c, 19))) }));
         return [table(w, [headRow(b.head, w), ...rows]), sp(100)];
       }
       default: throw new Error('知らないブロック: ' + b.t);
@@ -324,7 +311,7 @@ function buildDocx(content, shots, style = 'manual') {
   const pageProps = { page: { size: { width: 11906, height: 16838 }, margin: { top: 1418, right: 567, bottom: 1134, left: 1134 } } };
   const c = content.cover;
   const metaRow = (label, value) => new TableRow({ children: [
-    cell(2000, [new Paragraph({ children: [new TextRun({ text: label, font: FONT, size: 20, bold: true })] })], { fill: style === 'company' ? 'D9D9D9' : 'DCE5F0', m: { top: 60, bottom: 60, left: 120, right: 120 } }),
+    cell(2000, [new Paragraph({ children: [new TextRun({ text: label, font: FONT, size: 20, bold: true })] })], { fill: 'DCE5F0', m: { top: 60, bottom: 60, left: 120, right: 120 } }),
     cell(3000, [new Paragraph({ children: [new TextRun({ text: value, font: FONT, size: 20 })] })], { m: { top: 60, bottom: 60, left: 120, right: 120 } }),
   ] });
   const cover = {
@@ -337,7 +324,11 @@ function buildDocx(content, shots, style = 'manual') {
       new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 800 }, children: [imgRun(c.img, { width: 560 })] }),
       new Table({ alignment: AlignmentType.CENTER, width: { size: 5000, type: WidthType.DXA }, columnWidths: [2000, 3000], layout: TableLayoutType.FIXED, rows: c.meta.map(([a, v]) => metaRow(a, v)) }),
       new Paragraph({ children: [new PageBreak()] }),
-      new TableOfContents('目次', { hyperlink: true, headingStyleRange: '1-2' }),
+      new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: '目次', font: FONT, size: 32, bold: true, color: S.h[0] })] }),
+      // 目次はフィールドで、Word が開いたときにページ番号つきで作り直す（updateFields）。
+      // 作り直す前や Word 以外で開いたときも空にならないよう、章と節の名前を前もって入れておく（ページ番号は Word が入れる）
+      new TableOfContents('目次', { hyperlink: true, headingStyleRange: '1-2',
+        cachedEntries: content.body.filter((b) => b.t === 'h' && b.l <= 2).map((b) => ({ title: b.text, level: b.l })) }),
     ],
   };
   const hdr = new Header({ children: [new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: S.h[0], space: 4 } }, children: [new TextRun({ text: 'モックイメージメーカー ' + APP_VERSION + ' 使用説明書', font: FONT, size: 18, color: S.h[0] })] })] });
@@ -353,10 +344,13 @@ function buildDocx(content, shots, style = 'manual') {
         { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 32, bold: true, font: FONT, color: S.h[0] }, paragraph: { spacing: { before: 360, after: 120 }, outlineLevel: 0 } },
         { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 26, bold: true, font: FONT, color: S.h[1] }, paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 1 } },
         { id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 23, bold: true, font: FONT, color: S.h[2] }, paragraph: { spacing: { before: 200, after: 80 }, outlineLevel: 2 } },
+        // 目次の段（章は太字、節は 1 段下げる。Word が目次を作り直すときもこの書式を使う）
+        { id: 'TOC1', name: 'toc 1', basedOn: 'Normal', next: 'Normal', run: { size: 21, bold: true, font: FONT }, paragraph: { spacing: { before: 100, after: 20 } } },
+        { id: 'TOC2', name: 'toc 2', basedOn: 'Normal', next: 'Normal', run: { size: 20, font: FONT }, paragraph: { spacing: { before: 0, after: 0 }, indent: { left: 420 } } },
       ],
     },
     numbering: { config: [{ reference: 'bullets', levels: [
-      { level: 0, format: LevelFormat.BULLET, text: style === 'company' ? '・' : '•', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } },
+      { level: 0, format: LevelFormat.BULLET, text: '•', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } },
       { level: 1, format: LevelFormat.BULLET, text: '◦', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 1080, hanging: 360 } } } },
     ] }] },
     sections: [cover, { properties: { ...pageProps }, headers: { default: hdr }, footers: { default: ftr }, children }],
@@ -374,11 +368,11 @@ async function main() {
   const manifest = loadManifest();
   const htmlShots = makeShots(manifest);
   const htmlOut = val('html-out', path.join(MANUAL, 'manual.html'));
-  fs.writeFileSync(htmlOut, buildHtml(content, htmlShots, { layout: val('layout', 'side') }));
+  fs.writeFileSync(htmlOut, buildHtml(content, htmlShots));
   console.log('使い方（HTML）: ' + path.relative(ROOT, htmlOut));
   if (!args.includes('--html')) {
     const shots = makeShots(manifest);
-    const { doc, Packer, figCount } = buildDocx(content, shots, val('style', 'manual'));
+    const { doc, Packer, figCount } = buildDocx(content, shots);
     const buf = await Packer.toBuffer(doc);
     const out = val('docx-out', path.join(MANUAL, DOCX_NAME));
     fs.writeFileSync(out, buf);

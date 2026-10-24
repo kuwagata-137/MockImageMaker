@@ -8,6 +8,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.js",
+    "manual": "node manual/作成ツール/build.js",
+    "manual:shoot": "node manual/作成ツール/capture.js",
     "pack": "node node_modules/electron/install.js && electron-builder --dir",
     "dist": "node node_modules/electron/install.js && electron-builder --win --publish never"
   },
