@@ -689,6 +689,10 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 /* 操作の欄は 168px まで（MPD の行のボタン 4 つを［読む］［スイムレーン図にする］／［MPD に出力…］［消す］の 2 段に分け、名前の欄に幅を回す。第 11 段階。画像 q82_1） */
 .mat-ops{display:flex;flex-wrap:wrap;gap:4px;max-width:168px}
 .mat-ops .btn.small{padding:4px 8px}
+/* 資料の窓口の返事を待つ間の、押したボタンの印（q96 の案 A） */
+.mat-ops .btn.small.waiting:disabled{opacity:1;color:#1d4ed8;border-color:#93c5fd;background:#eff6ff}
+.mat-wait{display:inline-block;width:10px;height:10px;border:2px solid #93c5fd;border-top-color:#2563eb;border-radius:50%;margin-right:4px;vertical-align:-1px;animation:mat-spin .8s linear infinite}
+@keyframes mat-spin{to{transform:rotate(360deg)}}
 /* 設計ノートの入口（第 10 段階の前半。画像 k75〔q75 の案B「段階ごとの札」と q78 の案A「人も変えられる」〕）: 段階ごとの札（選んだ札は濃い紺）・
    札の下の欄（この段階の進み具合のボタン・読み取ったこと・まだ決まっていないことと決めたことと理由の表）・札の外の下のメモ。
    札とボタンの色: 確認済み＝緑・確認待ち＝オレンジ・作業中＝青・まだ＝灰色・確認を飛ばした＝灰色の点線の枠。札・ボタンの文字は言葉の途中で改行させない */
@@ -6752,17 +6756,28 @@ function sysMaterialRowHtml(m) {
   const name = esc(m.name);
   const old = isLegacyMaterial(m);
   const kind = MATERIAL_KIND_NAMES[m.kind] || MATERIAL_KIND_NAMES.other;
-  const read = old ? ' disabled title="古い形のため読めません"'
-    : m.kind === 'other' ? ' disabled title="この種類のファイルは読めません"' : ` title="「${name}」の中身を読みます"`;
-  const swim = m.kind === 'bdm'
-    ? `<button class="btn small" data-action="sys-mat-swim" data-id="${id}" title="この図から、スイムレーン図を作ります">スイムレーン図にする</button>` : '';
-  const mpd = m.kind === 'bdm' && mpdExportApi()
-    ? `<button class="btn small" data-action="sys-mat-export" data-id="${id}" title="スイムレーン図を、この MPD を元にした HTML ファイルに出力します（元のファイルは書き換えません）">MPD に出力…</button>` : '';
   return `<tr${old ? ' class="old"' : ''} data-id="${id}">
     <td><span class="mat-name"><span class="mat-nm"><span class="mat-ic" aria-hidden="true">${MATERIAL_KIND_ICONS[m.kind] || MATERIAL_KIND_ICONS.other}</span><b>${name}</b></span>${old ? '<span class="tag gone">古い形のため読めません</span>' : ''}</span></td>
     <td class="nw">${esc(old ? `${kind}（古い形）` : kind)}</td><td class="nw">${esc(fmtMaterialSize(m.size))}</td><td class="nw">${esc(fmtDateTime(m.addedAt).slice(0, 10))}</td>
     <td><input type="text" class="mat-memo" data-sy="mat-memo" data-mat="${id}" value="${esc(m.memo)}" placeholder="メモを書く" aria-label="「${name}」のメモ"></td>
-    <td><div class="mat-ops"><button class="btn small" data-action="sys-mat-read" data-id="${id}"${read}>読む</button>${swim}${mpd}<button class="btn small danger-text" data-action="sys-mat-del" data-id="${id}" title="この資料を消します（元に戻す〔Ctrl+Z〕で戻せます）">消す</button></div></td></tr>`;
+    <td><div class="mat-ops">${sysMaterialOpsHtml(m)}</div></td></tr>`;
+}
+// 行の操作のボタン。資料の窓口の返事を待っている資料（materialsWaiting）は、ボタンをすべて押せなくし、押したボタンに回る印と
+// 「読んでいます…」（MPD に出力は「出力しています…」）を出す（q96 の案 A。2026-10-24）
+function sysMaterialOpsHtml(m) {
+  const id = esc(m.id);
+  const name = esc(m.name);
+  const old = isLegacyMaterial(m);
+  const waiting = materialsWaiting.get(m.id) || null;
+  const label = (what, text) => (waiting === what ? `<span class="mat-wait" aria-hidden="true"></span>${MATERIAL_WAIT_LABELS[what]}` : text);
+  const off = () => (waiting ? ' disabled' : '');
+  const read = waiting ? '' : old ? ' disabled title="古い形のため読めません"'
+    : m.kind === 'other' ? ' disabled title="この種類のファイルは読めません"' : ` title="「${name}」の中身を読みます"`;
+  const swim = m.kind === 'bdm'
+    ? `<button class="btn small${waiting === 'swim' ? ' waiting' : ''}" data-action="sys-mat-swim" data-id="${id}" title="この図から、スイムレーン図を作ります"${off()}>${label('swim', 'スイムレーン図にする')}</button>` : '';
+  const mpd = m.kind === 'bdm' && mpdExportApi()
+    ? `<button class="btn small${waiting === 'mpd' ? ' waiting' : ''}" data-action="sys-mat-export" data-id="${id}" title="スイムレーン図を、この MPD を元にした HTML ファイルに出力します（元のファイルは書き換えません）"${off()}>${label('mpd', 'MPD に出力…')}</button>` : '';
+  return `<button class="btn small${waiting === 'read' ? ' waiting' : ''}" data-action="sys-mat-read" data-id="${id}"${read}${off()}>${label('read', '読む')}</button>${swim}${mpd}<button class="btn small danger-text" data-action="sys-mat-del" data-id="${id}" title="この資料を消します（元に戻す〔Ctrl+Z〕で戻せます）"${off()}>消す</button>`;
 }
 // 資料の窓口を呼ぶ（読む・BDM の案・MPD に出力）。返事が ok で valid(返事) が真ならその返事、そうでなければお知らせ（返事の message。ないときは fallback）を出して null。
 // 取りやめの返事（canceled。MPD に出力の保存の窓）は、知らせずに null
@@ -6778,15 +6793,37 @@ async function askMaterialsApi(call, valid, fallback) {
   toast(materialFailMessage(res) || fallback);
   return null;
 }
-// 資料の窓口の返事を待っている資料の id（待つ間に、同じ資料の「読む」「スイムレーン図にする」「MPD に出力…」を 2 回目に押しても、頼みを重ねない）
-const materialsWaiting = new Set();
-async function whileMaterialWaits(matId, fn) {
-  materialsWaiting.add(matId);
+// 資料の窓口の返事を待っている資料の id → 何を待っているか（read・swim・mpd）。待つ間に、同じ資料の「読む」「スイムレーン図にする」「MPD に出力…」を
+// 2 回目に押しても、頼みを重ねない。待つ間は、その資料の行のボタンに印を出して押せなくする（sysMaterialOpsHtml。q96 の案 A。2026-10-24）
+const materialsWaiting = new Map();
+const MATERIAL_WAIT_LABELS = { read: '読んでいます…', swim: '読んでいます…', mpd: '出力しています…' };
+// 読む・スイムレーン図にするの待ちの時間切れ（q96。60 秒）。読む部品が止まっても、ボタンが戻り、もう一度押せるようにする。
+// MPD に出力は、保存の窓で場所を選んでいる間も待つので、時間切れにしない。時間切れの後に来た返事は使わない
+let materialWaitMs = 60000;
+const MATERIAL_TIMED_OUT = Symbol('timed-out');
+async function whileMaterialWaits(m, what, fn) {
+  materialsWaiting.set(m.id, what);
+  refreshMaterialOps(m.id);
+  let timer = null;
   try {
-    return await fn();
+    if (what === 'mpd') return await fn();
+    const late = new Promise((resolve) => { timer = setTimeout(() => resolve(MATERIAL_TIMED_OUT), materialWaitMs); });
+    const res = await Promise.race([fn(), late]);
+    if (res !== MATERIAL_TIMED_OUT) return res;
+    toast(`「${m.name}」を読むのに ${Math.round(materialWaitMs / 1000)} 秒を超えたので、待つのをやめました。もう一度押してください。続けて同じになるときは、アプリを起動し直してください。`);
+    return null;
   } finally {
-    materialsWaiting.delete(matId);
+    clearTimeout(timer);
+    materialsWaiting.delete(m.id);
+    refreshMaterialOps(m.id);
   }
+}
+// 資料の表に出ている行のボタンだけを描き直す（メモの欄に打っている途中の文字とフォーカスを消さないため）
+function refreshMaterialOps(matId) {
+  const ops = [...document.querySelectorAll('#sys-view .sys-mats tr[data-id] .mat-ops')].find((el) => el.closest('tr').dataset.id === matId);
+  const y = ui.view === 'system' ? findSystem(store.state, ui.systemId) : null;
+  const m = y && y.materials.find((x) => x.id === matId);
+  if (ops && m) ops.innerHTML = sysMaterialOpsHtml(m);
 }
 
 // 資料のファイルを入れる（「＋ ファイルを入れる…」は pick、落としたときは addDropped）。request(api) は資料の窓口に写してもらう関数。
@@ -6858,7 +6895,7 @@ async function openMaterialReader(sysId, matId) {
     const res = await askMaterialsApi(() => api.read({ ...req, cursor }), (r) => isObj(r.result), `「${m.name}」を読めませんでした。`);
     return res && res.result;
   };
-  const first = await whileMaterialWaits(m.id, () => read(null));
+  const first = await whileMaterialWaits(m, 'read', () => read(null));
   if (!first || ui.view !== 'system' || ui.systemId !== sysId) return;
   // ほかの窓が開いていると読むの窓を出せない（showDialog は 2 つ目を開かない）ので、黙って捨てずに知らせる（スイムレーン図にするとそろえる）
   if (isDialogOpen()) { toast(`「${m.name}」を読み終えましたが、ほかの窓が開いているため表示しませんでした。窓を閉じてからもう一度押してください。`); return; }
@@ -6932,7 +6969,7 @@ async function swimlaneFromMaterial(sysId, matId) {
   const y0 = editableSystem(sysId);
   const m0 = y0 && y0.materials.find((x) => x.id === matId);
   if (!api || !m0 || m0.kind !== 'bdm' || materialsWaiting.has(m0.id)) return;
-  const res = await whileMaterialWaits(m0.id, () => askMaterialsApi(() => api.bdmPlan({ systemId: sysId, file: m0.file }), (r) => isObj(r.plan), `「${m0.name}」を読めませんでした。`));
+  const res = await whileMaterialWaits(m0, 'swim', () => askMaterialsApi(() => api.bdmPlan({ systemId: sysId, file: m0.file }), (r) => isObj(r.plan), `「${m0.name}」を読めませんでした。`));
   flushSideField();
   const y = editableSystem(sysId);
   const m = y && !y.trashedAt && y.materials.find((x) => x.id === matId);
@@ -7021,7 +7058,7 @@ async function exportToMpd(sysId, matId) {
   const { plan, dropped } = bdmExportPlan(y, m.id);
   if (!plan.steps.length) { toast(mpdNoStepsText(y)); return null; }
   const req = { systemId: y.id, file: m.file, plan, name: `${safeFileName(y.name, 'システム')}_スイムレーン.html` };
-  const res = await whileMaterialWaits(m.id, () => askMaterialsApi(() => api.bdmExport(req), (r) => typeof r.path === 'string', `「${m.name}」を元に、MPD に出力できませんでした。`));
+  const res = await whileMaterialWaits(m, 'mpd', () => askMaterialsApi(() => api.bdmExport(req), (r) => typeof r.path === 'string', `「${m.name}」を元に、MPD に出力できませんでした。`));
   if (res) toast(mpdExportText(res, dropped));
   return res;
 }
@@ -15516,7 +15553,7 @@ function exposeForTest() {
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, hasFlowPage, minScreenHeight, selectPart, currentScreen,
     currentDesign, currentPart, openScreen, openItemsPanel, selectItem, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
     exportDocument, exportSystemDocument, noteDocRows, systemDocCan, systemCoverHtml, systemShareTag, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport, openSystemDocDialog, docOpts,
-    fitScreenZoom, fitScreenView, paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
+    fitScreenZoom, fitScreenView, setMaterialWaitMs: (ms) => { materialWaitMs = ms; }, materialsWaiting, paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
