@@ -12,9 +12,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { createCanvas } = require('@napi-rs/canvas');
 const { MaterialError } = require('./material-error');
-const { IMAGE_MAX_SIDE } = require('./material-image');
+const { IMAGE_MAX_SIDE, canvas } = require('./material-image'); // @napi-rs/canvas は、ページを画像に描くときに初めて読む（canvas()）
 const { normalizeRadicals } = require('./material-text');
 
 // pdfjs の警告（字体・wasm の場所など）を出さない。値は pdfjs の VerbosityLevel.ERRORS と同じ
@@ -107,10 +106,10 @@ async function renderPage(pdf, pageNumber) {
     const base = page.getViewport({ scale: 1 });
     const scale = IMAGE_MAX_SIDE / Math.max(base.width, base.height);
     const viewport = page.getViewport({ scale });
-    const canvas = createCanvas(Math.max(1, Math.round(viewport.width)), Math.max(1, Math.round(viewport.height)));
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport, canvas }).promise;
+    const board = canvas().createCanvas(Math.max(1, Math.round(viewport.width)), Math.max(1, Math.round(viewport.height)));
+    await page.render({ canvasContext: board.getContext('2d'), viewport, canvas: board }).promise;
     page.cleanup();
-    return canvas.toBuffer('image/png');
+    return board.toBuffer('image/png');
   } catch (err) {
     throw readFailed(err);
   }

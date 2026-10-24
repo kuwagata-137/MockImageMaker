@@ -4,10 +4,36 @@
 //  - fitPngToBase64Limit: base64 にして上限（既定 5MB）を超える PNG を、長い辺を 0.75 倍ずつ縮めて作り直す
 //  - pngSize: PNG の頭から幅と高さを読む（material-reader.js が、描き終えた PNG の大きさを知るために使う）
 //  - Electron に触らない。@napi-rs/canvas だけで動く（node だけでテストできる）
+//  - @napi-rs/canvas は、絵を描くときに初めて読む（canvas()）。.node が読めない PC でも、文字・Word・Excel・PDF の文字は読めるようにするため
+//    （2026-10-24 の q89。前はこのファイルの先頭で読んでいたので、読めないと資料を読む部品の全部が動かなかった）
 'use strict';
 
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const { MaterialError } = require('./material-error');
+
+// @napi-rs/canvas を読む。読めないときは MaterialError('unavailable')（元の例外は cause）。2 回目からは同じ結果を返す
+let canvasLib = null;
+let canvasError = null;
+let canvasLoader = () => require('@napi-rs/canvas');
+function canvas() {
+  if (canvasLib) return canvasLib;
+  if (!canvasError) {
+    try {
+      canvasLib = canvasLoader();
+      return canvasLib;
+    } catch (err) {
+      canvasError = err;
+    }
+  }
+  const e = new MaterialError('unavailable', '画像を読む部品の準備ができていません。（この PC では画像を描く部品を読み込めませんでした。アプリを入れ直してください。文字・Word・Excel と、PDF の文字は読めます。）');
+  e.cause = canvasError;
+  throw e;
+}
+// テスト用: 読み込み方を差し替え、覚えた結果を消す
+function setCanvasLoaderForTest(loader) {
+  canvasLoader = loader || (() => require('@napi-rs/canvas'));
+  canvasLib = null;
+  canvasError = null;
+}
 
 const IMAGE_MAX_SIDE = 1566;
 const MAX_BASE64_BYTES = 5 * 1024 * 1024;
@@ -30,6 +56,7 @@ function pngSize(png) {
 }
 
 async function decodeImage(bytes) {
+  const { loadImage } = canvas();
   try {
     return await loadImage(bytes);
   } catch (_) {
@@ -38,11 +65,11 @@ async function decodeImage(bytes) {
 }
 
 function drawPng(image, width, height) {
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext('2d');
+  const board = canvas().createCanvas(width, height);
+  const ctx = board.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(image, 0, 0, width, height);
-  return { png: canvas.toBuffer('image/png'), width, height };
+  return { png: board.toBuffer('image/png'), width, height };
 }
 
 function scaled(size, scale) {
@@ -69,4 +96,4 @@ async function fitPngToBase64Limit(png, maxBase64Bytes = MAX_BASE64_BYTES) {
   }
 }
 
-module.exports = { IMAGE_MAX_SIDE, toPng, fitPngToBase64Limit, pngSize };
+module.exports = { IMAGE_MAX_SIDE, toPng, fitPngToBase64Limit, pngSize, canvas, setCanvasLoaderForTest };
