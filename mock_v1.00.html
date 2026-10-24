@@ -12296,8 +12296,19 @@ function onFileDrop(e) {
 }
 
 // ── 9. 命令（runCommand）──────────────────────────────────────────────────────
+// 使い方（使用説明書 manual/manual.html。アプリのメニューの「ヘルプ > 使い方」）を開く。
+// デスクトップ版は main.js が別の窓で開く（読むだけ。2 回目は同じ窓を前に出す）。ブラウザで開いたときは新しいタブで開く
+function openManual() {
+  if (window.menuAPI && window.menuAPI.openManual) window.menuAPI.openManual();
+  else window.open('manual/manual.html', '_blank', 'noopener');
+}
+
 // ボタン・キー・アプリのメニュー（Electron の menu:command）からの命令は、すべてここで受ける
 function runCommand(cmd) {
+  switch (cmd) {
+    // 使い方は別の窓で開くので、確かめの窓を出している間・前の版を見ている間も開ける
+    case 'openManual': openManual(); return true;
+  }
   if (isDialogOpen()) return false;
   flushSideField();
   closeScreenMenu();

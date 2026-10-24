@@ -58,6 +58,8 @@
       "material-*.js",
       "materials-main.js",
       "bdm-*.js",
+      "manual/manual.html",
+      "manual/images/*.{png,jpg}",
       "package.json",
       "!**/*.map",
       "!**/node_modules/pdfjs-dist/build/**",

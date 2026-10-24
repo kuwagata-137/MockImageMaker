@@ -442,6 +442,35 @@ test('アプリのメニュー（main.js）の命令は、どれもアプリの�
   cmds.forEach((c) => assert.ok(body.includes(`case '${c}'`) || alignNames.includes(c), `runCommand が ${c} を受ける`));
 });
 
+// 使用説明書（2026-10-24）。窓口と中身のそろい方は test/manual.test.js
+test('ヘルプ > 使い方: デスクトップ版は窓口で使い方の窓を開く（確かめの窓を出している間も）', async (t) => {
+  const st = createMainStorage();
+  t.after(() => st.cleanup());
+  const { app, api } = await boot({ storage: st });
+  t.after(() => app.close());
+  let opened = 0;
+  app.window.menuAPI.openManual = () => { opened++; return Promise.resolve(true); };
+  app.menuCommand('openManual');
+  assert.equal(opened, 1);
+  api.runCommand('newDesign');
+  await waitFor(() => $(app, '.modal'), { label: '新しい画面設計の窓' });
+  app.menuCommand('openManual');
+  assert.equal(opened, 2, '窓を出している間も開ける（使い方は別の窓のため）');
+  click($(app, '.modal [data-dlg="cancel"]'));
+  await waitFor(() => !$(app, '.modal'), { label: '窓が閉じる' });
+  await api.store.adapter.pending;
+  await st.whenIdle();
+});
+
+test('ヘルプ > 使い方: ブラウザで開いたときは manual/manual.html を新しいタブで開く', async (t) => {
+  const { app, api } = await boot();
+  t.after(() => app.close());
+  const calls = [];
+  app.window.open = (...args) => { calls.push(args); return null; };
+  assert.equal(api.runCommand('openManual'), true);
+  assert.deepEqual(calls, [['manual/manual.html', '_blank', 'noopener']]);
+});
+
 test('アプリのメニューから: 部品をすべて選んで揃える・項目の一覧表とつながりの図を開く・取り込む窓を開く', async (t) => {
   const st = createMainStorage();
   t.after(() => st.cleanup());
