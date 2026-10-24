@@ -608,7 +608,6 @@ const CHAPTERS = {
       { box: '.sys-list', n: 3 },
       { box: '.sys-block .sys-head', n: 4 },
       { box: { sel: '.sys-block .card', i: 0 }, n: 5 },
-      { box: '#home-trash .trash-toggle', n: 6, pad: 3 },
     ] });
     await shot('home_card', { clip: { sel: '.sys-block .card', i: 0 }, anno: [{ box: { sel: '.sys-block .card .card-more', i: 0 }, n: 1, at: 'tr', pad: 2 }] });
     // カードの「…」のメニュー
