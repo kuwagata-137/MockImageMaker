@@ -19,7 +19,8 @@ const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
 test('manual.html は、今の原稿と画像から作り直したものと同じ（直したら npm run manual で作り直す）', () => {
   const made = build.buildHtml(build.loadContent(), build.makeShots(build.loadManifest()));
-  assert.ok(made === read('manual/manual.html'), 'manual/manual.html が古い。npm run manual で作り直す');
+  // Windows の作業フォルダでは改行が CRLF になる（core.autocrlf）。作る台本は LF で書くので、そろえて比べる
+  assert.ok(made === read('manual/manual.html').replace(/\r\n/g, '\n'), 'manual/manual.html が古い。npm run manual で作り直す');
 });
 
 test('Word の別冊がある（名前の版はアプリの版と同じ）', () => {
