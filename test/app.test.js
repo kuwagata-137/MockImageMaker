@@ -222,6 +222,30 @@ test('画面の高さ: 8 ドットずつ・機器の 1 画面分より低くな�
   assert.equal(api.store.state.designs[0].screens[0].height, 800, '1 画面分より低くはならない');
 });
 
+test('画面設計を開いたときの倍率: 画面が真ん中の欄に収まるいちばん大きい段（100% まで。q93・q95）', async (t) => {
+  const { app, api } = await boot();
+  t.after(() => app.close());
+  const f = api.fitScreenZoom;
+  assert.equal(f(1280, 800, 800, 626), 0.5, 'PC の画面・窓 1280 の欄（まわり 24 ずつ残す）');
+  assert.equal(f(375, 667, 800, 626), 0.8, 'スマホの画面は高さで決まる');
+  assert.equal(f(300, 200, 1600, 900), 1, '小さい画面でも 100% より大きくしない');
+  assert.equal(f(20000, 20000, 800, 600), 0.1, 'いちばん小さい段で止まる');
+  assert.equal(f(1280, 800, 0, 0), 1, '欄の大きさが分からないときは 100%');
+  // 欄の大きさを決めて開くと、その倍率で開き、左の一覧で画面を切り替えても倍率は変えない
+  const W = app.window.HTMLElement.prototype;
+  const size = (name, v) => Object.defineProperty(W, name, { configurable: true, get() { return this.id === 'canvas-wrap' ? v : 0; } });
+  size('clientWidth', 800);
+  size('clientHeight', 626);
+  t.after(() => { delete W.clientWidth; delete W.clientHeight; });
+  const id = api.actions.createDesign('顧客管理アプリ', 'kintone');
+  api.openDesign(id);
+  assert.equal(api.ui.zoom, 0.5);
+  assert.equal($(app, '#zoom-label').textContent, '50%');
+  api.runCommand('zoomIn');
+  api.openScreen(api.store.state.designs[0].screens[0].id);
+  assert.equal(api.ui.zoom, 0.6, '画面を切り替えても、倍率はそのまま');
+});
+
 test('拡大縮小とモード: ボタン・キー・100% に戻す', async (t) => {
   const { app, api } = await boot();
   t.after(() => app.close());
@@ -467,6 +491,35 @@ test('アプリのメニュー（main.js）の命令は、どれもアプリの�
   const body = html.slice(html.indexOf('function runCommand('), html.indexOf('const ALIGN_COMMANDS = {'));
   const alignNames = html.match(/const ALIGN_COMMANDS = \{([\s\S]*?)\};/)[1].split(',').map((s) => s.split(':')[0].trim());
   cmds.forEach((c) => assert.ok(body.includes(`case '${c}'`) || alignNames.includes(c), `runCommand が ${c} を受ける`));
+});
+
+// 使用説明書（2026-10-24）。窓口と中身のそろい方は test/manual.test.js
+test('ヘルプ > 使い方: デスクトップ版は窓口で使い方の窓を開く（確かめの窓を出している間も）', async (t) => {
+  const st = createMainStorage();
+  t.after(() => st.cleanup());
+  const { app, api } = await boot({ storage: st });
+  t.after(() => app.close());
+  let opened = 0;
+  app.window.menuAPI.openManual = () => { opened++; return Promise.resolve(true); };
+  app.menuCommand('openManual');
+  assert.equal(opened, 1);
+  api.runCommand('newDesign');
+  await waitFor(() => $(app, '.modal'), { label: '新しい画面設計の窓' });
+  app.menuCommand('openManual');
+  assert.equal(opened, 2, '窓を出している間も開ける（使い方は別の窓のため）');
+  click($(app, '.modal [data-dlg="cancel"]'));
+  await waitFor(() => !$(app, '.modal'), { label: '窓が閉じる' });
+  await api.store.adapter.pending;
+  await st.whenIdle();
+});
+
+test('ヘルプ > 使い方: ブラウザで開いたときは manual/manual.html を新しいタブで開く', async (t) => {
+  const { app, api } = await boot();
+  t.after(() => app.close());
+  const calls = [];
+  app.window.open = (...args) => { calls.push(args); return null; };
+  assert.equal(api.runCommand('openManual'), true);
+  assert.deepEqual(calls, [['manual/manual.html', '_blank', 'noopener']]);
 });
 
 test('アプリのメニューから: 部品をすべて選んで揃える・項目の一覧表とつながりの図を開く・取り込む窓を開く', async (t) => {

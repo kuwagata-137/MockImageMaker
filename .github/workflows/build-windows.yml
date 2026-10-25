@@ -8,10 +8,17 @@ on:
   pull_request:
   # Actions の画面から手で動かすこともできる
   workflow_dispatch:
+  # 版のタグ（例 v1.00）を push したら、GitHub の Releases に下書きを作り、インストーラと Word の別冊を載せる（2026-10-24 の q92）
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build-win:
     runs-on: windows-latest
+    permissions:
+      # Releases に下書きを作るため（タグのときだけ使う）
+      contents: write
     env:
       # インストーラに Puppeteer の Chrome は要らない
       PUPPETEER_SKIP_DOWNLOAD: '1'
@@ -56,3 +63,19 @@ jobs:
             echo "- ダウンロード: ${{ steps.upload.outputs.artifact-url }}";
             echo "- またはこのページの下の **Artifacts → MockImageMaker-Windows-installer** から取得";
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create draft release with installer and manual
+        # 版のタグのときだけ。下書きなので、中身を見てから Releases の画面で公開する
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: モックイメージメーカー ${{ github.ref_name }}
+          body: |
+            モックイメージメーカー ${{ github.ref_name }} の Windows 用インストーラと使用説明書（Word）です。
+            - インストーラ（.exe）: 管理者の権限なしで入れられます。署名なしのため、初めて開くと Windows の確かめの画面が出ることがあります。
+            - 使用説明書（.docx）: アプリの「ヘルプ > 使い方」と同じ中身です。
+          files: |
+            dist/*.exe
+            manual/*.docx
+          fail_on_unmatched_files: true

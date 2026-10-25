@@ -45,7 +45,8 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 
 /* ── 最初の画面（画面設計の一覧）─────────────────────── */
 .home-scroll{flex:1;overflow:auto}
-.home{max-width:1120px;margin:0 auto;padding:22px 24px 40px}
+/* 最初の画面の幅の上限。窓の幅 1280（初めて開いたときの大きさ）で、見出しの右の探す欄とボタンが 1 段に収まる幅（q94。2026-10-24） */
+.home{max-width:1280px;margin:0 auto;padding:22px 24px 40px}
 .home.wide{max-width:none}
 .home-head{display:flex;align-items:flex-start;gap:10px}
 .home-head h1{font-size:22px;line-height:34px;font-weight:700;color:#0f172a;white-space:nowrap}
@@ -8175,6 +8176,7 @@ function openDesign(id) {
   Object.assign(ui, { view: 'editor', designId: id, systemId: null, editorFrom: from, sysDesignMenu: null, stepSel: null, screenId: d.screens[0].id, prevScreenId: null, screenMenu: null, zoom: 1, mode: 'select', menuFor: null, sysMenu: null, previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false, foldMenu: null });
   store.clearHistory();
   mountEditor();
+  fitScreenView();
 }
 
 function goHome() {
@@ -10163,6 +10165,32 @@ function zoomByCommand(cmd) {
   zoomAt(wrap.clientWidth / 2, wrap.clientHeight / 2, zoom);
 }
 
+// 画面設計を開いたときの倍率（q93・q95。2026-10-24）。画面（幅 w・高さ h）が、真ん中の欄（availW × availH）から
+// まわりに FIT_MARGIN ずつ残して収まる、ZOOM_STEPS のいちばん大きい倍率。100% より大きくしない。欄の大きさが分からない（0。jsdom など）ときは 1
+const FIT_MARGIN = 24;
+function fitScreenZoom(w, h, availW, availH) {
+  const aw = availW - FIT_MARGIN * 2, ah = availH - FIT_MARGIN * 2;
+  if (!(aw > 0) || !(ah > 0) || !(w > 0) || !(h > 0)) return 1;
+  const max = Math.min(1, aw / w, ah / h);
+  const fit = [...ZOOM_STEPS].reverse().find((z) => z <= max + 1e-9);
+  return fit == null ? ZOOM_STEPS[0] : fit;
+}
+
+// 今の画面を、収まる倍率にして真ん中の欄の真ん中に置く（画面設計を開いたとき。左の一覧で画面を切り替えたときは呼ばない）
+function fitScreenView() {
+  const wrap = $('#canvas-wrap');
+  const s = currentScreen();
+  if (!wrap || wrap.hidden || !s) return;
+  const h = ui.previewHeight == null ? s.height : ui.previewHeight;
+  ui.zoom = fitScreenZoom(s.width, h, wrap.clientWidth, wrap.clientHeight);
+  applyZoom();
+  const el = $('#stage .screen');
+  if (!el) return;
+  const wr = wrap.getBoundingClientRect(), r = el.getBoundingClientRect();
+  wrap.scrollLeft = Math.max(0, wrap.scrollLeft + (r.left + r.width / 2) - (wr.left + wrap.clientWidth / 2));
+  wrap.scrollTop = Math.max(0, wrap.scrollTop + (r.top + r.height / 2) - (wr.top + wrap.clientHeight / 2));
+}
+
 function setMode(mode) {
   ui.mode = mode;
   updateToolbarState();
@@ -10792,6 +10820,7 @@ function openFlowNode(key) {
   if (!d || d.trashedAt || !d.screens.some((s) => s.id === screenId)) return; // 単体で開いた HTML の、ほかの画面設計の画面（この HTML にない）は開かない
   openDesign(designId);
   openScreen(screenId);
+  fitScreenView(); // ほかの画面設計の画面を開いたときは、開いた画面に合わせ直す
 }
 
 function onDragMove(ev) {
@@ -12501,8 +12530,19 @@ function onFileDrop(e) {
 }
 
 // ── 9. 命令（runCommand）──────────────────────────────────────────────────────
+// 使い方（使用説明書 manual/manual.html。アプリのメニューの「ヘルプ > 使い方」）を開く。
+// デスクトップ版は main.js が別の窓で開く（読むだけ。2 回目は同じ窓を前に出す）。ブラウザで開いたときは新しいタブで開く
+function openManual() {
+  if (window.menuAPI && window.menuAPI.openManual) window.menuAPI.openManual();
+  else window.open('manual/manual.html', '_blank', 'noopener');
+}
+
 // ボタン・キー・アプリのメニュー（Electron の menu:command）からの命令は、すべてここで受ける
 function runCommand(cmd) {
+  switch (cmd) {
+    // 使い方は別の窓で開くので、確かめの窓を出している間・前の版を見ている間も開ける
+    case 'openManual': openManual(); return true;
+  }
   if (isDialogOpen()) return false;
   flushSideField();
   closeScreenMenu();
@@ -15693,7 +15733,7 @@ function exposeForTest() {
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, hasFlowPage, minScreenHeight, selectPart, currentScreen,
     currentDesign, currentPart, openScreen, openItemsPanel, selectItem, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
     exportDocument, exportSystemDocument, noteDocRows, systemDocCan, systemCoverHtml, systemShareTag, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport, openSystemDocDialog, docOpts,
-    paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
+    fitScreenZoom, fitScreenView, paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,

@@ -96,4 +96,6 @@ contextBridge.exposeInMainWorld('menuAPI', {
     ipcRenderer.removeAllListeners('menu:command');
     ipcRenderer.on('menu:command', (_e, command) => cb(command));
   },
+  // 使い方（manual/manual.html）の窓を開く。開いていれば前に出す（main.js の manual:open）
+  openManual: () => ipcRenderer.invoke('manual:open'),
 });

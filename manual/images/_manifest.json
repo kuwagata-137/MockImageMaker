@@ -1,0 +1,314 @@
+{
+ "ai_band": {
+  "file": "ai_band.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "ai_cards": {
+  "file": "ai_cards.png",
+  "w": 972,
+  "h": 610,
+  "dsf": 2
+ },
+ "ai_chip": {
+  "file": "ai_chip.png",
+  "w": 1280,
+  "h": 39,
+  "dsf": 2
+ },
+ "ai_connect": {
+  "file": "ai_connect.png",
+  "w": 784,
+  "h": 868,
+  "dsf": 2
+ },
+ "ed_align": {
+  "file": "ed_align.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "ed_callout": {
+  "file": "ed_callout.png",
+  "w": 784,
+  "h": 89,
+  "dsf": 2
+ },
+ "ed_import": {
+  "file": "ed_import.png",
+  "w": 944,
+  "h": 584,
+  "dsf": 2
+ },
+ "ed_items": {
+  "file": "ed_items.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "ed_lookup_parts": {
+  "file": "ed_lookup_parts.png",
+  "w": 344,
+  "h": 177,
+  "dsf": 2
+ },
+ "ed_lookup_set": {
+  "file": "ed_lookup_set.png",
+  "w": 279,
+  "h": 895,
+  "dsf": 2
+ },
+ "ed_overview": {
+  "file": "ed_overview.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "ed_place1": {
+  "file": "ed_place1.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "ed_place2": {
+  "file": "ed_place2.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "ed_ptable": {
+  "file": "ed_ptable.png",
+  "w": 464,
+  "h": 619,
+  "dsf": 2
+ },
+ "ed_settings": {
+  "file": "ed_settings.png",
+  "w": 279,
+  "h": 783,
+  "dsf": 2
+ },
+ "ed_table": {
+  "file": "ed_table.png",
+  "w": 279,
+  "h": 826,
+  "dsf": 2
+ },
+ "ex_button": {
+  "file": "ex_button.png",
+  "w": 200,
+  "h": 120,
+  "dsf": 2
+ },
+ "ex_html": {
+  "file": "ex_html.png",
+  "w": 664,
+  "h": 428,
+  "dsf": 2
+ },
+ "ex_import": {
+  "file": "ex_import.png",
+  "w": 584,
+  "h": 454,
+  "dsf": 2
+ },
+ "ex_pdf": {
+  "file": "ex_pdf.png",
+  "w": 664,
+  "h": 608,
+  "dsf": 2
+ },
+ "ex_png": {
+  "file": "ex_png.png",
+  "w": 664,
+  "h": 526,
+  "dsf": 2
+ },
+ "home_card": {
+  "file": "home_card.png",
+  "w": 490,
+  "h": 274,
+  "dsf": 2
+ },
+ "home_cardmenu": {
+  "file": "home_cardmenu.png",
+  "w": 477,
+  "h": 266,
+  "dsf": 2
+ },
+ "home_map": {
+  "file": "home_map.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "home_overview": {
+  "file": "home_overview.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "home_trash": {
+  "file": "home_trash.png",
+  "w": 1252,
+  "h": 140,
+  "dsf": 2
+ },
+ "new_step1": {
+  "file": "new_step1.png",
+  "w": 446,
+  "h": 67,
+  "dsf": 2
+ },
+ "new_step2": {
+  "file": "new_step2.png",
+  "w": 464,
+  "h": 350,
+  "dsf": 2
+ },
+ "new_step3": {
+  "file": "new_step3.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "rv_add": {
+  "file": "rv_add.png",
+  "w": 1104,
+  "h": 452,
+  "dsf": 2
+ },
+ "rv_diffpage": {
+  "file": "rv_diffpage.png",
+  "w": 1122,
+  "h": 792,
+  "dsf": 2
+ },
+ "rv_list": {
+  "file": "rv_list.png",
+  "w": 1204,
+  "h": 288,
+  "dsf": 2
+ },
+ "rv_menu": {
+  "file": "rv_menu.png",
+  "w": 400,
+  "h": 193,
+  "dsf": 2
+ },
+ "rv_view": {
+  "file": "rv_view.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "sc_add": {
+  "file": "sc_add.png",
+  "w": 944,
+  "h": 564,
+  "dsf": 2
+ },
+ "sc_flow": {
+  "file": "sc_flow.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "sc_menu": {
+  "file": "sc_menu.png",
+  "w": 321,
+  "h": 564,
+  "dsf": 2
+ },
+ "sc_process": {
+  "file": "sc_process.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "sys_doc": {
+  "file": "sys_doc.png",
+  "w": 704,
+  "h": 386,
+  "dsf": 2
+ },
+ "sys_exportmenu": {
+  "file": "sys_exportmenu.png",
+  "w": 343,
+  "h": 162,
+  "dsf": 2
+ },
+ "sys_history": {
+  "file": "sys_history.png",
+  "w": 772,
+  "h": 215,
+  "dsf": 2
+ },
+ "sys_insert": {
+  "file": "sys_insert.png",
+  "w": 280,
+  "h": 163,
+  "dsf": 2
+ },
+ "sys_materials": {
+  "file": "sys_materials.png",
+  "w": 772,
+  "h": 416,
+  "dsf": 2
+ },
+ "sys_mpd": {
+  "file": "sys_mpd.png",
+  "w": 664,
+  "h": 244,
+  "dsf": 2
+ },
+ "sys_new": {
+  "file": "sys_new.png",
+  "w": 464,
+  "h": 356,
+  "dsf": 2
+ },
+ "sys_notes": {
+  "file": "sys_notes.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "sys_overview": {
+  "file": "sys_overview.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "sys_roles": {
+  "file": "sys_roles.png",
+  "w": 772,
+  "h": 214,
+  "dsf": 2
+ },
+ "sys_swim": {
+  "file": "sys_swim.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "vd_html": {
+  "file": "vd_html.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "vd_pdf_cover": {
+  "file": "vd_pdf_cover.png",
+  "w": 1122,
+  "h": 792,
+  "dsf": 2
+ },
+ "vd_pdf_screen": {
+  "file": "vd_pdf_screen.png",
+  "w": 1122,
+  "h": 792,
+  "dsf": 2
+ }
+}

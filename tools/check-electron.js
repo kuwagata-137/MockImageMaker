@@ -1,5 +1,5 @@
 // 使い方: node tools/check-electron.js
-// Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、次の 1〜12 を確かめる。
+// Electron のアプリを窓を出さずに（MIM_HEADLESS=1）起動し、次の 1〜13 を確かめる。
 //  1. 画面設計を作って名前を変え、部品の箱から部品を 1 つ（データベースの項目も 1 つ増える）と吹き出しを 1 つ置き、
 //     つながりの図の箱をドラッグで動かし、ひな形から画面を 2 つ足して「…」のメニューで並べ替え、
 //     窓を閉じたあと <userData>/data/designs.json に残っている
@@ -35,6 +35,9 @@
 //     （読み取ったこと・メモ・まだ決まっていないことの文と答え・決めたことの文と理由）に文字を打ち、欄を離れないまま閉じても、その文字が designs.json に残る。
 //     閉じ方は窓の × とファイル > 終了（3 と同じ作り）で、6 つの欄 × 2 つの閉じ方を 12 回。起動し直すと、打った文字が 6 つの欄に全部出る（保存先は .devdata/check-userData-notes）
 //     node tools/check-electron.js --only=notes で、この 12 だけを動かす
+// 13. 使い方の窓（2026-10-24。tools/check-electron-manual.js）。アプリのメニューの「ヘルプ > 使い方」で使い方の窓（manual/manual.html）が開き、
+//     題名と目次が出て、本文の画像がすべて読める。もう一度開いても窓は 1 つのまま。アプリの窓を閉じると使い方の窓も閉じて、アプリが終わる
+//     （保存先は .devdata/check-userData-manual）。node tools/check-electron.js --only=manual で、この 13 だけを動かす
 // 窓の × と終了は、メインプロセスを --inspect で起動し、Node の inspector から呼んで再現する。
 // 保存先は作業フォルダの .devdata/check-userData（毎回消してから始める。npm start のデータとは別）。
 'use strict';
@@ -52,6 +55,7 @@ const USER_DATA_V1 = path.join(ROOT, '.devdata', 'check-userData-v1');
 const STATE_FILE_V1 = path.join(USER_DATA_V1, 'data', 'designs.json');
 const USER_DATA_MAT = path.join(ROOT, '.devdata', 'check-userData-mat'); // 11（資料の置き場）
 const USER_DATA_NOTES = path.join(ROOT, '.devdata', 'check-userData-notes'); // 12（設計ノートの打ちかけの文字）
+const USER_DATA_MANUAL = path.join(ROOT, '.devdata', 'check-userData-manual'); // 13（使い方の窓）
 const USER_DATA_V2 = path.join(ROOT, '.devdata', 'check-userData-v2');
 const STATE_FILE_V2 = path.join(USER_DATA_V2, 'data', 'designs.json');
 const V2_STATE = require('../test/fixtures/v2-state.json').state; // 版 2 のアプリで作った見本（架空の受注管理・経費精算・出張申請）
@@ -594,6 +598,8 @@ async function checkSystems() {
 const checkMaterialsScene = () => require('./check-electron-materials')({ launch, connect, appPage, enableTestHooks, withTimeout, sleep, PORT, USER_DATA_MAT });
 // 12. 設計ノートの打ちかけの文字（check-electron-notes.js。窓の × とファイル > 終了で閉じるので、メインプロセスの inspector の道具も渡す）
 const checkNotesScene = () => require('./check-electron-notes')({ launch, connect, appPage, enableTestHooks, withTimeout, sleep, PORT, MAIN_PORT, evalInMain, MAIN_CLOSE, USER_DATA_NOTES });
+// 13. 使い方の窓（check-electron-manual.js。メニューを押すのと、アプリの窓を閉じるのに、メインプロセスの inspector の道具も渡す）
+const checkManualScene = () => require('./check-electron-manual')({ launch, connect, appPage, enableTestHooks, withTimeout, sleep, PORT, MAIN_PORT, evalInMain, USER_DATA_MANUAL });
 
 (async () => {
   if (process.argv.includes('--only=materials')) {
@@ -605,6 +611,11 @@ const checkNotesScene = () => require('./check-electron-notes')({ launch, connec
     const notesOk = await checkNotesScene();
     console.log(notesOk ? 'OK' : 'NG');
     process.exit(notesOk ? 0 : 1);
+  }
+  if (process.argv.includes('--only=manual')) {
+    const manualOk = await checkManualScene();
+    console.log(manualOk ? 'OK' : 'NG');
+    process.exit(manualOk ? 0 : 1);
   }
   fs.rmSync(USER_DATA, { recursive: true, force: true });
   const r = await firstRun();
@@ -663,7 +674,8 @@ const checkNotesScene = () => require('./check-electron-notes')({ launch, connec
   const sysOk = await checkSystems();
   const matOk = await checkMaterialsScene();
   const notesOk = await checkNotesScene();
-  const ok = firstOk && typedOk && againOk && migrateOk && v2Ok && sysOk && matOk && notesOk;
+  const manualOk = await checkManualScene();
+  const ok = firstOk && typedOk && againOk && migrateOk && v2Ok && sysOk && matOk && notesOk && manualOk;
   console.log(ok ? 'OK' : 'NG');
   process.exit(ok ? 0 : 1);
 })().catch((e) => {

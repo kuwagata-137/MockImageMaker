@@ -115,3 +115,18 @@ test('画像の部品が動かないとき、画像の資料と、文字のな�
     assert.equal(r.error.message, '画像の部品が、このパソコンでは動きません。画像の資料と、PDF の文字のないページは読めません（文字・Word・Excel・MPD の資料と、PDF の文字は読めます）。', name);
   }
 });
+
+// 2026-10-24 にクラウドのセッションが同じ直しを別に作ったときのテスト（test/material-canvas-lazy.test.js）を、取り込むときにこのファイルへ移した
+test('読む部品を読み込んだだけでは、画像の部品を読まない。上限に収まる PNG は、描かずにそのまま渡す', async () => {
+  const bytes = await made;
+  for (const name of ['material-image.js', 'material-pdf.js']) delete require.cache[require.resolve(path.join(ROOT, name))];
+  const askedBefore = canvasAsked;
+  const image = require('../material-image');
+  const pdf = require('../material-pdf');
+  assert.equal(typeof pdf.loadPdfBlocks, 'function');
+  assert.deepEqual(image.pngSize(bytes.png), { width: 40, height: 30 });
+  const small = await image.fitPngToBase64Limit(bytes.png);
+  assert.equal(small.png, bytes.png, '上限に収まる PNG は、そのまま返す');
+  assert.deepEqual([small.width, small.height], [40, 30]);
+  assert.equal(canvasAsked, askedBefore, '画像の部品を読もうともしない');
+});
