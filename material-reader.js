@@ -10,7 +10,7 @@
 //  - read は 1 つずつ実行する（待ち行列）。同時に頼まれても、前の読みが終わってから次を始める。
 //    別の資料の読み込みが控えを押し出して、返事を組んでいる途中の PDF を閉じてしまうのを防ぐため
 //  - Electron に触らない。bdm は bdmBlocks（bdm-swimlane.js の関数）を引数で受け取って呼ぶ
-// 失敗は MaterialError（code: unsupported・file_missing・not_file・old_format・read_failed・bad_cursor・unavailable〔PDF を読む部品の cmaps・standard_fonts がない〕）。文にパスを入れない。
+// 失敗は MaterialError（code: unsupported・file_missing・not_file・old_format・read_failed・bad_cursor・unavailable〔PDF を読む部品の cmaps・standard_fonts がない・画像を描く @napi-rs/canvas が読めない〕）。文にパスを入れない。
 // read_failed には、元の例外を cause に残す（調べるため。ページには code と message だけが渡る）。
 'use strict';
 
