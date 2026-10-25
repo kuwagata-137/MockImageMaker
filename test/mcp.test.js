@@ -15,7 +15,7 @@ const P = require('../automation-protocol');
 const { createAutomationServer } = require('../automation');
 const { TOOLS } = require('../mcp-tools');
 const SC = require('../mcp-schemas');
-const { bootApp } = require('./harness');
+const { bootApp, HTML_NAME } = require('./harness');
 
 const REPO = path.join(__dirname, '..');
 const ENTRY = path.join(REPO, 'mcp-server.js');
@@ -74,7 +74,7 @@ test('道具は 35 個（第 9 段階の前半でシステムの 7 個、後半�
     assert.match(t.name, /^[a-z_]+$/, t.name);
     assert.ok(isJa(t.description) && isJa(t.title), `${t.name} の説明が日本語でない`);
   }
-  const html = fs.readFileSync(path.join(REPO, 'mock_v1.00.html'), 'utf8');
+  const html = fs.readFileSync(path.join(REPO, HTML_NAME), 'utf8');
   const block = html.match(/const AI_TOOLS = \{([\s\S]*?)\n\};/)[1];
   const page = [...block.matchAll(/^\s+([a-z_]+): \{ write/mg)].map((m) => m[1]);
   // 入口だけにあるのは read_guide（入口の中で返す）だけ
@@ -99,7 +99,7 @@ test('入口の選べる値（機器・表の中身・吹き出しの色と線�
   assert.deepEqual(JSON.parse(JSON.stringify(T.NOTE_STAGES)), SC.NOTE_STAGES);
   assert.deepEqual(JSON.parse(JSON.stringify(T.NOTE_STATES)), SC.NOTE_STATES);
   app.close();
-  const html = fs.readFileSync(path.join(REPO, 'mock_v1.00.html'), 'utf8');
+  const html = fs.readFileSync(path.join(REPO, HTML_NAME), 'utf8');
   const align = JSON.parse(html.match(/const AI_ALIGN = (\[[^\]]*\]);/)[1].replace(/'/g, '"'));
   assert.deepEqual(align, SC.ALIGN_HOW);
 });
