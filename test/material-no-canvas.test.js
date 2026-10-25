@@ -1,6 +1,6 @@
 'use strict';
 // 画像の部品（@napi-rs/canvas の .node）が動かないパソコンでも、文字・Word・Excel・MPD の資料と PDF の文字は読めることのテスト
-// （デバッグとリリースの直し②。q86。画像 screenshots/q86_4）。
+// （デバッグとリリースの直し②。q89。画像 screenshots/q89_4）。
 // パソコンの守りの設定などが .node のファイルを止めた形を、require('@napi-rs/canvas') が例外を投げるようにして作る。
 // 見本は、止める前に test/material-samples.js（画像の部品を使う）で作る。node --test はファイルごとに別のプロセスで動くので、止めた形はこのファイルの中だけに効く。
 // 見本のファイルは .devdata/test-tmp/material-no-canvas/ に作る（Git に入れない）。片付けは unlinkSync と rmdirSync だけで行う。

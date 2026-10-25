@@ -6808,7 +6808,7 @@ function sysMaterialRowHtml(m) {
 // 待っている間の、押したボタンの文字（何を待っているかごと）
 const MATERIAL_WAIT_LABELS = { read: '読んでいます…', swim: '読んでいます…', export: '出力しています…' };
 // 表の 1 行の操作の欄。資料の窓口の返事を待っている資料（materialsWaiting）の行は、ボタンを全部押せなくし、押したボタンを「読んでいます…」などにして
-// 回る印を付ける（画像 q86_1。デバッグとリリースの直し①）。表は丸ごと描き直されることがあるので、印はここで待っている状態から描く
+// 回る印を付ける（画像 q89_1。デバッグとリリースの直し①）。表は丸ごと描き直されることがあるので、印はここで待っている状態から描く
 function sysMaterialOpsHtml(m) {
   const id = esc(m.id);
   const name = esc(m.name);
@@ -6852,7 +6852,7 @@ async function askMaterialsApi(call, valid, fallback) {
   toast(materialFailMessage(res) || fallback);
   return null;
 }
-// ── 資料の窓口の返事を待つ間（デバッグとリリースの直し①。q86。画像 q86_1〜3）──
+// ── 資料の窓口の返事を待つ間（デバッグとリリースの直し①。q89・q96。画像 q89_1〜3）──
 // 資料の窓口の返事を待っている資料（資料の id → { action: 'read'〔読む〕・'swim'〔スイムレーン図にする〕・'export'〔MPD に出力〕, clock }）。
 // 待つ間は、同じ資料の「読む」「スイムレーン図にする」「MPD に出力…」の 2 回目の頼みを重ねず、表の行のボタンを押せなくして印を付ける（sysMaterialOpsHtml）
 const materialsWaiting = new Map();
@@ -11255,7 +11255,7 @@ function flowPageBody(d, state, aw, ah, idTag = '') {
 // 画面と吹き出しを囲む範囲で切り取り、一覧表をその外側に 32 ドット空けて置く（右なら上の端を画面の上の端に、下なら左の端を画面の左の端にそろえる）。
 // 戻り値 { html, cw, ch }（縮める前の大きさ）。key は矢印の印の id の頭（ページごとに変える。同じ id が編集の画面にもあると矢印が消えるため）
 // diff（{ info: designDiff の screens の 1 つ, label }）を渡すと、部品・吹き出しの札と、一覧表の札・削除した部品を入れる（第 6 段階）
-// table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）。tableWidth は一覧表の幅（PDF の画面のページ。q92）
+// table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）。tableWidth は一覧表の幅（PDF の画面のページ。q99）
 function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true, tableWidth = null } = {}) {
   const Z = CALLOUT_ZONE;
   const zoneW = s.width + Z * 2;
@@ -11291,7 +11291,7 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
   const ch = table ? Math.max(cropH, ty + th) : cropH;
   return { cw, ch, html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
 }
-// PDF の画面のページで、右に置く部品の設定の一覧表の幅の候補（q92）。表が縦に長くて画面ごと小さく縮むときは、表を広げて低くし、
+// PDF の画面のページで、右に置く部品の設定の一覧表の幅の候補（q99）。表が縦に長くて画面ごと小さく縮むときは、表を広げて低くし、
 // 画面をいちばん大きく出せる幅を選ぶ（倍率がほとんど同じなら狭い方）。表を下に置く画面と、測れないときは今の幅のまま。PNG は縮めないので広げない
 const PRINT_TABLE_WIDTHS = [TABLE_W, 720, 880, 1040, 1200, 1360];
 function printScreenComposite(d, s, key, measured, diff, aw, ah) {

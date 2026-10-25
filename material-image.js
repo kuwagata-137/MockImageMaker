@@ -5,7 +5,7 @@
 //  - pngSize: PNG の頭から幅と高さを読む（material-reader.js が、描き終えた PNG の大きさを知るために使う）
 //  - loadCanvas: 画像の部品（@napi-rs/canvas）を、画像を描くときに初めて読む（material-pdf.js も使う）。読めないときは、何が使えないかを書いた
 //    MaterialError('unavailable')。先頭で読まないのは、パソコンの守りの設定などが .node のファイルを止めたとき、画像の部品を使わない
-//    文字・Word・Excel・MPD の資料まで読めなくなるのを防ぐため（デバッグとリリースの直し②。q86）
+//    文字・Word・Excel・MPD の資料まで読めなくなるのを防ぐため（デバッグとリリースの直し②。q89）
 //  - 画素が 1 億を超える画像は、まるごと読み込む前に、頭（image-size で読む）の幅と高さで断る（MaterialError('too_large')。
 //    読み込むと幅×高さ×4 バイトのメモリを使い、main が止まるおそれがあった。デバッグとリリースの見直し③-7）
 //  - Electron に触らない。@napi-rs/canvas と image-size だけで動く（node だけでテストできる）

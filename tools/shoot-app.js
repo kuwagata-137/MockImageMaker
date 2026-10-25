@@ -18,7 +18,7 @@ const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
 // ai の場面（94〜100）は tools/shoot-app-ai.js、systems の場面（107〜133。システムとスイムレーン図）は tools/shoot-app-systems.js にある
 // toolbar の場面（134〜137）は、編集の画面のメニューバーを窓の幅ごとに撮る（q73・q74）
 // materials の場面（138〜149。システムの画面の「資料」の入口。第 9 段階の後半・画像 q67。164〜167 は MPD に出力・画像 q82。
-// 168〜170 は返事を待つ間の印と時間切れ・画像 q86）は tools/shoot-app-materials.js にある
+// 168〜170 は返事を待つ間の印と時間切れ・画像 q89）は tools/shoot-app-materials.js にある
 // notes の場面（150〜157。システムの画面の「設計ノート」の入口。第 10 段階の前半・画像 k75）は tools/shoot-app-notes.js にある
 // doc の場面（158〜163。システムの説明書〔PDF〕の窓と、表紙・スイムレーン図・設計ノートのページ。第 10 段階の後半・画像 q80・q81）は tools/shoot-app-doc.js にある
 const ARGS = process.argv.slice(2);
