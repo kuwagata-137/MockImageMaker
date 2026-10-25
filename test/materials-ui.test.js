@@ -703,14 +703,14 @@ test('待つ間の印: 「スイムレーン図にする」も「読んでいま
   assert.equal(app.document.activeElement, el);
 });
 
-test('時間切れ: 待っても返事が来なければ（2 分。テストでは短くする）、待つのをやめて知らせ、ボタンを戻す。遅れて届いた返事は捨て、もう一度押せる', async (t) => {
+test('時間切れ: 待っても返事が来なければ（60 秒。テストでは短くする）、待つのをやめて知らせ、ボタンを戻す。遅れて届いた返事は捨て、もう一度押せる', async (t) => {
   const { api, $, rows, btn, calls, materials, toast } = await boot(t);
   api.setMaterialWaitMs(30);
   const r = held();
   materials.set('read', r.fn);
   click(btn('sys-mat-read', 'm-pdf'));
   await waitFor(() => toast().includes('待つのをやめました'), { label: '時間切れのお知らせ' });
-  assert.equal(toast(), '「旅費規程.pdf」を 2 分待っても読み終わらなかったため、待つのをやめました。もう一度「読む」を押してください。何度も止まるときは、アプリを起動し直してください。');
+  assert.equal(toast(), '「旅費規程.pdf」を 60 秒待っても読み終わらなかったため、待つのをやめました。もう一度「読む」を押してください。何度も止まるときは、アプリを起動し直してください。');
   assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読む', '削除']);
   r.resolve({ ok: true, result: plain(PART1) });
   await tick();
@@ -723,7 +723,7 @@ test('時間切れ: 待っても返事が来なければ（2 分。テストで�
   click($('[data-dlg="cancel"]'));
   materials.set('bdmPlan', held().fn);
   click(btn('sys-mat-swim', 'm-bdm'));
-  await waitFor(() => toast().startsWith('「出張申請の流れ.html」を 2 分'), { label: 'スイムレーン図にするの時間切れ' });
+  await waitFor(() => toast().startsWith('「出張申請の流れ.html」を 60 秒'), { label: 'スイムレーン図にするの時間切れ' });
   assert.match(toast(), /もう一度「スイムレーン図にする」を押してください。/);
   assert.equal(btn('sys-mat-swim', 'm-bdm').disabled, false);
 });
@@ -740,7 +740,7 @@ test('時間切れ: 読むの窓の「続きを読む」も、待っても続き
   click(more);
   assert.equal(more.disabled, true);
   await waitFor(() => toast().includes('待つのをやめました'), { label: 'お知らせ' });
-  assert.equal(toast(), '「旅費規程.pdf」の続きを 2 分待っても読み終わらなかったため、待つのをやめました。もう一度「続きを読む」を押してください。何度も止まるときは、アプリを起動し直してください。');
+  assert.equal(toast(), '「旅費規程.pdf」の続きを 60 秒待っても読み終わらなかったため、待つのをやめました。もう一度「続きを読む」を押してください。何度も止まるときは、アプリを起動し直してください。');
   assert.equal(more.disabled, false);
   assert.equal($('.rd-foot').textContent, '1〜3 / 8 の部分', '中身は前の部分のまま');
   r.resolve({ ok: true, result: plain(PART2) });

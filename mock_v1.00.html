@@ -6856,9 +6856,10 @@ async function askMaterialsApi(call, valid, fallback) {
 // 資料の窓口の返事を待っている資料（資料の id → { action: 'read'〔読む〕・'swim'〔スイムレーン図にする〕・'export'〔MPD に出力〕, clock }）。
 // 待つ間は、同じ資料の「読む」「スイムレーン図にする」「MPD に出力…」の 2 回目の頼みを重ねず、表の行のボタンを押せなくして印を付ける（sysMaterialOpsHtml）
 const materialsWaiting = new Map();
-// 返事を待つ長さ（2 分）。読む部品が途中で止まっても、ボタンが押せないままにならないように、これを過ぎたら待つのをやめる。テストからは短くできる（setMaterialWaitMs）
-const MATERIAL_WAIT_MINUTES = 2;
-let materialWaitMs = MATERIAL_WAIT_MINUTES * 60 * 1000;
+// 返事を待つ長さ（60 秒。2026-10-24 の q96。2026-10-26 に「続きを読む」「MPD に出力…」も 60 秒にそろえた）。読む部品が途中で止まっても、
+// ボタンが押せないままにならないように、これを過ぎたら待つのをやめる。テストからは短くできる（setMaterialWaitMs）
+const MATERIAL_WAIT_SECONDS = 60;
+let materialWaitMs = MATERIAL_WAIT_SECONDS * 1000;
 // 待つのをやめたときの返事の代わり（askMaterialsApi は黙って null にする）
 const MATERIAL_TIMED_OUT = Object.freeze({ timedOut: true });
 // 待つ時間を数える時計。restart で初めから数え直し、stop で止める（保存の窓が開いている間は止める）。数え終わると expired が MATERIAL_TIMED_OUT になる
@@ -6876,11 +6877,11 @@ function materialTimer() {
 function materialTimeoutText(name, action) {
   const tail = '何度も止まるときは、アプリを起動し直してください。';
   if (action === 'export') {
-    return `「${name}」を元にした MPD への出力が ${MATERIAL_WAIT_MINUTES} 分たっても終わらなかったため、待つのをやめました。出力したファイルができているかを確かめてから、もう一度「MPD に出力…」を押してください。${tail}`;
+    return `「${name}」を元にした MPD への出力が ${MATERIAL_WAIT_SECONDS} 秒たっても終わらなかったため、待つのをやめました。出力したファイルができているかを確かめてから、もう一度「MPD に出力…」を押してください。${tail}`;
   }
-  if (action === 'more') return `「${name}」の続きを ${MATERIAL_WAIT_MINUTES} 分待っても読み終わらなかったため、待つのをやめました。もう一度「続きを読む」を押してください。${tail}`;
+  if (action === 'more') return `「${name}」の続きを ${MATERIAL_WAIT_SECONDS} 秒待っても読み終わらなかったため、待つのをやめました。もう一度「続きを読む」を押してください。${tail}`;
   const again = action === 'swim' ? '「スイムレーン図にする」' : '「読む」';
-  return `「${name}」を ${MATERIAL_WAIT_MINUTES} 分待っても読み終わらなかったため、待つのをやめました。もう一度${again}を押してください。${tail}`;
+  return `「${name}」を ${MATERIAL_WAIT_SECONDS} 秒待っても読み終わらなかったため、待つのをやめました。もう一度${again}を押してください。${tail}`;
 }
 // call()（資料の窓口の頼み）の返事を、clock が数え終わるまで待つ。来なければお知らせを出して MATERIAL_TIMED_OUT を返す（遅れて届いた返事は捨てる）
 async function waitMaterialAnswer(name, action, call, clock = materialTimer()) {
@@ -6982,7 +6983,7 @@ function deleteMaterialRow(y, matId) {
 // ボタンは左に「続きを読む」（続きがあるときだけ。同じ窓の中身を次の部分に入れ替える）、右に「閉じる」。読めないときはお知らせ。
 // 見るだけの窓なので、開いている間も AI の書く頼みは止めない（aiPassive。「AI とつなぐ」の窓と同じ）。最初の部分を待つ間は、同じ資料の 2 回目の頼みを
 // 重ねない（materialsWaiting）。待つ間にこのシステムの画面から移っていたら、窓は開かない（スイムレーン図にするとそろえる）。
-// 最初の部分も「続きを読む」の部分も、2 分待っても届かなければ待つのをやめて知らせる（waitMaterialAnswer）
+// 最初の部分も「続きを読む」の部分も、60 秒待っても届かなければ待つのをやめて知らせる（waitMaterialAnswer）
 async function openMaterialReader(sysId, matId) {
   const api = window.materialsAPI;
   const y = findSystem(store.state, sysId);

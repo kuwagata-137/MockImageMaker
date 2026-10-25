@@ -149,7 +149,7 @@ async function shootMpdExport(ctx) {
 }
 
 // 168〜170: 資料の窓口の返事を待つ間の印と時間切れ（デバッグとリリースの直し①。画像 q86）。窓口の身代わりの read・bdmExport を、返事を返さない形に
-// 差し替えて撮る。時間切れは待つ長さを短くして撮る（お知らせの文は 2 分のまま）。押したボタンの文字が言葉の途中で折り返さないか（ほかのボタンと同じ高さか）も確かめる
+// 差し替えて撮る。時間切れは待つ長さを短くして撮る（お知らせの文は 60 秒のまま）。押したボタンの文字が言葉の途中で折り返さないか（ほかのボタンと同じ高さか）も確かめる
 async function shootWaiting(ctx) {
   const { shot } = ctx;
   const never = (name) => (pg) => pg.evaluate((n) => { window.materialsAPI[n] = () => new Promise(() => {}); }, name);
@@ -173,7 +173,7 @@ async function shootWaiting(ctx) {
   await late.waitForFunction(() => /待つのをやめました/.test(document.querySelector('#toast').textContent) && !document.querySelector('#toast').hidden, { timeout: 4000 });
   const back = await opsOf(late, ID.pdf);
   need(back.join() === '読む,消す', `時間切れの後にボタンが戻らない: ${back.join()}`);
-  await shot(late, '169_資料_返事が 2 分来ないとき（待つのをやめてお知らせ。ボタンは押せる形に戻る）');
+  await shot(late, '169_資料_返事が 60 秒来ないとき（待つのをやめてお知らせ。ボタンは押せる形に戻る）');
   await late.close();
   const out = await openPage(ctx, { width: 1280, height: 800 });
   await never('bdmExport')(out);
