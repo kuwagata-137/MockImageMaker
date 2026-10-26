@@ -3,7 +3,7 @@
 // 1 字も変わらないことを確かめる。見本は、直す前のコードで exportDocument のページ（pages。APP_STYLE が入る html は比べない）の sha256 を取った値。
 // 見本の画面設計は架空の業務（顧客管理・住所の共通項目・取引先マスタ・受注管理）で、つながり・ステータスの操作・移る先・違いの印の版を持つ。
 // 日時の表示（最終更新・版の日付）は時差で変わるので、時差を日本に決めてから起動する。
-// 出力のページの見た目をわざと変えたときは、この値を書き直す（変えた理由を開発記録に書く）。
+// 出力のページの見た目をわざと変えたときは、この値を書き直す（変えた理由を開発記録に書く）。表紙の下の版の番号は、比べる前に v1.00 に置き換える（v1.01 から）。
 process.env.TZ = 'Asia/Tokyo';
 
 const test = require('node:test');
@@ -146,7 +146,9 @@ test('今の画面設計の PDF のページは、第 10 段階の後半の直�
   for (const [label, id, opts] of CASES) {
     const d = api.store.state.designs.find((x) => x.id === id);
     const doc = api.exportDocument(d, api.store.state, opts, EXPORTED_AT);
-    got[label] = { total: doc.total, sha: sha(doc.pages.join('\n')) };
+    // 表紙の下の「モックイメージメーカー v<版> で出力」は版を上げるたびに変わるので、見本を取ったときの版（v1.00）に置き換えてから比べる
+    const pages = doc.pages.join('\n').split(`モックイメージメーカー v${api.APP_VERSION} で出力`).join('モックイメージメーカー v1.00 で出力');
+    got[label] = { total: doc.total, sha: sha(pages) };
   }
   assert.deepEqual(got, GOLDEN, '見本の値: ' + JSON.stringify(got, null, 2));
 });

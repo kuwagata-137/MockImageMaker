@@ -60,7 +60,14 @@ async function launch() {
     const browser = await pp.launch(opts);
     return {
       browser, kind: 'puppeteer',
-      newPage: async () => { const p = await browser.newPage(); await p.setViewport({ width: VW, height: VH, deviceScaleFactor: DSF }); return p; },
+      newPage: async () => {
+        const p = await browser.newPage();
+        await p.setViewport({ width: VW, height: VH, deviceScaleFactor: DSF });
+        // Windows のコントラストの表示（ハイコントラスト）のとき、Chrome はページの色を置き換える（白が暗い灰色に撮れた。2026-10-26）。置き換えを止めて撮る
+        const cdp = await p.createCDPSession();
+        await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'forced-colors', value: 'none' }] });
+        return p;
+      },
       setSize: (w, h) => page.setViewport({ width: w, height: h, deviceScaleFactor: DSF }),
       size: () => page.viewport(),
       initScript: (fn, arg) => page.evaluateOnNewDocument(fn, arg),
@@ -70,7 +77,7 @@ async function launch() {
   const { chromium } = require('playwright');
   // 日付の欄の形（2026/11/02）は Chromium が環境変数 LANG で決める（locale の指定だけでは 11/02/2026 のまま）
   const browser = await chromium.launch({ env: { ...process.env, LANG: 'ja_JP.UTF-8', LC_ALL: 'ja_JP.UTF-8', LANGUAGE: 'ja' } });
-  const ctx = await browser.newContext({ viewport: { width: VW, height: VH }, deviceScaleFactor: DSF, locale: 'ja-JP' });
+  const ctx = await browser.newContext({ viewport: { width: VW, height: VH }, deviceScaleFactor: DSF, locale: 'ja-JP', forcedColors: 'none' });
   return {
     browser, kind: 'playwright',
     newPage: () => ctx.newPage(),
@@ -349,6 +356,7 @@ async function partId(design, screen, label) {
 }
 
 // 見本を組む。システム 1 つ（役割 3・画面設計 3・スイムレーン・資料・設計ノート）と、システムに入っていない画面設計 2 つ
+// 画面設計は、作る先が kintone・Salesforce でも標準の見た目で作る（使用説明書の画像の多くは標準の見た目で説明する。ほかの見た目は 3.10 の looks で撮る）
 async function sampleAll({ notes = true, materials = true } = {}) {
   await call('create_system', { name: SYS, description: '出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム。紙の申請書と押印をやめ、申請から精算までの進み具合を、誰でも見られるようにする。' });
   await call('update_system', { system: SYS, ops: [
@@ -356,7 +364,7 @@ async function sampleAll({ notes = true, materials = true } = {}) {
   ] });
 
   // 社員マスタ（出張申請のルックアップ元）
-  await call('create_design', { name: '社員マスタ', target: 'kintone', description: '社員の番号・氏名・所属', system: SYS });
+  await call('create_design', { name: '社員マスタ', target: 'kintone', look: 'standard', description: '社員の番号・氏名・所属', system: SYS });
   await call('edit_items', { design: '社員マスタ', ops: [
     { op: 'add', name: '社員番号', type: 'text1', required: true }, { op: 'add', name: '氏名', type: 'text1', required: true },
     { op: 'add', name: '所属', type: 'text1' }, { op: 'add', name: '役職', type: 'dropdown', props: { options: ['一般', '主任', '課長', '部長'] } },
@@ -366,7 +374,7 @@ async function sampleAll({ notes = true, materials = true } = {}) {
   await call('edit_screen', { design: '社員マスタ', ops: [{ op: 'delete', screen: '画面 1' }] });
 
   // 出張申請
-  await call('create_design', { name: '出張申請', target: 'kintone', description: '出張の事前申請と、上長の承認', system: SYS });
+  await call('create_design', { name: '出張申請', target: 'kintone', look: 'standard', description: '出張の事前申請と、上長の承認', system: SYS });
   await call('edit_items', { design: '出張申請', ops: [
     { op: 'add', name: '申請者', type: 'user', required: true },
     { op: 'add', name: '社員番号', type: 'text1', required: true },
@@ -394,7 +402,7 @@ async function sampleAll({ notes = true, materials = true } = {}) {
   await call('add_screen', { design: '出張申請', template: 'steps', name: '承認' });
 
   // 旅費精算（出張申請から項目を取り込む）
-  await call('create_design', { name: '旅費精算', target: 'kintone', description: '出張から戻った後の旅費の精算', system: SYS });
+  await call('create_design', { name: '旅費精算', target: 'kintone', look: 'standard', description: '出張から戻った後の旅費の精算', system: SYS });
   await call('edit_items', { design: '旅費精算', ops: [
     { op: 'import', from: '出張申請', items: ['行き先', '出発日', '帰着日'] },
     { op: 'add', name: '交通費', type: 'number', props: { unit: '円' } },
@@ -425,7 +433,7 @@ async function sampleAll({ notes = true, materials = true } = {}) {
   ] });
 
   // システムに入っていない画面設計
-  await call('create_design', { name: '取引先マスタ', target: 'Salesforce', description: '取引先の会社名と担当者' });
+  await call('create_design', { name: '取引先マスタ', target: 'Salesforce', look: 'standard', description: '取引先の会社名と担当者' });
   await call('layout_screen', { design: '取引先マスタ', screen: '画面 1', layout: { columns: 2, rows: [
     [{ item: '会社名', type: 'text1' }, { item: '担当者', type: 'text1' }], [{ item: '電話番号', type: 'text1' }],
   ] } });
@@ -764,6 +772,35 @@ const CHAPTERS = {
   },
 
   // 4 章 複数の画面と移り方
+  // 3.10 見た目を変える（出張申請を Salesforce・kintone の見た目にして撮る）
+  async looks() {
+    await open();
+    await sampleAll({ notes: false, materials: false });
+    await clearAiMarks();
+    await call('update_design', { design: '出張申請', look: 'salesforce', bandTabs: ['ホーム', '出張申請', '旅費精算', 'レポート'] });
+    await openDesignAt('出張申請', '新規申請', { zoom: 0.5 });
+    await scrollCanvasTo('#stage .screen', 16);
+    await scrollInBox('#side-settings .field', '見た目', 8);
+    await shot('look_panel', { anno: [
+      { box: { sel: '#side-settings .field', text: '見た目' }, n: 1, pad: 2 },
+      { box: { sel: '#side-settings .field', text: '帯のタブ' }, n: 2, pad: 2 },
+      { box: '#stage .screen-band', n: 3 },
+    ] });
+    await call('update_design', { design: '出張申請', look: 'kintone' });
+    await setZoom(0.6);
+    await scrollCanvasTo('#stage .screen', 16);
+    await shot('look_kt', { clip: '#stage .screen', pad: 4 });
+    // 表示の形: Salesforce の見た目の詳細の画面
+    await call('update_design', { design: '出張申請', look: 'salesforce' });
+    await call('edit_screen', { design: '出張申請', ops: [{ op: 'update', screen: '詳細', itemView: 'show' }] });
+    await openDesignAt('出張申請', '詳細', { zoom: 0.5 });
+    await scrollCanvasTo('#stage .screen', 16);
+    await scrollInBox('#side-settings .field', '項目の出し方', 8);
+    await shot('look_show', { anno: [
+      { box: { sel: '#side-settings .field', text: '項目の出し方' }, n: 1, pad: 2 },
+      { box: '#stage .screen', n: 2 },
+    ] });
+  },
   async screens() {
     await open();
     await sampleAll({ notes: false, materials: false });

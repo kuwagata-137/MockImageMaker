@@ -94,16 +94,20 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           exe=(dist/*.exe)
-          docx=(manual/*.docx)
-          if [ "${#exe[@]}" -eq 0 ] || [ "${#docx[@]}" -eq 0 ]; then
-            echo "インストーラ（dist/*.exe）か使用説明書（manual/*.docx）が見つかりません" >&2
+          docx=(manual/*_"${TAG}".docx)
+          if [ "${#exe[@]}" -eq 0 ] || [ "${#docx[@]}" -ne 1 ]; then
+            echo "インストーラ（dist/*.exe）か、この版の使用説明書（manual/*_${TAG}.docx）が見つかりません" >&2
             exit 1
           fi
+          # GitHub は Releases のファイルの名前の日本語を置き換える（2026-10-26 の v1.00 の下書きで「_._v1.00.docx」になった）。
+          # 使用説明書は英字の名前に写して載せ、元の日本語の名前は表示名（# の後ろ）にする
+          manual="MockImageMaker_UserManual_${TAG}.docx"
+          cp "${docx[0]}" "$manual"
           cat > release-notes.md <<NOTES
           モックイメージメーカー ${TAG} の Windows 用インストーラと使用説明書（Word）です。
           - インストーラ（.exe）: 管理者の権限なしで入れられます。署名なしのため、初めて開くと「Windows によって PC が保護されました」の青い窓が出ます。そのときは「詳細情報」を押し、出てきた「実行」を押してください。
           - 使用説明書（.docx）: アプリの「ヘルプ > 使い方」と同じ中身です。
           NOTES
-          gh release create "$TAG" "${exe[@]}" "${docx[@]}" \
+          gh release create "$TAG" "${exe[@]}" "${manual}#$(basename "${docx[0]}")" \
             --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
             --title "モックイメージメーカー ${TAG}" --notes-file release-notes.md

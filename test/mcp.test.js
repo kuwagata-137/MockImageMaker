@@ -87,11 +87,13 @@ test('道具は 35 個（第 9 段階の前半でシステムの 7 個、後半�
   assert.deepEqual(TOOLS.filter((t) => t.slow).map((t) => t.name).sort(), [...SLOW_TOOLS].sort());
 });
 
-test('入口の選べる値（機器・表の中身・吹き出しの色と線の先・揃え方・スイムレーンの作業の種類・設計ノートの段階と進み具合）は、ページの値とそろう', async () => {
+test('入口の選べる値（機器・見た目・項目の出し方・表の中身・吹き出しの色と線の先・揃え方・スイムレーンの作業の種類・設計ノートの段階と進み具合）は、ページの値とそろう', async () => {
   const app = bootApp();
   const T = await app.api();
   const cat = JSON.parse(JSON.stringify(await T.aiDispatch('get_catalog', {}, {}))).result;
   assert.deepEqual(Object.keys(cat.devices), SC.DEVICES);
+  assert.deepEqual(cat.looks.map((l) => l.id), SC.LOOKS);
+  assert.deepEqual(Object.keys(cat.itemViews), SC.ITEM_VIEWS);
   assert.deepEqual(Object.keys(cat.tableKinds), SC.TABLE_KINDS);
   assert.deepEqual(Object.keys(cat.callout.colors), SC.CALLOUT_COLORS);
   assert.deepEqual(Object.keys(cat.callout.tips), SC.CALLOUT_TIPS);
@@ -102,6 +104,7 @@ test('入口の選べる値（機器・表の中身・吹き出しの色と線�
   const html = fs.readFileSync(path.join(REPO, HTML_NAME), 'utf8');
   const align = JSON.parse(html.match(/const AI_ALIGN = (\[[^\]]*\]);/)[1].replace(/'/g, '"'));
   assert.deepEqual(align, SC.ALIGN_HOW);
+  assert.equal(Number(html.match(/const BAND_TABS_MAX = (\d+);/)[1]), SC.S.bandTabs._def.maxLength.value, 'Salesforce の帯のタブの数の上限');
 });
 
 test('アプリがなくても、道具の一覧・read_guide・resources は返り、アプリを起動しない。道具を呼ぶと 1 回だけ起動し、つなげなければ日本語で断る', async (t) => {

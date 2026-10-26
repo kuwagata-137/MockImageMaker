@@ -22,7 +22,7 @@ const { initMaterials, createReadingParts } = require('./materials-main');
 const { initAutomation } = require('./automation-main');
 const { initTray } = require('./automation-tray');
 
-const APP_HTML = 'mock_v1.00.html';
+const APP_HTML = 'mock_v1.01.html';
 const APP_TITLE = 'モックイメージメーカー';
 // 確かめのための起動（環境変数 MIM_HEADLESS=1）のときだけ、窓を画面に出さない
 const HEADLESS = process.env.MIM_HEADLESS === '1';

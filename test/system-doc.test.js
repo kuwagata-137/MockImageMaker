@@ -78,7 +78,7 @@ test('説明書の全部のページで、要素の id と矢印の印の id が
 });
 
 test('システムの表紙: 小見出し・名前・説明・数・役割とメモ・作る先・ほかの（ごみ箱でない）システムでも使っている画面設計の札・出力した日', async (t) => {
-  const { parse, doc } = await boot(t);
+  const { parse, doc, api } = await boot(t);
   const c = parse(doc().pages[0]);
   assert.equal(c.querySelector('.cv-kicker').textContent, 'システムの説明書');
   assert.match(c.querySelector('.cv-desc').textContent, /出張の事前申請と/);
@@ -91,7 +91,8 @@ test('システムの表紙: 小見出し・名前・説明・数・役割とメ
   assert.equal(tr('経費精算').querySelector('.share-tag').textContent, '経費精算システムでも使っている');
   assert.equal(tr('出張申請').querySelector('.share-tag'), null, 'ごみ箱のシステムは数えない');
   assert.match(tr('出張申請').querySelector('.dev').textContent, /kintone/);
-  assert.match(c.querySelector('.cv-foot').textContent, /モックイメージメーカー v1\.00 で出力/);
+  // 版の番号はアプリの APP_VERSION から取る（版を上げるたびにテストを直さないため）
+  assert.ok(c.querySelector('.cv-foot').textContent.includes(`モックイメージメーカー v${api.APP_VERSION} で出力`));
 });
 
 test('スイムレーン図のページ: 凡例と図（矢印の印の id の頭は xp-swim）。左の端はシステムの名前', async (t) => {

@@ -155,6 +155,24 @@
   "h": 153,
   "dsf": 2
  },
+ "look_kt": {
+  "file": "look_kt.png",
+  "w": 777,
+  "h": 518,
+  "dsf": 2
+ },
+ "look_panel": {
+  "file": "look_panel.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "look_show": {
+  "file": "look_show.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
  "new_step1": {
   "file": "new_step1.png",
   "w": 440,
@@ -164,7 +182,7 @@
  "new_step2": {
   "file": "new_step2.png",
   "w": 464,
-  "h": 362,
+  "h": 446,
   "dsf": 2
  },
  "new_step3": {
@@ -218,7 +236,7 @@
  "sc_menu": {
   "file": "sc_menu.png",
   "w": 321,
-  "h": 504,
+  "h": 668,
   "dsf": 2
  },
  "sc_process": {
