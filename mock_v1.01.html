@@ -383,6 +383,11 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .pbox{margin-top:4px;flex:1;min-height:0;min-width:0;border:1px solid #94a3b8;border-radius:4px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#fff;overflow:hidden;white-space:nowrap}
 .pbox.area{align-items:flex-start;padding-top:8px;white-space:pre-wrap}
 .pbox.calc{background:#f1f5f9;border-style:dashed}
+/* kintone が値を入れる種類（第 13 段階。画像 q112 の案B）。見た目ごとの枠より強くし、表示の形では値だけ（鉛筆の印も出さない。直せないため） */
+.pbox.kt-auto,.look-sf .pbox.kt-auto,.look-kt .pbox.kt-auto{background:#f1f5f9;border:1px dashed #94a3b8;box-shadow:none}
+.screen.view-show .pbox.kt-auto{border:none;border-bottom:1px solid #e5e5e5;background:transparent}
+.screen.look-kt.view-show .pbox.kt-auto{border-bottom:none}
+.view-show .pbox.kt-auto::after{display:none}
 .pval{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .pbox .pr{margin-left:auto;color:#475569;font-size:13px;flex-shrink:0}
 /* ルックアップの印（画像 q22）: 項目名の後ろの黄色い札、探す項目の「取得」、一緒に写される項目の灰色の入力欄。出力にも出す */
@@ -1873,9 +1878,11 @@ function resolvePart(design, p) {
   const item = p && p.itemId && isItemPart(p) ? findItem(design, p.itemId) : null;
   if (!item) return withViewExtras(design, p && p.lookup && isInputType(p.type) ? { ...p, lookupRole: 'key' } : p);
   const copy = item.lookup ? null : lookupCopyOf(design, item);
+  // kintone の画面設計で kintone の種類を選んだ項目は、その種類で描き分ける（ktType。画像 q112 の案B）
+  const kt = item.kintone && isKintoneDesign(design) ? kintoneTypeOf(item) : '';
   return withViewExtras(design, {
     ...p, label: item.name, required: item.required, memo: item.memo, props: item.props, item,
-    lookupRole: item.lookup ? 'key' : copy ? 'copy' : null, lookupKeyName: copy ? copy.key.name : '',
+    lookupRole: item.lookup ? 'key' : copy ? 'copy' : null, lookupKeyName: copy ? copy.key.name : '', ...(kt ? { ktType: kt } : {}),
   });
 }
 // 描くときだけ使う中身（表の列・絞り込みの欄の項目の名前・関連レコード一覧の元のデータベースの名前）
@@ -2102,8 +2109,21 @@ function describePartLines(p, ctx = null) {
       eqIf('移る先', moveTargetText(ctx, pr));
       break;
   }
+  // kintone のフィールドの情報（kintone の画面設計で書いてあるときだけ。テーブルの列は tableColumns が ktLines で渡す）
+  eq.push(...(p.ktLines || (ctx && p.item && isKintoneDesign(ctx.design) ? kintoneLines(p.item) : [])));
   if (ctx) eq.push(...lookupLines(ctx, p));
   return { short: short.join('・'), eq, memo: v(p.memo) };
+}
+// 一覧表の「設定」に足す kintone の行（選んだ種類・書いたフィールドコード・自動計算の値の kintone の計算式）
+function kintoneLines(entry) {
+  if (!entry || !own(KINTONE_CHOICES, entry.type) || !entry.kintone) return [];
+  const k = entry.kintone;
+  const type = kintoneTypeOf(entry);
+  return [
+    k.type && k.type === type ? `kintone の種類＝${kintoneTypeName(type, entry.type)}` : '',
+    k.code ? `フィールドコード＝${k.code}` : '',
+    k.formula && entry.type === 'calc' ? `kintone の計算式＝${k.formula}` : '',
+  ].filter(Boolean);
 }
 
 // 操作の行「操作「承認する」＝承認待ちから承認済みへ（上長）・条件」。「＝」の前を操作ごとに変えて、改訂履歴の違いで操作ごとに前と後を出す
@@ -2127,7 +2147,11 @@ function describeItem(item, ctx = null) {
 function tableColumns(p, ctx = null) {
   const pr = p.props || {};
   if (p.tableKind === 'subtable') {
-    return (pr.columns || []).map((c) => ({ id: c.id, name: c.name, type: c.type, kind: partTypeName(c.type), setting: describePart({ type: c.type, required: c.required, memo: c.memo, props: c.props }) }));
+    const kt = ctx && isKintoneDesign(ctx.design);
+    return (pr.columns || []).map((c) => ({
+      id: c.id, name: c.name, type: c.type, kind: partTypeName(c.type),
+      setting: describePart({ type: c.type, required: c.required, memo: c.memo, props: c.props, ktLines: kt ? kintoneLines(c) : null }),
+    }));
   }
   const design = ctx && ctx.design;
   const src = p.tableKind === 'related' ? (ctx && pr.db && pr.db.designId ? findDesign(ctx.state, pr.db.designId) : null) : design;
@@ -5261,15 +5285,19 @@ function partFieldHtml(p, t) {
   if (p.type === 'radio') return opts('rd', (o) => o === pr.initial);
   if (p.type === 'checkbox') return opts('ck', (o) => Array.isArray(pr.initial) && pr.initial.includes(o));
   if (p.type === 'file') return '<div class="pdrop">📎 ファイルをここにドラッグ、または <u>選ぶ</u></div>';
+  // kintone が値を入れる種類（レコード番号・作成者など）は、点線の枠に「（自動で入る）」（見本の値を書いたときは見本の値。画像 q112 の案B）
+  const kt = own(KINTONE_TYPES, p.ktType) ? KINTONE_TYPES[p.ktType] : null;
+  if (kt && kt.auto) return `<div class="pbox kt-auto"><span class="pval">${p.sample ? esc(p.sample) : '<span class="pph">（自動で入る）</span>'}</span></div>`;
   // ルックアップで一緒に写される項目は、自分では書けないことが分かるように灰色にし、どこから入るかを薄い字で書く
   const copied = p.lookupRole === 'copy';
-  const ph = copied && !p.placeholder ? `（${p.lookupKeyName}から自動で入る）` : p.placeholder || t.ph;
+  const ktPh = { ORGANIZATION_SELECT: '組織を選択', GROUP_SELECT: 'グループを選択' }[p.ktType];
+  const ph = copied && !p.placeholder ? `（${p.lookupKeyName}から自動で入る）` : p.placeholder || ktPh || t.ph;
   const value = p.sample ? esc(p.sample) : `<span class="pph">${esc(ph)}</span>`;
   const unit = String(pr.unit || '').trim();
   const right = {
     number: unit && esc(unit), calc: unit && esc(unit), date: '📅', datetime: '🕒', dropdown: '▼', user: '選ぶ',
   }[p.type];
-  const head = p.type === 'user' ? '<span class="picon">👤</span>' : '';
+  const head = p.type === 'user' ? `<span class="picon">${{ ORGANIZATION_SELECT: '🏢', GROUP_SELECT: '👥' }[p.ktType] || '👤'}</span>` : '';
   const kind = p.type === 'text2' ? ' area' : p.type === 'calc' ? ' calc' : copied ? ' copied' : '';
   const get = p.lookupRole === 'key' ? '<span class="pget">🔍 取得</span>' : '';
   return `<div class="pbox${kind}">${head}<span class="pval">${value}</span>${right ? `<span class="pr">${right}</span>` : ''}${get}</div>`;

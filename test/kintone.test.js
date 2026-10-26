@@ -202,6 +202,59 @@ test('右の欄: kintone の画面設計でないとき（作る先も見た目�
   app.close();
 });
 
+// ── kintone の種類での描き分け（画像 q112 の案B）と、部品の設定の一覧表の行 ──
+const partBox = (html, id) => {
+  const m = html.match(new RegExp(`data-part-id="${id}"[^>]*>([\\s\\S]*?</div>)</div>`));
+  return m ? m[1] : '';
+};
+
+test('描き分け: 自動で入る種類（レコード番号・作成者など）は、点線の枠に「（自動で入る）」。見本の値を書いたときは見本の値。kintone の画面設計でないときは描き分けない', async () => {
+  const st = kintoneState();
+  st.designs[0].items[0].kintone = { type: 'RECORD_NUMBER' };
+  st.designs[0].items[1].kintone = { type: 'RECORD_NUMBER' };
+  st.designs[0].screens[0].parts[1].sample = '00012';
+  const { app, T } = await boot(st);
+  const d1 = T.store.state.designs[0];
+  const html = T.screenHtml(d1, d1.screens[0]);
+  assert.match(partBox(html, 'p1'), /<div class="pbox kt-auto"><span class="pval"><span class="pph">（自動で入る）<\/span><\/span><\/div>/);
+  assert.match(partBox(html, 'p2'), /<div class="pbox kt-auto"><span class="pval">00012<\/span><\/div>/);
+  T.actions.updateDesignInfo('d1', { target: 'salesforce' });
+  const html2 = T.screenHtml(T.store.state.designs[0], T.store.state.designs[0].screens[0]);
+  assert.doesNotMatch(html2, /kt-auto/);
+  app.close();
+});
+
+test('描き分け: 組織選択は建物の印と「組織を選択」、グループ選択は 2 人の印と「グループを選択」（薄い字を書いたときは、その字）', async () => {
+  const st = kintoneState();
+  st.designs[0].items.find((x) => x.id === 'iu').kintone = { type: 'ORGANIZATION_SELECT' };
+  const { app, T } = await boot(st);
+  const html = () => T.screenHtml(T.store.state.designs[0], T.store.state.designs[0].screens[0]);
+  assert.match(partBox(html(), 'pu'), /<span class="picon">🏢<\/span><span class="pval"><span class="pph">組織を選択<\/span>/);
+  T.actions.updateItem('d1', 'iu', { kintone: { type: 'GROUP_SELECT' } });
+  assert.match(partBox(html(), 'pu'), /<span class="picon">👥<\/span><span class="pval"><span class="pph">グループを選択<\/span>/);
+  T.actions.updatePart('d1', 's1', 'pu', { placeholder: '部署を選ぶ' });
+  assert.match(partBox(html(), 'pu'), /<span class="pph">部署を選ぶ<\/span>/);
+  app.close();
+});
+
+test('部品の設定の一覧表: kintone の画面設計で書いてあるときだけ、kintone の種類・フィールドコード・kintone の計算式の行を足す（テーブルの列の行も）', async () => {
+  const st = kintoneState();
+  const items = st.designs[0].items;
+  items.find((x) => x.id === 'iu').kintone = { type: 'ORGANIZATION_SELECT', code: '部署' };
+  items.find((x) => x.id === 'ic').kintone = { formula: '終了日 - 開始日' };
+  items.find((x) => x.id === 'tb').props.columns[0].kintone = { code: '品名コード' };
+  const { app, T } = await boot(st);
+  const rows = () => Object.fromEntries(plain(T.tableRows(T.store.state.designs[0].screens[0], T.store.state.designs[0], T.store.state)).map((r) => [r.no, r.setting]));
+  const r = rows();
+  assert.equal(r[4], 'kintone の種類＝組織選択\nフィールドコード＝部署');
+  assert.equal(r[5], '計算式＝終わりの日 − 始まりの日\n単位＝日\nkintone の計算式＝終了日 - 開始日');
+  assert.equal(r['6-1'], 'フィールドコード＝品名コード');
+  assert.equal(r[1], '必須・最大 10 文字', '書いていない項目には足さない');
+  T.actions.updateDesignInfo('d1', { target: 'salesforce' });
+  assert.equal(rows()[4], '', 'kintone の画面設計でないときは足さない');
+  app.close();
+});
+
 test('kintone の画面設計: 作る先が kintone か、見た目が kintone のとき', async () => {
   const { app, T } = await boot();
   const k = (target, look) => T.isKintoneDesign({ target, look });
