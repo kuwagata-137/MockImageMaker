@@ -60,6 +60,7 @@
   直し①②（q89）は 1 回目と同じものを別に作っていたので、こちらの作り（続きを読む・MPD に出力にも時間切れ）を残し、待つ長さを 60 秒（q96）にそろえた。
   言葉のそろえ（q97・q98。名前の変更・複製・削除・移動）・PDF の画面のページの表の幅（q99）を聞いて入れた。通しの確かめ（tools/check-electron-through.js）を足し、
   Claude Code の場面 1〜14 を通した。npm test 1196 個・check-electron 32・check-export 16・check-mcp 65・check-bdm-export 17・通しの確かめ 21 がすべて OK。
+  作り直したインストーラで check-mcp --packaged 65 も OK。リリースの前の実機の確かめはしない（q100）。Releases の説明の文は今の短い文のまま（q101）。
 - 2026-10-15: CLAUDE.md の「現行ステータス」を短い要約にした（ユーザー決定。細かい決めごとは 仕様_細かい決めごと.md、ファイルの役割は 作りの地図.md へ移した）。
   CLAUDE.md の履歴の行のうち、この欄になかった中身の行を、下にそのまま写した（行の中の「下の「…」」は、2026-10-15 より前の CLAUDE.md の節を指す）。
   - 2026-10-08: ビジネスダイアグラムメーカー（GitHub `ashikagagassoumu-cmd/BusinessDiagramMaker`）から分かれて立ち上げた。
