@@ -1,5 +1,6 @@
 // mcp-tools.js — AI の入口（mcp-server.js）が出す MCP の道具の一覧（第 7 段階。第 8 段階で 3 つ、第 9 段階の前半でシステムの 7 つ、後半で資料の 3 つ、
-// 第 10 段階の前半で設計ノートの 3 つ、後半で説明書の 1 つ〔export_system_doc〕、第 11 段階で MPD への出力の 1 つ〔export_bdm〕を足して 35 個。設計書の 9-2）
+// 第 10 段階の前半で設計ノートの 3 つ、後半で説明書の 1 つ〔export_system_doc〕、第 11 段階で MPD への出力の 1 つ〔export_bdm〕、
+// 第 13 段階で kintone のアプリの形の 1 つ〔get_kintone_app〕を足して 36 個。設計書の 9-2）
 // 名前・日本語の説明・入力の形（mcp-schemas.js）・読むだけか・時間がかかるか、を決める。道具の中身はページの「AI の窓口」にある。
 // read_guide だけは入口の中で返す（local。アプリが動いていなくても読めるように）。
 // slow の道具は、アプリの側（automation-main.js の SLOW_TOOLS）でも時間切れを 5 分にしている。2 か所を同じにする。
@@ -17,7 +18,7 @@ const PDF_ORIENT = z.enum(['landscape', 'portrait']).optional().describe('PDF �
 const TOOLS = [
   read('read_guide', '手引きを読む',
     'モックイメージメーカーの使い方の手引きを読む。初めて使うときは "overview" を最初に読む。"layout" は部品の並べ方、"catalog" は部品のカタログの読み方、"rules" は守ること、' +
-    '"stages" は資料からシステムを作るときの段階（段階ごとに人に確かめる進め方）。',
+    '"stages" は資料からシステムを作るときの段階（段階ごとに人に確かめる進め方）、"kintone" は kintone のアプリにするとき（kintone のフィールドの欄と get_kintone_app の使い方）。',
     { topic: z.enum(GUIDE_TOPICS).describe('手引きの名前') }, { local: true }),
   read('list_designs', '画面設計の一覧',
     '画面設計の一覧（id・名前・作る先・画面と項目の数・最新の版・更新の印 updatedAt）を返す。query で名前を探せる。',
@@ -49,6 +50,12 @@ const TOOLS = [
   read('get_catalog', '部品のカタログ',
     '部品の種類（type・名前・最初の大きさ・設定の欄と値の形）・項目の種類・ひな形・機器・作る先・吹き出しの色・並べ方の数・kintone の種類（kintoneTypes）を返す。',
     {}),
+  read('get_kintone_app', 'kintone のアプリの形',
+    '画面設計を、kintone の MCP サーバー（GitHub の kintone/mcp-server）の道具にそのまま渡せる形にして返す（このアプリは kintone にはつながない）: ' +
+    'formScreen（フォームにした画面）・app（kintone-add-app に渡す）・properties（kintone-add-form-fields の properties）・systemFields（最初からあるフィールドの code と label。kintone-update-form-fields で直す）・' +
+    'needsAppId（元のアプリの ID を入れてから足すルックアップと関連レコード一覧）・layout（kintone-update-form-layout の layout）・generalSettings（kintone-update-general-settings に渡す）・' +
+    'howTo（道具を呼ぶ順）・manualSteps（プロセス管理・一覧・グラフなど、人が kintone の画面で設定すること）・warnings（直してほしいこと）。read_guide の "kintone" を先に読む。',
+    { design: S.design, screen: S.screen.optional().describe('kintone のフォームにする画面の id か名前（省くと、項目の部品がいちばん多い画面）') }),
   read('list_systems', 'システムの一覧',
     'システム（いくつかの画面設計と役割・スイムレーンをまとめた、1 つの業務のまとまり）の一覧を返す: id・名前・説明の頭・画面設計と役割と作業と資料の数・設計ノートの段階ごとの進み具合 stages（state だけ。例 { read: "done", flow: "review", … }）・更新の印 updatedAt。query で名前を探せる。',
     { query: z.string().optional().describe('名前に含まれる文字'), trashed: z.boolean().optional().describe('ごみ箱にあるシステムも出す'), cursor: S.cursor }),

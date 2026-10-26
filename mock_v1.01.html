@@ -1834,15 +1834,15 @@ function kintoneCodes(design) {
   const entries = kintoneEntries(design);
   const used = new Set(entries.map((x) => x.kintone && x.kintone.code).filter(Boolean));
   const out = {};
-  entries.forEach((x) => {
-    if (x.kintone && x.kintone.code) { out[x.id] = x.kintone.code; return; }
-    const base = kintoneCodeOf(x.name);
-    let code = base;
-    for (let k = 2; used.has(code); k++) code = base.slice(0, KINTONE_CODE_MAX - String(k).length - 1) + '_' + k;
-    used.add(code);
-    out[x.id] = code;
-  });
+  entries.forEach((x) => { out[x.id] = x.kintone && x.kintone.code ? x.kintone.code : kintoneUniqueCode(kintoneCodeOf(x.name), used); });
   return out;
+}
+// used（使っているコード）と重ならないコード（重なるときは _2・_3 を付ける）。作ったコードを used に足す
+function kintoneUniqueCode(base, used) {
+  let code = base;
+  for (let k = 2; used.has(code); k++) code = base.slice(0, KINTONE_CODE_MAX - String(k).length - 1) + '_' + k;
+  used.add(code);
+  return code;
 }
 // 書いたフィールドコードの知らせ（右の欄の欄の下・get_kintone_app の warnings）。使えない文字と、ほかの項目・列に書いたコードとの重なり
 function kintoneCodeWarn(design, entry) {
@@ -13686,6 +13686,220 @@ const AI_FIRST_ROW_Y_NOHEADER = 24; // 帯を消した画面の最初の行（Cl
 // 並べ方の最初の行。帯の下に 24 空ける（帯の高さは見た目で変わる。第 12 段階）
 const aiFirstRowY = (d, sc) => (sc.showHeader ? bandHeight(d, sc) + AI_FIRST_ROW_Y - LOOKS[0].band : AI_FIRST_ROW_Y_NOHEADER);
 
+// ── kintone のアプリの形（get_kintone_app。第 13 段階・q113 の案A）──
+// 画面設計を、kintone の MCP サーバー（GitHub の kintone/mcp-server）の道具にそのまま渡せる形にする。kintone の MCP サーバーにはつながない
+// （入力の形は test/kintone-mcp-shapes.js に写して見比べる）。元のアプリの ID はモックイメージメーカーでは分からないので、空にして needsAppId に分ける
+const KT_UNIT_BEFORE = ['$', '¥', '￥', '€', '£']; // 数の前に付ける単位。ほかの単位（円・個・日など）は数の後ろ（Claude が決めた）
+const KT_REF_SIZES = ['1', '3', '5', '10', '20', '30', '40', '50']; // 関連レコード一覧の件数（kintone で選べる数）
+const ktText = (v) => str(v).trim();
+const ktUnit = (u) => (ktText(u) ? { unit: ktText(u), unitPosition: KT_UNIT_BEFORE.includes(ktText(u)) ? 'BEFORE' : 'AFTER' } : {});
+const ktOptions = (list) => Object.fromEntries((Array.isArray(list) ? list : []).map((o, i) => [o, { label: o, index: String(i) }]));
+const ktLabelHtml = (text) => esc(str(text)).replace(/\n/g, '<br>');
+// 項目・列 1 つの、kintone-add-form-fields の properties の値。部品の設定を写す（kintone にない設定は写さない）。warn は直してほしいことを足す
+function kintoneFieldProperty(entry, codes, column, warn) {
+  const type = kintoneTypeOf(entry, column);
+  const pr = entry.props || {};
+  const f = { type, code: codes[entry.id], label: entry.name };
+  if (KINTONE_TYPES[type] && KINTONE_TYPES[type].auto) return f;
+  if (entry.required && type !== 'SUBTABLE') f.required = true;
+  const put = (k, v) => { if (ktText(v)) f[k] = ktText(v); };
+  const formula = entry.kintone ? ktText(entry.kintone.formula) : '';
+  const choices = () => { f.options = ktOptions(pr.options); };
+  switch (type) {
+    case 'SINGLE_LINE_TEXT': case 'LINK':
+      if (entry.type === 'calc') { f.expression = formula; break; } // 文字列（1行）の自動計算
+      if (/^\d+$/.test(ktText(pr.maxLen))) f.maxLength = ktText(pr.maxLen);
+      put('defaultValue', pr.initial);
+      if (type === 'LINK') f.protocol = 'WEB';
+      break;
+    case 'MULTI_LINE_TEXT': case 'RICH_TEXT': put('defaultValue', pr.initial); break;
+    case 'NUMBER': put('minValue', pr.min); put('maxValue', pr.max); put('displayScale', pr.decimals); put('defaultValue', pr.initial); Object.assign(f, ktUnit(pr.unit)); break;
+    case 'CALC': Object.assign(f, { expression: formula, format: 'NUMBER' }, ktUnit(pr.unit)); break;
+    case 'DATE': if (pr.initial === 'today') f.defaultNowValue = true; else if (pr.initial === 'date') put('defaultValue', pr.initialDate); break;
+    case 'DATETIME': case 'TIME': if (pr.initial === 'now') f.defaultNowValue = true; break;
+    case 'DROP_DOWN': choices(); put('defaultValue', pr.initial); break;
+    case 'RADIO_BUTTON': {
+      choices();
+      const first = (pr.options || [])[0];
+      f.defaultValue = ktText(pr.initial) || first;
+      if (!ktText(pr.initial) && first != null) warn(`「${entry.name}」（ラジオボタン）は、kintone では初期値が要るので、最初の選択肢「${first}」を初期値にしました。`);
+      if (f.defaultValue == null) delete f.defaultValue;
+      f.align = pr.dir === 'v' ? 'VERTICAL' : 'HORIZONTAL';
+      break;
+    }
+    case 'CHECK_BOX': case 'MULTI_SELECT':
+      choices();
+      if (Array.isArray(pr.initial) && pr.initial.length) f.defaultValue = [...pr.initial];
+      if (type === 'CHECK_BOX') f.align = pr.dir === 'v' ? 'VERTICAL' : 'HORIZONTAL';
+      break;
+    case 'USER_SELECT': if (pr.initial === 'me') f.defaultValue = [{ code: 'LOGINUSER()', type: 'FUNCTION' }]; break;
+    case 'ORGANIZATION_SELECT': if (pr.initial === 'me') f.defaultValue = [{ code: 'PRIMARY_ORGANIZATION()', type: 'FUNCTION' }]; break;
+    case 'SUBTABLE': f.fields = Object.fromEntries((pr.columns || []).map((c) => [codes[c.id], kintoneFieldProperty(c, codes, true, warn)])); break;
+  }
+  return f;
+}
+// ルックアップ元・関連レコード一覧の元のデータベースの項目のフィールドコード（元が画面設計なら、その画面設計の get_kintone_app と同じコード）
+function kintoneSourceCode(src) {
+  const codes = src ? kintoneCodes(src) : {};
+  return (ref) => (ref.itemId && codes[ref.itemId]) || (ref.name ? kintoneCodeOf(ref.name) : '');
+}
+// ルックアップの付いた項目（needsAppId の 1 行。relatedApp.app は空）
+function kintoneLookupField(S, d, it, codes, warn) {
+  const lk = it.lookup;
+  const srcCode = kintoneSourceCode(lk.db.designId ? findDesign(S, lk.db.designId) : null);
+  const key = srcCode(lk.key);
+  const copies = lk.copies.filter((c) => {
+    if (c.to.itemId && findItem(d, c.to.itemId)) return true;
+    warn(`「${it.name}」のルックアップで写す先「${c.to.name}」が、この画面設計の項目にないので、fieldMappings から外しました。`);
+    return false;
+  });
+  const fieldMappings = copies.map((c) => ({ field: codes[c.to.itemId], relatedField: srcCode(c.from) }));
+  const property = {
+    type: kintoneTypeOf(it), code: codes[it.id], label: it.name, ...(it.required ? { required: true } : {}),
+    lookup: { relatedApp: { app: '', code: '' }, relatedKeyField: key, fieldMappings, lookupPickerFields: [key, ...fieldMappings.map((m) => m.relatedField)], filterCond: '', sort: '' },
+  };
+  return { kind: 'lookup', code: property.code, label: it.name, sourceDesign: dbLabel(S, lk.db), property };
+}
+// 関連レコード一覧の部品（どの画面のものも。同じ名前で同じ元のものは 1 つ）を、needsAppId の行にする。partIds はその部品の id
+function kintoneRelatedFields(S, d, codes, warn) {
+  const used = new Set(Object.values(codes));
+  const out = [];
+  d.screens.forEach((sc) => sc.parts.forEach((raw) => {
+    if (raw.type !== 'table' || raw.tableKind !== 'related') return;
+    const pr = normalizeTablePartProps(raw.props);
+    const label = partTitle(raw);
+    const same = out.find((x) => x.label === label && x.db === (pr.db.designId || pr.db.name));
+    if (same) { same.partIds.push(raw.id); return; }
+    const srcCode = kintoneSourceCode(pr.db.designId ? findDesign(S, pr.db.designId) : null);
+    const to = pr.cond.to.itemId && codes[pr.cond.to.itemId] ? codes[pr.cond.to.itemId] : pr.cond.to.name ? kintoneCodeOf(pr.cond.to.name) : '';
+    const condition = { field: to, relatedField: srcCode(pr.cond.from) };
+    if (!condition.field || !condition.relatedField) warn(`関連レコード一覧「${label}」の条件（どの項目が同じレコードを出すか）を書いていないので、referenceTable.condition を埋めてください。`);
+    if (ktText(pr.sort)) warn(`関連レコード一覧「${label}」の並べ順「${ktText(pr.sort)}」は、kintone の書き方（例: "フィールドコード desc"）に直して referenceTable.sort に書いてください。`);
+    const n = parseInt(pr.limit, 10);
+    const size = n > 0 ? KT_REF_SIZES.find((x) => Number(x) >= n) || '50' : '5';
+    const code = kintoneUniqueCode(kintoneCodeOf(label), used);
+    const property = {
+      type: 'REFERENCE_TABLE', code, label,
+      referenceTable: { relatedApp: { app: '', code: '' }, condition, filterCond: '', displayFields: pr.columns.map((c) => srcCode(c.ref)).filter(Boolean), sort: '', size },
+    };
+    out.push({ kind: 'related', code, label, sourceDesign: dbLabel(S, pr.db), property, partIds: [raw.id], db: pr.db.designId || pr.db.name });
+  }));
+  return out;
+}
+// フォームの並び（kintone-update-form-layout の layout）。画面の部品を、縦に重なるものを 1 行にまとめて左から並べる。
+// テーブルは SUBTABLE の行。見出し・説明の文字はラベル、区切り線は罫線。その画面に置いていない項目と関連レコード一覧は、いちばん下に 1 行ずつ足す
+function kintoneFormLayout(d, sc, codes, related, warn) {
+  const subtable = (it) => ({ type: 'SUBTABLE', code: codes[it.id], fields: (it.props.columns || []).map((c) => ({ type: kintoneTypeOf(c, true), code: codes[c.id] })) });
+  const itemField = (it, size) => (it.type === 'table' ? subtable(it) : { type: kintoneTypeOf(it), code: codes[it.id], ...(size ? { size } : {}) });
+  const placed = new Set();
+  const fieldOf = (raw) => {
+    const size = { width: String(Math.round(raw.w)) };
+    if (raw.type === 'heading') return { type: 'LABEL', label: `<b>${ktLabelHtml(raw.label)}</b>`, size };
+    if (raw.type === 'desc') return { type: 'LABEL', label: ktLabelHtml(raw.label), size };
+    if (raw.type === 'divider') return { type: 'HR', size };
+    const rel = raw.type === 'table' && raw.tableKind === 'related' ? related.find((x) => x.partIds.includes(raw.id)) : null;
+    if (rel) { placed.add(rel); return { type: 'REFERENCE_TABLE', code: rel.code }; }
+    const it = raw.itemId && isItemPart(raw) ? findItem(d, raw.itemId) : null;
+    if (!it || it.type === 'status') return null;
+    placed.add(it);
+    return itemField(it, size);
+  };
+  const parts = sc.parts.map((raw) => ({ raw, f: fieldOf(raw) })).filter((x) => x.f).sort((a, b) => a.raw.y - b.raw.y || a.raw.x - b.raw.x);
+  const rows = [];
+  parts.forEach((x) => {
+    const cur = rows[rows.length - 1];
+    if (cur && x.raw.y < cur.bottom) { cur.list.push(x); cur.bottom = Math.max(cur.bottom, x.raw.y + x.raw.h); } else rows.push({ list: [x], bottom: x.raw.y + x.raw.h });
+  });
+  const missing = [...d.items.filter((it) => it.type !== 'status' && !placed.has(it)), ...related.filter((r) => !placed.has(r))];
+  missing.forEach((x) => warn(`「${x.label || x.name}」はフォームにした画面「${sc.name}」に置いていないので、layout のいちばん下に足しました。`));
+  const tail = missing.map((x) => [x.kind ? { type: 'REFERENCE_TABLE', code: x.code } : itemField(x, null)]);
+  return [...rows.map((r) => r.list.sort((a, b) => a.raw.x - b.raw.x).map((x) => x.f)), ...tail].flatMap(kintoneLayoutRows);
+}
+// 1 行の並び（左から）を、kintone の行にする。テーブル（SUBTABLE）は 1 行を使うので、その前と後ろで行を分ける
+function kintoneLayoutRows(fields) {
+  const out = [];
+  let row = null;
+  fields.forEach((f) => {
+    if (f.type === 'SUBTABLE') { out.push(f); row = null; return; }
+    if (!row) { row = { type: 'ROW', fields: [] }; out.push(row); }
+    row.fields.push(f);
+  });
+  return out;
+}
+// kintone の MCP サーバーでは作れないもの（人が kintone の画面で設定すること）
+function kintoneManualSteps(S, d) {
+  const ctx = { design: d, state: S };
+  const out = [];
+  const st = d.items.find((it) => it.type === 'status');
+  if (st) {
+    out.push(`プロセス管理: ステータス＝${stateNames(st.props.states).join('／')}。kintone のアプリの設定の「プロセス管理」で、ステータスと次の操作（操作する人・条件）を設定する。`);
+    out.push(...actionLines(st.props).map((l) => `プロセス管理: ${l}`));
+  }
+  const buttons = [];
+  d.screens.forEach((sc) => sc.parts.forEach((raw) => {
+    const p = resolvePart(d, raw);
+    const setting = describePart(p, ctx).replace(/\n/g, '・');
+    if (raw.type === 'table' && raw.tableKind === 'records') {
+      const cols = tableColumns(p, ctx).map((c) => c.name).join('・');
+      out.push(`一覧: 画面「${sc.name}」のレコード一覧「${partTitle(raw)}」（${[cols && `列＝${cols}`, setting].filter(Boolean).join('・')}）を、kintone のアプリの設定の「一覧」で作る。`);
+    }
+    if (raw.type === 'graph') out.push(`グラフ: 画面「${sc.name}」のグラフ「${partTitle(raw)}」（${setting}）を、kintone のアプリの設定の「グラフ」で作る。`);
+    if (raw.type === 'button') buttons.push(`「${partTitle(raw)}」（画面「${sc.name}」${ktText(raw.props && raw.props.action) ? `。押したとき＝${ktText(raw.props.action)}` : ''}）`);
+  }));
+  if (buttons.length) out.push(`ボタン: ${buttons.join('・')}。kintone の標準のボタン（保存・キャンセル・編集など）とプロセス管理の操作で足りないものは、JavaScript かプラグインで作る。`);
+  out.push('アクセス権: 画面設計には書く欄がないので、誰がアプリ・レコード・フィールドを見る・直すかを人に確かめて、kintone のアプリの設定の「アクセス権」で設定する。');
+  return out;
+}
+// フォームにする画面（項目の部品がいちばん多い画面。同じ数なら前の画面）
+function kintoneFormScreen(d) {
+  const count = (sc) => sc.parts.filter((p) => p.itemId && isItemPart(p) && p.type !== 'status' && p.type !== 'steps' && findItem(d, p.itemId)).length;
+  return d.screens.reduce((best, sc) => (count(sc) > count(best) ? sc : best), d.screens[0]);
+}
+function aiGetKintoneApp(args) {
+  const S = aiState();
+  const d = aiResolveDesign(S, args.design);
+  const sc = args.screen == null ? kintoneFormScreen(d) : aiResolveScreen(d, args.screen);
+  const warnings = [];
+  const warn = (m) => warnings.push(m);
+  if (!isKintoneDesign(d)) warn('この画面設計は、作る先も見た目も kintone ではありません。kintone のアプリにするときは、update_design で作る先か見た目を kintone にしてください。');
+  kintoneEntries(d).forEach((x) => { const m = kintoneCodeWarn(d, x); if (m) warn(`「${x.name}」のフィールドコード「${x.kintone.code}」: ${m}`); });
+  kintoneEntries(d).filter((x) => x.type === 'calc' && !(x.kintone && ktText(x.kintone.formula))).forEach((x) => warn(
+    `「${x.name}」（自動計算の値）の kintone の計算式が空です。${ktText(x.props.formula) ? `言葉の計算式「${ktText(x.props.formula)}」` : '計算のしかた'}を kintone の書き方（例: 数量 * 単価）に直し、edit_items の kintone.formula に書いてから、もう一度読んでください。`));
+  const codes = kintoneCodes(d);
+  const fields = d.items.filter((it) => it.type !== 'status');
+  const isAuto = (it) => !!(KINTONE_TYPES[kintoneTypeOf(it)] || {}).auto;
+  const properties = Object.fromEntries(fields.filter((it) => !isAuto(it) && !it.lookup).map((it) => [codes[it.id], kintoneFieldProperty(it, codes, false, warn)]));
+  const systemFields = fields.filter(isAuto).map((it) => ({ type: kintoneTypeOf(it), code: codes[it.id], label: it.name }));
+  Object.keys(KINTONE_TYPES).forEach((t) => {
+    const same = systemFields.filter((f) => f.type === t);
+    if (same.length > 1) warn(`kintone のアプリに「${KINTONE_TYPES[t].name}」は 1 つしかありません（${same.map((f) => `「${f.label}」`).join('')}）。1 つにしてください。`);
+  });
+  const related = kintoneRelatedFields(S, d, codes, warn);
+  const needsAppId = [...fields.filter((it) => it.lookup).map((it) => kintoneLookupField(S, d, it, codes, warn)), ...related];
+  const layout = kintoneFormLayout(d, sc, codes, related, warn);
+  if (d.name.length > 64) warn(`アプリの名前は 64 文字までなので、画面設計の名前の初めの 64 文字にしました。`);
+  return {
+    design: { id: d.id, name: d.name }, formScreen: { id: sc.id, name: sc.name },
+    app: { name: d.name.slice(0, 64) }, generalSettings: { name: d.name.slice(0, 64), description: d.description },
+    properties, systemFields, needsAppId: needsAppId.map(({ kind, code, label, sourceDesign, property }) => ({ kind, code, label, sourceDesign, property })),
+    layout, howTo: kintoneHowTo(warnings, systemFields, needsAppId), manualSteps: kintoneManualSteps(S, d), warnings,
+  };
+}
+// kintone の MCP サーバーの道具を呼ぶ順
+function kintoneHowTo(warnings, systemFields, needsAppId) {
+  return [
+    ...(warnings.length ? ['warnings を先に人と確かめ、画面設計で直せるもの（edit_items の kintone など）は直してから、もう一度 get_kintone_app を読む。'] : []),
+    'kintone-add-app に app を渡して、アプリを作る（返事のアプリの ID を、この後の道具の app に渡す）。',
+    'kintone-add-form-fields に properties を渡して、フィールドを足す。',
+    ...(systemFields.length ? ['kintone-get-form-fields で、最初からあるフィールド（レコード番号・作成者など）の今のフィールドコードを読み、kintone-update-form-fields で systemFields の code と label に直す（properties は { 今のフィールドコード: { type, code, label } }）。'] : []),
+    ...(needsAppId.length ? ['needsAppId の property の relatedApp.app（ルックアップは lookup.relatedApp.app、関連レコード一覧は referenceTable.relatedApp.app）に、元のアプリ（sourceDesign）の ID を入れて、kintone-add-form-fields で足す。元のアプリがまだなければ、先にその画面設計を get_kintone_app で読んで作る。ID が分からなければ人に聞く。'] : []),
+    'kintone-update-form-layout に layout を渡して、フォームの並びを画面設計に合わせる。',
+    'kintone-update-general-settings に generalSettings を渡して、アプリの名前と説明を入れる。',
+    '人に確かめてから、kintone-deploy-app で本番の環境に反映する。',
+    'manualSteps（kintone の MCP サーバーでは作れないもの）を人に伝える。',
+  ].map((s, i) => `${i + 1}. ${s}`);
+}
+
 // ── 書く道具の共通の流れ（設計書の 8 章）──
 const AI_BUSY_WAIT_MS = 2000; // 人がドラッグ・日本語の変換をしている間に、書く頼みを待つ長さ（8-4）
 // AI のアプリの名前（入口が MCP のつなぎ始めに受け取った名前。「Claude Code が直す前の状態」の行に書く。8-3）
@@ -15671,6 +15885,7 @@ const AI_TOOLS = {
   get_design: { write: false, run: aiGetDesign },
   get_screen: { write: false, run: aiGetScreen },
   get_catalog: { write: false, run: aiGetCatalog },
+  get_kintone_app: { write: false, run: aiGetKintoneApp },
   get_screen_image: { write: false, run: aiGetScreenImage },
   get_flow: { write: false, run: aiGetFlow },
   get_view_image: { write: false, run: aiGetViewImage },
