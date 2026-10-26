@@ -2856,6 +2856,42 @@ function syncLinkedItems(state) {
     if (!changed) return;
   }
 }
+// 名前で書いた元を後でつなぐ（第 13 段階。q114 の ⑥）。ルックアップの元（lookup.db）と関連レコード一覧の元（props.db）が「一覧にないデータベース」で、
+// ちょうど同じ名前の画面設計（ごみ箱にないもの・自分でないもの）が 1 つだけあれば、その画面設計につなぐ（2 つ以上あれば人が選ぶ）。
+// つないだ元では、名前だけで書いた項目（探す項目・写す元の項目・列・条件の元の項目）を、同じ名前の項目が 1 つだけあればその項目につなぐ
+// （AI が元の画面設計を作る前に書き、後から元の項目を足したときのため）。取り込んだ項目は元の中身にそろうので見ない。
+// 更新日時は変えない（syncLinkedItems と同じ扱い）。syncLinkedItems の前に呼ぶ（つないだルックアップを、取り込んだ項目にも写すため）
+function relinkFreeDbs(state) {
+  const live = state.designs.filter((d) => !d.trashedAt);
+  const sourceOf = (db, self) => {
+    if (!db) return null;
+    if (db.designId) return findDesign(state, db.designId);
+    if (!db.free || !db.name) return null;
+    const hits = live.filter((x) => x.id !== self.id && x.name === db.name);
+    if (hits.length !== 1) return null;
+    Object.assign(db, { designId: hits[0].id, name: hits[0].name, free: false });
+    return hits[0];
+  };
+  const relinkRef = (src, ref) => {
+    if (!ref || ref.itemId || !ref.name) return;
+    const hits = src.items.filter((it) => it.name === ref.name);
+    if (hits.length === 1) ref.itemId = hits[0].id;
+  };
+  state.designs.forEach((d) => {
+    d.items.forEach((it) => {
+      const src = it.lookup && !it.link ? sourceOf(it.lookup.db, d) : null;
+      if (!src) return;
+      relinkRef(src, it.lookup.key);
+      it.lookup.copies.forEach((c) => relinkRef(src, c.from));
+    });
+    d.screens.forEach((sc) => sc.parts.forEach((p) => {
+      const src = p.type === 'table' && p.tableKind === 'related' && p.props ? sourceOf(p.props.db, d) : null;
+      if (!src) return;
+      (p.props.columns || []).forEach((c) => relinkRef(src, c.ref));
+      if (p.props.cond) relinkRef(src, p.props.cond.from);
+    }));
+  });
+}
 // その画面設計と、そこから項目を取り込んでいる画面設計（取り込んだ項目をさらに取り込んだものも。syncLinkedItems がそろえる範囲）の id。
 // 取り込みのつながりをたどって集める（輪になっていても、集めた画面設計はもう一度たどらないので止まる）
 function designAndImporters(S, rootId) {
@@ -3431,6 +3467,7 @@ function normalizeState(raw, schemaVersion) {
     systems: uniqueIds((Array.isArray(raw.systems) ? raw.systems : []).filter(isObj).map((y) => normalizeSystem(y, designIds)), 'y'),
     designs,
   };
+  relinkFreeDbs(state);
   syncLinkedItems(state);
   return state;
 }
@@ -3758,6 +3795,7 @@ function mutateDesign(id, fn, { touch = true } = {}) {
     const before = touch ? designJsonWithRefs(d) : '';
     fn(d, s);
     if (touch && designJsonWithRefs(d) !== before) d.updatedAt = nowIso();
+    relinkFreeDbs(s);
     syncLinkedItems(s);
     clearDanglingStepRefs(s, designAndImporters(s, id));
   });
@@ -3884,6 +3922,8 @@ const actions = {
       addCustomTarget(s, target);
       s.designs.push(d);
       if (systemId) putIntoSystem(s, systemId, d.id);
+      relinkFreeDbs(s); // この名前で書いてあった元をつなぐ
+      syncLinkedItems(s);
     });
     return d.id;
   },
@@ -3914,6 +3954,8 @@ const actions = {
     store.commit((s) => {
       s.designs.push(copy);
       if (systemId) putIntoSystem(s, systemId, copy.id);
+      relinkFreeDbs(s);
+      syncLinkedItems(s);
     });
     return copy.id;
   },
@@ -12845,6 +12887,7 @@ function replaceWithImported(s, incoming) {
   d.revisions.push(revisionRow(d, 'import', { note: REV_AUTO.import }));
   Object.assign(d, designContentOf(incoming, true), { trashedAt: null, updatedAt: nowIso() });
   addCustomTarget(s, incoming.target);
+  relinkFreeDbs(s);
   syncLinkedItems(s); // 一覧にある元の項目とつなぎ直す（元がなければ「元なし」で固定。この画面設計から取り込んだ、ほかの画面設計の項目もそろう）
   clearDanglingStepRefs(s, designAndImporters(s, d.id)); // なくなった画面・ステータスを指していた作業の指す先を外す
   d.exchangeHash = shortHash(comparableContent(d, s)); // 取り込んだ中身の印（次に取り込むとき、こちらで変えていないと分かるように）
@@ -12894,6 +12937,7 @@ async function importHtmlText(text, { systemId = null } = {}) {
     store.commit((s) => {
       s.designs.push({ ...clone(incoming), trashedAt: null, updatedAt: nowIso() });
       addCustomTarget(s, incoming.target);
+      relinkFreeDbs(s);
       syncLinkedItems(s);
       const d = findDesign(s, incoming.id);
       d.exchangeHash = shortHash(comparableContent(d, s));
@@ -12920,6 +12964,7 @@ async function importHtmlText(text, { systemId = null } = {}) {
     store.commit((s) => {
       s.designs.push(copy);
       addCustomTarget(s, copy.target);
+      relinkFreeDbs(s);
       syncLinkedItems(s);
       if (systemId) putIntoSystem(s, systemId, copy.id);
     });
