@@ -161,6 +161,17 @@ test('add_screen: ひな形・複製・機器・名前・置く位置。パソ�
   app.close();
 });
 
+test('add_screen: copyOf でスマホ・タブレットの画面を複製するとき、device を書かなければ同じ機器のまま（デバッグとリリースの見直し④-1）', async () => {
+  const { app, call, d } = await boot();
+  ok(await call('add_screen', { design: 'd1', device: 'phone', name: 'スマホの入力' }));
+  const c = ok(await call('add_screen', { design: 'd1', copyOf: 'スマホの入力', name: 'スマホの確認' }));
+  assert.deepEqual([c.screen.device, c.screen.width], ['phone', 375]);
+  assert.equal(d('d1').screens.find((s) => s.id === c.screen.id).device, 'phone');
+  const pc = ok(await call('add_screen', { design: 'd1', copyOf: 'スマホの入力', name: 'パソコンの確認', device: 'pc' }));
+  assert.equal(pc.screen.device, 'pc', 'device を書いたときは、その機器にする');
+  app.close();
+});
+
 test('edit_screen: 名前・機器・高さ・帯・一覧表の位置を直す・並べ替える・消す。最後の 1 つは消せない', async () => {
   const { app, call, d } = await boot();
   ok(await call('edit_screen', { design: 'd1', ops: [
@@ -199,6 +210,19 @@ test('layout_screen: 2 列・span・幅の広い部品・ボタンの行（右�
   const save = sc.parts.find((p) => p.label === '保存');
   assert.deepEqual(save.props, { style: 'primary', action: '', to: 'screen', designId: '', screenId: 's2', url: '' });
   assert.equal(r.warnings, undefined);
+  app.close();
+});
+
+test('layout_screen: ステータスの項目がまだないとき、status・steps に書いた props.states で項目を作り、current もその中から選べる（デバッグとリリースの見直し④-2）', async () => {
+  const { app, call, d } = await boot();
+  ok(await call('layout_screen', { design: 'd1', screen: '新規登録', layout: { rows: [[{ type: 'status', props: { states: ['受付', '対応中', '完了'] }, current: '対応中' }]] } }));
+  const st = d('d1').items.find((x) => x.type === 'status');
+  assert.deepEqual(st.props.states.map((s) => s.name), ['受付', '対応中', '完了'], '書いたステータスで作る（見本の並びにしない）');
+  const part = d('d1').screens[0].parts.find((p) => p.type === 'status');
+  assert.equal(part.view.current, st.props.states[1].id);
+  const r = ok(await call('create_design', { name: '問い合わせ管理' }));
+  ok(await call('layout_screen', { design: r.id, screen: r.firstScreen.id, layout: { rows: [[{ type: 'steps', props: { states: ['受付', '回答'] } }]] } }));
+  assert.deepEqual(d(r.id).items.find((x) => x.type === 'status').props.states.map((s) => s.name), ['受付', '回答'], 'steps も同じ');
   app.close();
 });
 

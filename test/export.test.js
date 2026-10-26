@@ -216,6 +216,67 @@ test('出力の窓: 画面を全部外して PNG は出力できない。PDF も
 });
 
 // ── PDF・PNG のページ ──
+// デバッグとリリースの見直し②-4: お知らせを出してすぐ組むと、組み終わるまで描かれず、組み終わった時にはお知らせの時間（3.5 秒）が過ぎて消えていた
+test('PDF・PNG: 「作っています…」のお知らせが描かれてから組み、保存し終わるまで出したまま。保存の窓でキャンセルしたら消す', async (t) => {
+  const xapi = fakeExportAPI();
+  let release = null;
+  xapi.savePdf = (p) => { xapi.calls.push(['savePdf', p]); return new Promise((r) => { release = r; }); };
+  const { app, api } = await bootSample(t, { exportAPI: xapi });
+  const frames = [];
+  app.window.requestAnimationFrame = (cb) => { frames.push(cb); return frames.length; };
+  const toastEl = $(app, '#toast');
+  const pdf = api.openExportDialog('d1');
+  await tick();
+  click($(app, '.modal [data-xkind="pdf"]'));
+  click($(app, '[data-dlg="ok"]'));
+  await tick();
+  await tick();
+  assert.equal(toastEl.textContent, 'PDF を作っています…');
+  assert.equal(toastEl.hidden, false);
+  assert.equal(xapi.calls.length, 0, '画面が描かれる前には組まない');
+  frames.splice(0).forEach((cb) => cb(0));
+  await waitFor(() => xapi.calls.length === 1, { label: 'savePdf' });
+  await new Promise((r) => setTimeout(r, 3700));
+  assert.equal(toastEl.hidden, false, '保存し終わるまで出したまま');
+  assert.equal(toastEl.textContent, 'PDF を作っています…');
+  release({ ok: true, path: '/tmp/顧客管理.pdf' });
+  await pdf;
+  assert.match(toastEl.textContent, /PDF を出力しました/);
+  // 保存の窓でキャンセルしたら、「作っています…」を消す（ほかのお知らせは出さない）
+  xapi.savePdf = async (p) => { xapi.calls.push(['savePdf', p]); return { ok: false, canceled: true }; };
+  const cancel = api.openExportDialog('d1');
+  await tick();
+  click($(app, '[data-dlg="ok"]'));
+  await cancel;
+  assert.equal(toastEl.hidden, true, 'キャンセルしたら消す');
+  // PNG も、描かれてから組む
+  const png = api.openExportDialog('d1');
+  await tick();
+  click($(app, '.modal [data-xkind="png"]'));
+  click($(app, '[data-dlg="ok"]'));
+  await tick();
+  await tick();
+  assert.equal(toastEl.textContent, 'PNG を作っています…');
+  assert.equal(xapi.calls.filter((c) => c[0] === 'savePng').length, 0, '画面が描かれる前には組まない');
+  frames.splice(0).forEach((cb) => cb(0));
+  await png;
+  assert.match(toastEl.textContent, /PNG を出力しました/);
+});
+
+// デバッグとリリースの見直し②-3: 説明の高さの上限（用紙の高さの 24%）が行の高さの倍数でなく、省くときに最後の行の字が上だけ見えて残った
+test('PDF の表紙: 説明の高さの上限は、行の高さ（13 × 1.75 ドット）の倍数（省くときに、字が上だけ見える行を残さない）', async (t) => {
+  const { app, api } = await bootSample(t);
+  const d = api.store.state.designs.find((x) => x.id === 'd1');
+  for (const [paper, orient] of [['A4', 'landscape'], ['A4', 'portrait'], ['A3', 'landscape'], ['A3', 'portrait'], ['slide', 'landscape']]) {
+    const page = api.exportDocument(d, api.store.state, { paper, orient, cover: true }).pages[0];
+    const desc = new app.window.DOMParser().parseFromString(page, 'text/html').querySelector('.cv-desc');
+    const lines = parseFloat(desc.style.maxHeight) / (13 * 1.75);
+    assert.ok(Math.abs(lines - Math.round(lines)) < 0.01 && lines >= 3, `${paper} ${orient}: ${desc.style.maxHeight}（${lines.toFixed(2)} 行分）`);
+    const P = api.paperSize(paper, orient);
+    assert.ok(parseFloat(desc.style.maxHeight) <= P.h * 0.24, `${paper} ${orient}: 用紙の高さの 24% を超えない`);
+  }
+});
+
 test('PDF: 表紙・つながりの図・項目の一覧表・画面の順のページ。ページ番号・用紙の大きさ（@page とインチ）・書いたら開く', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
@@ -298,6 +359,44 @@ test('PDF: 用紙は A4・A3 の縦横とスライド（16:9）。外したペ�
   assert.equal(b.total, 3, '表紙・図・新規登録');
   assert.match(b.pages[0], /2　新規登録/);
   assert.ok(!b.pages[0].includes('1　詳細'), '出力しない画面は表紙の一覧にも出さない');
+});
+
+// デバッグとリリースの見直し q99: 部品の設定の表が幅 560 のまま縦に長くなり、画面のページが画面ごと小さく縮んで読めなかった。
+// jsdom では大きさを測れないので、測る関数を差し替える。本文は 1000×600。部品の設定の表の高さは「行の数 × 280000 ÷ 幅」（広げると低くなる）。
+// 画面・表は、style の大きさに、外側の箱の zoom（縮める倍率）を掛けた位置に置く。ほかの要素は 100×20
+function fakeMeasure(app) {
+  app.window.Element.prototype.getBoundingClientRect = function () {
+    const st = (el, k) => parseFloat(el && el.style && el.style[k]) || 0;
+    let z = 1;
+    for (let e = this.parentElement; e; e = e.parentElement) z *= st(e, 'zoom') || 1;
+    let [x, y, width, height] = [0, 0, 100, 20];
+    if (this.classList.contains('pg-body')) [width, height] = [1000, 600];
+    else if (this.classList.contains('ptable')) {
+      width = st(this, 'width');
+      height = 40 + this.querySelectorAll('tbody tr').length * 280000 / width;
+      [x, y] = [st(this.parentElement, 'left'), st(this.parentElement, 'top')];
+    } else if (this.style.width) [width, height] = [st(this, 'width'), st(this, 'height')];
+    [x, y, width, height] = [x * z, y * z, width * z, height * z];
+    return { x, y, left: x, top: y, width, height, right: x + width, bottom: y + height };
+  };
+}
+
+test('PDF の画面のページ: 部品の設定の表が縦に長くて画面ごと小さく縮むときは、表を広げて低くし、いちばん大きく出せる幅にする（PNG は 560 のまま）', async (t) => {
+  const { app, api } = await bootSample(t);
+  fakeMeasure(app);
+  const d = api.store.state.designs.find((x) => x.id === 'd1');
+  const doc = api.exportDocument(d, api.store.state, { paper: 'A4', orient: 'landscape', cover: false, map: false, items: false });
+  const pages = doc.pages.map((h) => new app.window.DOMParser().parseFromString(h, 'text/html'));
+  const tableW = (p) => parseFloat(p.querySelector('.ptable').style.width);
+  const shrink = (p) => Number((p.querySelector('.pg-head span').textContent.match(/(\d+)% に縮小/) || [])[1]);
+  // 詳細（行 4 つ）: 幅 560 では表の高さ 2040 で 29% に縮む。広げると、画面と表の横の長さで決まる倍率と釣り合う所まで大きくなる
+  assert.equal(pages[0].querySelector('.pg-head h2').textContent, '1　詳細');
+  assert.ok(tableW(pages[0]) > 560, `表の幅 ${tableW(pages[0])}`);
+  assert.ok(shrink(pages[0]) >= 35, pages[0].querySelector('.pg-head span').textContent);
+  // 新規登録（行 1 つ）: 表は低く、横の長さで縮むので、広げると小さくなる。560 のまま
+  assert.equal(tableW(pages[1]), 560);
+  // PNG は縮めないので、表は 560 のまま
+  assert.deepEqual(plain(api.exportPngDocs(d, api.store.state).map((f) => Number(f.html.match(/class="ptable" style="width:(\d+)px"/)[1]))), [560, 560]);
 });
 
 test('PNG: 選んだ画面ごとに 1 枚。ファイルの名前は「顧客管理_01_詳細.png」で、使えない字は「_」にする', async (t) => {

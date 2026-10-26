@@ -1,7 +1,7 @@
 // material-text.js — 文字の資料を文字にする（文字コードの判定）と、文の重みの数え方・長い文の分け方
 // 役割:
 //  - decodeText: 資料のバイト列を文字にする。BOM つきの UTF-8・UTF-16LE・UTF-16BE はその形で、
-//    BOM がなければ UTF-8 として読めるときは UTF-8・読めなければ Shift_JIS で読む。改行は \n にそろえる
+//    BOM がなければ UTF-8 として読めるときは UTF-8・読めなければ Shift_JIS で読む（壊れた所が少しだけの UTF-8 は、UTF-8 で読み、その所だけを � にする）。改行は \n にそろえる
 //  - normalizeRadicals: PDF から取った文字の、康熙部首・CJK 部首補助の字（見た目は漢字と同じで符号が違う字。游ゴシック・メイリオの PDF で「日」が「⽇」になる）だけを通常の漢字に直す
 //  - textWeight・splitText: 1 回の返事に入れる量（重み）を数え、1 つの塊が重くなりすぎるとき改行の所で分ける（material-reader.js が使う）
 //  - Electron に触らない。node だけでテストできる
@@ -33,8 +33,22 @@ function decodeBytes(buf) {
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(buf);
   } catch (_) {
-    return new TextDecoder('shift_jis').decode(buf);
+    const utf8 = new TextDecoder('utf-8').decode(buf);
+    return mostlyUtf8(utf8) ? utf8 : new TextDecoder('shift_jis').decode(buf);
   }
+}
+
+// UTF-8 として読めない所（�）が、UTF-8 として読めた ASCII でない字の 20 分の 1 以下なら、壊れた所が少しだけある UTF-8 とみなす
+// （1 バイトでも壊れた所があると、ファイル全体を Shift_JIS で読んで化けていた。デバッグとリリースの見直し③-5）。
+// Shift_JIS の文を UTF-8 として読むと、ほとんどのバイトが � になり、ASCII でない字はほとんど読めない
+function mostlyUtf8(text) {
+  let bad = 0;
+  let good = 0;
+  for (const ch of text) {
+    if (ch === '\ufffd') bad += 1;
+    else if (ch.codePointAt(0) > 0x7f) good += 1;
+  }
+  return bad * 20 <= good;
 }
 
 // バイト列（Buffer・Uint8Array）→ 文字。改行（\r\n・\r）は \n にそろえる。

@@ -1006,6 +1006,152 @@ test('吹き出しをドラッグしている間も、その吹き出しの線�
   assert.equal($$(app, '#co-lines line').length, 1);
 });
 
+// ブラウザ（Chromium）と同じように押す。mousedown を止めなければ、押したボタンへフォーカスが移り、打ちかけの欄は change を出す。
+// 押したボタンが click の前に作り直されて文書から外れたら、click は起きない（デバッグとリリースの見直し⑤-4）
+function pressLikeBrowser(app, el) {
+  const down = new app.window.MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 });
+  el.dispatchEvent(down);
+  if (!down.defaultPrevented) {
+    const a = app.document.activeElement;
+    if (a && a !== el && /^(INPUT|TEXTAREA)$/.test(a.tagName)) a.dispatchEvent(new app.window.Event('change', { bubbles: true }));
+    el.focus();
+  }
+  if (!el.isConnected) {
+    mouse(app, app.document.body, 'mouseup', {});
+    return;
+  }
+  mouse(app, el, 'mouseup', {});
+  click(el);
+}
+
+test('右の欄に打ちかけのまま、部品の箱のボタン・組の見出し・項目の一覧表の ✕・「自動で並べ直す」を押しても、1 回目で効き、打った文字も残る（デバッグとリリースの見直し⑤-4）', async (t) => {
+  const { app, api, add, screen } = await bootEditor(t);
+  add('status');
+  api.selectPart(null);
+  const typeIn = (sel, text) => {
+    const el = $(app, sel);
+    el.focus();
+    el.value = text;
+  };
+  const desc = () => api.currentDesign().description;
+  const status = () => api.currentDesign().items[0];
+  typeIn('#side-settings [data-field="design-desc"]', '出張の申請を管理する');
+  pressLikeBrowser(app, $(app, '.pal-btn[data-type="button"]'));
+  assert.equal(screen().parts.length, 2, '部品の箱のボタン: 1 回目で部品を置く');
+  assert.equal(desc(), '出張の申請を管理する');
+
+  api.selectPart(null);
+  typeIn('#side-settings [data-field="design-desc"]', '出張の申請と精算を管理する');
+  const head = $(app, '.pal-head[data-action="toggle-palette"]');
+  const group = head.dataset.id;
+  pressLikeBrowser(app, head);
+  assert.equal(api.ui.paletteClosed[group], true, '組の見出し: 1 回目で組を閉じる');
+  assert.equal(desc(), '出張の申請と精算を管理する');
+
+  click($(app, '[data-action="open-items"]'));
+  click($(app, '#db-view [data-action="select-item"]'));
+  typeIn('#side-settings [data-pf="label"]', '申請の状態');
+  pressLikeBrowser(app, $(app, '#db-view .del-x[data-action="delete-item"]'));
+  assert.ok($(app, '.modal'), '項目の一覧表の ✕: 1 回目で確かめの窓を出す');
+  assert.equal(status().name, '申請の状態');
+  click($(app, '.modal [data-dlg="cancel"]'));
+
+  click($(app, '[data-action="open-process"]'));
+  api.actions.setViewPos(api.ui.designId, 'process', 'x', { x: 80, y: 80 });
+  typeIn('#side-settings [data-ps]', '下書き');
+  pressLikeBrowser(app, $(app, '#db-view [data-action="view-reset"]'));
+  assert.deepEqual(plain(api.currentDesign().processPos), {}, '「自動で並べ直す」: 1 回目で覚えた位置を消す');
+  assert.equal(status().props.states[0].name, '下書き');
+});
+
+test('部品を選んだまま画面の一覧の「…」・改訂の ▼・「揃える」のメニューを開いて矢印・Delete を押しても、部品は動かず消えない（デバッグとリリースの見直し⑤-6）', async (t) => {
+  const { app, api, add, screen, partEl } = await bootEditor(t);
+  const a = add('button');
+  const b = add('text1');
+  api.selectPart(a.id);
+  mouse(app, partEl(b.id), 'mousedown', { ctrlKey: true }); // 2 つ選ぶ（「揃える」のボタンを押せるように）
+  mouse(app, app.document, 'mouseup', {});
+  assert.equal(api.ui.sel.length, 2);
+  const before = JSON.stringify(screen());
+  const keysInMenu = (label) => {
+    const focused = app.document.activeElement;
+    assert.ok(focused && focused.closest('.screen-menu, .rv-menu, .fold-pop'), `${label}: メニューの項目にフォーカスがある`);
+    ['ArrowDown', 'ArrowLeft', 'Delete'].forEach((k) => key(app, app.document.activeElement, { key: k }));
+    assert.equal(JSON.stringify(screen()), before, `${label}: 部品は動かず消えない`);
+  };
+  click($(app, `.sl-more[data-id="${screen().id}"]`));
+  keysInMenu('画面の一覧の「…」');
+  key(app, app.document.activeElement, { key: 'Escape' });
+  click($(app, '#tb-rev-arrow'));
+  keysInMenu('改訂の ▼');
+  key(app, app.document.activeElement, { key: 'Escape' });
+  click($(app, '#toolbar .fold-btn[data-fold="align"]'));
+  keysInMenu('「揃える」');
+});
+
+test('画面の高さをドラッグしている途中に Ctrl+Z で画面が消えても、放したときにほかの画面の高さを変えない（デバッグとリリースの見直し⑤-7）', async (t) => {
+  const { app, api, screen } = await bootEditor(t);
+  const first = screen().id;
+  const id = api.actions.addScreen(api.ui.designId, 'blank', first);
+  api.openScreen(id);
+  assert.equal(screen().id, id);
+  const M = app.window.MouseEvent;
+  $(app, '[data-drag="resize"]').dispatchEvent(new M('mousedown', { bubbles: true, cancelable: true, button: 0, clientY: 500 }));
+  app.document.dispatchEvent(new M('mousemove', { bubbles: true, clientY: 600 }));
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  assert.equal(api.currentDesign().screens.length, 1, '足した画面は元に戻すで消えた');
+  app.document.dispatchEvent(new M('mouseup', { bubbles: true, clientY: 600 }));
+  assert.equal(screen().id, first);
+  assert.equal(screen().height, 800, '前の画面の高さは変えない');
+});
+
+test('縮小して見ているとき、押しただけで手が少し（4 ドットより少なく）動いても、部品・吹き出し・選んだもの・つながりは変わらない（デバッグとリリースの見直し⑤-3）', async (t) => {
+  const { app, api, add, screen, partEl } = await bootEditor(t);
+  const a = add('text1');
+  const b = add('button');
+  api.selectPart(a.id);
+  click($(app, '.pal-btn[data-type="callout"]'));
+  for (let i = 0; i < 5; i++) api.runCommand('zoomOut');
+  assert.equal(api.ui.zoom, 0.5);
+  const before = JSON.stringify(screen());
+  const undo0 = api.store.undoStack.length;
+  const press = (el, init = {}) => {
+    mouse(app, el, 'mousedown', { clientX: 100, clientY: 100, ...init });
+    mouse(app, app.document, 'mousemove', { clientX: 102, clientY: 101 });
+    mouse(app, app.document, 'mouseup', { clientX: 102, clientY: 101 });
+  };
+  press(partEl(b.id));
+  assert.equal(JSON.stringify(screen()), before, '部品');
+  press($(app, '#stage .callout'));
+  assert.equal(JSON.stringify(screen()), before, '吹き出し');
+  press($(app, '#stage [data-co-handle]'));
+  assert.equal(JSON.stringify(screen()), before, '線の先の ○（つながりを外さない）');
+  press(partEl(a.id), { ctrlKey: true });
+  assert.equal(api.ui.sel.length, 2, '部品 2 つを選んだ');
+  press(partEl(b.id));
+  assert.equal(JSON.stringify(screen()), before, '選んだものをまとめて');
+  assert.equal(api.store.undoStack.length, undo0, '履歴に積まない');
+});
+
+test('吹き出しの文字を打ちかけのまま、線の先の ○ をドラッグしても、打った文字は消えない（デバッグとリリースの見直し⑤-1）', async (t) => {
+  const { app, api, add, screen } = await bootEditor(t);
+  const p = add('text1');
+  api.selectPart(p.id);
+  click($(app, '.pal-btn[data-type="callout"]'));
+  const id = screen().callouts[0].id;
+  const text = $(app, '#side-settings [data-co="text"]');
+  text.focus();
+  text.value = '必ず入れる';
+  mouse(app, $(app, '#stage [data-co-handle]'), 'mousedown', { clientX: 100, clientY: 100 });
+  mouse(app, app.document, 'mousemove', { clientX: 300, clientY: 300 });
+  mouse(app, app.document, 'mouseup', { clientX: 300, clientY: 300 });
+  const c = screen().callouts[0];
+  assert.equal(c.text, '必ず入れる', '打ちかけの文字を保存する');
+  assert.equal(c.target, null, '何もない所で放したので、つながりを外す');
+  assert.equal(api.ui.calloutId, id);
+  assert.equal($(app, '#side-settings [data-co="text"]').value, '必ず入れる', '作り直した欄にも残る');
+});
+
 test('グラフの見本の値: 全角の数字・桁の区切り・単位を読み、数字のない行は描かない。0 でない値が 1 つの円グラフは円で描く', async (t) => {
   const { api, add, screen, partEl } = await bootEditor(t);
   const g = add('graph');

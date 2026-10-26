@@ -124,6 +124,28 @@ test('Excel — シートの見出し・番地つきのセル・結合・日付�
   });
 });
 
+test('Excel — 日本の組み込みの書式番号（numFmtId 27〜36・50〜58）の日付と時刻も、数ではなく日付と時刻で読む（デバッグとリリースの見直し③-1）', async () => {
+  const file = samples.writeSample(dir, 'jp-formats.xlsx', await samples.makeXlsxJapaneseFormats());
+  const lines = body(await readKind(file, 'excel')).split('\n');
+  assert.deepEqual(lines.filter((l) => /^A[0-9]+:/.test(l)), [
+    'A1: 2024-01-05', // 31 yyyy"年"m"月"d"日"
+    'A2: 09:30', // 32 h"時"mm"分"
+    'A3: 2024-01-05', // 27 和暦（ge.m.d）
+    'A4: 2024-01-05', // 58 和暦（ggge"年"m"月"d"日"）
+    'A5: 2024-01-01', // 55 yyyy"年"m"月"
+    'A6: 2024-01-05', // 35 m"月"d"日"
+    'A7: 45296', // 書式なし
+  ]);
+});
+
+test('パスワードで守った Word・Excel は、古い形でなく、パスワードのため読めないと伝える（デバッグとリリースの見直し③-4）', async () => {
+  for (const [name, kind, label] of [['pw.xlsx', 'excel', 'Excel'], ['pw.docx', 'word', 'Word']]) {
+    const file = samples.writeSample(dir, name, samples.encryptedOfficeBytes());
+    const want = `この ${label} のファイルはパスワードで守られているため、読めません。パスワードを外して保存し直してから入れ直してください。`;
+    await rejectsWith(readKind(file, kind), 'encrypted', new RegExp('^' + want + '$'));
+  }
+});
+
 test('Excel — 読めないもの', async (t) => {
   await t.test('中身が OLE2（古い形）なら old_format', async () => {
     const file = samples.writeSample(dir, 'old.xlsx', samples.ole2Bytes());

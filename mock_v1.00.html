@@ -114,7 +114,7 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 
 /* ── 小さな窓（名前を聞く・確かめる）────────────────── */
 .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:40}
-.modal{background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(15,23,42,.35);width:min(440px,calc(100vw - 32px));padding:20px 22px 18px}
+.modal{background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(15,23,42,.35);width:min(440px,calc(100vw - 32px));padding:20px 22px 18px;max-height:calc(100vh - 32px);overflow-y:auto}
 .modal.wide{width:min(920px,calc(100vw - 32px))}
 /* ほかのモックから項目を取り込む窓（画像 q21） */
 .imp{display:flex;gap:14px;height:min(380px,calc(100vh - 260px))}
@@ -184,7 +184,7 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 
 .editor-body{flex:1;min-height:0;display:flex}
 .screen-list{width:192px;flex-shrink:0;background:#fff;border-right:1px solid #e2e8f0;overflow-y:auto;padding:12px 12px 20px}
-.panel-title{font-size:12px;font-weight:700;color:#334155;margin-bottom:10px}
+.panel-title{font-size:12px;font-weight:700;color:#334155;margin-bottom:10px;word-break:auto-phrase} /* 文節で折り返す（見直し⑥-7） */
 .sl-item{display:block;width:100%;border:none;background:none;text-align:left;cursor:pointer;margin-bottom:12px;padding:0}
 .sl-thumb{display:flex;justify-content:center;padding:6px;border:2px solid transparent;border-radius:6px;background:#f8fafc}
 .sl-item.active .sl-thumb{border-color:#2563eb}
@@ -430,7 +430,7 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 .seg{display:flex;gap:6px}
 .seg label{flex:1 1 0;min-width:max-content;cursor:pointer}
 .seg input{position:absolute;opacity:0;pointer-events:none}
-.seg span{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid #cbd5e1;border-radius:6px;padding:6px 2px;font-size:12px;background:#fff}
+.seg span{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid #cbd5e1;border-radius:6px;padding:6px 6px;font-size:12px;background:#fff}
 .seg small{font-size:10px;color:#64748b}
 .seg input:checked+span{border-color:#2563eb;background:#eff6ff;color:#1d4ed8;font-weight:600}
 .seg input:focus-visible+span{box-shadow:0 0 0 2px rgba(59,130,246,.35)}
@@ -449,6 +449,8 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 .itable-head .hint{margin-left:4px}
 .itable table{border-collapse:collapse;width:100%;font-size:13px}
 .itable th,.itable td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top;line-height:1.55}
+/* 日本語の文を文節で折り返す（「顧客コ／ード」のように言葉の途中で折り返さない。列の最小の幅も、いちばん長い文節の幅になる。デバッグとリリースの見直し⑥-4） */
+.itable td{word-break:auto-phrase}
 .itable th{background:#eef2f7;color:#334155;font-size:12px;white-space:nowrap}
 .itable td.c-grip{width:26px;text-align:center;color:#94a3b8;cursor:grab;user-select:none}
 .itable td.c-del{width:34px;text-align:center}
@@ -686,13 +688,13 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .mat-tbl tr.old td b{color:#64748b}
 .mat-memo{width:100%;min-width:120px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 7px;font-size:12.5px;background:#fff}
 .mat-memo::placeholder{color:#94a3b8}
-/* 操作の欄は 168px まで（MPD の行のボタン 4 つを［読む］［スイムレーン図にする］／［MPD に出力…］［消す］の 2 段に分け、名前の欄に幅を回す。第 11 段階。画像 q82_1） */
+/* 操作の欄は 168px まで（MPD の行のボタン 4 つを［読む］［スイムレーン図にする］／［MPD に出力…］［削除］の 2 段に分け、名前の欄に幅を回す。第 11 段階。画像 q82_1） */
 .mat-ops{display:flex;flex-wrap:wrap;gap:4px;max-width:168px}
 .mat-ops .btn.small{padding:4px 8px}
-/* 資料の窓口の返事を待つ間の、押したボタンの印（q96 の案 A） */
-.mat-ops .btn.small.waiting:disabled{opacity:1;color:#1d4ed8;border-color:#93c5fd;background:#eff6ff}
-.mat-wait{display:inline-block;width:10px;height:10px;border:2px solid #93c5fd;border-top-color:#2563eb;border-radius:50%;margin-right:4px;vertical-align:-1px;animation:mat-spin .8s linear infinite}
+.mat-ops .btn.mat-busy:disabled{opacity:1}
+.mat-spin{display:inline-block;flex:none;width:9px;height:9px;border:2px solid #94a3b8;border-top-color:#2563eb;border-radius:50%;animation:mat-spin .8s linear infinite}
 @keyframes mat-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.mat-spin{animation:none}}
 /* 設計ノートの入口（第 10 段階の前半。画像 k75〔q75 の案B「段階ごとの札」と q78 の案A「人も変えられる」〕）: 段階ごとの札（選んだ札は濃い紺）・
    札の下の欄（この段階の進み具合のボタン・読み取ったこと・まだ決まっていないことと決めたことと理由の表）・札の外の下のメモ。
    札とボタンの色: 確認済み＝緑・確認待ち＝オレンジ・作業中＝青・まだ＝灰色・確認を飛ばした＝灰色の点線の枠。札・ボタンの文字は言葉の途中で改行させない */
@@ -1412,7 +1414,8 @@ function screenFromTemplate(design, templateId, name) {
       break;
     case 'list': {
       put('search', TPL_LEFT, 64);
-      put('filter', 368, 64);
+      // 絞り込みの番号の札は部品の左の外（28 ドット）に付くので、検索の欄（幅 320）の右に 48 空ける（16 だと札が「検索」ボタンに重なった。見直し⑥-1）
+      put('filter', TPL_LEFT + PART_TYPES.search.w + 48, 64);
       put('button', right(128), 64, { label: '＋ 新規登録', w: 128 });
       const t = put('table', TPL_LEFT, 128, { tableKind: 'records', w: sc.width - TPL_LEFT * 2, h: tableHeight(8), view: { rows: 8 } });
       put('pager', right(PART_TYPES.pager.w), t.y + t.h + 16);
@@ -3176,6 +3179,20 @@ class BlockedAdapter {
   }
 }
 
+// ブラウザで開いているとき、ほかのタブ（窓）が同じ保存データを保存したら、このタブの保存を止める。
+// このタブの中身は古いので、次の保存で、ほかのタブの変更を黙って上書きしていた（デバッグとリリースの見直し①-2）。
+// storage の知らせは、保存したタブでない方にだけ届く。キーが null の知らせは、保存領域を全部消したとき
+function watchOtherTabs() {
+  if (!(store.adapter instanceof LocalStorageAdapter)) return;
+  window.addEventListener('storage', (e) => {
+    if (e.storageArea !== localStorage || (e.key !== null && e.key !== store.adapter.key)) return;
+    if (store.blockReason) return;
+    store.adapter = new BlockedAdapter();
+    store.blockReason = 'ほかのタブ（窓）で、このアプリのデータが保存されました。';
+    showBanner(store.blockReason + ' このタブで直すと、ほかのタブの変更を消してしまうため、このタブの保存を止めました。このタブを読み込み直してください。');
+  });
+}
+
 // 戻り値 { store, blockReason, notice }。blockReason があるときは保存を止める。notice は知らせるだけ（保存は続ける）
 async function createAppStore() {
   let raw;
@@ -3290,12 +3307,18 @@ class Store {
     this.notify();
   }
   get isViewing() { return !!this.realState; }
-  // 何も変わらなかったときは、履歴に積まない（打ちかけの欄を保存し直しただけで、元に戻すが 1 回空振りし、やり直すが消えないように）
+  // 何も変わらなかったときは、履歴に積まない（打ちかけの欄を保存し直しただけで、元に戻すが 1 回空振りし、やり直すが消えないように）。
+  // mutator が例外を投げたら、batch と同じく始める前の中身に戻して投げ直す（途中まで変わった中身が、次の保存で書かれていた。デバッグとリリースの見直し①-4）
   commit(mutator, { history = true } = {}) {
     if (this.realState) return; // 前の版を見ている間は直せない
     if (this.batching) { mutator(this.state); return; } // batch の中では、積む・保存・描き直しを batch に任せる
-    const before = history ? stateWithRefs(this.state) : null;
-    mutator(this.state);
+    const before = stateWithRefs(this.state);
+    try {
+      mutator(this.state);
+    } catch (e) {
+      this.state = stateFromRefs(before);
+      throw e;
+    }
     if (history && stateWithRefs(this.state).json !== before.json) {
       this.undoStack.push(stateFromRefs(before));
       if (this.undoStack.length > HISTORY_LIMIT) this.undoStack.shift();
@@ -4557,12 +4580,28 @@ function showBanner(message) {
 }
 
 let toastTimer = null;
-function toast(message) {
+// stay なら、時間で消さずに出したままにする（次のお知らせで置き換えるか、endWorking で消す）
+function toast(message, { stay = false } = {}) {
   const el = $('#toast');
   el.textContent = message;
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; }, 3500);
+  if (!stay) toastTimer = setTimeout(() => { el.hidden = true; }, 3500);
+}
+// 時間のかかる出力（PDF・PNG を組む）の間のお知らせ。出したままにし、画面が描かれてから先へ進む。
+// 組む処理は重く、お知らせを出してすぐ組むと、組み終わるまで描かれず、組み終わった時にはお知らせの時間（3.5 秒）が過ぎて消えていた
+// （デバッグとリリースの見直し②-4）。窓が隠れていて描かれないときも、100 ミリ秒で先へ進む
+function startWorking(message) {
+  toast(message, { stay: true });
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => setTimeout(resolve, 0));
+    setTimeout(resolve, 100);
+  });
+}
+// 結果のお知らせを出さずに終わったとき（保存の窓でキャンセルした・組めなかった）、startWorking のお知らせがまだ出ていれば消す
+function endWorking(message) {
+  const el = $('#toast');
+  if (!el.hidden && el.textContent === message) el.hidden = true;
 }
 
 // 小さな窓。OK で collect(窓) の結果（{ error } なら窓に出して閉じない）、キャンセルで null を返す。
@@ -4621,8 +4660,9 @@ function showDialog({ title, body, okLabel = 'OK', okClass = 'primary', init, co
     $('[data-dlg="ok"]', modal).addEventListener('click', ok);
     appEl().setAttribute('inert', '');
     if (init) init(modal);
-    // 窓の中にフォーカスを移す。危ない操作の窓では「キャンセル」に置く（Enter の押し間違いで実行しないため）
-    if (!modal.contains(document.activeElement)) $(okClass === 'danger' || okHidden ? '[data-dlg="cancel"]' : '[data-dlg="ok"]', modal).focus();
+    // 窓の中にフォーカスを移す。危ない操作の窓では「キャンセル」に置く（Enter の押し間違いで実行しないため）。
+    // 窓が画面より高くて中を送れるときも、窓の上（題）を見せたままにする（下の端のボタンへ送らない。見直し⑥-13）
+    if (!modal.contains(document.activeElement)) $(okClass === 'danger' || okHidden ? '[data-dlg="cancel"]' : '[data-dlg="ok"]', modal).focus({ preventScroll: true });
   });
 }
 const isDialogOpen = () => !!$('#dialog-root .modal-overlay');
@@ -4933,12 +4973,12 @@ function partFieldHtml(p, t) {
 // 部品の設定の一覧表。editor のときは、行を押すとその部品を選べるようにし、番号の付いた部品がなければ案内を出す。
 // 出力（editor でないとき）では、番号の付いた部品がなければ表を出さない
 // diff（{ info: designDiff の screens の 1 つ, label: 「第 2 版」 }）を渡すと、番号の前に「新」「変」の札を付け、表の下に「削除した部品」を並べる
-function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null, diff = null } = {}) {
+function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null, diff = null, width: tableWidth = null } = {}) {
   const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
   const rows = tableRows(screen, design, store.state);
   const info = diff && !diff.info.isNew ? diff.info : null;
   if (!rows.length && !editor && !(info && info.deleted.length)) return '';
-  const width = screen.tablePos === 'bottom' ? screen.width : TABLE_W;
+  const width = tableWidth || (screen.tablePos === 'bottom' ? screen.width : TABLE_W);
   const head = '<thead><tr><th class="c-no">番号</th><th class="c-label">項目名</th><th class="c-kind">部品の種類</th><th>設定</th></tr></thead>';
   const mark = (r) => (info && !r.branch ? diffBadgeInline(info.parts[r.id]) : '');
   const body = rows.length
@@ -5703,7 +5743,7 @@ function sysBlockHtml(g) {
       <h2>${esc(y.name)}</h2><span class="meta">画面設計 ${designsOfSystem(S, y).length} つ・役割 ${y.roles.length} つ</span><span class="spacer"></span>
       <button class="btn small primary" data-action="open-system" data-id="${id}" title="「${esc(y.name)}」のシステムの画面を開きます">開く</button>
       <span class="sys-pop-wrap"><button class="btn small" data-action="sys-add-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('add')}">＋ 画面設計を入れる ▾</button>${open('add') ? sysAddMenuHtml(y) : ''}</span>
-      <span class="sys-pop-wrap"><button class="btn small" data-action="sys-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('more')}" aria-label="「${esc(y.name)}」の操作" title="${window.exportAPI ? '名前と説明を変える・説明書を出力する・ごみ箱へ移す' : '名前と説明を変える・ごみ箱へ移す'}">…</button>${open('more') ? sysMoreMenuHtml(y) : ''}</span>
+      <span class="sys-pop-wrap"><button class="btn small" data-action="sys-menu" data-id="${id}" aria-haspopup="menu" aria-expanded="${open('more')}" aria-label="「${esc(y.name)}」の操作" title="${window.exportAPI ? '名前と説明の変更・説明書を出力・削除' : '名前と説明の変更・削除'}">…</button>${open('more') ? sysMoreMenuHtml(y) : ''}</span>
     </div>
     ${y.description ? `<p class="sys-desc">${esc(y.description)}</p>` : ''}
     ${g.designs.length ? `<div class="cards">${g.designs.map((d) => renderCard(d, { sys: y })).join('')}</div>` : '<p class="empty">まだ画面設計が入っていません。「＋ 画面設計を入れる」から入れます。</p>'}
@@ -5722,9 +5762,9 @@ function sysAddMenuHtml(y, cls = '') {
 function sysMoreMenuHtml(y) {
   const id = esc(y.id);
   return `<div class="pop-menu sys-pop" role="menu">
-    <button role="menuitem" data-action="sys-edit" data-id="${id}">名前と説明を変える…</button>
+    <button role="menuitem" data-action="sys-edit" data-id="${id}">名前と説明の変更…</button>
     ${window.exportAPI ? `<button role="menuitem" data-action="sys-doc" data-id="${id}">説明書を出力…</button>` : ''}
-    <button role="menuitem" class="danger" data-action="sys-trash" data-id="${id}">ごみ箱へ移す</button>
+    <button role="menuitem" class="danger" data-action="sys-trash" data-id="${id}">削除（ごみ箱へ移す）</button>
   </div>`;
 }
 // システムのまとまりの「＋ 画面設計を入れる ▾」・「…」のメニューを開く・閉じる（ui.sysMenu は 'add:システムの id' か 'more:システムの id'）。
@@ -5837,7 +5877,7 @@ function openNewDesignDialog({ systemId = null } = {}) {
     ? `<label class="field"><span>入れるシステム</span><select name="system">${opt('', '（入れない）')}${systems.map((y) => opt(y.id, y.name)).join('')}</select></label>` : '';
   return showDialog({
     title: '新しい画面設計',
-    okLabel: '作成して開く',
+    okLabel: '作って開く', // アプリの画面の文はほかの所も「作る」（「作成」はここだけだった。デバッグとリリースの見直し⑥-16）
     body: `
       <label class="field"><span>名前（業務アプリの名前）</span><input type="text" name="name" maxlength="${NAME_MAX}" placeholder="例: 顧客管理アプリ"></label>
       <div class="field"><span>作る先</span>${targetPickerHtml(store.state, 'kintone')}</div>
@@ -5866,7 +5906,7 @@ async function newDesignWithDialog(systemId) {
   if (id) openDesign(id);
 }
 
-// システムの名前と説明の窓（「＋ 新しいシステム」と「名前と説明を変える」）。戻り値 { name, description } か null。
+// システムの名前と説明の窓（「＋ 新しいシステム」と「名前と説明の変更」）。戻り値 { name, description } か null。
 // 名前は前後の空白を削り、説明は削らない（actions・AI の道具と同じ。何も変えずに「変える」を押したときに、中身が変わらないように）
 function openSystemDialog({ title, okLabel, name = '', description = '', hint = '' }) {
   return showDialog({
@@ -6080,7 +6120,7 @@ function openTrashDesignDialog(d, { systems = [], importers = [] } = {}) {
       ごみ箱の中にある間は、つながったままです。完全に削除すると、取り込んだ側の項目は、そのときの中身で固定されます。</p>`
     : '';
   return showDialog({
-    title: `「${d.name}」をごみ箱に移しますか？`,
+    title: `「${d.name}」をごみ箱へ移しますか？`,
     okLabel: 'ごみ箱へ移す',
     okClass: 'danger',
     body: `<p>ごみ箱からいつでも戻せます。</p>${sysNote}${importNote}`,
@@ -6164,7 +6204,7 @@ async function onSystemAction(action, y) {
     case 'sys-add-new': await newDesignWithDialog(y.id); return;
     case 'sys-add-same': case 'sys-add-copy': await pickDesignsIntoSystem(y.id, action === 'sys-add-same' ? 'same' : 'copy'); return;
     case 'sys-edit': {
-      const r = await openSystemDialog({ title: '名前と説明を変える', okLabel: '変える', name: y.name, description: y.description });
+      const r = await openSystemDialog({ title: '名前と説明の変更', okLabel: '変更する', name: y.name, description: y.description });
       if (r) actions.updateSystem(y.id, r);
       return;
     }
@@ -6247,7 +6287,7 @@ function sysToolbarHtml() {
     group('編集', `
       <button class="bigbtn" data-action="swim-select" id="sys-mode-select" title="作業の箱と矢印を選んで、動かす・直すモード（V キー）"><span class="ico">▶</span>選択</button>
       <button class="bigbtn" data-action="swim-connect" id="sys-mode-connect" title="つなぐ元とつなぐ先の作業の箱を順に押して、矢印でつなぐモード（C キー）"><span class="ico">→</span>接続</button>
-      <button class="bigbtn" data-action="swim-delete" id="sys-del" title="選んだ作業の箱か矢印を消します（Delete キー）"><span class="ico">✕</span>削除</button>`),
+      <button class="bigbtn" data-action="swim-delete" id="sys-del" title="選んだ作業の箱か矢印を削除します（Delete キー）"><span class="ico">✕</span>削除</button>`),
     group('表示', `<div class="stack">
       <button class="tbtn" data-action="zoom-in" data-sys-zoom title="スイムレーン図を拡大（Ctrl+＋）">＋ 拡大</button>
       <button class="tbtn" data-action="zoom-out" data-sys-zoom title="スイムレーン図を縮小（Ctrl+－）">－ 縮小</button></div>
@@ -6407,8 +6447,8 @@ function sysDesignMenuHtml(shown, designId) {
   return `<div class="screen-menu sys-dmenu" role="menu">
     <button role="menuitem" data-action="sys-dm-open" data-id="${id}">開く</button>
     <hr>
-    <button role="menuitem" data-action="sys-dm-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ動かす</button>
-    <button role="menuitem" data-action="sys-dm-down" data-id="${id}"${i === shown.length - 1 ? ' disabled' : ''}>下へ動かす</button>
+    <button role="menuitem" data-action="sys-dm-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ移動</button>
+    <button role="menuitem" data-action="sys-dm-down" data-id="${id}"${i === shown.length - 1 ? ' disabled' : ''}>下へ移動</button>
     <hr>
     <button role="menuitem" data-action="sys-dm-remove" data-id="${id}">このシステムから外す</button>
   </div>`;
@@ -6472,6 +6512,9 @@ function dragSysDesignSort(ev) {
 // done.to は「この位置のカードの前に入れる」位置。moveDesignInSystem には、動かした後の位置を渡す
 function endSysDesignSort(done) {
   if (!done.moved) return;
+  // 真ん中・右の欄の打ちかけの文字を先に保存する（並べ替えた後の描き直しで消えないように。押しただけのときは、開く click の処理の初めに保存する。
+  // ドラッグの始めに保存すると、左の欄が描き直されて、動かしている間のカードの印が外れる。デバッグとリリースの見直し⑤-2）
+  flushSideField();
   sysSortEndedAt = Date.now();
   const from = designsOfSystem(store.state, ui.systemId).findIndex((d) => d.id === done.id);
   const to = done.to == null || from < 0 ? null : done.to > from ? done.to - 1 : done.to;
@@ -6549,7 +6592,7 @@ function sysRolesHtml(y) {
       <input type="text" data-sy="role-name" data-role="${esc(r.id)}" maxlength="${NAME_MAX}" value="${esc(r.name)}" aria-label="${i + 1} つ目の役割の名前">
       <input type="text" data-sy="role-memo" data-role="${esc(r.id)}" value="${esc(r.memo)}" placeholder="この役割の人・部署など" aria-label="${what}のメモ">
       <span class="cnt">${k ? `作業 ${k} つ` : '作業なし'}</span>
-      ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を消す`, '✕', false)}</div>`;
+      ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を削除`, '✕', false)}</div>`;
   }).join('');
   return `<div class="itable" style="max-width:760px">${sysHead('役割', y)}
     <p class="map-note">役割は、スイムレーン図の横の帯になります。上から順に帯を並べます。</p>
@@ -6582,8 +6625,8 @@ async function deleteRoleWithConfirm(sysId, roleId) {
     const edges = y.swimlane.edges.filter((e) => gone.has(e.from) || gone.has(e.to)).length;
     const what = `<b>作業の箱 ${gone.size} つ</b>${edges ? `と、その箱につながる<b>矢印 ${edges} 本</b>` : ''}`;
     const ok = await showDialog({
-      title: `役割「${r.name}」を消しますか？`,
-      okLabel: '消す',
+      title: `役割「${r.name}」を削除しますか？`,
+      okLabel: '削除する',
       okClass: 'danger',
       body: `<p>役割「${esc(r.name)}」の帯に入っている${what}も一緒に消えます。</p><p class="hint" style="margin-top:8px">消した後でも、元に戻す（Ctrl+Z）で戻せます。</p>`,
     });
@@ -6760,24 +6803,39 @@ function sysMaterialRowHtml(m) {
     <td><span class="mat-name"><span class="mat-nm"><span class="mat-ic" aria-hidden="true">${MATERIAL_KIND_ICONS[m.kind] || MATERIAL_KIND_ICONS.other}</span><b>${name}</b></span>${old ? '<span class="tag gone">古い形のため読めません</span>' : ''}</span></td>
     <td class="nw">${esc(old ? `${kind}（古い形）` : kind)}</td><td class="nw">${esc(fmtMaterialSize(m.size))}</td><td class="nw">${esc(fmtDateTime(m.addedAt).slice(0, 10))}</td>
     <td><input type="text" class="mat-memo" data-sy="mat-memo" data-mat="${id}" value="${esc(m.memo)}" placeholder="メモを書く" aria-label="「${name}」のメモ"></td>
-    <td><div class="mat-ops">${sysMaterialOpsHtml(m)}</div></td></tr>`;
+    <td>${sysMaterialOpsHtml(m)}</td></tr>`;
 }
-// 行の操作のボタン。資料の窓口の返事を待っている資料（materialsWaiting）は、ボタンをすべて押せなくし、押したボタンに回る印と
-// 「読んでいます…」（MPD に出力は「出力しています…」）を出す（q96 の案 A。2026-10-24）
+// 待っている間の、押したボタンの文字（何を待っているかごと）
+const MATERIAL_WAIT_LABELS = { read: '読んでいます…', swim: '読んでいます…', export: '出力しています…' };
+// 表の 1 行の操作の欄。資料の窓口の返事を待っている資料（materialsWaiting）の行は、ボタンを全部押せなくし、押したボタンを「読んでいます…」などにして
+// 回る印を付ける（画像 q89_1。デバッグとリリースの直し①）。表は丸ごと描き直されることがあるので、印はここで待っている状態から描く
 function sysMaterialOpsHtml(m) {
   const id = esc(m.id);
   const name = esc(m.name);
-  const old = isLegacyMaterial(m);
-  const waiting = materialsWaiting.get(m.id) || null;
-  const label = (what, text) => (waiting === what ? `<span class="mat-wait" aria-hidden="true"></span>${MATERIAL_WAIT_LABELS[what]}` : text);
-  const off = () => (waiting ? ' disabled' : '');
-  const read = waiting ? '' : old ? ' disabled title="古い形のため読めません"'
+  const wait = materialsWaiting.get(m.id);
+  // kind は待っているときに印を付けるボタンの種類（materialsWaiting の action。「消す」は空）
+  const button = (kind, action, label, attrs, cls = '') => {
+    if (!wait) return `<button class="btn small${cls}" data-action="${action}" data-id="${id}"${attrs}>${label}</button>`;
+    const busy = wait.action === kind;
+    return `<button class="btn small${cls}${busy ? ' mat-busy' : ''}" data-action="${action}" data-id="${id}" disabled${busy ? ' aria-busy="true"' : ''} title="「${name}」の処理が終わるまで押せません">`
+      + `${busy ? `<span class="mat-spin" aria-hidden="true"></span>${MATERIAL_WAIT_LABELS[kind]}` : label}</button>`;
+  };
+  const read = isLegacyMaterial(m) ? ' disabled title="古い形のため読めません"'
     : m.kind === 'other' ? ' disabled title="この種類のファイルは読めません"' : ` title="「${name}」の中身を読みます"`;
-  const swim = m.kind === 'bdm'
-    ? `<button class="btn small${waiting === 'swim' ? ' waiting' : ''}" data-action="sys-mat-swim" data-id="${id}" title="この図から、スイムレーン図を作ります"${off()}>${label('swim', 'スイムレーン図にする')}</button>` : '';
+  const swim = m.kind === 'bdm' ? button('swim', 'sys-mat-swim', 'スイムレーン図にする', ' title="この図から、スイムレーン図を作ります"') : '';
   const mpd = m.kind === 'bdm' && mpdExportApi()
-    ? `<button class="btn small${waiting === 'mpd' ? ' waiting' : ''}" data-action="sys-mat-export" data-id="${id}" title="スイムレーン図を、この MPD を元にした HTML ファイルに出力します（元のファイルは書き換えません）"${off()}>${label('mpd', 'MPD に出力…')}</button>` : '';
-  return `<button class="btn small${waiting === 'read' ? ' waiting' : ''}" data-action="sys-mat-read" data-id="${id}"${read}${off()}>${label('read', '読む')}</button>${swim}${mpd}<button class="btn small danger-text" data-action="sys-mat-del" data-id="${id}" title="この資料を消します（元に戻す〔Ctrl+Z〕で戻せます）"${off()}>消す</button>`;
+    ? button('export', 'sys-mat-export', 'MPD に出力…', ' title="スイムレーン図を、この MPD を元にした HTML ファイルに出力します（元のファイルは書き換えません）"') : '';
+  return `<div class="mat-ops">${button('read', 'sys-mat-read', '読む', read)}${swim}${mpd}`
+    + `${button('', 'sys-mat-del', '削除', ' title="この資料を削除します（元に戻す〔Ctrl+Z〕で戻せます）"', ' danger-text')}</div>`;
+}
+// 待ち始め・終わりに、その資料の行の操作の欄だけを描き直す（行を丸ごと描き直すと、メモの欄の打ちかけの文字とフォーカスが消えるため）。
+// 資料の表が見えていないとき（ほかの画面・ほかの入口）は何もしない（表を開いたときに sysMaterialRowHtml が印を描く）
+function refreshMaterialOps(matId) {
+  const y = ui.view === 'system' ? findSystem(store.state, ui.systemId) : null;
+  const m = y && y.materials.find((x) => x.id === matId);
+  const tr = m && [...document.querySelectorAll('#sys-view .mat-tbl tbody tr')].find((x) => x.dataset.id === matId);
+  const ops = tr && tr.querySelector('.mat-ops');
+  if (ops) ops.outerHTML = sysMaterialOpsHtml(m);
 }
 // 資料の窓口を呼ぶ（読む・BDM の案・MPD に出力）。返事が ok で valid(返事) が真ならその返事、そうでなければお知らせ（返事の message。ないときは fallback）を出して null。
 // 取りやめの返事（canceled。MPD に出力の保存の窓）は、知らせずに null
@@ -6789,41 +6847,74 @@ async function askMaterialsApi(call, valid, fallback) {
     console.warn('資料の窓口を呼べませんでした:', (e && e.message) || e);
   }
   if (res && res.ok === true && valid(res)) return res;
-  if (res && res.canceled === true) return null;
+  // 取りやめ（保存の窓）と、待つのをやめたとき（waitMaterialAnswer がもう知らせた）は、黙って null
+  if (res === MATERIAL_TIMED_OUT || (res && res.canceled === true)) return null;
   toast(materialFailMessage(res) || fallback);
   return null;
 }
-// 資料の窓口の返事を待っている資料の id → 何を待っているか（read・swim・mpd）。待つ間に、同じ資料の「読む」「スイムレーン図にする」「MPD に出力…」を
-// 2 回目に押しても、頼みを重ねない。待つ間は、その資料の行のボタンに印を出して押せなくする（sysMaterialOpsHtml。q96 の案 A。2026-10-24）
+// ── 資料の窓口の返事を待つ間（デバッグとリリースの直し①。q89・q96。画像 q89_1〜3）──
+// 資料の窓口の返事を待っている資料（資料の id → { action: 'read'〔読む〕・'swim'〔スイムレーン図にする〕・'export'〔MPD に出力〕, clock }）。
+// 待つ間は、同じ資料の「読む」「スイムレーン図にする」「MPD に出力…」の 2 回目の頼みを重ねず、表の行のボタンを押せなくして印を付ける（sysMaterialOpsHtml）
 const materialsWaiting = new Map();
-const MATERIAL_WAIT_LABELS = { read: '読んでいます…', swim: '読んでいます…', mpd: '出力しています…' };
-// 読む・スイムレーン図にするの待ちの時間切れ（q96。60 秒）。読む部品が止まっても、ボタンが戻り、もう一度押せるようにする。
-// MPD に出力は、保存の窓で場所を選んでいる間も待つので、時間切れにしない。時間切れの後に来た返事は使わない
-let materialWaitMs = 60000;
-const MATERIAL_TIMED_OUT = Symbol('timed-out');
-async function whileMaterialWaits(m, what, fn) {
-  materialsWaiting.set(m.id, what);
-  refreshMaterialOps(m.id);
+// 返事を待つ長さ（60 秒。2026-10-24 の q96。2026-10-26 に「続きを読む」「MPD に出力…」も 60 秒にそろえた）。読む部品が途中で止まっても、
+// ボタンが押せないままにならないように、これを過ぎたら待つのをやめる。テストからは短くできる（setMaterialWaitMs）
+const MATERIAL_WAIT_SECONDS = 60;
+let materialWaitMs = MATERIAL_WAIT_SECONDS * 1000;
+// 待つのをやめたときの返事の代わり（askMaterialsApi は黙って null にする）
+const MATERIAL_TIMED_OUT = Object.freeze({ timedOut: true });
+// 待つ時間を数える時計。restart で初めから数え直し、stop で止める（保存の窓が開いている間は止める）。数え終わると expired が MATERIAL_TIMED_OUT になる
+function materialTimer() {
   let timer = null;
+  let expire = null;
+  const expired = new Promise((resolve) => { expire = resolve; });
+  return {
+    expired,
+    restart: () => { clearTimeout(timer); timer = setTimeout(() => expire(MATERIAL_TIMED_OUT), materialWaitMs); },
+    stop: () => clearTimeout(timer),
+  };
+}
+// 待つのをやめたときのお知らせ。action は何を待っていたか（'more' は読むの窓の「続きを読む」）。押し直すボタンと、何度も止まるときは起動し直すことを書く
+function materialTimeoutText(name, action) {
+  const tail = '何度も止まるときは、アプリを起動し直してください。';
+  if (action === 'export') {
+    return `「${name}」を元にした MPD への出力が ${MATERIAL_WAIT_SECONDS} 秒たっても終わらなかったため、待つのをやめました。出力したファイルができているかを確かめてから、もう一度「MPD に出力…」を押してください。${tail}`;
+  }
+  if (action === 'more') return `「${name}」の続きを ${MATERIAL_WAIT_SECONDS} 秒待っても読み終わらなかったため、待つのをやめました。もう一度「続きを読む」を押してください。${tail}`;
+  const again = action === 'swim' ? '「スイムレーン図にする」' : '「読む」';
+  return `「${name}」を ${MATERIAL_WAIT_SECONDS} 秒待っても読み終わらなかったため、待つのをやめました。もう一度${again}を押してください。${tail}`;
+}
+// call()（資料の窓口の頼み）の返事を、clock が数え終わるまで待つ。来なければお知らせを出して MATERIAL_TIMED_OUT を返す（遅れて届いた返事は捨てる）
+async function waitMaterialAnswer(name, action, call, clock = materialTimer()) {
+  clock.restart();
+  let res;
   try {
-    if (what === 'mpd') return await fn();
-    const late = new Promise((resolve) => { timer = setTimeout(() => resolve(MATERIAL_TIMED_OUT), materialWaitMs); });
-    const res = await Promise.race([fn(), late]);
-    if (res !== MATERIAL_TIMED_OUT) return res;
-    toast(`「${m.name}」を読むのに ${Math.round(materialWaitMs / 1000)} 秒を超えたので、待つのをやめました。もう一度押してください。続けて同じになるときは、アプリを起動し直してください。`);
-    return null;
+    res = await Promise.race([call(), clock.expired]);
   } finally {
-    clearTimeout(timer);
+    clock.stop();
+  }
+  if (res === MATERIAL_TIMED_OUT) toast(materialTimeoutText(name, action));
+  return res;
+}
+// 資料 m の返事を待つ間、materialsWaiting に入れて表の行に印を付ける（待ち終わったら外す）。戻り値は waitMaterialAnswer と同じ
+async function whileMaterialWaits(m, action, call) {
+  const clock = materialTimer();
+  materialsWaiting.set(m.id, { action, clock });
+  refreshMaterialOps(m.id);
+  try {
+    return await waitMaterialAnswer(m.name, action, call, clock);
+  } finally {
     materialsWaiting.delete(m.id);
     refreshMaterialOps(m.id);
   }
 }
-// 資料の表に出ている行のボタンだけを描き直す（メモの欄に打っている途中の文字とフォーカスを消さないため）
-function refreshMaterialOps(matId) {
-  const ops = [...document.querySelectorAll('#sys-view .sys-mats tr[data-id] .mat-ops')].find((el) => el.closest('tr').dataset.id === matId);
-  const y = ui.view === 'system' ? findSystem(store.state, ui.systemId) : null;
-  const m = y && y.materials.find((x) => x.id === matId);
-  if (ops && m) ops.innerHTML = sysMaterialOpsHtml(m);
+// 保存の窓（MPD に出力）が開いている間は、待つ時間を数えない。閉じたら初めから数え直す（main の bdm-materials-main.js の saveExport が知らせる。preload.js の onSaveDialog）
+function onMaterialSaveDialog(info) {
+  const open = isObj(info) && info.open === true;
+  for (const wait of materialsWaiting.values()) {
+    if (wait.action !== 'export') continue;
+    if (open) wait.clock.stop();
+    else wait.clock.restart();
+  }
 }
 
 // 資料のファイルを入れる（「＋ ファイルを入れる…」は pick、落としたときは addDropped）。request(api) は資料の窓口に写してもらう関数。
@@ -6847,13 +6938,20 @@ async function addMaterialFiles(sysId, request) {
   if (!res || res.ok !== true) { toast(`ファイルを入れられませんでした（${materialFailText(res).replace(/。$/, '')}）。`); return; }
   flushSideField();
   const y = editableSystem(sysId);
-  if (!y || y.trashedAt) return;
+  if (!y || y.trashedAt) { toast(materialsNotAddedText(sysId)); return; }
   const here = ui.view === 'system' && ui.systemId === sysId;
   const hadHistory = store.undoStack.length > 0 || store.redoStack.length > 0;
   const done = store.batch(() => actions.addMaterials(sysId, res.added), { history: here ? true : 'clear' });
   const where = here ? null : { name: y.name, cleared: hadHistory && done.changed };
   const text = materialsAddedText(done.result, Array.isArray(res.skipped) ? res.skipped.filter(isObj) : [], where);
   if (text) toast(text);
+}
+// 写す間に、資料の行を作れなくなったときのお知らせ（行は作らない。写したファイルは起動時の掃除で消える）。
+// 前の版を見ている間（保存を止めている）・システムがごみ箱に入った・消えた（黙って戻っていた。デバッグとリリースの見直し③-3・①-3）
+function materialsNotAddedText(sysId) {
+  if (store.isViewing) return '画面設計の前の版を見ている間に写し終わったため、資料を入れませんでした。見るのをやめてから、もう一度入れてください。';
+  const y = findSystem(store.state, sysId);
+  return y ? `「${y.name}」がごみ箱に入ったため、資料を入れませんでした。` : 'システムが消えたため、資料を入れませんでした。';
 }
 // 入れた結果のお知らせ: 入れた数・入れられなかったファイル（3 つまでは名前と理由、ほかは数）・古い形を入れたときの注意。
 // where は、待つ間にほかの画面へ移っていたときの { name（入れた先のシステムの名前）, cleared（元に戻すの履歴を消したか）}（移っていなければ null）
@@ -6884,25 +6982,27 @@ function deleteMaterialRow(y, matId) {
 // 「読む」の窓（画像 q67_3）。資料の窓口に中身を読んでもらい、題名「<名前> を読む」・黄色の帯（断り書き）・文と画像・「1〜3 / 8 の部分」を出す。
 // ボタンは左に「続きを読む」（続きがあるときだけ。同じ窓の中身を次の部分に入れ替える）、右に「閉じる」。読めないときはお知らせ。
 // 見るだけの窓なので、開いている間も AI の書く頼みは止めない（aiPassive。「AI とつなぐ」の窓と同じ）。最初の部分を待つ間は、同じ資料の 2 回目の頼みを
-// 重ねない（materialsWaiting）。待つ間にこのシステムの画面から移っていたら、窓は開かない（スイムレーン図にするとそろえる）
+// 重ねない（materialsWaiting）。待つ間にこのシステムの画面から移っていたら、窓は開かない（スイムレーン図にするとそろえる）。
+// 最初の部分も「続きを読む」の部分も、60 秒待っても届かなければ待つのをやめて知らせる（waitMaterialAnswer）
 async function openMaterialReader(sysId, matId) {
   const api = window.materialsAPI;
   const y = findSystem(store.state, sysId);
   const m = y && y.materials.find((x) => x.id === matId);
   if (!api || !m || isLegacyMaterial(m) || m.kind === 'other' || materialsWaiting.has(m.id)) return;
   const req = { systemId: y.id, file: m.file, kind: m.kind, name: m.name };
-  const read = async (cursor) => {
-    const res = await askMaterialsApi(() => api.read({ ...req, cursor }), (r) => isObj(r.result), `「${m.name}」を読めませんでした。`);
+  // wait(call) は返事の待ち方（最初は表の行に印を付ける whileMaterialWaits、続きは waitMaterialAnswer）
+  const read = async (cursor, wait) => {
+    const res = await askMaterialsApi(() => wait(() => api.read({ ...req, cursor })), (r) => isObj(r.result), `「${m.name}」を読めませんでした。`);
     return res && res.result;
   };
-  const first = await whileMaterialWaits(m, 'read', () => read(null));
+  const first = await read(null, (call) => whileMaterialWaits(m, 'read', call));
   if (!first || ui.view !== 'system' || ui.systemId !== sysId) return;
   // ほかの窓が開いていると読むの窓を出せない（showDialog は 2 つ目を開かない）ので、黙って捨てずに知らせる（スイムレーン図にするとそろえる）
   if (isDialogOpen()) { toast(`「${m.name}」を読み終えましたが、ほかの窓が開いているため表示しませんでした。窓を閉じてからもう一度押してください。`); return; }
   await showDialog({
     title: `${m.name} を読む`, width: 640, okHidden: true, cancelLabel: '閉じる', aiPassive: true,
     body: '<div class="rd-warn"></div><div class="rd-text" tabindex="0"></div><p class="hint rd-foot"></p>',
-    init: (modal) => initMaterialReader(modal, first, read),
+    init: (modal) => initMaterialReader(modal, first, (cursor) => read(cursor, (call) => waitMaterialAnswer(m.name, 'more', call))),
   });
 }
 // 読むの窓の中身を最初の部分 first で埋め、「続きを読む」（左。続きがあるときだけ）を足す。read(cursor) は次の部分の返事（読めなければ null）。
@@ -6969,7 +7069,7 @@ async function swimlaneFromMaterial(sysId, matId) {
   const y0 = editableSystem(sysId);
   const m0 = y0 && y0.materials.find((x) => x.id === matId);
   if (!api || !m0 || m0.kind !== 'bdm' || materialsWaiting.has(m0.id)) return;
-  const res = await whileMaterialWaits(m0, 'swim', () => askMaterialsApi(() => api.bdmPlan({ systemId: sysId, file: m0.file }), (r) => isObj(r.plan), `「${m0.name}」を読めませんでした。`));
+  const res = await askMaterialsApi(() => whileMaterialWaits(m0, 'swim', () => api.bdmPlan({ systemId: sysId, file: m0.file })), (r) => isObj(r.plan), `「${m0.name}」を読めませんでした。`);
   flushSideField();
   const y = editableSystem(sysId);
   const m = y && !y.trashedAt && y.materials.find((x) => x.id === matId);
@@ -7058,7 +7158,7 @@ async function exportToMpd(sysId, matId) {
   const { plan, dropped } = bdmExportPlan(y, m.id);
   if (!plan.steps.length) { toast(mpdNoStepsText(y)); return null; }
   const req = { systemId: y.id, file: m.file, plan, name: `${safeFileName(y.name, 'システム')}_スイムレーン.html` };
-  const res = await whileMaterialWaits(m, 'mpd', () => askMaterialsApi(() => api.bdmExport(req), (r) => typeof r.path === 'string', `「${m.name}」を元に、MPD に出力できませんでした。`));
+  const res = await askMaterialsApi(() => whileMaterialWaits(m, 'export', () => api.bdmExport(req)), (r) => typeof r.path === 'string', `「${m.name}」を元に、MPD に出力できませんでした。`);
   if (res) toast(mpdExportText(res, dropped));
   return res;
 }
@@ -7184,7 +7284,7 @@ const noteFindingsHtml = (y) => `<div class="nt-sec"><h4>読み取ったこと<s
   ${noteTextHtml('note-findings', 'nt-findings', '読み取ったこと', y.notes.findings)}</div>`;
 // 段階の丸数字の札と、行の ✕（どの行も元に戻す〔Ctrl+Z〕で戻せる）
 const noteStageChip = (k) => `<span class="nt-stg">${NOTE_STAGES.includes(k) ? noteStageNo(k) : esc(k)}</span>`;
-const noteDelBtn = (action, id) => `<button class="del-x" data-action="${action}" data-id="${esc(id)}" title="この行を消す（元に戻す〔Ctrl+Z〕で戻せます）" aria-label="この行を消す">✕</button>`;
+const noteDelBtn = (action, id) => `<button class="del-x" data-action="${action}" data-id="${esc(id)}" title="この行を削除（元に戻す〔Ctrl+Z〕で戻せます）" aria-label="この行を削除">✕</button>`;
 // まだ決まっていないこと（開いている札の段階の行）。決まっていない行を上に、決まった行（答えのある行。noteQuestionDecided）を表の下に灰色で並べる。
 // 行がなければ表は出さない
 function noteQuestionsHtml(y, k) {
@@ -7336,7 +7436,7 @@ function sysStepSettingsHtml(y, w) {
   const outs = y.swimlane.edges.filter((e) => e.from === w.id);
   const next = outs.map((e) => `<div class="sw-next"><span class="to" title="${esc(swimStepName(findStep(y, e.to)))}">→ ${esc(swimStepName(findStep(y, e.to)))}</span>
       <input type="text" data-sw="edge-label" data-edge="${esc(e.id)}" value="${esc(e.label)}" placeholder="矢印の文字" aria-label="「${esc(swimStepName(findStep(y, e.to)))}」への矢印の文字">
-      <button class="del-x" data-action="sys-edge-del" data-id="${esc(e.id)}" title="この矢印を消す" aria-label="「${esc(swimStepName(findStep(y, e.to)))}」への矢印を消す">✕</button></div>`).join('');
+      <button class="del-x" data-action="sys-edge-del" data-id="${esc(e.id)}" title="この矢印を削除" aria-label="「${esc(swimStepName(findStep(y, e.to)))}」への矢印を削除">✕</button></div>`).join('');
   const linked = new Set(outs.map((e) => e.to));
   const roleName = (x) => (y.roles.find((r) => r.id === x.roleId) || {}).name;
   const cands = y.swimlane.steps.filter((x) => x.id !== w.id && !linked.has(x.id) && roleName(x));
@@ -7350,7 +7450,7 @@ function sysStepSettingsHtml(y, w) {
         ${cands.map((x) => `<option value="${esc(x.id)}">${esc(swimStepName(x))}（${esc(roleName(x))}）</option>`).join('')}</select></div>
     <label class="field"><span>メモ</span><textarea data-sw="memo" data-step="${id}" placeholder="例: 金額が 10 万円以上なら部長も見る">${esc(w.memo)}</textarea></label>
     <div class="sw-btns"><button class="btn small" data-action="sys-step-add" data-id="${id}" title="この作業と同じ役割の、いちばん右の次の列に「作業」の箱を足します">＋ 作業を足す</button>
-      <button class="btn small danger" data-action="sys-step-del" data-id="${id}" title="この作業の箱と、つながる矢印を消します（元に戻す〔Ctrl+Z〕で戻せます）">この作業を消す</button></div>`;
+      <button class="btn small danger" data-action="sys-step-del" data-id="${id}" title="この作業の箱と、つながる矢印を削除します（元に戻す〔Ctrl+Z〕で戻せます）">この作業を削除</button></div>`;
 }
 // 「この作業で使う画面とステータス」の枠: 画面設計（このシステムに入っている画面設計）・画面（その画面設計の画面）・ステータス（その画面設計のステータスの並び）。
 // 今の指す先が選べるものの中にないとき（このシステムに入っていない・ごみ箱・もうない）も、その名前で出す
@@ -7380,7 +7480,7 @@ function sysEdgeSettingsHtml(y, e) {
   return `<div class="panel-title">矢印の設定</div>
     <p class="sw-edge-names">${esc(swimStepName(findStep(y, e.from)))} → ${esc(swimStepName(findStep(y, e.to)))}</p>
     <label class="field"><span>文字</span><input type="text" data-sw="edge-label" data-edge="${esc(e.id)}" value="${esc(e.label)}" placeholder="例: 差し戻し"></label>
-    <div class="sw-btns"><button class="btn small danger" data-action="sys-edge-del" data-id="${esc(e.id)}" title="この矢印を消します（元に戻す〔Ctrl+Z〕で戻せます）">この矢印を消す</button></div>`;
+    <div class="sw-btns"><button class="btn small danger" data-action="sys-edge-del" data-id="${esc(e.id)}" title="この矢印を削除します（元に戻す〔Ctrl+Z〕で戻せます）">この矢印を削除</button></div>`;
 }
 // 右の欄の作業の設定で打っている欄（data-sw）を控え、描き直した後に同じ欄へフォーカスと文字の位置を戻す関数を返す
 function keepSysSideFocus() {
@@ -7922,6 +8022,7 @@ function dragSwimPlace(ev) {
   if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
   if (!drag.moved) {
     drag.moved = true;
+    flushSideField(); // 右の欄の打ちかけの文字（作業の文字など）を先に保存する（置いた後の描き直しで消えないように。見直し⑤-2）
     if (ui.swimPal || ui.swimLink) setSwimPal(null); // ドラッグを始めたら、押してから置く・つなぐ途中をやめる（BDM と同じ）
     document.body.insertAdjacentHTML('beforeend', `<div class="swim-ghost">${esc(SWIM_KIND_NAMES[drag.swimKind])}</div>`);
   }
@@ -8134,7 +8235,7 @@ function toolbarHtml() {
     group('画面', `
       <button class="bigbtn" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します"><span class="ico">＋</span>画面を<br>足す</button>
       <button data-screen-only class="bigbtn" data-action="duplicate-screen" title="開いている画面を、部品も吹き出しもそのまま写して、すぐ後ろに足します"><span class="ico">❐</span>画面を<br>複製</button>
-      <button data-screen-only class="bigbtn" data-action="delete-screen" id="tb-del-screen" title="開いている画面を消します（最後の 1 つは消せません）"><span class="ico">✕</span>画面を<br>消す</button>`),
+      <button data-screen-only class="bigbtn" data-action="delete-screen" id="tb-del-screen" title="開いている画面を削除します（最後の 1 つは削除できません）"><span class="ico">✕</span>画面を<br>削除</button>`),
     group('履歴', `<div class="stack">
       <button class="tbtn" data-action="undo" id="tb-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" id="tb-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
@@ -8143,7 +8244,7 @@ function toolbarHtml() {
       <button class="tbtn" data-action="paste-part" id="tb-paste" title="コピーした部品を貼り付けます（Ctrl+V）">📋 貼り付け</button></div>
       <div class="stack">
       <button class="tbtn" data-action="duplicate-part" id="tb-dup" title="選んだ部品を複製します（Ctrl+D）">❐ 複製</button>
-      <button class="tbtn" data-action="delete-part" id="tb-del" title="選んだ部品を消します（Delete）">✕ 削除</button></div>
+      <button class="tbtn" data-action="delete-part" id="tb-del" title="選んだ部品を削除します（Delete）">✕ 削除</button></div>
       <div class="stack"><button class="tbtn" data-action="select-all" id="tb-select-all" data-screen-only title="この画面の部品と吹き出しを、すべて選びます（Ctrl+A）">☐ すべて選ぶ</button></div>
       <button class="bigbtn" data-action="renumber" id="tb-renumber" title="赤い番号を、上から下・左から右の順に 1 から付け直します"><span class="ico">①</span>番号を<br>振り直す</button>`),
     foldGroup('align', '揃える', alignSvg(ALIGN_BUTTONS[0][3]), '揃える（最初に選んだものに合わせる）', '揃えるボタン（左・右・上・下・中央・等間隔）を出します',
@@ -8264,7 +8365,7 @@ function screenListHtml(d) {
         <div class="sl-thumb">${thumbHtml(d, s, 148, 94)}${aiDot(s)}</div>
         <div class="sl-name">${i + 1}　${esc(s.name)}</div>
       </button>
-      <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-haspopup="menu" aria-expanded="${ui.screenMenu === s.id}" aria-label="「${esc(s.name)}」の画面の操作" title="名前を変える・複製・並べ替え・消す">…</button>
+      <button class="sl-more${ui.screenMenu === s.id ? ' open' : ''}" data-action="screen-menu" data-id="${esc(s.id)}" aria-haspopup="menu" aria-expanded="${ui.screenMenu === s.id}" aria-label="「${esc(s.name)}」の画面の操作" title="名前の変更・複製・並べ替え・削除">…</button>
     </div>`).join('')
     + '<button class="sl-add" data-action="add-screen" title="ひな形を選んで、開いている画面のすぐ後ろに画面を足します">＋ 画面を足す</button>';
 }
@@ -8296,13 +8397,13 @@ function renderScreenMenu(d) {
   const id = esc(ui.screenMenu);
   root.innerHTML = `
     <div class="screen-menu" role="menu" style="left:${Math.round(r.left)}px;top:${Math.round(r.bottom + 4)}px">
-      <button role="menuitem" data-action="screen-rename" data-id="${id}">名前を変える</button>
-      <button role="menuitem" data-action="screen-dup" data-id="${id}">複製する</button>
+      <button role="menuitem" data-action="screen-rename" data-id="${id}">名前の変更</button>
+      <button role="menuitem" data-action="screen-dup" data-id="${id}">複製</button>
       <hr>
-      <button role="menuitem" data-action="screen-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ動かす</button>
-      <button role="menuitem" data-action="screen-down" data-id="${id}"${i === d.screens.length - 1 ? ' disabled' : ''}>下へ動かす</button>
+      <button role="menuitem" data-action="screen-up" data-id="${id}"${i === 0 ? ' disabled' : ''}>上へ移動</button>
+      <button role="menuitem" data-action="screen-down" data-id="${id}"${i === d.screens.length - 1 ? ' disabled' : ''}>下へ移動</button>
       <hr>
-      <button role="menuitem" class="danger" data-action="screen-del" data-id="${id}"${d.screens.length < 2 ? ' disabled title="最後の 1 つの画面は消せません"' : ''}>この画面を消す</button>
+      <button role="menuitem" class="danger" data-action="screen-del" data-id="${id}"${d.screens.length < 2 ? ' disabled title="最後の 1 つの画面は削除できません"' : ''}>この画面を削除</button>
     </div>`;
   // 窓の下からはみ出すときは、「…」の上に開く
   const menu = root.firstElementChild;
@@ -8385,8 +8486,8 @@ async function deleteScreenWithConfirm(screenId) {
     ? '（' + refs.map((r) => `${r.design.id === d.id ? 'この画面設計' : `「${esc(r.design.name)}」`}から ${r.count} 個`).join('・') + '）' : '';
   const what = [s.parts.length ? `部品 ${s.parts.length} 個` : '', s.callouts.length ? `吹き出し ${s.callouts.length} 個` : ''].filter(Boolean).join('と');
   const ok = await showDialog({
-    title: `「${s.name}」の画面を消しますか`,
-    okLabel: '消す',
+    title: `「${s.name}」の画面を削除しますか`,
+    okLabel: '削除する',
     okClass: 'danger',
     body: `<p>${what ? `この画面の${what}が消えます。` : 'この画面には、部品も吹き出しもありません。'}</p>
       <p>データベースの項目は、項目の一覧表に残ります（ほかの画面に置いた部品もそのままです）。</p>
@@ -8676,7 +8777,7 @@ function revisionTrHtml(r) {
   const ops = standalone ? '' : `<button class="btn small" data-rv="view" data-id="${id}"${can ? '' : ' disabled'}${noSnap}>見る</button>`
     + `<button class="btn small" data-rv="restore" data-id="${id}"${can ? '' : ' disabled'}${noSnap}>この版に戻す…</button>`
     + (ver ? `<button class="btn small" data-rv="edit" data-id="${id}" title="変えた内容と日付を書き直す" aria-label="${esc(revisionTitle(r))}を書き直す">✎</button>` : '')
-    + `<button class="del-x" data-rv="delete" data-id="${id}" title="この行を消す" aria-label="${esc(revisionTitle(r))}の行を消す">✕</button>`;
+    + `<button class="del-x" data-rv="delete" data-id="${id}" title="この行を削除" aria-label="${esc(revisionTitle(r))}の行を削除">✕</button>`;
   const note = ver ? (r.note ? esc(r.note) : '<span class="rv-none">（書いていません）</span>')
     : `${esc(r.note || REV_AUTO[r.kind] || '')}${REV_AUTO_HINT[r.kind] ? `<br><small>${REV_AUTO_HINT[r.kind]}</small>` : ''}`;
   return `<tr data-rev="${id}"${ver ? '' : ' class="auto"'}><td class="nw">${ver ? `<b>${esc(revisionTitle(r))}</b>` : '<span class="tag lost">自動</span>'}</td>`
@@ -8719,8 +8820,8 @@ async function deleteRevisionWithConfirm(revId) {
   const r = findRevision(d, revId);
   if (!r) return;
   const ok = await showDialog({
-    title: `「${revisionTitle(r)}（${revisionDay(r)}）」の行を消しますか？`,
-    okLabel: '消す',
+    title: `「${revisionTitle(r)}（${revisionDay(r)}）」の行を削除しますか？`,
+    okLabel: '削除する',
     okClass: 'danger',
     width: 520,
     body: `<p>その版の写しも消え、見る・戻すができなくなります。版の番号は付け直しません。</p>
@@ -8837,7 +8938,7 @@ function itemTableHtml(d) {
       <td class="c-set">${esc(isItemType(it.type) ? describeItem(it, { design: d, state: store.state }) : '')}</td>
       <td>${itemSourceHtml(d, it)}</td>
       <td>${scr.length ? esc(scr.join('・')) : '<span class="none">どの画面にもない</span>'}</td>
-      <td class="c-del"><button class="del-x" data-action="delete-item" data-id="${esc(it.id)}" title="この項目を消します" aria-label="「${esc(it.name)}」を消す">✕</button></td>
+      <td class="c-del"><button class="del-x" data-action="delete-item" data-id="${esc(it.id)}" title="この項目を削除します" aria-label="「${esc(it.name)}」を削除">✕</button></td>
     </tr>`;
   }).join('');
   const body = d.items.length
@@ -9070,7 +9171,7 @@ function partSettingsHtml(p) {
   const t = partType(p.type);
   if (t && p.type === 'table') return tableSettingsHtml(p, t);
   if (t && isItemPart(p)) return itemPartSettingsHtml(p, t);
-  const del = '<div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を消す</button></div>';
+  const del = '<div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を削除</button></div>';
   if (!t) return `<div class="panel-title">選んだ部品</div><p class="hint">${esc(partTypeName(p.type))}です。新しい版のアプリで足した部品のため、この版では設定を変えられません。</p>${del}`;
   const typeFields = partTypeFieldsHtml(p);
   const setting = describePart(p, fieldCtx());
@@ -9140,7 +9241,7 @@ function itemPartSettingsHtml(p, t) {
       ${here}
       ${pfCheck('numbered', '番号を付ける', p.no != null)}
     </div></div>
-    <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を消す</button></div>
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を削除</button></div>
     ${gone ? '' : '<div class="pf-note">（項目は、データベースの項目の一覧表に残ります）</div>'}`;
 }
 
@@ -9253,7 +9354,7 @@ function multiSettingsHtml(d) {
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn small" data-action="number-on"${parts ? '' : ' disabled'}>番号を付ける</button>
       <button class="btn small" data-action="number-off"${parts ? '' : ' disabled'}>番号を外す</button>
-      <button class="btn small danger-text" data-action="delete-many">まとめて消す</button>
+      <button class="btn small danger-text" data-action="delete-many">まとめて削除</button>
     </div>
     <p class="hint" style="margin-top:12px">Ctrl を押しながら押すと、選ぶものを足したり外したりできます。何もない所からドラッグして囲むと、枠に全部入ったものを選びます。</p>`;
 }
@@ -9275,7 +9376,7 @@ function calloutSettingsHtml(c) {
     <div class="field"><span>線の先の形</span>${seg('tip', c.tip, [['dot', '● 点'], ['arrow', '➤ 矢印'], ['none', 'なし']])}</div>
     <div class="field"><span>色</span>${seg('color', c.color, Object.entries(CALLOUT_COLORS).map(([k, [n, col]]) => [k, `<i class="co-swatch" style="border-color:${col};background:${col}22"></i>${n}`]))}</div>
     <p class="hint">吹き出しには赤い番号を付けず、部品の設定の一覧表にも入りません。つないだ部品を消したときは、吹き出しは残り、線だけが消えます。</p>
-    <div class="pf-del"><button class="btn small danger-text" data-action="delete-callout">この吹き出しを消す</button></div>`;
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-callout">この吹き出しを削除</button></div>`;
 }
 
 // データベースの項目の一覧表で項目を選んだときの右の欄（画像 q20 の 4）
@@ -9285,7 +9386,7 @@ function itemSettingsHtml(d, p) {
     <div class="panel-title">選んだ項目の設定（${esc(p.label || '名前なし')}）</div>
     ${linked ? linkBannerHtml(p.item) : ''}
     ${itemSectionHtml(d, p, { withType: true, locked: linked, note: linked ? '元のモックの中身' : 'どの画面でも同じ' })}
-    <div class="pf-del"><button class="btn small danger-text" data-action="delete-item" data-id="${esc(p.id)}">この項目を消す</button></div>`;
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-item" data-id="${esc(p.id)}">この項目を削除</button></div>`;
 }
 
 // ステータスの移り方の図を出している間の右の欄（q54。図を見ながらステータスと操作を直す）。項目を消すボタンは出さない（データベースの項目の一覧表で消す）
@@ -9403,7 +9504,7 @@ function processFieldsHtml(p) {
   const at = (id) => st.findIndex((s) => s.id === id);
   const btns = (kind, id, i, n, what, delOff = false) => `<button class="del-x" data-action="${kind}-up" data-id="${esc(id)}" title="上へ" aria-label="${what}を上へ"${i ? '' : ' disabled'}>↑</button>`
     + `<button class="del-x" data-action="${kind}-down" data-id="${esc(id)}" title="下へ" aria-label="${what}を下へ"${i < n - 1 ? '' : ' disabled'}>↓</button>`
-    + `<button class="del-x" data-action="${kind}-del" data-id="${esc(id)}" title="${delOff ? '最後の 1 つは消せません' : `${what}を消す`}" aria-label="${what}を消す"${delOff ? ' disabled' : ''}>✕</button>`;
+    + `<button class="del-x" data-action="${kind}-del" data-id="${esc(id)}" title="${delOff ? '最後の 1 つは削除できません' : `${what}を削除`}" aria-label="${what}を削除"${delOff ? ' disabled' : ''}>✕</button>`;
   const rows = st.map((s, i) => `<div class="ps-row"><span class="no">${i + 1}</span><input type="text" data-ps="${esc(s.id)}" value="${esc(s.name)}" aria-label="${i + 1} つ目のステータスの名前">`
     + `${btns('ps', s.id, i, st.length, `ステータス「${esc(s.name)}」`, st.length < 2)}</div>`).join('');
   const sel = (a, k, label) => `<select data-pa="${esc(a.id)}" data-k="${k}" aria-label="${label}">${[['', '（なし）'], ...st.map((s) => [s.id, s.name])]
@@ -9462,7 +9563,7 @@ function tableSettingsHtml(p, t) {
     return `${title}${kind}${banner}
       ${itemSectionHtml(d, p, { locked: gone || linked, note: gone ? '消したときの中身' : linked ? '元のモックの中身' : 'どの画面でも同じ' })}
       ${here}
-      <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を消す</button></div>`;
+      <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この画面から部品を削除</button></div>`;
   }
   const pr = p.props;
   let source = '';
@@ -9498,7 +9599,7 @@ function tableSettingsHtml(p, t) {
       ${pfOutHtml(p)}
     </div></div>
     ${here}
-    <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を消す</button></div>`;
+    <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">この部品を削除</button></div>`;
 }
 
 // 表の列の欄。押した列を選び（選んだ列の見本の値と幅を、この画面だけの設定で書く）、↑↓ で並べ替え、✕ で外す。
@@ -9717,8 +9818,8 @@ async function deleteStateWithConfirm(it, s) {
   if (used.length) {
     const shown = currentDesign().screens.reduce((n, sc) => n + sc.parts.filter((p) => p.itemId === it.id && p.view && p.view.current === s.id).length, 0);
     const ok = await showDialog({
-      title: `ステータス「${s.name}」を消しますか`,
-      okLabel: '消す',
+      title: `ステータス「${s.name}」を削除しますか`,
+      okLabel: '削除する',
       okClass: 'danger',
       body: `<p>このステータスを使う操作 ${used.length} つ（${used.map((a) => `「${esc(a.name)}」`).join('・')}）も消えます。</p>
         ${shown ? `<p>このステータスを見本で出している部品 ${shown} 個は、ステータスを出さない形になります。</p>` : ''}
@@ -10122,7 +10223,7 @@ function startResize(ev, wrap) {
   ev.preventDefault();
   flushSideField();
   const s = currentScreen();
-  drag = { kind: 'resize', wrap, sy: ev.clientY, st: wrap.scrollTop, h0: s.height, device: s.device, minH: minScreenHeight(s) };
+  drag = { kind: 'resize', wrap, screenId: s.id, sy: ev.clientY, st: wrap.scrollTop, h0: s.height, device: s.device, minH: minScreenHeight(s) };
   document.body.classList.add('resizing');
 }
 
@@ -10204,8 +10305,8 @@ function selElement(x) {
 }
 // まとめて動かしている間は、要素だけを動かす（保存は放したとき）。複製のときは、写しの影を動かす
 function dragGroup(ev) {
+  if (!dragStarted(ev)) return;
   const s = currentScreen();
-  if (Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) >= 4) drag.moved = true;
   const [dx, dy] = clampGroupMove(s, drag.rects, snapGrid((ev.clientX - drag.sx) / ui.zoom), snapGrid((ev.clientY - drag.sy) / ui.zoom));
   drag.dx = dx;
   drag.dy = dy;
@@ -10315,6 +10416,7 @@ function startCalloutDrag(ev, id, grip) {
 
 // ドラッグ中は、その吹き出しの要素と線だけを描き直す（保存は放したとき）
 function dragCallout(ev) {
+  if (!dragStarted(ev)) return;
   const s = currentScreen();
   const dx = (ev.clientX - drag.sx) / ui.zoom;
   const dy = (ev.clientY - drag.sy) / ui.zoom;
@@ -10335,10 +10437,13 @@ function redrawCalloutLines(overrides) {
 // 線の先の ○ をドラッグして、部品に重ねたところでつなぐ
 function startCalloutLink(ev, id) {
   ev.preventDefault();
-  drag = { kind: 'co-link', id, target: undefined };
+  flushSideField(); // 右の欄の打ちかけの文字（吹き出しの文字など）を先に保存する（放したときの描き直しで消えないように。デバッグとリリースの見直し⑤-1）
+  blurSidePanel();
+  drag = { kind: 'co-link', id, target: undefined, sx: ev.clientX, sy: ev.clientY };
   document.body.classList.add('linking');
 }
 function dragCalloutLink(ev) {
+  if (!dragStarted(ev)) return; // 押しただけなら、つながりを変えない（target は undefined のまま）
   const s = currentScreen();
   const c = findCallout(s, drag.id);
   const zone = $('#co-zone');
@@ -10393,8 +10498,17 @@ function startPartDrag(ev, partId, grip) {
   if (!grip) document.body.classList.add('moving');
 }
 
+// 押したところから窓の上で 4 ドットより動かしたら、ドラッグを始めたとみなす（drag.moved）。それまでは動かさない
+// （縮小して見ているときは、押しただけの手の揺れでも升目 1 つ分ずれ、元に戻すの履歴に残っていた。デバッグとリリースの見直し⑤-3）
+function dragStarted(ev) {
+  if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return false;
+  drag.moved = true;
+  return true;
+}
+
 // 部品のドラッグ中は、その部品の要素だけを動かす（保存は放したとき）
 function dragPart(ev) {
+  if (!dragStarted(ev)) return;
   const s = currentScreen();
   const dx = (ev.clientX - drag.sx) / ui.zoom;
   const dy = (ev.clientY - drag.sy) / ui.zoom;
@@ -10411,8 +10525,7 @@ function dragPart(ev) {
 // itemId を渡したとき（部品の箱の「データベースの項目」の組）は、その項目を指す部品を置く
 function startPlace(ev, type, itemId = null) {
   if (ev.button !== 0 || !paletteEntry(type)) return;
-  ev.preventDefault();
-  flushSideField();
+  ev.preventDefault(); // 押した時点では右の欄を離れない。打ちかけの文字は、ドラッグを始めたとき（dragPlace）か click の処理の初め（onAppClick）に保存する
   drag = { kind: 'place', type, itemId, sx: ev.clientX, sy: ev.clientY, moved: false, ghost: null };
 }
 
@@ -10422,6 +10535,7 @@ function dragPlace(ev) {
   const t = paletteEntry(drag.type);
   if (!drag.ghost) {
     drag.moved = true;
+    flushSideField();
     drag.ghost = document.createElement('div');
     drag.ghost.className = 'place-ghost';
     const item = drag.itemId ? findItem(currentDesign(), drag.itemId) : null;
@@ -10622,8 +10736,8 @@ async function deleteItemWithConfirm(itemId) {
   const scr = screensWithItem(d, itemId).map((s) => s.name);
   if (scr.length) {
     const ok = await showDialog({
-      title: '項目を消す',
-      okLabel: '消す',
+      title: '項目の削除',
+      okLabel: '削除する',
       okClass: 'danger',
       body: `<p>データベースの項目の一覧表から「${esc(item.name)}」を消します。</p>
         <p class="warn">${esc(scr.join('・'))}の画面にある部品は残り、消したときの項目名と設定で固定されます（部品の設定の欄の「項目の一覧表に戻す」で戻せます）。</p>`,
@@ -10789,7 +10903,8 @@ function onDragEnd(ev) {
   if (done.kind !== 'resize') return;
   const h = ui.previewHeight;
   ui.previewHeight = null;
-  if (h != null && h !== done.h0) actions.updateScreen(ui.designId, currentScreen().id, { height: h });
+  // 始めたときの画面に書く（ドラッグの途中に元に戻すで画面が消えると、今の画面がほかの画面に変わるため。デバッグとリリースの見直し⑤-7）
+  if (h != null && h !== done.h0 && done.screenId === currentScreen().id) actions.updateScreen(ui.designId, done.screenId, { height: h });
   else renderStage();
 }
 
@@ -10917,12 +11032,12 @@ function coverListRows(plan) {
   return rows;
 }
 const coverListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面の名前</th><th>機器</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('') || '<tr><td class="empty" colspan="3">（出力する画面はありません）</td></tr>'}</tbody></table>`;
-function coverRevisionTable(d) {
-  const revs = versionRows(d).sort((a, b) => a.no - b.no); // 自動で残した行（取り込む前の状態・戻す前の状態）は出さない
-  const rows = revs.length
-    ? revs.map((r) => `<tr><td>第 ${esc(r.no)} 版</td><td>${esc(revisionDay(r))}</td><td style="white-space:pre-wrap">${esc(r.note)}</td></tr>`).join('')
-    : '<tr><td class="empty" colspan="3">（まだ改訂履歴はありません）</td></tr>';
-  return `<table class="cv-table"><thead><tr><th style="width:70px">版</th><th style="width:96px">日付</th><th>変えた内容</th></tr></thead><tbody>${rows}</tbody></table>`;
+// 表紙と「改訂履歴（続き）」に出す版の行（古い順。自動で残した行〔取り込む前の状態・戻す前の状態〕は出さない）
+const coverRevisionRows = (d) => versionRows(d).sort((a, b) => a.no - b.no)
+  .map((r) => `<tr><td>第 ${esc(r.no)} 版</td><td>${esc(revisionDay(r))}</td><td style="white-space:pre-wrap">${esc(r.note)}</td></tr>`);
+function coverRevisionTable(rows) {
+  const body = rows.length ? rows.join('') : '<tr><td class="empty" colspan="3">（まだ改訂履歴はありません）</td></tr>';
+  return `<table class="cv-table"><thead><tr><th style="width:70px">版</th><th style="width:96px">日付</th><th>変えた内容</th></tr></thead><tbody>${body}</tbody></table>`;
 }
 // 表紙の骨組み（画面設計の表紙と、システムの説明書の表紙〔第 10 段階の後半〕で同じ形。splitCoverRows が .cv-list・.cv-revs・.cv-foot を名前で探す）。
 // c: { kicker（小見出し）, title（名前）, meta（名前の下の行の HTML）, desc（説明の HTML）, list: [左の列の見出し, 表], side: [右の列の見出し, 表], total }
@@ -10941,10 +11056,13 @@ function coverShell(P, c) {
     <div class="cv-foot"><span>モックイメージメーカー v${APP_VERSION} で出力</span><span>全 ${c.total} ページ</span></div>
   </div></div>`;
 }
-// 表紙の説明（高さの上限は用紙の高さの 24%）。cut なら、続きを省略したと書く（where は全文を見られる所。「〇〇で」まで）
+// 表紙の説明（高さの上限は用紙の高さの 24% に入る行の数の分）。cut なら、続きを省略したと書く（where は全文を見られる所。「〇〇で」まで）。
+// 上限は行の高さ（.cv-desc の 13px × 1.75）の倍数にする。倍数でないと、省くときに最後の行の字が上だけ見えて残った（デバッグとリリースの見直し②-3）
+const COVER_DESC_LINE = 13 * 1.75;
 function coverDescHtml(P, text, cut, where) {
   if (!text.trim()) return '<div class="cv-desc none">（説明は書かれていません）</div>';
-  return `<div class="cv-desc" style="max-height:${Math.round(P.h * 0.24)}px">${esc(text)}</div>`
+  const maxH = Math.floor((P.h * 0.24) / COVER_DESC_LINE) * COVER_DESC_LINE;
+  return `<div class="cv-desc" style="max-height:${maxH}px">${esc(text)}</div>`
     + (cut ? `<p class="cv-desc-cut">（説明が長いため、続きを省略しました。全文は${where}見られます）</p>` : '');
 }
 // 表紙の HTML の説明が、決めた高さに入りきらないか（測れるときだけ呼ぶ）
@@ -10955,14 +11073,31 @@ function coverDescOver(html) {
   probe.remove();
   return over;
 }
-function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false } = {}) {
+// revRows は表紙に出す版の行（既定は全部。入りきらない行は「改訂履歴（続き）」のページへ。splitCoverRevisions）
+function coverPageHtml(d, P, rows, total, exportedAt, { descCut = false, revRows = coverRevisionRows(d) } = {}) {
   const meta = `${targetChip(d.target)}<span>出力した日 <b>${esc(fmtDateTime(exportedAt).slice(0, 10))}</b></span><span>最終更新 ${esc(fmtDateTime(d.updatedAt))}</span>`
     + `<span>画面 ${d.screens.length} つ・データベースの項目 ${d.items.length} 個</span>`;
   return coverShell(P, { kicker: '画面設計書', title: d.name, meta, desc: coverDescHtml(P, d.description, descCut, 'アプリか、出力した HTML で'),
-    list: ['画面の一覧', coverListTable(rows)], side: ['改訂履歴', coverRevisionTable(d)], total });
+    list: ['画面の一覧', coverListTable(rows)], side: ['改訂履歴', coverRevisionTable(revRows)], total });
 }
 const coverContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '画面の一覧（続き）', body: coverListTable(rows),
   left: `${esc(d.name)} ／ 画面の一覧（続き）`, right: `${page} / ${total}` });
+const revisionContHtml = (d, P, rows, page, total) => pageFrame({ P, title: '改訂履歴（続き）', body: coverRevisionTable(rows),
+  left: `${esc(d.name)} ／ 改訂履歴（続き）`, right: `${page} / ${total}` });
+// 表紙の改訂履歴の表を、表紙に入る行と「改訂履歴（続き）」のページの行に分ける（[表紙の行, 続きの 1 ページ目の行, …]）。測れないときは全部を表紙に。
+// 版が多い・変えた内容が長いと、表が表紙の下の端で切れていた（デバッグとリリースの見直し②-1。仕様「表紙」の「入りきらないときは次のページへ続ける」）。
+// html(revRows) は、画面の一覧を 1 行だけ入れ、版の行に revRows を入れた表紙（縦の用紙では、改訂履歴の表は一覧の下にあるため。一覧は splitCoverRows が分ける）。
+// 表紙には少なくとも 1 行を出す（1 行だけでも入らないときは、その行は表紙で途中までになる）
+function splitCoverRevisions(html, P, rows, measured, aw, ah) {
+  if (!measured || !rows.length) return [rows];
+  const probe = measureBox(html(rows));
+  const limit = coverLimit(probe, P);
+  const bottoms = [...probe.querySelectorAll('.cv-revs tbody tr')].map((tr) => tr.getBoundingClientRect().bottom);
+  probe.remove();
+  const fit = Math.max(1, bottoms.filter((b) => b <= limit).length);
+  if (fit >= rows.length) return [rows];
+  return [rows.slice(0, fit), ...splitItemRows(rows.slice(fit), aw, ah, measured, coverRevisionTable)];
+}
 // 表紙の画面の一覧を、1 ページ目と続きのページに分ける（行の高さを測る。続きのページでは見出しの行を繰り返す）。測れないときは全部を 1 ページ目に。
 // coverHtml(rows) は、その行を一覧に入れた表紙の HTML を返す関数（画面設計の表紙と、システムの説明書の表紙〔第 10 段階の後半〕で使う）。
 // 表紙は、左の列 .cv-list・右の列 .cv-revs・下の端 .cv-foot を持つこと（名前で探して測るため）
@@ -11020,6 +11155,9 @@ function itemRowsHtml(d, state) {
   });
 }
 const ITEM_COLS = '<colgroup><col style="width:15%"><col style="width:12%"><col style="width:33%"><col style="width:24%"><col style="width:16%"></colgroup>';
+// 表の 1 行がページに入らず途中までになったページの、小見出しの断り書き（項目の一覧表と、ステータスの移り方の操作の一覧表）
+const LONG_ROW_NOTE = '長い行は途中まで（全文はアプリか HTML で見られます）';
+const cutNote = (rows) => (rows.cut ? '・' + LONG_ROW_NOTE : '');
 const printItemTable = (rows) => `<table class="xp-itable">${ITEM_COLS}<thead><tr><th>項目名</th><th>部品の種類</th><th>設定</th><th>ルックアップ元・取り込み元</th><th>置いている画面</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
 // 変更内容の一覧のページの表（第 6 段階。q44c）
 const CHANGE_COLS = '<colgroup><col style="width:14%"><col style="width:7%"><col style="width:16%"><col style="width:11%"><col style="width:52%"></colgroup>';
@@ -11101,7 +11239,7 @@ function processPagePlan(d, state, aw, ah, measured, idTag = '') {
   const first = splitItemRows(rows, stack ? aw : side, th, measured, printActionTable)[0] || [];
   const rest = first.length < rows.length ? splitItemRows(rows.slice(first.length), aw, ah, measured, printActionTable) : [];
   return {
-    sub: `ステータス ${it.props.states.length} つ・操作 ${it.props.actions.length} つ`,
+    sub: `ステータス ${it.props.states.length} つ・操作 ${it.props.actions.length} つ${cutNote(first)}`, // 1 行でも入らない行は途中まで（デバッグとリリースの見直し②-2）
     body: `<div class="xp-legend">${VIEW_LEGENDS.process}</div><div class="xp-proc${stack ? ' stack' : ''}">${fig ? `<div>${fig}</div>` : ''}`
       + `<div class="xp-proc-tbl"${stack ? '' : ` style="width:${side}px"`}>${printActionTable(first)}</div></div>`,
     rest,
@@ -11117,8 +11255,8 @@ function flowPageBody(d, state, aw, ah, idTag = '') {
 // 画面と吹き出しを囲む範囲で切り取り、一覧表をその外側に 32 ドット空けて置く（右なら上の端を画面の上の端に、下なら左の端を画面の左の端にそろえる）。
 // 戻り値 { html, cw, ch }（縮める前の大きさ）。key は矢印の印の id の頭（ページごとに変える。同じ id が編集の画面にもあると矢印が消えるため）
 // diff（{ info: designDiff の screens の 1 つ, label }）を渡すと、部品・吹き出しの札と、一覧表の札・削除した部品を入れる（第 6 段階）
-// table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）
-function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true } = {}) {
+// table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）。tableWidth は一覧表の幅（PDF の画面のページ。q99）
+function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true, tableWidth = null } = {}) {
   const Z = CALLOUT_ZONE;
   const zoneW = s.width + Z * 2;
   const zoneH = s.height + Z * 2;
@@ -11136,7 +11274,7 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
   const zone = `<div class="xp-zone" style="position:absolute;left:0;top:0;width:${cropW}px;height:${cropH}px;overflow:hidden">`
     + `<div style="position:absolute;left:${-x0}px;top:${-y0}px;width:${zoneW}px;height:${zoneH}px">`
     + `<div style="position:absolute;left:${Z}px;top:${Z}px">${screenHtml(d, s, { grid: false, marks: false, diff: info })}</div>${lines}${boxes}</div></div>`;
-  const table = withTable ? partTableHtml(d, s, { editor: false, diff: info && diff }) : '';
+  const table = withTable ? partTableHtml(d, s, { editor: false, diff: info && diff, width: tableWidth }) : '';
   let [tw, th] = [0, 0];
   if (table && measured) {
     const probe = measureBox(table);
@@ -11144,7 +11282,7 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
     [tw, th] = [Math.ceil(r.width), Math.ceil(r.height)];
     probe.remove();
   } else if (table) {
-    tw = s.tablePos === 'bottom' ? s.width : TABLE_W;
+    tw = tableWidth || (s.tablePos === 'bottom' ? s.width : TABLE_W);
   }
   const right = s.tablePos !== 'bottom';
   const tx = right ? cropW + TABLE_GAP : Z - x0;
@@ -11152,6 +11290,21 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
   const cw = table ? Math.max(cropW, tx + tw) : cropW;
   const ch = table ? Math.max(cropH, ty + th) : cropH;
   return { cw, ch, html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
+}
+// PDF の画面のページで、右に置く部品の設定の一覧表の幅の候補（q99）。表が縦に長くて画面ごと小さく縮むときは、表を広げて低くし、
+// 画面をいちばん大きく出せる幅を選ぶ（倍率がほとんど同じなら狭い方）。表を下に置く画面と、測れないときは今の幅のまま。PNG は縮めないので広げない
+const PRINT_TABLE_WIDTHS = [TABLE_W, 720, 880, 1040, 1200, 1360];
+function printScreenComposite(d, s, key, measured, diff, aw, ah) {
+  const make = (w) => screenComposite(d, s, key, measured, diff, { tableWidth: w });
+  if (!measured || s.tablePos === 'bottom') return make(null);
+  let best = null;
+  for (const w of PRINT_TABLE_WIDTHS) {
+    const c = make(w);
+    const k = Math.min(1, aw / c.cw, ah / c.ch);
+    if (!best || k > best.k + 0.005) best = { c, k };
+    if (best.k >= 1) break;
+  }
+  return best.c;
 }
 // 画面のページの本文。本文に収まるように縮め（拡大しない）、左右・上下の真ん中に置く。測れないときは縮めない。
 // 縮めるのは transform でなく zoom にする（transform だと、縮める前の幅が残り、画面のページが 2 つ以上あると、
@@ -11200,7 +11353,7 @@ function diffSumHtml(df, info) {
 }
 
 // PDF の中身を組む。opts { paper, orient, cover, map, items, process, flow, screenIds（省略するとすべての画面）, diffRevId（比べる版の行の id） }。
-// 表紙（入りきらなければ「画面の一覧（続き）」）→ 比べた版からの変更内容（違いの印を選んだときだけ）→ つながりの図（つながりがあるときだけ）→
+// 表紙（入りきらなければ「画面の一覧（続き）」「改訂履歴（続き）」）→ 比べた版からの変更内容（違いの印を選んだときだけ）→ つながりの図（つながりがあるときだけ）→
 // 項目の一覧表（項目があるときだけ）→ ステータスの移り方（操作があるときだけ）→ 画面の移り方（移る先があるときだけ）→ 選んだ画面。
 // システムの説明書（第 10 段階の後半）に画面設計のページを並べるときは、opts に pageStart（最初のページの番号。既定 1）・grandTotal（「n / N」と
 // 表紙の「全 N ページ」の N。既定はこの画面設計のページ数）・idTag（矢印の印の id の頭に足す字。既定 ''）を渡す。countOnly なら、ページを組まずに数だけ返す。
@@ -11214,7 +11367,8 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
   return { P: L.P, pages, total: L.plan.total, included, html: printDocumentHtml(d.name, L.P, pages.join('\n')) };
 }
 // ページの並べ方を決める（どのページを何ページ目に置くか・表紙と表をどこで分けるか）。番号は pageStart からの通し番号、plan.total はこの画面設計のページ数。
-// 戻り値 { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, descCut, base（最初のページの番号 - 1）, grand（「n / N」の N）, idTag }
+// 戻り値 { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, revChunks（[表紙の版の行, 「改訂履歴（続き）」の行, …]）,
+//   descCut, base（最初のページの番号 - 1）, grand（「n / N」の N）, idTag }
 function exportLayout(d, state, opts, exportedAt) {
   const P = paperSize(opts.paper, opts.orient);
   const measured = canMeasure();
@@ -11242,24 +11396,31 @@ function exportLayout(d, state, opts, exportedAt) {
     const flowPage = withFlow ? ++n : 0;
     return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n - base };
   };
-  let plan = numbering(opts.cover ? 1 : 0);
   let coverChunks = [];
   // 表紙の説明が、決めた高さに入りきるか（入りきらなければ、省略したと書く）
   const descCut = !!opts.cover && measured && !!d.description.trim() && coverDescOver(coverPageHtml(d, P, [], 1, exportedAt));
+  // 表紙の改訂履歴の表に入る行と、「改訂履歴（続き）」のページ（画面の一覧を 1 行だけ入れた表紙で測る）
+  const revChunks = !opts.cover ? []
+    : splitCoverRevisions((revRows) => coverPageHtml(d, P, coverListRows(numbering(1)).slice(0, 1), 99, nowIso(), { descCut, revRows }), P, coverRevisionRows(d), measured, aw, ah);
+  const revCont = Math.max(0, revChunks.length - 1);
+  let plan = numbering(opts.cover ? 1 + revCont : 0);
   if (opts.cover) {
-    const coverHtml = (rows) => coverPageHtml(d, P, rows, 99, nowIso(), { descCut });
+    const coverHtml = (rows) => coverPageHtml(d, P, rows, 99, nowIso(), { descCut, revRows: revChunks[0] });
     coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     if (coverChunks.length > 1) {
-      plan = numbering(coverChunks.length);
+      plan = numbering(coverChunks.length + revCont);
       coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     }
   }
-  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag };
+  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, revChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag };
 }
-// 表紙と「画面の一覧（続き）」のページ
+// 表紙と「画面の一覧（続き）」「改訂履歴（続き）」のページ
 function exportCoverPages(d, L, exportedAt) {
   const { P, grand } = L;
-  return L.coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, grand, exportedAt, { descCut: L.descCut }) : coverContHtml(d, P, rows, L.base + k + 1, grand)));
+  const list = L.coverChunks.map((rows, k) => (k === 0 ? coverPageHtml(d, P, rows, grand, exportedAt, { descCut: L.descCut, revRows: L.revChunks[0] })
+    : coverContHtml(d, P, rows, L.base + k + 1, grand)));
+  const revs = L.revChunks.slice(1).map((rows, k) => revisionContHtml(d, P, rows, L.base + L.coverChunks.length + k + 1, grand));
+  return [...list, ...revs];
 }
 // 変更内容・つながりの図・項目の一覧表・ステータスの移り方・画面の移り方のページ
 function exportViewPages(d, state, L) {
@@ -11275,11 +11436,11 @@ function exportViewPages(d, state, L) {
       left: left('つながりの図'), right: `${plan.mapPage} / ${grand}` }));
   }
   L.itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `データベースの項目の一覧表${k ? '（続き）' : ''}`,
-    sub: `項目 ${d.items.length} 個${rows.cut ? '・長い行は途中まで（全文はアプリか HTML で見られます）' : ''}`,
+    sub: `項目 ${d.items.length} 個${cutNote(rows)}`,
     body: printItemTable(rows), left: left('データベースの項目の一覧表'), right: `${plan.itemsPage + k} / ${grand}` })));
   if (proc) {
     pages.push(pageFrame({ P, title: 'ステータスの移り方', sub: proc.sub, body: proc.body, left: left('ステータスの移り方'), right: `${plan.processPage} / ${grand}` }));
-    proc.rest.forEach((rows, k) => pages.push(pageFrame({ P, title: 'ステータスの移り方（続き）', sub: '操作の一覧表', body: printActionTable(rows),
+    proc.rest.forEach((rows, k) => pages.push(pageFrame({ P, title: 'ステータスの移り方（続き）', sub: '操作の一覧表' + cutNote(rows), body: printActionTable(rows),
       left: left('ステータスの移り方'), right: `${plan.processPage + 1 + k} / ${grand}` })));
   }
   if (L.withFlow) {
@@ -11293,7 +11454,7 @@ function exportScreenPages(d, L) {
   const { P, aw, ah, df, measured, grand } = L;
   return L.plan.screens.map(({ s, i, page }) => {
     const info = df ? df.result.screens[s.id] : null;
-    const body = screenPageBody(screenComposite(d, s, 'p' + page, measured, info && { info, label: df.label }), aw, ah, measured);
+    const body = screenPageBody(printScreenComposite(d, s, 'p' + page, measured, info && { info, label: df.label }, aw, ah), aw, ah, measured);
     const name = `${i + 1}　${esc(s.name)}`;
     const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`;
     return pageFrame({ P, title: name, sub, body: body.html, left: `${esc(d.name)} ／ ${name}`, right: `${page} / ${grand}`, headExtra: diffSumHtml(df, info) });
@@ -11989,17 +12150,22 @@ async function runExport(designId, r) {
     return res;
   }
   if (!api) return null; // PDF・PNG はデスクトップ版だけ
-  if (r.kind === 'pdf') {
-    toast('PDF を作っています…');
-    const doc = exportDocument(d, store.state, r);
-    res = await api.savePdf({ name: safeFileName(d.name) + '.pdf', html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
-    reportExport(res, 'PDF');
+  const what = r.kind === 'pdf' ? 'PDF' : 'PNG';
+  const working = `${what} を作っています…`;
+  await startWorking(working);
+  try {
+    const cur = findDesign(store.state, designId) || d; // 描かれるのを待つ間に直っていれば、直した中身で組む
+    if (r.kind === 'pdf') {
+      const doc = exportDocument(cur, store.state, r);
+      res = await api.savePdf({ name: safeFileName(cur.name) + '.pdf', html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
+    } else {
+      res = await api.savePng({ files: exportPngDocs(cur, store.state, r.screenIds, r.diffRevId) });
+    }
+    reportExport(res, what);
     return res;
+  } finally {
+    endWorking(working);
   }
-  toast('PNG を作っています…');
-  res = await api.savePng({ files: exportPngDocs(d, store.state, r.screenIds, r.diffRevId) });
-  reportExport(res, 'PNG');
-  return res;
 }
 
 // ── システムの説明書の窓（第 10 段階の後半。q76・q77・画像 q81_1）──
@@ -12084,13 +12250,16 @@ async function runSystemDoc(sysId, r) {
   const api = window.exportAPI;
   if (!y || !api) return null;
   docWaiting.add(sysId);
+  const working = '説明書（PDF）を作っています…';
   try {
-    toast('説明書（PDF）を作っています…');
-    const doc = exportSystemDocument(y, store.state, r);
-    const res = await api.savePdf({ name: `${safeFileName(y.name, 'システム')}_説明書.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
+    await startWorking(working);
+    const cur = findSystem(store.state, sysId) || y; // 描かれるのを待つ間に直っていれば、直した中身で組む
+    const doc = exportSystemDocument(cur, store.state, r);
+    const res = await api.savePdf({ name: `${safeFileName(cur.name, 'システム')}_説明書.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
     if (res && !res.canceled) toast(res.ok ? `説明書（PDF）を出力しました（${res.path}）。` : `説明書（PDF）を出力できませんでした（${res.error || 'わからない理由'}）。`);
     return res;
   } finally {
+    endWorking(working);
     docWaiting.delete(sysId);
   }
 }
@@ -12616,6 +12785,7 @@ function onAppClick(e) {
   const { action, id } = btn.dataset;
   if (ACTION_COMMANDS[action]) { runCommand(ACTION_COMMANDS[action]); return; }
   if (onAiClick(action, btn)) return;
+  if (ui.view === 'editor') flushSideField(); // 押した時点で右の欄を離れなかったボタン（mousedown を止めた）の、打ちかけの文字を先に保存する（見直し⑤-4）
   if (ui.view === 'editor' && onEditorClick(action, btn)) return;
   if (ui.view === 'system' && onSystemScreenClick(action, btn)) return;
   onHomeAction(action, id, btn).catch(reportPageError);
@@ -12703,21 +12873,25 @@ function onKeyDown(e) {
     return;
   }
   const inField = e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
-  if (ui.view === 'editor' && !inField && !e.altKey && !e.isComposing) {
+  // 開いたメニュー（画面の一覧の「…」・改訂の ▼・メニューバーのたたんだ組など）の中で押した矢印・Delete では、選んだ部品・作業を動かしたり消したりしない
+  // （メニューが閉じて部品が動く・消えていた。デバッグとリリースの見直し⑤-6）
+  const inMenu = e.target && e.target.closest && e.target.closest('[role="menu"], .fold-pop');
+  if (ui.view === 'editor' && !inField && !inMenu && !e.altKey && !e.isComposing) {
     const partCmd = editorKeyCommand(e);
     if (partCmd) { e.preventDefault(); runCommand(partCmd); return; }
   }
   // システムの画面のスイムレーン図（T6b）: Delete・Backspace で選んだものを消す・Esc でつなぐ途中と置き場の種類と選んだものをやめる・c と v でモード
-  if (ui.view === 'system' && !inField && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
+  if (ui.view === 'system' && !inField && !inMenu && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
     const swimCmd = swimKeyCommand(e);
     if (swimCmd) { e.preventDefault(); runCommand(swimCmd); return; }
   }
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
   const cmd = keyCommand(e);
   if (!cmd) return;
-  // 文字の欄の中の元に戻す・やり直すは、ブラウザの文字の取り消しに任せる。radio・checkbox（押した後もフォーカスが見えないまま残る）では、
-  // 画面の元に戻す・やり直すにする（T9 の見直し。どの画面でも。Delete・Backspace は、今までどおり欄の中の扱い）
-  if ((cmd === 'undo' || cmd === 'redo') && inField && !inField.matches('input[type="radio"], input[type="checkbox"]')) return;
+  // 文字の欄の中の元に戻す・やり直すは、ブラウザの文字の取り消しに任せる。radio・checkbox（押した後もフォーカスが見えないまま残る）と
+  // 選ぶ欄（select。ブラウザの取り消しがない。デバッグとリリースの見直し⑤-5）では、画面の元に戻す・やり直すにする
+  // （T9 の見直し。どの画面でも。Delete・Backspace は、今までどおり欄の中の扱い）
+  if ((cmd === 'undo' || cmd === 'redo') && inField && !inField.matches('select, input[type="radio"], input[type="checkbox"]')) return;
   // 拡大縮小のキーは、編集の画面と、システムの画面のスイムレーン図だけ（ほかではブラウザに任せる）
   if (cmd.startsWith('zoom') && ui.view !== 'editor' && !sysZoomable()) return;
   e.preventDefault();
@@ -13636,7 +13810,8 @@ async function aiAddScreen(args, ctx) {
   return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
     const id = tx.design.id;
     const d = () => findDesign(store.state, id);
-    const device = aiDevice(args.device);
+    // 複製（copyOf）で device を書かないときは、複製した画面の機器のまま（null。既定の "pc" にすると、スマホの画面がパソコンの画面に変わっていた。見直し④-1）
+    const device = args.device == null && args.copyOf != null ? null : aiDevice(args.device);
     const after = args.after != null ? aiResolveScreen(d(), args.after).id : d().screens[d().screens.length - 1].id;
     let sid;
     if (args.copyOf != null) {
@@ -13650,7 +13825,7 @@ async function aiAddScreen(args, ctx) {
     }
     const patch = {};
     if (args.name != null) patch.name = aiScreenName(tx, d(), args.name, sid);
-    if (device !== findScreen(id, sid).device) patch.device = device;
+    if (device && device !== findScreen(id, sid).device) patch.device = device;
     if (Object.keys(patch).length) actions.updateScreen(id, sid, patch);
     const placed = args.layout != null ? aiLayout(tx, id, sid, args.layout, 'append') : { parts: [], createdItems: [] };
     const sc = findScreen(id, sid);
@@ -13788,7 +13963,8 @@ function aiLayoutSpec(tx, d, e, used, plan) {
   } else if (!item && (isInputType(type) || (type === 'table' && e.tableKind === 'subtable'))) {
     item = aiLayoutNewItem(d, type, cleanName(str(e.label)) || (type === 'table' ? '明細' : partType(type).label), e, plan);
   } else if (!item && (type === 'status' || type === 'steps')) {
-    item = d.items.find((it) => it.type === 'status') || plan.created.find((it) => it.type === 'status') || aiLayoutNewItem(d, 'status', 'ステータス', {}, plan);
+    // まだなければ、書いた props（states）・required・memo で作る（{} を渡すと見本の並びになり、書いたステータスが捨てられていた。見直し④-2）
+    item = d.items.find((it) => it.type === 'status') || plan.created.find((it) => it.type === 'status') || aiLayoutNewItem(d, 'status', 'ステータス', e, plan);
   }
   const spec = { span: e.span === 2 ? 2 : undefined, fields: {}, unnumbered: e.no === null };
   if (item) {
@@ -15441,6 +15617,9 @@ function bindGlobalEvents() {
     // 「…」・「＋ 画面を足す」・「…」のメニューの項目は、押した時点で右の欄を離れない（離れると打ちかけの文字の保存で画面の一覧が描き直され、
     // 押したボタンが click の前に消えて、1 回目の押しが効かないため）。打ちかけの文字は、押したときの処理の初めに保存する
     if (e.target.closest('.sl-more, .sl-add, .screen-menu button')) { e.preventDefault(); return; }
+    // 部品の箱と真ん中の欄（項目の一覧表・3 つの図）のボタンも同じ（変更のたびに作り直す所。組の見出し・一覧表の ✕・「自動で並べ直す」など。
+    // デバッグとリリースの見直し⑤-4）。打ちかけの文字は、click の処理の初め（onAppClick）に保存する
+    if (e.target.closest('#side-box button, #db-view button')) e.preventDefault();
     if (ui.screenMenu) closeScreenMenu();
     // 前の版を見ている間は、置く・並べ替えるのドラッグを始めない（押して切り替える・選ぶだけ）
     if (store.isViewing) {
@@ -15521,7 +15700,9 @@ async function boot() {
   if (!embedded) sweepMaterialFiles(created);
   store.subscribe(onStoreChange);
   bindGlobalEvents();
+  watchOtherTabs();
   if (window.menuAPI) window.menuAPI.onCommand(runCommand);
+  if (window.materialsAPI && typeof window.materialsAPI.onSaveDialog === 'function') window.materialsAPI.onSaveDialog(onMaterialSaveDialog);
   if (!embedded) renderHome();
   else if (!created.blockReason) openDesign(standalone.designId);
   bindAiEvents();
@@ -15553,7 +15734,7 @@ function exposeForTest() {
     PART_TYPES, PALETTE_GROUPS, fitRect, resizedRect, describePart, tableRows, renumberedParts, processModel, processLayout, flowModel, viewHtml, hasFlowPage, minScreenHeight, selectPart, currentScreen,
     currentDesign, currentPart, openScreen, openItemsPanel, selectItem, resolvePart, findItem, describeItem, mapModel, mapLayout, SCREEN_TEMPLATES,
     exportDocument, exportSystemDocument, noteDocRows, systemDocCan, systemCoverHtml, systemShareTag, exportPngDocs, buildStandaloneHtml, embedPayload, parseExportedHtml, importHtmlText, openExportDialog, runExport, openSystemDocDialog, docOpts,
-    fitScreenZoom, fitScreenView, setMaterialWaitMs: (ms) => { materialWaitMs = ms; }, materialsWaiting, paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
+    fitScreenZoom, fitScreenView, paperSize, safeFileName, saveStandalone, isStandaloneDirty, revisionLabel, exportOpts, peersOf, EMBED_ID, EMBED_FORMAT,
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
@@ -15569,6 +15750,7 @@ function exposeForTest() {
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
+    setMaterialWaitMs: (ms) => { materialWaitMs = ms; },
     ready: true,
   });
 }

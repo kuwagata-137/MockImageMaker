@@ -249,6 +249,30 @@ test('置き場からドラッグして図に落とす（4 ドットより動か
   assert.equal(sys().swimlane.steps.length, 9);
 });
 
+test('右の欄の選ぶ欄（役割）を変えた直後に Ctrl+Z を押すと、元に戻す（デバッグとリリースの見直し⑤-5）', async (t) => {
+  const { app, $, node, step } = await boot(t);
+  press(node('w-3'));
+  const role = $('#sys-side [data-sw="role"]');
+  role.focus();
+  setValue(role, 'l-c');
+  assert.equal(step('w-3').roleId, 'l-c');
+  key(app, app.document.activeElement, { key: 'z', ctrlKey: true });
+  assert.equal(step('w-3').roleId, 'l-b', '選ぶ欄にフォーカスがあっても、画面の元に戻すにする');
+});
+
+test('作業の文字を打ちかけのまま置き場の箱を図へドラッグしても、打った文字は消えない（デバッグとリリースの見直し⑤-2）', async (t) => {
+  const { $, pal, node, inner, step, sys, cellAt } = await boot(t);
+  press(node('w-3'));
+  const text = $('#sys-side [data-sw="text"]');
+  text.focus();
+  text.value = '申請の中身を確かめる';
+  fire(pal('doc'), 'mousedown', { clientX: 0, clientY: 0 });
+  fire(inner(), 'mousemove', cellAt(2, 9));
+  fire(inner(), 'mouseup', cellAt(2, 9));
+  assert.equal(sys().swimlane.steps.length, 9, '箱は置ける');
+  assert.equal(step('w-3').text, '申請の中身を確かめる', '打ちかけの文字を保存する');
+});
+
 test('箱の上に落とす・押すと、その箱の種類を置き換える（同じ種類なら、その枠に足して積む）', async (t) => {
   const { api, pal, node, inner, sys, step, cellAt, geom } = await boot(t);
   fire(pal('end'), 'mousedown', { clientX: 0, clientY: 0 });
@@ -534,7 +558,7 @@ test('箱のダブルクリックで、箱の上に文字の欄（Enter で確�
   assert.equal($('#sys-swim .swim-edit'), null);
 });
 
-test('箱を消す: 右クリック（その場で消す。つながる矢印も）・Delete・メニューバーの「✕ 削除」・右の欄の「この作業を消す」。Ctrl+Z で戻る', async (t) => {
+test('箱を消す: 右クリック（その場で消す。つながる矢印も）・Delete・メニューバーの「✕ 削除」・右の欄の「この作業を削除」。Ctrl+Z で戻る', async (t) => {
   const { app, api, $, node, sys, edges } = await boot(t);
   fire(node('w-6'), 'contextmenu');
   assert.equal(sys().swimlane.steps.some((w) => w.id === 'w-6'), false);
@@ -618,7 +642,7 @@ test('右の欄: 何も選んでいないときは足し方とつなぎ方の案
   assert.ok(opts.includes('出張に行く（申請者）'));
   assert.equal($('#sys-side [data-sw="memo"]').tagName, 'TEXTAREA');
   assert.equal($('#sys-side [data-action="sys-step-add"]').textContent, '＋ 作業を足す');
-  assert.equal($('#sys-side [data-action="sys-step-del"]').textContent, 'この作業を消す');
+  assert.equal($('#sys-side [data-action="sys-step-del"]').textContent, 'この作業を削除');
   assert.ok($('#sys-side [data-action="sys-step-del"]').classList.contains('danger'));
 });
 
@@ -784,7 +808,7 @@ test('図の上の文字の欄（作業）で直してから右の欄を押す: 
   assert.equal(app.document.activeElement, field, '押した欄にフォーカスが移る');
   assert.equal($('#sys-side [data-sw="role"]'), role);
   assert.equal(node('w-5').querySelector('b').textContent, '出張に行く（直した）', '図は描き直す');
-  // もう一度直してから「この作業を消す」（押した時点でフォーカスが移り、確定する）
+  // もう一度直してから「この作業を削除」（押した時点でフォーカスが移り、確定する）
   fire(node('w-5'), 'dblclick');
   $('#sys-swim .swim-edit').value = '出張する';
   const del = $('#sys-side [data-action="sys-step-del"]');

@@ -56,6 +56,27 @@ test('toPng — 読めない画像は read_failed（場所を文に入れない�
   }
 });
 
+// デバッグとリリースの見直し③-7: 画素の多い画像は、まるごと読み込む（幅×高さ×4 バイトのメモリを使う）前に、頭の大きさで断る
+test('toPng — 画素が 1 億を超える画像は、読み込まずに too_large で断る', async () => {
+  // 幅と高さだけを書いた PNG の頭（中身はない。大きさを見ずに読み込もうとすると read_failed になる）
+  const pngHead = (width, height) => {
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(width, 0);
+    ihdr.writeUInt32BE(height, 4);
+    ihdr.writeUInt8(8, 8);
+    ihdr.writeUInt8(6, 9);
+    return Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from([0, 0, 0, 13]), Buffer.from('IHDR'), ihdr, Buffer.alloc(4)]);
+  };
+  await assert.rejects(toPng(pngHead(20000, 28000)), (err) => {
+    assert.ok(err instanceof MaterialError, String(err));
+    assert.equal(err.code, 'too_large', err.message);
+    assert.equal(err.message, 'この画像は画素が多すぎるため（20000×28000）、読めません。画素が 1 億より少なくなるように小さくして保存し直してから、入れ直してください。');
+    return true;
+  });
+  // ちょうど 1 億画素は、大きさでは断らない（中身がないので、読み込む部品が read_failed にする）
+  await assert.rejects(toPng(pngHead(10000, 10000)), (err) => err instanceof MaterialError && err.code === 'read_failed');
+});
+
 test('pngSize — PNG の頭から幅と高さを読む', () => {
   assert.deepEqual(pngSize(samples.solidPng(40, 30)), { width: 40, height: 30 });
   assert.deepEqual(pngSize(samples.fakePng(123, 456, 100)), { width: 123, height: 456 });

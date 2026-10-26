@@ -52,7 +52,7 @@ th{background:var(--navy);color:#fff;font-weight:600}
 </style>
 </head>
 <body>
-<div class="top"><b>モックイメージメーカー 使い方</b><span>v1.00・2026年10月24日 更新</span></div>
+<div class="top"><b>モックイメージメーカー 使い方</b><span>v1.00・2026年10月26日 更新</span></div>
 <nav aria-label="目次"><ol><li class="ch"><a href="#s1">1. はじめに</a><ol><li><a href="#s1-1">1.1 できること</a></li><li><a href="#s1-2">1.2 入れ方と起動</a></li><li><a href="#s1-3">1.3 言葉</a></li><li><a href="#s1-4">1.4 読み方</a></li></ol></li><li class="ch"><a href="#s2">2. 最初の画面</a><ol><li><a href="#s2-1">2.1 画面の各部</a></li><li><a href="#s2-2">2.2 新しい画面設計を作る</a></li><li><a href="#s2-3">2.3 名前の変更・複製・削除</a></li><li><a href="#s2-4">2.4 ごみ箱</a></li><li><a href="#s2-5">2.5 つながりの図</a></li></ol></li><li class="ch"><a href="#s3">3. 画面設計を描く</a><ol><li><a href="#s3-1">3.1 編集の画面の各部</a></li><li><a href="#s3-2">3.2 部品を置く</a></li><li><a href="#s3-3">3.3 選ぶ・動かす・揃える</a></li><li><a href="#s3-4">3.4 部品の設定と一覧表</a></li><li><a href="#s3-5">3.5 データベースの項目</a></li><li><a href="#s3-6">3.6 ルックアップと取り込み</a></li><li><a href="#s3-7">3.7 表とグラフ</a></li><li><a href="#s3-8">3.8 吹き出し</a></li><li><a href="#s3-9">3.9 元に戻す・拡大と縮小</a></li></ol></li><li class="ch"><a href="#s4">4. 複数の画面と移り方</a><ol><li><a href="#s4-1">4.1 画面を足す</a></li><li><a href="#s4-2">4.2 画面の一覧の操作</a></li><li><a href="#s4-3">4.3 ステータスの移り方</a></li><li><a href="#s4-4">4.4 画面の移り方</a></li></ol></li><li class="ch"><a href="#s5">5. 改訂履歴</a><ol><li><a href="#s5-1">5.1 改訂する</a></li><li><a href="#s5-2">5.2 改訂履歴を見る</a></li><li><a href="#s5-3">5.3 前の版を見る・戻す</a></li><li><a href="#s5-4">5.4 違いの印</a></li></ol></li><li class="ch"><a href="#s6">6. 出力と受け渡し</a><ol><li><a href="#s6-1">6.1 PDF</a></li><li><a href="#s6-2">6.2 HTML</a></li><li><a href="#s6-3">6.3 PNG</a></li><li><a href="#s6-4">6.4 直して返された HTML を取り込む</a></li></ol></li><li class="ch"><a href="#s7">7. システム</a><ol><li><a href="#s7-1">7.1 システムを作る・画面設計を入れる</a></li><li><a href="#s7-2">7.2 システムの画面</a></li><li><a href="#s7-3">7.3 役割</a></li><li><a href="#s7-4">7.4 スイムレーン図</a></li><li><a href="#s7-5">7.5 資料</a></li><li><a href="#s7-6">7.6 MPD からスイムレーン図を作る</a></li><li><a href="#s7-7">7.7 設計ノート</a></li><li><a href="#s7-8">7.8 説明書（PDF）</a></li><li><a href="#s7-9">7.9 MPD に出力</a></li><li><a href="#s7-10">7.10 履歴</a></li></ol></li><li class="ch"><a href="#s8">8. AI とつなぐ</a><ol><li><a href="#s8-1">8.1 AI に登録する</a></li><li><a href="#s8-2">8.2 つながっている印</a></li><li><a href="#s8-3">8.3 AI に頼めること・頼めないこと</a></li><li><a href="#s8-4">8.4 資料からシステムを作る流れ</a></li><li><a href="#s8-5">8.5 AI が直したものを確かめる・戻す</a></li></ol></li><li class="ch"><a href="#s9">9. ベンダーの方へ</a><ol><li><a href="#s9-1">9.1 受け取った HTML を開く・直して返す</a></li><li><a href="#s9-2">9.2 PDF の読み方</a></li></ol></li><li class="ch"><a href="#s10">10. 困ったとき</a><ol><li><a href="#s10-1">10.1 保存の場所と控え</a></li><li><a href="#s10-2">10.2 知らせが出たとき</a></li><li><a href="#s10-3">10.3 ブラウザで開いたときにできないこと</a></li></ol></li><li class="ch"><a href="#s61">付録</a><ol><li><a href="#sapp-A">付録 A キーの一覧</a></li><li><a href="#sapp-B">付録 B アプリのメニューの一覧</a></li></ol></li></ol></nav>
 <main>
 <div class="doc">
@@ -86,17 +86,17 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>画面設計のカードには、上に最初の画面の縮小画像、下に名前・作る先・画面の数・最新の版・更新日時が出ます。2 つ以上のシステムに入れた画面設計のカードは、緑の枠で囲まれます。消した画面設計とシステムは、画面のいちばん下のごみ箱に入ります（2.4）。</p>
 <h3 id="s2-2">2.2 新しい画面設計を作る</h3>
 <p>画面設計は、業務アプリ 1 つ分の画面をまとめたものです。出張申請のアプリなら、一覧・新規申請・詳細の画面を 1 つの画面設計に描きます。</p>
-<figure class="steps"><table class="st"><tr><td class="n">1</td><td class="tx"><p><b>＋ 新しい画面設計</b> を押します（①）。</p></td><td class="im"><img src="images/new_step1.png" width="420" height="63" alt="" loading="lazy"></td></tr><tr><td class="n">2</td><td class="tx"><p>名前（①）を書き、作る先と入れるシステムを選んで <b>作成して開く</b> を押します（②）。</p><p>作る先は、kintone・Salesforce・Claude で作るアプリ・その他（名前を書く）から選びます。その他に書いた名前は、次から選択肢に加わります。</p></td><td class="im"><img src="images/new_step2.png" width="420" height="317" alt="" loading="lazy"></td></tr><tr><td class="n">3</td><td class="tx"><p>白紙の画面が 1 つ入った編集の画面が開きます。</p><p>ここから部品を置いて画面を描きます（第 3 章）。説明は、編集の画面の右の欄で書けます。</p></td><td class="im"><img src="images/new_step3.jpg" width="420" height="263" alt="" loading="lazy"></td></tr></table><figcaption>図 2　新しい画面設計を作る手順</figcaption></figure>
+<figure class="steps"><table class="st"><tr><td class="n">1</td><td class="tx"><p><b>＋ 新しい画面設計</b> を押します（①）。</p></td><td class="im"><img src="images/new_step1.png" width="420" height="69" alt="" loading="lazy"></td></tr><tr><td class="n">2</td><td class="tx"><p>名前（①）を書き、作る先と入れるシステムを選んで <b>作って開く</b> を押します（②）。</p><p>作る先は、kintone・Salesforce・Claude で作るアプリ・その他（名前を書く）から選びます。その他に書いた名前は、次から選択肢に加わります。</p></td><td class="im"><img src="images/new_step2.png" width="420" height="328" alt="" loading="lazy"></td></tr><tr><td class="n">3</td><td class="tx"><p>白紙の画面が 1 つ入った編集の画面が開きます。</p><p>ここから部品を置いて画面を描きます（第 3 章）。説明は、編集の画面の右の欄で書けます。</p></td><td class="im"><img src="images/new_step3.jpg" width="420" height="263" alt="" loading="lazy"></td></tr></table><figcaption>図 2　新しい画面設計を作る手順</figcaption></figure>
 <div class="box tip"><b class="tag">ヒント</b><div>左のシステムの一覧でシステムを選んでいるときは、「入れるシステム」の欄に、最初からそのシステムが入っています。どのシステムにも入れないときは「（入れない）」を選びます。</div></div>
 <h3 id="s2-3">2.3 名前の変更・複製・削除</h3>
 <p>カードの右下の「…」を押すと、カードのメニューが開きます。</p>
-<figure><img src="images/home_card.png" width="490" height="274" alt="" loading="lazy"><figcaption>図 3　画面設計のカード</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">…</td><td><p>押すと、カードのメニューが開く</p></td></tr></table>
-<figure><img src="images/home_cardmenu.png" width="477" height="266" alt="" loading="lazy"><figcaption>図 4　カードのメニュー</figcaption></figure>
+<figure><img src="images/home_card.png" width="490" height="287" alt="" loading="lazy"><figcaption>図 3　画面設計のカード</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">…</td><td><p>押すと、カードのメニューが開く</p></td></tr></table>
+<figure><img src="images/home_cardmenu.png" width="477" height="279" alt="" loading="lazy"><figcaption>図 4　カードのメニュー</figcaption></figure>
 <table class="tb"><tr><th>メニュー</th><th>すること</th></tr><tr><td><b>名前の変更</b></td><td><p>画面設計の名前を変える</p></td></tr><tr><td><b>複製</b></td><td><p>画面設計を丸ごと写し、「◯◯ のコピー」として足す。改訂履歴は写さない</p></td></tr><tr><td><b>出力…</b></td><td><p>出力の窓を開く（第 6 章）</p></td></tr><tr><td><b>このシステムから外す</b></td><td><p>選んでいるシステムから外す。画面設計は残る（システムを選んでいるときだけ出る）</p></td></tr><tr><td><b>削除（ごみ箱へ移す）</b></td><td><p>ごみ箱へ移す。ごみ箱から戻せる</p></td></tr></table>
 <div class="box warn"><b class="tag">注意</b><div>システムに入っている画面設計をごみ箱へ移すと、どのシステムからも見えなくなります（ごみ箱から戻すと、元のシステムに戻ります）。移す前の確かめの窓に、使っているシステムの名前が出るので、確かめてから移してください。</div></div>
 <h3 id="s2-4">2.4 ごみ箱</h3>
 <p>消した画面設計とシステムは、最初の画面のいちばん下の「ごみ箱」に入ります。見出しを押すと開きます。</p>
-<figure><img src="images/home_trash.png" width="880" height="98" alt="" loading="lazy"><figcaption>図 5　ごみ箱</figcaption></figure>
+<figure><img src="images/home_trash.png" width="880" height="108" alt="" loading="lazy"><figcaption>図 5　ごみ箱</figcaption></figure>
 <ul class="l0"><li><b>戻す</b> を押すと、一覧に戻ります。</li></ul>
 <ul class="l0"><li><b>完全に削除</b> を押すと、確かめの窓の後に消えます。完全に削除したものは元に戻せません。</li></ul>
 <ul class="l0"><li>システムをごみ箱へ移しても、入っていた画面設計は残ります。</li></ul>
@@ -126,11 +126,11 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>部品をいくつか選んで揃えるボタンを押すと、最初に選んだ部品（「基準」の札が付いた部品）に合わせて揃えます。等間隔に並べるのは、3 つ以上選んだときだけです。いくつか選んでいる間は、右の欄にも揃えるボタンと「同じ幅にする」「同じ高さにする」のボタンが出ます。</p>
 <h3 id="s3-4">3.4 部品の設定と一覧表</h3>
 <p>部品を選ぶと、右の欄にその部品の設定が出ます。入力欄の部品の設定は 2 つに分かれます。上の「項目の設定」はデータベースの項目の設定で、どの画面でも同じです。下の「この画面だけの設定」は、その画面に置いた部品だけの見た目です。</p>
-<figure><img src="images/ed_settings.png" width="200" height="560" alt="" loading="lazy"><figcaption>図 10　入力欄の部品の設定</figcaption></figure>
+<figure><img src="images/ed_settings.png" width="187" height="560" alt="" loading="lazy"><figcaption>図 10　入力欄の部品の設定</figcaption></figure>
 <table class="tb"><tr><th>欄</th><th>書くこと</th></tr><tr><td><b>項目の設定</b></td><td><p>項目名・必須・ルックアップ・部品の種類ごとの欄（最大の文字数・選択肢・初期値など）・メモ</p></td></tr><tr><td><b>この画面だけの設定</b></td><td><p>項目名の位置（上・左）・見本の値・薄い字・番号を付ける</p></td></tr><tr><td><b>一覧表の「設定」に出る文</b></td><td><p>書いた設定から自動で作る文。部品の設定の一覧表の「設定」の列に入る</p></td></tr></table>
-<p>画面から部品を消すときは、<b>この画面から部品を消す</b> を押すか、Delete を押します。部品を消しても、項目はデータベースの項目に残ります。</p>
+<p>画面から部品を削除するときは、<b>この画面から部品を削除</b> を押すか、Delete を押します。部品を削除しても、項目はデータベースの項目に残ります。</p>
 <p>画面の右（または下）には、番号の付いた部品の設定を並べた「部品の設定の一覧表」が自動でできます。表は直接書き換えられず、部品の設定を直すと表も変わります。表の行を押すと、その部品を選べます。</p>
-<figure><img src="images/ed_ptable.png" width="390" height="520" alt="" loading="lazy"><figcaption>図 11　部品の設定の一覧表</figcaption></figure>
+<figure><img src="images/ed_ptable.png" width="387" height="520" alt="" loading="lazy"><figcaption>図 11　部品の設定の一覧表</figcaption></figure>
 <p>一覧表を画面の右に置くか下に置くかは、画面の設定の「部品の設定の一覧表の位置」で選びます。</p>
 <h3 id="s3-5">3.5 データベースの項目</h3>
 <p>画面設計の項目は、データベースの項目の一覧表に 1 か所だけ持ちます。画面の入力欄の部品はこの表の項目を指すので、新規申請と詳細の画面に同じ項目を置いても、項目の設定は 1 つです。</p>
@@ -140,7 +140,7 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <ul class="l0"><li>表で項目を消しても、画面の部品は残ります。残った部品は消したときの中身で固定され、項目の設定は直せません。</li></ul>
 <h3 id="s3-6">3.6 ルックアップと取り込み</h3>
 <p>ルックアップは、ほかのデータベースのレコードから値を引いて入れるしくみです。見本の出張申請では、社員番号を入れると、社員マスタから氏名と所属を引いて入れます。ルックアップは、探すときに使う項目（社員番号）の設定に書きます。</p>
-<figure><img src="images/ed_lookup_set.png" width="187" height="600" alt="" loading="lazy"><figcaption>図 13　ルックアップの設定（社員番号の項目）</figcaption></figure>
+<figure><img src="images/ed_lookup_set.png" width="174" height="600" alt="" loading="lazy"><figcaption>図 13　ルックアップの設定（社員番号の項目）</figcaption></figure>
 <ul class="l0"><li><b>ほかのデータベースから引く（ルックアップ）</b> に印を付けます。</li></ul>
 <ul class="l0"><li>「ルックアップ元のデータベース」で、引く元の画面設計を選びます。一覧にないデータベースは名前を書きます。</li></ul>
 <ul class="l0"><li>「探すときに使う元の項目」で、この項目の値で探す元の項目を選びます。</li></ul>
@@ -148,11 +148,11 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>ルックアップを設定した項目の部品には、項目名の後ろに黄色い「ルックアップ」の札が付きます。探す項目の入力欄の右には「🔍 取得」が出て、写される項目の入力欄は灰色になります。</p>
 <figure><img src="images/ed_lookup_parts.png" width="344" height="177" alt="" loading="lazy"><figcaption>図 14　ルックアップの部品の印</figcaption></figure>
 <p>ほかの画面設計の項目をそのまま使いたいときは、データベースの項目の <b>ほかのモックから取り込む</b> で取り込みます。左で元のモックを選び、右で取り込む項目に印を付けて <b>取り込む</b> を押します。</p>
-<figure><img src="images/ed_import.png" width="880" height="544" alt="" loading="lazy"><figcaption>図 15　ほかのモックから項目を取り込む窓</figcaption></figure>
+<figure><img src="images/ed_import.png" width="880" height="552" alt="" loading="lazy"><figcaption>図 15　ほかのモックから項目を取り込む窓</figcaption></figure>
 <p>取り込んだ項目は、元のモックとつながったままです。元のモックで項目を直すと取り込んだ側の項目も同じように変わり、取り込んだ側では直せません。取り込んだ側だけで直したいときは、項目の設定の「つながりを切る」を押すと、そのときの中身を写した、この画面設計だけの項目になります。</p>
 <h3 id="s3-7">3.7 表とグラフ</h3>
 <p>表の部品は、右の欄の「表の中身」で 3 種類から選びます。呼び方は kintone に合わせています。</p>
-<figure><img src="images/ed_table.png" width="203" height="600" alt="" loading="lazy"><figcaption>図 16　表の部品の設定（レコード一覧）</figcaption></figure>
+<figure><img src="images/ed_table.png" width="183" height="600" alt="" loading="lazy"><figcaption>図 16　表の部品の設定（レコード一覧）</figcaption></figure>
 <table class="tb"><tr><th>表の中身</th><th>使う画面</th><th>中身</th></tr><tr><td><b>テーブル</b></td><td><p>入力の画面</p></td><td><p>行を足せる明細の表。列は表の中だけの項目で、データベースの項目に 1 つの項目として入る</p></td></tr><tr><td><b>レコード一覧</b></td><td><p>一覧の画面</p></td><td><p>このデータベースのレコードを並べる。列はデータベースの項目から選ぶ。データベースの項目にはならない</p></td></tr><tr><td><b>関連レコード一覧</b></td><td><p>詳細の画面</p></td><td><p>ほかのデータベースから、条件に合うレコードを並べる。データベースの項目にはならない</p></td></tr></table>
 <p>列の欄で列を押すと、その列の見本の値と幅を書けます。見本の行の数は「この画面だけの設定」で変えます。</p>
 <p>グラフの部品は、棒・横棒・折れ線・円の 4 種類から選びます。分類する項目・集計のしかた・見本の値（1 行に「分類, 値」）を書きます。グラフはデータベースの項目にはなりません。</p>
@@ -170,15 +170,15 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>1 つの画面設計には、一覧・新規申請・詳細のように、いくつもの画面を入れられます。画面どうしのつながりは、ステータスの移り方と画面の移り方の 2 つの図で伝えます。</p>
 <h3 id="s4-1">4.1 画面を足す</h3>
 <p>左の一覧のいちばん下の <b>＋ 画面を足す</b>（メニューバーの「画面を足す」でも）を押すと、ひな形を選ぶ窓が開きます。ひな形を選んで <b>足す</b> を押すと、開いている画面のすぐ後ろに足されます。</p>
-<figure><img src="images/sc_add.png" width="880" height="526" alt="" loading="lazy"><figcaption>図 18　画面を足す窓</figcaption></figure>
+<figure><img src="images/sc_add.png" width="880" height="546" alt="" loading="lazy"><figcaption>図 18　画面を足す窓</figcaption></figure>
 <table class="tb"><tr><th>ひな形</th><th>中身</th></tr><tr><td><b>白紙</b></td><td><p>帯だけ</p></td></tr><tr><td><b>入力</b></td><td><p>データベースの項目を 2 列で並べ、下に保存とキャンセルのボタン</p></td></tr><tr><td><b>詳細</b></td><td><p>入力と同じ並びの項目と、右上に編集・削除のボタン</p></td></tr><tr><td><b>一覧</b></td><td><p>検索の欄・絞り込みの欄・＋ 新規登録のボタン・レコード一覧・ページ送り</p></td></tr><tr><td><b>グラフ</b></td><td><p>絞り込みの欄と、棒グラフ・円グラフ</p></td></tr><tr><td><b>集計</b></td><td><p>絞り込みの欄と、レコード一覧・横棒グラフ</p></td></tr><tr><td><b>進み具合</b></td><td><p>進み具合の矢印・ステータスの印・項目と、承認する・差し戻すのボタン</p></td></tr></table>
 <p>窓の下の <b>今の画面を複製</b> を押すと、部品も吹き出しもそのまま写した画面を足します。</p>
 <h3 id="s4-2">4.2 画面の一覧の操作</h3>
 <p>左の一覧の縮小画像にマウスを乗せると、右上に「…」が出ます。押すと、画面のメニューが開きます。</p>
-<figure><img src="images/sc_menu.png" width="239" height="420" alt="" loading="lazy"><figcaption>図 19　画面のメニュー</figcaption></figure>
-<ul class="l0"><li>名前を変える・複製する・上へ動かす・下へ動かす・この画面を消す、ができます。縮小画像をドラッグしても並べ替えられます。</li></ul>
+<figure><img src="images/sc_menu.png" width="268" height="420" alt="" loading="lazy"><figcaption>図 19　画面のメニュー</figcaption></figure>
+<ul class="l0"><li>名前の変更・複製・上へ移動・下へ移動・この画面を削除、ができます。縮小画像をドラッグしても並べ替えられます。</li></ul>
 <ul class="l0"><li><kbd>PageUp</kbd>・<kbd>PageDown</kbd> を押すと、前後の画面へ移ります。</li></ul>
-<ul class="l0"><li>画面を消すときは、消える部品と吹き出しの数を確かめの窓で知らせます。画面はごみ箱に入らないため、消した画面を戻すときは元に戻す（Ctrl+Z）を使います。最後の 1 つの画面は消せません。</li></ul>
+<ul class="l0"><li>画面を削除するときは、消える部品と吹き出しの数を確かめの窓で知らせます。画面はごみ箱に入らないため、削除した画面を戻すときは元に戻す（Ctrl+Z）を使います。最後の 1 つの画面は削除できません。</li></ul>
 <h3 id="s4-3">4.3 ステータスの移り方</h3>
 <p>ステータスは、申請 → 承認待ち → 承認済みのような、レコードの進み具合です（kintone のプロセス管理に当たります）。ステータスの並びと、ステータスを進める操作は、画面設計に 1 つだけ持ちます。</p>
 <figure><img src="images/sc_process.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 20　ステータスの移り方</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">ステータスの移り方</td><td><p>押すと、真ん中にステータスの移り方の図が出る。小さな字は操作の数</p></td></tr><tr><td class="n">2</td><td class="nm">図</td><td><p>ステータスを箱、操作を矢印で描く。先へ進む操作は紺の実線、前へ戻る操作（差し戻しなど）は橙の点線</p></td></tr><tr><td class="n">3</td><td class="nm">ステータスと操作</td><td><p>ステータスの並びと、操作ごとの前と次のステータス・操作する人・条件を直す。直すと図もすぐ変わる</p></td></tr></table>
@@ -193,13 +193,13 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>ベンダーに渡した後で画面設計を直したときは、どこを変えたかを伝える必要があります。「改訂する」を押すと、そのときの画面設計の写しを版（第 1 版・第 2 版…）として残し、前の版との違いを自動で一覧にします。</p>
 <h3 id="s5-1">5.1 改訂する</h3>
 <p>メニューバーの <b>改訂履歴</b> の下の ▼ を押すと、「改訂する」「改訂履歴」のメニューが開きます。</p>
-<figure><img src="images/rv_menu.png" width="400" height="193" alt="" loading="lazy"><figcaption>図 22　改訂のメニュー</figcaption></figure>
+<figure><img src="images/rv_menu.png" width="400" height="209" alt="" loading="lazy"><figcaption>図 22　改訂のメニュー</figcaption></figure>
 <p><b>改訂する</b> を押すと、改訂する窓が開きます。</p>
-<figure><img src="images/rv_add.png" width="880" height="360" alt="" loading="lazy"><figcaption>図 23　改訂する窓</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">変えた内容</td><td><p>自分で書く。PDF の表紙の改訂履歴に出る</p></td></tr><tr><td class="n">2</td><td class="nm">変更内容の一覧</td><td><p>ひとつ前の版と今の中身を比べて自動で作る。直せない</p></td></tr></table>
+<figure><img src="images/rv_add.png" width="880" height="383" alt="" loading="lazy"><figcaption>図 23　改訂する窓</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">変えた内容</td><td><p>自分で書く。PDF の表紙の改訂履歴に出る</p></td></tr><tr><td class="n">2</td><td class="nm">変更内容の一覧</td><td><p>ひとつ前の版と今の中身を比べて自動で作る。直せない</p></td></tr></table>
 <p>版の番号は次の番号が自動で入り、日付は今日が入ります（日付は直せます）。窓の <b>改訂する</b> を押すと、版が残ります。第 1 版は「最初の版」で、変更内容の一覧はありません。</p>
 <h3 id="s5-2">5.2 改訂履歴を見る</h3>
 <p>メニューバーの <b>改訂履歴</b> を押すと、改訂履歴の窓が開きます。新しい版が上です。</p>
-<figure><img src="images/rv_list.png" width="880" height="210" alt="" loading="lazy"><figcaption>図 24　改訂履歴の窓</figcaption></figure>
+<figure><img src="images/rv_list.png" width="880" height="225" alt="" loading="lazy"><figcaption>図 24　改訂履歴の窓</figcaption></figure>
 <table class="tb"><tr><th>列・ボタン</th><th>すること</th></tr><tr><td><b>変更内容</b></td><td><p>件数を押すと、その版で変わった所の一覧が行の下に開く</p></td></tr><tr><td><b>見る</b></td><td><p>その版の中身を見る（5.3）</p></td></tr><tr><td><b>この版に戻す…</b></td><td><p>今の中身を、その版の中身で置き換える</p></td></tr><tr><td><b>✎</b></td><td><p>変えた内容と日付を書き直す</p></td></tr><tr><td><b>✕</b></td><td><p>その行と版の写しを消す。版の番号は付け直さない</p></td></tr></table>
 <p>改訂履歴には、アプリが自動で残す行もあります。HTML を取り込んで置き換える前の「取り込む前の状態」、前の版に戻す前の「戻す前の状態」、AI が直す前の「Claude Code が直す前の状態」（AI の名前が入ります）の 3 つです。自動の行には版の番号が付かず、カードと PDF の表紙には出ません。</p>
 <h3 id="s5-3">5.3 前の版を見る・戻す</h3>
@@ -215,25 +215,25 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <ul class="l0"><li>PDF では、表紙の次のページに変更内容の一覧が入ります。</li></ul>
 <h2 id="s6">6. 出力と受け渡し</h2>
 <p>ベンダーに渡すファイルは、目的で選びます。印刷して渡すなら PDF、ブラウザで見て直してもらうなら HTML、資料に貼るなら PNG です。</p>
-<figure><img src="images/ex_button.png" width="200" height="120" alt="" loading="lazy"><figcaption>図 27　出力のボタン</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">出力</td><td><p>出力の窓を開く</p></td></tr></table>
+<figure><img src="images/ex_button.png" width="200" height="124" alt="" loading="lazy"><figcaption>図 27　出力のボタン</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">出力</td><td><p>出力の窓を開く</p></td></tr></table>
 <p>出力の窓は、編集の画面のメニューバーの「出力」のほか、最初の画面のカードの「…」の「出力…」と、アプリのメニューの「ファイル &gt; 出力…」からも開けます。窓の上で PDF・HTML・PNG（画像）を選ぶと、その形の設定が下に出ます。</p>
 <h3 id="s6-1">6.1 PDF</h3>
-<figure><img src="images/ex_pdf.png" width="664" height="608" alt="" loading="lazy"><figcaption>図 28　出力の窓（PDF）</figcaption></figure>
+<figure><img src="images/ex_pdf.png" width="664" height="614" alt="" loading="lazy"><figcaption>図 28　出力の窓（PDF）</figcaption></figure>
 <table class="tb"><tr><th>欄</th><th>選ぶこと</th></tr><tr><td><b>用紙</b></td><td><p>A4・A3・スライド（16:9）。用紙より大きい画面は、用紙に収まるように縮める</p></td></tr><tr><td><b>向き</b></td><td><p>横・縦（スライドは横だけ）</p></td></tr><tr><td><b>入れるページ</b></td><td><p>表紙・つながりの図・データベースの項目の一覧表・ステータスの移り方・画面の移り方。中身がないページは選べない</p></td></tr><tr><td><b>出力する画面</b></td><td><p>PDF に入れる画面。1 画面＝1 ページ</p></td></tr><tr><td><b>違いの印</b></td><td><p>前の版との違いを印で示す（5.4）。版がないときは選べない</p></td></tr><tr><td><b>出力したら PDF を開く</b></td><td><p>出力した PDF を開く</p></td></tr></table>
 <p><b>出力…</b> を押すと、保存する場所を選ぶ窓が開きます。選んだ用紙・向き・入れるページは、アプリを閉じるまで覚えています。</p>
 <p>PDF のページは、表紙 → 変更内容（違いの印を選んだとき）→ つながりの図 → データベースの項目の一覧表 → ステータスの移り方 → 画面の移り方 → 各画面の順に並びます。</p>
 <h3 id="s6-2">6.2 HTML</h3>
-<figure><img src="images/ex_html.png" width="664" height="428" alt="" loading="lazy"><figcaption>図 29　出力の窓（HTML）</figcaption></figure>
+<figure><img src="images/ex_html.png" width="664" height="444" alt="" loading="lazy"><figcaption>図 29　出力の窓（HTML）</figcaption></figure>
 <p>画面設計 1 つ分を、アプリごと 1 つの HTML ファイルにします。受け取った人は、Chrome・Edge などのブラウザで開いて、見る・直す・保存し直すことができます（第 9 章）。直して返してもらった HTML は、アプリに取り込めます（6.4）。</p>
 <ul class="l0"><li>ほかのモックから取り込んだ項目は、今の中身を写して入れます。受け取った人は直せません。</li></ul>
 <ul class="l0"><li>システムの情報（役割・スイムレーン図など）と資料は入りません。</li></ul>
 <h3 id="s6-3">6.3 PNG</h3>
-<figure><img src="images/ex_png.png" width="664" height="526" alt="" loading="lazy"><figcaption>図 30　出力の窓（PNG）</figcaption></figure>
+<figure><img src="images/ex_png.png" width="664" height="546" alt="" loading="lazy"><figcaption>図 30　出力の窓（PNG）</figcaption></figure>
 <p>1 画面を、画面・吹き出し・部品の設定の一覧表が入る大きさの 1 枚の画像にし、2 倍の細かさで出力します。画面が 2 つ以上のときは保存するフォルダを選び、「出張申請_01_一覧.png」のような名前で 1 画面ずつ保存します。</p>
 <h3 id="s6-4">6.4 直して返された HTML を取り込む</h3>
 <p>最初の画面の <b>HTML を取り込む</b> を押して、HTML ファイルを選びます。最初の画面へファイルを落としても取り込めます。</p>
 <p>一覧にある画面設計から出力した HTML なら、今の中身と取り込む中身を並べた確かめの窓が開きます。</p>
-<figure><img src="images/ex_import.png" width="584" height="454" alt="" loading="lazy"><figcaption>図 31　取り込む確かめの窓</figcaption></figure>
+<figure><img src="images/ex_import.png" width="584" height="488" alt="" loading="lazy"><figcaption>図 31　取り込む確かめの窓</figcaption></figure>
 <ul class="l0"><li><b>置き換える</b>: 今の中身を、取り込む中身で置き換えます。今の中身は、改訂履歴に「取り込む前の状態」として残り、元に戻す（Ctrl+Z）でも戻せます。</li></ul>
 <ul class="l0"><li><b>別の画面設計として足す</b>: 「出張申請（取り込み）」のような名前で一覧に足します。今の中身はそのままです。</li></ul>
 <ul class="l0"><li>一覧にない画面設計の HTML は、確かめずに一覧に足します。今の中身と同じなら取り込みません。</li></ul>
@@ -242,9 +242,9 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>システムは、いくつかの画面設計をまとめる入れ物です。出張申請システムなら、社員マスタ・出張申請・旅費精算の 3 つの画面設計を入れ、業務の流れ（スイムレーン図）と一緒に扱います。1 つの画面設計を 2 つ以上のシステムに入れることもでき、どのシステムから直しても同じ画面設計が変わります。</p>
 <h3 id="s7-1">7.1 システムを作る・画面設計を入れる</h3>
 <p>最初の画面の <b>＋ 新しいシステム</b> を押し、名前と説明を書いて <b>作る</b> を押します。説明は後からでも書けます。</p>
-<figure><img src="images/sys_new.png" width="464" height="356" alt="" loading="lazy"><figcaption>図 32　新しいシステムの窓</figcaption></figure>
+<figure><img src="images/sys_new.png" width="464" height="378" alt="" loading="lazy"><figcaption>図 32　新しいシステムの窓</figcaption></figure>
 <p>画面設計を入れるときは、システムの見出しかシステムの画面の <b>＋ 画面設計を入れる</b> を押して、入れ方を選びます。</p>
-<figure><img src="images/sys_insert.png" width="280" height="163" alt="" loading="lazy"><figcaption>図 33　画面設計を入れるメニュー</figcaption></figure>
+<figure><img src="images/sys_insert.png" width="280" height="187" alt="" loading="lazy"><figcaption>図 33　画面設計を入れるメニュー</figcaption></figure>
 <table class="tb"><tr><th>入れ方</th><th>すること</th></tr><tr><td><b>新しい画面設計を作る</b></td><td><p>新しい画面設計を作って、このシステムに入れる</p></td></tr><tr><td><b>今ある画面設計を入れる</b></td><td><p>今ある画面設計を、そのまま入れる。ほかのシステムと同じものなので、どちらから直しても変わる</p></td></tr><tr><td><b>今ある画面設計を複製して入れる</b></td><td><p>今ある画面設計を複製して入れる。元とは別のもので、片方を直しても、もう片方は変わらない</p></td></tr></table>
 <p>システムから外すときは、カードの「…」の「このシステムから外す」を押します。外しても、画面設計は残ります。</p>
 <h3 id="s7-2">7.2 システムの画面</h3>
@@ -253,7 +253,7 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>システムの画面から開いた画面設計では、メニューバーの左のボタンが <b>システムへ</b> になり、押すとシステムの画面に戻ります。名前と説明は、欄を離れると保存されます。</p>
 <h3 id="s7-3">7.3 役割</h3>
 <p>役割は、業務に出てくる人の役目（申請者・上長・経理など）です。役割の並びが、スイムレーン図の帯の上からの順になります。</p>
-<figure><img src="images/sys_roles.png" width="772" height="214" alt="" loading="lazy"><figcaption>図 35　役割</figcaption></figure>
+<figure><img src="images/sys_roles.png" width="772" height="232" alt="" loading="lazy"><figcaption>図 35　役割</figcaption></figure>
 <p>名前とメモを書き、↑↓ で並べ替えます。<b>＋ 役割を足す</b> で足し、✕ で消します。作業の箱がある役割を消すと、その作業の箱と矢印も一緒に消えます。</p>
 <h3 id="s7-4">7.4 スイムレーン図</h3>
 <p>スイムレーン図は、役割ごとの横の帯に作業の箱を左から順に並べ、矢印でつないだ業務の流れの図です。</p>
@@ -262,11 +262,11 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>作業の設定の「この作業で使う画面とステータス」で作業と画面設計・画面・ステータスを結び付けると、箱に札が付きます。どの作業でどの画面を使うかを、ベンダーに伝えられます。</p>
 <h3 id="s7-5">7.5 資料</h3>
 <p>資料は、業務の様式・規程・業務の流れの図など、システムを作るときに参考にするファイルです。資料に入れたファイルは、AI が読めます（第 8 章）。資料はデスクトップ版のアプリだけで使えます。</p>
-<figure><img src="images/sys_materials.png" width="772" height="416" alt="" loading="lazy"><figcaption>図 37　資料</figcaption></figure>
+<figure><img src="images/sys_materials.png" width="772" height="414" alt="" loading="lazy"><figcaption>図 37　資料</figcaption></figure>
 <ul class="l0"><li><b>＋ ファイルを入れる…</b> を押すか、点線の枠へファイルを落とします。1 つのファイルは 50 MB までです。元のファイルは変わりません。</li></ul>
 <ul class="l0"><li>読めるのは、文字・画像・PDF・Word・Excel・MPD のファイルです。古い形（.doc・.xls）は読めないので、新しい形（.docx・.xlsx）で保存し直して入れてください。</li></ul>
 <ul class="l0"><li><b>読む</b> を押すと、AI が読むのと同じ中身を窓で見られます。読み終えるまでは、押したボタンに「読んでいます…」と出ます。60 秒たっても読み終えないときは、待つのをやめてお知らせが出ます。もう一度押してください。</li></ul>
-<ul class="l0"><li><b>消す</b> を押すと、資料の表から消えます。元に戻す（Ctrl+Z）で戻せます。</li></ul>
+<ul class="l0"><li><b>削除</b> を押すと、資料の表から消えます。元に戻す（Ctrl+Z）で戻せます。</li></ul>
 <h3 id="s7-6">7.6 MPD からスイムレーン図を作る</h3>
 <p>MultipurposeDiagramMaker で業務の流れを描いた MPD があるときは、それを資料に入れて、資料の表の <b>スイムレーン図にする</b> を押すと、MPD からスイムレーン図を作れます。</p>
 <ul class="l0"><li>今のスイムレーン図に作業があるときは、置き換える前に確かめの窓が出ます。元に戻す（Ctrl+Z）で戻せます。</li></ul>
@@ -281,31 +281,31 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <ul class="l0"><li>①〜④ の段階の、決めたことと理由・まだ決まっていないことは、説明書（PDF）の最後のページに入ります。</li></ul>
 <h3 id="s7-8">7.8 説明書（PDF）</h3>
 <p>システムの画面のメニューバーの <b>出力</b> を押すと、小さなメニューが開きます。</p>
-<figure><img src="images/sys_exportmenu.png" width="343" height="162" alt="" loading="lazy"><figcaption>図 39　システムの出力のメニュー</figcaption></figure>
+<figure><img src="images/sys_exportmenu.png" width="342" height="178" alt="" loading="lazy"><figcaption>図 39　システムの出力のメニュー</figcaption></figure>
 <p><b>説明書（PDF）を出力…</b> を押すと、システム 1 つ分を 1 つの PDF にする窓が開きます。入っている画面設計の画面のページは、全部入ります。</p>
-<figure><img src="images/sys_doc.png" width="704" height="386" alt="" loading="lazy"><figcaption>図 40　説明書を出力する窓</figcaption></figure>
+<figure><img src="images/sys_doc.png" width="704" height="410" alt="" loading="lazy"><figcaption>図 40　説明書を出力する窓</figcaption></figure>
 <p>ページは、システムの表紙 → スイムレーン図 → 画面設計ごとのページ（画面設計を 1 つ出力したときと同じページ）→ 設計ノートの順に並びます。ファイルの名前の案は「出張申請システム_説明書.pdf」です。</p>
 <h3 id="s7-9">7.9 MPD に出力</h3>
 <p>スイムレーン図を MultipurposeDiagramMaker で開いて直したいときは、出力のメニューの <b>MPD に出力…</b> を押します（資料の表の MPD の行の「MPD に出力…」でも）。デスクトップ版のアプリだけで使えます。</p>
-<figure><img src="images/sys_mpd.png" width="664" height="244" alt="" loading="lazy"><figcaption>図 41　MPD に出力する窓</figcaption></figure>
+<figure><img src="images/sys_mpd.png" width="664" height="256" alt="" loading="lazy"><figcaption>図 41　MPD に出力する窓</figcaption></figure>
 <ul class="l0"><li>元にする MPD を、資料から選びます。選んだ MPD の中の図だけを今のスイムレーン図に入れ替えて、別の名前で保存します。元のファイルは書き換えません。</li></ul>
 <ul class="l0"><li>ファイルの名前の案は「出張申請システム_スイムレーン.html」です。</li></ul>
 <ul class="l0"><li>役割のない作業は入りません。</li></ul>
 <h3 id="s7-10">7.10 履歴</h3>
 <p>AI がシステム（名前・説明・役割・スイムレーン図・画面設計の並び）を直す前の中身は、システムの画面の「履歴」に自動で残ります。資料と設計ノートは入りません。</p>
-<figure><img src="images/sys_history.png" width="772" height="215" alt="" loading="lazy"><figcaption>図 42　システムの履歴</figcaption></figure>
+<figure><img src="images/sys_history.png" width="772" height="224" alt="" loading="lazy"><figcaption>図 42　システムの履歴</figcaption></figure>
 <p><b>この状態に戻す…</b> を押すと、その行の中身に戻せます。戻す前の中身は「戻す前の状態」の行に残ります。行は、どちらも新しい方から 10 行までです。中の画面設計の履歴は、それぞれの画面設計の改訂履歴にあります。</p>
 <h2 id="s8">8. AI とつなぐ</h2>
 <p>Claude Code などの AI から、このアプリの画面設計とシステムを読んだり、作ったり、直したりできます。つなぎ方には MCP というしくみを使います。AI はファイルを直接書かず、保存はアプリが行うので、AI が作ったものも人が描いたものと同じように一覧に並びます。AI とつなげるのは、デスクトップ版のアプリだけです。</p>
 <h3 id="s8-1">8.1 AI に登録する</h3>
 <p>アプリのメニューの <b>ヘルプ &gt; AI とつなぐ…</b> を押すと、登録のしかたの窓が開きます。AI のアプリに、このアプリを 1 回だけ登録します。</p>
-<figure><img src="images/ai_connect.png" width="578" height="640" alt="" loading="lazy"><figcaption>図 43　AI とつなぐ窓</figcaption></figure>
+<figure><img src="images/ai_connect.png" width="553" height="640" alt="" loading="lazy"><figcaption>図 43　AI とつなぐ窓</figcaption></figure>
 <ul class="l0"><li>Claude Code: 「Claude Code に登録する」の <b>コピー</b> を押し、PowerShell に貼り付けて 1 回だけ実行します。Claude Code を起動し直すと使えます。起動している Claude Code では、<kbd>/mcp</kbd> でつなぎ直します。</li></ul>
 <ul class="l0"><li>ほかの AI のアプリ（MCP に対応したもの）: 下の <b>コピー</b> を押し、それぞれのアプリの説明に従って、MCP の設定に貼り付けます。</li></ul>
 <p>登録した後は、アプリが動いていなくても、AI が頼むとアプリが窓を出さずに裏で起動します。</p>
 <div class="box warn"><b class="tag">注意</b><div>アプリを新しい版に入れ替えるときは、先にアプリを終了してください（タスクトレイのアイコンの「終了」）。入れ替えた後は、Claude Code の <kbd>/mcp</kbd> でつなぎ直します。</div></div>
 <h3 id="s8-2">8.2 つながっている印</h3>
-<figure><img src="images/ai_chip.png" width="880" height="27" alt="" loading="lazy"><figcaption>図 44　AI がつながっている印</figcaption></figure>
+<figure><img src="images/ai_chip.png" width="880" height="30" alt="" loading="lazy"><figcaption>図 44　AI がつながっている印</figcaption></figure>
 <p>AI がつながっている間は、いちばん上の帯の右に紫の札「Claude Code がつながっています」が出ます。札を押すと、「AI とつなぐ」の窓が開きます。</p>
 <p>AI がつながっている間に窓の × を押すと、窓は隠れ、アプリは裏で動き続けます（最初の 1 回だけ Windows の通知で知らせます）。タスクトレイのアイコンを押すと、窓が出ます。アプリを終えるときは、アイコンを右クリックして「終了」を押します。</p>
 <h3 id="s8-3">8.3 AI に頼めること・頼めないこと</h3>
@@ -324,7 +324,7 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>開いている画面設計を AI が直すと、メニューバーの下に紫の帯が出て、直した部品が紫の枠で光ります。部品の上には「AI が足した」「AI が直した」の札が付きます。</p>
 <figure><img src="images/ai_band.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 45　AI が直したときの紫の帯</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">紫の帯</td><td><p>直した画面設計と変更の数。<b>変更内容を見る</b>・<b>元に戻す（Ctrl+Z）</b>・✕ のボタン</p></td></tr></table>
 <p>最初の画面では、AI が作った・直した画面設計のカードが紫の枠で光り、左上に「AI が作った」「AI が直した」の札が付きます。</p>
-<figure><img src="images/ai_cards.png" width="880" height="552" alt="" loading="lazy"><figcaption>図 46　AI が作った画面設計のカード</figcaption></figure>
+<figure><img src="images/ai_cards.png" width="880" height="579" alt="" loading="lazy"><figcaption>図 46　AI が作った画面設計のカード</figcaption></figure>
 <p>AI が直す前の中身は、改訂履歴に「Claude Code が直す前の状態」として自動で残ります。元に戻す（Ctrl+Z）で戻せないときも、改訂履歴のその行の「この版に戻す…」で戻せます。</p>
 <div class="box warn"><b class="tag">注意</b><div>開いていない画面設計を AI が直したときは、開いている画面設計の元に戻す（Ctrl+Z）の履歴が消えます。オレンジの帯で知らせるので、AI の変更を戻すときは、直された画面設計の改訂履歴から戻してください。</div></div>
 <h2 id="s9">9. ベンダーの方へ</h2>
@@ -363,7 +363,7 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <h3 id="sapp-A">付録 A キーの一覧</h3>
 <table class="tb"><tr><th>キー</th><th>すること</th></tr><tr><td><b>Ctrl+Z</b></td><td><p>元に戻す</p></td></tr><tr><td><b>Ctrl+Y（Ctrl+Shift+Z）</b></td><td><p>やり直す</p></td></tr><tr><td><b>Ctrl+A</b></td><td><p>部品と吹き出しをすべて選ぶ</p></td></tr><tr><td><b>Ctrl+C・Ctrl+V</b></td><td><p>選んだものをコピー・貼り付け</p></td></tr><tr><td><b>Ctrl+D</b></td><td><p>選んだものを複製</p></td></tr><tr><td><b>Delete・Backspace</b></td><td><p>選んだものを消す（データベースの項目の一覧表では項目を消す）</p></td></tr><tr><td><b>矢印のキー</b></td><td><p>選んだものを 8 ドット動かす</p></td></tr><tr><td><b>Esc</b></td><td><p>選ぶのをやめる・開いた組を閉じる</p></td></tr><tr><td><b>PageUp・PageDown</b></td><td><p>前の画面・次の画面</p></td></tr><tr><td><b>Ctrl+＋・Ctrl+－・Ctrl+0</b></td><td><p>拡大・縮小・100% に戻す</p></td></tr><tr><td><b>Ctrl＋ホイール</b></td><td><p>拡大・縮小（ハンドのときはホイールだけ）</p></td></tr><tr><td><b>c・v</b></td><td><p>スイムレーン図で接続・選択に切り替える</p></td></tr><tr><td><b>Ctrl+S</b></td><td><p>ブラウザで開いた HTML を保存する</p></td></tr></table>
 <h3 id="sapp-B">付録 B アプリのメニューの一覧</h3>
-<table class="tb"><tr><th>メニュー</th><th>項目</th></tr><tr><td><b>ファイル</b></td><td><p>新しい画面設計…・新しいシステム…・出力…・HTML を取り込む…・改訂する…・改訂履歴…・一覧へ戻る・終了</p></td></tr><tr><td><b>編集</b></td><td><p>元に戻す・やり直す・切り取り・コピー・貼り付け・すべて選択・部品をコピー・部品を貼り付け・部品を複製・部品を削除・部品と吹き出しをすべて選ぶ・番号を振り直す</p></td></tr><tr><td><b>画面</b></td><td><p>画面を足す…・画面を複製・画面を消す…・前の画面へ・次の画面へ</p></td></tr><tr><td><b>揃える</b></td><td><p>左に揃える・左右の中央に揃える・右に揃える・上に揃える・上下の中央に揃える・下に揃える・横に等間隔に並べる・縦に等間隔に並べる・同じ幅にする・同じ高さにする</p></td></tr><tr><td><b>項目</b></td><td><p>データベースの項目を開く・つながりの図を開く・ステータスの移り方を開く・画面の移り方を開く・項目を足す・ほかのモックから取り込む</p></td></tr><tr><td><b>表示</b></td><td><p>拡大・縮小・100% に戻す・全画面表示</p></td></tr><tr><td><b>ウィンドウ</b></td><td><p>最小化・閉じる</p></td></tr><tr><td><b>ヘルプ</b></td><td><p>使い方・AI とつなぐ…</p></td></tr></table>
+<table class="tb"><tr><th>メニュー</th><th>項目</th></tr><tr><td><b>ファイル</b></td><td><p>新しい画面設計…・新しいシステム…・出力…・HTML を取り込む…・改訂する…・改訂履歴…・一覧へ戻る・終了</p></td></tr><tr><td><b>編集</b></td><td><p>元に戻す・やり直す・切り取り・コピー・貼り付け・すべて選択・部品をコピー・部品を貼り付け・部品を複製・部品を削除・部品と吹き出しをすべて選ぶ・番号を振り直す</p></td></tr><tr><td><b>画面</b></td><td><p>画面を足す…・画面を複製・画面を削除…・前の画面へ・次の画面へ</p></td></tr><tr><td><b>揃える</b></td><td><p>左に揃える・左右の中央に揃える・右に揃える・上に揃える・上下の中央に揃える・下に揃える・横に等間隔に並べる・縦に等間隔に並べる・同じ幅にする・同じ高さにする</p></td></tr><tr><td><b>項目</b></td><td><p>データベースの項目を開く・つながりの図を開く・ステータスの移り方を開く・画面の移り方を開く・項目を足す・ほかのモックから取り込む</p></td></tr><tr><td><b>表示</b></td><td><p>拡大・縮小・100% に戻す・全画面表示</p></td></tr><tr><td><b>ウィンドウ</b></td><td><p>最小化・閉じる</p></td></tr><tr><td><b>ヘルプ</b></td><td><p>使い方・AI とつなぐ…</p></td></tr></table>
 </div>
 </main>
 <script>

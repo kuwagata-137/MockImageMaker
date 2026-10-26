@@ -165,7 +165,7 @@ function createAppLink({ target, session, clientName = () => '', launchWaitMs = 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         c.pending.delete(id);
-        reject(new AppLinkError('timeout', 'アプリが応えません（時間切れ）。'));
+        reject(new AppLinkError('timeout', P.TIMEOUT_MESSAGE));
       }, (slow ? SLOW_MS : REQUEST_MS) + MARGIN_MS);
       c.pending.set(id, {
         resolve: (msg) => { clearTimeout(timer); resolve(msg); },

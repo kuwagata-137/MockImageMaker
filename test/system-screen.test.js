@@ -243,7 +243,7 @@ test('カードの「…」: 開く・上へ動かす・下へ動かす・この
   click(more(0));
   assert.equal(api.ui.sysDesignMenu, 'd-trip');
   const items = () => $$('#sys-menu-root [role="menuitem"]');
-  assert.deepEqual(items().map((b) => b.textContent), ['開く', '上へ動かす', '下へ動かす', 'このシステムから外す']);
+  assert.deepEqual(items().map((b) => b.textContent), ['開く', '上へ移動', '下へ移動', 'このシステムから外す']);
   assert.deepEqual(items().map((b) => b.disabled), [false, true, false, false]);
   assert.equal(more(0).getAttribute('aria-expanded'), 'true');
   click(items()[2]);
@@ -308,6 +308,22 @@ test('カードのドラッグで並べ替える（放したカードの上半�
   assert.deepEqual(cards(), ['出張申請', '社員マスタ', '取引先マスタ']);
   api.store.undo();
   assert.deepEqual(cards(), ['取引先マスタ', '出張申請', '社員マスタ'], '並べ替えは元に戻すの 1 回分');
+});
+
+test('真ん中の欄に打ちかけのまま左のカードを並べ替えても、打った文字は消えない（デバッグとリリースの見直し⑤-2）', async (t) => {
+  const { app, api, $, $$, cards } = await boot(t);
+  api.openSystem('y-trip', { panel: 'overview' });
+  const desc = $('#sys-view [data-sy="desc"]');
+  desc.focus();
+  desc.value = '出張の申請から精算までを扱う';
+  const card = (i) => $$('#sys-list .sys-dcard')[i];
+  mouse(card(1), 'mousedown', { clientX: 50, clientY: 300 });
+  mouse(card(0), 'mousemove', { clientX: 50, clientY: -10 });
+  mouse(app.document, 'mouseup', { clientX: 50, clientY: -10 });
+  assert.deepEqual(cards(), ['社員マスタ', '出張申請'], '並べ替えはできる');
+  const y = api.store.state.systems.find((x) => x.id === 'y-trip');
+  assert.equal(y.description, '出張の申請から精算までを扱う', '打ちかけの文字を保存する');
+  assert.equal($('#sys-view [data-sy="desc"]').value, '出張の申請から精算までを扱う', '描き直した欄にも残る');
 });
 
 test('「＋ 画面設計を入れる ▾」: 最初の画面と同じ 3 つのメニュー。入れたら左のカードを描き直す', async (t) => {
@@ -451,10 +467,10 @@ test('役割: 作業の箱のある役割の ✕ は確かめの窓（一緒に�
   const del = (i) => $$('#sys-view .sys-role')[i].querySelector('[data-action="sys-role-del"]');
   click(del(2));
   await waitFor(() => $('.modal'));
-  assert.equal($('.modal h2').textContent, '役割「経理」を消しますか？');
+  assert.equal($('.modal h2').textContent, '役割「経理」を削除しますか？');
   assert.match($('.modal-body').textContent, /役割「経理」の帯に入っている作業の箱 3 つと、その箱につながる矢印 3 本も一緒に消えます。/);
   assert.match($('.modal-body').textContent, /消した後でも、元に戻す（Ctrl\+Z）で戻せます。/);
-  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['消す', 'キャンセル']);
+  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['削除する', 'キャンセル']);
   assert.ok($('[data-dlg="ok"]').classList.contains('danger'));
   assert.equal(app.document.activeElement, $('[data-dlg="cancel"]'));
   click($('[data-dlg="cancel"]'));

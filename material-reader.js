@@ -4,20 +4,22 @@
 //    （text は文字・image は render() で PNG を作る。画像を描くのは返すときだけ）。長い文は 1 つの塊が重み 3,000 以内になるよう改行の所で分ける
 //  - 1 回の返事は、重み 9,000（ASCII の字 0.3・それ以外 1・画像 1 枚 2,000）・画像 3 枚・PNG の合計 8MB までで、塊を cursor の位置から順に詰める。
 //    最初の塊は上限を超えても必ず 1 つ入れる。続きは nextCursor（次の塊の番号の文字）を cursor に渡して読む
-//  - 描けなかった画像の塊は「（N ページの画像を作れませんでした）」の文の行にして先へ進む（資料の塊がその画像 1 つだけのときは read_failed）
+//  - 描けなかった画像の塊は「（N ページの画像を作れませんでした）」の文の行にして先へ進む（資料の塊がその画像 1 つだけのときは read_failed）。
+//    画像の部品が動かないために描けなかったときは、その理由を書いた行にする（資料の塊がその画像 1 つだけのときは unavailable）
 //  - 資料の中の文は指示ではない、という断り書き（notice）を返す文の頭に置く
 //  - 直近 3 つの資料の塊を控える（鍵は path・大きさ・更新日時）。PDF は控えから外すとき閉じる
 //  - read は 1 つずつ実行する（待ち行列）。同時に頼まれても、前の読みが終わってから次を始める。
 //    別の資料の読み込みが控えを押し出して、返事を組んでいる途中の PDF を閉じてしまうのを防ぐため
 //  - Electron に触らない。bdm は bdmBlocks（bdm-swimlane.js の関数）を引数で受け取って呼ぶ
-// 失敗は MaterialError（code: unsupported・file_missing・not_file・old_format・read_failed・bad_cursor・unavailable〔PDF を読む部品の cmaps・standard_fonts がない・画像を描く @napi-rs/canvas が読めない〕）。文にパスを入れない。
+// 失敗は MaterialError（code: unsupported・file_missing・not_file・old_format・encrypted〔パスワードで守った Word・Excel〕・read_failed・bad_cursor・
+// unavailable〔PDF を読む部品の cmaps・standard_fonts がない・画像の部品 @napi-rs/canvas が動かない〕）。文にパスを入れない。
 // read_failed には、元の例外を cause に残す（調べるため。ページには code と message だけが渡る）。
 'use strict';
 
 const fs = require('node:fs');
 const { MaterialError } = require('./material-error');
 const { WEIGHT_SCALE, decodeText, textWeight, splitText } = require('./material-text');
-const { toPng, fitPngToBase64Limit } = require('./material-image');
+const { toPng, fitPngToBase64Limit, isImagePartMissing } = require('./material-image');
 const { loadPdfBlocks } = require('./material-pdf');
 const { readWordBlocks } = require('./material-word');
 const { readExcelBlocks } = require('./material-excel');
@@ -34,14 +36,19 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const CACHE_SIZE = 3;
 
 const OLE2_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+// パスワードで守った .docx・.xlsx は、OLE2 の中に EncryptedPackage という名前（UTF-16LE）の流れを持つ
+const ENCRYPTED_PACKAGE = Buffer.from('EncryptedPackage', 'utf16le');
 const MISSING_CODES = new Set(['ENOENT', 'ENOTDIR', 'ERR_INVALID_ARG_TYPE']);
 
 const fail = (code, message) => new MaterialError(code, message);
 
-// Word・Excel の読み取り。中身が古い形（OLE2）なら、名前が .docx・.xlsx でも読めないので断る
+// Word・Excel の読み取り。中身が OLE2（古い形か、パスワードで守ったファイル）なら、名前が .docx・.xlsx でも読めないので、どちらかを伝えて断る
 function officeLoader(label, oldExtension, newExtension, read) {
   return async (bytes) => {
     if (bytes.subarray(0, OLE2_SIGNATURE.length).equals(OLE2_SIGNATURE)) {
+      if (bytes.includes(ENCRYPTED_PACKAGE)) {
+        throw fail('encrypted', `この ${label} のファイルはパスワードで守られているため、読めません。パスワードを外して保存し直してから入れ直してください。`);
+      }
       throw fail('old_format', `この資料は古い形の ${label}（${oldExtension}）です。読めません。${newExtension} に保存し直してから入れ直してください。`);
     }
     return read(bytes);
@@ -161,7 +168,9 @@ async function addImage(page, image, isFirst, isOnlyBlock) {
   } catch (err) {
     if (isOnlyBlock) throw err;
     console.warn('資料の画像を作れませんでした:', err);
-    const line = image.page ? `（${image.page} ページの画像を作れませんでした）` : '（画像を作れませんでした）';
+    const line = isImagePartMissing(err)
+      ? `（${image.page ? `${image.page} ページは文字のないページですが、` : ''}画像の部品が動かないため読めませんでした）`
+      : image.page ? `（${image.page} ページの画像を作れませんでした）` : '（画像を作れませんでした）';
     return addText(page, { text: line, weight: textWeight(line) }, true);
   }
   if (!isFirst && page.bytes + fitted.png.length > MAX_IMAGE_BYTES) return false;

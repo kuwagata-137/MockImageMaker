@@ -109,7 +109,7 @@ function buildAppMenu() {
       submenu: [
         commandItem('画面を足す…', 'addScreen'),
         commandItem('画面を複製', 'duplicateScreen'),
-        commandItem('画面を消す…', 'deleteScreen'),
+        commandItem('画面を削除…', 'deleteScreen'),
         { type: 'separator' },
         commandItem('前の画面へ', 'prevScreen', 'PageUp'),
         commandItem('次の画面へ', 'nextScreen', 'PageDown'),

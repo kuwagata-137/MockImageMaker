@@ -325,6 +325,8 @@ async function shot(name, opts = {}) {
   const so = { path: path.join(OUT, file), type: fmt };
   if (fmt === 'jpeg') so.quality = 85;
   if (clip) so.clip = clip;
+  // puppeteer は切り抜くとき、既定で窓の大きさを一時的に変える。アプリは窓の大きさが変わるとシステムのメニューを閉じるので、変えずに撮る
+  if (clip && B.kind === 'puppeteer') so.captureBeyondViewport = false;
   await page.screenshot(so);
   await ev(() => window.__mnl.clear());
   manifest[name] = { file, w: clip ? clip.width : vw, h: clip ? clip.height : vh, dsf: DSF };
@@ -641,9 +643,9 @@ const CHAPTERS = {
     await page.keyboard.type('備品貸出');
     await shot('new_step2', { clip: '.modal', pad: 12, anno: [
       { box: '.modal input[name="name"]', n: 1, at: 'l', pad: 3 },
-      { box: { sel: '.modal .btn', text: '作成して開く' }, n: 2, at: 'l', pad: 3 },
+      { box: { sel: '.modal .btn', text: '作って開く' }, n: 2, at: 'l', pad: 3 },
     ] });
-    await click({ sel: '.modal .btn', text: '作成して開く' });
+    await click({ sel: '.modal .btn', text: '作って開く' });
     await page.waitForFunction(() => window.__test__.ui.view === 'editor');
     await sleep(300);
     await shot('new_step3');

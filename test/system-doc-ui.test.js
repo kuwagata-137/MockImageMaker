@@ -10,6 +10,8 @@ const { bootSystemDoc } = require('./system-doc-fixtures');
 
 const click = (el) => el.dispatchEvent(new el.ownerDocument.defaultView.MouseEvent('click', { bubbles: true }));
 const tick = () => new Promise((r) => setTimeout(r, 0));
+// 「出力…」を押した後、「作っています…」のお知らせが描かれてから組むので、画面が描かれる（requestAnimationFrame）まで待つ（デバッグとリリースの見直し②-4）
+const settle = () => new Promise((r) => setTimeout(r, 150));
 // ラジオを選んで change を起こす（窓は change で向きの押せる・押せないを決める）
 const pickRadio = (el) => { el.checked = true; el.dispatchEvent(new el.ownerDocument.defaultView.Event('change', { bubbles: true })); };
 const PAGE_KEYS = ['systemCover', 'swimlane', 'notes', 'cover', 'map', 'items', 'process', 'flow'];
@@ -66,8 +68,7 @@ test('説明書の窓: システムの画面のメニューバーの「出力」
   assert.equal($('.modal [name="dp-orient"]:checked').value, 'landscape');
   assert.equal($('.modal [data-dopen]').checked, true);
   click($('[data-dlg="ok"]'));
-  await tick();
-  await tick();
+  await settle();
   assert.equal(xapi.calls.length, 1);
   const [kind, p] = xapi.calls[0];
   assert.equal(kind, 'savePdf');
@@ -108,7 +109,7 @@ test('説明書の窓: アプリのメニューの命令 exportDialog でも、�
   const more = $(`.sys-block [data-action="sys-menu"][data-id="${sysId}"]`);
   assert.match(more.title, /説明書を出力/);
   click(more);
-  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明を変える…', '説明書を出力…', 'ごみ箱へ移す']);
+  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明の変更…', '説明書を出力…', '削除（ごみ箱へ移す）']);
   click($('.sys-pop [data-action="sys-doc"]'));
   await tick();
   assert.equal($('.modal h2').textContent, '「出張申請システム」の説明書を出力');
@@ -161,8 +162,7 @@ test('説明書の窓: 出せないページは印を外して押せなくし、
   assert.equal($('.modal-error').textContent, '入れるページを 1 つ以上選んでください。');
   cover.checked = true;
   click($('[data-dlg="ok"]'));
-  await tick();
-  await tick();
+  await settle();
   assert.equal(xapi.calls.length, 1, '表紙だけでも出力できる');
   assert.equal(xapi.calls[0][1].name, '空のシステム_説明書.pdf');
 });
@@ -179,8 +179,7 @@ test('説明書の窓: 選んだ設定はアプリを閉じるまで覚える（
   $('.modal [data-dpage="notes"]').checked = false;
   $('.modal [data-dopen]').checked = false;
   click($('[data-dlg="ok"]'));
-  await tick();
-  await tick();
+  await settle();
   const p = xapi.calls[0][1];
   assert.equal(p.open, false);
   assert.equal(p.pageSize.width.toFixed(3), (297 / 25.4).toFixed(3), 'A3 縦');
@@ -194,8 +193,7 @@ test('説明書の窓: 選んだ設定はアプリを閉じるまで覚える（
   assert.equal($('.modal [name="dp-orient"]:checked').value, 'portrait');
   assert.deepEqual(pageChecks($$).map((r) => r.slice(0, 2)), [['systemCover', true], ['swimlane', false], ['notes', false], ['cover', true], ['map', false], ['items', true], ['process', true], ['flow', true]]);
   click($('[data-dlg="ok"]'));
-  await tick();
-  await tick();
+  await settle();
   assert.equal(api.docOpts.swimlane, true, '押せなかった印は前の設定のまま');
   assert.equal(api.docOpts.notes, false);
   assert.deepEqual(JSON.parse(JSON.stringify(api.exportOpts)), before, '画面設計の出力の窓の設定は変わらない');
@@ -211,7 +209,7 @@ test('説明書の窓: 打ちかけの文字を、窓を開く前に保存する
   await openDocDialog(api, $);
   assert.equal(y().description, '打ちかけの説明', '窓を開く前に保存した');
   click($('[data-dlg="ok"]'));
-  await tick();
+  await settle();
   assert.equal(xapi.calls.length, 1);
   assert.equal(toast(), '説明書（PDF）を作っています…');
   await openDocDialog(api, $);
@@ -234,26 +232,48 @@ test('説明書の窓: 窓を開いている間にシステムがごみ箱へ移
   await openDocDialog(api, $);
   api.actions.trashSystem(sysId);
   click($('[data-dlg="ok"]'));
-  await tick();
-  await tick();
+  await settle();
   assert.equal(xapi.calls.length, 0);
   assert.equal(toast(), '「出張申請システム」がごみ箱へ移ったので、出力をやめました。');
 });
 
-test('説明書の窓: 保存の窓でキャンセルしたときは知らせない。失敗したときは「出力できませんでした」。どちらの後も、また開ける', async (t) => {
-  const xapi = fakeExportAPI({ ok: false, canceled: true });
-  const { api, $, toast } = await boot(t, { exportAPI: xapi });
+// デバッグとリリースの見直し②-4: お知らせを出してすぐ組むと、組み終わるまで描かれず、組み終わった時にはお知らせの時間（3.5 秒）が過ぎて消えていた
+test('説明書の窓: 「作っています…」のお知らせが描かれてから組み、保存し終わるまで出したまま', async (t) => {
+  const xapi = fakeExportAPI({}, { hold: true });
+  const { app, api, $, toast } = await boot(t, { exportAPI: xapi });
+  const frames = [];
+  app.window.requestAnimationFrame = (cb) => { frames.push(cb); return frames.length; };
   await openDocDialog(api, $);
   click($('[data-dlg="ok"]'));
   await tick();
   await tick();
-  assert.equal(toast(), '説明書（PDF）を作っています…', 'キャンセルでは知らせを足さない');
+  assert.equal(toast(), '説明書（PDF）を作っています…');
+  assert.equal($('#toast').hidden, false);
+  assert.equal(xapi.calls.length, 0, '画面が描かれる前には組まない');
+  frames.splice(0).forEach((cb) => cb(0));
+  await settle();
+  assert.equal(xapi.calls.length, 1);
+  await new Promise((r) => setTimeout(r, 3700));
+  assert.equal($('#toast').hidden, false, '保存し終わるまで出したまま');
+  assert.equal(toast(), '説明書（PDF）を作っています…');
+  xapi.release();
+  await tick();
+  await tick();
+  assert.match(toast(), /説明書（PDF）を出力しました/);
+});
+
+test('説明書の窓: 保存の窓でキャンセルしたときは知らせない。失敗したときは「出力できませんでした」。どちらの後も、また開ける', async (t) => {
+  const xapi = fakeExportAPI({ ok: false, canceled: true });
+  const { app, api, $, toast } = await boot(t, { exportAPI: xapi });
+  await openDocDialog(api, $);
+  click($('[data-dlg="ok"]'));
+  await settle();
+  assert.equal(app.document.querySelector('#toast').hidden, true, 'キャンセルでは知らせを足さず、「作っています…」を消す');
   Object.assign(xapi, { savePdf: async (p) => { xapi.calls.push(['savePdf', p]); return { ok: false, error: '書き込めません' }; } });
   await openDocDialog(api, $);
   assert.ok($('.modal'));
   click($('[data-dlg="ok"]'));
-  await tick();
-  await tick();
+  await settle();
   assert.equal(toast(), '説明書（PDF）を出力できませんでした（書き込めません）。');
   await openDocDialog(api, $);
   assert.ok($('.modal'));

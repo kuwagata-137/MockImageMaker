@@ -3,6 +3,8 @@
 //  - 画面設計の一覧全体を <userData>/data/designs.json に読み書きする
 //  - 書き込みは tmp に書いてから置き換える。直前の世代を .bak に残す
 //  - 本体が読めなければ .bak を読む（読めない本体は別の名前で残す）。どちらも読めなければ { ok: false } を返し、ページは保存を止める
+//  - 本体がなく、書き終わった .tmp があれば .tmp を読む（本体を .bak へ回した後に置き換えられなかったとき。.bak より新しい）
+//  - Windows で一時的に書けない（EPERM・EBUSY・EACCES）ときは、少し待ってやり直す
 //  - 書き込みは 1 本の列（saveChain）に並べる。終了の前に whenIdle() で書き終わりを待てる
 // CheckListMaker の画像の保存（image:*・使われない画像の掃除）は写していない。
 // ページ側の対になる処理は mock_v*.html の FileAdapter。
@@ -12,6 +14,21 @@ const path = require('path');
 const fsp = require('fs').promises;
 
 const STATE_FILE_NAME = 'designs.json';
+
+// Windows では、ほかのアプリ（ウイルス対策・エクスプローラーのプレビューなど）が一瞬ファイルをつかんでいると、書き込み・名前の変更が
+// EPERM・EBUSY・EACCES で失敗する。少し待ってやり直す（待つのは合わせて約 3 秒。デバッグとリリースの見直し①-1）
+const BUSY_CODES = new Set(['EPERM', 'EBUSY', 'EACCES']);
+const BUSY_WAITS = [50, 100, 200, 400, 800, 1600];
+async function retryBusy(fn) {
+  for (let i = 0; ; i += 1) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!BUSY_CODES.has(err && err.code) || i >= BUSY_WAITS.length) throw err;
+      await new Promise((resolve) => setTimeout(resolve, BUSY_WAITS[i]));
+    }
+  }
+}
 
 function initStorage(app, ipcMain) {
   const dataDir = () => path.join(app.getPath('userData'), 'data');
@@ -43,12 +60,22 @@ function initStorage(app, ipcMain) {
     return path.basename(copy);
   }
 
+  // 本体が読めず .bak から読んだか。そのときの最初の保存では、読めない本体を .bak へ回さない（回すと良い .bak を上書きする。
+  // 読めない本体は keepUnreadable で別の名前に写してある。デバッグとリリースの見直し①-6）
+  let mainUnreadable = false;
+
   // 戻り値 { json, notice }。json が null なら初めての起動。notice があれば、ページの上の帯に出す。
   // 本体が読めず .bak も読めないとき、読めない本体を写せないときは例外（ページは保存を止める）。
   // CheckListMaker は「どちらも読めなければ初めての起動」とみなすため、壊れたデータを次の保存で上書きして消す。
   async function readStateJson() {
     const main = await readJsonFile(stateFile());
     if (main.status === 'ok') return { json: main.text, notice: null };
+    // 本体がなく、書き終わった .tmp があれば、それが最後の保存（本体を .bak へ回した後に、.tmp を本体へ置き換えられなかった。
+    // 書きかけの .tmp は JSON が壊れているので読まない）。見直し①-1
+    if (main.status === 'missing') {
+      const tmp = await readJsonFile(stateFile() + '.tmp');
+      if (tmp.status === 'ok') return { json: tmp.text, notice: null };
+    }
     const bak = await readJsonFile(stateFile() + '.bak');
     if (main.status === 'missing' && bak.status === 'missing') return { json: null, notice: null };
     if (bak.status !== 'ok') {
@@ -57,6 +84,7 @@ function initStorage(app, ipcMain) {
     let notice = `${STATE_FILE_NAME} が見つからないため、1 つ前の保存（.bak）から読み込みました。最後の変更が抜けているかもしれません。`;
     if (main.status === 'bad') {
       const kept = await keepUnreadable(stateFile());
+      mainUnreadable = true;
       notice = `${STATE_FILE_NAME} を読めなかった（${main.error}）ため、1 つ前の保存（.bak）から読み込みました。最後の変更が抜けているかもしれません。読めなかったファイルは ${kept} として残しました。`;
     }
     return { json: bak.text, notice };
@@ -69,13 +97,16 @@ function initStorage(app, ipcMain) {
     await fsp.mkdir(dataDir(), { recursive: true });
     const file = stateFile();
     const tmp = file + '.tmp';
-    await fsp.writeFile(tmp, json, 'utf8');
-    try {
-      await fsp.rename(file, file + '.bak');
-    } catch (_) {
-      /* 初回は本体が無い */
+    await retryBusy(() => fsp.writeFile(tmp, json, 'utf8'));
+    if (!mainUnreadable) {
+      try {
+        await retryBusy(() => fsp.rename(file, file + '.bak'));
+      } catch (_) {
+        /* 初回は本体が無い（つかまれたまま回せないときも、.bak を新しくせずに続ける。次の rename が本体を置き換える） */
+      }
     }
-    await fsp.rename(tmp, file);
+    await retryBusy(() => fsp.rename(tmp, file));
+    mainUnreadable = false;
   }
 
   ipcMain.handle('storage:load', async () => {

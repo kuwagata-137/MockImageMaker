@@ -8,19 +8,19 @@
  "ai_cards": {
   "file": "ai_cards.png",
   "w": 972,
-  "h": 610,
+  "h": 640,
   "dsf": 2
  },
  "ai_chip": {
   "file": "ai_chip.png",
   "w": 1280,
-  "h": 39,
+  "h": 43,
   "dsf": 2
  },
  "ai_connect": {
   "file": "ai_connect.png",
   "w": 784,
-  "h": 868,
+  "h": 908,
   "dsf": 2
  },
  "ed_align": {
@@ -38,7 +38,7 @@
  "ed_import": {
   "file": "ed_import.png",
   "w": 944,
-  "h": 584,
+  "h": 592,
   "dsf": 2
  },
  "ed_items": {
@@ -56,7 +56,7 @@
  "ed_lookup_set": {
   "file": "ed_lookup_set.png",
   "w": 279,
-  "h": 895,
+  "h": 962,
   "dsf": 2
  },
  "ed_overview": {
@@ -80,61 +80,61 @@
  "ed_ptable": {
   "file": "ed_ptable.png",
   "w": 464,
-  "h": 619,
+  "h": 623,
   "dsf": 2
  },
  "ed_settings": {
   "file": "ed_settings.png",
   "w": 279,
-  "h": 783,
+  "h": 834,
   "dsf": 2
  },
  "ed_table": {
   "file": "ed_table.png",
   "w": 279,
-  "h": 826,
+  "h": 914,
   "dsf": 2
  },
  "ex_button": {
   "file": "ex_button.png",
   "w": 200,
-  "h": 120,
+  "h": 124,
   "dsf": 2
  },
  "ex_html": {
   "file": "ex_html.png",
   "w": 664,
-  "h": 428,
+  "h": 444,
   "dsf": 2
  },
  "ex_import": {
   "file": "ex_import.png",
   "w": 584,
-  "h": 454,
+  "h": 488,
   "dsf": 2
  },
  "ex_pdf": {
   "file": "ex_pdf.png",
   "w": 664,
-  "h": 608,
+  "h": 614,
   "dsf": 2
  },
  "ex_png": {
   "file": "ex_png.png",
   "w": 664,
-  "h": 526,
+  "h": 546,
   "dsf": 2
  },
  "home_card": {
   "file": "home_card.png",
   "w": 490,
-  "h": 274,
+  "h": 287,
   "dsf": 2
  },
  "home_cardmenu": {
   "file": "home_cardmenu.png",
   "w": 477,
-  "h": 266,
+  "h": 279,
   "dsf": 2
  },
  "home_map": {
@@ -152,19 +152,19 @@
  "home_trash": {
   "file": "home_trash.png",
   "w": 1252,
-  "h": 140,
+  "h": 153,
   "dsf": 2
  },
  "new_step1": {
   "file": "new_step1.png",
-  "w": 446,
-  "h": 67,
+  "w": 440,
+  "h": 72,
   "dsf": 2
  },
  "new_step2": {
   "file": "new_step2.png",
   "w": 464,
-  "h": 350,
+  "h": 362,
   "dsf": 2
  },
  "new_step3": {
@@ -176,7 +176,7 @@
  "rv_add": {
   "file": "rv_add.png",
   "w": 1104,
-  "h": 452,
+  "h": 480,
   "dsf": 2
  },
  "rv_diffpage": {
@@ -188,13 +188,13 @@
  "rv_list": {
   "file": "rv_list.png",
   "w": 1204,
-  "h": 288,
+  "h": 308,
   "dsf": 2
  },
  "rv_menu": {
   "file": "rv_menu.png",
   "w": 400,
-  "h": 193,
+  "h": 209,
   "dsf": 2
  },
  "rv_view": {
@@ -206,7 +206,7 @@
  "sc_add": {
   "file": "sc_add.png",
   "w": 944,
-  "h": 564,
+  "h": 586,
   "dsf": 2
  },
  "sc_flow": {
@@ -218,7 +218,7 @@
  "sc_menu": {
   "file": "sc_menu.png",
   "w": 321,
-  "h": 564,
+  "h": 504,
   "dsf": 2
  },
  "sc_process": {
@@ -230,43 +230,43 @@
  "sys_doc": {
   "file": "sys_doc.png",
   "w": 704,
-  "h": 386,
+  "h": 410,
   "dsf": 2
  },
  "sys_exportmenu": {
   "file": "sys_exportmenu.png",
-  "w": 343,
-  "h": 162,
+  "w": 342,
+  "h": 178,
   "dsf": 2
  },
  "sys_history": {
   "file": "sys_history.png",
   "w": 772,
-  "h": 215,
+  "h": 224,
   "dsf": 2
  },
  "sys_insert": {
   "file": "sys_insert.png",
   "w": 280,
-  "h": 163,
+  "h": 187,
   "dsf": 2
  },
  "sys_materials": {
   "file": "sys_materials.png",
   "w": 772,
-  "h": 416,
+  "h": 414,
   "dsf": 2
  },
  "sys_mpd": {
   "file": "sys_mpd.png",
   "w": 664,
-  "h": 244,
+  "h": 256,
   "dsf": 2
  },
  "sys_new": {
   "file": "sys_new.png",
   "w": 464,
-  "h": 356,
+  "h": 378,
   "dsf": 2
  },
  "sys_notes": {
@@ -284,7 +284,7 @@
  "sys_roles": {
   "file": "sys_roles.png",
   "w": 772,
-  "h": 214,
+  "h": 232,
   "dsf": 2
  },
  "sys_swim": {

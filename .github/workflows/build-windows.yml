@@ -17,8 +17,8 @@ jobs:
   build-win:
     runs-on: windows-latest
     permissions:
-      # Releases に下書きを作るため（タグのときだけ使う）
-      contents: write
+      # インストーラを作るこの仕事は読むだけ（npm ci で入れる部品の台本に、書く権限の鍵を見せない）。下書きは下の release の仕事で作る
+      contents: read
     env:
       # インストーラに Puppeteer の Chrome は要らない
       PUPPETEER_SKIP_DOWNLOAD: '1'
@@ -64,18 +64,46 @@ jobs:
             echo "- またはこのページの下の **Artifacts → MockImageMaker-Windows-installer** から取得";
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Create draft release with installer and manual
-        # 版のタグのときだけ。下書きなので、中身を見てから Releases の画面で公開する
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+  release:
+    # 版のタグのときだけ、上で作ったインストーラと Word の別冊を、GitHub の Releases の下書きに載せる。
+    # 書く権限はこの仕事だけに渡し、よその action ではなく GitHub の gh コマンドで下書きを作る（2026-10-26。自動の見直しの指摘）。
+    # 下書きなので、中身を見てから Releases の画面で公開する
+    needs: build-win
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          draft: true
-          name: モックイメージメーカー ${{ github.ref_name }}
-          body: |
-            モックイメージメーカー ${{ github.ref_name }} の Windows 用インストーラと使用説明書（Word）です。
-            - インストーラ（.exe）: 管理者の権限なしで入れられます。署名なしのため、初めて開くと Windows の確かめの画面が出ることがあります。
-            - 使用説明書（.docx）: アプリの「ヘルプ > 使い方」と同じ中身です。
-          files: |
-            dist/*.exe
-            manual/*.docx
-          fail_on_unmatched_files: true
+          persist-credentials: false
+
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: MockImageMaker-Windows-installer
+          path: dist
+
+      - name: Create draft release with installer and manual
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          exe=(dist/*.exe)
+          docx=(manual/*.docx)
+          if [ "${#exe[@]}" -eq 0 ] || [ "${#docx[@]}" -eq 0 ]; then
+            echo "インストーラ（dist/*.exe）か使用説明書（manual/*.docx）が見つかりません" >&2
+            exit 1
+          fi
+          cat > release-notes.md <<NOTES
+          モックイメージメーカー ${TAG} の Windows 用インストーラと使用説明書（Word）です。
+          - インストーラ（.exe）: 管理者の権限なしで入れられます。署名なしのため、初めて開くと「Windows によって PC が保護されました」の青い窓が出ます。そのときは「詳細情報」を押し、出てきた「実行」を押してください。
+          - 使用説明書（.docx）: アプリの「ヘルプ > 使い方」と同じ中身です。
+          NOTES
+          gh release create "$TAG" "${exe[@]}" "${docx[@]}" \
+            --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "モックイメージメーカー ${TAG}" --notes-file release-notes.md

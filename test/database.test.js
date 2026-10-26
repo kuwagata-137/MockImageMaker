@@ -228,7 +228,7 @@ test('部品を選んだときの右の欄は「項目の設定」と「この�
   assert.ok(secs[0].querySelector('[data-pf="label"]') && secs[0].querySelector('[data-pf="required"]') && secs[0].querySelector('[data-pf="memo"]'));
   assert.match(secs[1].textContent, /この画面だけの設定\s*画面 1の画面/);
   assert.ok(secs[1].querySelector('[data-pf="labelPos"]') && secs[1].querySelector('[data-pf="sample"]') && secs[1].querySelector('[data-pf="numbered"]'));
-  assert.match($(app, '#side-settings').textContent, /この画面から部品を消す/);
+  assert.match($(app, '#side-settings').textContent, /この画面から部品を削除/);
   assert.match($(app, '#side-settings').textContent, /項目は、データベースの項目の一覧表に残ります/);
 });
 

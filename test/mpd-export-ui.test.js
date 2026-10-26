@@ -5,7 +5,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { bootApp } = require('./harness');
+const { bootApp, waitFor } = require('./harness');
 
 const KEY = 'mockimagemaker.v1';
 const OLD = '2026-10-01T00:00:00.000Z';
@@ -105,12 +105,12 @@ const TRIP_PLAN = {
 // ── 入口 A: 資料の表の MPD の行 ──
 test('入口 A: MPD の行だけに「MPD に出力…」（「スイムレーン図にする」と「消す」の間）。資料の窓口に bdmExport がないときは出さない', async (t) => {
   const { ops, btn } = await boot(t);
-  assert.deepEqual(ops('m-bdm'), ['読む', 'スイムレーン図にする', 'MPD に出力…', '消す']);
-  assert.deepEqual(ops('m-old'), ['読む', 'スイムレーン図にする', 'MPD に出力…', '消す']);
-  assert.deepEqual(ops('m-xlsx'), ['読む', '消す']);
+  assert.deepEqual(ops('m-bdm'), ['読む', 'スイムレーン図にする', 'MPD に出力…', '削除']);
+  assert.deepEqual(ops('m-old'), ['読む', 'スイムレーン図にする', 'MPD に出力…', '削除']);
+  assert.deepEqual(ops('m-xlsx'), ['読む', '削除']);
   assert.match(btn('sys-mat-export', 'm-bdm').title, /元のファイルは書き換えません/);
   const old = await boot(t, { materials: fakeMaterialsAPI({ bdmExport: false }) });
-  assert.deepEqual(old.ops('m-bdm'), ['読む', 'スイムレーン図にする', '消す']);
+  assert.deepEqual(old.ops('m-bdm'), ['読む', 'スイムレーン図にする', '削除']);
 });
 
 test('入口 A: 押した行の MPD を元に頼む（渡す形・<システムの名前>_スイムレーン.html）。その MPD の箱から読んだ作業だけ box を付ける。出力したら場所を知らせる', async (t) => {
@@ -178,6 +178,28 @@ test('入口 A: 打ちかけのメモを頼む前に保存する。待つ間は�
   click(btn('sys-mat-export', 'm-bdm'));
   await tick();
   assert.equal(calls.length, 2);
+});
+
+test('待つ間の印: 「MPD に出力…」は「出力しています…」。保存の窓が開いている間は待つ時間を数えず、閉じたら数え直す（デバッグとリリースの直し①）', async (t) => {
+  const materials = fakeMaterialsAPI();
+  let tell = null;
+  materials.api.onSaveDialog = (cb) => { tell = cb; };
+  const { api, btn, ops, toast } = await boot(t, { materials });
+  assert.equal(typeof tell, 'function', '起動したときに、保存の窓の知らせを受け取る口を渡す');
+  api.setMaterialWaitMs(60);
+  materials.reply(() => new Promise(() => {}));
+  click(btn('sys-mat-export', 'm-bdm'));
+  await tick();
+  assert.deepEqual(ops('m-bdm'), ['読む', 'スイムレーン図にする', '出力しています…', '削除']);
+  assert.equal(btn('sys-mat-export', 'm-bdm').disabled, true);
+  assert.equal(btn('sys-mat-export', 'm-old').disabled, false, 'ほかの行は押せる');
+  tell({ open: true });
+  await new Promise((r) => setTimeout(r, 180));
+  assert.ok(!toast().includes('待つのをやめました'), '保存の窓が開いている間は数えない');
+  tell({ open: false });
+  await waitFor(() => toast().includes('待つのをやめました'), { label: '時間切れのお知らせ' });
+  assert.equal(toast(), '「出張申請の流れ.html」を元にした MPD への出力が 60 秒たっても終わらなかったため、待つのをやめました。出力したファイルができているかを確かめてから、もう一度「MPD に出力…」を押してください。何度も止まるときは、アプリを起動し直してください。');
+  assert.deepEqual(ops('m-bdm'), ['読む', 'スイムレーン図にする', 'MPD に出力…', '削除']);
 });
 
 // ── 入口 B: メニューバーの「出力」の小さなメニューと、元にする MPD を選ぶ窓 ──

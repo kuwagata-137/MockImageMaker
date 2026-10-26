@@ -176,11 +176,11 @@ test('真ん中: 見出し・説明・「＋ ファイルを入れる…」・�
   assert.equal($('#sys-view .mat-drop').textContent, 'ここにファイルを落としても入れられます（1 つ 50 MB まで）');
   assert.deepEqual($$('#sys-view .mat-tbl th').map((th) => th.textContent), ['名前', '種類', '大きさ', '入れた日', 'メモ', '操作']);
   assert.deepEqual(rows(), [
-    { name: '出張申請書.xlsx', tag: '', kind: 'Excel', size: '48 KB', date: '2026-10-19', memo: '今の紙の様式', ops: ['読む', '消す'] },
-    { name: '旅費規程.pdf', tag: '', kind: 'PDF', size: '1.2 MB', date: '2026-10-19', memo: '日当の決まりは 3 ページ', ops: ['読む', '消す'] },
-    { name: '出張申請の流れ.html', tag: '', kind: 'MPD', size: '2.1 MB', date: '2026-10-19', memo: '総務が BDM で描いた今の流れ', ops: ['読む', 'スイムレーン図にする', '消す'] },
-    { name: '申請書の記入例.png', tag: '', kind: '画像', size: '320 KB', date: '2026-10-19', memo: '', ops: ['読む', '消す'] },
-    { name: '旧様式.xls', tag: '古い形のため読めません', kind: 'Excel（古い形）', size: '96 KB', date: '2026-10-18', memo: '', ops: ['読む（×）', '消す'] },
+    { name: '出張申請書.xlsx', tag: '', kind: 'Excel', size: '48 KB', date: '2026-10-19', memo: '今の紙の様式', ops: ['読む', '削除'] },
+    { name: '旅費規程.pdf', tag: '', kind: 'PDF', size: '1.2 MB', date: '2026-10-19', memo: '日当の決まりは 3 ページ', ops: ['読む', '削除'] },
+    { name: '出張申請の流れ.html', tag: '', kind: 'MPD', size: '2.1 MB', date: '2026-10-19', memo: '総務が BDM で描いた今の流れ', ops: ['読む', 'スイムレーン図にする', '削除'] },
+    { name: '申請書の記入例.png', tag: '', kind: '画像', size: '320 KB', date: '2026-10-19', memo: '', ops: ['読む', '削除'] },
+    { name: '旧様式.xls', tag: '古い形のため読めません', kind: 'Excel（古い形）', size: '96 KB', date: '2026-10-18', memo: '', ops: ['読む（×）', '削除'] },
   ]);
   // 種類の絵・メモの欄（1 行の入力欄・薄い字の案内）・消すは赤い字
   assert.deepEqual($$('#sys-view .mat-ic').map((e) => e.textContent), ['📗', '📕', '🔷', '🖼️', '📗']);
@@ -190,7 +190,7 @@ test('真ん中: 見出し・説明・「＋ ファイルを入れる…」・�
   assert.equal(memo.getAttribute('aria-label'), '「申請書の記入例.png」のメモ');
   const del = $('#sys-view [data-action="sys-mat-del"][data-id="m-png"]');
   assert.ok(del.classList.contains('danger-text'));
-  assert.equal(del.title, 'この資料を消します（元に戻す〔Ctrl+Z〕で戻せます）', 'ボタンの名前「消す」と同じ言葉');
+  assert.equal(del.title, 'この資料を削除します（元に戻す〔Ctrl+Z〕で戻せます）', 'ボタンの名前「削除」と同じ言葉');
   assert.equal($('#sys-view tr.old [data-action="sys-mat-read"]').title, '古い形のため読めません');
 });
 
@@ -198,7 +198,7 @@ test('種類が「そのほか」（読めない種類）の行は「読む」�
   const state = sampleState();
   state.systems[2].materials = [material('m-zip', '出張の写真.zip', 'other', 'm-zip.zip', 4096, at(19, 11, 0))];
   const { $, rows, btn, calls } = await boot(t, { state, sysId: 'y-eq' });
-  assert.deepEqual(rows(), [{ name: '出張の写真.zip', tag: '', kind: 'そのほか', size: '4 KB', date: '2026-10-19', memo: '', ops: ['読む（×）', '消す'] }]);
+  assert.deepEqual(rows(), [{ name: '出張の写真.zip', tag: '', kind: 'そのほか', size: '4 KB', date: '2026-10-19', memo: '', ops: ['読む（×）', '削除'] }]);
   const read = btn('sys-mat-read', 'm-zip');
   assert.equal(read.title, 'この種類のファイルは読めません');
   read.disabled = false;
@@ -248,8 +248,8 @@ test('「＋ ファイルを入れる…」: pick の返事の行を足す（元
   assert.deepEqual(calls.pick, ['y-trip']);
   assert.equal(api.store.undoStack.length, undo0 + 1, '1 回の変更');
   assert.deepEqual(rows().slice(5).map((r) => [r.name, r.kind, r.tag, r.ops]), [
-    ['出張報告書.docx', 'Word', '', ['読む', '消す']],
-    ['古い報告書.doc', 'Word（古い形）', '古い形のため読めません', ['読む（×）', '消す']],
+    ['出張報告書.docx', 'Word', '', ['読む', '削除']],
+    ['古い報告書.doc', 'Word（古い形）', '古い形のため読めません', ['読む（×）', '削除']],
   ]);
   assert.equal(entries()[3][2], 'ファイル 7 つ');
   assert.equal(toast(), '資料を 2 つ入れました。「出張の動画.mp4」は入れられませんでした。ファイルが大きすぎます（50MB まで）。'
@@ -594,6 +594,35 @@ test('入れる: 待つ間にほかの画面へ移っていて、その画面に
   assert.equal(toast(), '「出張申請システム」に資料を 1 つ入れました。「設定」は入れられませんでした。ふつうのファイルではありません。');
 });
 
+test('入れる: 待つ間にシステムがごみ箱に入った・画面設計の前の版を見始めたときは、行を作らず、そう知らせる（デバッグとリリースの見直し③-3・①-3）', async (t) => {
+  const { app, api, $, sys, materials, toast } = await boot(t);
+  const added = [{ id: 'm-d1', name: '出張の写真.jpg', kind: 'image', size: 5000, file: 'm-d1.jpg', legacy: false }];
+  const drop = async () => {
+    const h = held();
+    materials.set('addDropped', h.fn);
+    api.openSystem('y-trip', { panel: 'materials' });
+    fileEvent(app, $('#sys-view .mat-drop'), 'drop', [{ name: '出張の写真.jpg', size: 5000, text: async () => '' }]);
+    await waitFor(() => h.resolve, { label: 'addDropped' });
+    return h;
+  };
+  const h1 = await drop();
+  api.openDesign('d-trip');
+  const rev = api.actions.addRevision('d-trip', { note: '最初の版。' });
+  assert.ok(api.startViewRevision(rev));
+  h1.resolve({ ok: true, added, skipped: [] });
+  await waitFor(() => /前の版を見ている間/.test(toast()), { label: 'お知らせ' });
+  assert.equal(toast(), '画面設計の前の版を見ている間に写し終わったため、資料を入れませんでした。見るのをやめてから、もう一度入れてください。');
+  assert.equal(sys().materials.length, 5);
+  api.leaveViewing();
+
+  const h2 = await drop();
+  api.actions.trashSystem('y-trip');
+  h2.resolve({ ok: true, added, skipped: [] });
+  await waitFor(() => /ごみ箱/.test(toast()), { label: 'お知らせ' });
+  assert.equal(toast(), '「出張申請システム」がごみ箱に入ったため、資料を入れませんでした。');
+  assert.equal(sys().materials.length, 5);
+});
+
 test('読む: 読み終えたときにほかの窓が開いていたら、読むの窓を出さずに知らせる', async (t) => {
   const { $, btn, materials, toast, entry } = await boot(t);
   const r = held();
@@ -606,7 +635,7 @@ test('読む: 読み終えたときにほかの窓が開いていたら、読む
   r.resolve({ ok: true, result: plain(PART1) });
   await waitFor(() => toast().includes('ほかの窓'), { label: 'お知らせ' });
   assert.equal(toast(), '「旅費規程.pdf」を読み終えましたが、ほかの窓が開いているため表示しませんでした。窓を閉じてからもう一度押してください。');
-  assert.equal($('.modal h2').textContent, '役割「申請者」を消しますか？', '開いていた窓はそのまま');
+  assert.equal($('.modal h2').textContent, '役割「申請者」を削除しますか？', '開いていた窓はそのまま');
 });
 
 test('待っている資料の「読む」「スイムレーン図にする」は、2 回目を無視する（返事の後はまた押せる）', async (t) => {
@@ -637,52 +666,87 @@ test('待っている資料の「読む」「スイムレーン図にする」�
   await waitFor(() => $('.modal'), { label: '読むの窓' });
 });
 
-test('待つ間の印（q96 の案 A）: 押したボタンに回る印と「読んでいます…」。その資料の行のボタンは押せない。ほかの資料は押せる。メモの打ちかけは消えない', async (t) => {
-  const { $, btn, rows, memo, materials } = await boot(t);
-  const h = held();
-  materials.set('read', h.fn);
-  memo('m-pdf').focus();
-  memo('m-pdf').value = '打ちかけ';
+// ── 待つ間の印と時間切れ（デバッグとリリースの直し①。q89・q96。画像 screenshots/q89_1〜3）──
+const opsOf = (rows, name) => rows().find((x) => x.name === name).ops;
+
+test('待つ間の印: 押したボタンは「読んでいます…」になり、その行のボタンは押せない（ほかの行は押せる）。描き直しても残り、返事の後は戻る', async (t) => {
+  const { api, $, rows, btn, materials } = await boot(t);
+  const r = held();
+  materials.set('read', r.fn);
   click(btn('sys-mat-read', 'm-pdf'));
-  await waitFor(() => h.resolve, { label: 'read' });
-  const pdf = () => rows().find((r) => r.name === '旅費規程.pdf');
-  assert.deepEqual(pdf().ops, ['読んでいます…（×）', '消す（×）']);
-  assert.ok(btn('sys-mat-read', 'm-pdf').classList.contains('waiting'));
-  assert.ok(btn('sys-mat-read', 'm-pdf').querySelector('.mat-wait'), '回る印');
-  assert.deepEqual(rows().find((r) => r.name === '出張申請書.xlsx').ops, ['読む', '消す'], 'ほかの資料は押せる');
-  assert.equal(memo('m-pdf').value, '打ちかけ', 'ボタンだけを描き直す');
-  assert.equal($('#sys-view').ownerDocument.activeElement, memo('m-pdf'));
-  h.resolve({ ok: false, error: { code: 'read_failed', message: '読めませんでした（テスト）。' } });
-  await waitFor(() => pdf().ops[0] === '読む', { label: '返事の後は元に戻る' });
-  assert.deepEqual(pdf().ops, ['読む', '消す']);
-  // スイムレーン図にするも「読んでいます…」
-  const s = held();
-  materials.set('bdmPlan', s.fn);
-  click(btn('sys-mat-swim', 'm-bdm'));
-  await waitFor(() => s.resolve, { label: 'bdmPlan' });
-  assert.deepEqual(rows().find((r) => r.name === '出張申請の流れ.html').ops.slice(0, 2), ['読む（×）', '読んでいます…（×）']);
-  s.resolve({ ok: false, error: { code: 'read_failed', message: '読めませんでした（テスト）。' } });
+  await waitFor(() => r.resolve, { label: 'read' });
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読んでいます…（×）', '削除（×）']);
+  assert.equal(btn('sys-mat-read', 'm-pdf').getAttribute('aria-busy'), 'true');
+  assert.ok(btn('sys-mat-read', 'm-pdf').querySelector('.mat-spin'), '回る印');
+  assert.deepEqual(opsOf(rows, '出張申請書.xlsx'), ['読む', '削除'], 'ほかの行は押せる');
+  api.renderSystem();
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読んでいます…（×）', '削除（×）'], '描き直しても残る');
+  r.resolve({ ok: true, result: plain(PART1) });
+  await waitFor(() => $('.modal'), { label: '読むの窓' });
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読む', '削除']);
 });
 
-test('待ちの時間切れ（q96。60 秒）: 返事が来なければ待つのをやめて知らせ、ボタンを戻す。もう一度押せる。後から来た返事は使わない', async (t) => {
-  const { $, api, btn, rows, calls, materials, toast } = await boot(t);
-  api.setMaterialWaitMs(30);
+test('待つ間の印: 「スイムレーン図にする」も「読んでいます…」。印を付け外ししても、同じ行のメモの欄の打ちかけの文字とフォーカスは残る', async (t) => {
+  const { app, rows, btn, memo, materials } = await boot(t);
   const h = held();
-  materials.set('read', h.fn);
+  materials.set('bdmPlan', h.fn);
+  const el = memo('m-bdm');
+  click(btn('sys-mat-swim', 'm-bdm'));
+  await waitFor(() => h.resolve, { label: 'bdmPlan' });
+  assert.deepEqual(opsOf(rows, '出張申請の流れ.html'), ['読む（×）', '読んでいます…（×）', '削除（×）']);
+  el.focus();
+  el.value = '待つ間に打った文字';
+  h.resolve({ ok: false, error: { code: 'read_failed', message: '読めませんでした（テスト）。' } });
+  await waitFor(() => !btn('sys-mat-swim', 'm-bdm').disabled, { label: 'ボタンが戻る' });
+  assert.equal(memo('m-bdm'), el, 'メモの欄は描き直さない');
+  assert.equal(el.value, '待つ間に打った文字');
+  assert.equal(app.document.activeElement, el);
+});
+
+test('時間切れ: 待っても返事が来なければ（60 秒。テストでは短くする）、待つのをやめて知らせ、ボタンを戻す。遅れて届いた返事は捨て、もう一度押せる', async (t) => {
+  const { api, $, rows, btn, calls, materials, toast } = await boot(t);
+  api.setMaterialWaitMs(30);
+  const r = held();
+  materials.set('read', r.fn);
   click(btn('sys-mat-read', 'm-pdf'));
-  await waitFor(() => /待つのをやめました/.test(toast()), { label: '時間切れのお知らせ' });
-  assert.equal(toast(), '「旅費規程.pdf」を読むのに 0 秒を超えたので、待つのをやめました。もう一度押してください。続けて同じになるときは、アプリを起動し直してください。');
-  assert.deepEqual(rows().find((r) => r.name === '旅費規程.pdf').ops, ['読む', '消す']);
-  assert.equal(api.materialsWaiting.size, 0);
-  h.resolve({ ok: true, result: plain(PART2) });
+  await waitFor(() => toast().includes('待つのをやめました'), { label: '時間切れのお知らせ' });
+  assert.equal(toast(), '「旅費規程.pdf」を 60 秒待っても読み終わらなかったため、待つのをやめました。もう一度「読む」を押してください。何度も止まるときは、アプリを起動し直してください。');
+  assert.deepEqual(opsOf(rows, '旅費規程.pdf'), ['読む', '削除']);
+  r.resolve({ ok: true, result: plain(PART1) });
   await tick();
   await tick();
-  assert.equal($('.modal'), null, '時間切れの後に来た返事では、読むの窓を開かない');
-  api.setMaterialWaitMs(60000);
+  assert.equal($('.modal'), null, '遅れて届いた返事では窓を開かない');
   materials.set('read', async () => ({ ok: true, result: plain(PART2) }));
   click(btn('sys-mat-read', 'm-pdf'));
-  await waitFor(() => $('.modal'), { label: 'もう一度押せる' });
+  await waitFor(() => $('.modal'), { label: '読むの窓' });
   assert.equal(calls.read.length, 2);
+  click($('[data-dlg="cancel"]'));
+  materials.set('bdmPlan', held().fn);
+  click(btn('sys-mat-swim', 'm-bdm'));
+  await waitFor(() => toast().startsWith('「出張申請の流れ.html」を 60 秒'), { label: 'スイムレーン図にするの時間切れ' });
+  assert.match(toast(), /もう一度「スイムレーン図にする」を押してください。/);
+  assert.equal(btn('sys-mat-swim', 'm-bdm').disabled, false);
+});
+
+test('時間切れ: 読むの窓の「続きを読む」も、待っても続きが来なければ知らせてボタンを戻す（遅れて届いた続きは捨てる）', async (t) => {
+  const { api, $, btn, materials, toast } = await boot(t);
+  materials.set('read', async () => ({ ok: true, result: plain(PART1) }));
+  click(btn('sys-mat-read', 'm-pdf'));
+  await waitFor(() => $('.modal'), { label: '読むの窓' });
+  api.setMaterialWaitMs(30);
+  const r = held();
+  materials.set('read', r.fn);
+  const more = $('[data-rd="more"]');
+  click(more);
+  assert.equal(more.disabled, true);
+  await waitFor(() => toast().includes('待つのをやめました'), { label: 'お知らせ' });
+  assert.equal(toast(), '「旅費規程.pdf」の続きを 60 秒待っても読み終わらなかったため、待つのをやめました。もう一度「続きを読む」を押してください。何度も止まるときは、アプリを起動し直してください。');
+  assert.equal(more.disabled, false);
+  assert.equal($('.rd-foot').textContent, '1〜3 / 8 の部分', '中身は前の部分のまま');
+  r.resolve({ ok: true, result: plain(PART2) });
+  await tick();
+  await tick();
+  assert.equal($('.rd-foot').textContent, '1〜3 / 8 の部分', '遅れて届いた続きは捨てる');
 });
 
 test('スイムレーン図にする: 待った後にほかの窓が開いていたら、置き換えずに知らせる（今の図に作業があるときも、空のときも）', async (t) => {
@@ -698,7 +762,7 @@ test('スイムレーン図にする: 待った後にほかの窓が開いてい
   h.resolve({ ok: true, plan: plain(PLAN) });
   await waitFor(() => toast().includes('ほかの窓'), { label: 'お知らせ' });
   assert.equal(toast(), '「出張申請の流れ.html」の図を読み終えましたが、ほかの窓が開いているため置き換えませんでした。窓を閉じてからもう一度押してください。');
-  assert.equal($('.modal h2').textContent, '役割「申請者」を消しますか？', '開いていた窓はそのまま');
+  assert.equal($('.modal h2').textContent, '役割「申請者」を削除しますか？', '開いていた窓はそのまま');
   assert.deepEqual(sys().swimlane, before);
   click($('[data-dlg="cancel"]'));
   // 今の図が空のシステム（待つ間に、別の資料の読むの窓を開いた）
