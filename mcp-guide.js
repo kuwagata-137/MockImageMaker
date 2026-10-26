@@ -139,7 +139,10 @@ const LAYOUT = `# 部品の並べ方（layout）
 - item: データベースの項目（項目名か id）。その名前の項目がなく type を書いたときは、項目を新しく作って置く（required・memo・props・allowSameName も書ける）。
 - type: 部品の種類（get_catalog の parts[].type）。item を書いたときは省ける（項目の種類になる）。
 - label（見出し・ボタン・説明の文字などの文字）・sample（見本の値）・placeholder（薄い字）・labelPos（"top" 入力欄の上・"left" 入力欄の左）・props（設定の欄。get_catalog の parts[].props）。
-- 表: tableKind（"subtable" テーブル・"records" レコード一覧・"related" 関連レコード一覧）・rows（見本の行の数 1〜20）。
+- 表: tableKind（"subtable" テーブル・"records" レコード一覧・"related" 関連レコード一覧）・rows（見本の行の数 1〜20）・
+  samples（見本の値。{ "品名": ["ボールペン", "ノート"], "数量": [10, 5] } のように、列名か列の id ごとに上の行からの値を書く。20 行まで。
+  値の数が見本の行の数より多いときは行を増やす）。edit_parts の update でも書ける（書いた列だけを直す）。get_screen の表の部品は rows と samples（列名ごと）を返す。
+  レコード一覧の列（props.columns）を書き直しても、同じ項目の列の見本の値は残る。
 - ステータスの印（status）・進み具合の矢印（steps）: current（見本で出すステータス）。ステータスの項目がなければ「ステータス」の項目を作る。
 - ボタン: style（"primary" 目立つ・"normal" ふつう）。style を省くと、その行の最初のボタンだけ "primary"、ほかは "normal" になる。幅は文字に合わせる（96 より狭くしない）。
 - ボタンとリンクの文字: to（移る先）。この画面設計の画面は "一覧" か { "screen": "一覧" }、ほかの画面設計の画面は { "design": "経費精算", "screen": "精算の入力" }、

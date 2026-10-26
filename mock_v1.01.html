@@ -13584,7 +13584,16 @@ function aiPartSummary(d, sc, raw, ctx) {
   if (isInputType(raw.type)) Object.assign(out, { labelPos: raw.labelPos, sample: raw.sample || '', placeholder: raw.placeholder || '' });
   if (hasMoveTarget(raw)) out.to = aiMoveSummary(d, raw, ctx.state);
   if ((raw.type === 'status' || raw.type === 'steps') && raw.view) out.current = stateNameOf((p.props && p.props.states) || [], raw.view.current);
+  if (raw.type === 'table') Object.assign(out, aiTableViewSummary(p));
   return out;
+}
+// 表の見本の行の数と見本の値（列名ごと。値の入った列だけ。第 13 段階。q114 の ⑤）
+function aiTableViewSummary(p) {
+  const view = p.view || {};
+  const vals = view.samples || {};
+  const samples = {};
+  (p.columns || []).forEach((c) => { if ((vals[c.id] || []).some((x) => x !== '')) samples[c.name] = [...vals[c.id]]; });
+  return { rows: view.rows || 3, samples };
 }
 // 画面の中身。部品・吹き出し・部品の設定の一覧表の行を、この順に 1 つの並びにして、返事全体が目安に収まるように分ける
 // （どれか 1 つだけを分けると、ほかの並びが大きいときに目安を超えるため）。ページごとの parts・callouts・table は、その並びの続きの分だけ
@@ -14364,8 +14373,42 @@ function aiTablePartProps(kind, cur, props, d) {
     if (!isObj(props.cond)) throw aiBad('cond は { from: 元の項目名, to: この画面設計の項目名 } の形で書いてください。');
     next.cond = { from: ref(src, props.cond.from, 'cond.from'), to: ref(d, props.cond.to, 'cond.to') };
   }
-  if ('columns' in props) next.columns = aiArr(props.columns, 'columns').map((n) => ({ id: newId('c'), ref: ref(src, n, 'columns') }));
+  if ('columns' in props) {
+    // 同じ項目（一覧にないデータベースの項目は同じ名前）の列は、今の列の id を使い回す（見本の値と列の幅を残すため。第 13 段階。q114 の ⑤）
+    const left = [...next.columns];
+    next.columns = aiArr(props.columns, 'columns').map((n) => {
+      const r = ref(src, n, 'columns');
+      const old = left.find((c) => (r.itemId ? c.ref.itemId === r.itemId : !c.ref.itemId && c.ref.name === r.name));
+      if (old) left.splice(left.indexOf(old), 1);
+      return { id: old ? old.id : newId('c'), ref: r };
+    });
+  }
   return next;
+}
+// 表の見本の値（layout・edit_parts の samples。第 13 段階。q114 の ⑤）を、列の id ごとの値に直す。cols は表の列（{ id, name }）。
+// 列は名前か id で書き、値は文字か数（null は空）。1 つの列に 20 行まで（見本の行の数の上限と同じ）
+const AI_SAMPLE_ROWS_MAX = 20;
+function aiTableSamples(cols, v) {
+  if (!isObj(v)) throw aiBad('samples は { 列名: [値, …] } の形で書いてください。');
+  const out = {};
+  Object.entries(v).forEach(([k, a]) => {
+    const col = cols.find((c) => c.id === k) || cols.find((c) => c.name === cleanName(k));
+    if (!col) throw aiBad(`「${k}」という列は、この表にありません（列: ${cols.map((c) => c.name).join('・') || 'なし'}）。`);
+    if (!Array.isArray(a)) throw aiBad(`samples の「${k}」は、値の配列で書いてください。`);
+    if (a.length > AI_SAMPLE_ROWS_MAX) throw aiBad(`見本の値は 1 つの列に ${AI_SAMPLE_ROWS_MAX} 行までです（「${k}」は ${a.length} 個）。`);
+    out[col.id] = a.map((x, i) => (x == null ? '' : aiStrVal(x, `samples の「${k}」の ${i + 1} 番目`)));
+  });
+  return out;
+}
+// 見本の値を入れたときの見本の行の数（今の行の数より値が多い列があれば、その数まで増やす。減らさない）
+const aiSampleRows = (rows, samples) => Math.max(rows || 3, ...Object.values(samples).map((a) => a.length));
+// 並べ方で置く表の列（{ id, name }）。テーブルは項目の列（同じ頼みで項目の列を直すときは、直した後の列）、
+// レコード一覧・関連レコード一覧は spec の設定の列
+function aiLayoutTableColumns(d, spec, plan) {
+  if (!spec.itemId) return tableColumns({ type: 'table', tableKind: spec.tableKind, props: spec.props }, { design: d, state: store.state });
+  const patch = plan.itemPatches.find((x) => x.itemId === spec.itemId && x.props);
+  const it = findItem(d, spec.itemId) || plan.created.find((x) => x.id === spec.itemId);
+  return (patch ? patch.props : it.props).columns || [];
 }
 // 移る先（to。第 8 段階）を、ボタン・リンクの文字の設定（props）の欄に直す。to は 画面の名前か id（この画面設計の画面）・
 // { screen, design }（design を書くと、ほかの画面設計の画面）・{ url }・null（なし）。人の操作と同じく、使わない欄（URL など）は残す
@@ -14816,6 +14859,15 @@ function aiLayoutSpec(tx, d, e, used, plan) {
     spec.view = { rows: n };
     size.h = tableHeight(n);
   }
+  if (e.samples != null) {
+    if (type !== 'table') throw aiBad('samples（見本の値）を書けるのは表だけです。');
+    // レコード一覧・関連レコード一覧の列の id を、置く前に決めておく（設定を書かないときは最初の列）
+    if (!spec.itemId && !spec.props) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), {}, d);
+    const samples = aiTableSamples(aiLayoutTableColumns(d, spec, plan), e.samples);
+    const rows = aiSampleRows(spec.view && spec.view.rows, samples);
+    spec.view = { ...(spec.view || {}), rows, samples };
+    size.h = tableHeight(rows);
+  }
   return { ...spec, type, w0: size.w, h0: size.h };
 }
 function aiLayoutNewItem(d, type, name, e, plan) {
@@ -14978,11 +15030,20 @@ function aiPartPatch(tx, d, p, op) {
     if (n < 1 || n > 20) throw aiBad('rows は 1〜20 です。');
     patch.view = { rows: n };
   }
+  if (op.samples !== undefined) {
+    if (p.type !== 'table') throw aiBad('samples（見本の値）を書けるのは表だけです。');
+    // 同じ頼みで列を直すときは、直した後の列で引き当てる。書かなかった列の見本の値は残す
+    const pr = patch.props || (item ? item.props : p.props);
+    const cols = item ? pr.columns || [] : tableColumns({ ...p, props: pr }, { design: d, state: store.state });
+    const samples = aiTableSamples(cols, op.samples);
+    const view = p.view || {};
+    patch.view = { ...(patch.view || {}), rows: aiSampleRows((patch.view && patch.view.rows) || view.rows, samples), samples: { ...(view.samples || {}), ...samples } };
+  }
   if (op.current !== undefined) {
     if (!['status', 'steps'].includes(p.type) || !item) throw aiBad('current を書けるのは、ステータスの印と進み具合の矢印だけです。');
     patch.view = { ...(patch.view || {}), current: aiStatusCurrent(item, op.current) };
   }
-  if (!Object.keys(patch).length) throw aiBad('直す欄を 1 つ以上書いてください（label・required・memo・props・style・to・labelPos・sample・placeholder・numbered・rows・current）。');
+  if (!Object.keys(patch).length) throw aiBad('直す欄を 1 つ以上書いてください（label・required・memo・props・style・to・labelPos・sample・placeholder・numbered・rows・samples・current）。');
   return patch;
 }
 

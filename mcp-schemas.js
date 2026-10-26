@@ -42,6 +42,9 @@ const S = {
   labelPos: z.enum(['top', 'left']).describe('項目名の位置: "top"（入力欄の上）・"left"（入力欄の左）'),
   rows: z.number().int().min(1).max(20).describe('表の見本の行の数（1〜20）'),
   current: z.string().describe('ステータスの印・進み具合の矢印で、見本に出すステータス'),
+  // 表の見本の値（第 13 段階。q114 の ⑤）
+  samples: z.record(z.array(z.union([z.string(), z.number(), z.null()])).max(20))
+    .describe('表の見本の値 { 列名か列の id: [上の行からの値, …] }（20 行まで）。書いた列だけを直し、値の数が見本の行の数より多いときは行を増やす'),
   look: z.enum(LOOKS).describe('見た目: "standard"（標準）・"salesforce"（Salesforce に似せる）・"kintone"（kintone に似せる）。帯の形と高さ、部品の色と枠が変わる'),
   bandTabs: z.array(z.string()).max(BAND_TABS_MAX).describe(`Salesforce の見た目の帯に並べるタブ（文字の配列。${BAND_TABS_MAX} 個まで。空なら「ホーム」と画面設計の名前）`),
   style: z.enum(['primary', 'normal']).describe('ボタンの見た目: "primary"（目立つ・青）・"normal"（ふつう・白）'),
@@ -73,6 +76,7 @@ const layoutPart = obj({
   props: opt(S.props),
   tableKind: opt(z.enum(TABLE_KINDS).describe('表の中身: "subtable"（テーブル）・"records"（レコード一覧）・"related"（関連レコード一覧）')),
   rows: opt(S.rows),
+  samples: opt(S.samples),
   current: opt(S.current),
   style: opt(S.style),
   to: opt(S.to),
@@ -133,7 +137,7 @@ const partOps = z.discriminatedUnion('op', [
   op('update', {
     part: S.part, label: opt(z.string()), required: opt(z.boolean()), memo: opt(z.string()), props: opt(S.props), style: opt(S.style), to: opt(S.to),
     labelPos: opt(S.labelPos), sample: opt(z.string()), placeholder: opt(z.string()), numbered: opt(z.boolean().describe('赤い番号を付ける・外す')), no: opt(S.no),
-    rows: opt(S.rows), current: opt(S.current),
+    rows: opt(S.rows), samples: opt(S.samples), current: opt(S.current),
   }, '部品を直す（項目を指す部品の項目名・必須・メモ・設定は、項目に書かれる）'),
   op('move', { part: S.part, ...rect }, '部品の位置と大きさを数で直す（8 ドットのマス目にそろう）'),
   op('move_by', { parts: z.array(S.part).min(1), dx: opt(z.number()), dy: opt(z.number()) }, '部品をまとめてずらす'),
