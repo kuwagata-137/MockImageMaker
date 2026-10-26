@@ -231,7 +231,8 @@ test('to: ボタンとリンクの文字の移る先を、この画面設計の�
   assert.equal(r.warnings, undefined);
   const by = (label) => d('d1').screens[1].parts.find((p) => p.label === label);
   assert.deepEqual(by('登録へ').props, { style: 'primary', action: '', to: 'screen', designId: '', screenId: 's1', url: '' });
-  assert.deepEqual(by('受注へ').props, { style: 'primary', action: '', to: 'screen', designId: 'd2', screenId: 's-d2', url: '' });
+  // style を書かないボタンは、行の最初のボタンだけ青（第 13 段階。q114 の ②）
+  assert.deepEqual(by('受注へ').props, { style: 'normal', action: '', to: 'screen', designId: 'd2', screenId: 's-d2', url: '' });
   assert.deepEqual(by('手引き').props, { to: 'url', designId: '', screenId: '', url: 'https://example.com/guide' });
   assert.deepEqual(by('受注の一覧へ').props, { to: 'screen', designId: 'd2', screenId: 's-d2', url: '' });
   ok(await call('edit_parts', { design: 'd1', screen: '一覧', ops: [

@@ -1461,18 +1461,32 @@ const LAYOUT_COL_W = 400; // 列の幅
 const LAYOUT_SPAN_W = TPL_COL2 + LAYOUT_COL_W - TPL_LEFT; // 2 列の幅いっぱい（848）
 const LAYOUT_TWO_COL_MIN = TPL_COL2 + LAYOUT_COL_W + TPL_LEFT; // 2 列で置ける画面の幅（912。パソコンだけ）
 const LAYOUT_ALIGN_GAP = 32; // align の行（ボタンの行）の部品の間と、前の行との間
+const LAYOUT_COLUMNS_MAX = 4; // 列の数の上限（3・4 列は第 13 段階。q114 の ④）
+const LAYOUT_GRID_GAP = 48; // 3・4 列の列の間
+const LAYOUT_GRID_MIN = 160; // 3・4 列の列の幅の下限（これより狭くなる機器では列を減らす）
 const isAlignRow = (row) => isObj(row) && !Array.isArray(row) && Array.isArray(row.parts);
+// 3・4 列の列（画面の幅から左右 32 を引き、列の間 48 で等しく分ける。幅は 8 ドットのマス目に切り下げる）。{ columnsLeft, columnWidth }
+function layoutGrid(width, n) {
+  const columnWidth = Math.floor((width - TPL_LEFT * 2 - LAYOUT_GRID_GAP * (n - 1)) / n / GRID) * GRID;
+  return { columnsLeft: Array.from({ length: n }, (_, i) => TPL_LEFT + i * (columnWidth + LAYOUT_GRID_GAP)), columnWidth };
+}
+// 書いた列の数を、その画面の幅で置ける列の数にする（3・4 列は列の幅が 160 以上になるまで減らす。2 列はパソコンだけ）
+function layoutColumns(columns, width) {
+  let n = Math.min(LAYOUT_COLUMNS_MAX, Math.max(1, columns || 1));
+  while (n > 2 && layoutGrid(width, n).columnWidth < LAYOUT_GRID_MIN) n--;
+  return n === 2 && width < LAYOUT_TWO_COL_MIN ? 1 : n;
+}
 // 並べ方から位置と大きさを決める（純関数）。rows の 1 つは、部品の並び（配列）か { align: 'left'・'center'・'right', parts: [...] }。
-// sizeOf(entry) は、その部品の種類と最初の大きさ { type, w, h } を返す。entry.span が 2 なら 2 列の幅いっぱいに広げる。
+// sizeOf(entry) は、その部品の種類と最初の大きさ { type, w, h } を返す。entry.span（2〜4）は、その数の列をまたいで広げる（1・2 列では 2 列の幅いっぱい）。
 // 戻り値 { placed: [{ entry, type, x, y, w, h }]（置く順）, nextY（次に置ける y。最後の行のいちばん下＋24）}
 function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
-  const cols = columns >= 2 && width >= LAYOUT_TWO_COL_MIN ? 2 : 1;
+  const cols = layoutColumns(columns, width);
   const maxW = Math.floor((width - TPL_LEFT * 2) / GRID) * GRID; // 画面の幅から左右 32 ずつ引いた幅
   const placed = [];
   let y = startY;
   const sized = (entry) => {
     const s = sizeOf(entry);
-    const w = entry && entry.span === 2 ? Math.min(LAYOUT_SPAN_W, maxW) : Math.min(s.w, maxW);
+    const w = entry && entry.span >= 2 ? Math.min(LAYOUT_SPAN_W, maxW) : Math.min(s.w, maxW);
     return { entry, type: s.type, w, h: s.h };
   };
   // 1 行分を y に置き、次の行の y へ進める
@@ -1492,6 +1506,7 @@ function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
       });
       return;
     }
+    if (cols > 2) { layoutGridLines(Array.isArray(row) ? row : [], width, cols, sizeOf).forEach(putLine); return; }
     let line = [];
     (Array.isArray(row) ? row : []).forEach((entry) => {
       const p = sized(entry);
@@ -1503,6 +1518,23 @@ function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
     putLine(line);
   });
   return { placed, nextY: y };
+}
+// 3・4 列の 1 行分の部品を、列に入る分ずつの行に分けて x と幅を決める。span を書いた部品はその数の列の幅に広げ、書かない部品は列の幅に入るように狭める
+function layoutGridLines(row, width, cols, sizeOf) {
+  const { columnsLeft, columnWidth } = layoutGrid(width, cols);
+  const lines = [];
+  let line = [];
+  let c = 0;
+  row.forEach((entry) => {
+    const s = sizeOf(entry);
+    const k = Math.min(cols, entry && entry.span >= 2 ? entry.span : 1);
+    if (c + k > cols) { lines.push(line); line = []; c = 0; }
+    const w = k > 1 ? k * columnWidth + (k - 1) * LAYOUT_GRID_GAP : Math.min(s.w, columnWidth);
+    line.push({ entry, type: s.type, x: columnsLeft[c], w, h: s.h });
+    c += k;
+  });
+  lines.push(line);
+  return lines;
 }
 // align の行の部品を、画面の幅に入る分ずつの行に分ける
 function layoutAlignLines(parts, maxW) {
@@ -1530,7 +1562,8 @@ function placePartIn(sc, design, { type, x, y, w, h, itemId = null, tableKind = 
   if (label != null) p.label = label;
   if (props) p.props = { ...p.props, ...props };
   if (view) p.view = type === 'table' ? normalizeTableView({ ...p.view, ...view }) : { ...p.view, ...view };
-  Object.assign(p, fitRect({ ...p, w: w || p.w, h: h || p.h }, sc));
+  // 書いた位置と大きさで画面に収める（createPartData は種類の最初の大きさで収めるので、最初の幅より狭い部品が右の端で左へずれないように）
+  Object.assign(p, fitRect({ ...p, x, y, w: w || p.w, h: h || p.h }, sc));
   sc.parts.push(p);
   return p;
 }
@@ -13701,6 +13734,8 @@ function aiGetCatalog() {
     callout: { colors: Object.fromEntries(Object.entries(CALLOUT_COLORS).map(([k, v]) => [k, v[0]])), tips: { dot: '点', arrow: '矢印', none: 'なし' }, w: PALETTE_EXTRA.callout.w, h: PALETTE_EXTRA.callout.h },
     layout: {
       columnsLeft: [TPL_LEFT, TPL_COL2], columnWidth: LAYOUT_COL_W, spanWidth: LAYOUT_SPAN_W, twoColumnsMinWidth: LAYOUT_TWO_COL_MIN,
+      // 3・4 列（第 13 段階）。パソコンの画面の幅での列の左の端と幅。ほかの機器では、その画面の幅で分け、列の幅が gridMinWidth より狭くなるときは列を減らす
+      grid3: layoutGrid(DEVICES.pc.width, 3), grid4: layoutGrid(DEVICES.pc.width, 4), gridGap: LAYOUT_GRID_GAP, gridMinWidth: LAYOUT_GRID_MIN,
       rowGap: TPL_GAP, alignGap: LAYOUT_ALIGN_GAP, firstRowY: { withHeader: AI_FIRST_ROW_Y, withoutHeader: AI_FIRST_ROW_Y_NOHEADER }, grid: GRID,
     },
     // 見た目（第 12 段階）。帯の高さと、帯がある画面の並べ方の最初の行（firstRowY）は見た目で変わる
@@ -14651,7 +14686,7 @@ function aiScreenOp(tx, op) {
 function aiLayout(tx, designId, screenId, layout, mode) {
   if (!isObj(layout) || !Array.isArray(layout.rows) || !layout.rows.length) throw aiBad('layout は { columns, rows } の形で書き、rows に 1 行以上書いてください。');
   const columns = layout.columns == null ? 1 : layout.columns;
-  if (columns !== 1 && columns !== 2) throw aiBad('layout.columns は 1 か 2 です。');
+  if (![1, 2, 3, 4].includes(columns)) throw aiBad('layout.columns は 1〜4 です。');
   if (!['append', 'replace'].includes(mode)) throw aiBad('mode は "append"（今の部品の下に足す）か "replace"（部品と吹き出しを全部消して置き直す）です。');
   if (mode === 'replace') {
     const s0 = findScreen(designId, screenId);
@@ -14680,6 +14715,7 @@ function aiLayout(tx, designId, screenId, layout, mode) {
     if (!Array.isArray(row)) throw aiBad(`rows[${ri}] は部品の並び（配列）か { align, parts } の形で書いてください。`);
     return row.map((e, pi) => entry(e, `rows[${ri}][${pi}]`));
   });
+  rows.forEach((row) => aiAutoButtonStyles(isAlignRow(row) ? row.parts : row));
   const firstY = aiFirstRowY(findDesign(store.state, designId), sc);
   const startY = sc.parts.length ? Math.ceil((Math.max(...sc.parts.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : firstY;
   const { placed } = layoutPlacements({ rows, columns }, { width: sc.width, startY, sizeOf: (s) => ({ type: s.type, w: s.w0, h: s.h0 }) });
@@ -14731,7 +14767,8 @@ function aiLayoutSpec(tx, d, e, used, plan) {
     // まだなければ、書いた props（states）・required・memo で作る（{} を渡すと見本の並びになり、書いたステータスが捨てられていた。見直し④-2）
     item = d.items.find((it) => it.type === 'status') || plan.created.find((it) => it.type === 'status') || aiLayoutNewItem(d, 'status', 'ステータス', e, plan);
   }
-  const spec = { span: e.span === 2 ? 2 : undefined, fields: {}, unnumbered: e.no === null };
+  if (e.span != null && ![1, 2, 3, 4].includes(e.span)) throw aiBad('span は 1〜4 です。');
+  const spec = { span: e.span >= 2 ? e.span : undefined, fields: {}, unnumbered: e.no === null };
   if (item) {
     if (item.type === 'status') type = type === 'steps' ? 'steps' : 'status';
     else if (item.type === 'table') type = 'table';
@@ -14758,7 +14795,10 @@ function aiLayoutSpec(tx, d, e, used, plan) {
       if (!['records', 'related'].includes(spec.tableKind)) throw aiBad('表の中身（tableKind）は "subtable"（テーブル）・"records"（レコード一覧）・"related"（関連レコード一覧）です。');
       if (e.props != null) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), e.props, d);
     } else spec.props = aiProps(type, e.props, d) || undefined;
-    if (type === 'button') spec.props = aiButtonProps(e, spec.props);
+    if (type === 'button') {
+      spec.props = aiButtonProps(e, spec.props);
+      spec.autoStyle = !(spec.props && 'style' in spec.props); // style を書かないボタン（aiAutoButtonStyles で決める）
+    }
     if (e.to !== undefined && MOVE_PART_TYPES.includes(type)) spec.props = { ...(spec.props || {}), ...aiMoveTarget(d, e.to) };
   }
   if (e.to !== undefined && !MOVE_PART_TYPES.includes(type)) throw aiBad(AI_TO_PARTS);
@@ -14768,6 +14808,7 @@ function aiLayoutSpec(tx, d, e, used, plan) {
   }
   ['sample', 'placeholder'].forEach((k) => { if (e[k] != null) spec.fields[k] = aiStrVal(e[k], k); });
   const size = defaultPartSize(type);
+  if (type === 'button') size.w = aiButtonWidth(spec.label == null ? partType('button').label : spec.label);
   if (e.rows != null) {
     if (type !== 'table') throw aiBad('rows（見本の行の数）を書けるのは表だけです。');
     const n = Math.round(aiNum(e.rows, 'rows'));
@@ -14791,6 +14832,12 @@ function aiStatusCurrent(item, v) {
   const id = resolveStateRef(states, cleanName(aiStrVal(v, 'current')));
   if (!id) throw aiBad(`current に書けるのは、ステータスの並び（${stateNames(states).join('・')}）のどれかです。`);
   return id;
+}
+// AI が置くボタンの幅（第 13 段階。q114 の ②）。文字を全角 15・半角 9 で数え、左右に 16 ずつ足し、8 の倍数に切り上げ、96 より狭くしない（Claude が決めた）
+const aiButtonWidth = (label) => Math.max(PART_TYPES.button.w, Math.ceil(([...str(label)].reduce((n, ch) => n + (/[\x20-\x7e]/.test(ch) ? 9 : 15), 0) + 32) / GRID) * GRID);
+// style を書かないボタンは、その行の最初のボタンだけ青（primary）、ほかは白（normal）（第 13 段階。q114 の ②。1 行に青いボタンが並ばないように）
+function aiAutoButtonStyles(specs) {
+  specs.filter((s) => s.type === 'button').forEach((s, i) => { if (s.autoStyle) s.props = { ...(s.props || {}), style: i === 0 ? 'primary' : 'normal' }; });
 }
 // ボタンの見た目（style の短い書き方）を設定に入れる
 function aiButtonProps(e, props) {
@@ -14836,6 +14883,9 @@ function aiPartOp(tx, sid, op) {
       // 表の見本の行を増やすと、下へはみ出す分だけ画面を伸ばす（上限まで）
       if (patch.view && patch.view.rows && p.y + tableHeight(patch.view.rows) > sc().height) aiCheckBottom(p.y + tableHeight(patch.view.rows), '表の下の端');
       actions.updatePart(id, sid, p.id, patch);
+      // ボタンの文字を直してはみ出すときは、幅を広げる（狭めない。第 13 段階。q114 の ②）
+      const need = p.type === 'button' && patch.label !== undefined ? aiButtonWidth(patch.label) : 0;
+      if (need > p.w) actions.movePart(id, sid, p.id, { x: p.x, y: p.y, w: need, h: p.h });
       return { op: 'update', ...brief(p.id) };
     }
     case 'move': {
@@ -14938,7 +14988,7 @@ function aiPartPatch(tx, d, p, op) {
 
 // ── 書く道具: 吹き出し ──
 const AI_CALLOUT_OPS = ['add', 'update', 'move', 'delete'];
-const AI_CALLOUT_OUTSIDE = 24; // 吹き出しを置く既定の位置: つなぐ部品の右の、画面の外 24 ドット（Claude が決めた）
+const AI_CALLOUT_OUTSIDE = 24; // 吹き出しを置く既定の位置: 画面の外 24 ドット（右の外か、つなぐ部品が画面の左半分なら左の外。Claude が決めた）
 async function aiEditCallouts(args, ctx) {
   return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
     const sid = aiResolveScreen(tx.design, args.screen).id;
@@ -14971,7 +15021,10 @@ function aiCalloutOp(tx, sid, op) {
       const text = op.text == null ? '' : aiStrVal(op.text, 'text');
       if (!text.trim()) throw aiBad('吹き出しの文（text）を書いてください。');
       const target = op.target == null ? null : aiResolvePart(sc(), op.target);
-      const at = { x: sc().width + AI_CALLOUT_OUTSIDE, y: target ? target.y : aiFirstRowY(findDesign(store.state, id), sc()) };
+      // つなぐ部品の真ん中が画面の左半分なら、左の外に置く（線が右の列の部品を横切らないため。第 13 段階。q114 の ③）
+      const left = target && target.x + target.w / 2 < sc().width / 2;
+      const w = op.w === undefined ? PALETTE_EXTRA.callout.w : aiNum(op.w, 'w');
+      const at = { x: left ? -(w + AI_CALLOUT_OUTSIDE) : sc().width + AI_CALLOUT_OUTSIDE, y: target ? target.y : aiFirstRowY(findDesign(store.state, id), sc()) };
       if (op.x === undefined && op.y === undefined) while (sc().callouts.some((c) => c.x === at.x && c.y === at.y)) at.y += PALETTE_EXTRA.callout.h + 16;
       const cid = actions.addCallout(id, sid, rectOf(at), target ? target.id : null);
       const patch = { text };

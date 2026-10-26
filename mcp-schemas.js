@@ -65,7 +65,7 @@ const layoutPart = obj({
   item: opt(S.item.describe('置くデータベースの項目（項目名か id）。その名前の項目がなく type を書いたときは、項目を新しく作って置く')),
   type: opt(z.string().describe('部品の種類（get_catalog の parts[].type）。item を書いたときは省ける')),
   label: opt(z.string().describe('見出し・ボタン・説明の文字などの文字（新しく作る項目なら項目名）')),
-  span: opt(z.union([z.literal(1), z.literal(2)]).describe('2 で 2 列の幅いっぱいに広げる')),
+  span: opt(z.number().int().min(1).max(4).describe('またぐ列の数（1〜4。2 列の並べ方では 2 で 2 列の幅いっぱい、3・4 列ではその数の列の幅）')),
   sample: opt(z.string().describe('入力欄の見本の値')),
   placeholder: opt(z.string().describe('入力欄の薄い字')),
   labelPos: opt(S.labelPos),
@@ -86,7 +86,7 @@ const layoutRow = z.union([
   obj({ align: opt(z.enum(['left', 'center', 'right'])), parts: z.array(layoutPart).min(1) }).describe('列に合わせず横に並べ、左・真ん中・右に寄せる行（ボタンの行）'),
 ]);
 const layout = obj({
-  columns: opt(z.union([z.literal(1), z.literal(2)]).describe('列の数（2 列はパソコンの画面だけ）')),
+  columns: opt(z.number().int().min(1).max(4).describe('列の数（1〜4。2 列はパソコンの画面だけ。3・4 列は列の幅が 160 より狭くなる機器では列を減らす）')),
   rows: z.array(layoutRow).min(1).describe('上から順に置く行'),
 }).describe('部品の並べ方（read_guide の "layout"）。位置と大きさはアプリが決める');
 
@@ -148,7 +148,7 @@ const partOps = z.discriminatedUnion('op', [
 const color = z.enum(CALLOUT_COLORS).describe('色: "yellow"・"red"・"blue"・"gray"');
 const tip = z.enum(CALLOUT_TIPS).describe('線の先: "dot"（点）・"arrow"（矢印）・"none"（なし）');
 const calloutOps = z.discriminatedUnion('op', [
-  op('add', { text: z.string(), target: opt(S.part.describe('線でつなぐ部品')), color: opt(color), tip: opt(tip), ...rect }, '吹き出しを足す（位置を書かなければ、つなぐ部品の右の画面の外に置く）'),
+  op('add', { text: z.string(), target: opt(S.part.describe('線でつなぐ部品')), color: opt(color), tip: opt(tip), ...rect }, '吹き出しを足す（位置を書かなければ、画面の外に置く。つなぐ部品の真ん中が画面の左半分なら左の外、ほかは右の外）'),
   op('update', { callout: z.string().describe('吹き出しの id'), text: opt(z.string()), color: opt(color), tip: opt(tip), target: opt(z.union([S.part, z.null()]).describe('つなぐ部品（null で線を外す）')) }, '吹き出しを直す'),
   op('move', { callout: z.string(), ...rect }, '吹き出しの位置と大きさを直す'),
   op('delete', { callout: z.string() }, '吹き出しを消す'),

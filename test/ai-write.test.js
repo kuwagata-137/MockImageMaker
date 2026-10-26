@@ -199,7 +199,8 @@ test('layout_screen: 2 列・span・幅の広い部品・ボタンの行（右�
   assert.deepEqual(r.parts.map((p) => [p.type, p.item || p.label, p.x, p.y, p.w, p.h, p.no]), [
     ['text1', '顧客コード', 32, 64, 320, 64, 1], ['text1', '顧客名', 480, 64, 320, 64, 2],
     ['text2', '住所', 32, 152, 848, 120, 3], ['heading', '取引の履歴', 32, 296, 400, 32, null],
-    ['table', '受注の一覧', 32, 352, 640, 472, 4], ['button', '保存', 1024, 856, 96, 40, 5], ['button', 'キャンセル', 1152, 856, 96, 40, 6],
+    // ボタンの幅は文字から決める（第 13 段階。q114 の ②。キャンセルは 5 字 × 15 ＋ 32 ＝ 107 を 8 の倍数に切り上げて 112）
+    ['table', '受注の一覧', 32, 352, 640, 472, 4], ['button', '保存', 1008, 856, 96, 40, 5], ['button', 'キャンセル', 1136, 856, 112, 40, 6],
   ]);
   assert.deepEqual(r.createdItems.map((x) => [x.name, x.type]), [['住所', 'text2']]);
   const sc = d('d1').screens[1];
@@ -241,7 +242,7 @@ test('layout_screen: append は今の部品の下から置く。同じ項目を�
   assert.match(e.message, /^rows\[0\]\[0\]: 項目「顧客名」は、この画面にもう置いてあります/);
   ng(await call('layout_screen', { design: 'd1', screen: '新規登録', layout: { rows: [[{ item: '存在しない項目' }]] } }), 'not_found');
   ng(await call('layout_screen', { design: 'd1', screen: '新規登録', layout: { rows: [[{ type: 'slider' }]] } }), 'bad_request');
-  ng(await call('layout_screen', { design: 'd1', screen: '新規登録', layout: { columns: 3, rows: [[{ type: 'heading' }]] } }), 'bad_request');
+  ng(await call('layout_screen', { design: 'd1', screen: '新規登録', layout: { columns: 5, rows: [[{ type: 'heading' }]] } }), 'bad_request'); // 列は 1〜4（第 13 段階で 3・4 列を足した）
   app.close();
 });
 
@@ -293,15 +294,15 @@ test('edit_parts: 表の中身を変える・見本の行の数・ボタンの s
   app.close();
 });
 
-test('edit_callouts: 足す（つなぐ部品の右の画面の外）・直す・動かす・消す。色と線の先は検める', async () => {
+test('edit_callouts: 足す（つなぐ部品が画面の左半分なら左の画面の外。第 13 段階）・直す・動かす・消す。色と線の先は検める', async () => {
   const { app, call, d } = await boot();
   const r = ok(await call('edit_callouts', { design: 'd1', screen: '新規登録', ops: [
     { op: 'add', text: '50 文字まで。', target: 2, color: 'red', tip: 'dot' },
     { op: 'add', text: '必須。', target: 2 },
   ] }));
   const [a, b] = r.callouts;
-  assert.deepEqual([a.x, a.y, a.color, a.tip, a.target.no], [1280 + 24, 152, 'red', 'dot', 2]);
-  assert.deepEqual([b.x, b.y], [1304, 152 + 96]); // 同じ位置には重ねず、下へずらす
+  assert.deepEqual([a.x, a.y, a.color, a.tip, a.target.no], [-(200 + 24), 152, 'red', 'dot', 2]);
+  assert.deepEqual([b.x, b.y], [-224, 152 + 96]); // 同じ位置には重ねず、下へずらす
   ok(await call('edit_callouts', { design: 'd1', screen: '新規登録', ops: [
     { op: 'update', callout: a.id, text: '最大 50 文字。', target: null },
     { op: 'move', callout: a.id, x: -100, y: 20, w: 240 },
