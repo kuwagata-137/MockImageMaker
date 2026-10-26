@@ -383,6 +383,11 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .pbox{margin-top:4px;flex:1;min-height:0;min-width:0;border:1px solid #94a3b8;border-radius:4px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#fff;overflow:hidden;white-space:nowrap}
 .pbox.area{align-items:flex-start;padding-top:8px;white-space:pre-wrap}
 .pbox.calc{background:#f1f5f9;border-style:dashed}
+/* kintone が値を入れる種類（第 13 段階。画像 q112 の案B）。見た目ごとの枠より強くし、表示の形では値だけ（鉛筆の印も出さない。直せないため） */
+.pbox.kt-auto,.look-sf .pbox.kt-auto,.look-kt .pbox.kt-auto{background:#f1f5f9;border:1px dashed #94a3b8;box-shadow:none}
+.screen.view-show .pbox.kt-auto{border:none;border-bottom:1px solid #e5e5e5;background:transparent}
+.screen.look-kt.view-show .pbox.kt-auto{border-bottom:none}
+.view-show .pbox.kt-auto::after{display:none}
 .pval{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .pbox .pr{margin-left:auto;color:#475569;font-size:13px;flex-shrink:0}
 /* ルックアップの印（画像 q22）: 項目名の後ろの黄色い札、探す項目の「取得」、一緒に写される項目の灰色の入力欄。出力にも出す */
@@ -449,6 +454,13 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .psteps span:first-child{clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%)}
 .psteps span.done{background:#bfdbfe;color:#1e3a8a}
 .psteps span.on{background:#2563eb;color:#fff;font-weight:700}
+/* 分かれる終わり（第 13 段階。画像 q114 の ①）。狭いときは「〇〇から分かれる終わり」の字から縮める（本線の矢印は 56 より狭くしない） */
+.psteps.has-end span{min-width:56px}
+.psteps .pst-sep{flex:none;align-self:stretch;width:0;margin:6px 8px 6px 18px;border-left:2px dotted #94a3b8}
+.psteps .pst-from{flex:0 1 auto;min-width:0;align-self:center;overflow:hidden;white-space:nowrap;margin-right:8px;font-size:12px;font-style:normal;color:#64748b}
+.psteps .pst-end{flex:none;align-self:center;display:flex;align-items:center;height:calc(100% - 6px);max-height:32px;padding:0 14px;border:1.5px solid #dc2626;border-radius:999px;
+  background:#fff;color:#dc2626;font-size:13px;font-weight:700;white-space:nowrap}
+.psteps .pst-end.on{background:#dc2626;color:#fff}
 .ptabs{flex:1;display:flex;align-items:flex-end;border-bottom:2px solid #cbd5e1;overflow:hidden;white-space:nowrap}
 .ptabs span{height:100%;padding:0 16px;display:flex;align-items:center;font-size:13px;color:#475569;border:1px solid transparent;border-bottom:none;border-radius:6px 6px 0 0;flex-shrink:0}
 .ptabs span.on{background:#fff;border-color:#cbd5e1;color:#1d4ed8;font-weight:700;margin-bottom:-2px;border-bottom:2px solid #fff}
@@ -548,6 +560,8 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 .side-settings .check{margin-bottom:8px}
 .pf-sep{border-top:1px dashed #cbd5e1;margin:12px 0 10px;position:relative}
 .pf-sep i{position:absolute;top:-8px;left:0;background:#fff;padding-right:6px;font-style:normal;font-size:10.5px;color:#7c3aed;font-weight:700}
+.kt-warn{font-size:11.5px;color:#dc2626;margin:-4px 0 8px;line-height:1.5}
+.kt-warn:empty{display:none}
 .pf-multi{display:flex;flex-direction:column;gap:3px;font-size:12px}
 .pf-multi label{display:flex;gap:6px;align-items:center;cursor:pointer}
 .pf-out{margin-top:6px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:7px 9px}
@@ -1447,18 +1461,32 @@ const LAYOUT_COL_W = 400; // 列の幅
 const LAYOUT_SPAN_W = TPL_COL2 + LAYOUT_COL_W - TPL_LEFT; // 2 列の幅いっぱい（848）
 const LAYOUT_TWO_COL_MIN = TPL_COL2 + LAYOUT_COL_W + TPL_LEFT; // 2 列で置ける画面の幅（912。パソコンだけ）
 const LAYOUT_ALIGN_GAP = 32; // align の行（ボタンの行）の部品の間と、前の行との間
+const LAYOUT_COLUMNS_MAX = 4; // 列の数の上限（3・4 列は第 13 段階。q114 の ④）
+const LAYOUT_GRID_GAP = 48; // 3・4 列の列の間
+const LAYOUT_GRID_MIN = 160; // 3・4 列の列の幅の下限（これより狭くなる機器では列を減らす）
 const isAlignRow = (row) => isObj(row) && !Array.isArray(row) && Array.isArray(row.parts);
+// 3・4 列の列（画面の幅から左右 32 を引き、列の間 48 で等しく分ける。幅は 8 ドットのマス目に切り下げる）。{ columnsLeft, columnWidth }
+function layoutGrid(width, n) {
+  const columnWidth = Math.floor((width - TPL_LEFT * 2 - LAYOUT_GRID_GAP * (n - 1)) / n / GRID) * GRID;
+  return { columnsLeft: Array.from({ length: n }, (_, i) => TPL_LEFT + i * (columnWidth + LAYOUT_GRID_GAP)), columnWidth };
+}
+// 書いた列の数を、その画面の幅で置ける列の数にする（3・4 列は列の幅が 160 以上になるまで減らす。2 列はパソコンだけ）
+function layoutColumns(columns, width) {
+  let n = Math.min(LAYOUT_COLUMNS_MAX, Math.max(1, columns || 1));
+  while (n > 2 && layoutGrid(width, n).columnWidth < LAYOUT_GRID_MIN) n--;
+  return n === 2 && width < LAYOUT_TWO_COL_MIN ? 1 : n;
+}
 // 並べ方から位置と大きさを決める（純関数）。rows の 1 つは、部品の並び（配列）か { align: 'left'・'center'・'right', parts: [...] }。
-// sizeOf(entry) は、その部品の種類と最初の大きさ { type, w, h } を返す。entry.span が 2 なら 2 列の幅いっぱいに広げる。
+// sizeOf(entry) は、その部品の種類と最初の大きさ { type, w, h } を返す。entry.span（2〜4）は、その数の列をまたいで広げる（1・2 列では 2 列の幅いっぱい）。
 // 戻り値 { placed: [{ entry, type, x, y, w, h }]（置く順）, nextY（次に置ける y。最後の行のいちばん下＋24）}
 function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
-  const cols = columns >= 2 && width >= LAYOUT_TWO_COL_MIN ? 2 : 1;
+  const cols = layoutColumns(columns, width);
   const maxW = Math.floor((width - TPL_LEFT * 2) / GRID) * GRID; // 画面の幅から左右 32 ずつ引いた幅
   const placed = [];
   let y = startY;
   const sized = (entry) => {
     const s = sizeOf(entry);
-    const w = entry && entry.span === 2 ? Math.min(LAYOUT_SPAN_W, maxW) : Math.min(s.w, maxW);
+    const w = entry && entry.span >= 2 ? Math.min(LAYOUT_SPAN_W, maxW) : Math.min(s.w, maxW);
     return { entry, type: s.type, w, h: s.h };
   };
   // 1 行分を y に置き、次の行の y へ進める
@@ -1478,6 +1506,7 @@ function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
       });
       return;
     }
+    if (cols > 2) { layoutGridLines(Array.isArray(row) ? row : [], width, cols, sizeOf).forEach(putLine); return; }
     let line = [];
     (Array.isArray(row) ? row : []).forEach((entry) => {
       const p = sized(entry);
@@ -1489,6 +1518,23 @@ function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
     putLine(line);
   });
   return { placed, nextY: y };
+}
+// 3・4 列の 1 行分の部品を、列に入る分ずつの行に分けて x と幅を決める。span を書いた部品はその数の列の幅に広げ、書かない部品は列の幅に入るように狭める
+function layoutGridLines(row, width, cols, sizeOf) {
+  const { columnsLeft, columnWidth } = layoutGrid(width, cols);
+  const lines = [];
+  let line = [];
+  let c = 0;
+  row.forEach((entry) => {
+    const s = sizeOf(entry);
+    const k = Math.min(cols, entry && entry.span >= 2 ? entry.span : 1);
+    if (c + k > cols) { lines.push(line); line = []; c = 0; }
+    const w = k > 1 ? k * columnWidth + (k - 1) * LAYOUT_GRID_GAP : Math.min(s.w, columnWidth);
+    line.push({ entry, type: s.type, x: columnsLeft[c], w, h: s.h });
+    c += k;
+  });
+  lines.push(line);
+  return lines;
 }
 // align の行の部品を、画面の幅に入る分ずつの行に分ける
 function layoutAlignLines(parts, maxW) {
@@ -1516,7 +1562,8 @@ function placePartIn(sc, design, { type, x, y, w, h, itemId = null, tableKind = 
   if (label != null) p.label = label;
   if (props) p.props = { ...p.props, ...props };
   if (view) p.view = type === 'table' ? normalizeTableView({ ...p.view, ...view }) : { ...p.view, ...view };
-  Object.assign(p, fitRect({ ...p, w: w || p.w, h: h || p.h }, sc));
+  // 書いた位置と大きさで画面に収める（createPartData は種類の最初の大きさで収めるので、最初の幅より狭い部品が右の端で左へずれないように）
+  Object.assign(p, fitRect({ ...p, x, y, w: w || p.w, h: h || p.h }, sc));
   sc.parts.push(p);
   return p;
 }
@@ -1764,6 +1811,88 @@ const isItemPart = (p) => !!partItemType(p);
 // 同じ項目を 1 つの画面に 2 回は置かない（ステータスは、ステータスの印と進み具合の矢印で同じ画面に何度でも置ける）
 const oncePerScreen = (itemType) => itemType !== 'status';
 
+// ── kintone のフィールドの情報（第 13 段階。業務アプリの見た目とCRM_設計書.md の 6 章・画像 q111・q112）──
+// 項目とテーブルの列に、なくてもよい欄 kintone: { type, code, formula } を持つ（どれも文字。3 つとも空なら持たない）。
+// type は kintone のフィールドの種類（空は部品の種類から決まる既定）、code はフィールドコード（空は項目名から作る）、formula は kintone の書き方の計算式。
+// 右の欄に出して描き分けるのは、kintone の画面設計（作る先か見た目が kintone）のときだけ。ほかの画面設計でも、データは消さずに残す
+const KINTONE_TYPES = {
+  SINGLE_LINE_TEXT: { name: '文字列（1行）' }, LINK: { name: 'リンク' }, MULTI_LINE_TEXT: { name: '文字列（複数行）' }, RICH_TEXT: { name: 'リッチエディター' },
+  NUMBER: { name: '数値' }, CALC: { name: '計算' }, DATE: { name: '日付' }, DATETIME: { name: '日時' }, TIME: { name: '時刻' },
+  DROP_DOWN: { name: 'ドロップダウン' }, RADIO_BUTTON: { name: 'ラジオボタン' }, CHECK_BOX: { name: 'チェックボックス' }, MULTI_SELECT: { name: '複数選択' },
+  USER_SELECT: { name: 'ユーザー選択' }, ORGANIZATION_SELECT: { name: '組織選択' }, GROUP_SELECT: { name: 'グループ選択' },
+  FILE: { name: '添付ファイル' }, SUBTABLE: { name: 'テーブル' },
+  // kintone が値を入れる種類（入力の形では「（自動で入る）」と描く。kintone のアプリに最初からある）
+  RECORD_NUMBER: { name: 'レコード番号', auto: true }, CREATOR: { name: '作成者', auto: true }, MODIFIER: { name: '更新者', auto: true },
+  CREATED_TIME: { name: '作成日時', auto: true }, UPDATED_TIME: { name: '更新日時', auto: true },
+};
+// 部品の種類ごとに選べる kintone の種類（先頭が既定）。ステータスは kintone ではプロセス管理で作るので持たない
+const KINTONE_CHOICES = {
+  text1: ['SINGLE_LINE_TEXT', 'LINK', 'RECORD_NUMBER'], text2: ['MULTI_LINE_TEXT', 'RICH_TEXT'], number: ['NUMBER', 'RECORD_NUMBER'],
+  calc: ['CALC', 'SINGLE_LINE_TEXT'], date: ['DATE'], datetime: ['DATETIME', 'TIME', 'CREATED_TIME', 'UPDATED_TIME'],
+  dropdown: ['DROP_DOWN'], radio: ['RADIO_BUTTON'], checkbox: ['CHECK_BOX', 'MULTI_SELECT'],
+  user: ['USER_SELECT', 'ORGANIZATION_SELECT', 'GROUP_SELECT', 'CREATOR', 'MODIFIER'], file: ['FILE'], table: ['SUBTABLE'],
+};
+const KINTONE_CODE_MAX = 128;
+const kintoneTypeName = (id, partTypeId = '') => (partTypeId === 'calc' && id === 'SINGLE_LINE_TEXT' ? '文字列（1行）の自動計算' : own(KINTONE_TYPES, id) ? KINTONE_TYPES[id].name : id);
+// column はテーブルの列（kintone のテーブルには、自動で入る種類〔レコード番号・作成者など〕を置けないので選ばせない）
+const kintoneChoiceIds = (type, column = false) => (own(KINTONE_CHOICES, type) ? KINTONE_CHOICES[type] : []).filter((id) => !column || !KINTONE_TYPES[id].auto);
+const kintoneChoices = (type, column = false) => kintoneChoiceIds(type, column)
+  .map((id) => ({ id, name: kintoneTypeName(id, type), auto: !!KINTONE_TYPES[id].auto }));
+const isKintoneDesign = (d) => !!d && (d.target === 'kintone' || lookOf(d).id === 'kintone');
+// kintone の欄を直す（文字でない値は空・前後の空白を取る。知らない欄は残す）。3 つとも空で、ほかの欄もなければ null
+function normalizeKintone(src) {
+  if (!isObj(src)) return null;
+  const k = { ...src, type: str(src.type).trim(), code: str(src.code).trim(), formula: str(src.formula).trim() };
+  return Object.keys(k).length > 3 || k.type || k.code || k.formula ? k : null;
+}
+// 項目・列の kintone の欄を直して付ける（空なら外す）
+function withKintone(obj, src) {
+  const k = normalizeKintone(src);
+  if (k) obj.kintone = k;
+  else delete obj.kintone;
+  return obj;
+}
+// 項目・列の kintone の種類（選んだ種類がその部品の種類で選べないとき・ルックアップの付いた項目は既定）
+function kintoneTypeOf(it, column = false) {
+  const ids = kintoneChoiceIds(it.type, column);
+  const t = it.kintone && it.kintone.type;
+  return !it.lookup && ids.includes(t) ? t : ids[0] || '';
+}
+// 名前から作るフィールドコード（kintone の決まり: 文字・数字・_ だけ・数字で始めない・128 字まで）
+function kintoneCodeOf(name) {
+  let c = String(name || '').replace(/[^\p{L}\p{N}_]+/gu, '_') || '_';
+  if (/^\p{N}/u.test(c)) c = '_' + c;
+  return c.slice(0, KINTONE_CODE_MAX);
+}
+const kintoneCodeOk = (code) => typeof code === 'string' && code.length > 0 && code.length <= KINTONE_CODE_MAX && /^[\p{L}\p{N}_]+$/u.test(code) && !/^\p{N}/u.test(code);
+// 画面設計の項目とテーブルの列の id → フィールドコード。書いたコードを先に取り、書いていないものは名前から作って、重なるときは _2・_3 を付ける
+// （書いたコードどうしの重なりは書き換えない。右の欄と get_kintone_app で知らせる）。ステータスは数えない
+// kintone のフィールドになる項目とテーブルの列（項目の順。列はそのテーブルの後ろ）
+const kintoneEntries = (design) => design.items.filter((it) => it.type !== 'status')
+  .flatMap((it) => [it, ...(it.type === 'table' ? it.props.columns || [] : [])]);
+function kintoneCodes(design) {
+  const entries = kintoneEntries(design);
+  const used = new Set(entries.map((x) => x.kintone && x.kintone.code).filter(Boolean));
+  const out = {};
+  entries.forEach((x) => { out[x.id] = x.kintone && x.kintone.code ? x.kintone.code : kintoneUniqueCode(kintoneCodeOf(x.name), used); });
+  return out;
+}
+// used（使っているコード）と重ならないコード（重なるときは _2・_3 を付ける）。作ったコードを used に足す
+function kintoneUniqueCode(base, used) {
+  let code = base;
+  for (let k = 2; used.has(code); k++) code = base.slice(0, KINTONE_CODE_MAX - String(k).length - 1) + '_' + k;
+  used.add(code);
+  return code;
+}
+// 書いたフィールドコードの知らせ（右の欄の欄の下・get_kintone_app の warnings）。使えない文字と、ほかの項目・列に書いたコードとの重なり
+function kintoneCodeWarn(design, entry) {
+  const code = entry.kintone && entry.kintone.code;
+  if (!code) return '';
+  if (!kintoneCodeOk(code)) return '使えない文字があります（文字・数字・_ だけで、数字で始めない。128 字まで）。';
+  const same = kintoneEntries(design).find((x) => x.id !== entry.id && x.kintone && x.kintone.code === code);
+  return same ? `「${code}」と同じフィールドコードを、「${same.name}」にも書いています。` : '';
+}
+
 const defaultColumns = () => ['列 1', '列 2', '列 3'].map((name) => createColumnData('text1', name));
 function createColumnData(type, name) {
   return { id: newId('c'), name, type, required: false, memo: '', props: clone(partType(type).props) };
@@ -1791,9 +1920,11 @@ function resolvePart(design, p) {
   const item = p && p.itemId && isItemPart(p) ? findItem(design, p.itemId) : null;
   if (!item) return withViewExtras(design, p && p.lookup && isInputType(p.type) ? { ...p, lookupRole: 'key' } : p);
   const copy = item.lookup ? null : lookupCopyOf(design, item);
+  // kintone の画面設計で kintone の種類を選んだ項目は、その種類で描き分ける（ktType。画像 q112 の案B）
+  const kt = item.kintone && isKintoneDesign(design) ? kintoneTypeOf(item) : '';
   return withViewExtras(design, {
     ...p, label: item.name, required: item.required, memo: item.memo, props: item.props, item,
-    lookupRole: item.lookup ? 'key' : copy ? 'copy' : null, lookupKeyName: copy ? copy.key.name : '',
+    lookupRole: item.lookup ? 'key' : copy ? 'copy' : null, lookupKeyName: copy ? copy.key.name : '', ...(kt ? { ktType: kt } : {}),
   });
 }
 // 描くときだけ使う中身（表の列・絞り込みの欄の項目の名前・関連レコード一覧の元のデータベースの名前）
@@ -1824,6 +1955,7 @@ function frozenItemFields(item) {
   const f = { label: item.name, required: item.required, memo: item.memo, props: clone(item.props) };
   if (item.lookup) f.lookup = clone(item.lookup);
   if (item.link) f.link = clone(item.link);
+  if (item.kintone) f.kintone = clone(item.kintone);
   return f;
 }
 
@@ -2019,10 +2151,45 @@ function describePartLines(p, ctx = null) {
       eqIf('移る先', moveTargetText(ctx, pr));
       break;
   }
+  // kintone のフィールドの情報（kintone の画面設計で書いてあるときだけ。テーブルの列は tableColumns が ktLines で渡す）
+  eq.push(...(p.ktLines || (ctx && p.item && isKintoneDesign(ctx.design) ? kintoneLines(p.item) : [])));
   if (ctx) eq.push(...lookupLines(ctx, p));
   return { short: short.join('・'), eq, memo: v(p.memo) };
 }
+// 一覧表の「設定」に足す kintone の行（選んだ種類・書いたフィールドコード・自動計算の値の kintone の計算式）。column はテーブルの列
+function kintoneLines(entry, column = false) {
+  if (!entry || !own(KINTONE_CHOICES, entry.type) || !entry.kintone) return [];
+  const k = entry.kintone;
+  const type = kintoneTypeOf(entry, column);
+  return [
+    k.type && k.type === type ? `kintone の種類＝${kintoneTypeName(type, entry.type)}` : '',
+    k.code ? `フィールドコード＝${k.code}` : '',
+    k.formula && entry.type === 'calc' ? `kintone の計算式＝${k.formula}` : '',
+  ].filter(Boolean);
+}
 
+// 進み具合の矢印の本線と分かれる終わり（第 13 段階。画像 q114 の ①）。戻り値 { main（本線のステータスの並び）, ends: [{ state, from（分かれる元のステータスの id）}] }。
+// 分かれる終わりは、そこから先へ進む操作がなく、そこへ来る操作があり、本線の終わりでないステータス。本線の終わりは、最初のステータスから操作をたどって
+// いちばん長く進めた先（同じ長さなら、操作の並びで先に書いた操作でたどった先）。q114 の説明の文の「並びの最後を除く」は、モックの絵（並びの最後の却下を外す）と
+// 食い違っていたので、絵に合わせてこう決めた（Claude が決めた）。操作がないときは、分かれる終わりもない（今までどおり 1 列に並べる）
+const STEPS_WALK_MAX = 5000; // 操作をたどる道の数の上限（操作がとても多いときに固まらないため）
+function stepsBranches(states, actions) {
+  const ids = new Set(states.map((s) => s.id));
+  const acts = (Array.isArray(actions) ? actions : []).filter((a) => isObj(a) && ids.has(a.from) && ids.has(a.to) && a.from !== a.to);
+  if (!states.length || !acts.length) return { main: states, ends: [] };
+  const next = (id) => acts.filter((a) => a.from === id);
+  let best = { len: -1, end: null };
+  let walks = 0;
+  const walk = (id, len, seen) => {
+    const go = next(id).filter((a) => !seen.has(a.to));
+    if (!go.length || ++walks > STEPS_WALK_MAX) { if (len > best.len) best = { len, end: id }; return; }
+    go.forEach((a) => walk(a.to, len + 1, new Set([...seen, a.to])));
+  };
+  walk(states[0].id, 0, new Set([states[0].id]));
+  const ends = states.filter((s) => s.id !== best.end && !next(s.id).length && acts.some((a) => a.to === s.id))
+    .map((s) => ({ state: s, from: acts.find((a) => a.to === s.id).from }));
+  return { main: states.filter((s) => !ends.some((e) => e.state === s)), ends };
+}
 // 操作の行「操作「承認する」＝承認待ちから承認済みへ（上長）・条件」。「＝」の前を操作ごとに変えて、改訂履歴の違いで操作ごとに前と後を出す
 function actionLines(pr) {
   const states = Array.isArray(pr.states) ? pr.states : [];
@@ -2044,7 +2211,11 @@ function describeItem(item, ctx = null) {
 function tableColumns(p, ctx = null) {
   const pr = p.props || {};
   if (p.tableKind === 'subtable') {
-    return (pr.columns || []).map((c) => ({ id: c.id, name: c.name, type: c.type, kind: partTypeName(c.type), setting: describePart({ type: c.type, required: c.required, memo: c.memo, props: c.props }) }));
+    const kt = ctx && isKintoneDesign(ctx.design);
+    return (pr.columns || []).map((c) => ({
+      id: c.id, name: c.name, type: c.type, kind: partTypeName(c.type),
+      setting: describePart({ type: c.type, required: c.required, memo: c.memo, props: c.props, ktLines: kt ? kintoneLines(c, true) : null }),
+    }));
   }
   const design = ctx && ctx.design;
   const src = p.tableKind === 'related' ? (ctx && pr.db && pr.db.designId ? findDesign(ctx.state, pr.db.designId) : null) : design;
@@ -2423,14 +2594,14 @@ function withoutItemFields(p) {
   return rest;
 }
 function withoutItemFieldsInPlace(p) {
-  ['label', 'required', 'memo', 'props', 'lookup', 'link'].forEach((k) => { delete p[k]; });
+  ['label', 'required', 'memo', 'props', 'lookup', 'link', 'kintone'].forEach((k) => { delete p[k]; });
   return p;
 }
 
 function normalizeItem(src) {
   const it = isObj(src) ? src : {};
   const type = str(it.type) || 'text1';
-  return {
+  return withKintone({
     ...it,
     id: str(it.id) || newId('i'),
     name: typeof it.name === 'string' ? it.name : isItemType(type) ? createItemData(type).name : '項目名',
@@ -2441,7 +2612,7 @@ function normalizeItem(src) {
     props: isItemType(type) ? normalizeItemProps(type, it.props) : isObj(it.props) ? it.props : {},
     lookup: normalizeLookup(it.lookup),
     link: normalizeLink(it.link),
-  };
+  }, it.kintone);
 }
 
 // 項目の種類ごとの設定を直す。表（テーブル）は列（{ id, name, type, required, memo, props }）、ステータスはステータスの並び
@@ -2552,10 +2723,10 @@ function clearGoneStates(design, item, beforeIds) {
 }
 function normalizeColumn(src) {
   const type = isInputType(src.type) ? src.type : 'text1';
-  return {
+  return withKintone({
     ...src, id: str(src.id) || newId('c'), name: typeof src.name === 'string' ? src.name : '列', type,
     required: !!src.required, memo: str(src.memo), props: keepInitialInOptions(type, normalizeProps(partType(type), src.props)),
-  };
+  }, src.kintone);
 }
 // レコード一覧・関連レコード一覧の設定（列は { id, ref: 項目の参照 }）
 function normalizeTablePartProps(src) {
@@ -2647,11 +2818,11 @@ function normalizeLink(src) {
 }
 
 // 取り込んだ項目に写す、元の項目の中身（取り込んだ側では直せない中身）
-const LINKED_FIELDS = ['name', 'type', 'required', 'memo', 'props', 'lookup'];
+const LINKED_FIELDS = ['name', 'type', 'required', 'memo', 'props', 'lookup', 'kintone'];
 function linkedFields(src, srcDesign) {
   const lookup = src.lookup ? clone(src.lookup) : null;
   if (lookup) lookup.copies = lookup.copies.map((c) => ({ ...c, to: { itemId: null, name: refLabel(srcDesign, c.to) } }));
-  return { name: src.name, type: src.type, required: src.required, memo: src.memo, props: clone(src.props), lookup };
+  return { name: src.name, type: src.type, required: src.required, memo: src.memo, props: clone(src.props), lookup, kintone: src.kintone ? clone(src.kintone) : undefined };
 }
 
 // 取り込んだ項目（つなげたまま）を、元の項目の今の中身にそろえる。元を直したときは、同じ操作（commit）の中で呼ぶ。
@@ -2678,11 +2849,48 @@ function syncLinkedItems(state) {
       if (want.type !== it.type && isInputType(want.type) && isInputType(it.type)) changeItemType(d, it, want.type);
       const before = stateIdsOf(it);
       Object.assign(it, want);
+      if (!it.kintone) delete it.kintone; // 元に kintone の欄がなければ持たない
       clearGoneStates(d, it, before); // 元でステータスを消したときは、取り込んだ側でそのステータスを見本で出していた部品も「なし」にする
       changed = true;
     }));
     if (!changed) return;
   }
+}
+// 名前で書いた元を後でつなぐ（第 13 段階。q114 の ⑥）。ルックアップの元（lookup.db）と関連レコード一覧の元（props.db）が「一覧にないデータベース」で、
+// ちょうど同じ名前の画面設計（ごみ箱にないもの・自分でないもの）が 1 つだけあれば、その画面設計につなぐ（2 つ以上あれば人が選ぶ）。
+// つないだ元では、名前だけで書いた項目（探す項目・写す元の項目・列・条件の元の項目）を、同じ名前の項目が 1 つだけあればその項目につなぐ
+// （AI が元の画面設計を作る前に書き、後から元の項目を足したときのため）。取り込んだ項目は元の中身にそろうので見ない。
+// 更新日時は変えない（syncLinkedItems と同じ扱い）。syncLinkedItems の前に呼ぶ（つないだルックアップを、取り込んだ項目にも写すため）
+function relinkFreeDbs(state) {
+  const live = state.designs.filter((d) => !d.trashedAt);
+  const sourceOf = (db, self) => {
+    if (!db) return null;
+    if (db.designId) return findDesign(state, db.designId);
+    if (!db.free || !db.name) return null;
+    const hits = live.filter((x) => x.id !== self.id && x.name === db.name);
+    if (hits.length !== 1) return null;
+    Object.assign(db, { designId: hits[0].id, name: hits[0].name, free: false });
+    return hits[0];
+  };
+  const relinkRef = (src, ref) => {
+    if (!ref || ref.itemId || !ref.name) return;
+    const hits = src.items.filter((it) => it.name === ref.name);
+    if (hits.length === 1) ref.itemId = hits[0].id;
+  };
+  state.designs.forEach((d) => {
+    d.items.forEach((it) => {
+      const src = it.lookup && !it.link ? sourceOf(it.lookup.db, d) : null;
+      if (!src) return;
+      relinkRef(src, it.lookup.key);
+      it.lookup.copies.forEach((c) => relinkRef(src, c.from));
+    });
+    d.screens.forEach((sc) => sc.parts.forEach((p) => {
+      const src = p.type === 'table' && p.tableKind === 'related' && p.props ? sourceOf(p.props.db, d) : null;
+      if (!src) return;
+      (p.props.columns || []).forEach((c) => relinkRef(src, c.ref));
+      if (p.props.cond) relinkRef(src, p.props.cond.from);
+    }));
+  });
 }
 // その画面設計と、そこから項目を取り込んでいる画面設計（取り込んだ項目をさらに取り込んだものも。syncLinkedItems がそろえる範囲）の id。
 // 取り込みのつながりをたどって集める（輪になっていても、集めた画面設計はもう一度たどらないので止まる）
@@ -3259,6 +3467,7 @@ function normalizeState(raw, schemaVersion) {
     systems: uniqueIds((Array.isArray(raw.systems) ? raw.systems : []).filter(isObj).map((y) => normalizeSystem(y, designIds)), 'y'),
     designs,
   };
+  relinkFreeDbs(state);
   syncLinkedItems(state);
   return state;
 }
@@ -3586,6 +3795,7 @@ function mutateDesign(id, fn, { touch = true } = {}) {
     const before = touch ? designJsonWithRefs(d) : '';
     fn(d, s);
     if (touch && designJsonWithRefs(d) !== before) d.updatedAt = nowIso();
+    relinkFreeDbs(s);
     syncLinkedItems(s);
     clearDanglingStepRefs(s, designAndImporters(s, id));
   });
@@ -3712,6 +3922,8 @@ const actions = {
       addCustomTarget(s, target);
       s.designs.push(d);
       if (systemId) putIntoSystem(s, systemId, d.id);
+      relinkFreeDbs(s); // この名前で書いてあった元をつなぐ
+      syncLinkedItems(s);
     });
     return d.id;
   },
@@ -3742,6 +3954,8 @@ const actions = {
     store.commit((s) => {
       s.designs.push(copy);
       if (systemId) putIntoSystem(s, systemId, copy.id);
+      relinkFreeDbs(s);
+      syncLinkedItems(s);
     });
     return copy.id;
   },
@@ -4538,7 +4752,7 @@ const actions = {
     if (!d || findItem(d, itemId)) return false;
     const src = d.screens.flatMap((s) => s.parts).find((p) => p.itemId === itemId && isItemPart(p));
     if (!src) return false;
-    const fromPart = (p, id) => normalizeItem({ id, name: p.label, type: partItemType(p), required: p.required, memo: p.memo, props: clone(p.props), lookup: p.lookup || null, link: p.link || null });
+    const fromPart = (p, id) => normalizeItem({ id, name: p.label, type: partItemType(p), required: p.required, memo: p.memo, props: clone(p.props), lookup: p.lookup || null, link: p.link || null, kintone: p.kintone });
     const status = partItemType(src) === 'status' ? d.items.find((it) => it.type === 'status') : null;
     return mutateDesign(designId, (dd) => {
       if (!status) dd.items.push(fromPart(src, itemId));
@@ -4736,6 +4950,7 @@ function applyFieldPatch(target, nameKey, patch) {
 function setItemFields(design, item, patch) {
   const before = stateIdsOf(item);
   applyFieldPatch(item, 'name', patch);
+  if ('kintone' in patch) withKintone(item, patch.kintone);
   clearGoneStates(design, item, before);
 }
 
@@ -5010,10 +5225,15 @@ function partInnerHtml(p, t, marks = false) {
       return `${outNo()}<div class="pstatus">${word}<span class="pbadge sc${at % 5}">${esc(states[at] ? states[at].name : '')}</span>${marks ? partMarksHtml(p) : ''}</div>`;
     }
     case 'steps': {
+      // 分かれる終わり（却下など）は本線から外し、点線の区切りと「〇〇から分かれる終わり」の字の後に、丸い札で右に置く（第 13 段階。画像 q114 の ①）。
+      // 見本のステータスが分かれる終わりのときは、札を塗り、本線は分かれる元のステータスまで済んだ色にする
       const states = pr.states || [];
       const id = resolveStateRef(states, p.view && p.view.current);
-      const at = id ? states.findIndex((s) => s.id === id) : -1;
-      return `${outNo()}<div class="psteps">${states.map((s, i) => `<span class="${i < at ? 'done' : i === at ? 'on' : ''}">${esc(s.name)}</span>`).join('')}</div>`;
+      const { main, ends } = stepsBranches(states, pr.actions);
+      const end = ends.find((e) => e.state.id === id);
+      const at = end ? main.findIndex((s) => s.id === end.from) + 0.5 : id ? main.findIndex((s) => s.id === id) : -1;
+      const tail = ends.map((e) => `<i class="pst-sep"></i><em class="pst-from">${esc(stateNameOf(states, e.from))}から分かれる終わり</em><b class="pst-end${e === end ? ' on' : ''}">${esc(e.state.name)}</b>`).join('');
+      return `${outNo()}<div class="psteps${ends.length ? ' has-end' : ''}">${main.map((s, i) => `<span class="${i < at ? 'done' : i === at ? 'on' : ''}">${esc(s.name)}</span>`).join('')}${tail}</div>`;
     }
     case 'tabs': {
       const tabs = pr.tabs || [];
@@ -5176,15 +5396,19 @@ function partFieldHtml(p, t) {
   if (p.type === 'radio') return opts('rd', (o) => o === pr.initial);
   if (p.type === 'checkbox') return opts('ck', (o) => Array.isArray(pr.initial) && pr.initial.includes(o));
   if (p.type === 'file') return '<div class="pdrop">📎 ファイルをここにドラッグ、または <u>選ぶ</u></div>';
+  // kintone が値を入れる種類（レコード番号・作成者など）は、点線の枠に「（自動で入る）」（見本の値を書いたときは見本の値。画像 q112 の案B）
+  const kt = own(KINTONE_TYPES, p.ktType) ? KINTONE_TYPES[p.ktType] : null;
+  if (kt && kt.auto) return `<div class="pbox kt-auto"><span class="pval">${p.sample ? esc(p.sample) : '<span class="pph">（自動で入る）</span>'}</span></div>`;
   // ルックアップで一緒に写される項目は、自分では書けないことが分かるように灰色にし、どこから入るかを薄い字で書く
   const copied = p.lookupRole === 'copy';
-  const ph = copied && !p.placeholder ? `（${p.lookupKeyName}から自動で入る）` : p.placeholder || t.ph;
+  const ktPh = { ORGANIZATION_SELECT: '組織を選択', GROUP_SELECT: 'グループを選択' }[p.ktType];
+  const ph = copied && !p.placeholder ? `（${p.lookupKeyName}から自動で入る）` : p.placeholder || ktPh || t.ph;
   const value = p.sample ? esc(p.sample) : `<span class="pph">${esc(ph)}</span>`;
   const unit = String(pr.unit || '').trim();
   const right = {
     number: unit && esc(unit), calc: unit && esc(unit), date: '📅', datetime: '🕒', dropdown: '▼', user: '選ぶ',
   }[p.type];
-  const head = p.type === 'user' ? '<span class="picon">👤</span>' : '';
+  const head = p.type === 'user' ? `<span class="picon">${{ ORGANIZATION_SELECT: '🏢', GROUP_SELECT: '👥' }[p.ktType] || '👤'}</span>` : '';
   const kind = p.type === 'text2' ? ' area' : p.type === 'calc' ? ' calc' : copied ? ' copied' : '';
   const get = p.lookupRole === 'key' ? '<span class="pget">🔍 取得</span>' : '';
   return `<div class="pbox${kind}">${head}<span class="pval">${value}</span>${right ? `<span class="pr">${right}</span>` : ''}${get}</div>`;
@@ -9504,10 +9728,26 @@ function itemSectionHtml(d, p, { locked = false, withType = false, note = 'ど�
         ${lookupFieldsHtml(d, p)}
         ${p.type === 'table' ? tableColumnsEditorHtml(p, true) : ''}
         ${typeFields ? `<div class="pf-sep"><i>${esc(p.item ? itemTypeName(p.item.type) : t.name)}の欄</i></div>${typeFields}` : ''}
+        ${p.item && isKintoneDesign(d) ? kintoneFieldsHtml(d, p.item) : ''}
         ${pfArea('memo', 'メモ', p.memo, { hint: '（自由に書く）' })}
         ${pfOutHtml(p, { forItem: withType })}
       </div>
     </fieldset>`;
+}
+
+// 「kintone のフィールド」の欄（画像 q111 の案A。kintone の画面設計の項目とテーブルの列）。entry は項目か列。
+// 種類は部品の種類ごとの選択肢（テーブル・ルックアップの付いた項目は選ばない）。コードの薄い字は項目名から作ったコード。計算式は自動計算の値だけ。
+// 列の欄は data-pf を data-tb="col." に置き換えて使う（tableColumnsEditorHtml。column は true）
+function kintoneFieldsHtml(d, entry, column = false) {
+  if (!own(KINTONE_CHOICES, entry.type)) return '';
+  const k = entry.kintone || {};
+  const choices = kintoneChoices(entry.type, column);
+  const fixed = entry.type === 'table' ? 'テーブル' : entry.lookup ? `ルックアップ（${choices[0].name}）` : '';
+  const type = fixed ? `<div class="field"><span>kintone の種類</span><div class="hint">${esc(fixed)}</div></div>`
+    : pfSelect('kintone.type', 'kintone の種類', kintoneTypeOf(entry, column), choices.map((c, i) => [c.id, `${c.name}${i === 0 ? '（既定）' : c.auto ? '（自動で入る）' : ''}`]));
+  const code = pfText('kintone.code', 'フィールドコード', k.code || '', { hint: '（空なら項目名から作る）', placeholder: kintoneCodes(d)[entry.id] || kintoneCodeOf(entry.name) });
+  const formula = entry.type === 'calc' ? pfText('kintone.formula', 'kintone の計算式', k.formula || '', { hint: '（kintone の書き方）', placeholder: '例: 数量 * 単価' }) : '';
+  return `<div class="pf-sep"><i>kintone のフィールド</i></div>${type}${code}<p class="kt-warn" data-kt-warn="${esc(entry.id)}">${esc(kintoneCodeWarn(d, entry))}</p>${formula}`;
 }
 
 // ルックアップの欄（画像 q22 の案A）。探すときに使う項目（テキスト（1行）・数値）に、ルックアップ元のデータベース・探すときに使う元の項目・
@@ -9860,6 +10100,7 @@ function tableColumnsEditorHtml(p, isItem) {
       <label class="field"><span>部品の種類</span><select data-tb="col.type">${PALETTE_GROUPS.flatMap((g) => g.types).filter(isInputType).map((k) => `<option value="${k}"${col.type === k ? ' selected' : ''}>${esc(partTypeName(k))}</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" data-tb="col.required"${col.required ? ' checked' : ''}>必須</label>
       ${fields}
+      ${isKintoneDesign(currentDesign()) ? kintoneFieldsHtml(currentDesign(), col, true).replace(/data-pf="kintone\./g, 'data-tb="col.kintone.') : ''}
     </div>`;
   }).join('');
   let add;
@@ -9956,6 +10197,7 @@ function onPartFieldChange(el) {
   const p = currentSubject();
   if (!p) return;
   const key = el.dataset.pf;
+  if (key.startsWith('kintone.')) { onKintoneFieldChange(el, p.item, key.slice(8)); return; }
   const value = readPartField(el);
   const old = key === 'props.states' ? stateNames(p.props.states)
     : key.startsWith('props.') ? p.props[key.slice(6)] : key.startsWith('view.') ? (p.view || {})[key.slice(5)] : key === 'numbered' ? p.no != null : p[key];
@@ -9973,6 +10215,31 @@ function onPartFieldChange(el) {
   // 項目名を変えたときは、項目の一覧表と部品の箱の名前も合わせる（右の欄は描き直さない）
   if (key === 'label' && ui.panel === 'items') renderItemsView(currentDesign());
   if (key === 'label') renderPalette(currentDesign());
+}
+
+// 「kintone のフィールド」の欄の変更（項目。列は onTableFieldChange）。既定の種類を選んだときは空にする（kintone の欄を持たないままにするため）。
+// 文字の欄は右の欄を描き直さずに保存し、コードの知らせと「一覧表の「設定」に出る文」だけを描き直す
+const kintoneFieldValue = (el, entry, sub) => {
+  const v = el.value.trim();
+  const first = kintoneChoices(entry.type)[0];
+  return sub === 'type' && first && v === first.id ? '' : v;
+};
+function onKintoneFieldChange(el, item, sub) {
+  if (!item || item.link) return;
+  const cur = item.kintone || {};
+  const v = kintoneFieldValue(el, item, sub);
+  if ((cur[sub] || '') === v) return;
+  const apply = () => actions.updateItem(ui.designId, item.id, { kintone: { type: '', code: '', formula: '', ...cur, [sub]: v } });
+  if (!isTextInput(el)) { apply(); return; }
+  commitKeepSide(apply);
+  refreshKintoneWarn(item.id);
+  refreshPfOut();
+}
+function refreshKintoneWarn(id) {
+  const d = currentDesign();
+  const entry = d ? kintoneEntries(d).find((x) => x.id === id) : null;
+  const el = [...document.querySelectorAll('#side-settings [data-kt-warn]')].find((x) => x.dataset.ktWarn === id);
+  if (el && entry) el.textContent = kintoneCodeWarn(d, entry);
 }
 
 // 右の欄の「一覧表の「設定」に出る文」だけを描き直す（打っている欄を作り直さないため）
@@ -10187,9 +10454,15 @@ function onTableFieldChange(el) {
         : pk === 'options' ? parseOptions(el.value)
         : pk === 'initial' && el.type === 'checkbox' ? [...document.querySelectorAll('#side-settings [data-tb="col.props.initial"]')].filter((x) => x.checked).map((x) => x.value)
         : el.tagName === 'TEXTAREA' ? el.value : el.value.trim() });
+    } else if (f.startsWith('kintone.')) {
+      const sub = f.slice(8);
+      const v = kintoneFieldValue(el, c, sub);
+      if (((c.kintone || {})[sub] || '') === v) return;
+      c.kintone = { type: '', code: '', formula: '', ...(c.kintone || {}), [sub]: v };
     }
     const apply = () => actions.updateItem(d.id, p.item.id, { props: { columns: cols.map(normalizeColumn) } });
     if (keep && f !== 'props.options') commitKeepSide(apply); else apply();
+    if (f.startsWith('kintone.')) refreshKintoneWarn(c.id);
     return;
   }
   const pr = clone(p.props);
@@ -12614,6 +12887,7 @@ function replaceWithImported(s, incoming) {
   d.revisions.push(revisionRow(d, 'import', { note: REV_AUTO.import }));
   Object.assign(d, designContentOf(incoming, true), { trashedAt: null, updatedAt: nowIso() });
   addCustomTarget(s, incoming.target);
+  relinkFreeDbs(s);
   syncLinkedItems(s); // 一覧にある元の項目とつなぎ直す（元がなければ「元なし」で固定。この画面設計から取り込んだ、ほかの画面設計の項目もそろう）
   clearDanglingStepRefs(s, designAndImporters(s, d.id)); // なくなった画面・ステータスを指していた作業の指す先を外す
   d.exchangeHash = shortHash(comparableContent(d, s)); // 取り込んだ中身の印（次に取り込むとき、こちらで変えていないと分かるように）
@@ -12663,6 +12937,7 @@ async function importHtmlText(text, { systemId = null } = {}) {
     store.commit((s) => {
       s.designs.push({ ...clone(incoming), trashedAt: null, updatedAt: nowIso() });
       addCustomTarget(s, incoming.target);
+      relinkFreeDbs(s);
       syncLinkedItems(s);
       const d = findDesign(s, incoming.id);
       d.exchangeHash = shortHash(comparableContent(d, s));
@@ -12689,6 +12964,7 @@ async function importHtmlText(text, { systemId = null } = {}) {
     store.commit((s) => {
       s.designs.push(copy);
       addCustomTarget(s, copy.target);
+      relinkFreeDbs(s);
       syncLinkedItems(s);
       if (systemId) putIntoSystem(s, systemId, copy.id);
     });
@@ -13311,9 +13587,15 @@ function aiListDesigns(args) {
   const { page, nextCursor } = aiPage(list.map(aiDesignSummary), args.cursor);
   return { designs: page, total: list.length, nextCursor };
 }
+// 項目・列の kintone の欄（書いてあるときだけ返す。種類は今の部品の種類で読む種類で、選べない種類を選んでいるときは既定。第 13 段階）
+function aiKintoneSummary(x, column = false) {
+  if (!x.kintone || !own(KINTONE_CHOICES, x.type)) return {};
+  const type = kintoneTypeOf(x, column);
+  return { kintone: { type, typeName: kintoneTypeName(type, x.type), code: x.kintone.code || '', formula: x.kintone.formula || '' } };
+}
 function aiItemSummary(d, it, ctx) {
-  const out = { id: it.id, name: it.name, type: it.type, typeName: itemTypeName(it.type), required: !!it.required, setting: describeItem(it, ctx) };
-  if (it.type === 'table') out.columns = (it.props.columns || []).map((c) => ({ id: c.id, name: c.name, type: c.type }));
+  const out = { id: it.id, name: it.name, type: it.type, typeName: itemTypeName(it.type), required: !!it.required, setting: describeItem(it, ctx), ...aiKintoneSummary(it) };
+  if (it.type === 'table') out.columns = (it.props.columns || []).map((c) => ({ id: c.id, name: c.name, type: c.type, ...aiKintoneSummary(c, true) }));
   if (it.type === 'status') Object.assign(out, { states: stateNames(it.props.states), actions: (it.props.actions || []).length }); // 操作の中身は get_flow で読む
   if (it.link) out.importedFrom = { design: it.link.designName || '', lost: !!it.link.lost };
   out.screens = screensWithItem(d, it.id).map((s) => s.name);
@@ -13347,7 +13629,16 @@ function aiPartSummary(d, sc, raw, ctx) {
   if (isInputType(raw.type)) Object.assign(out, { labelPos: raw.labelPos, sample: raw.sample || '', placeholder: raw.placeholder || '' });
   if (hasMoveTarget(raw)) out.to = aiMoveSummary(d, raw, ctx.state);
   if ((raw.type === 'status' || raw.type === 'steps') && raw.view) out.current = stateNameOf((p.props && p.props.states) || [], raw.view.current);
+  if (raw.type === 'table') Object.assign(out, aiTableViewSummary(p));
   return out;
+}
+// 表の見本の行の数と見本の値（列名ごと。値の入った列だけ。第 13 段階。q114 の ⑤）
+function aiTableViewSummary(p) {
+  const view = p.view || {};
+  const vals = view.samples || {};
+  const samples = {};
+  (p.columns || []).forEach((c) => { if ((vals[c.id] || []).some((x) => x !== '')) samples[c.name] = [...vals[c.id]]; });
+  return { rows: view.rows || 3, samples };
 }
 // 画面の中身。部品・吹き出し・部品の設定の一覧表の行を、この順に 1 つの並びにして、返事全体が目安に収まるように分ける
 // （どれか 1 つだけを分けると、ほかの並びが大きいときに目安を超えるため）。ページごとの parts・callouts・table は、その並びの続きの分だけ
@@ -13497,17 +13788,240 @@ function aiGetCatalog() {
     callout: { colors: Object.fromEntries(Object.entries(CALLOUT_COLORS).map(([k, v]) => [k, v[0]])), tips: { dot: '点', arrow: '矢印', none: 'なし' }, w: PALETTE_EXTRA.callout.w, h: PALETTE_EXTRA.callout.h },
     layout: {
       columnsLeft: [TPL_LEFT, TPL_COL2], columnWidth: LAYOUT_COL_W, spanWidth: LAYOUT_SPAN_W, twoColumnsMinWidth: LAYOUT_TWO_COL_MIN,
+      // 3・4 列（第 13 段階）。パソコンの画面の幅での列の左の端と幅。ほかの機器では、その画面の幅で分け、列の幅が gridMinWidth より狭くなるときは列を減らす
+      grid3: layoutGrid(DEVICES.pc.width, 3), grid4: layoutGrid(DEVICES.pc.width, 4), gridGap: LAYOUT_GRID_GAP, gridMinWidth: LAYOUT_GRID_MIN,
       rowGap: TPL_GAP, alignGap: LAYOUT_ALIGN_GAP, firstRowY: { withHeader: AI_FIRST_ROW_Y, withoutHeader: AI_FIRST_ROW_Y_NOHEADER }, grid: GRID,
     },
     // 見た目（第 12 段階）。帯の高さと、帯がある画面の並べ方の最初の行（firstRowY）は見た目で変わる
     looks: LOOKS.map((l) => ({ id: l.id, name: l.label, bandHeight: l.band, firstRowY: l.band + AI_FIRST_ROW_Y - LOOKS[0].band })),
     itemViews: { ...ITEM_VIEWS },
+    // kintone の種類（第 13 段階）。parts はその種類を選べる部品の種類、defaultFor は選ばないときにその種類になる部品の種類。
+    // auto は kintone が値を入れる種類（テーブルの列では選べない）
+    kintoneTypes: Object.entries(KINTONE_TYPES).map(([type, k]) => ({
+      type, name: k.name, auto: !!k.auto,
+      parts: Object.keys(KINTONE_CHOICES).filter((p) => KINTONE_CHOICES[p].includes(type)),
+      defaultFor: Object.keys(KINTONE_CHOICES).filter((p) => KINTONE_CHOICES[p][0] === type),
+    })),
   };
 }
 const AI_FIRST_ROW_Y = 64; // 帯がある画面の並べ方の最初の行（標準の見た目の高さ 40 の帯の下に 24 空ける）
 const AI_FIRST_ROW_Y_NOHEADER = 24; // 帯を消した画面の最初の行（Claude が決めた）
 // 並べ方の最初の行。帯の下に 24 空ける（帯の高さは見た目で変わる。第 12 段階）
 const aiFirstRowY = (d, sc) => (sc.showHeader ? bandHeight(d, sc) + AI_FIRST_ROW_Y - LOOKS[0].band : AI_FIRST_ROW_Y_NOHEADER);
+
+// ── kintone のアプリの形（get_kintone_app。第 13 段階・q113 の案A）──
+// 画面設計を、kintone の MCP サーバー（GitHub の kintone/mcp-server）の道具にそのまま渡せる形にする。kintone の MCP サーバーにはつながない
+// （入力の形は test/kintone-mcp-shapes.js に写して見比べる）。元のアプリの ID はモックイメージメーカーでは分からないので、空にして needsAppId に分ける
+const KT_UNIT_BEFORE = ['$', '¥', '￥', '€', '£']; // 数の前に付ける単位。ほかの単位（円・個・日など）は数の後ろ（Claude が決めた）
+const KT_REF_SIZES = ['1', '3', '5', '10', '20', '30', '40', '50']; // 関連レコード一覧の件数（kintone で選べる数）
+const ktText = (v) => str(v).trim();
+const ktUnit = (u) => (ktText(u) ? { unit: ktText(u), unitPosition: KT_UNIT_BEFORE.includes(ktText(u)) ? 'BEFORE' : 'AFTER' } : {});
+const ktOptions = (list) => Object.fromEntries((Array.isArray(list) ? list : []).map((o, i) => [o, { label: o, index: String(i) }]));
+const ktLabelHtml = (text) => esc(str(text)).replace(/\n/g, '<br>');
+// 項目・列 1 つの、kintone-add-form-fields の properties の値。部品の設定を写す（kintone にない設定は写さない）。warn は直してほしいことを足す
+function kintoneFieldProperty(entry, codes, column, warn) {
+  const type = kintoneTypeOf(entry, column);
+  const pr = entry.props || {};
+  const f = { type, code: codes[entry.id], label: entry.name };
+  if (KINTONE_TYPES[type] && KINTONE_TYPES[type].auto) return f;
+  if (entry.required && type !== 'SUBTABLE') f.required = true;
+  const put = (k, v) => { if (ktText(v)) f[k] = ktText(v); };
+  const formula = entry.kintone ? ktText(entry.kintone.formula) : '';
+  const choices = () => { f.options = ktOptions(pr.options); };
+  switch (type) {
+    case 'SINGLE_LINE_TEXT': case 'LINK':
+      if (entry.type === 'calc') { f.expression = formula; break; } // 文字列（1行）の自動計算
+      if (/^\d+$/.test(ktText(pr.maxLen))) f.maxLength = ktText(pr.maxLen);
+      put('defaultValue', pr.initial);
+      if (type === 'LINK') f.protocol = 'WEB';
+      break;
+    case 'MULTI_LINE_TEXT': case 'RICH_TEXT': put('defaultValue', pr.initial); break;
+    case 'NUMBER': put('minValue', pr.min); put('maxValue', pr.max); put('displayScale', pr.decimals); put('defaultValue', pr.initial); Object.assign(f, ktUnit(pr.unit)); break;
+    case 'CALC': Object.assign(f, { expression: formula, format: 'NUMBER' }, ktUnit(pr.unit)); break;
+    case 'DATE': if (pr.initial === 'today') f.defaultNowValue = true; else if (pr.initial === 'date') put('defaultValue', pr.initialDate); break;
+    case 'DATETIME': case 'TIME': if (pr.initial === 'now') f.defaultNowValue = true; break;
+    case 'DROP_DOWN': choices(); put('defaultValue', pr.initial); break;
+    case 'RADIO_BUTTON': {
+      choices();
+      const first = (pr.options || [])[0];
+      f.defaultValue = ktText(pr.initial) || first;
+      if (!ktText(pr.initial) && first != null) warn(`「${entry.name}」（ラジオボタン）は、kintone では初期値が要るので、最初の選択肢「${first}」を初期値にしました。`);
+      if (f.defaultValue == null) delete f.defaultValue;
+      f.align = pr.dir === 'v' ? 'VERTICAL' : 'HORIZONTAL';
+      break;
+    }
+    case 'CHECK_BOX': case 'MULTI_SELECT':
+      choices();
+      if (Array.isArray(pr.initial) && pr.initial.length) f.defaultValue = [...pr.initial];
+      if (type === 'CHECK_BOX') f.align = pr.dir === 'v' ? 'VERTICAL' : 'HORIZONTAL';
+      break;
+    case 'USER_SELECT': if (pr.initial === 'me') f.defaultValue = [{ code: 'LOGINUSER()', type: 'FUNCTION' }]; break;
+    case 'ORGANIZATION_SELECT': if (pr.initial === 'me') f.defaultValue = [{ code: 'PRIMARY_ORGANIZATION()', type: 'FUNCTION' }]; break;
+    case 'SUBTABLE': f.fields = Object.fromEntries((pr.columns || []).map((c) => [codes[c.id], kintoneFieldProperty(c, codes, true, warn)])); break;
+  }
+  return f;
+}
+// ルックアップ元・関連レコード一覧の元のデータベースの項目のフィールドコード（元が画面設計なら、その画面設計の get_kintone_app と同じコード）
+function kintoneSourceCode(src) {
+  const codes = src ? kintoneCodes(src) : {};
+  return (ref) => (ref.itemId && codes[ref.itemId]) || (ref.name ? kintoneCodeOf(ref.name) : '');
+}
+// ルックアップの付いた項目（needsAppId の 1 行。relatedApp.app は空）
+function kintoneLookupField(S, d, it, codes, warn) {
+  const lk = it.lookup;
+  const srcCode = kintoneSourceCode(lk.db.designId ? findDesign(S, lk.db.designId) : null);
+  const key = srcCode(lk.key);
+  const copies = lk.copies.filter((c) => {
+    if (c.to.itemId && findItem(d, c.to.itemId)) return true;
+    warn(`「${it.name}」のルックアップで写す先「${c.to.name}」が、この画面設計の項目にないので、fieldMappings から外しました。`);
+    return false;
+  });
+  const fieldMappings = copies.map((c) => ({ field: codes[c.to.itemId], relatedField: srcCode(c.from) }));
+  const property = {
+    type: kintoneTypeOf(it), code: codes[it.id], label: it.name, ...(it.required ? { required: true } : {}),
+    lookup: { relatedApp: { app: '', code: '' }, relatedKeyField: key, fieldMappings, lookupPickerFields: [key, ...fieldMappings.map((m) => m.relatedField)], filterCond: '', sort: '' },
+  };
+  return { kind: 'lookup', code: property.code, label: it.name, sourceDesign: dbLabel(S, lk.db), property };
+}
+// 関連レコード一覧の部品（どの画面のものも。同じ名前で同じ元のものは 1 つ）を、needsAppId の行にする。partIds はその部品の id
+function kintoneRelatedFields(S, d, codes, warn) {
+  const used = new Set(Object.values(codes));
+  const out = [];
+  d.screens.forEach((sc) => sc.parts.forEach((raw) => {
+    if (raw.type !== 'table' || raw.tableKind !== 'related') return;
+    const pr = normalizeTablePartProps(raw.props);
+    const label = partTitle(raw);
+    const same = out.find((x) => x.label === label && x.db === (pr.db.designId || pr.db.name));
+    if (same) { same.partIds.push(raw.id); return; }
+    const srcCode = kintoneSourceCode(pr.db.designId ? findDesign(S, pr.db.designId) : null);
+    const to = pr.cond.to.itemId && codes[pr.cond.to.itemId] ? codes[pr.cond.to.itemId] : pr.cond.to.name ? kintoneCodeOf(pr.cond.to.name) : '';
+    const condition = { field: to, relatedField: srcCode(pr.cond.from) };
+    if (!condition.field || !condition.relatedField) warn(`関連レコード一覧「${label}」の条件（どの項目が同じレコードを出すか）を書いていないので、referenceTable.condition を埋めてください。`);
+    if (ktText(pr.sort)) warn(`関連レコード一覧「${label}」の並べ順「${ktText(pr.sort)}」は、kintone の書き方（例: "フィールドコード desc"）に直して referenceTable.sort に書いてください。`);
+    const n = parseInt(pr.limit, 10);
+    const size = n > 0 ? KT_REF_SIZES.find((x) => Number(x) >= n) || '50' : '5';
+    const code = kintoneUniqueCode(kintoneCodeOf(label), used);
+    const property = {
+      type: 'REFERENCE_TABLE', code, label,
+      referenceTable: { relatedApp: { app: '', code: '' }, condition, filterCond: '', displayFields: pr.columns.map((c) => srcCode(c.ref)).filter(Boolean), sort: '', size },
+    };
+    out.push({ kind: 'related', code, label, sourceDesign: dbLabel(S, pr.db), property, partIds: [raw.id], db: pr.db.designId || pr.db.name });
+  }));
+  return out;
+}
+// フォームの並び（kintone-update-form-layout の layout）。画面の部品を、縦に重なるものを 1 行にまとめて左から並べる。
+// テーブルは SUBTABLE の行。見出し・説明の文字はラベル、区切り線は罫線。その画面に置いていない項目と関連レコード一覧は、いちばん下に 1 行ずつ足す
+function kintoneFormLayout(d, sc, codes, related, warn) {
+  const subtable = (it) => ({ type: 'SUBTABLE', code: codes[it.id], fields: (it.props.columns || []).map((c) => ({ type: kintoneTypeOf(c, true), code: codes[c.id] })) });
+  const itemField = (it, size) => (it.type === 'table' ? subtable(it) : { type: kintoneTypeOf(it), code: codes[it.id], ...(size ? { size } : {}) });
+  const placed = new Set();
+  const fieldOf = (raw) => {
+    const size = { width: String(Math.round(raw.w)) };
+    if (raw.type === 'heading') return { type: 'LABEL', label: `<b>${ktLabelHtml(raw.label)}</b>`, size };
+    if (raw.type === 'desc') return { type: 'LABEL', label: ktLabelHtml(raw.label), size };
+    if (raw.type === 'divider') return { type: 'HR', size };
+    const rel = raw.type === 'table' && raw.tableKind === 'related' ? related.find((x) => x.partIds.includes(raw.id)) : null;
+    if (rel) { placed.add(rel); return { type: 'REFERENCE_TABLE', code: rel.code }; }
+    const it = raw.itemId && isItemPart(raw) ? findItem(d, raw.itemId) : null;
+    if (!it || it.type === 'status') return null;
+    placed.add(it);
+    return itemField(it, size);
+  };
+  const parts = sc.parts.map((raw) => ({ raw, f: fieldOf(raw) })).filter((x) => x.f).sort((a, b) => a.raw.y - b.raw.y || a.raw.x - b.raw.x);
+  const rows = [];
+  parts.forEach((x) => {
+    const cur = rows[rows.length - 1];
+    if (cur && x.raw.y < cur.bottom) { cur.list.push(x); cur.bottom = Math.max(cur.bottom, x.raw.y + x.raw.h); } else rows.push({ list: [x], bottom: x.raw.y + x.raw.h });
+  });
+  const missing = [...d.items.filter((it) => it.type !== 'status' && !placed.has(it)), ...related.filter((r) => !placed.has(r))];
+  missing.forEach((x) => warn(`「${x.label || x.name}」はフォームにした画面「${sc.name}」に置いていないので、layout のいちばん下に足しました。`));
+  const tail = missing.map((x) => [x.kind ? { type: 'REFERENCE_TABLE', code: x.code } : itemField(x, null)]);
+  return [...rows.map((r) => r.list.sort((a, b) => a.raw.x - b.raw.x).map((x) => x.f)), ...tail].flatMap(kintoneLayoutRows);
+}
+// 1 行の並び（左から）を、kintone の行にする。テーブル（SUBTABLE）は 1 行を使うので、その前と後ろで行を分ける
+function kintoneLayoutRows(fields) {
+  const out = [];
+  let row = null;
+  fields.forEach((f) => {
+    if (f.type === 'SUBTABLE') { out.push(f); row = null; return; }
+    if (!row) { row = { type: 'ROW', fields: [] }; out.push(row); }
+    row.fields.push(f);
+  });
+  return out;
+}
+// kintone の MCP サーバーでは作れないもの（人が kintone の画面で設定すること）
+function kintoneManualSteps(S, d) {
+  const ctx = { design: d, state: S };
+  const out = [];
+  const st = d.items.find((it) => it.type === 'status');
+  if (st) {
+    out.push(`プロセス管理: ステータス＝${stateNames(st.props.states).join('／')}。kintone のアプリの設定の「プロセス管理」で、ステータスと次の操作（操作する人・条件）を設定する。`);
+    out.push(...actionLines(st.props).map((l) => `プロセス管理: ${l}`));
+  }
+  const buttons = [];
+  d.screens.forEach((sc) => sc.parts.forEach((raw) => {
+    const p = resolvePart(d, raw);
+    const setting = describePart(p, ctx).replace(/\n/g, '・');
+    if (raw.type === 'table' && raw.tableKind === 'records') {
+      const cols = tableColumns(p, ctx).map((c) => c.name).join('・');
+      out.push(`一覧: 画面「${sc.name}」のレコード一覧「${partTitle(raw)}」（${[cols && `列＝${cols}`, setting].filter(Boolean).join('・')}）を、kintone のアプリの設定の「一覧」で作る。`);
+    }
+    if (raw.type === 'graph') out.push(`グラフ: 画面「${sc.name}」のグラフ「${partTitle(raw)}」（${setting}）を、kintone のアプリの設定の「グラフ」で作る。`);
+    if (raw.type === 'button') buttons.push(`「${partTitle(raw)}」（画面「${sc.name}」${ktText(raw.props && raw.props.action) ? `。押したとき＝${ktText(raw.props.action)}` : ''}）`);
+  }));
+  if (buttons.length) out.push(`ボタン: ${buttons.join('・')}。kintone の標準のボタン（保存・キャンセル・編集など）とプロセス管理の操作で足りないものは、JavaScript かプラグインで作る。`);
+  out.push('アクセス権: 画面設計には書く欄がないので、誰がアプリ・レコード・フィールドを見る・直すかを人に確かめて、kintone のアプリの設定の「アクセス権」で設定する。');
+  return out;
+}
+// フォームにする画面（項目の部品がいちばん多い画面。同じ数なら前の画面）
+function kintoneFormScreen(d) {
+  const count = (sc) => sc.parts.filter((p) => p.itemId && isItemPart(p) && p.type !== 'status' && p.type !== 'steps' && findItem(d, p.itemId)).length;
+  return d.screens.reduce((best, sc) => (count(sc) > count(best) ? sc : best), d.screens[0]);
+}
+function aiGetKintoneApp(args) {
+  const S = aiState();
+  const d = aiResolveDesign(S, args.design);
+  const sc = args.screen == null ? kintoneFormScreen(d) : aiResolveScreen(d, args.screen);
+  const warnings = [];
+  const warn = (m) => warnings.push(m);
+  if (!isKintoneDesign(d)) warn('この画面設計は、作る先も見た目も kintone ではありません。kintone のアプリにするときは、update_design で作る先か見た目を kintone にしてください。');
+  kintoneEntries(d).forEach((x) => { const m = kintoneCodeWarn(d, x); if (m) warn(`「${x.name}」のフィールドコード「${x.kintone.code}」: ${m}`); });
+  kintoneEntries(d).filter((x) => x.type === 'calc' && !(x.kintone && ktText(x.kintone.formula))).forEach((x) => warn(
+    `「${x.name}」（自動計算の値）の kintone の計算式が空です。${ktText(x.props.formula) ? `言葉の計算式「${ktText(x.props.formula)}」` : '計算のしかた'}を kintone の書き方（例: 数量 * 単価）に直し、edit_items の kintone.formula に書いてから、もう一度読んでください。`));
+  const codes = kintoneCodes(d);
+  const fields = d.items.filter((it) => it.type !== 'status');
+  const isAuto = (it) => !!(KINTONE_TYPES[kintoneTypeOf(it)] || {}).auto;
+  const properties = Object.fromEntries(fields.filter((it) => !isAuto(it) && !it.lookup).map((it) => [codes[it.id], kintoneFieldProperty(it, codes, false, warn)]));
+  const systemFields = fields.filter(isAuto).map((it) => ({ type: kintoneTypeOf(it), code: codes[it.id], label: it.name }));
+  Object.keys(KINTONE_TYPES).forEach((t) => {
+    const same = systemFields.filter((f) => f.type === t);
+    if (same.length > 1) warn(`kintone のアプリに「${KINTONE_TYPES[t].name}」は 1 つしかありません（${same.map((f) => `「${f.label}」`).join('')}）。1 つにしてください。`);
+  });
+  const related = kintoneRelatedFields(S, d, codes, warn);
+  const needsAppId = [...fields.filter((it) => it.lookup).map((it) => kintoneLookupField(S, d, it, codes, warn)), ...related];
+  const layout = kintoneFormLayout(d, sc, codes, related, warn);
+  if (d.name.length > 64) warn(`アプリの名前は 64 文字までなので、画面設計の名前の初めの 64 文字にしました。`);
+  return {
+    design: { id: d.id, name: d.name }, formScreen: { id: sc.id, name: sc.name },
+    app: { name: d.name.slice(0, 64) }, generalSettings: { name: d.name.slice(0, 64), description: d.description },
+    properties, systemFields, needsAppId: needsAppId.map(({ kind, code, label, sourceDesign, property }) => ({ kind, code, label, sourceDesign, property })),
+    layout, howTo: kintoneHowTo(warnings, systemFields, needsAppId), manualSteps: kintoneManualSteps(S, d), warnings,
+  };
+}
+// kintone の MCP サーバーの道具を呼ぶ順
+function kintoneHowTo(warnings, systemFields, needsAppId) {
+  return [
+    ...(warnings.length ? ['warnings を先に人と確かめ、画面設計で直せるもの（edit_items の kintone など）は直してから、もう一度 get_kintone_app を読む。'] : []),
+    'kintone-add-app に app を渡して、アプリを作る（返事のアプリの ID を、この後の道具の app に渡す）。',
+    'kintone-add-form-fields に properties を渡して、フィールドを足す。',
+    ...(systemFields.length ? ['kintone-get-form-fields で、最初からあるフィールド（レコード番号・作成者など）の今のフィールドコードを読み、kintone-update-form-fields で systemFields の code と label に直す（properties は { 今のフィールドコード: { type, code, label } }）。'] : []),
+    ...(needsAppId.length ? ['needsAppId の property の relatedApp.app（ルックアップは lookup.relatedApp.app、関連レコード一覧は referenceTable.relatedApp.app）に、元のアプリ（sourceDesign）の ID を入れて、kintone-add-form-fields で足す。元のアプリがまだなければ、先にその画面設計を get_kintone_app で読んで作る。ID が分からなければ人に聞く。'] : []),
+    'kintone-update-form-layout に layout を渡して、フォームの並びを画面設計に合わせる。',
+    'kintone-update-general-settings に generalSettings を渡して、アプリの名前と説明を入れる。',
+    '人に確かめてから、kintone-deploy-app で本番の環境に反映する。',
+    'manualSteps（kintone の MCP サーバーでは作れないもの）を人に伝える。',
+  ].map((s, i) => `${i + 1}. ${s}`);
+}
 
 // ── 書く道具の共通の流れ（設計書の 8 章）──
 const AI_BUSY_WAIT_MS = 2000; // 人がドラッグ・日本語の変換をしている間に、書く頼みを待つ長さ（8-4）
@@ -13797,21 +14311,70 @@ function aiCurrentMoveOwner(d, cur) {
   if (!owner) throw new AiRefusal('not_found', '部品が今指している移る先の画面設計が、もうありません。designId も書いてください。');
   return owner;
 }
-// テーブルの列（{ name, type, required, memo, props } の配列）。同じ名前の列は今の列（id）を残して直す
-function aiTableColumns(cur, cols) {
+// テーブルの列（{ name, type, required, memo, props, kintone } の配列）。同じ名前の列は今の列（id と kintone の欄）を残して直す。
+// others は、列の kintone のフィールドコードと重ならないか見る、ほかの項目・列（テーブルの項目そのものを含む。今の列は含めない）
+function aiTableColumns(cur, cols, others = []) {
   if (!Array.isArray(cols) || !cols.length) throw aiBad('columns は列の配列で書いてください（1 つ以上）。');
+  const done = [];
   return cols.map((c, i) => {
     const name = isObj(c) ? cleanName(c.name) : '';
     if (!name) throw aiBad(`columns[${i}]: 列の名前（name）を書いてください。`);
     const old = cur.find((x) => x.name === name);
     const type = c.type == null ? (old ? old.type : 'text1') : str(c.type);
     if (!isInputType(type)) throw aiBad(`columns[${i}]: 列の種類「${type}」は使えません（入力欄の部品の種類だけ）。`);
-    const col = old && old.type === type ? clone(old) : { ...createColumnData(type, name), ...(old ? { id: old.id } : {}) };
+    const col = old && old.type === type ? clone(old) : { ...createColumnData(type, name), ...(old ? { id: old.id } : {}), ...(old && old.kintone ? { kintone: clone(old.kintone) } : {}) };
     if ('required' in c) col.required = !!c.required;
     if ('memo' in c) col.memo = str(c.memo);
     if (c.props != null) col.props = keepInitialInOptions(type, { ...col.props, ...aiProps(type, c.props, null) });
-    return normalizeColumn(col);
+    if (c.kintone !== undefined) {
+      try {
+        withKintone(col, aiKintone(col, c.kintone, [...others, ...done], true));
+      } catch (e) {
+        if (e instanceof AiRefusal) e.message = `columns[${i}]: ${e.message}`;
+        throw e;
+      }
+    }
+    const out = normalizeColumn(col);
+    done.push(out);
+    return out;
   });
+}
+// kintone の欄（edit_items・layout の kintone。第 13 段階）を検め、今の欄に重ねた形で返す（null は外す）。entry は項目か列（column は列）。
+// 種類はその部品の種類で選べるものだけ（既定の種類は空にする）。フィールドコードは kintone の決まりに合うものだけで、
+// ほかの項目・列（others）に書いたコードと重なれば断る（kintone のアプリの中でフィールドコードは重ねられないため）。計算式は自動計算の値だけ
+const AI_KINTONE_KEYS = ['type', 'code', 'formula'];
+function aiKintone(entry, v, others, column = false) {
+  if (v === null) return null;
+  if (!isObj(v)) throw aiBad('kintone は { type, code, formula } の形で書いてください（外すときは null）。');
+  if (!own(KINTONE_CHOICES, entry.type)) throw aiBad(`「${entry.name}」（${itemTypeName(entry.type)}）には kintone の欄を書けません${entry.type === 'status' ? '（ステータスは、kintone ではプロセス管理で作ります）' : ''}。`);
+  Object.keys(v).forEach((k) => { if (!AI_KINTONE_KEYS.includes(k)) throw aiBad(`kintone に「${k}」という欄はありません（使える欄: ${AI_KINTONE_KEYS.join('・')}）。`); });
+  const val = (k) => (v[k] == null ? '' : aiStrVal(v[k], `kintone.${k}`).trim());
+  const next = { ...(entry.kintone || {}) };
+  if ('type' in v) {
+    const t = val('type');
+    const ids = kintoneChoiceIds(entry.type, column);
+    if (t && entry.lookup) throw aiBad(`「${entry.name}」にはルックアップが付いているので、kintone の種類は選べません（ルックアップのフィールドとして渡します）。`);
+    if (t && !ids.includes(t)) throw aiBad(`「${entry.name}」（${itemTypeName(entry.type)}${column ? 'の列' : ''}）の kintone の種類に「${t}」は選べません（選べる種類: ${ids.join('・')}）。`);
+    next.type = t === ids[0] ? '' : t;
+  }
+  if ('code' in v) {
+    const c = val('code');
+    if (c && !kintoneCodeOk(c)) throw aiBad(`「${c}」はフィールドコードに使えません（文字・数字・_ だけで、数字で始めない。${KINTONE_CODE_MAX} 字まで）。`);
+    const same = c && others.find((x) => x.id !== entry.id && x.kintone && x.kintone.code === c);
+    if (same) throw aiBad(`「${same.name}」と同じフィールドコード「${c}」は使えません（kintone のアプリの中で、フィールドコードは重ねられません）。`);
+    next.code = c;
+  }
+  if ('formula' in v) {
+    const f = val('formula');
+    if (f && entry.type !== 'calc') throw aiBad(`kintone の計算式（formula）を書けるのは、自動計算の値の項目だけです（「${entry.name}」は${itemTypeName(entry.type)}）。`);
+    next.formula = f;
+  }
+  return normalizeKintone(next);
+}
+// 項目の kintone の欄を検めて付ける。フィールドコードの重なりは、画面設計のほかの項目・列と、この項目の列とで見る（d にまだない新しい項目の列も）
+function aiItemKintone(d, item, v) {
+  const cols = d.items.includes(item) ? [] : item.type === 'table' ? item.props.columns || [] : [];
+  withKintone(item, aiKintone(item, v, [...kintoneEntries(d).filter((x) => x.id !== item.id), ...cols]));
 }
 // 項目の設定（edit_items の props）を検め、項目に入れる形で返す。tx があれば、なくなったステータスを使っていた操作を消したことを知らせる
 function aiItemProps(d, item, props, tx = null) {
@@ -13819,7 +14382,9 @@ function aiItemProps(d, item, props, tx = null) {
   if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
   if (item.type === 'table') {
     Object.keys(props).forEach((k) => { if (k !== 'columns') throw aiBad(`テーブルの項目の設定に「${k}」という欄はありません（使える欄: columns）。`); });
-    return { columns: aiTableColumns(item.props.columns || [], props.columns) };
+    const cur = item.props.columns || [];
+    const others = [item, ...kintoneEntries(d).filter((x) => x.id !== item.id && !cur.includes(x))]; // 今の列は書き直すので、重なりを見る相手から除く
+    return { columns: aiTableColumns(cur, props.columns, others) };
   }
   if (item.type === 'status') {
     if ('actions' in props) throw aiBad('ステータスの操作（actions）は、edit_process で直してください（edit_items で書けるのは states だけです）。');
@@ -13853,8 +14418,42 @@ function aiTablePartProps(kind, cur, props, d) {
     if (!isObj(props.cond)) throw aiBad('cond は { from: 元の項目名, to: この画面設計の項目名 } の形で書いてください。');
     next.cond = { from: ref(src, props.cond.from, 'cond.from'), to: ref(d, props.cond.to, 'cond.to') };
   }
-  if ('columns' in props) next.columns = aiArr(props.columns, 'columns').map((n) => ({ id: newId('c'), ref: ref(src, n, 'columns') }));
+  if ('columns' in props) {
+    // 同じ項目（一覧にないデータベースの項目は同じ名前）の列は、今の列の id を使い回す（見本の値と列の幅を残すため。第 13 段階。q114 の ⑤）
+    const left = [...next.columns];
+    next.columns = aiArr(props.columns, 'columns').map((n) => {
+      const r = ref(src, n, 'columns');
+      const old = left.find((c) => (r.itemId ? c.ref.itemId === r.itemId : !c.ref.itemId && c.ref.name === r.name));
+      if (old) left.splice(left.indexOf(old), 1);
+      return { id: old ? old.id : newId('c'), ref: r };
+    });
+  }
   return next;
+}
+// 表の見本の値（layout・edit_parts の samples。第 13 段階。q114 の ⑤）を、列の id ごとの値に直す。cols は表の列（{ id, name }）。
+// 列は名前か id で書き、値は文字か数（null は空）。1 つの列に 20 行まで（見本の行の数の上限と同じ）
+const AI_SAMPLE_ROWS_MAX = 20;
+function aiTableSamples(cols, v) {
+  if (!isObj(v)) throw aiBad('samples は { 列名: [値, …] } の形で書いてください。');
+  const out = {};
+  Object.entries(v).forEach(([k, a]) => {
+    const col = cols.find((c) => c.id === k) || cols.find((c) => c.name === cleanName(k));
+    if (!col) throw aiBad(`「${k}」という列は、この表にありません（列: ${cols.map((c) => c.name).join('・') || 'なし'}）。`);
+    if (!Array.isArray(a)) throw aiBad(`samples の「${k}」は、値の配列で書いてください。`);
+    if (a.length > AI_SAMPLE_ROWS_MAX) throw aiBad(`見本の値は 1 つの列に ${AI_SAMPLE_ROWS_MAX} 行までです（「${k}」は ${a.length} 個）。`);
+    out[col.id] = a.map((x, i) => (x == null ? '' : aiStrVal(x, `samples の「${k}」の ${i + 1} 番目`)));
+  });
+  return out;
+}
+// 見本の値を入れたときの見本の行の数（今の行の数より値が多い列があれば、その数まで増やす。減らさない）
+const aiSampleRows = (rows, samples) => Math.max(rows || 3, ...Object.values(samples).map((a) => a.length));
+// 並べ方で置く表の列（{ id, name }）。テーブルは項目の列（同じ頼みで項目の列を直すときは、直した後の列）、
+// レコード一覧・関連レコード一覧は spec の設定の列
+function aiLayoutTableColumns(d, spec, plan) {
+  if (!spec.itemId) return tableColumns({ type: 'table', tableKind: spec.tableKind, props: spec.props }, { design: d, state: store.state });
+  const patch = plan.itemPatches.find((x) => x.itemId === spec.itemId && x.props);
+  const it = findItem(d, spec.itemId) || plan.created.find((x) => x.id === spec.itemId);
+  return (patch ? patch.props : it.props).columns || [];
 }
 // 移る先（to。第 8 段階）を、ボタン・リンクの文字の設定（props）の欄に直す。to は 画面の名前か id（この画面設計の画面）・
 // { screen, design }（design を書くと、ほかの画面設計の画面）・{ url }・null（なし）。人の操作と同じく、使わない欄（URL など）は残す
@@ -13969,6 +14568,7 @@ function aiItemOp(tx, op) {
           it.props = aiItemProps(dd, it, op.props, tx);
           clearGoneStates(dd, it, before);
         }
+        if (op.kintone !== undefined) aiItemKintone(dd, it, op.kintone);
       });
       return { op: 'update', id: item.id, name: findItem(d(), item.id).name };
     }
@@ -14012,6 +14612,7 @@ function aiNewItem(d, op, { name: forced = null } = {}) {
   item.required = !!op.required;
   item.memo = str(op.memo);
   if (op.props != null) item.props = aiItemProps(d, item, op.props);
+  if (op.kintone !== undefined) aiItemKintone(d, item, op.kintone);
   return item;
 }
 // ルックアップ（設計書 5 章。kintone のルックアップと同じ並び）。lookup: { design, key, copies: [{ from, to, create }] } か null（外す）
@@ -14173,7 +14774,7 @@ function aiScreenOp(tx, op) {
 function aiLayout(tx, designId, screenId, layout, mode) {
   if (!isObj(layout) || !Array.isArray(layout.rows) || !layout.rows.length) throw aiBad('layout は { columns, rows } の形で書き、rows に 1 行以上書いてください。');
   const columns = layout.columns == null ? 1 : layout.columns;
-  if (columns !== 1 && columns !== 2) throw aiBad('layout.columns は 1 か 2 です。');
+  if (![1, 2, 3, 4].includes(columns)) throw aiBad('layout.columns は 1〜4 です。');
   if (!['append', 'replace'].includes(mode)) throw aiBad('mode は "append"（今の部品の下に足す）か "replace"（部品と吹き出しを全部消して置き直す）です。');
   if (mode === 'replace') {
     const s0 = findScreen(designId, screenId);
@@ -14202,6 +14803,7 @@ function aiLayout(tx, designId, screenId, layout, mode) {
     if (!Array.isArray(row)) throw aiBad(`rows[${ri}] は部品の並び（配列）か { align, parts } の形で書いてください。`);
     return row.map((e, pi) => entry(e, `rows[${ri}][${pi}]`));
   });
+  rows.forEach((row) => aiAutoButtonStyles(isAlignRow(row) ? row.parts : row));
   const firstY = aiFirstRowY(findDesign(store.state, designId), sc);
   const startY = sc.parts.length ? Math.ceil((Math.max(...sc.parts.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : firstY;
   const { placed } = layoutPlacements({ rows, columns }, { width: sc.width, startY, sizeOf: (s) => ({ type: s.type, w: s.w0, h: s.h0 }) });
@@ -14211,11 +14813,14 @@ function aiLayout(tx, designId, screenId, layout, mode) {
   const ids = [];
   mutateDesign(designId, (dd) => {
     dd.items.push(...plan.created);
-    plan.itemPatches.forEach(({ itemId, props }) => {
+    plan.itemPatches.forEach(({ itemId, props, kintone }) => {
       const it = findItem(dd, itemId);
-      const before = stateIdsOf(it);
-      it.props = props;
-      clearGoneStates(dd, it, before);
+      if (props) {
+        const before = stateIdsOf(it);
+        it.props = props;
+        clearGoneStates(dd, it, before);
+      }
+      if (kintone !== undefined) withKintone(it, kintone);
     });
     const s = dd.screens.find((x) => x.id === screenId);
     placed.forEach((pl) => {
@@ -14250,7 +14855,8 @@ function aiLayoutSpec(tx, d, e, used, plan) {
     // まだなければ、書いた props（states）・required・memo で作る（{} を渡すと見本の並びになり、書いたステータスが捨てられていた。見直し④-2）
     item = d.items.find((it) => it.type === 'status') || plan.created.find((it) => it.type === 'status') || aiLayoutNewItem(d, 'status', 'ステータス', e, plan);
   }
-  const spec = { span: e.span === 2 ? 2 : undefined, fields: {}, unnumbered: e.no === null };
+  if (e.span != null && ![1, 2, 3, 4].includes(e.span)) throw aiBad('span は 1〜4 です。');
+  const spec = { span: e.span >= 2 ? e.span : undefined, fields: {}, unnumbered: e.no === null };
   if (item) {
     if (item.type === 'status') type = type === 'steps' ? 'steps' : 'status';
     else if (item.type === 'table') type = 'table';
@@ -14259,20 +14865,28 @@ function aiLayoutSpec(tx, d, e, used, plan) {
     if (oncePerScreen(item.type) && used.has(item.id)) throw new AiRefusal('duplicate_item', `項目「${item.name}」は、この画面にもう置いてあります（1 つの画面に同じ項目は 1 回だけ）。`);
     used.add(item.id);
     spec.itemId = item.id;
-    if (e.props != null && !plan.created.includes(item)) {
-      if (item.link) throw new AiRefusal('linked', `「${item.name}」は「${item.link.designName}」から取り込んだ項目なので、設定はここでは直せません。`);
-      plan.itemPatches.push({ itemId: item.id, props: aiItemProps(d, item, e.props, tx) });
+    // 今ある項目に props・kintone を書いたときは、その項目を直す（mutateDesign の中で当てる）
+    if ((e.props != null || e.kintone !== undefined) && !plan.created.includes(item)) {
+      if (item.link) throw new AiRefusal('linked', `「${item.name}」は「${item.link.designName}」から取り込んだ項目なので、設定と kintone の欄はここでは直せません。`);
+      const patch = { itemId: item.id };
+      if (e.props != null) patch.props = aiItemProps(d, item, e.props, tx);
+      if (e.kintone !== undefined) patch.kintone = aiKintone(item, e.kintone, kintoneEntries({ items: [...d.items, ...plan.created] }).filter((x) => x.id !== item.id));
+      plan.itemPatches.push(patch);
     }
     if (item.type === 'status') spec.view = { current: aiStatusCurrent(item, e.current) };
   } else {
     if (!type) throw aiBad('item（項目名）か type（部品の種類）を書いてください。');
+    if (e.kintone !== undefined) throw aiBad('kintone を書けるのは、データベースの項目の部品だけです。');
     if (e.label != null) spec.label = aiStrVal(e.label, 'label');
     if (type === 'table') {
       spec.tableKind = e.tableKind == null ? 'records' : str(e.tableKind);
       if (!['records', 'related'].includes(spec.tableKind)) throw aiBad('表の中身（tableKind）は "subtable"（テーブル）・"records"（レコード一覧）・"related"（関連レコード一覧）です。');
       if (e.props != null) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), e.props, d);
     } else spec.props = aiProps(type, e.props, d) || undefined;
-    if (type === 'button') spec.props = aiButtonProps(e, spec.props);
+    if (type === 'button') {
+      spec.props = aiButtonProps(e, spec.props);
+      spec.autoStyle = !(spec.props && 'style' in spec.props); // style を書かないボタン（aiAutoButtonStyles で決める）
+    }
     if (e.to !== undefined && MOVE_PART_TYPES.includes(type)) spec.props = { ...(spec.props || {}), ...aiMoveTarget(d, e.to) };
   }
   if (e.to !== undefined && !MOVE_PART_TYPES.includes(type)) throw aiBad(AI_TO_PARTS);
@@ -14282,6 +14896,7 @@ function aiLayoutSpec(tx, d, e, used, plan) {
   }
   ['sample', 'placeholder'].forEach((k) => { if (e[k] != null) spec.fields[k] = aiStrVal(e[k], k); });
   const size = defaultPartSize(type);
+  if (type === 'button') size.w = aiButtonWidth(spec.label == null ? partType('button').label : spec.label);
   if (e.rows != null) {
     if (type !== 'table') throw aiBad('rows（見本の行の数）を書けるのは表だけです。');
     const n = Math.round(aiNum(e.rows, 'rows'));
@@ -14289,12 +14904,21 @@ function aiLayoutSpec(tx, d, e, used, plan) {
     spec.view = { rows: n };
     size.h = tableHeight(n);
   }
+  if (e.samples != null) {
+    if (type !== 'table') throw aiBad('samples（見本の値）を書けるのは表だけです。');
+    // レコード一覧・関連レコード一覧の列の id を、置く前に決めておく（設定を書かないときは最初の列）
+    if (!spec.itemId && !spec.props) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), {}, d);
+    const samples = aiTableSamples(aiLayoutTableColumns(d, spec, plan), e.samples);
+    const rows = aiSampleRows(spec.view && spec.view.rows, samples);
+    spec.view = { ...(spec.view || {}), rows, samples };
+    size.h = tableHeight(rows);
+  }
   return { ...spec, type, w0: size.w, h0: size.h };
 }
 function aiLayoutNewItem(d, type, name, e, plan) {
   const itemType = type === 'steps' ? 'status' : type;
   if (!isItemType(itemType)) throw aiBad(`「${partType(type).name}」はデータベースの項目になりません。item を外してください。`);
-  const item = aiNewItem({ items: [...d.items, ...plan.created] }, { type: itemType, name, required: e.required, memo: e.memo, props: e.props, allowSameName: e.allowSameName });
+  const item = aiNewItem({ items: [...d.items, ...plan.created] }, { type: itemType, name, required: e.required, memo: e.memo, props: e.props, kintone: e.kintone, allowSameName: e.allowSameName });
   plan.created.push(item);
   return item;
 }
@@ -14305,6 +14929,12 @@ function aiStatusCurrent(item, v) {
   const id = resolveStateRef(states, cleanName(aiStrVal(v, 'current')));
   if (!id) throw aiBad(`current に書けるのは、ステータスの並び（${stateNames(states).join('・')}）のどれかです。`);
   return id;
+}
+// AI が置くボタンの幅（第 13 段階。q114 の ②）。文字を全角 15・半角 9 で数え、左右に 16 ずつ足し、8 の倍数に切り上げ、96 より狭くしない（Claude が決めた）
+const aiButtonWidth = (label) => Math.max(PART_TYPES.button.w, Math.ceil(([...str(label)].reduce((n, ch) => n + (/[\x20-\x7e]/.test(ch) ? 9 : 15), 0) + 32) / GRID) * GRID);
+// style を書かないボタンは、その行の最初のボタンだけ青（primary）、ほかは白（normal）（第 13 段階。q114 の ②。1 行に青いボタンが並ばないように）
+function aiAutoButtonStyles(specs) {
+  specs.filter((s) => s.type === 'button').forEach((s, i) => { if (s.autoStyle) s.props = { ...(s.props || {}), style: i === 0 ? 'primary' : 'normal' }; });
 }
 // ボタンの見た目（style の短い書き方）を設定に入れる
 function aiButtonProps(e, props) {
@@ -14350,6 +14980,9 @@ function aiPartOp(tx, sid, op) {
       // 表の見本の行を増やすと、下へはみ出す分だけ画面を伸ばす（上限まで）
       if (patch.view && patch.view.rows && p.y + tableHeight(patch.view.rows) > sc().height) aiCheckBottom(p.y + tableHeight(patch.view.rows), '表の下の端');
       actions.updatePart(id, sid, p.id, patch);
+      // ボタンの文字を直してはみ出すときは、幅を広げる（狭めない。第 13 段階。q114 の ②）
+      const need = p.type === 'button' && patch.label !== undefined ? aiButtonWidth(patch.label) : 0;
+      if (need > p.w) actions.movePart(id, sid, p.id, { x: p.x, y: p.y, w: need, h: p.h });
       return { op: 'update', ...brief(p.id) };
     }
     case 'move': {
@@ -14442,17 +15075,26 @@ function aiPartPatch(tx, d, p, op) {
     if (n < 1 || n > 20) throw aiBad('rows は 1〜20 です。');
     patch.view = { rows: n };
   }
+  if (op.samples !== undefined) {
+    if (p.type !== 'table') throw aiBad('samples（見本の値）を書けるのは表だけです。');
+    // 同じ頼みで列を直すときは、直した後の列で引き当てる。書かなかった列の見本の値は残す
+    const pr = patch.props || (item ? item.props : p.props);
+    const cols = item ? pr.columns || [] : tableColumns({ ...p, props: pr }, { design: d, state: store.state });
+    const samples = aiTableSamples(cols, op.samples);
+    const view = p.view || {};
+    patch.view = { ...(patch.view || {}), rows: aiSampleRows((patch.view && patch.view.rows) || view.rows, samples), samples: { ...(view.samples || {}), ...samples } };
+  }
   if (op.current !== undefined) {
     if (!['status', 'steps'].includes(p.type) || !item) throw aiBad('current を書けるのは、ステータスの印と進み具合の矢印だけです。');
     patch.view = { ...(patch.view || {}), current: aiStatusCurrent(item, op.current) };
   }
-  if (!Object.keys(patch).length) throw aiBad('直す欄を 1 つ以上書いてください（label・required・memo・props・style・to・labelPos・sample・placeholder・numbered・rows・current）。');
+  if (!Object.keys(patch).length) throw aiBad('直す欄を 1 つ以上書いてください（label・required・memo・props・style・to・labelPos・sample・placeholder・numbered・rows・samples・current）。');
   return patch;
 }
 
 // ── 書く道具: 吹き出し ──
 const AI_CALLOUT_OPS = ['add', 'update', 'move', 'delete'];
-const AI_CALLOUT_OUTSIDE = 24; // 吹き出しを置く既定の位置: つなぐ部品の右の、画面の外 24 ドット（Claude が決めた）
+const AI_CALLOUT_OUTSIDE = 24; // 吹き出しを置く既定の位置: 画面の外 24 ドット（右の外か、つなぐ部品が画面の左半分なら左の外。Claude が決めた）
 async function aiEditCallouts(args, ctx) {
   return aiWrite(ctx, { design: args.design, expect: args.expect }, (tx) => {
     const sid = aiResolveScreen(tx.design, args.screen).id;
@@ -14485,7 +15127,10 @@ function aiCalloutOp(tx, sid, op) {
       const text = op.text == null ? '' : aiStrVal(op.text, 'text');
       if (!text.trim()) throw aiBad('吹き出しの文（text）を書いてください。');
       const target = op.target == null ? null : aiResolvePart(sc(), op.target);
-      const at = { x: sc().width + AI_CALLOUT_OUTSIDE, y: target ? target.y : aiFirstRowY(findDesign(store.state, id), sc()) };
+      // つなぐ部品の真ん中が画面の左半分なら、左の外に置く（線が右の列の部品を横切らないため。第 13 段階。q114 の ③）
+      const left = target && target.x + target.w / 2 < sc().width / 2;
+      const w = op.w === undefined ? PALETTE_EXTRA.callout.w : aiNum(op.w, 'w');
+      const at = { x: left ? -(w + AI_CALLOUT_OUTSIDE) : sc().width + AI_CALLOUT_OUTSIDE, y: target ? target.y : aiFirstRowY(findDesign(store.state, id), sc()) };
       if (op.x === undefined && op.y === undefined) while (sc().callouts.some((c) => c.x === at.x && c.y === at.y)) at.y += PALETTE_EXTRA.callout.h + 16;
       const cid = actions.addCallout(id, sid, rectOf(at), target ? target.id : null);
       const patch = { text };
@@ -15433,6 +16078,7 @@ const AI_TOOLS = {
   get_design: { write: false, run: aiGetDesign },
   get_screen: { write: false, run: aiGetScreen },
   get_catalog: { write: false, run: aiGetCatalog },
+  get_kintone_app: { write: false, run: aiGetKintoneApp },
   get_screen_image: { write: false, run: aiGetScreenImage },
   get_flow: { write: false, run: aiGetFlow },
   get_view_image: { write: false, run: aiGetViewImage },
@@ -15839,7 +16485,7 @@ async function openAiConnectDialog() {
     aiPassive: true,
     body: `
       <div class="aic-status" id="aic-status">${aiConnectStatusHtml()}</div>
-      <p>Claude Code などの AI から、このアプリの画面設計を読んだり、作ったり、直したりできます（MCP というつなぎ方を使います）。
+      <p>Claude Code などの AI から、このアプリの画面設計とシステムを読んだり、作ったり、直したりできます（MCP というつなぎ方を使います）。
       使う前に、AI のアプリに、このアプリを 1 回だけ登録してください。</p>
       <div class="aic-sec">
         <h3>Claude Code に登録する<span class="spacer"></span><button class="btn small aic-copy" data-copy="claude">コピー</button></h3>
@@ -15851,11 +16497,12 @@ async function openAiConnectDialog() {
         <h3>ほかの AI のアプリ（MCP に対応したもの）に登録する<span class="spacer"></span><button class="btn small aic-copy" data-copy="json">コピー</button></h3>
         <div class="hint">それぞれのアプリの説明に従って、MCP の設定に下の内容を書きます。</div>
         <div class="aic-code" data-code="json">${esc(info.json)}</div>
+        <div class="hint">Claude のデスクトップアプリに登録したときは、Claude のデスクトップアプリを完全に終了して（窓を閉じても終わらないときは、タスクトレイのアイコンから終了して）、起動し直すと使えます。</div>
       </div>
       ${info.dev ? '<div class="aic-dev">これは開発版（npm start で動かしているアプリ）の文です。インストールした版のアプリでは、その版の「AI とつなぐ」に出る文を使ってください。</div>' : ''}
       <ul class="aic-notes">
         <li>AI が今ある画面設計を直すと、直す前の中身が改訂履歴に「AI が直す前の状態」として自動で残ります。そこから戻せます。</li>
-        <li>AI には、画面設計の削除・ごみ箱へ移すこと・改訂履歴の行を消すことはさせません。</li>
+        <li>AI には、画面設計とシステムをごみ箱へ移すこと・完全に削除すること・改訂履歴の行を消すこと・資料を入れることと消すことはさせません。</li>
         <li>アプリを新しい版に入れ替えるときは、先にアプリを終了してください（タスクトレイのアイコンの「終了」）。入れ替えた後は、Claude Code の <b>/mcp</b> でつなぎ直します。</li>
       </ul>`,
     init: (modal) => modal.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => {
@@ -16033,6 +16680,7 @@ function exposeForTest() {
     SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount, notesChangeCount, aiOnlyNotesChanged,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
+    KINTONE_TYPES, kintoneChoices, kintoneTypeOf, kintoneCodeOf, kintoneCodeOk, kintoneCodes, isKintoneDesign,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     setMaterialWaitMs: (ms) => { materialWaitMs = ms; },
     ready: true,

@@ -1,7 +1,7 @@
 // tools/check-mcp.js の場面 D（資料の置き場。第 9 段階の後半）。AI の入口（mcp-server）から、資料の道具 3 つを本物のアプリで確かめる。
 // 起動の前に、保存先へ見本のシステム 1 つ（役割 2・作業 2）と資料 8 つ（Excel・Word・PDF・BDM の HTML・Shift_JIS の文字・PNG の画像・仕込んだ指示の文字・古い形の Excel）のファイルを置く。
 //  0. 読める資料 7 つを同時に頼んでも、全部読める（AI が道具の呼び出しを並べて出す場合。最初の読みで動かす）
-//  1. 道具は 35 個（第 10 段階で設計ノートの 3 個と説明書の 1 個、第 11 段階で export_bdm が増えた）で、list_materials・read_material・swimlane_from_bdm がある
+//  1. 道具は 36 個（第 10 段階で設計ノートの 3 個と説明書の 1 個、第 11 段階で export_bdm、第 13 段階で get_kintone_app が増えた）で、list_materials・read_material・swimlane_from_bdm がある
 //  2. list_materials は資料を 8 つ返し、保存したファイルの名前（file）と場所は返さない。古い形の行だけ oldFormat
 //  3. read_material: Excel は断り書き notice が先頭で、番地と値が読める ／ PDF は日本語の文字が読め、文字のない 3 ページ目は画像（長い辺 1568 以下）で渡る ／
 //     Word の見出しと表・BDM の図のレーン・Shift_JIS の日本語の文字が読める ／ 古い形は old_format で断る ／ cursor が範囲の外なら bad_cursor（見本は 1 回で全部読めるので、nextCursor は null）

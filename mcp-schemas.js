@@ -42,10 +42,22 @@ const S = {
   labelPos: z.enum(['top', 'left']).describe('項目名の位置: "top"（入力欄の上）・"left"（入力欄の左）'),
   rows: z.number().int().min(1).max(20).describe('表の見本の行の数（1〜20）'),
   current: z.string().describe('ステータスの印・進み具合の矢印で、見本に出すステータス'),
+  // 表の見本の値（第 13 段階。q114 の ⑤）
+  samples: z.record(z.array(z.union([z.string(), z.number(), z.null()])).max(20))
+    .describe('表の見本の値 { 列名か列の id: [上の行からの値, …] }（20 行まで）。書いた列だけを直し、値の数が見本の行の数より多いときは行を増やす'),
   look: z.enum(LOOKS).describe('見た目: "standard"（標準）・"salesforce"（Salesforce に似せる）・"kintone"（kintone に似せる）。帯の形と高さ、部品の色と枠が変わる'),
   bandTabs: z.array(z.string()).max(BAND_TABS_MAX).describe(`Salesforce の見た目の帯に並べるタブ（文字の配列。${BAND_TABS_MAX} 個まで。空なら「ホーム」と画面設計の名前）`),
   style: z.enum(['primary', 'normal']).describe('ボタンの見た目: "primary"（目立つ・青）・"normal"（ふつう・白）'),
   no: z.null().describe('null で赤い番号を外す'),
+  // kintone のフィールドの情報（第 13 段階）。テーブルの列は props.columns[].kintone に同じ形で書く
+  kintone: z.union([
+    obj({
+      type: opt(z.string().describe('kintone の種類（get_catalog の kintoneTypes の type。部品の種類で選べるものだけ。"" で既定）')),
+      code: opt(z.string().describe('フィールドコード（文字・数字・_ だけで、数字で始めない。128 字まで。アプリの中で重ねない。"" で項目名から作る）')),
+      formula: opt(z.string().describe('kintone の書き方の計算式（自動計算の値の項目だけ。例 "数量 * 単価"）')),
+    }),
+    z.null(),
+  ]).describe('kintone のフィールドの情報。書いた欄だけを直し、null で外す（read_guide の "kintone"）'),
 };
 const where = { before: opt(z.union([z.string(), z.number()]).describe('この前に動かす')), after: opt(z.union([z.string(), z.number()]).describe('この後ろに動かす')), index: opt(z.number().int().describe('並べ替えた後の位置（0 がいちばん上）')) };
 const rect = { x: opt(z.number()), y: opt(z.number()), w: opt(z.number()), h: opt(z.number()) };
@@ -56,7 +68,7 @@ const layoutPart = obj({
   item: opt(S.item.describe('置くデータベースの項目（項目名か id）。その名前の項目がなく type を書いたときは、項目を新しく作って置く')),
   type: opt(z.string().describe('部品の種類（get_catalog の parts[].type）。item を書いたときは省ける')),
   label: opt(z.string().describe('見出し・ボタン・説明の文字などの文字（新しく作る項目なら項目名）')),
-  span: opt(z.union([z.literal(1), z.literal(2)]).describe('2 で 2 列の幅いっぱいに広げる')),
+  span: opt(z.number().int().min(1).max(4).describe('またぐ列の数（1〜4。2 列の並べ方では 2 で 2 列の幅いっぱい、3・4 列ではその数の列の幅）')),
   sample: opt(z.string().describe('入力欄の見本の値')),
   placeholder: opt(z.string().describe('入力欄の薄い字')),
   labelPos: opt(S.labelPos),
@@ -64,11 +76,13 @@ const layoutPart = obj({
   props: opt(S.props),
   tableKind: opt(z.enum(TABLE_KINDS).describe('表の中身: "subtable"（テーブル）・"records"（レコード一覧）・"related"（関連レコード一覧）')),
   rows: opt(S.rows),
+  samples: opt(S.samples),
   current: opt(S.current),
   style: opt(S.style),
   to: opt(S.to),
   required: opt(z.boolean().describe('新しく作る項目を必須にする')),
   memo: opt(z.string().describe('新しく作る項目のメモ')),
+  kintone: opt(S.kintone.describe('項目の kintone のフィールドの情報（新しく作る項目にも、今ある項目にも書ける。read_guide の "kintone"）')),
   allowSameName: opt(z.boolean().describe('同じ名前の項目があっても新しく作る')),
 });
 const layoutRow = z.union([
@@ -76,7 +90,7 @@ const layoutRow = z.union([
   obj({ align: opt(z.enum(['left', 'center', 'right'])), parts: z.array(layoutPart).min(1) }).describe('列に合わせず横に並べ、左・真ん中・右に寄せる行（ボタンの行）'),
 ]);
 const layout = obj({
-  columns: opt(z.union([z.literal(1), z.literal(2)]).describe('列の数（2 列はパソコンの画面だけ）')),
+  columns: opt(z.number().int().min(1).max(4).describe('列の数（1〜4。2 列はパソコンの画面だけ。3・4 列は列の幅が 160 より狭くなる機器では列を減らす）')),
   rows: z.array(layoutRow).min(1).describe('上から順に置く行'),
 }).describe('部品の並べ方（read_guide の "layout"）。位置と大きさはアプリが決める');
 
@@ -92,7 +106,8 @@ const lookup = obj({
 });
 const itemFields = {
   required: opt(z.boolean()), memo: opt(z.string()),
-  props: opt(S.props.describe('項目の設定の欄（get_catalog の parts[].props と itemProps。テーブルは columns、ステータスは states）')),
+  props: opt(S.props.describe('項目の設定の欄（get_catalog の parts[].props と itemProps。テーブルは columns〔列にも kintone を書ける〕、ステータスは states）')),
+  kintone: opt(S.kintone),
   allowSameName: opt(z.boolean().describe('同じ名前の項目があってもよい')),
 };
 const itemOps = z.discriminatedUnion('op', [
@@ -122,7 +137,7 @@ const partOps = z.discriminatedUnion('op', [
   op('update', {
     part: S.part, label: opt(z.string()), required: opt(z.boolean()), memo: opt(z.string()), props: opt(S.props), style: opt(S.style), to: opt(S.to),
     labelPos: opt(S.labelPos), sample: opt(z.string()), placeholder: opt(z.string()), numbered: opt(z.boolean().describe('赤い番号を付ける・外す')), no: opt(S.no),
-    rows: opt(S.rows), current: opt(S.current),
+    rows: opt(S.rows), samples: opt(S.samples), current: opt(S.current),
   }, '部品を直す（項目を指す部品の項目名・必須・メモ・設定は、項目に書かれる）'),
   op('move', { part: S.part, ...rect }, '部品の位置と大きさを数で直す（8 ドットのマス目にそろう）'),
   op('move_by', { parts: z.array(S.part).min(1), dx: opt(z.number()), dy: opt(z.number()) }, '部品をまとめてずらす'),
@@ -137,7 +152,7 @@ const partOps = z.discriminatedUnion('op', [
 const color = z.enum(CALLOUT_COLORS).describe('色: "yellow"・"red"・"blue"・"gray"');
 const tip = z.enum(CALLOUT_TIPS).describe('線の先: "dot"（点）・"arrow"（矢印）・"none"（なし）');
 const calloutOps = z.discriminatedUnion('op', [
-  op('add', { text: z.string(), target: opt(S.part.describe('線でつなぐ部品')), color: opt(color), tip: opt(tip), ...rect }, '吹き出しを足す（位置を書かなければ、つなぐ部品の右の画面の外に置く）'),
+  op('add', { text: z.string(), target: opt(S.part.describe('線でつなぐ部品')), color: opt(color), tip: opt(tip), ...rect }, '吹き出しを足す（位置を書かなければ、画面の外に置く。つなぐ部品の真ん中が画面の左半分なら左の外、ほかは右の外）'),
   op('update', { callout: z.string().describe('吹き出しの id'), text: opt(z.string()), color: opt(color), tip: opt(tip), target: opt(z.union([S.part, z.null()]).describe('つなぐ部品（null で線を外す）')) }, '吹き出しを直す'),
   op('move', { callout: z.string(), ...rect }, '吹き出しの位置と大きさを直す'),
   op('delete', { callout: z.string() }, '吹き出しを消す'),

@@ -1,5 +1,6 @@
 // mcp-tools.js — AI の入口（mcp-server.js）が出す MCP の道具の一覧（第 7 段階。第 8 段階で 3 つ、第 9 段階の前半でシステムの 7 つ、後半で資料の 3 つ、
-// 第 10 段階の前半で設計ノートの 3 つ、後半で説明書の 1 つ〔export_system_doc〕、第 11 段階で MPD への出力の 1 つ〔export_bdm〕を足して 35 個。設計書の 9-2）
+// 第 10 段階の前半で設計ノートの 3 つ、後半で説明書の 1 つ〔export_system_doc〕、第 11 段階で MPD への出力の 1 つ〔export_bdm〕、
+// 第 13 段階で kintone のアプリの形の 1 つ〔get_kintone_app〕を足して 36 個。設計書の 9-2）
 // 名前・日本語の説明・入力の形（mcp-schemas.js）・読むだけか・時間がかかるか、を決める。道具の中身はページの「AI の窓口」にある。
 // read_guide だけは入口の中で返す（local。アプリが動いていなくても読めるように）。
 // slow の道具は、アプリの側（automation-main.js の SLOW_TOOLS）でも時間切れを 5 分にしている。2 か所を同じにする。
@@ -17,16 +18,16 @@ const PDF_ORIENT = z.enum(['landscape', 'portrait']).optional().describe('PDF �
 const TOOLS = [
   read('read_guide', '手引きを読む',
     'モックイメージメーカーの使い方の手引きを読む。初めて使うときは "overview" を最初に読む。"layout" は部品の並べ方、"catalog" は部品のカタログの読み方、"rules" は守ること、' +
-    '"stages" は資料からシステムを作るときの段階（段階ごとに人に確かめる進め方）。',
+    '"stages" は資料からシステムを作るときの段階（段階ごとに人に確かめる進め方）、"kintone" は kintone のアプリにするとき（kintone のフィールドの欄と get_kintone_app の使い方）。',
     { topic: z.enum(GUIDE_TOPICS).describe('手引きの名前') }, { local: true }),
   read('list_designs', '画面設計の一覧',
     '画面設計の一覧（id・名前・作る先・画面と項目の数・最新の版・更新の印 updatedAt）を返す。query で名前を探せる。',
     { query: z.string().optional().describe('名前に含まれる文字'), trashed: z.boolean().optional().describe('ごみ箱にある画面設計も出す'), cursor: S.cursor }),
   read('get_design', '画面設計の中身',
-    '画面設計の中身の要約を返す: 名前・作る先・説明・データベースの項目の一覧（設定の文つき）・画面の一覧（id・名前・機器・大きさ・部品の数）・改訂履歴の行・取り込まれている項目・更新の印 updatedAt。',
+    '画面設計の中身の要約を返す: 名前・作る先・説明・データベースの項目の一覧（設定の文つき。kintone の欄を書いた項目とテーブルの列は kintone）・画面の一覧（id・名前・機器・大きさ・部品の数）・改訂履歴の行・取り込まれている項目・更新の印 updatedAt。',
     { design: S.design, cursor: S.cursor }),
   read('get_screen', '画面の中身',
-    '画面 1 つの中身を返す: 部品（id・赤い番号・種類・項目名・位置と大きさ・設定の文）・吹き出し・部品の設定の一覧表の文。' +
+    '画面 1 つの中身を返す: 部品（id・赤い番号・種類・項目名・位置と大きさ・設定の文。表は見本の行の数 rows と列名ごとの見本の値 samples も）・吹き出し・部品の設定の一覧表の文。' +
     '多いときは、部品・吹き出し・一覧表の行の順に分けて返し、nextCursor を付ける（cursor に渡すと続きを読める。全部の数は partsTotal・calloutsTotal・tableTotal）。',
     { design: S.design, screen: S.screen, cursor: S.cursor }),
   read('get_screen_image', '画面の画像',
@@ -47,8 +48,14 @@ const TOOLS = [
       view: z.enum(['map', 'process', 'screenflow', 'swimlane']).describe('図の種類'),
     }, { slow: true }),
   read('get_catalog', '部品のカタログ',
-    '部品の種類（type・名前・最初の大きさ・設定の欄と値の形）・項目の種類・ひな形・機器・作る先・吹き出しの色・並べ方の数を返す。',
+    '部品の種類（type・名前・最初の大きさ・設定の欄と値の形）・項目の種類・ひな形・機器・作る先・吹き出しの色・並べ方の数・kintone の種類（kintoneTypes）を返す。',
     {}),
+  read('get_kintone_app', 'kintone のアプリの形',
+    '画面設計を、kintone の MCP サーバー（GitHub の kintone/mcp-server）の道具にそのまま渡せる形にして返す（このアプリは kintone にはつながない）: ' +
+    'formScreen（フォームにした画面）・app（kintone-add-app に渡す）・properties（kintone-add-form-fields の properties）・systemFields（最初からあるフィールドの code と label。kintone-update-form-fields で直す）・' +
+    'needsAppId（元のアプリの ID を入れてから足すルックアップと関連レコード一覧）・layout（kintone-update-form-layout の layout）・generalSettings（kintone-update-general-settings に渡す）・' +
+    'howTo（道具を呼ぶ順）・manualSteps（プロセス管理・一覧・グラフなど、人が kintone の画面で設定すること）・warnings（直してほしいこと）。read_guide の "kintone" を先に読む。',
+    { design: S.design, screen: S.screen.optional().describe('kintone のフォームにする画面の id か名前（省くと、項目の部品がいちばん多い画面）') }),
   read('list_systems', 'システムの一覧',
     'システム（いくつかの画面設計と役割・スイムレーンをまとめた、1 つの業務のまとまり）の一覧を返す: id・名前・説明の頭・画面設計と役割と作業と資料の数・設計ノートの段階ごとの進み具合 stages（state だけ。例 { read: "done", flow: "review", … }）・更新の印 updatedAt。query で名前を探せる。',
     { query: z.string().optional().describe('名前に含まれる文字'), trashed: z.boolean().optional().describe('ごみ箱にあるシステムも出す'), cursor: S.cursor }),
@@ -83,7 +90,8 @@ const TOOLS = [
     '画面設計の名前・作る先・見た目・帯のタブ・説明を直す。見た目を変えて帯の高さが変わると、帯の下の部品と吹き出しを高さの差だけずらす。',
     { design: S.design, expect: S.expect, name: z.string().optional(), target: z.string().optional(), look: S.look.optional(), bandTabs: S.bandTabs.nullable().optional(), description: z.string().optional() }),
   write('edit_items', 'データベースの項目を直す',
-    'データベースの項目を足す・直す・消す・並べ替える・ルックアップを付ける・ほかの画面設計から取り込む・つながりを切る・一覧表に戻す（ops に並べて 1 回で行う）。',
+    'データベースの項目を足す・直す・消す・並べ替える・ルックアップを付ける・ほかの画面設計から取り込む・つながりを切る・一覧表に戻す（ops に並べて 1 回で行う）。' +
+    'add・update の kintone で、kintone のフィールドの情報（kintone の種類・フィールドコード・kintone の計算式）を書ける。',
     { design: S.design, expect: S.expect, ops: itemOps }),
   write('add_screen', '画面を足す',
     '画面を足す。template（ひな形）か copyOf（複製する画面）で中身を決め、layout を書くと部品をその並べ方で足す。パソコン以外の機器の画面は、template "blank" と layout で作る。',
@@ -101,7 +109,7 @@ const TOOLS = [
     '並べ方（layout。read_guide の "layout"）で部品を置く。位置と大きさはアプリが決める。mode "append" は今の部品の下に足し、"replace" は部品と吹き出しを全部消してから置く。',
     { design: S.design, screen: S.screen, expect: S.expect, layout, mode: z.enum(['append', 'replace']).optional().describe('既定は "append"') }),
   write('edit_parts', '部品を直す',
-    '部品を直す・位置と大きさを数で直す・ずらす・消す・赤い番号を振り直す・揃える・表の中身を変える・番号を付け外しする（ops に並べて 1 回で行う）。',
+    '部品を直す（表の見本の値 samples も）・位置と大きさを数で直す・ずらす・消す・赤い番号を振り直す・揃える・表の中身を変える・番号を付け外しする（ops に並べて 1 回で行う）。',
     { design: S.design, screen: S.screen, expect: S.expect, ops: partOps }),
   write('edit_callouts', '吹き出しを直す',
     '吹き出しを足す・直す・動かす・消す（ops に並べて 1 回で行う）。',

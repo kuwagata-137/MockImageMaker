@@ -68,8 +68,8 @@ async function startApp(t, dir, onRequest, opts = {}) {
   return { srv, calls };
 }
 
-test('道具は 35 個（第 9 段階の前半でシステムの 7 個、後半で資料の 3 個、第 10 段階の前半で設計ノートの 3 個、後半で説明書の 1 個、第 11 段階で MPD への出力の 1 個を足した）で、説明は日本語。入口の道具は、read_guide のほかはページの AI_TOOLS とぴったり同じ', () => {
-  assert.equal(TOOLS.length, 35);
+test('道具は 36 個（第 9 段階の前半でシステムの 7 個、後半で資料の 3 個、第 10 段階の前半で設計ノートの 3 個、後半で説明書の 1 個、第 11 段階で MPD への出力の 1 個、第 13 段階で kintone のアプリの形の 1 個を足した）で、説明は日本語。入口の道具は、read_guide のほかはページの AI_TOOLS とぴったり同じ', () => {
+  assert.equal(TOOLS.length, 36);
   for (const t of TOOLS) {
     assert.match(t.name, /^[a-z_]+$/, t.name);
     assert.ok(isJa(t.description) && isJa(t.title), `${t.name} の説明が日本語でない`);
@@ -113,12 +113,14 @@ test('アプリがなくても、道具の一覧・read_guide・resources は返
   const app = JSON.stringify([process.execPath, '-e', `require('fs').appendFileSync(${JSON.stringify(marker)}, 'x')`, '--']);
   const client = await openEntry(t, dir, { MIM_APP_CMD: app, MIM_TIMEOUT_MS: '1500' });
   const { tools } = await client.listTools();
-  assert.equal(tools.length, 35);
+  assert.equal(tools.length, 36);
   assert.ok(tools.every((x) => x.inputSchema && x.inputSchema.type === 'object'));
   const g = await call(client, 'read_guide', { topic: 'overview' });
   assert.match(textOf(g), /^# モックイメージメーカーの使い方/);
   const { resources } = await client.listResources();
-  assert.deepEqual(resources.map((r) => r.uri).sort(), ['mim://guide/catalog', 'mim://guide/layout', 'mim://guide/overview', 'mim://guide/rules', 'mim://guide/stages']);
+  assert.deepEqual(resources.map((r) => r.uri).sort(), ['mim://guide/catalog', 'mim://guide/kintone', 'mim://guide/layout', 'mim://guide/overview', 'mim://guide/rules', 'mim://guide/stages']);
+  const kg = await call(client, 'read_guide', { topic: 'kintone' });
+  assert.match(textOf(kg), /^# kintone のアプリにするとき/);
   const rr = await client.readResource({ uri: 'mim://guide/rules' });
   assert.match(rr.contents[0].text, /^# 守ること/);
   assert.equal(fs.existsSync(marker), false, 'まだ起動していない');
