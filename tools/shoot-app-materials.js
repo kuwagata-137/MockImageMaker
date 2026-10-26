@@ -163,7 +163,7 @@ async function shootWaiting(ctx) {
   await page.click(`#sys-view [data-action="sys-mat-read"][data-id="${ID.pdf}"]`);
   await page.waitForSelector(`#sys-view .mat-busy[data-id="${ID.pdf}"]`);
   const busy = await opsOf(page, ID.pdf);
-  need(busy.join() === '読んでいます…（×）,消す（×）' && await oneLine(page), `待つ間の行のボタンが違う・折り返している: ${busy.join()}`);
+  need(busy.join() === '読んでいます…（×）,削除（×）' && await oneLine(page), `待つ間の行のボタンが違う・折り返している: ${busy.join()}`);
   await shot(page, '168_資料_「読む」を押して返事を待つ間（押したボタンが「読んでいます…」・その行のボタンは押せない）');
   await page.close();
   const late = await openPage(ctx);
@@ -172,7 +172,7 @@ async function shootWaiting(ctx) {
   await late.click(`#sys-view [data-action="sys-mat-read"][data-id="${ID.pdf}"]`);
   await late.waitForFunction(() => /待つのをやめました/.test(document.querySelector('#toast').textContent) && !document.querySelector('#toast').hidden, { timeout: 4000 });
   const back = await opsOf(late, ID.pdf);
-  need(back.join() === '読む,消す', `時間切れの後にボタンが戻らない: ${back.join()}`);
+  need(back.join() === '読む,削除', `時間切れの後にボタンが戻らない: ${back.join()}`);
   await shot(late, '169_資料_返事が 60 秒来ないとき（待つのをやめてお知らせ。ボタンは押せる形に戻る）');
   await late.close();
   const out = await openPage(ctx, { width: 1280, height: 800 });
@@ -180,7 +180,7 @@ async function shootWaiting(ctx) {
   await out.click(`#sys-view [data-action="sys-mat-export"][data-id="${ID.bdm}"]`);
   await out.waitForSelector(`#sys-view .mat-busy[data-id="${ID.bdm}"]`);
   const exp = await opsOf(out, ID.bdm);
-  need(exp.join() === '読む（×）,スイムレーン図にする（×）,出力しています…（×）,消す（×）' && await oneLine(out), `出力を待つ間の行のボタンが違う・折り返している: ${exp.join()}`);
+  need(exp.join() === '読む（×）,スイムレーン図にする（×）,出力しています…（×）,削除（×）' && await oneLine(out), `出力を待つ間の行のボタンが違う・折り返している: ${exp.join()}`);
   await shot(out, '170_資料_「MPD に出力…」の返事を待つ間（幅 1280。押したボタンが「出力しています…」）');
   await out.close();
 }
