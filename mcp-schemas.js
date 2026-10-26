@@ -11,6 +11,10 @@ const ref = (what) => z.union([z.string(), z.number()]).describe(what);
 const opt = (schema) => schema.optional();
 
 const DEVICES = ['pc', 'tablet', 'phone'];
+// 見た目（第 12 段階）と画面の項目の出し方。ページの LOOKS・ITEM_VIEWS（get_catalog の looks・itemViews）と同じ
+const LOOKS = ['standard', 'salesforce', 'kintone'];
+const ITEM_VIEWS = ['input', 'show'];
+const BAND_TABS_MAX = 12;
 const TABLE_KINDS = ['subtable', 'records', 'related'];
 const CALLOUT_COLORS = ['yellow', 'red', 'blue', 'gray'];
 const CALLOUT_TIPS = ['dot', 'arrow', 'none'];
@@ -38,6 +42,8 @@ const S = {
   labelPos: z.enum(['top', 'left']).describe('項目名の位置: "top"（入力欄の上）・"left"（入力欄の左）'),
   rows: z.number().int().min(1).max(20).describe('表の見本の行の数（1〜20）'),
   current: z.string().describe('ステータスの印・進み具合の矢印で、見本に出すステータス'),
+  look: z.enum(LOOKS).describe('見た目: "standard"（標準）・"salesforce"（Salesforce に似せる）・"kintone"（kintone に似せる）。帯の形と高さ、部品の色と枠が変わる'),
+  bandTabs: z.array(z.string()).max(BAND_TABS_MAX).describe(`Salesforce の見た目の帯に並べるタブ（文字の配列。${BAND_TABS_MAX} 個まで。空なら「ホーム」と画面設計の名前）`),
   style: z.enum(['primary', 'normal']).describe('ボタンの見た目: "primary"（目立つ・青）・"normal"（ふつう・白）'),
   no: z.null().describe('null で赤い番号を外す'),
 };
@@ -104,8 +110,9 @@ const itemOps = z.discriminatedUnion('op', [
 const screenOps = z.discriminatedUnion('op', [
   op('update', {
     screen: S.screen, name: opt(z.string()), device: opt(z.enum(DEVICES).describe('機器: "pc"・"tablet"・"phone"')), height: opt(z.number().max(MAX_SCREEN_HEIGHT).describe(`画面の高さ（ドット。${MAX_SCREEN_HEIGHT} まで）`)),
-    showHeader: opt(z.boolean().describe('いちばん上の紺色の帯を出す')), tablePos: opt(z.enum(['right', 'bottom']).describe('部品の設定の一覧表の位置')),
-  }, '画面の名前・機器・高さ・帯・一覧表の位置を直す'),
+    showHeader: opt(z.boolean().describe('いちばん上の帯を出す')), tablePos: opt(z.enum(['right', 'bottom']).describe('部品の設定の一覧表の位置')),
+    itemView: opt(z.enum(ITEM_VIEWS).describe('項目の出し方: "input"（入力の形。入力欄の枠）・"show"（表示の形。値と下の線。詳細の画面に使う）')),
+  }, '画面の名前・機器・高さ・帯・一覧表の位置・項目の出し方を直す'),
   op('move', { screen: S.screen, ...where }, '画面を並べ替える'),
   op('delete', { screen: S.screen }, '画面を消す（最後の 1 つは消せない）'),
 ]);
@@ -251,5 +258,5 @@ module.exports = {
   z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps), processOps: opsOf(processOps),
   roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('作業の並び（今のスイムレーンの作業を全部置き換える。空の並びで作業を全部消す）'),
   swimEdges: z.array(swimEdge).describe('矢印の並び（今の矢印を全部置き換える。省くと、今の矢印のうち両端の作業が残っているものを残す。[] で全部消す）'),
-  materialInputs, noteInputs, promptArgs, DEVICES, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, NOTE_STAGES, NOTE_STATES,
+  materialInputs, noteInputs, promptArgs, DEVICES, LOOKS, ITEM_VIEWS, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, NOTE_STAGES, NOTE_STATES,
 };

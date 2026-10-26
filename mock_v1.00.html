@@ -242,6 +242,133 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .screen{position:relative;background:#fff;box-shadow:0 1px 6px rgba(15,23,42,.22);overflow:hidden}
 .screen.grid{background-image:linear-gradient(to right,rgba(148,163,184,.22) 1px,transparent 1px),linear-gradient(to bottom,rgba(148,163,184,.22) 1px,transparent 1px);background-size:8px 8px}
 .screen-band{height:40px;background:#1f2f4f;color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;padding:0 16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 見た目（第 12 段階。業務アプリの見た目とCRM_設計書.md の 5 章・画像 q106〜q108）。標準の見た目は上と下の CSS のまま。
+   ここに書くのは、.screen に付けたクラス（look-sf・look-kt・view-show）の下で上書きするものだけ。色と形を似せるだけで、ロゴ・アイコン・字は写さない */
+.sfb-top,.ktb-top{height:48px;display:flex;align-items:center;gap:14px;padding:0 16px}
+.sfb-logo,.ktb-logo{width:72px;height:28px;border:1.5px dashed #b0adab;border-radius:4px;color:#706e6b;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sfb-search,.ktb-search{display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;white-space:nowrap}
+.sfb-search>span,.ktb-search>span{overflow:hidden;text-overflow:ellipsis}
+.sfb-search svg,.ktb-search svg{width:15px;height:15px;flex-shrink:0}
+.sfb-icons,.ktb-icons{display:flex;gap:14px;align-items:center;color:#747474;flex-shrink:0}
+.sfb-icons svg,.ktb-icons svg{width:18px;height:18px}
+.look-sf{font-family:'Segoe UI','Yu Gothic UI','Meiryo',sans-serif}
+.look-sf .screen-band.sfb{height:88px;padding:0;display:block;background:#fff;color:#181818;font-weight:400;font-size:13px;border-bottom:1px solid #d8dde6;box-shadow:0 2px 3px rgba(0,0,0,.07)}
+.sfb-search{margin:0 auto;flex:0 1 440px;height:32px;border:1px solid #c9c9c9;border-radius:4px;padding:0 12px;color:#747474;font-size:13px}
+.sfb-avatar{width:26px;height:26px;border-radius:50%;background:#c9c9c9}
+.sfb-nav{height:40px;display:flex;align-items:stretch;padding:0 12px;border-top:1px solid #f3f3f3;overflow:hidden}
+.sfb-waffle{width:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sfb-waffle svg{width:18px;height:18px}
+.sfb-app{display:flex;align-items:center;padding:0 22px 0 6px;font-size:17px;flex-shrink:0}
+.sfb-tab{display:flex;align-items:center;gap:6px;padding:0 14px;font-size:13px;color:#181818;border-bottom:3px solid transparent;white-space:nowrap;flex-shrink:0}
+.sfb-tab.on{border-bottom-color:#0176d3;background:#f3f9fe}
+.sfb-tab small{color:#747474;font-size:10px}
+.look-sf .part{color:#181818;font-size:13px}
+.look-sf .plabel{color:#444;font-size:12px;height:22px}
+.look-sf .preq{order:-1;color:#ba0517;font-weight:700;font-size:13px}
+.look-sf .plabel .pno{order:-2}
+.look-sf .pbox{border:1px solid #c9c9c9;border-radius:4px;padding:0 12px;margin-top:2px}
+.look-sf .pbox.calc{background:#f3f3f3;border-style:solid}
+.look-sf .pbox .pr{color:#747474}
+.look-sf .pph{color:#747474}
+.look-sf .pmark{border-color:#939393}
+.look-sf .pmark.rd.on{border-color:#0176d3}
+.look-sf .pmark.rd.on::after{background:#0176d3}
+.look-sf .pmark.ck.on{background:#0176d3;border-color:#0176d3}
+.look-sf .pdrop{border:1px dashed #c9c9c9;border-radius:4px;background:#fff;color:#444}
+.look-sf .pdrop u{color:#0176d3;border-color:#c9c9c9}
+.look-sf .pbtn{border-radius:4px;font-size:13px;font-weight:400}
+.look-sf .pbtn.primary{background:#0176d3;color:#fff}
+.look-sf .pbtn.normal{background:#fff;border:1px solid #c9c9c9;color:#0176d3}
+.look-sf .phead{border-left:none;background:#f3f3f3;border-radius:4px;font-size:15px;font-weight:400;color:#181818;padding-left:10px}
+.look-sf .phead>span:last-child::before{content:'';display:inline-block;width:8px;height:8px;border-right:1.5px solid #444;border-bottom:1.5px solid #444;transform:translateY(-3px) rotate(45deg);margin-right:12px}
+.look-sf .pdesc{color:#444}
+.look-sf .pline i{background:#e5e5e5}
+.look-sf .ptbl{border-top:1px solid #e5e5e5}
+.look-sf .ptbl th,.look-sf .ptbl td{border:none;border-bottom:1px solid #e5e5e5;height:32px}
+.look-sf .ptbl th{background:#f3f3f3;color:#444;font-weight:700;font-size:12px}
+.look-sf .ptbl td.calc{background:#fafafa}
+.look-sf .ptbl-ops i{border-color:#c9c9c9;color:#0176d3}
+.look-sf .psearch{border-color:#c9c9c9;border-radius:4px}
+.look-sf .psearch b{background:#fff;color:#0176d3;border-left:1px solid #c9c9c9;font-weight:400}
+.look-sf .pfilter .f{border-color:#c9c9c9;border-radius:4px}
+.look-sf .ppager span{border-color:#c9c9c9;border-radius:4px;color:#0176d3}
+.look-sf .ppager span.on{background:#0176d3;border-color:#0176d3;color:#fff}
+.look-sf .pbadge{height:22px;border:none;border-radius:11px;font-size:12px;font-weight:400;padding:0 10px}
+.look-sf .sc0{background:#e5e5e5;color:#181818}.look-sf .sc1{background:#fef1ee;color:#8c4b02}.look-sf .sc2{background:#eef4ff;color:#014486}
+.look-sf .sc3{background:#ebf7e6;color:#2e844a}.look-sf .sc4{background:#f2e8fc;color:#5a1ba9}
+.look-sf .psteps{border-radius:16px;gap:0}
+.look-sf .psteps span{background:#f3f3f3;color:#181818;margin-right:-6px;font-size:13px}
+.look-sf .psteps span.done{background:#91dbc4;color:#032d60}
+.look-sf .psteps span.done::before{content:'✓';margin-right:6px;font-weight:700}
+.look-sf .psteps span.on{background:#032d60;color:#fff;font-weight:700}
+.look-sf .ptabs{border-bottom:1px solid #e5e5e5}
+.look-sf .ptabs span{border:none;border-radius:0;color:#181818;padding:0 14px}
+.look-sf .ptabs span.on{border:none;border-bottom:3px solid #0176d3;font-weight:700;color:#181818;margin-bottom:-1px;background:transparent}
+.look-sf .pgraph{border-color:#e5e5e5;border-radius:4px}
+.look-sf .plink{color:#0176d3;text-decoration:none}
+.look-sf .pimage{border-color:#c9c9c9;border-radius:4px;background:#f3f3f3}
+/* グラフの色（graphSvg の青・黄・緑を、見た目の色に置き換える。SVG の fill・stroke の属性を CSS で上書きする） */
+.look-sf .pgraph [fill="#3b82f6"]{fill:#1b96ff}.look-sf .pgraph [stroke="#3b82f6"]{stroke:#1b96ff}
+.look-sf .pgraph [fill="#f59e0b"]{fill:#ff9a3c}.look-sf .pgraph [fill="#10b981"]{fill:#3ba755}
+.look-kt .pgraph [fill="#3b82f6"]{fill:#3498db}.look-kt .pgraph [stroke="#3b82f6"]{stroke:#3498db}
+.look-kt .pgraph [fill="#f59e0b"]{fill:#f39c12}.look-kt .pgraph [fill="#10b981"]{fill:#2ecc71}
+.look-kt{font-family:'Segoe UI','Yu Gothic UI','Meiryo',sans-serif}
+.look-kt .screen-band.ktb{height:88px;padding:0;display:block;background:#fff;color:#333;font-weight:400;font-size:13px}
+.ktb-top{background:#fff;border-bottom:1px solid #e3e7e8}
+.ktb-crumb{color:#888;font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ktb-search{margin-left:auto;flex:0 1 260px;height:30px;border:1px solid #e3e7e8;border-radius:4px;padding:0 10px;color:#999;background:#f7f9fa}
+.ktb-app{height:40px;display:flex;align-items:center;gap:10px;padding:0 16px;background:#f7f9fa;border-bottom:1px solid #e3e7e8;overflow:hidden}
+.ktb-appicon{width:24px;height:24px;border-radius:4px;background:#3498db;flex-shrink:0}
+.ktb-appname{font-size:16px;font-weight:700;color:#333}
+.ktb-view{margin-left:16px;color:#3498db;font-size:13px}
+.look-kt .part{color:#333;font-size:14px}
+.look-kt .plabel{color:#666;font-size:13px}
+.look-kt .preq{color:#e74c3c}
+.look-kt .pbox{border:1px solid #e3e7e8;border-radius:0;box-shadow:inset 1px 1px 1px #f0f0f0;padding:0 10px}
+.look-kt .pbox.calc{background:#f5f5f5;border-style:solid}
+.look-kt .pbox .pr{color:#3498db}
+.look-kt .pph{color:#aaa}
+.look-kt .pmark{border-color:#bbb}
+.look-kt .pmark.rd.on::after{background:#3498db}
+.look-kt .pmark.ck.on{background:#3498db;border-color:#3498db}
+.look-kt .pdrop{border:1px solid #e3e7e8;border-radius:0;background:#f7f9fa}
+.look-kt .pdrop u{color:#3498db;border-color:#3498db}
+.look-kt .pbtn{border-radius:6px;font-size:14px}
+.look-kt .pbtn.primary{background:#3498db;color:#fff;font-weight:700}
+.look-kt .pbtn.normal{background:#f7f9fa;border:1px solid #e3e7e8;color:#3498db}
+.look-kt .phead{border-left:none;font-size:15px;font-weight:700;color:#333;border-bottom:1px solid #e3e7e8;padding-left:0}
+.look-kt .pline i{background:#e3e7e8}
+.look-kt .ptbl th,.look-kt .ptbl td{border-color:#e3e7e8}
+.look-kt .ptbl th{background:#f5f5f5;color:#333;font-weight:400;font-size:12px}
+.look-kt .ptbl-ops i{background:#3498db;border-color:#3498db;color:#fff}
+.look-kt .psearch{border-color:#e3e7e8;border-radius:0}
+.look-kt .psearch b{background:#3498db}
+.look-kt .pfilter .f{border-color:#e3e7e8;border-radius:0}
+.look-kt .ppager span{border-color:#e3e7e8;border-radius:0}
+.look-kt .ppager span.on{background:#3498db;border-color:#3498db}
+.look-kt .pbadge{border-radius:2px;height:26px;font-weight:400}
+.look-kt .psteps span{background:#f5f5f5;color:#666}
+.look-kt .psteps span.done{background:#d6eaf8;color:#21618c}
+.look-kt .psteps span.on{background:#3498db;color:#fff}
+.look-kt .ptabs{border-bottom:2px solid #e3e7e8}
+.look-kt .ptabs span{border-radius:0}
+.look-kt .ptabs span.on{border-color:#e3e7e8;color:#3498db}
+.look-kt .pgraph{border-color:#e3e7e8;border-radius:0}
+.look-kt .plink{color:#3498db;text-decoration:none}
+/* 表示の形（画面の項目の出し方。q108）。入力欄の枠の代わりに、値・鉛筆の印・下の線。kintone の見た目は、枠も線もない値 */
+.view-show .pbox{border:none;border-radius:0;border-bottom:1px solid #e5e5e5;padding:0 26px 0 0;margin-top:0;background:transparent;box-shadow:none;position:relative}
+.view-show .pbox.calc{border:none;border-bottom:1px solid #e5e5e5;background:transparent}
+.view-show .pbox.area{padding-top:4px}
+.view-show .pbox .pr,.view-show .pbox .pget,.view-show .pbox .picon{display:none}
+.view-show .pbox::after{content:'';position:absolute;right:4px;top:50%;width:14px;height:14px;margin-top:-7px;opacity:.7;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747474' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20l1-4L16 5l3 3L8 19z'/%3E%3Cpath d='M14 7l3 3'/%3E%3C/svg%3E") no-repeat center/contain}
+.view-show .pbox.area::after{top:14px}
+.view-show .popt:not(:has(.on)){display:none}
+.view-show .pmark{display:none}
+.view-show .popts{margin-top:2px;border-bottom:1px solid #e5e5e5;padding-bottom:6px}
+.look-kt.view-show .pbox{border-bottom:none}
+.look-kt.view-show .pbox::after{display:none}
+.look-kt.view-show .popts{border-bottom:none}
 
 /* 部品（画面の中。見た目は画像 q15・仕上がりイメージ.png に合わせた） */
 .part{position:absolute;display:flex;flex-direction:column;font-size:14px;color:#1e293b;line-height:1.4}
@@ -1002,9 +1129,11 @@ const APP_VERSION = '1.00';
 const APP_SCRIPT = document.currentScript ? document.currentScript.textContent : '';
 
 // ── 2. データの形（純関数）────────────────────────────────────────────────────
-// { schemaVersion, settings: { customTargets, mapPos }, systems, designs: [ { id, name, target, description,
+// { schemaVersion, settings: { customTargets, mapPos }, systems, designs: [ { id, name, target, look, bandTabs, description,
 //   createdAt, updatedAt, trashedAt, revisions, items, screens: [ { id, name, device, width, height,
-//   showHeader, tablePos, parts, callouts } ], mapPos, processPos, flowPos } ] }
+//   showHeader, tablePos, itemView, parts, callouts } ], mapPos, processPos, flowPos } ] }
+// look（見た目）・bandTabs（Salesforce の帯のタブ）・itemView（項目の出し方）は第 12 段階（v1.01）で足した。データの形の版は上げない
+// （ないときは標準・ホームと画面設計の名前・入力の形として読む。v1.00 で開いても、知らない項目として残る）。
 // items（データベースの項目の一覧表）と parts の 1 つずつの形は、下の「項目」「部品」に書いた。callouts（吹き出し）は第 3 段階の後半で使う。
 // systems（システム。いくつかの画面設計をまとめる入れ物）の形は、下の「システム」に書いた（第 8 段階で入れ物を足し、第 9 段階で中身を作った）。
 // 倍率・モード・開いている画面・選んでいる部品・コピーした部品は保存しない（下の ui に持つ）。
@@ -1026,6 +1155,16 @@ const BUILTIN_TARGETS = [
   { id: 'salesforce', label: 'Salesforce' },
   { id: 'claude', label: 'Claude で作るアプリ' },
 ];
+// 見た目（第 12 段階。業務アプリの見た目とCRM_設計書.md の 5 章・q105〜q108）。画面設計ごとに 1 つ選ぶ。部品の並びと大きさは変わらず、
+// 色・枠・文字の形・帯の形だけが変わる。band は帯の高さ（.screen-band と同じ）。cls は .screen に付けるクラス（標準は付けない。標準の画面の HTML を前と同じにするため）
+const LOOKS = [
+  { id: 'standard', label: '標準', band: 40, cls: '' },
+  { id: 'salesforce', label: 'Salesforce', band: 88, cls: 'look-sf' },
+  { id: 'kintone', label: 'kintone', band: 88, cls: 'look-kt' },
+];
+// 画面の項目の出し方（q108）。show は表示の形（入力欄の枠の代わりに、値と下の線で描く。詳細の画面に使う）
+const ITEM_VIEWS = { input: '入力の形', show: '表示の形' };
+const BAND_TABS_MAX = 12; // Salesforce の帯のタブの数の上限（Claude が決めた。パソコンの幅にこれより多くは並ばない）
 const FIRST_SCREEN_NAME = '画面 1';
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
@@ -1057,12 +1196,12 @@ function createInitialState() {
 
 function createScreenData(name, device = 'pc') {
   const d = DEVICES[device];
-  return { id: newId('s'), name, device, width: d.width, height: d.height, showHeader: true, tablePos: 'right', parts: [], callouts: [] };
+  return { id: newId('s'), name, device, width: d.width, height: d.height, showHeader: true, tablePos: 'right', itemView: 'input', parts: [], callouts: [] };
 }
 
-function createDesignData(name, target, now = nowIso()) {
+function createDesignData(name, target, now = nowIso(), look = 'standard') {
   return {
-    id: newId('d'), name, target, description: '', createdAt: now, updatedAt: now,
+    id: newId('d'), name, target, look: lookOf({ look }).id, bandTabs: [], description: '', createdAt: now, updatedAt: now,
     trashedAt: null, revisions: [], items: [], screens: [createScreenData(FIRST_SCREEN_NAME)], mapPos: {}, processPos: {}, flowPos: {},
   };
 }
@@ -1084,6 +1223,18 @@ function changeDevice(screen, device) {
   const extra = Math.max(0, screen.height - DEVICES[screen.device].height);
   return { ...screen, device, width: DEVICES[device].width, height: snapHeight(DEVICES[device].height + extra, device) };
 }
+
+// 画面設計の見た目（ない・知らない値は標準）
+const lookOf = (design) => LOOKS.find((l) => l.id === (design && design.look)) || LOOKS[0];
+// 作る先から決まる見た目（新しい画面設計の窓で、作る先を選んだときの最初の値。q105）。Salesforce・kintone 以外は標準
+const lookForTarget = (target) => (target !== 'standard' && LOOKS.some((l) => l.id === target) ? target : 'standard');
+// 画面の帯の高さ（帯を消した画面は 0）。部品を置くときは帯の下に置く
+const bandHeight = (design, sc) => (sc.showHeader ? lookOf(design).band : 0);
+// Salesforce の帯のタブ（1 行に 1 つ。空の行は捨てる）。書いていないときは「ホーム」と画面設計の名前（q106）
+function normalizeBandTabs(list) {
+  return (Array.isArray(list) ? list : []).filter((t) => typeof t === 'string').map((t) => cleanName(t, TARGET_MAX)).filter(Boolean).slice(0, BAND_TABS_MAX);
+}
+const bandTabsOf = (design) => (design.bandTabs && design.bandTabs.length ? design.bandTabs : ['ホーム', design.name]);
 
 function builtinTarget(id) {
   return BUILTIN_TARGETS.find((t) => t.id === id) || null;
@@ -1403,42 +1554,44 @@ function screenFromTemplate(design, templateId, name) {
     placed.forEach((pl) => put(pl.type, pl.x, pl.y, { itemId: pl.entry.item ? pl.entry.item.id : null, w: pl.w, h: pl.h, label: pl.entry.label, props: pl.entry.props }));
   };
   const right = (w) => sc.width - TPL_LEFT - w;
+  // 下の y は、標準の見た目の帯（高さ 40）の下から数えた値。帯の高い見た目（Salesforce・kintone）では、高さの差だけ下へずらす（q106）
+  const Y = (y) => y + lookOf(design).band - LOOKS[0].band;
   switch (templateId) {
     case 'input':
-      flowItems(64, [['保存', 'primary'], ['キャンセル', 'normal']]);
+      flowItems(Y(64), [['保存', 'primary'], ['キャンセル', 'normal']]);
       break;
     case 'detail':
-      button(right(96 + 32 + 96), 56, '編集');
-      button(right(96), 56, '削除', 'normal');
-      flowItems(112);
+      button(right(96 + 32 + 96), Y(56), '編集');
+      button(right(96), Y(56), '削除', 'normal');
+      flowItems(Y(112));
       break;
     case 'list': {
-      put('search', TPL_LEFT, 64);
+      put('search', TPL_LEFT, Y(64));
       // 絞り込みの番号の札は部品の左の外（28 ドット）に付くので、検索の欄（幅 320）の右に 48 空ける（16 だと札が「検索」ボタンに重なった。見直し⑥-1）
-      put('filter', TPL_LEFT + PART_TYPES.search.w + 48, 64);
-      put('button', right(128), 64, { label: '＋ 新規登録', w: 128 });
-      const t = put('table', TPL_LEFT, 128, { tableKind: 'records', w: sc.width - TPL_LEFT * 2, h: tableHeight(8), view: { rows: 8 } });
+      put('filter', TPL_LEFT + PART_TYPES.search.w + 48, Y(64));
+      put('button', right(128), Y(64), { label: '＋ 新規登録', w: 128 });
+      const t = put('table', TPL_LEFT, Y(128), { tableKind: 'records', w: sc.width - TPL_LEFT * 2, h: tableHeight(8), view: { rows: 8 } });
       put('pager', right(PART_TYPES.pager.w), t.y + t.h + 16);
       break;
     }
     case 'graph': {
       const w = (sc.width - TPL_LEFT * 3) / 2;
-      put('filter', TPL_LEFT, 64);
-      put('graph', TPL_LEFT, 128, { w });
-      put('graph', TPL_LEFT * 2 + w, 128, { w, props: { chart: 'pie', samples: '分類 1, 45\n分類 2, 30\n分類 3, 25' } });
+      put('filter', TPL_LEFT, Y(64));
+      put('graph', TPL_LEFT, Y(128), { w });
+      put('graph', TPL_LEFT * 2 + w, Y(128), { w, props: { chart: 'pie', samples: '分類 1, 45\n分類 2, 30\n分類 3, 25' } });
       break;
     }
     case 'agg': {
       const w = (sc.width - TPL_LEFT * 3) / 2;
-      put('filter', TPL_LEFT, 64);
-      put('table', TPL_LEFT, 128, { tableKind: 'records', w, h: tableHeight(6), view: { rows: 6 } });
-      put('graph', TPL_LEFT * 2 + w, 128, { w, props: { chart: 'hbar', samples: '分類 1, 42\n分類 2, 35\n分類 3, 28\n分類 4, 19' } });
+      put('filter', TPL_LEFT, Y(64));
+      put('table', TPL_LEFT, Y(128), { tableKind: 'records', w, h: tableHeight(6), view: { rows: 6 } });
+      put('graph', TPL_LEFT * 2 + w, Y(128), { w, props: { chart: 'hbar', samples: '分類 1, 42\n分類 2, 35\n分類 3, 28\n分類 4, 19' } });
       break;
     }
     case 'steps': {
-      putStatus('steps', TPL_LEFT, 64);
-      putStatus('status', right(PART_TYPES.status.w), 64);
-      flowItems(136, [['承認する', 'primary'], ['差し戻す', 'normal']]);
+      putStatus('steps', TPL_LEFT, Y(64));
+      putStatus('status', right(PART_TYPES.status.w), Y(64));
+      flowItems(Y(136), [['承認する', 'primary'], ['差し戻す', 'normal']]);
       break;
     }
     default: break; // 白紙は帯だけ
@@ -1460,7 +1613,6 @@ function screenFromTemplate(design, templateId, name) {
 // 見た目と最初の大きさは 仕様_細かい決めごと.md の「部品の細かい決めごと」（画像 q15）のとおり。
 const PART_MIN = 16; // 部品のいちばん小さい幅と高さ
 const PART_GAP = 16; // 貼り付け・複製・押して置いたときに、重ならないようにずらす幅
-const BAND_H = 40; // 画面の帯の高さ（.screen-band と同じ）。部品を置くときは帯の下に置く
 const TABLE_W = 560; // 部品の設定の一覧表を画面の右に置いたときの幅
 const TABLE_GAP = 32; // 画面と一覧表の間
 const PART_TYPES = {
@@ -1960,7 +2112,7 @@ function revisionDate(day) {
 
 // 画面設計の中身（前の版に戻す・取り込んで置き換える・中身を比べるところ）。画面設計に中身の項目を足したら、ここに足す
 // （restoreRevision・replaceWithImported・designContent がこれを使う。3 か所に並べていると、足すときに漏れるため。第 7 段階）
-const DESIGN_CONTENT_KEYS = ['name', 'target', 'description', 'items', 'screens', 'mapPos', 'processPos', 'flowPos'];
+const DESIGN_CONTENT_KEYS = ['name', 'target', 'look', 'bandTabs', 'description', 'items', 'screens', 'mapPos', 'processPos', 'flowPos'];
 // 画面設計の中身だけを抜き出す。copy のときは中身を写す
 function designContentOf(d, copy = false) {
   const out = {};
@@ -2091,6 +2243,7 @@ function screenDiff(base, cur, sa, sb, state, rows) {
   if (sa.height !== sb.height) set.push(fromTo('高さ', sa.height, sb.height));
   if (sa.showHeader !== sb.showHeader) set.push(fromTo('帯', sa.showHeader ? 'あり' : 'なし', sb.showHeader ? 'あり' : 'なし'));
   if (sa.tablePos !== sb.tablePos) set.push(fromTo('一覧表の位置', sa.tablePos === 'bottom' ? '下' : '右', sb.tablePos === 'bottom' ? '下' : '右'));
+  if (sa.itemView !== sb.itemView) set.push(fromTo('項目の出し方', ITEM_VIEWS[sa.itemView], ITEM_VIEWS[sb.itemView]));
   if (set.length) row(null, '－', 'chg', '画面の設定変更', set.join('\n'));
   [...sb.parts].sort(byNoThenPos).forEach((p) => {
     const fb = partFacts(cur, p, state);
@@ -2144,6 +2297,8 @@ function designDiff(base0, cur0, state) {
   const design = [];
   if (base.name !== cur.name) design.push(fromTo('名前', base.name, cur.name));
   if (base.target !== cur.target) design.push(fromTo('作る先', targetLabel(base.target), targetLabel(cur.target)));
+  if (base.look !== cur.look) design.push(fromTo('見た目', lookOf(base).label, lookOf(cur).label));
+  if (base.bandTabs.join('\n') !== cur.bandTabs.join('\n')) design.push(fromTo('帯のタブ', bandTabsOf(base).join('・'), bandTabsOf(cur).join('・')));
   if (base.description !== cur.description) design.push(fromTo('説明', base.description, cur.description));
   if (design.length) rows.push({ screen: '画面設計', no: '－', name: '－', k: 'chg', change: '設定変更', text: design.join('\n') });
   // 画面の順番は、両方にある画面どうしの並びで比べる（足した・消した画面は、画面の追加・削除の行に出る）
@@ -2756,6 +2911,7 @@ function normalizeScreen(src, i, items = []) {
     height: snapHeight(s.height == null ? DEVICES[device].height : s.height, device),
     showHeader: s.showHeader !== false,
     tablePos: s.tablePos === 'bottom' ? 'bottom' : 'right',
+    itemView: s.itemView === 'show' ? 'show' : 'input',
     parts,
     callouts: uniqueIds(Array.isArray(s.callouts) ? s.callouts.filter(isObj).map(normalizeCallout) : [], 'k'), // id が重なると、片方を消すと両方消えるため
   };
@@ -2793,6 +2949,8 @@ function normalizeDesign(src) {
     id,
     name: cleanName(d.name) || '名前なし',
     target: str(d.target),
+    look: lookOf(d).id,
+    bandTabs: normalizeBandTabs(d.bandTabs),
     description: str(d.description),
     createdAt,
     updatedAt: str(d.updatedAt) || createdAt,
@@ -3526,12 +3684,30 @@ function swimlaneFromPlanSteps(y, plan, idOf, materialId) {
   return normalizeSwimlane({ steps: swimAutoCols(steps, edges), edges });
 }
 
+// 画面設計の見た目を変える（d を書き換える）。帯の高さが変わるときは、帯のある画面の、帯の下（前の帯の高さより下）にある部品と吹き出しを
+// 高さの差だけ上下へずらし、画面の高さも同じだけ変える（q106。部品が帯に隠れたり、帯との間が空きすぎたりしないため）
+function setDesignLook(d, look) {
+  const [from, to] = [lookOf(d), LOOKS.find((l) => l.id === look)];
+  if (!to) return;
+  d.look = to.id;
+  const dy = to.band - from.band;
+  if (!dy) return;
+  d.screens.forEach((sc) => {
+    if (!sc.showHeader) return;
+    const move = (x) => (x.y >= from.band ? { ...x, y: x.y + dy } : x);
+    sc.parts = sc.parts.map(move);
+    sc.callouts = sc.callouts.map(move);
+    sc.height = Math.max(snapHeight(sc.height + dy, sc.device), minScreenHeight(sc));
+  });
+}
+
 const actions = {
-  // systemId を渡すと、作った画面設計をそのシステムに入れる（同じ 1 回の変更で）。ない・ごみ箱にあるシステムを渡したときは作らない
-  createDesign(name, target, { systemId = null } = {}) {
+  // systemId を渡すと、作った画面設計をそのシステムに入れる（同じ 1 回の変更で）。ない・ごみ箱にあるシステムを渡したときは作らない。
+  // look は見た目（新しい画面設計の窓では、作る先から決まる見た目が最初の値。q105）
+  createDesign(name, target, { systemId = null, look = 'standard' } = {}) {
     const n = cleanName(name);
     if (!n || (systemId && !liveSystem(store.state, systemId))) return null;
-    const d = createDesignData(n, target);
+    const d = createDesignData(n, target, undefined, look);
     store.commit((s) => {
       addCustomTarget(s, target);
       s.designs.push(d);
@@ -3544,7 +3720,7 @@ const actions = {
     if (!n) return false;
     return mutateDesign(id, (d) => { d.name = n; });
   },
-  // patch は { name, target, description } のどれか
+  // patch は { name, target, look, bandTabs, description } のどれか
   updateDesignInfo(id, patch) {
     return mutateDesign(id, (d, s) => {
       if ('name' in patch) d.name = cleanName(patch.name) || d.name;
@@ -3552,6 +3728,8 @@ const actions = {
         d.target = patch.target;
         addCustomTarget(s, patch.target);
       }
+      if ('look' in patch) setDesignLook(d, patch.look);
+      if ('bandTabs' in patch) d.bandTabs = normalizeBandTabs(patch.bandTabs);
       if ('description' in patch) d.description = String(patch.description);
     });
   },
@@ -3943,7 +4121,7 @@ const actions = {
     });
     return done;
   },
-  // patch は { name, device, height, showHeader, tablePos } のどれか
+  // patch は { name, device, height, showHeader, tablePos, itemView } のどれか
   updateScreen(designId, screenId, patch) {
     return mutateDesign(designId, (d) => {
       const i = d.screens.findIndex((x) => x.id === screenId);
@@ -3964,6 +4142,7 @@ const actions = {
       if ('name' in patch) sc = { ...sc, name: cleanName(patch.name) || sc.name };
       if ('showHeader' in patch) sc = { ...sc, showHeader: !!patch.showHeader };
       if ('tablePos' in patch) sc = { ...sc, tablePos: patch.tablePos === 'bottom' ? 'bottom' : 'right' };
+      if ('itemView' in patch) sc = { ...sc, itemView: patch.itemView === 'show' ? 'show' : 'input' };
       d.screens[i] = sc;
     });
   },
@@ -4027,10 +4206,10 @@ const actions = {
     const sc = findScreen(designId, screenId);
     const t = partType(type);
     if (!sc || !t) return null;
-    const start = fitRect({ x: at.x, y: Math.max(sc.showHeader ? BAND_H : 0, at.y), w: t.w, h: t.h }, sc);
+    const d0 = findDesign(store.state, designId);
+    const start = fitRect({ x: at.x, y: Math.max(bandHeight(d0, sc), at.y), w: t.w, h: t.h }, sc);
     // 入力欄の部品と表（最初はテーブル）を置くと、データベースの項目の一覧表にも項目を 1 つ足す（項目名と設定は項目が持つ）。
     // ステータスの印・進み具合の矢印は、画面設計のステータスの項目を指す（なければ作る）
-    const d0 = findDesign(store.state, designId);
     const status = type === 'status' || type === 'steps' ? d0.items.find((it) => it.type === 'status') : null;
     const itemType = isInputType(type) ? type : type === 'table' ? 'table' : type === 'status' || type === 'steps' ? 'status' : '';
     const item = itemType && !status ? createItemData(itemType) : null;
@@ -4443,11 +4622,12 @@ const actions = {
   // データベースの項目の一覧表にある項目を、画面に置く。その画面にもう置いてあれば置かない（戻り値 null）
   addItemPart(designId, screenId, itemId, at) {
     const sc = findScreen(designId, screenId);
-    const item = findItem(findDesign(store.state, designId), itemId);
+    const d0 = findDesign(store.state, designId);
+    const item = findItem(d0, itemId);
     const type = item && isItemType(item.type) ? partTypeOfItem(item.type) : '';
     const t = partType(type);
     if (!sc || !t || (oncePerScreen(item.type) && itemOnScreen(sc, itemId))) return null;
-    const start = fitRect({ x: at.x, y: Math.max(sc.showHeader ? BAND_H : 0, at.y), w: t.w, h: t.h }, sc);
+    const start = fitRect({ x: at.x, y: Math.max(bandHeight(d0, sc), at.y), w: t.w, h: t.h }, sc);
     const p = createPartData(type, sc, freeSpot(sc, start), itemId);
     if (p.view && 'current' in p.view) p.view.current = defaultStateId(item);
     mutateScreen(designId, screenId, (s) => { s.parts.push(p); });
@@ -4705,6 +4885,11 @@ function bindTargetPicker(root, onPick) {
   });
 }
 
+// 見た目を選ぶボタンの並び（右の欄の「画面設計の情報」と、新しい画面設計の窓。q105）。field は radio の name と data-field
+function lookSegHtml(current, field) {
+  return `<div class="seg">${LOOKS.map((l) => `<label><input type="radio" name="${field}" value="${l.id}" data-field="${field}"${l.id === current ? ' checked' : ''}><span>${esc(l.label)}</span></label>`).join('')}</div>`;
+}
+
 function targetChip(target) {
   const cls = builtinTarget(target) ? ' t-' + target : '';
   return `<span class="chip${cls}">${esc(targetLabel(target))}</span>`;
@@ -4714,13 +4899,48 @@ function targetChip(target) {
 // marks のとき（編集の画面）は、項目を消した後に残った部品などに小さな札を付ける（出力と縮小画像には付けない）
 // selected（部品の id の Set）を渡すと、それらに選んだ印を付ける。縁のつまみは gripId の部品だけ（1 つだけ選んだとき）
 // diff（designDiff の screens の 1 つ）を渡すと、前の版から足した・変えた部品の右上に「新」「変」の札を付ける
+// 見た目（第 12 段階）が標準でないときは .screen に見た目のクラス（look-sf・look-kt）を、表示の形の画面には view-show を付ける（色と枠は CSS で上書きする）
 function screenHtml(design, screen, { grid = false, height = screen.height, selectedId = null, selected = null, gripId = selectedId, marks = false, diff = null } = {}) {
-  const band = screen.showHeader ? `<div class="screen-band">${esc(design.name)} ／ ${esc(screen.name)}</div>` : '';
+  const band = screen.showHeader ? bandHtml(design, screen) : '';
   const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
   // 札は部品の右上の角から外へ出す。画面の上・右の端の部品では、画面の外へ出た分が切れるので内側に寄せる
   const edge = (p) => `${p.y < DF_OUT ? ' df-t' : ''}${p.x + p.w + DF_OUT > screen.width ? ' df-r' : ''}`;
   const parts = screen.parts.map((p) => partHtml(resolvePart(design, p), isSel(p.id), marks, p.id === gripId, diff ? diff.parts[p.id] : null, edge(p))).join('');
-  return `<div class="screen${grid ? ' grid' : ''}" style="width:${screen.width}px;height:${height}px">${band}${parts}</div>`;
+  const cls = ['screen'];
+  if (grid) cls.push('grid');
+  if (lookOf(design).cls) cls.push(lookOf(design).cls);
+  if (screen.itemView === 'show') cls.push('view-show');
+  return `<div class="${cls.join(' ')}" style="width:${screen.width}px;height:${height}px">${band}${parts}</div>`;
+}
+
+// 画面の帯（見た目ごとの形。q106）。Salesforce と kintone の帯は 2 行で、ロゴの所は点線の「ロゴ」の箱（ロゴ・アイコン・字は写さず、形を似せる）
+const bandSvg = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+const BAND_ICONS = {
+  search: bandSvg('<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>'),
+  star: bandSvg('<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1.1 6.2L12 17.4l-5.6 2.9 1.1-6.2L3 9.7l6.2-.9z"/>'),
+  plus: bandSvg('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'),
+  help: bandSvg('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 5 .5c0 1.5-2.5 2-2.5 3.5M12 17v.5"/>'),
+  gear: bandSvg('<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="6.6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'),
+  bell: bandSvg('<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>'),
+  waffle: `<svg viewBox="0 0 24 24" fill="#747474" aria-hidden="true">${[4, 12, 20].flatMap((x) => [4, 12, 20].map((y) => `<circle cx="${x}" cy="${y}" r="2.3"/>`)).join('')}</svg>`,
+};
+function bandHtml(design, screen) {
+  const look = lookOf(design).id;
+  const I = BAND_ICONS;
+  if (look === 'salesforce') {
+    // 2 行目はアプリの名前（画面設計の名前）とタブ。画面設計の名前と同じタブに下線を付ける
+    const tabs = bandTabsOf(design).map((t) => `<span class="sfb-tab${t === design.name ? ' on' : ''}">${esc(t)} <small>▾</small></span>`).join('');
+    return `<div class="screen-band sfb"><div class="sfb-top"><span class="sfb-logo">ロゴ</span><span class="sfb-search">${I.search}<span>検索…</span></span>`
+      + `<span class="sfb-icons">${I.star}${I.plus}${I.help}${I.gear}${I.bell}<span class="sfb-avatar"></span></span></div>`
+      + `<div class="sfb-nav"><span class="sfb-waffle">${I.waffle}</span><span class="sfb-app">${esc(design.name)}</span>${tabs}</div></div>`;
+  }
+  if (look === 'kintone') {
+    // 1 行目は場所（ポータル ＞ アプリの名前）、2 行目はアプリの名前と今の画面の名前
+    return `<div class="screen-band ktb"><div class="ktb-top"><span class="ktb-logo">ロゴ</span><span class="ktb-crumb">ポータル ＞ ${esc(design.name)}</span>`
+      + `<span class="ktb-search">${I.search}<span>アプリ内を検索</span></span><span class="ktb-icons">${I.bell}${I.gear}${I.help}</span></div>`
+      + `<div class="ktb-app"><span class="ktb-appicon"></span><span class="ktb-appname">${esc(design.name)}</span><span class="ktb-view">${esc(screen.name)}</span></div></div>`;
+  }
+  return `<div class="screen-band">${esc(design.name)} ／ ${esc(screen.name)}</div>`;
 }
 
 // ── 部品の見た目（画像 q15・仕上がりイメージ.png に合わせた）──
@@ -5881,10 +6101,15 @@ function openNewDesignDialog({ systemId = null } = {}) {
     body: `
       <label class="field"><span>名前（業務アプリの名前）</span><input type="text" name="name" maxlength="${NAME_MAX}" placeholder="例: 顧客管理アプリ"></label>
       <div class="field"><span>作る先</span>${targetPickerHtml(store.state, 'kintone')}</div>
+      <div class="field"><span>見た目</span>${lookSegHtml(lookForTarget('kintone'), 'new-look')}
+        <span class="hint">作る先を選ぶと、見た目も同じものになります（後から右の欄で変えられます）。</span></div>
       ${sysField}
       <p class="hint">白紙の画面を 1 つ入れて開きます。説明は、開いたあとに右の欄で書けます。</p>`,
     init: (m) => {
-      bindTargetPicker(m);
+      // 作る先を選び直したら、見た目をその作る先の見た目に合わせる（q105。「その他」を選んだときは標準）
+      const setLook = (t) => { $(`[name=new-look][value="${lookForTarget(t)}"]`, m).checked = true; };
+      bindTargetPicker(m, setLook);
+      $('.target-select', m).addEventListener('change', (e) => { if (e.target.value === OTHER_TARGET) setLook(''); });
       $('[name=name]', m).focus();
     },
     collect: (m) => {
@@ -5893,7 +6118,8 @@ function openNewDesignDialog({ systemId = null } = {}) {
       const target = readTargetPicker(m);
       if (!target) return { error: '「その他」を選んだときは、作る先の名前を書いてください。' };
       const sel = $('[name=system]', m);
-      return { name, target, systemId: sel && sel.value ? sel.value : null };
+      const look = ($('[name=new-look]:checked', m) || {}).value || 'standard';
+      return { name, target, look, systemId: sel && sel.value ? sel.value : null };
     },
   });
 }
@@ -5902,7 +6128,7 @@ async function newDesignWithDialog(systemId) {
   const first = systemId !== undefined ? systemId : (homeSystem() || {}).id || null;
   const r = await openNewDesignDialog({ systemId: first });
   if (!r) return;
-  const id = actions.createDesign(r.name, r.target, { systemId: r.systemId });
+  const id = actions.createDesign(r.name, r.target, { systemId: r.systemId, look: r.look });
   if (id) openDesign(id);
 }
 
@@ -9116,11 +9342,21 @@ function renderScreenSettings(d, el) {
     <label><input type="radio" name="device" value="${key}" data-field="device"${s.device === key ? ' checked' : ''}><span>${v.label}<small>幅 ${v.width}</small></span></label>`).join('');
   const tablePos = [['right', '画面の右'], ['bottom', '画面の下']].map(([v, l]) => `
     <label><input type="radio" name="table-pos" value="${v}" data-field="table-pos"${s.tablePos === v ? ' checked' : ''}><span>${l}</span></label>`).join('');
+  const itemViews = Object.entries(ITEM_VIEWS).map(([v, l]) => `
+    <label><input type="radio" name="item-view" value="${v}" data-field="item-view"${s.itemView === v ? ' checked' : ''}><span>${l}</span></label>`).join('');
+  // 帯のタブは Salesforce の見た目のときだけ出す。書いていないときは、最初の値（ホームと画面設計の名前）を薄い字で見せる
+  const tabs = d.look === 'salesforce' ? `
+      <label class="field"><span>帯のタブ <small>1 行に 1 つ</small></span><textarea data-field="design-tabs" rows="3" placeholder="${esc(bandTabsOf({ name: d.name }).join('\n'))}">${esc(d.bandTabs.join('\n'))}</textarea>
+        <span class="hint">画面設計の名前と同じタブに下線が付きます。</span></label>` : '';
+  const BAND_WORDS = { standard: '業務アプリ名 ／ 画面の名前', salesforce: 'ロゴ・検索・アプリ名・タブ', kintone: 'ロゴ・場所・アプリ名・画面の名前' };
   el.innerHTML = `
     <section>
       <div class="panel-title">画面設計の情報</div>
       <label class="field"><span>名前</span><input type="text" data-field="design-name" maxlength="${NAME_MAX}" value="${esc(d.name)}"></label>
       <div class="field"><span>作る先</span>${targetPickerHtml(store.state, d.target)}</div>
+      <div class="field"><span>見た目</span>${lookSegHtml(lookOf(d).id, 'design-look')}
+        <span class="hint">画面の色・枠・帯の形が変わります。部品の並びと大きさは変わりません（帯の高さが変わる分だけ、部品を上下にずらします）。</span></div>
+      ${tabs}
       <label class="field"><span>説明</span><textarea data-field="design-desc" rows="4" placeholder="この業務アプリで何をするか など">${esc(d.description)}</textarea></label>
     </section>
     <section>
@@ -9129,7 +9365,9 @@ function renderScreenSettings(d, el) {
       <div class="field"><span>機器の種類</span><div class="seg">${devices}</div></div>
       <div class="field"><span>高さ</span><span class="height-value" id="side-height">${s.height} ドット</span>
         <span class="hint">画面の下の縁をドラッグすると、8 ドットずつ伸ばせます。</span></div>
-      <label class="check"><input type="checkbox" data-field="screen-header"${s.showHeader ? ' checked' : ''}><span>画面のいちばん上に帯を付ける<small class="sub">（業務アプリ名 ／ 画面の名前）</small></span></label>
+      <div class="field"><span>項目の出し方</span><div class="seg">${itemViews}</div>
+        <span class="hint">この画面の入力欄の部品を、すべてこの形で描きます（表示の形は詳細の画面に使います）。</span></div>
+      <label class="check"><input type="checkbox" data-field="screen-header"${s.showHeader ? ' checked' : ''}><span>画面のいちばん上に帯を付ける<small class="sub">（${BAND_WORDS[lookOf(d).id]}）</small></span></label>
       <div class="field" style="margin-top:10px"><span>部品の設定の一覧表の位置</span><div class="seg">${tablePos}</div></div>
     </section>`;
   bindTargetPicker(el, (t) => actions.updateDesignInfo(d.id, { target: t }));
@@ -9699,6 +9937,12 @@ function saveSideField(e) {
     return;
   }
   if (field === 'design-desc' && v !== d.description) commitKeepSide(() => actions.updateDesignInfo(d.id, { description: v }));
+  if (field === 'design-look' && v !== d.look) actions.updateDesignInfo(d.id, { look: v });
+  if (field === 'design-tabs') {
+    const list = normalizeBandTabs(v.split('\n'));
+    if (list.join('\n') !== d.bandTabs.join('\n')) commitKeepSide(() => actions.updateDesignInfo(d.id, { bandTabs: list }));
+  }
+  if (field === 'item-view' && v !== s.itemView) actions.updateScreen(d.id, s.id, { itemView: v });
   if (field === 'device' && v !== s.device) actions.updateScreen(d.id, s.id, { device: v });
   if (field === 'screen-header') actions.updateScreen(d.id, s.id, { showHeader: e.target.checked });
   if (field === 'table-pos' && v !== s.tablePos) actions.updateScreen(d.id, s.id, { tablePos: v });
@@ -12304,11 +12548,20 @@ function canonicalJson(v) {
   return JSON.stringify(v === undefined ? null : v);
 }
 const designContent = (d) => canonicalJson(designContentOf(d));
-// 比べるための中身。形を整え、ほかの画面設計を指す控えの名前を今の名前に直してから作る（出力した HTML の写しと同じ直し方）
+// 比べるための中身。形を整え、ほかの画面設計を指す控えの名前を今の名前に直してから作る（出力した HTML の写しと同じ直し方）。
+// v1.01 で足した見た目の欄（look・bandTabs・画面の itemView）は、最初の値なら外す（v1.00 で出力した HTML の中身の印と合うように）
 function comparableContent(d, state) {
   const c = normalizeDesign(clone({ ...d, revisions: [] }));
   refreshRefNames(c, state);
-  return designContent(c);
+  return canonicalJson(contentWithoutLookDefaults(c));
+}
+// 中身（designContentOf）から、v1.01 で足した見た目の欄を、最初の値なら外したもの（c の画面も書き換えるので、写しを渡す）
+function contentWithoutLookDefaults(c) {
+  const out = designContentOf(c);
+  if (out.look === 'standard') delete out.look;
+  if (Array.isArray(out.bandTabs) && !out.bandTabs.length) delete out.bandTabs;
+  out.screens.forEach((s) => { if (s.itemView === 'input') delete s.itemView; });
+  return out;
 }
 // 中身の短い印（受け渡しで「出力した後に、こちらでも変えたか」を見るため。FNV-1a を 2 本並べた 16 桁）
 function shortHash(text) {
@@ -12343,7 +12596,7 @@ function legacyContent(d, state) {
   };
   c.items.forEach((it) => { if (it.type === 'status') toNames(it.props); });
   c.screens.forEach((s) => s.parts.forEach((p) => { if (p.type === 'status' || p.type === 'steps') toNames(p.props); }));
-  const out = designContentOf(c);
+  const out = contentWithoutLookDefaults(c);
   ['processPos', 'flowPos'].forEach((k) => { if (isObj(out[k]) && !Object.keys(out[k]).length) delete out[k]; });
   return canonicalJson(out);
 }
@@ -13046,7 +13299,7 @@ function aiPage(list, cursor, budget = AI_REPLY_BUDGET, sizeOf = (x) => JSON.str
 function aiDesignSummary(d) {
   const latest = latestVersion(d);
   return {
-    id: d.id, name: d.name, target: targetLabel(d.target), screens: d.screens.length, items: d.items.length,
+    id: d.id, name: d.name, target: targetLabel(d.target), look: lookOf(d).id, screens: d.screens.length, items: d.items.length,
     latestVersion: latest ? revisionTitle(latest) : null, updatedAt: d.updatedAt, ...(d.trashedAt ? { trashed: true } : {}),
   };
 }
@@ -13075,9 +13328,10 @@ function aiGetDesign(args) {
     .filter((it) => it.link && it.link.designId === d.id && !it.link.lost)
     .map((it) => ({ design: x.name, item: it.name, from: (findItem(d, it.link.itemId) || { name: '' }).name })));
   return {
-    id: d.id, name: d.name, target: targetLabel(d.target), description: d.description, updatedAt: d.updatedAt, ...(d.trashedAt ? { trashed: true } : {}),
+    id: d.id, name: d.name, target: targetLabel(d.target), look: lookOf(d).id, ...(lookOf(d).id === 'salesforce' ? { bandTabs: bandTabsOf(d) } : {}),
+    description: d.description, updatedAt: d.updatedAt, ...(d.trashedAt ? { trashed: true } : {}),
     items: page, itemsTotal: d.items.length, nextCursor,
-    screens: d.screens.map((s) => ({ id: s.id, name: s.name, device: s.device, width: s.width, height: s.height, showHeader: s.showHeader, tablePos: s.tablePos, parts: s.parts.length, callouts: (s.callouts || []).length })),
+    screens: d.screens.map((s) => ({ id: s.id, name: s.name, device: s.device, width: s.width, height: s.height, showHeader: s.showHeader, tablePos: s.tablePos, itemView: s.itemView, parts: s.parts.length, callouts: (s.callouts || []).length })),
     revisions: d.revisions.filter(isObj).map((r) => ({ id: r.id, kind: r.kind, title: revisionTitle(r), date: revisionDay(r), note: str(r.note), canRestore: hasSnapshot(r) })),
     importedBy,
   };
@@ -13110,7 +13364,7 @@ function aiGetScreen(args) {
   const table = tableRows(sc, d, S).map((r) => ({ no: r.no, label: r.label, kind: r.kind, setting: r.setting }));
   const out = {
     design: { id: d.id, name: d.name, updatedAt: d.updatedAt },
-    id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height, showHeader: sc.showHeader, tablePos: sc.tablePos,
+    id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height, showHeader: sc.showHeader, tablePos: sc.tablePos, itemView: sc.itemView,
     parts: [], partsTotal: parts.length, callouts: [], calloutsTotal: callouts.length, table: [], tableTotal: table.length, nextCursor: null,
   };
   return aiPageInto(out, [['parts', parts], ['callouts', callouts], ['table', table]], args.cursor);
@@ -13245,10 +13499,15 @@ function aiGetCatalog() {
       columnsLeft: [TPL_LEFT, TPL_COL2], columnWidth: LAYOUT_COL_W, spanWidth: LAYOUT_SPAN_W, twoColumnsMinWidth: LAYOUT_TWO_COL_MIN,
       rowGap: TPL_GAP, alignGap: LAYOUT_ALIGN_GAP, firstRowY: { withHeader: AI_FIRST_ROW_Y, withoutHeader: AI_FIRST_ROW_Y_NOHEADER }, grid: GRID,
     },
+    // 見た目（第 12 段階）。帯の高さと、帯がある画面の並べ方の最初の行（firstRowY）は見た目で変わる
+    looks: LOOKS.map((l) => ({ id: l.id, name: l.label, bandHeight: l.band, firstRowY: l.band + AI_FIRST_ROW_Y - LOOKS[0].band })),
+    itemViews: { ...ITEM_VIEWS },
   };
 }
-const AI_FIRST_ROW_Y = 64; // 帯がある画面の並べ方の最初の行（高さ 40 の帯の下に 24 空ける）
+const AI_FIRST_ROW_Y = 64; // 帯がある画面の並べ方の最初の行（標準の見た目の高さ 40 の帯の下に 24 空ける）
 const AI_FIRST_ROW_Y_NOHEADER = 24; // 帯を消した画面の最初の行（Claude が決めた）
+// 並べ方の最初の行。帯の下に 24 空ける（帯の高さは見た目で変わる。第 12 段階）
+const aiFirstRowY = (d, sc) => (sc.showHeader ? bandHeight(d, sc) + AI_FIRST_ROW_Y - LOOKS[0].band : AI_FIRST_ROW_Y_NOHEADER);
 
 // ── 書く道具の共通の流れ（設計書の 8 章）──
 const AI_BUSY_WAIT_MS = 2000; // 人がドラッグ・日本語の変換をしている間に、書く頼みを待つ長さ（8-4）
@@ -13626,13 +13885,17 @@ async function aiCreateDesign(args, ctx) {
     const y = args.system == null ? null : aiResolveSystem(store.state, args.system, { write: true });
     const same = visibleDesigns(store.state).filter((x) => x.name === name);
     if (same.length) tx.warnings.push(`同じ名前の画面設計がもうあります（${same.map((x) => x.id).join('・')}）。`);
-    const id = actions.createDesign(name, resolveTargetName(str(args.target)), { systemId: y ? y.id : null });
+    const target = resolveTargetName(str(args.target));
+    // 見た目を書かないときは、新しい画面設計の窓と同じく、作る先から決まる見た目（Salesforce・kintone 以外は標準。q105）
+    const look = args.look == null ? lookForTarget(target) : aiLook(args.look);
+    const id = actions.createDesign(name, target, { systemId: y ? y.id : null, look });
     if (args.description != null) actions.updateDesignInfo(id, { description: aiStrVal(args.description, 'description') });
+    if (args.bandTabs != null) actions.updateDesignInfo(id, { bandTabs: aiBandTabs(args.bandTabs) });
     tx.createdDesign = id;
     const d = findDesign(store.state, id);
     // system を書いたときは、システムの更新の印も変わる（入れたため）。返事の system.updatedAt を、次にシステムを直す道具の expect に使う
     return {
-      id, name: d.name, target: targetLabel(d.target), firstScreen: { id: d.screens[0].id, name: d.screens[0].name }, updatedAt: d.updatedAt,
+      id, name: d.name, target: targetLabel(d.target), look: d.look, firstScreen: { id: d.screens[0].id, name: d.screens[0].name }, updatedAt: d.updatedAt,
       ...(y ? { system: aiSystemBrief(findSystem(store.state, y.id)) } : {}),
     };
   });
@@ -13645,11 +13908,28 @@ async function aiUpdateDesign(args, ctx) {
       if (!patch.name) throw aiBad('画面設計の名前を空にはできません。');
     }
     if (args.target !== undefined) patch.target = resolveTargetName(str(args.target));
+    if (args.look !== undefined) patch.look = aiLook(args.look);
+    if (args.bandTabs !== undefined) patch.bandTabs = args.bandTabs == null ? [] : aiBandTabs(args.bandTabs);
     if (args.description !== undefined) patch.description = aiStrVal(args.description == null ? '' : args.description, 'description');
-    if (!Object.keys(patch).length) throw aiBad('直す欄（name・target・description）を 1 つ以上書いてください。');
+    if (!Object.keys(patch).length) throw aiBad('直す欄（name・target・look・bandTabs・description）を 1 つ以上書いてください。');
+    const from = lookOf(tx.design);
     actions.updateDesignInfo(tx.design.id, patch);
-    return { id: tx.design.id };
+    const d = findDesign(store.state, tx.design.id);
+    // 見た目を変えて帯の高さが変わったときは、帯の下の部品と吹き出しを上下にずらしたことを知らせる（get_screen で位置を読み直してもらうため）
+    const dy = lookOf(d).band - from.band;
+    if (dy) tx.warnings.push(`見た目を変えて帯の高さが ${from.band} から ${lookOf(d).band} になったので、帯のある画面の、帯の下の部品と吹き出しを ${dy} ドットずらしました。`);
+    return { id: d.id, look: d.look };
   });
+}
+// 見た目（look）と Salesforce の帯のタブ（bandTabs）を読む。知らない見た目・文字の並びでないものは断る
+function aiLook(v) {
+  if (!LOOKS.some((l) => l.id === v)) throw aiBad(`look は ${LOOKS.map((l) => `"${l.id}"（${l.label}）`).join('・')} です。`);
+  return v;
+}
+function aiBandTabs(v) {
+  if (!Array.isArray(v) || v.some((t) => typeof t !== 'string')) throw aiBad('bandTabs は文字の配列で書いてください（例 ["ホーム", "問い合わせ"]）。');
+  if (v.length > BAND_TABS_MAX) throw aiBad(`bandTabs は ${BAND_TABS_MAX} 個までです。`);
+  return normalizeBandTabs(v);
 }
 
 // ── 書く道具: データベースの項目 ──
@@ -13856,10 +14136,14 @@ function aiScreenOp(tx, op) {
         if (!['right', 'bottom'].includes(op.tablePos)) throw aiBad('tablePos は "right"（画面の右）か "bottom"（画面の下）です。');
         patch.tablePos = op.tablePos;
       }
-      if (!Object.keys(patch).length) throw aiBad('直す欄（name・device・height・showHeader・tablePos）を 1 つ以上書いてください。');
+      if (op.itemView !== undefined) {
+        if (!own(ITEM_VIEWS, op.itemView)) throw aiBad('itemView は "input"（入力の形）か "show"（表示の形。詳細の画面に使う）です。');
+        patch.itemView = op.itemView;
+      }
+      if (!Object.keys(patch).length) throw aiBad('直す欄（name・device・height・showHeader・tablePos・itemView）を 1 つ以上書いてください。');
       actions.updateScreen(id, sc.id, patch);
       const s = findScreen(id, sc.id);
-      return { op: 'update', id: s.id, name: s.name, device: s.device, width: s.width, height: s.height };
+      return { op: 'update', id: s.id, name: s.name, device: s.device, width: s.width, height: s.height, itemView: s.itemView };
     }
     case 'move':
       actions.moveScreen(id, sc.id, aiMoveIndex(d().screens, sc.id, op, (ref) => aiResolveScreen(d(), ref)));
@@ -13918,7 +14202,7 @@ function aiLayout(tx, designId, screenId, layout, mode) {
     if (!Array.isArray(row)) throw aiBad(`rows[${ri}] は部品の並び（配列）か { align, parts } の形で書いてください。`);
     return row.map((e, pi) => entry(e, `rows[${ri}][${pi}]`));
   });
-  const firstY = sc.showHeader ? AI_FIRST_ROW_Y : AI_FIRST_ROW_Y_NOHEADER;
+  const firstY = aiFirstRowY(findDesign(store.state, designId), sc);
   const startY = sc.parts.length ? Math.ceil((Math.max(...sc.parts.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : firstY;
   const { placed } = layoutPlacements({ rows, columns }, { width: sc.width, startY, sizeOf: (s) => ({ type: s.type, w: s.w0, h: s.h0 }) });
   // 置くと画面が伸びる（placePartIn と同じく、下に TPL_LEFT 空ける）ときは、上限を超えないか見る
@@ -14201,7 +14485,7 @@ function aiCalloutOp(tx, sid, op) {
       const text = op.text == null ? '' : aiStrVal(op.text, 'text');
       if (!text.trim()) throw aiBad('吹き出しの文（text）を書いてください。');
       const target = op.target == null ? null : aiResolvePart(sc(), op.target);
-      const at = { x: sc().width + AI_CALLOUT_OUTSIDE, y: target ? target.y : AI_FIRST_ROW_Y };
+      const at = { x: sc().width + AI_CALLOUT_OUTSIDE, y: target ? target.y : aiFirstRowY(findDesign(store.state, id), sc()) };
       if (op.x === undefined && op.y === undefined) while (sc().callouts.some((c) => c.x === at.x && c.y === at.y)) at.y += PALETTE_EXTRA.callout.h + 16;
       const cid = actions.addCallout(id, sid, rectOf(at), target ? target.id : null);
       const patch = { text };
@@ -15738,7 +16022,7 @@ function exposeForTest() {
     designDiff, designFromSnapshot, nextVersionNo, latestVersion, openAddRevisionDialog, openRevisionsDialog, startViewRevision, leaveViewing,
     restoreRevisionWithConfirm, openDiffListDialog, editorDiff, todayDay,
     revisionTitle, revisionRow, DESIGN_CONTENT_KEYS, designContentOf, designContent, stateWithRefs, layoutPlacements, placePartIn,
-    changedSinceExport, legacyContent, resolveStateRef, statePropsFromNames,
+    changedSinceExport, legacyContent, comparableContent, resolveStateRef, statePropsFromNames, LOOKS, ITEM_VIEWS, screenHtml,
     SWIM_KINDS, createSystemData, normalizeSystem, findSystem, systemsOf, designsOfSystem, loneDesigns,
     MATERIAL_KINDS, MATERIAL_KIND_NAMES, normalizeMaterials, isLegacyMaterial, fmtMaterialSize,
     NOTE_STAGES, NOTE_STAGE_NAMES, NOTE_STATES, NOTE_STATE_NAMES, NOTE_TEXT_MAX, normalizeNotes, noteQuestionDecided,

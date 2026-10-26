@@ -32,7 +32,7 @@ test('list_designs: 既定はごみ箱を除く。trashed で、ごみ箱の画�
   assert.equal(r.ok, true);
   assert.equal(r.result.total, 2);
   const d1 = r.result.designs.find((d) => d.id === 'd1');
-  assert.deepEqual(d1, { id: 'd1', name: '顧客管理', target: 'kintone', screens: 2, items: 3, latestVersion: null, updatedAt: '2026-10-01T00:00:00.000Z' });
+  assert.deepEqual(d1, { id: 'd1', name: '顧客管理', target: 'kintone', look: 'standard', screens: 2, items: 3, latestVersion: null, updatedAt: '2026-10-01T00:00:00.000Z' });
   const all = await call('list_designs', { trashed: true });
   assert.equal(all.result.total, 3);
   assert.equal(all.result.designs.find((d) => d.id === 'd3').trashed, true);
