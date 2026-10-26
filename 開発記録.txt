@@ -1310,6 +1310,8 @@ Claude が決めたこと（細かい決めごとは 仕様_細かい決めご�
   対策: capture.js で、ページごとに CDP の Emulation.setEmulatedMedia で forced-colors を none にした（playwright は newContext の forcedColors: 'none'）。白が 255 で撮れることを確かめた。
   tools/shoot-app.js の画像と、Electron の PNG の出力は、白いまま（影響を受けていない）ことを確かめた。
 - 作っている途中: 新しい画面設計の窓で「その他」を選んでも見た目が kintone のままだった → select の値が __other__ のときに標準にした（テストで確かめる）。
+- PR #18 の CI でテスト 1 個（test/system-doc.test.js のシステムの表紙）が落ちた。原因: 表紙の「モックイメージメーカー v1.00 で出力」を、テストが v1.00 と書き込んで比べていた。
+  版を v1.01 に上げた後に、テストを全部は流していなかった（export-golden だけ直した）。対策: そのテストも APP_VERSION で比べるようにし、全部の 1207 個が通ることを確かめた。
 計画外の直し（同じ PR。小さな別のコミット）:
 - build-windows.yml: GitHub は Releases のファイルの名前の日本語を置き換える（v1.00 の下書きで、使用説明書が「_._v1.00.docx」になった）。使用説明書は英字の名前
   MockImageMaker_UserManual_<版>.docx に写して載せ、元の日本語の名前を表示名（gh release create の「ファイル#表示名」）にした。偽の gh で引数を確かめた（.devdata/release/stage12-gh）。
