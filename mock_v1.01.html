@@ -454,6 +454,13 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .psteps span:first-child{clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%)}
 .psteps span.done{background:#bfdbfe;color:#1e3a8a}
 .psteps span.on{background:#2563eb;color:#fff;font-weight:700}
+/* 分かれる終わり（第 13 段階。画像 q114 の ①）。狭いときは「〇〇から分かれる終わり」の字から縮める（本線の矢印は 56 より狭くしない） */
+.psteps.has-end span{min-width:56px}
+.psteps .pst-sep{flex:none;align-self:stretch;width:0;margin:6px 8px 6px 18px;border-left:2px dotted #94a3b8}
+.psteps .pst-from{flex:0 1 auto;min-width:0;align-self:center;overflow:hidden;white-space:nowrap;margin-right:8px;font-size:12px;font-style:normal;color:#64748b}
+.psteps .pst-end{flex:none;align-self:center;display:flex;align-items:center;height:calc(100% - 6px);max-height:32px;padding:0 14px;border:1.5px solid #dc2626;border-radius:999px;
+  background:#fff;color:#dc2626;font-size:13px;font-weight:700;white-space:nowrap}
+.psteps .pst-end.on{background:#dc2626;color:#fff}
 .ptabs{flex:1;display:flex;align-items:flex-end;border-bottom:2px solid #cbd5e1;overflow:hidden;white-space:nowrap}
 .ptabs span{height:100%;padding:0 16px;display:flex;align-items:center;font-size:13px;color:#475569;border:1px solid transparent;border-bottom:none;border-radius:6px 6px 0 0;flex-shrink:0}
 .ptabs span.on{background:#fff;border-color:#cbd5e1;color:#1d4ed8;font-weight:700;margin-bottom:-2px;border-bottom:2px solid #fff}
@@ -2128,6 +2135,28 @@ function kintoneLines(entry, column = false) {
   ].filter(Boolean);
 }
 
+// 進み具合の矢印の本線と分かれる終わり（第 13 段階。画像 q114 の ①）。戻り値 { main（本線のステータスの並び）, ends: [{ state, from（分かれる元のステータスの id）}] }。
+// 分かれる終わりは、そこから先へ進む操作がなく、そこへ来る操作があり、本線の終わりでないステータス。本線の終わりは、最初のステータスから操作をたどって
+// いちばん長く進めた先（同じ長さなら、操作の並びで先に書いた操作でたどった先）。q114 の説明の文の「並びの最後を除く」は、モックの絵（並びの最後の却下を外す）と
+// 食い違っていたので、絵に合わせてこう決めた（Claude が決めた）。操作がないときは、分かれる終わりもない（今までどおり 1 列に並べる）
+const STEPS_WALK_MAX = 5000; // 操作をたどる道の数の上限（操作がとても多いときに固まらないため）
+function stepsBranches(states, actions) {
+  const ids = new Set(states.map((s) => s.id));
+  const acts = (Array.isArray(actions) ? actions : []).filter((a) => isObj(a) && ids.has(a.from) && ids.has(a.to) && a.from !== a.to);
+  if (!states.length || !acts.length) return { main: states, ends: [] };
+  const next = (id) => acts.filter((a) => a.from === id);
+  let best = { len: -1, end: null };
+  let walks = 0;
+  const walk = (id, len, seen) => {
+    const go = next(id).filter((a) => !seen.has(a.to));
+    if (!go.length || ++walks > STEPS_WALK_MAX) { if (len > best.len) best = { len, end: id }; return; }
+    go.forEach((a) => walk(a.to, len + 1, new Set([...seen, a.to])));
+  };
+  walk(states[0].id, 0, new Set([states[0].id]));
+  const ends = states.filter((s) => s.id !== best.end && !next(s.id).length && acts.some((a) => a.to === s.id))
+    .map((s) => ({ state: s, from: acts.find((a) => a.to === s.id).from }));
+  return { main: states.filter((s) => !ends.some((e) => e.state === s)), ends };
+}
 // 操作の行「操作「承認する」＝承認待ちから承認済みへ（上長）・条件」。「＝」の前を操作ごとに変えて、改訂履歴の違いで操作ごとに前と後を出す
 function actionLines(pr) {
   const states = Array.isArray(pr.states) ? pr.states : [];
@@ -5121,10 +5150,15 @@ function partInnerHtml(p, t, marks = false) {
       return `${outNo()}<div class="pstatus">${word}<span class="pbadge sc${at % 5}">${esc(states[at] ? states[at].name : '')}</span>${marks ? partMarksHtml(p) : ''}</div>`;
     }
     case 'steps': {
+      // 分かれる終わり（却下など）は本線から外し、点線の区切りと「〇〇から分かれる終わり」の字の後に、丸い札で右に置く（第 13 段階。画像 q114 の ①）。
+      // 見本のステータスが分かれる終わりのときは、札を塗り、本線は分かれる元のステータスまで済んだ色にする
       const states = pr.states || [];
       const id = resolveStateRef(states, p.view && p.view.current);
-      const at = id ? states.findIndex((s) => s.id === id) : -1;
-      return `${outNo()}<div class="psteps">${states.map((s, i) => `<span class="${i < at ? 'done' : i === at ? 'on' : ''}">${esc(s.name)}</span>`).join('')}</div>`;
+      const { main, ends } = stepsBranches(states, pr.actions);
+      const end = ends.find((e) => e.state.id === id);
+      const at = end ? main.findIndex((s) => s.id === end.from) + 0.5 : id ? main.findIndex((s) => s.id === id) : -1;
+      const tail = ends.map((e) => `<i class="pst-sep"></i><em class="pst-from">${esc(stateNameOf(states, e.from))}から分かれる終わり</em><b class="pst-end${e === end ? ' on' : ''}">${esc(e.state.name)}</b>`).join('');
+      return `${outNo()}<div class="psteps${ends.length ? ' has-end' : ''}">${main.map((s, i) => `<span class="${i < at ? 'done' : i === at ? 'on' : ''}">${esc(s.name)}</span>`).join('')}${tail}</div>`;
     }
     case 'tabs': {
       const tabs = pr.tabs || [];

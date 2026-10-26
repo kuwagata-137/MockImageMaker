@@ -204,8 +204,8 @@ async function phaseA() {
   // 第 8 段階の道具（ステータスの移り方と画面の移り方）
   const tl = await client.listTools();
   const NEW_TOOLS = ['edit_process', 'get_flow', 'get_view_image', 'list_systems', 'get_system', 'create_system', 'update_system', 'add_to_system', 'remove_from_system', 'set_swimlane',
-    'list_materials', 'read_material', 'swimlane_from_bdm', 'get_notes', 'update_notes', 'set_stage', 'export_system_doc', 'export_bdm'];
-  check(`A. 道具は ${TOOL_COUNT} 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個・資料の 3 個、第 10 段階の設計ノートの 3 個・説明書の 1 個、第 11 段階の MPD への出力の 1 個を含む）`,
+    'list_materials', 'read_material', 'swimlane_from_bdm', 'get_notes', 'update_notes', 'set_stage', 'export_system_doc', 'export_bdm', 'get_kintone_app'];
+  check(`A. 道具は ${TOOL_COUNT} 個（第 8 段階の edit_process・get_flow・get_view_image と、第 9 段階のシステムの 7 個・資料の 3 個、第 10 段階の設計ノートの 3 個・説明書の 1 個、第 11 段階の MPD への出力の 1 個、第 13 段階の kintone のアプリの形の 1 個を含む）`,
     tl.tools.length === TOOL_COUNT && NEW_TOOLS.every((n) => tl.tools.some((x) => x.name === n)), `${tl.tools.length} 個`);
   await tool(client, 'edit_process', { design: made.id, ops: [
     { op: 'set_states', states: ['申請', '承認待ち', '完了'] },
