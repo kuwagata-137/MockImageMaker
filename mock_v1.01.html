@@ -1764,6 +1764,76 @@ const isItemPart = (p) => !!partItemType(p);
 // 同じ項目を 1 つの画面に 2 回は置かない（ステータスは、ステータスの印と進み具合の矢印で同じ画面に何度でも置ける）
 const oncePerScreen = (itemType) => itemType !== 'status';
 
+// ── kintone のフィールドの情報（第 13 段階。業務アプリの見た目とCRM_設計書.md の 6 章・画像 q111・q112）──
+// 項目とテーブルの列に、なくてもよい欄 kintone: { type, code, formula } を持つ（どれも文字。3 つとも空なら持たない）。
+// type は kintone のフィールドの種類（空は部品の種類から決まる既定）、code はフィールドコード（空は項目名から作る）、formula は kintone の書き方の計算式。
+// 右の欄に出して描き分けるのは、kintone の画面設計（作る先か見た目が kintone）のときだけ。ほかの画面設計でも、データは消さずに残す
+const KINTONE_TYPES = {
+  SINGLE_LINE_TEXT: { name: '文字列（1行）' }, LINK: { name: 'リンク' }, MULTI_LINE_TEXT: { name: '文字列（複数行）' }, RICH_TEXT: { name: 'リッチエディター' },
+  NUMBER: { name: '数値' }, CALC: { name: '計算' }, DATE: { name: '日付' }, DATETIME: { name: '日時' }, TIME: { name: '時刻' },
+  DROP_DOWN: { name: 'ドロップダウン' }, RADIO_BUTTON: { name: 'ラジオボタン' }, CHECK_BOX: { name: 'チェックボックス' }, MULTI_SELECT: { name: '複数選択' },
+  USER_SELECT: { name: 'ユーザー選択' }, ORGANIZATION_SELECT: { name: '組織選択' }, GROUP_SELECT: { name: 'グループ選択' },
+  FILE: { name: '添付ファイル' }, SUBTABLE: { name: 'テーブル' },
+  // kintone が値を入れる種類（入力の形では「（自動で入る）」と描く。kintone のアプリに最初からある）
+  RECORD_NUMBER: { name: 'レコード番号', auto: true }, CREATOR: { name: '作成者', auto: true }, MODIFIER: { name: '更新者', auto: true },
+  CREATED_TIME: { name: '作成日時', auto: true }, UPDATED_TIME: { name: '更新日時', auto: true },
+};
+// 部品の種類ごとに選べる kintone の種類（先頭が既定）。ステータスは kintone ではプロセス管理で作るので持たない
+const KINTONE_CHOICES = {
+  text1: ['SINGLE_LINE_TEXT', 'LINK', 'RECORD_NUMBER'], text2: ['MULTI_LINE_TEXT', 'RICH_TEXT'], number: ['NUMBER', 'RECORD_NUMBER'],
+  calc: ['CALC', 'SINGLE_LINE_TEXT'], date: ['DATE'], datetime: ['DATETIME', 'TIME', 'CREATED_TIME', 'UPDATED_TIME'],
+  dropdown: ['DROP_DOWN'], radio: ['RADIO_BUTTON'], checkbox: ['CHECK_BOX', 'MULTI_SELECT'],
+  user: ['USER_SELECT', 'ORGANIZATION_SELECT', 'GROUP_SELECT', 'CREATOR', 'MODIFIER'], file: ['FILE'], table: ['SUBTABLE'],
+};
+const KINTONE_CODE_MAX = 128;
+const kintoneTypeName = (id, partTypeId = '') => (partTypeId === 'calc' && id === 'SINGLE_LINE_TEXT' ? '文字列（1行）の自動計算' : own(KINTONE_TYPES, id) ? KINTONE_TYPES[id].name : id);
+const kintoneChoices = (type) => (own(KINTONE_CHOICES, type) ? KINTONE_CHOICES[type] : [])
+  .map((id) => ({ id, name: kintoneTypeName(id, type), auto: !!KINTONE_TYPES[id].auto }));
+const isKintoneDesign = (d) => !!d && (d.target === 'kintone' || lookOf(d).id === 'kintone');
+// kintone の欄を直す（文字でない値は空・前後の空白を取る。知らない欄は残す）。3 つとも空で、ほかの欄もなければ null
+function normalizeKintone(src) {
+  if (!isObj(src)) return null;
+  const k = { ...src, type: str(src.type).trim(), code: str(src.code).trim(), formula: str(src.formula).trim() };
+  return Object.keys(k).length > 3 || k.type || k.code || k.formula ? k : null;
+}
+// 項目・列の kintone の欄を直して付ける（空なら外す）
+function withKintone(obj, src) {
+  const k = normalizeKintone(src);
+  if (k) obj.kintone = k;
+  else delete obj.kintone;
+  return obj;
+}
+// 項目・列の kintone の種類（選んだ種類がその部品の種類で選べないとき・ルックアップの付いた項目は既定）
+function kintoneTypeOf(it) {
+  const ids = own(KINTONE_CHOICES, it.type) ? KINTONE_CHOICES[it.type] : [];
+  const t = it.kintone && it.kintone.type;
+  return !it.lookup && ids.includes(t) ? t : ids[0] || '';
+}
+// 名前から作るフィールドコード（kintone の決まり: 文字・数字・_ だけ・数字で始めない・128 字まで）
+function kintoneCodeOf(name) {
+  let c = String(name || '').replace(/[^\p{L}\p{N}_]+/gu, '_') || '_';
+  if (/^\p{N}/u.test(c)) c = '_' + c;
+  return c.slice(0, KINTONE_CODE_MAX);
+}
+const kintoneCodeOk = (code) => typeof code === 'string' && code.length > 0 && code.length <= KINTONE_CODE_MAX && /^[\p{L}\p{N}_]+$/u.test(code) && !/^\p{N}/u.test(code);
+// 画面設計の項目とテーブルの列の id → フィールドコード。書いたコードを先に取り、書いていないものは名前から作って、重なるときは _2・_3 を付ける
+// （書いたコードどうしの重なりは書き換えない。右の欄と get_kintone_app で知らせる）。ステータスは数えない
+function kintoneCodes(design) {
+  const entries = design.items.filter((it) => it.type !== 'status')
+    .flatMap((it) => [it, ...(it.type === 'table' ? it.props.columns || [] : [])]);
+  const used = new Set(entries.map((x) => x.kintone && x.kintone.code).filter(Boolean));
+  const out = {};
+  entries.forEach((x) => {
+    if (x.kintone && x.kintone.code) { out[x.id] = x.kintone.code; return; }
+    const base = kintoneCodeOf(x.name);
+    let code = base;
+    for (let k = 2; used.has(code); k++) code = base.slice(0, KINTONE_CODE_MAX - String(k).length - 1) + '_' + k;
+    used.add(code);
+    out[x.id] = code;
+  });
+  return out;
+}
+
 const defaultColumns = () => ['列 1', '列 2', '列 3'].map((name) => createColumnData('text1', name));
 function createColumnData(type, name) {
   return { id: newId('c'), name, type, required: false, memo: '', props: clone(partType(type).props) };
@@ -2430,7 +2500,7 @@ function withoutItemFieldsInPlace(p) {
 function normalizeItem(src) {
   const it = isObj(src) ? src : {};
   const type = str(it.type) || 'text1';
-  return {
+  return withKintone({
     ...it,
     id: str(it.id) || newId('i'),
     name: typeof it.name === 'string' ? it.name : isItemType(type) ? createItemData(type).name : '項目名',
@@ -2441,7 +2511,7 @@ function normalizeItem(src) {
     props: isItemType(type) ? normalizeItemProps(type, it.props) : isObj(it.props) ? it.props : {},
     lookup: normalizeLookup(it.lookup),
     link: normalizeLink(it.link),
-  };
+  }, it.kintone);
 }
 
 // 項目の種類ごとの設定を直す。表（テーブル）は列（{ id, name, type, required, memo, props }）、ステータスはステータスの並び
@@ -2552,10 +2622,10 @@ function clearGoneStates(design, item, beforeIds) {
 }
 function normalizeColumn(src) {
   const type = isInputType(src.type) ? src.type : 'text1';
-  return {
+  return withKintone({
     ...src, id: str(src.id) || newId('c'), name: typeof src.name === 'string' ? src.name : '列', type,
     required: !!src.required, memo: str(src.memo), props: keepInitialInOptions(type, normalizeProps(partType(type), src.props)),
-  };
+  }, src.kintone);
 }
 // レコード一覧・関連レコード一覧の設定（列は { id, ref: 項目の参照 }）
 function normalizeTablePartProps(src) {
@@ -16033,6 +16103,7 @@ function exposeForTest() {
     SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount, notesChangeCount, aiOnlyNotesChanged,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
+    KINTONE_TYPES, kintoneChoices, kintoneTypeOf, kintoneCodeOf, kintoneCodeOk, kintoneCodes, isKintoneDesign,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     setMaterialWaitMs: (ms) => { materialWaitMs = ms; },
     ready: true,
