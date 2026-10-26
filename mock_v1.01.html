@@ -548,6 +548,8 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 .side-settings .check{margin-bottom:8px}
 .pf-sep{border-top:1px dashed #cbd5e1;margin:12px 0 10px;position:relative}
 .pf-sep i{position:absolute;top:-8px;left:0;background:#fff;padding-right:6px;font-style:normal;font-size:10.5px;color:#7c3aed;font-weight:700}
+.kt-warn{font-size:11.5px;color:#dc2626;margin:-4px 0 8px;line-height:1.5}
+.kt-warn:empty{display:none}
 .pf-multi{display:flex;flex-direction:column;gap:3px;font-size:12px}
 .pf-multi label{display:flex;gap:6px;align-items:center;cursor:pointer}
 .pf-out{margin-top:6px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:7px 9px}
@@ -1818,9 +1820,11 @@ function kintoneCodeOf(name) {
 const kintoneCodeOk = (code) => typeof code === 'string' && code.length > 0 && code.length <= KINTONE_CODE_MAX && /^[\p{L}\p{N}_]+$/u.test(code) && !/^\p{N}/u.test(code);
 // 画面設計の項目とテーブルの列の id → フィールドコード。書いたコードを先に取り、書いていないものは名前から作って、重なるときは _2・_3 を付ける
 // （書いたコードどうしの重なりは書き換えない。右の欄と get_kintone_app で知らせる）。ステータスは数えない
+// kintone のフィールドになる項目とテーブルの列（項目の順。列はそのテーブルの後ろ）
+const kintoneEntries = (design) => design.items.filter((it) => it.type !== 'status')
+  .flatMap((it) => [it, ...(it.type === 'table' ? it.props.columns || [] : [])]);
 function kintoneCodes(design) {
-  const entries = design.items.filter((it) => it.type !== 'status')
-    .flatMap((it) => [it, ...(it.type === 'table' ? it.props.columns || [] : [])]);
+  const entries = kintoneEntries(design);
   const used = new Set(entries.map((x) => x.kintone && x.kintone.code).filter(Boolean));
   const out = {};
   entries.forEach((x) => {
@@ -1832,6 +1836,14 @@ function kintoneCodes(design) {
     out[x.id] = code;
   });
   return out;
+}
+// 書いたフィールドコードの知らせ（右の欄の欄の下・get_kintone_app の warnings）。使えない文字と、ほかの項目・列に書いたコードとの重なり
+function kintoneCodeWarn(design, entry) {
+  const code = entry.kintone && entry.kintone.code;
+  if (!code) return '';
+  if (!kintoneCodeOk(code)) return '使えない文字があります（文字・数字・_ だけで、数字で始めない。128 字まで）。';
+  const same = kintoneEntries(design).find((x) => x.id !== entry.id && x.kintone && x.kintone.code === code);
+  return same ? `「${code}」と同じフィールドコードを、「${same.name}」にも書いています。` : '';
 }
 
 const defaultColumns = () => ['列 1', '列 2', '列 3'].map((name) => createColumnData('text1', name));
@@ -1894,6 +1906,7 @@ function frozenItemFields(item) {
   const f = { label: item.name, required: item.required, memo: item.memo, props: clone(item.props) };
   if (item.lookup) f.lookup = clone(item.lookup);
   if (item.link) f.link = clone(item.link);
+  if (item.kintone) f.kintone = clone(item.kintone);
   return f;
 }
 
@@ -2493,7 +2506,7 @@ function withoutItemFields(p) {
   return rest;
 }
 function withoutItemFieldsInPlace(p) {
-  ['label', 'required', 'memo', 'props', 'lookup', 'link'].forEach((k) => { delete p[k]; });
+  ['label', 'required', 'memo', 'props', 'lookup', 'link', 'kintone'].forEach((k) => { delete p[k]; });
   return p;
 }
 
@@ -2717,11 +2730,11 @@ function normalizeLink(src) {
 }
 
 // 取り込んだ項目に写す、元の項目の中身（取り込んだ側では直せない中身）
-const LINKED_FIELDS = ['name', 'type', 'required', 'memo', 'props', 'lookup'];
+const LINKED_FIELDS = ['name', 'type', 'required', 'memo', 'props', 'lookup', 'kintone'];
 function linkedFields(src, srcDesign) {
   const lookup = src.lookup ? clone(src.lookup) : null;
   if (lookup) lookup.copies = lookup.copies.map((c) => ({ ...c, to: { itemId: null, name: refLabel(srcDesign, c.to) } }));
-  return { name: src.name, type: src.type, required: src.required, memo: src.memo, props: clone(src.props), lookup };
+  return { name: src.name, type: src.type, required: src.required, memo: src.memo, props: clone(src.props), lookup, kintone: src.kintone ? clone(src.kintone) : undefined };
 }
 
 // 取り込んだ項目（つなげたまま）を、元の項目の今の中身にそろえる。元を直したときは、同じ操作（commit）の中で呼ぶ。
@@ -2748,6 +2761,7 @@ function syncLinkedItems(state) {
       if (want.type !== it.type && isInputType(want.type) && isInputType(it.type)) changeItemType(d, it, want.type);
       const before = stateIdsOf(it);
       Object.assign(it, want);
+      if (!it.kintone) delete it.kintone; // 元に kintone の欄がなければ持たない
       clearGoneStates(d, it, before); // 元でステータスを消したときは、取り込んだ側でそのステータスを見本で出していた部品も「なし」にする
       changed = true;
     }));
@@ -4608,7 +4622,7 @@ const actions = {
     if (!d || findItem(d, itemId)) return false;
     const src = d.screens.flatMap((s) => s.parts).find((p) => p.itemId === itemId && isItemPart(p));
     if (!src) return false;
-    const fromPart = (p, id) => normalizeItem({ id, name: p.label, type: partItemType(p), required: p.required, memo: p.memo, props: clone(p.props), lookup: p.lookup || null, link: p.link || null });
+    const fromPart = (p, id) => normalizeItem({ id, name: p.label, type: partItemType(p), required: p.required, memo: p.memo, props: clone(p.props), lookup: p.lookup || null, link: p.link || null, kintone: p.kintone });
     const status = partItemType(src) === 'status' ? d.items.find((it) => it.type === 'status') : null;
     return mutateDesign(designId, (dd) => {
       if (!status) dd.items.push(fromPart(src, itemId));
@@ -4806,6 +4820,7 @@ function applyFieldPatch(target, nameKey, patch) {
 function setItemFields(design, item, patch) {
   const before = stateIdsOf(item);
   applyFieldPatch(item, 'name', patch);
+  if ('kintone' in patch) withKintone(item, patch.kintone);
   clearGoneStates(design, item, before);
 }
 
@@ -9574,10 +9589,26 @@ function itemSectionHtml(d, p, { locked = false, withType = false, note = 'ど�
         ${lookupFieldsHtml(d, p)}
         ${p.type === 'table' ? tableColumnsEditorHtml(p, true) : ''}
         ${typeFields ? `<div class="pf-sep"><i>${esc(p.item ? itemTypeName(p.item.type) : t.name)}の欄</i></div>${typeFields}` : ''}
+        ${p.item && isKintoneDesign(d) ? kintoneFieldsHtml(d, p.item) : ''}
         ${pfArea('memo', 'メモ', p.memo, { hint: '（自由に書く）' })}
         ${pfOutHtml(p, { forItem: withType })}
       </div>
     </fieldset>`;
+}
+
+// 「kintone のフィールド」の欄（画像 q111 の案A。kintone の画面設計の項目とテーブルの列）。entry は項目か列。
+// 種類は部品の種類ごとの選択肢（テーブル・ルックアップの付いた項目は選ばない）。コードの薄い字は項目名から作ったコード。計算式は自動計算の値だけ。
+// 列の欄は data-pf を data-tb="col." に置き換えて使う（tableColumnsEditorHtml）
+function kintoneFieldsHtml(d, entry) {
+  if (!own(KINTONE_CHOICES, entry.type)) return '';
+  const k = entry.kintone || {};
+  const choices = kintoneChoices(entry.type);
+  const fixed = entry.type === 'table' ? 'テーブル' : entry.lookup ? `ルックアップ（${choices[0].name}）` : '';
+  const type = fixed ? `<div class="field"><span>kintone の種類</span><div class="hint">${esc(fixed)}</div></div>`
+    : pfSelect('kintone.type', 'kintone の種類', kintoneTypeOf(entry), choices.map((c, i) => [c.id, `${c.name}${i === 0 ? '（既定）' : c.auto ? '（自動で入る）' : ''}`]));
+  const code = pfText('kintone.code', 'フィールドコード', k.code || '', { hint: '（空なら項目名から作る）', placeholder: kintoneCodes(d)[entry.id] || kintoneCodeOf(entry.name) });
+  const formula = entry.type === 'calc' ? pfText('kintone.formula', 'kintone の計算式', k.formula || '', { hint: '（kintone の書き方）', placeholder: '例: 数量 * 単価' }) : '';
+  return `<div class="pf-sep"><i>kintone のフィールド</i></div>${type}${code}<p class="kt-warn" data-kt-warn="${esc(entry.id)}">${esc(kintoneCodeWarn(d, entry))}</p>${formula}`;
 }
 
 // ルックアップの欄（画像 q22 の案A）。探すときに使う項目（テキスト（1行）・数値）に、ルックアップ元のデータベース・探すときに使う元の項目・
@@ -9930,6 +9961,7 @@ function tableColumnsEditorHtml(p, isItem) {
       <label class="field"><span>部品の種類</span><select data-tb="col.type">${PALETTE_GROUPS.flatMap((g) => g.types).filter(isInputType).map((k) => `<option value="${k}"${col.type === k ? ' selected' : ''}>${esc(partTypeName(k))}</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" data-tb="col.required"${col.required ? ' checked' : ''}>必須</label>
       ${fields}
+      ${isKintoneDesign(currentDesign()) ? kintoneFieldsHtml(currentDesign(), col).replace(/data-pf="kintone\./g, 'data-tb="col.kintone.') : ''}
     </div>`;
   }).join('');
   let add;
@@ -10026,6 +10058,7 @@ function onPartFieldChange(el) {
   const p = currentSubject();
   if (!p) return;
   const key = el.dataset.pf;
+  if (key.startsWith('kintone.')) { onKintoneFieldChange(el, p.item, key.slice(8)); return; }
   const value = readPartField(el);
   const old = key === 'props.states' ? stateNames(p.props.states)
     : key.startsWith('props.') ? p.props[key.slice(6)] : key.startsWith('view.') ? (p.view || {})[key.slice(5)] : key === 'numbered' ? p.no != null : p[key];
@@ -10043,6 +10076,31 @@ function onPartFieldChange(el) {
   // 項目名を変えたときは、項目の一覧表と部品の箱の名前も合わせる（右の欄は描き直さない）
   if (key === 'label' && ui.panel === 'items') renderItemsView(currentDesign());
   if (key === 'label') renderPalette(currentDesign());
+}
+
+// 「kintone のフィールド」の欄の変更（項目。列は onTableFieldChange）。既定の種類を選んだときは空にする（kintone の欄を持たないままにするため）。
+// 文字の欄は右の欄を描き直さずに保存し、コードの知らせと「一覧表の「設定」に出る文」だけを描き直す
+const kintoneFieldValue = (el, entry, sub) => {
+  const v = el.value.trim();
+  const first = kintoneChoices(entry.type)[0];
+  return sub === 'type' && first && v === first.id ? '' : v;
+};
+function onKintoneFieldChange(el, item, sub) {
+  if (!item || item.link) return;
+  const cur = item.kintone || {};
+  const v = kintoneFieldValue(el, item, sub);
+  if ((cur[sub] || '') === v) return;
+  const apply = () => actions.updateItem(ui.designId, item.id, { kintone: { type: '', code: '', formula: '', ...cur, [sub]: v } });
+  if (!isTextInput(el)) { apply(); return; }
+  commitKeepSide(apply);
+  refreshKintoneWarn(item.id);
+  refreshPfOut();
+}
+function refreshKintoneWarn(id) {
+  const d = currentDesign();
+  const entry = d ? kintoneEntries(d).find((x) => x.id === id) : null;
+  const el = [...document.querySelectorAll('#side-settings [data-kt-warn]')].find((x) => x.dataset.ktWarn === id);
+  if (el && entry) el.textContent = kintoneCodeWarn(d, entry);
 }
 
 // 右の欄の「一覧表の「設定」に出る文」だけを描き直す（打っている欄を作り直さないため）
@@ -10257,9 +10315,15 @@ function onTableFieldChange(el) {
         : pk === 'options' ? parseOptions(el.value)
         : pk === 'initial' && el.type === 'checkbox' ? [...document.querySelectorAll('#side-settings [data-tb="col.props.initial"]')].filter((x) => x.checked).map((x) => x.value)
         : el.tagName === 'TEXTAREA' ? el.value : el.value.trim() });
+    } else if (f.startsWith('kintone.')) {
+      const sub = f.slice(8);
+      const v = kintoneFieldValue(el, c, sub);
+      if (((c.kintone || {})[sub] || '') === v) return;
+      c.kintone = { type: '', code: '', formula: '', ...(c.kintone || {}), [sub]: v };
     }
     const apply = () => actions.updateItem(d.id, p.item.id, { props: { columns: cols.map(normalizeColumn) } });
     if (keep && f !== 'props.options') commitKeepSide(apply); else apply();
+    if (f.startsWith('kintone.')) refreshKintoneWarn(c.id);
     return;
   }
   const pr = clone(p.props);
