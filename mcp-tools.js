@@ -23,7 +23,7 @@ const TOOLS = [
     '画面設計の一覧（id・名前・作る先・画面と項目の数・最新の版・更新の印 updatedAt）を返す。query で名前を探せる。',
     { query: z.string().optional().describe('名前に含まれる文字'), trashed: z.boolean().optional().describe('ごみ箱にある画面設計も出す'), cursor: S.cursor }),
   read('get_design', '画面設計の中身',
-    '画面設計の中身の要約を返す: 名前・作る先・説明・データベースの項目の一覧（設定の文つき）・画面の一覧（id・名前・機器・大きさ・部品の数）・改訂履歴の行・取り込まれている項目・更新の印 updatedAt。',
+    '画面設計の中身の要約を返す: 名前・作る先・説明・データベースの項目の一覧（設定の文つき。kintone の欄を書いた項目とテーブルの列は kintone）・画面の一覧（id・名前・機器・大きさ・部品の数）・改訂履歴の行・取り込まれている項目・更新の印 updatedAt。',
     { design: S.design, cursor: S.cursor }),
   read('get_screen', '画面の中身',
     '画面 1 つの中身を返す: 部品（id・赤い番号・種類・項目名・位置と大きさ・設定の文）・吹き出し・部品の設定の一覧表の文。' +
@@ -47,7 +47,7 @@ const TOOLS = [
       view: z.enum(['map', 'process', 'screenflow', 'swimlane']).describe('図の種類'),
     }, { slow: true }),
   read('get_catalog', '部品のカタログ',
-    '部品の種類（type・名前・最初の大きさ・設定の欄と値の形）・項目の種類・ひな形・機器・作る先・吹き出しの色・並べ方の数を返す。',
+    '部品の種類（type・名前・最初の大きさ・設定の欄と値の形）・項目の種類・ひな形・機器・作る先・吹き出しの色・並べ方の数・kintone の種類（kintoneTypes）を返す。',
     {}),
   read('list_systems', 'システムの一覧',
     'システム（いくつかの画面設計と役割・スイムレーンをまとめた、1 つの業務のまとまり）の一覧を返す: id・名前・説明の頭・画面設計と役割と作業と資料の数・設計ノートの段階ごとの進み具合 stages（state だけ。例 { read: "done", flow: "review", … }）・更新の印 updatedAt。query で名前を探せる。',
@@ -83,7 +83,8 @@ const TOOLS = [
     '画面設計の名前・作る先・見た目・帯のタブ・説明を直す。見た目を変えて帯の高さが変わると、帯の下の部品と吹き出しを高さの差だけずらす。',
     { design: S.design, expect: S.expect, name: z.string().optional(), target: z.string().optional(), look: S.look.optional(), bandTabs: S.bandTabs.nullable().optional(), description: z.string().optional() }),
   write('edit_items', 'データベースの項目を直す',
-    'データベースの項目を足す・直す・消す・並べ替える・ルックアップを付ける・ほかの画面設計から取り込む・つながりを切る・一覧表に戻す（ops に並べて 1 回で行う）。',
+    'データベースの項目を足す・直す・消す・並べ替える・ルックアップを付ける・ほかの画面設計から取り込む・つながりを切る・一覧表に戻す（ops に並べて 1 回で行う）。' +
+    'add・update の kintone で、kintone のフィールドの情報（kintone の種類・フィールドコード・kintone の計算式）を書ける。',
     { design: S.design, expect: S.expect, ops: itemOps }),
   write('add_screen', '画面を足す',
     '画面を足す。template（ひな形）か copyOf（複製する画面）で中身を決め、layout を書くと部品をその並べ方で足す。パソコン以外の機器の画面は、template "blank" と layout で作る。',

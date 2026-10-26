@@ -46,6 +46,15 @@ const S = {
   bandTabs: z.array(z.string()).max(BAND_TABS_MAX).describe(`Salesforce の見た目の帯に並べるタブ（文字の配列。${BAND_TABS_MAX} 個まで。空なら「ホーム」と画面設計の名前）`),
   style: z.enum(['primary', 'normal']).describe('ボタンの見た目: "primary"（目立つ・青）・"normal"（ふつう・白）'),
   no: z.null().describe('null で赤い番号を外す'),
+  // kintone のフィールドの情報（第 13 段階）。テーブルの列は props.columns[].kintone に同じ形で書く
+  kintone: z.union([
+    obj({
+      type: opt(z.string().describe('kintone の種類（get_catalog の kintoneTypes の type。部品の種類で選べるものだけ。"" で既定）')),
+      code: opt(z.string().describe('フィールドコード（文字・数字・_ だけで、数字で始めない。128 字まで。アプリの中で重ねない。"" で項目名から作る）')),
+      formula: opt(z.string().describe('kintone の書き方の計算式（自動計算の値の項目だけ。例 "数量 * 単価"）')),
+    }),
+    z.null(),
+  ]).describe('kintone のフィールドの情報。書いた欄だけを直し、null で外す（read_guide の "kintone"）'),
 };
 const where = { before: opt(z.union([z.string(), z.number()]).describe('この前に動かす')), after: opt(z.union([z.string(), z.number()]).describe('この後ろに動かす')), index: opt(z.number().int().describe('並べ替えた後の位置（0 がいちばん上）')) };
 const rect = { x: opt(z.number()), y: opt(z.number()), w: opt(z.number()), h: opt(z.number()) };
@@ -69,6 +78,7 @@ const layoutPart = obj({
   to: opt(S.to),
   required: opt(z.boolean().describe('新しく作る項目を必須にする')),
   memo: opt(z.string().describe('新しく作る項目のメモ')),
+  kintone: opt(S.kintone.describe('項目の kintone のフィールドの情報（新しく作る項目にも、今ある項目にも書ける。read_guide の "kintone"）')),
   allowSameName: opt(z.boolean().describe('同じ名前の項目があっても新しく作る')),
 });
 const layoutRow = z.union([
@@ -92,7 +102,8 @@ const lookup = obj({
 });
 const itemFields = {
   required: opt(z.boolean()), memo: opt(z.string()),
-  props: opt(S.props.describe('項目の設定の欄（get_catalog の parts[].props と itemProps。テーブルは columns、ステータスは states）')),
+  props: opt(S.props.describe('項目の設定の欄（get_catalog の parts[].props と itemProps。テーブルは columns〔列にも kintone を書ける〕、ステータスは states）')),
+  kintone: opt(S.kintone),
   allowSameName: opt(z.boolean().describe('同じ名前の項目があってもよい')),
 };
 const itemOps = z.discriminatedUnion('op', [

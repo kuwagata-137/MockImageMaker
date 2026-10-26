@@ -1794,7 +1794,9 @@ const KINTONE_CHOICES = {
 };
 const KINTONE_CODE_MAX = 128;
 const kintoneTypeName = (id, partTypeId = '') => (partTypeId === 'calc' && id === 'SINGLE_LINE_TEXT' ? '文字列（1行）の自動計算' : own(KINTONE_TYPES, id) ? KINTONE_TYPES[id].name : id);
-const kintoneChoices = (type) => (own(KINTONE_CHOICES, type) ? KINTONE_CHOICES[type] : [])
+// column はテーブルの列（kintone のテーブルには、自動で入る種類〔レコード番号・作成者など〕を置けないので選ばせない）
+const kintoneChoiceIds = (type, column = false) => (own(KINTONE_CHOICES, type) ? KINTONE_CHOICES[type] : []).filter((id) => !column || !KINTONE_TYPES[id].auto);
+const kintoneChoices = (type, column = false) => kintoneChoiceIds(type, column)
   .map((id) => ({ id, name: kintoneTypeName(id, type), auto: !!KINTONE_TYPES[id].auto }));
 const isKintoneDesign = (d) => !!d && (d.target === 'kintone' || lookOf(d).id === 'kintone');
 // kintone の欄を直す（文字でない値は空・前後の空白を取る。知らない欄は残す）。3 つとも空で、ほかの欄もなければ null
@@ -1811,8 +1813,8 @@ function withKintone(obj, src) {
   return obj;
 }
 // 項目・列の kintone の種類（選んだ種類がその部品の種類で選べないとき・ルックアップの付いた項目は既定）
-function kintoneTypeOf(it) {
-  const ids = own(KINTONE_CHOICES, it.type) ? KINTONE_CHOICES[it.type] : [];
+function kintoneTypeOf(it, column = false) {
+  const ids = kintoneChoiceIds(it.type, column);
   const t = it.kintone && it.kintone.type;
   return !it.lookup && ids.includes(t) ? t : ids[0] || '';
 }
@@ -2114,11 +2116,11 @@ function describePartLines(p, ctx = null) {
   if (ctx) eq.push(...lookupLines(ctx, p));
   return { short: short.join('・'), eq, memo: v(p.memo) };
 }
-// 一覧表の「設定」に足す kintone の行（選んだ種類・書いたフィールドコード・自動計算の値の kintone の計算式）
-function kintoneLines(entry) {
+// 一覧表の「設定」に足す kintone の行（選んだ種類・書いたフィールドコード・自動計算の値の kintone の計算式）。column はテーブルの列
+function kintoneLines(entry, column = false) {
   if (!entry || !own(KINTONE_CHOICES, entry.type) || !entry.kintone) return [];
   const k = entry.kintone;
-  const type = kintoneTypeOf(entry);
+  const type = kintoneTypeOf(entry, column);
   return [
     k.type && k.type === type ? `kintone の種類＝${kintoneTypeName(type, entry.type)}` : '',
     k.code ? `フィールドコード＝${k.code}` : '',
@@ -2150,7 +2152,7 @@ function tableColumns(p, ctx = null) {
     const kt = ctx && isKintoneDesign(ctx.design);
     return (pr.columns || []).map((c) => ({
       id: c.id, name: c.name, type: c.type, kind: partTypeName(c.type),
-      setting: describePart({ type: c.type, required: c.required, memo: c.memo, props: c.props, ktLines: kt ? kintoneLines(c) : null }),
+      setting: describePart({ type: c.type, required: c.required, memo: c.memo, props: c.props, ktLines: kt ? kintoneLines(c, true) : null }),
     }));
   }
   const design = ctx && ctx.design;
@@ -9626,14 +9628,14 @@ function itemSectionHtml(d, p, { locked = false, withType = false, note = 'ど�
 
 // 「kintone のフィールド」の欄（画像 q111 の案A。kintone の画面設計の項目とテーブルの列）。entry は項目か列。
 // 種類は部品の種類ごとの選択肢（テーブル・ルックアップの付いた項目は選ばない）。コードの薄い字は項目名から作ったコード。計算式は自動計算の値だけ。
-// 列の欄は data-pf を data-tb="col." に置き換えて使う（tableColumnsEditorHtml）
-function kintoneFieldsHtml(d, entry) {
+// 列の欄は data-pf を data-tb="col." に置き換えて使う（tableColumnsEditorHtml。column は true）
+function kintoneFieldsHtml(d, entry, column = false) {
   if (!own(KINTONE_CHOICES, entry.type)) return '';
   const k = entry.kintone || {};
-  const choices = kintoneChoices(entry.type);
+  const choices = kintoneChoices(entry.type, column);
   const fixed = entry.type === 'table' ? 'テーブル' : entry.lookup ? `ルックアップ（${choices[0].name}）` : '';
   const type = fixed ? `<div class="field"><span>kintone の種類</span><div class="hint">${esc(fixed)}</div></div>`
-    : pfSelect('kintone.type', 'kintone の種類', kintoneTypeOf(entry), choices.map((c, i) => [c.id, `${c.name}${i === 0 ? '（既定）' : c.auto ? '（自動で入る）' : ''}`]));
+    : pfSelect('kintone.type', 'kintone の種類', kintoneTypeOf(entry, column), choices.map((c, i) => [c.id, `${c.name}${i === 0 ? '（既定）' : c.auto ? '（自動で入る）' : ''}`]));
   const code = pfText('kintone.code', 'フィールドコード', k.code || '', { hint: '（空なら項目名から作る）', placeholder: kintoneCodes(d)[entry.id] || kintoneCodeOf(entry.name) });
   const formula = entry.type === 'calc' ? pfText('kintone.formula', 'kintone の計算式', k.formula || '', { hint: '（kintone の書き方）', placeholder: '例: 数量 * 単価' }) : '';
   return `<div class="pf-sep"><i>kintone のフィールド</i></div>${type}${code}<p class="kt-warn" data-kt-warn="${esc(entry.id)}">${esc(kintoneCodeWarn(d, entry))}</p>${formula}`;
@@ -9989,7 +9991,7 @@ function tableColumnsEditorHtml(p, isItem) {
       <label class="field"><span>部品の種類</span><select data-tb="col.type">${PALETTE_GROUPS.flatMap((g) => g.types).filter(isInputType).map((k) => `<option value="${k}"${col.type === k ? ' selected' : ''}>${esc(partTypeName(k))}</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" data-tb="col.required"${col.required ? ' checked' : ''}>必須</label>
       ${fields}
-      ${isKintoneDesign(currentDesign()) ? kintoneFieldsHtml(currentDesign(), col).replace(/data-pf="kintone\./g, 'data-tb="col.kintone.') : ''}
+      ${isKintoneDesign(currentDesign()) ? kintoneFieldsHtml(currentDesign(), col, true).replace(/data-pf="kintone\./g, 'data-tb="col.kintone.') : ''}
     </div>`;
   }).join('');
   let add;
@@ -13473,9 +13475,15 @@ function aiListDesigns(args) {
   const { page, nextCursor } = aiPage(list.map(aiDesignSummary), args.cursor);
   return { designs: page, total: list.length, nextCursor };
 }
+// 項目・列の kintone の欄（書いてあるときだけ返す。種類は今の部品の種類で読む種類で、選べない種類を選んでいるときは既定。第 13 段階）
+function aiKintoneSummary(x, column = false) {
+  if (!x.kintone || !own(KINTONE_CHOICES, x.type)) return {};
+  const type = kintoneTypeOf(x, column);
+  return { kintone: { type, typeName: kintoneTypeName(type, x.type), code: x.kintone.code || '', formula: x.kintone.formula || '' } };
+}
 function aiItemSummary(d, it, ctx) {
-  const out = { id: it.id, name: it.name, type: it.type, typeName: itemTypeName(it.type), required: !!it.required, setting: describeItem(it, ctx) };
-  if (it.type === 'table') out.columns = (it.props.columns || []).map((c) => ({ id: c.id, name: c.name, type: c.type }));
+  const out = { id: it.id, name: it.name, type: it.type, typeName: itemTypeName(it.type), required: !!it.required, setting: describeItem(it, ctx), ...aiKintoneSummary(it) };
+  if (it.type === 'table') out.columns = (it.props.columns || []).map((c) => ({ id: c.id, name: c.name, type: c.type, ...aiKintoneSummary(c, true) }));
   if (it.type === 'status') Object.assign(out, { states: stateNames(it.props.states), actions: (it.props.actions || []).length }); // 操作の中身は get_flow で読む
   if (it.link) out.importedFrom = { design: it.link.designName || '', lost: !!it.link.lost };
   out.screens = screensWithItem(d, it.id).map((s) => s.name);
@@ -13664,6 +13672,13 @@ function aiGetCatalog() {
     // 見た目（第 12 段階）。帯の高さと、帯がある画面の並べ方の最初の行（firstRowY）は見た目で変わる
     looks: LOOKS.map((l) => ({ id: l.id, name: l.label, bandHeight: l.band, firstRowY: l.band + AI_FIRST_ROW_Y - LOOKS[0].band })),
     itemViews: { ...ITEM_VIEWS },
+    // kintone の種類（第 13 段階）。parts はその種類を選べる部品の種類、defaultFor は選ばないときにその種類になる部品の種類。
+    // auto は kintone が値を入れる種類（テーブルの列では選べない）
+    kintoneTypes: Object.entries(KINTONE_TYPES).map(([type, k]) => ({
+      type, name: k.name, auto: !!k.auto,
+      parts: Object.keys(KINTONE_CHOICES).filter((p) => KINTONE_CHOICES[p].includes(type)),
+      defaultFor: Object.keys(KINTONE_CHOICES).filter((p) => KINTONE_CHOICES[p][0] === type),
+    })),
   };
 }
 const AI_FIRST_ROW_Y = 64; // 帯がある画面の並べ方の最初の行（標準の見た目の高さ 40 の帯の下に 24 空ける）
@@ -13959,21 +13974,70 @@ function aiCurrentMoveOwner(d, cur) {
   if (!owner) throw new AiRefusal('not_found', '部品が今指している移る先の画面設計が、もうありません。designId も書いてください。');
   return owner;
 }
-// テーブルの列（{ name, type, required, memo, props } の配列）。同じ名前の列は今の列（id）を残して直す
-function aiTableColumns(cur, cols) {
+// テーブルの列（{ name, type, required, memo, props, kintone } の配列）。同じ名前の列は今の列（id と kintone の欄）を残して直す。
+// others は、列の kintone のフィールドコードと重ならないか見る、ほかの項目・列（テーブルの項目そのものを含む。今の列は含めない）
+function aiTableColumns(cur, cols, others = []) {
   if (!Array.isArray(cols) || !cols.length) throw aiBad('columns は列の配列で書いてください（1 つ以上）。');
+  const done = [];
   return cols.map((c, i) => {
     const name = isObj(c) ? cleanName(c.name) : '';
     if (!name) throw aiBad(`columns[${i}]: 列の名前（name）を書いてください。`);
     const old = cur.find((x) => x.name === name);
     const type = c.type == null ? (old ? old.type : 'text1') : str(c.type);
     if (!isInputType(type)) throw aiBad(`columns[${i}]: 列の種類「${type}」は使えません（入力欄の部品の種類だけ）。`);
-    const col = old && old.type === type ? clone(old) : { ...createColumnData(type, name), ...(old ? { id: old.id } : {}) };
+    const col = old && old.type === type ? clone(old) : { ...createColumnData(type, name), ...(old ? { id: old.id } : {}), ...(old && old.kintone ? { kintone: clone(old.kintone) } : {}) };
     if ('required' in c) col.required = !!c.required;
     if ('memo' in c) col.memo = str(c.memo);
     if (c.props != null) col.props = keepInitialInOptions(type, { ...col.props, ...aiProps(type, c.props, null) });
-    return normalizeColumn(col);
+    if (c.kintone !== undefined) {
+      try {
+        withKintone(col, aiKintone(col, c.kintone, [...others, ...done], true));
+      } catch (e) {
+        if (e instanceof AiRefusal) e.message = `columns[${i}]: ${e.message}`;
+        throw e;
+      }
+    }
+    const out = normalizeColumn(col);
+    done.push(out);
+    return out;
   });
+}
+// kintone の欄（edit_items・layout の kintone。第 13 段階）を検め、今の欄に重ねた形で返す（null は外す）。entry は項目か列（column は列）。
+// 種類はその部品の種類で選べるものだけ（既定の種類は空にする）。フィールドコードは kintone の決まりに合うものだけで、
+// ほかの項目・列（others）に書いたコードと重なれば断る（kintone のアプリの中でフィールドコードは重ねられないため）。計算式は自動計算の値だけ
+const AI_KINTONE_KEYS = ['type', 'code', 'formula'];
+function aiKintone(entry, v, others, column = false) {
+  if (v === null) return null;
+  if (!isObj(v)) throw aiBad('kintone は { type, code, formula } の形で書いてください（外すときは null）。');
+  if (!own(KINTONE_CHOICES, entry.type)) throw aiBad(`「${entry.name}」（${itemTypeName(entry.type)}）には kintone の欄を書けません${entry.type === 'status' ? '（ステータスは、kintone ではプロセス管理で作ります）' : ''}。`);
+  Object.keys(v).forEach((k) => { if (!AI_KINTONE_KEYS.includes(k)) throw aiBad(`kintone に「${k}」という欄はありません（使える欄: ${AI_KINTONE_KEYS.join('・')}）。`); });
+  const val = (k) => (v[k] == null ? '' : aiStrVal(v[k], `kintone.${k}`).trim());
+  const next = { ...(entry.kintone || {}) };
+  if ('type' in v) {
+    const t = val('type');
+    const ids = kintoneChoiceIds(entry.type, column);
+    if (t && entry.lookup) throw aiBad(`「${entry.name}」にはルックアップが付いているので、kintone の種類は選べません（ルックアップのフィールドとして渡します）。`);
+    if (t && !ids.includes(t)) throw aiBad(`「${entry.name}」（${itemTypeName(entry.type)}${column ? 'の列' : ''}）の kintone の種類に「${t}」は選べません（選べる種類: ${ids.join('・')}）。`);
+    next.type = t === ids[0] ? '' : t;
+  }
+  if ('code' in v) {
+    const c = val('code');
+    if (c && !kintoneCodeOk(c)) throw aiBad(`「${c}」はフィールドコードに使えません（文字・数字・_ だけで、数字で始めない。${KINTONE_CODE_MAX} 字まで）。`);
+    const same = c && others.find((x) => x.id !== entry.id && x.kintone && x.kintone.code === c);
+    if (same) throw aiBad(`「${same.name}」と同じフィールドコード「${c}」は使えません（kintone のアプリの中で、フィールドコードは重ねられません）。`);
+    next.code = c;
+  }
+  if ('formula' in v) {
+    const f = val('formula');
+    if (f && entry.type !== 'calc') throw aiBad(`kintone の計算式（formula）を書けるのは、自動計算の値の項目だけです（「${entry.name}」は${itemTypeName(entry.type)}）。`);
+    next.formula = f;
+  }
+  return normalizeKintone(next);
+}
+// 項目の kintone の欄を検めて付ける。フィールドコードの重なりは、画面設計のほかの項目・列と、この項目の列とで見る（d にまだない新しい項目の列も）
+function aiItemKintone(d, item, v) {
+  const cols = d.items.includes(item) ? [] : item.type === 'table' ? item.props.columns || [] : [];
+  withKintone(item, aiKintone(item, v, [...kintoneEntries(d).filter((x) => x.id !== item.id), ...cols]));
 }
 // 項目の設定（edit_items の props）を検め、項目に入れる形で返す。tx があれば、なくなったステータスを使っていた操作を消したことを知らせる
 function aiItemProps(d, item, props, tx = null) {
@@ -13981,7 +14045,9 @@ function aiItemProps(d, item, props, tx = null) {
   if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
   if (item.type === 'table') {
     Object.keys(props).forEach((k) => { if (k !== 'columns') throw aiBad(`テーブルの項目の設定に「${k}」という欄はありません（使える欄: columns）。`); });
-    return { columns: aiTableColumns(item.props.columns || [], props.columns) };
+    const cur = item.props.columns || [];
+    const others = [item, ...kintoneEntries(d).filter((x) => x.id !== item.id && !cur.includes(x))]; // 今の列は書き直すので、重なりを見る相手から除く
+    return { columns: aiTableColumns(cur, props.columns, others) };
   }
   if (item.type === 'status') {
     if ('actions' in props) throw aiBad('ステータスの操作（actions）は、edit_process で直してください（edit_items で書けるのは states だけです）。');
@@ -14131,6 +14197,7 @@ function aiItemOp(tx, op) {
           it.props = aiItemProps(dd, it, op.props, tx);
           clearGoneStates(dd, it, before);
         }
+        if (op.kintone !== undefined) aiItemKintone(dd, it, op.kintone);
       });
       return { op: 'update', id: item.id, name: findItem(d(), item.id).name };
     }
@@ -14174,6 +14241,7 @@ function aiNewItem(d, op, { name: forced = null } = {}) {
   item.required = !!op.required;
   item.memo = str(op.memo);
   if (op.props != null) item.props = aiItemProps(d, item, op.props);
+  if (op.kintone !== undefined) aiItemKintone(d, item, op.kintone);
   return item;
 }
 // ルックアップ（設計書 5 章。kintone のルックアップと同じ並び）。lookup: { design, key, copies: [{ from, to, create }] } か null（外す）
@@ -14373,11 +14441,14 @@ function aiLayout(tx, designId, screenId, layout, mode) {
   const ids = [];
   mutateDesign(designId, (dd) => {
     dd.items.push(...plan.created);
-    plan.itemPatches.forEach(({ itemId, props }) => {
+    plan.itemPatches.forEach(({ itemId, props, kintone }) => {
       const it = findItem(dd, itemId);
-      const before = stateIdsOf(it);
-      it.props = props;
-      clearGoneStates(dd, it, before);
+      if (props) {
+        const before = stateIdsOf(it);
+        it.props = props;
+        clearGoneStates(dd, it, before);
+      }
+      if (kintone !== undefined) withKintone(it, kintone);
     });
     const s = dd.screens.find((x) => x.id === screenId);
     placed.forEach((pl) => {
@@ -14421,13 +14492,18 @@ function aiLayoutSpec(tx, d, e, used, plan) {
     if (oncePerScreen(item.type) && used.has(item.id)) throw new AiRefusal('duplicate_item', `項目「${item.name}」は、この画面にもう置いてあります（1 つの画面に同じ項目は 1 回だけ）。`);
     used.add(item.id);
     spec.itemId = item.id;
-    if (e.props != null && !plan.created.includes(item)) {
-      if (item.link) throw new AiRefusal('linked', `「${item.name}」は「${item.link.designName}」から取り込んだ項目なので、設定はここでは直せません。`);
-      plan.itemPatches.push({ itemId: item.id, props: aiItemProps(d, item, e.props, tx) });
+    // 今ある項目に props・kintone を書いたときは、その項目を直す（mutateDesign の中で当てる）
+    if ((e.props != null || e.kintone !== undefined) && !plan.created.includes(item)) {
+      if (item.link) throw new AiRefusal('linked', `「${item.name}」は「${item.link.designName}」から取り込んだ項目なので、設定と kintone の欄はここでは直せません。`);
+      const patch = { itemId: item.id };
+      if (e.props != null) patch.props = aiItemProps(d, item, e.props, tx);
+      if (e.kintone !== undefined) patch.kintone = aiKintone(item, e.kintone, kintoneEntries({ items: [...d.items, ...plan.created] }).filter((x) => x.id !== item.id));
+      plan.itemPatches.push(patch);
     }
     if (item.type === 'status') spec.view = { current: aiStatusCurrent(item, e.current) };
   } else {
     if (!type) throw aiBad('item（項目名）か type（部品の種類）を書いてください。');
+    if (e.kintone !== undefined) throw aiBad('kintone を書けるのは、データベースの項目の部品だけです。');
     if (e.label != null) spec.label = aiStrVal(e.label, 'label');
     if (type === 'table') {
       spec.tableKind = e.tableKind == null ? 'records' : str(e.tableKind);
@@ -14456,7 +14532,7 @@ function aiLayoutSpec(tx, d, e, used, plan) {
 function aiLayoutNewItem(d, type, name, e, plan) {
   const itemType = type === 'steps' ? 'status' : type;
   if (!isItemType(itemType)) throw aiBad(`「${partType(type).name}」はデータベースの項目になりません。item を外してください。`);
-  const item = aiNewItem({ items: [...d.items, ...plan.created] }, { type: itemType, name, required: e.required, memo: e.memo, props: e.props, allowSameName: e.allowSameName });
+  const item = aiNewItem({ items: [...d.items, ...plan.created] }, { type: itemType, name, required: e.required, memo: e.memo, props: e.props, kintone: e.kintone, allowSameName: e.allowSameName });
   plan.created.push(item);
   return item;
 }

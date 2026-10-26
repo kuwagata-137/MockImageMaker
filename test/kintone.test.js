@@ -36,6 +36,12 @@ test('kintone の種類の選択肢は部品の種類ごとに決まり、先頭
   const auto = plain(T.kintoneChoices('user')).filter((k) => k.auto).map((k) => k.name);
   assert.deepEqual(auto, ['作成者', '更新者']);
   assert.equal(plain(T.kintoneChoices('user'))[1].name, '組織選択');
+  // テーブルの列には、自動で入る種類を選べない（kintone のテーブルには、レコード番号・作成者などを置けない）
+  const colIds = (type) => plain(T.kintoneChoices(type, true)).map((k) => k.id);
+  assert.deepEqual(colIds('text1'), ['SINGLE_LINE_TEXT', 'LINK']);
+  assert.deepEqual(colIds('datetime'), ['DATETIME', 'TIME']);
+  assert.deepEqual(colIds('user'), ['USER_SELECT', 'ORGANIZATION_SELECT', 'GROUP_SELECT']);
+  assert.equal(T.kintoneTypeOf({ type: 'number', kintone: { type: 'RECORD_NUMBER' } }, true), 'NUMBER', '列で自動で入る種類を選んでいるときは既定に戻して読む');
   app.close();
 });
 
@@ -184,6 +190,8 @@ test('右の欄: テーブルは種類を選ばずフィールドコードだけ
   assert.equal(ktSel(app), null);
   assert.ok(ktCode(app));
   click($(app, '#side-settings [data-action="tb-col"][data-id="c1"]'));
+  const colTypes = [...$(app, '#side-settings select[data-tb="col.kintone.type"]').options].map((o) => o.value);
+  assert.deepEqual(colTypes, ['SINGLE_LINE_TEXT', 'LINK'], '列の種類の選択肢に、自動で入る種類（レコード番号）を出さない');
   setValue($(app, '#side-settings input[data-tb="col.kintone.code"]'), '品名コード');
   setValue($(app, '#side-settings select[data-tb="col.kintone.type"]'), 'LINK');
   assert.deepEqual(d('d1').items.find((x) => x.id === 'tb').props.columns[0].kintone, { type: 'LINK', code: '品名コード', formula: '' });
