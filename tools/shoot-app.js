@@ -14,7 +14,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes・doc・looks をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes・doc・looks・kintone をカンマで区切る）]
 // ai の場面（94〜100）は tools/shoot-app-ai.js、systems の場面（107〜133。システムとスイムレーン図）は tools/shoot-app-systems.js にある
 // toolbar の場面（134〜137）は、編集の画面のメニューバーを窓の幅ごとに撮る（q73・q74）
 // materials の場面（138〜149。システムの画面の「資料」の入口。第 9 段階の後半・画像 q67。164〜167 は MPD に出力・画像 q82。
@@ -22,6 +22,7 @@ const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
 // notes の場面（150〜157。システムの画面の「設計ノート」の入口。第 10 段階の前半・画像 k75）は tools/shoot-app-notes.js にある
 // doc の場面（158〜163。システムの説明書〔PDF〕の窓と、表紙・スイムレーン図・設計ノートのページ。第 10 段階の後半・画像 q80・q81）は tools/shoot-app-doc.js にある
 // looks の場面（171〜182。Salesforce・kintone・標準の見た目と、表示の形・右の欄・新しい画面設計の窓。第 12 段階・画像 q105〜q108）は tools/shoot-app-looks.js にある
+// kintone の場面（183〜192。kintone のフィールドの欄と描き分け・進み具合の矢印の分かれる終わり・AI の並べ方・AI とつなぐの窓。第 13 段階・画像 q111〜q114）は tools/shoot-app-kintone.js にある
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -858,6 +859,7 @@ async function shootRevisions(browser) {
     if (wants('notes')) await require('./shoot-app-notes')(browser, { ROOT, HTML_NAME, shot });
     if (wants('doc')) await require('./shoot-app-doc')(browser, { ROOT, HTML_NAME, shot, openDeskApp, OUT, VERSION });
     if (wants('looks')) await require('./shoot-app-looks')(browser, { ROOT, shot, openApp, OUT, VERSION });
+if (wants('kintone')) await require('./shoot-app-kintone')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
   } finally {
     await browser.close();
   }

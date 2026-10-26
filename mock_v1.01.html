@@ -16502,7 +16502,7 @@ async function openAiConnectDialog() {
       ${info.dev ? '<div class="aic-dev">これは開発版（npm start で動かしているアプリ）の文です。インストールした版のアプリでは、その版の「AI とつなぐ」に出る文を使ってください。</div>' : ''}
       <ul class="aic-notes">
         <li>AI が今ある画面設計を直すと、直す前の中身が改訂履歴に「AI が直す前の状態」として自動で残ります。そこから戻せます。</li>
-        <li>AI には、画面設計の削除・ごみ箱へ移すこと・改訂履歴の行を消すことはさせません。</li>
+        <li>AI には、画面設計とシステムをごみ箱へ移すこと・完全に削除すること・改訂履歴の行を消すこと・資料を入れることと消すことはさせません。</li>
         <li>アプリを新しい版に入れ替えるときは、先にアプリを終了してください（タスクトレイのアイコンの「終了」）。入れ替えた後は、Claude Code の <b>/mcp</b> でつなぎ直します。</li>
       </ul>`,
     init: (modal) => modal.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => {

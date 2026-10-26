@@ -20,7 +20,7 @@
  "ai_connect": {
   "file": "ai_connect.png",
   "w": 784,
-  "h": 908,
+  "h": 954,
   "dsf": 2
  },
  "ed_align": {
@@ -43,6 +43,12 @@
  },
  "ed_items": {
   "file": "ed_items.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "ed_kintone": {
+  "file": "ed_kintone.jpg",
   "w": 1280,
   "h": 800,
   "dsf": 2
@@ -243,6 +249,12 @@
   "file": "sc_process.jpg",
   "w": 1280,
   "h": 800,
+  "dsf": 2
+ },
+ "sc_steps_branch": {
+  "file": "sc_steps_branch.png",
+  "w": 496,
+  "h": 81,
   "dsf": 2
  },
  "sys_doc": {

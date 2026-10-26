@@ -60,6 +60,7 @@ test('「AI とつなぐ」の窓: main の登録の文を出し、コピーで�
   // 使用説明書の 8 章と同じく「画面設計とシステム」。Claude のデスクトップアプリは、登録した後に終了して起動し直す（第 13 段階。q114 の ⑦）
   assert.match(text(modal), /このアプリの画面設計とシステムを読んだり/);
   assert.match(text(modal), /Claude のデスクトップアプリに登録したときは、Claude のデスクトップアプリを完全に終了して/);
+  assert.match(text(modal), /AI には、画面設計とシステムをごみ箱へ移すこと・完全に削除すること・改訂履歴の行を消すこと・資料を入れることと消すことはさせません。/);
   assert.match(text($('[data-code="claude"]')), /^claude mcp add --env ELECTRON_RUN_AS_NODE=1 --scope user mockimagemaker/);
   assert.equal(text($('[data-code="json"]')), '{ "mcpServers": {} }');
   assert.equal($('.aic-dev'), null, 'インストールした版では開発版の断りを出さない');

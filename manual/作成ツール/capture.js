@@ -801,6 +801,42 @@ const CHAPTERS = {
       { box: '#stage .screen', n: 2 },
     ] });
   },
+  // 3.5 kintone のフィールドの欄・4.3 進み具合の矢印の分かれる終わり（第 13 段階）
+  async kintone() {
+    await open();
+    await sampleAll({ notes: false, materials: false });
+    // 出張申請（作る先 kintone）の「申請者」を作成者（自動で入る）にし、「行き先」にフィールドコードを書く
+    await call('edit_items', { design: '出張申請', ops: [
+      { op: 'update', item: '申請者', kintone: { type: 'CREATOR' } },
+      { op: 'update', item: '行き先', kintone: { code: 'destination' } },
+    ] });
+    // ステータスに「却下」を足し、承認待ちから分かれる終わりにする。承認の画面の進み具合の矢印の見本は却下
+    await call('edit_process', { design: '出張申請', ops: [
+      { op: 'set_states', states: ['申請', '承認待ち', '承認済み', '精算済み', '却下'] },
+      { op: 'add_action', name: '却下する', from: '承認待ち', to: '却下', role: '上長' },
+    ] });
+    const steps = await T(() => {
+      const d = window.__test__.store.state.designs.find((x) => x.name === '出張申請');
+      return d.screens.find((x) => x.name === '承認').parts.find((p) => p.type === 'steps').id;
+    });
+    await call('edit_parts', { design: '出張申請', screen: '承認', ops: [{ op: 'update', part: steps, current: '却下' }] });
+    await clearAiMarks();
+    await openDesignAt('出張申請', '新規申請', { zoom: 0.5 });
+    await scrollCanvasTo('#stage .screen', 16);
+    const who = await partId('出張申請', '新規申請', '申請者');
+    await T((id) => window.__test__.selectPart(id), who);
+    await sleep(250);
+    await scrollInBox('#side-settings .pf-sep', 'kintone のフィールド', 32);
+    await shot('ed_kintone', { anno: [
+      { box: `#stage .part[data-part-id="${who}"]`, n: 1, pad: 2 },
+      { box: { sel: '#side-settings .field', text: 'kintone の種類' }, n: 2, pad: 2 },
+      { box: { sel: '#side-settings .field', text: 'フィールドコード' }, n: 3, pad: 2 },
+    ] });
+    await run('deselectPart');
+    await openDesignAt('出張申請', '承認', { zoom: 0.8 });
+    await scrollCanvasTo(`#stage .part[data-part-id="${steps}"]`, 24);
+    await shot('sc_steps_branch', { clip: `#stage .part[data-part-id="${steps}"]`, pad: 24 }); // 左の外の赤い番号も入れる
+  },
   async screens() {
     await open();
     await sampleAll({ notes: false, materials: false });
