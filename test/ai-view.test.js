@@ -57,6 +57,9 @@ test('「AI とつなぐ」の窓: main の登録の文を出し、コピーで�
   await tick();
   const modal = $('#dialog-root .modal');
   assert.match(text(modal), /Claude Code に登録する.*PowerShell に下の文を貼り付けて/);
+  // 使用説明書の 8 章と同じく「画面設計とシステム」。Claude のデスクトップアプリは、登録した後に終了して起動し直す（第 13 段階。q114 の ⑦）
+  assert.match(text(modal), /このアプリの画面設計とシステムを読んだり/);
+  assert.match(text(modal), /Claude のデスクトップアプリに登録したときは、Claude のデスクトップアプリを完全に終了して/);
   assert.match(text($('[data-code="claude"]')), /^claude mcp add --env ELECTRON_RUN_AS_NODE=1 --scope user mockimagemaker/);
   assert.equal(text($('[data-code="json"]')), '{ "mcpServers": {} }');
   assert.equal($('.aic-dev'), null, 'インストールした版では開発版の断りを出さない');

@@ -16485,7 +16485,7 @@ async function openAiConnectDialog() {
     aiPassive: true,
     body: `
       <div class="aic-status" id="aic-status">${aiConnectStatusHtml()}</div>
-      <p>Claude Code などの AI から、このアプリの画面設計を読んだり、作ったり、直したりできます（MCP というつなぎ方を使います）。
+      <p>Claude Code などの AI から、このアプリの画面設計とシステムを読んだり、作ったり、直したりできます（MCP というつなぎ方を使います）。
       使う前に、AI のアプリに、このアプリを 1 回だけ登録してください。</p>
       <div class="aic-sec">
         <h3>Claude Code に登録する<span class="spacer"></span><button class="btn small aic-copy" data-copy="claude">コピー</button></h3>
@@ -16497,6 +16497,7 @@ async function openAiConnectDialog() {
         <h3>ほかの AI のアプリ（MCP に対応したもの）に登録する<span class="spacer"></span><button class="btn small aic-copy" data-copy="json">コピー</button></h3>
         <div class="hint">それぞれのアプリの説明に従って、MCP の設定に下の内容を書きます。</div>
         <div class="aic-code" data-code="json">${esc(info.json)}</div>
+        <div class="hint">Claude のデスクトップアプリに登録したときは、Claude のデスクトップアプリを完全に終了して（窓を閉じても終わらないときは、タスクトレイのアイコンから終了して）、起動し直すと使えます。</div>
       </div>
       ${info.dev ? '<div class="aic-dev">これは開発版（npm start で動かしているアプリ）の文です。インストールした版のアプリでは、その版の「AI とつなぐ」に出る文を使ってください。</div>' : ''}
       <ul class="aic-notes">
