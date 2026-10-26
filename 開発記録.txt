@@ -1361,7 +1361,11 @@ Claude が決めたことと理由（細かい決めごとは 仕様_細かい�
 進め方の誤り:
 - q114 その 4 を、どの 3 件か・何が困るか・なぜ直さないかを書かずに、結論だけで聞いた。「質問が下手すぎて理解できない」と言われ、3 件ごとに書き直して聞き直した。
 - 直さない理由に「前にユーザーが A4 のままでよいと答えた」と書き、ユーザーの前の答えを判断の盾にした。ユーザーから強く指摘された。判断の理由は Claude 自身の理由で書く（メモリ own-reasons-not-user-answers）。
-確かめ: 終わりの確かめの結果は下に書く。
+確かめ: npm test 1249 個（kintone・kintone-ai・kintone-app・steps-branch・ai-layout-fixes・ai-table-samples・relink-free-db の 42 個を足した）・check-export（16）・check-electron（32）・
+check-electron-through（21）・check-mcp（66。道具 36 個・get_kintone_app の場面を足した）・check-bdm-export（17）がすべて OK。撮影 --only=kintone の場面 183〜192 を見た。
+Claude Code の通しの確かめに場面 15（.devdata/claude-e2e/run.js 15。架空の出張申請を kintone のアプリにする準備）を足した。AI は手引き kintone を読み、申請者を作成者にし、
+ほかの 5 つの項目にフィールドコードを付け、get_kintone_app を読んで、kintone の MCP サーバーの道具を呼ぶ順と人が設定すること（プロセス管理・一覧・ボタンの動き・アクセス権）を答えた（56 秒）。
+最初の判定は、AI が最後に add_revision（改訂する）を呼んだことを NG にしたが、手引き overview の「区切りで add_revision」どおりの動きなので、判定を直して記録から判定し直し、6 つすべて OK。
 
 ■ 2026-10-14 質疑の記録（ユーザーが席を外している間に、Claude のおすすめ案で決めたこと）
 ユーザーの指示（原文）:「しばらく席を外します。このセッションでの残りの開発で発生する私への確認はすべてClaudeのオススメで実行し、私への確認をバイパスしてください。
