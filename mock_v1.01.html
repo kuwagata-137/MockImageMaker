@@ -314,6 +314,11 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-sf .pframe{border:1px solid #dddbda;border-radius:4px;box-shadow:0 2px 2px rgba(0,0,0,.10)}
 .look-sf .pfr-head{background:#f3f3f3;border-bottom:1px solid #e5e5e5;font-size:14px;color:#181818}
 .look-sf .pfr-ic{border-radius:4px}
+.look-sf .ptl-new{border-color:#c9c9c9;color:#0176d3;border-radius:4px}
+.look-sf .ptl-rec{border-bottom-color:#e5e5e5}
+.look-sf .ptl-rec a{color:#0176d3;text-decoration:none}
+.look-sf .ptl-kv small{color:#444}
+.look-sf .ptl-foot{color:#0176d3;border-top-color:#e5e5e5}
 .look-sf .prhead{background:#fff;border:1px solid #dddbda;border-radius:4px;box-shadow:0 2px 2px rgba(0,0,0,.10)}
 .look-sf .prh-top small{color:#444}
 .look-sf .prh-top b{color:#181818}
@@ -372,6 +377,12 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .pfr-head{background:#f7f9fa;border-bottom:1px solid #e3e7e8;font-size:14px;color:#333;gap:6px}
 .look-kt .pfr-ic{display:none}
 .look-kt .pfr-head::before{content:'▼';font-size:10px;color:#666}
+.look-kt .ptiles .pfr-head::before{content:none}
+.look-kt .ptl-new{border-color:#e3e7e8;color:#3498db;background:#f7f9fa}
+.look-kt .ptl-rec{border-bottom-color:#e3e7e8}
+.look-kt .ptl-rec a{color:#3498db;text-decoration:none}
+.look-kt .ptl-kv small{color:#666}
+.look-kt .ptl-foot{color:#3498db;border-top-color:#e3e7e8}
 .look-kt .prhead{background:#fff;border:none;border-bottom:1px solid #e3e7e8;border-radius:0;padding:9px 4px}
 .look-kt .prh-ic{border-radius:4px}
 .look-kt .prh-top b{color:#333}
@@ -495,6 +506,16 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .pfr-head b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
 .pfr-ic{width:24px;height:24px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .pfr-ic svg{width:15px;height:15px}
+/* 関連レコード一覧の並べて表示（第 14 段階。画像 q117 の案A）。外の枠と見出しの行は、グループ枠と同じ形 */
+.ptl-cnt{color:#475569;font-weight:400;margin-left:-4px}
+.ptl-new{margin-left:auto;height:28px;padding:0 12px;border:1px solid #94a3b8;border-radius:6px;display:inline-flex;align-items:center;font-size:12.5px;color:#1d4ed8;background:#fff;flex-shrink:0}
+.ptl-body{flex:1;min-height:0;overflow:hidden;padding:0 14px}
+.ptl-rec{padding:8px 0;border-bottom:1px solid #e2e8f0}
+.ptl-rec:last-child{border-bottom:none}
+.ptl-rec a{display:block;height:20px;line-height:20px;color:#1d4ed8;font-size:13.5px;text-decoration:underline;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ptl-kv{display:flex;gap:6px;height:20px;line-height:20px;font-size:12.5px;white-space:nowrap;overflow:hidden}
+.ptl-kv small{width:88px;flex-shrink:0;color:#64748b;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.ptl-foot{height:36px;flex-shrink:0;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;color:#1d4ed8;font-size:12.5px}
 /* レコードの見出し（第 14 段階。画像 q116 の左の段）。上に重ねたボタンは、見出しの上に描く */
 .prhead{flex:1;min-width:0;min-height:0;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:9px 16px;overflow:hidden;line-height:1.25}
 .prh-top{display:flex;align-items:center;gap:12px;min-width:0}
@@ -1967,6 +1988,13 @@ function createItemData(type, name) {
 
 // 表の部品の高さ（項目名の行・見出しの行・見本の行）。8 ドットのマス目に切り上げる
 const tableHeight = (rows) => Math.ceil((TABLE_LABEL_H + TABLE_ROW_H * (rows + 1) + 2) / GRID) * GRID;
+// 関連レコード一覧を並べて表示で描くか（第 14 段階。画像 q117 の案A。props.display が 'tiles'）
+const isTilesPart = (p) => !!(p && p.type === 'table' && p.tableKind === 'related' && p.props && p.props.display === 'tiles');
+// 並べて表示の高さ（見出しの行 44・1 件ごとに上下の余白 16 と、列ごとに 1 行 20・下の「すべて表示」36）。8 ドットのマス目に切り上げる
+const TILE_HEAD = 44;
+const TILE_FOOT = 36;
+const tilesHeight = (rows, ncols) => Math.ceil((TILE_HEAD + rows * (16 + 20 * Math.max(1, ncols)) + TILE_FOOT + 2) / GRID) * GRID;
+const partTableHeight = (p) => (isTilesPart(p) ? tilesHeight(p.view.rows, (p.props.columns || []).length) : tableHeight(p.view.rows));
 
 // 部品の中身を、指している項目と合わせた形にする（描く・一覧表の文を作る・設定の欄を出すときに使う）。
 // 項目を指していない部品（ボタン・見出しなど・項目を消した後に残った部品）は、そのまま返す
@@ -2186,6 +2214,7 @@ function describePartLines(p, ctx = null) {
         const src = ctx && pr.db && pr.db.designId ? findDesign(ctx.state, pr.db.designId) : null;
         const db = ctx ? dbLabel(ctx.state, pr.db) : v(pr.db && pr.db.name);
         eqIf('関連レコード一覧', db);
+        if (pr.display === 'tiles') eqIf('表示のしかた', '並べて表示');
         if (pr.cond && (pr.cond.from.itemId || pr.cond.from.name)) eqIf('条件', `${db}の「${refLabel(src, pr.cond.from)}」がこのレコードの「${refLabel(ctx && ctx.design, pr.cond.to)}」と同じ`);
         eqIf('並び順', v(pr.sort));
         if (v(pr.limit)) short.push(`最大 ${v(pr.limit)} 件`);
@@ -4520,16 +4549,17 @@ const actions = {
       if ('numbered' in patch) p.no = patch.numbered ? (p.no != null ? p.no : nextPartNo(sc)) : null;
       if (isObj(patch.view)) {
         p.view = { ...(p.view || {}), ...clone(patch.view) };
-        if (p.type === 'table') {
-          p.view = normalizeTableView(p.view);
-          const h = tableHeight(p.view.rows);
-          if (p.y + h > sc.height) sc.height = heightToFit(p.y + h, sc.device); // 表を上へずらさず、画面を伸ばす
-          Object.assign(p, fitRect({ ...p, h }, sc));
-        }
+        if (p.type === 'table') p.view = normalizeTableView(p.view);
       }
       const item = findItem(d, p.itemId);
       if (item) { if (!item.link) setItemFields(d, item, patch); } // 取り込んだ項目は直せない（元のモックで直す）
       else if (!p.itemId) applyFieldPatch(p, 'label', patch);
+      // 表の高さは、サンプルの行数と、関連レコード一覧の表示のしかた（表・並べて表示）を変えたときに合わせる
+      if (p.type === 'table' && (isObj(patch.view) || (isObj(patch.props) && 'display' in patch.props))) {
+        const h = partTableHeight(p);
+        if (p.y + h > sc.height) sc.height = heightToFit(p.y + h, sc.device); // 表を上へずらさず、画面を伸ばす
+        Object.assign(p, fitRect({ ...p, h }, sc));
+      }
     });
   },
   // 位置と大きさを変える（マス目に吸い付け、画面の中に収める）。変わらないときは履歴に積まない。
@@ -5373,7 +5403,7 @@ function partInnerHtml(p, t, marks = false) {
   // 項目名のない部品の番号は、ボタンと同じく左の外（左に入る幅がないときは左上の角に重ねる）
   const outNo = () => partNoHtml(p, p.x >= 28 ? ' pno-out' : ' pno-corner');
   switch (p.type) {
-    case 'table': return `${partLabelHtml(p, marks)}${tableHtml(p)}`;
+    case 'table': return isTilesPart(p) ? tilesHtml(p) : `${partLabelHtml(p, marks)}${tableHtml(p)}`;
     case 'graph': return `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span></div><div class="pgraph">${graphSvg(p)}</div>`;
     case 'search':
       return `${outNo()}<div class="psearch"><span class="pph">🔍 ${esc(p.placeholder || t.ph)}</span>${pr.button !== false ? '<b>検索</b>' : ''}</div>`;
@@ -5453,6 +5483,28 @@ function partLabelHtml(p, marks) {
   return `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span>${p.required ? '<span class="preq">*</span>' : ''}${ref}${related}${marks ? partMarksHtml(p) : ''}</div>`;
 }
 
+// 表の見本の値を書いていない所に出す薄い字（列の種類ごと。ほかの種類は「文字列」）
+const TABLE_PH = { number: '数値', calc: '自動計算', date: '年-月-日', datetime: '年-月-日 時:分', dropdown: '選択', radio: '選択', checkbox: '選択', user: '人', file: 'ファイル', text2: '文章' };
+
+// 関連レコード一覧の並べて表示（第 14 段階。画像 q117 の案A）。見出しの行（アイコン・表の名前・件数・新規）、1 件ごとに 1 列目の値をリンクの色で、
+// 2 列目からは「列名: 値」を 1 行ずつ、下に「すべて表示」。件数はサンプルの行数。アイコンの色は props.color（最初は橙）
+function tilesHtml(p) {
+  const pr = p.props || {};
+  const cols = p.columns || [];
+  const view = p.view || { rows: 3, samples: {} };
+  const color = own(FRAME_COLORS, pr.color) ? pr.color : 'orange';
+  const ic = color === 'none' ? '' : `<span class="pfr-ic fc-${color}">${RECORD_ICON}</span>`;
+  const val = (c, r) => {
+    const v = ((view.samples || {})[c.id] || [])[r];
+    return v ? esc(v) : `<span class="pph">${esc(TABLE_PH[c.type] || '文字列')}</span>`;
+  };
+  const recs = Array.from({ length: view.rows }, (_, r) => `<div class="ptl-rec">${cols.length
+    ? `<a>${val(cols[0], r)}</a>${cols.slice(1).map((c) => `<div class="ptl-kv"><small>${esc(c.name)}:</small><span>${val(c, r)}</span></div>`).join('')}`
+    : '<span class="pph">（列がありません）</span>'}</div>`).join('');
+  return `<div class="pframe ptiles"><div class="pfr-head">${partNoHtml(p)}${ic}<b>${esc(p.label)}</b><span class="ptl-cnt">（${view.rows}）</span><span class="ptl-new">新規</span></div>`
+    + `<div class="ptl-body">${recs}</div><div class="ptl-foot">すべて表示</div></div>`;
+}
+
 // 表の部品の中身。列の名前・見本の値・幅は p.columns（resolvePart で付けた列）と、この画面だけの設定（view）から
 function tableHtml(p) {
   const cols = p.columns || [];
@@ -5464,8 +5516,8 @@ function tableHtml(p) {
   const free = cols.filter((c) => !view.widths[c.id]).length;
   const each = free ? Math.max(40, Math.floor((avail - fixed) / free)) : 0;
   const width = (c) => view.widths[c.id] || each;
-  const PH = { number: '数値', calc: '自動計算', date: '年-月-日', datetime: '年-月-日 時:分', dropdown: '選択', radio: '選択', checkbox: '選択', user: '人', file: 'ファイル', text2: '文章' };
-  const head = `<tr>${icon ? '<th style="width:34px"></th>' : ''}${cols.map((c) => `<th style="width:${width(c)}px">${esc(c.name)}${c.required ? ' <span class="preq">*</span>' : ''}</th>`).join('') || '<th>（列がありません）</th>'}</tr>`;
+  const PH = TABLE_PH;
+  const head =`<tr>${icon ? '<th style="width:34px"></th>' : ''}${cols.map((c) => `<th style="width:${width(c)}px">${esc(c.name)}${c.required ? ' <span class="preq">*</span>' : ''}</th>`).join('') || '<th>（列がありません）</th>'}</tr>`;
   const rows = Array.from({ length: view.rows }, (_, r) => `<tr>${icon ? '<td class="ic">📄</td>' : ''}${cols.map((c) => {
     const val = (view.samples[c.id] || [])[r];
     const cls = c.type === 'number' ? ' class="num"' : c.type === 'calc' ? ' class="calc"' : '';
@@ -10276,9 +10328,14 @@ function tableSettingsHtml(p, t) {
   const count = p.tableKind === 'related'
     ? pfRow(pfText('props.sort', '並び順', pr.sort, { placeholder: '例: 受注日の新しい順' }), pfText('props.limit', '最大件数', pr.limit, NUM))
     : pfRow(pfText('props.sort', '並び順', pr.sort, { placeholder: '例: 顧客コードの小さい順' }), pfText('props.perPage', '1 ページの件数', pr.perPage, NUM));
+  // 関連レコード一覧の表示のしかた（表・並べて表示。画像 q117 の案A）。元のデータベースの上に出し、並べて表示のときだけアイコンの色を出す
+  const display = p.tableKind !== 'related' ? ''
+    : pfSeg('props.display', '表示のしかた', isTilesPart(p) ? 'tiles' : 'table', [['table', '表'], ['tiles', '並べて表示']])
+      + (isTilesPart(p) ? pfSeg('props.color', 'アイコンの色', own(FRAME_COLORS, pr.color) ? pr.color : 'orange', Object.entries(FRAME_COLORS)) : '');
   return `${title}${kind}
     <div class="pf-sec item"><div class="pf-sec-head">このアイテムの設定<small>データベースの項目にはならない</small></div><div class="pf-sec-body">
       ${pfText('label', '表の名前', p.label)}
+      ${display}
       ${source}
       ${roRelated ? '' : tableColumnsEditorHtml(p, false)}
       ${count}
