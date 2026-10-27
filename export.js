@@ -167,7 +167,7 @@ function initExport(app, ipcMain, { headless = false, renderer = createPageRende
         const exists = targets.filter((t) => fs.existsSync(t.file));
         if (exists.length) {
           const ans = await dialog.showMessageBox(winOf(e), {
-            type: 'question', buttons: ['ファイルを上書きする', 'キャンセル'], defaultId: 1, cancelId: 1, title: 'PNG の保存先を選ぶ',
+            type: 'question', buttons: ['ファイルを上書きする', 'キャンセル'], defaultId: 1, cancelId: 1, title: 'PNG の上書きの確認',
             message: `同じ名前のファイルが ${exists.length} つあります。上書きしますか？`,
             detail: exists.slice(0, 10).map((t) => path.basename(t.file)).join('\n') + (exists.length > 10 ? '\n…' : ''),
           });

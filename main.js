@@ -111,8 +111,8 @@ function buildAppMenu() {
         commandItem('画面を複製する', 'duplicateScreen'),
         commandItem('画面を削除する…', 'deleteScreen'),
         { type: 'separator' },
-        commandItem('前の画面へ', 'prevScreen', 'PageUp'),
-        commandItem('次の画面へ', 'nextScreen', 'PageDown'),
+        commandItem('前の画面へ移る', 'prevScreen', 'PageUp'),
+        commandItem('次の画面へ移る', 'nextScreen', 'PageDown'),
       ],
     },
     {
