@@ -325,6 +325,15 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-sf .prh-fields small{color:#444}.look-sf .prh-fields span{color:#181818}
 .look-sf .prh-ic{border-radius:4px}
 .look-sf .fc-blue{background:#5867e8}.look-sf .fc-green{background:#3ba755}.look-sf .fc-orange{background:#f38303}.look-sf .fc-red{background:#ea001e}.look-sf .fc-purple{background:#9050e9}.look-sf .fc-gray{background:#747474}
+.look-sf .pac-btns span{border-color:#c9c9c9;color:#0176d3;border-radius:4px}
+.look-sf .pac-month{background:#f3f3f3;color:#181818;border-radius:0}
+.look-sf .pac-txt a{color:#0176d3;text-decoration:none}
+.look-sf .pac-txt small,.look-sf .pac-row em,.look-sf .pac-filter{color:#444}
+.look-sf .ac-call .pac-dot{background:#48c3cc}.look-sf .ac-mail .pac-dot{background:#939393}.look-sf .ac-task .pac-dot{background:#3ba755}.look-sf .ac-event .pac-dot{background:#eb7092}.look-sf .ac-note .pac-dot{background:#e6b400}
+.look-sf .ptree{border-color:#dddbda;border-radius:4px;box-shadow:0 2px 2px rgba(0,0,0,.10)}
+.look-sf .ptr-row{color:#181818}
+.look-sf .ptr-row.on{background:#eef4ff;box-shadow:inset 3px 0 0 #0176d3}
+.look-sf .ptr-fd{color:#706e6b}
 /* グラフの色（graphSvg の青・黄・緑を、見た目の色に置き換える。SVG の fill・stroke の属性を CSS で上書きする） */
 .look-sf .pgraph [fill="#3b82f6"]{fill:#1b96ff}.look-sf .pgraph [stroke="#3b82f6"]{stroke:#1b96ff}
 .look-sf .pgraph [fill="#f59e0b"]{fill:#ff9a3c}.look-sf .pgraph [fill="#10b981"]{fill:#3ba755}
@@ -387,6 +396,15 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .prh-ic{border-radius:4px}
 .look-kt .prh-top b{color:#333}
 .look-kt .prh-fields small{color:#666}.look-kt .prh-fields span{color:#333}
+.look-kt .pac-btns span{border-color:#e3e7e8;color:#3498db;background:#f7f9fa;border-radius:4px}
+.look-kt .pac-month{background:#f5f5f5;color:#333;border-radius:0}
+.look-kt .pac-txt a{color:#3498db;text-decoration:none}
+.look-kt .pac-txt small,.look-kt .pac-row em,.look-kt .pac-filter{color:#666}
+.look-kt .ac-call .pac-dot{background:#1abc9c}.look-kt .ac-mail .pac-dot{background:#3498db}.look-kt .ac-task .pac-dot{background:#2ecc71}.look-kt .ac-event .pac-dot{background:#f39c12}.look-kt .ac-note .pac-dot{background:#f1c40f}
+.look-kt .ptree{border-color:#e3e7e8;border-radius:0}
+.look-kt .ptr-row{color:#333}
+.look-kt .ptr-row.on{background:#e8f4fc;box-shadow:inset 3px 0 0 #3498db}
+.look-kt .ptr-fd{color:#f39c12}
 /* 表示の形（画面の項目の出し方。q108）。入力欄の枠の代わりに、値・鉛筆の印・下の線。kintone の見た目は、枠も線もない値 */
 .view-show .pbox{border:none;border-radius:0;border-bottom:1px solid #e5e5e5;padding:0 26px 0 0;margin-top:0;background:transparent;box-shadow:none;position:relative}
 .view-show .pbox.calc{border:none;border-bottom:1px solid #e5e5e5;background:transparent}
@@ -528,6 +546,32 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .prh-fields small{display:block;font-size:11.5px;color:#64748b}
 .prh-fields span{font-size:13.5px;color:#0f172a}
 .fc-blue{background:#1d4ed8}.fc-green{background:#15803d}.fc-orange{background:#c2410c}.fc-red{background:#dc2626}.fc-purple{background:#9333ea}.fc-gray{background:#64748b}
+/* 活動履歴（第 14 段階。画像 q118 の案A）。外の枠と見出しの行は、グループ枠と同じ形。丸は種類ごとの色で、同じ月の丸を縦の線でつなぐ */
+.pac-btns{display:flex;gap:6px;padding:10px 14px 0;flex-shrink:0}
+.pac-btns span{flex:1;min-width:0;height:28px;border:1px solid #94a3b8;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1d4ed8;background:#fff;white-space:nowrap;overflow:hidden}
+.pac-filter{padding:6px 14px 0;font-size:11.5px;color:#64748b;white-space:nowrap;overflow:hidden;flex-shrink:0}
+.pac-body{flex:1;min-height:0;overflow:hidden;padding:2px 14px 8px}
+.pac-month{margin-top:6px;padding:3px 8px;background:#f1f5f9;border-radius:4px;font-size:12px;font-weight:700;color:#334155;white-space:nowrap}
+.pac-row{position:relative;display:flex;align-items:flex-start;gap:10px;padding:6px 0 4px}
+.pac-grp .pac-row:not(:last-child)::after{content:'';position:absolute;left:10px;top:30px;bottom:-6px;width:2px;background:#cbd5e1}
+.pac-dot{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#94a3b8}
+.pac-dot svg{width:13px;height:13px}
+.pac-txt{flex:1;min-width:0;line-height:1.35}
+.pac-txt a{display:block;color:#1d4ed8;text-decoration:underline;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pac-txt small{display:block;color:#64748b;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pac-row em{font-style:normal;font-size:11.5px;color:#64748b;white-space:nowrap;flex-shrink:0;padding-top:2px}
+.ac-call .pac-dot{background:#0d9488}.ac-mail .pac-dot{background:#2563eb}.ac-task .pac-dot{background:#16a34a}.ac-event .pac-dot{background:#db2777}.ac-note .pac-dot{background:#ca8a04}
+/* ツリー（第 14 段階。画像 q119 の案A）。赤い番号は左の外の上 */
+.pno-out.pno-top{top:14px}
+.ptree{flex:1;min-height:0;background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:6px 0;overflow:hidden;font-size:13px}
+.ptree>.pph{display:block;padding:4px 10px}
+.ptr-row{height:28px;display:flex;align-items:center;gap:5px;padding-right:8px;white-space:nowrap;overflow:hidden;color:#1e293b}
+.ptr-row.on{background:#dbeafe;font-weight:700;box-shadow:inset 3px 0 0 #2563eb}
+.ptr-tw{width:12px;flex-shrink:0;font-style:normal;font-size:10px;color:#64748b;text-align:center}
+.ptr-fd{width:16px;height:16px;flex-shrink:0;color:#94a3b8;display:inline-flex}
+.ptr-fd svg{width:16px;height:16px}
+.ptr-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ptr-row small{color:#94a3b8;font-size:11.5px;font-weight:400;flex-shrink:0}
 /* 選んだ部品の印と、縁のつまみ（編集の画面だけ） */
 .part.sel{outline:2px solid #2563eb;outline-offset:1px;z-index:1}
 .part.pcont.sel{z-index:auto}
@@ -1765,11 +1809,22 @@ const PART_TYPES = {
   // レコードの見出し（画像 q116 の案A）: レコードの画面のいちばん上の帯。ボタンは上に重ねて入れる。fullWidth は、最初の幅を画面の幅から左右 32 を引いた幅にする印。
   // kind はレコードの種類（空なら画面設計の名前）、name はレコードの名前のサンプル値、items は主な項目（項目の id）、values はそのサンプル値（items と同じ順）
   recordHead: { name: 'レコードの見出し', pal: 'レコードの\n見出し', icon: '▤', w: 1216, h: 96, label: '', container: true, fullWidth: true, props: { kind: '', name: 'レコードの名前', color: 'blue', items: [], values: [] } },
+  // 活動履歴（画像 q118 の案A）: samples は 1 行に「日付, 種類, 件名, 説明」（parseActivitySamples）。buttons は上の「電話を記録」などのボタンの行、months は月ごとの見出し
+  activity: { name: '活動履歴', pal: '活動履歴', icon: '⏱', w: 400, h: 400, label: '活動', props: {
+    samples: '2026-10-22, 予定, 訪問して点検する, 佐藤 花子 が訪問します\n2026-10-21, メール, 点検の日の連絡, 佐藤 花子 がメールを送りました\n2026-10-20, 電話, 冷房が効かないとの電話, 山田 太郎 さんから電話がありました\n'
+      + '2026-09-30, 作業, 見積書を送る, 佐藤 花子 の作業（済み）\n2026-09-02, 電話, リモコンの交換の相談, 山田 太郎 さんから電話がありました',
+    buttons: true, months: true } },
+  // ツリー（画像 q119 の案A）: lines は 1 行に 1 つ（頭の空白で段を下げ、頭に「+」の行は閉じた形。parseTreeLines）。current は選んでいる行の、上の段からの道筋
+  tree: { name: 'ツリー', icon: '🗂', w: 240, h: 320, label: '', props: {
+    lines: '契約書\n  2026年度（5）\n  2025年度（12）\n  2024年度（9）\n+規程\n議事録\n  2026年度（14）\n  2025年度（31）\n+申請書の控え',
+    current: '契約書 > 2026年度（5）', folder: true } },
 };
 // グループ枠の見出しの左のアイコンの色（右のパネルの選択肢の順。'none' はアイコンを出さない）と、アイコンの絵（白い線。Salesforce のアイコンは写さない）
 const FRAME_COLORS = { blue: '青', green: '緑', orange: '橙', red: '赤', purple: '紫', gray: '灰', none: 'なし' };
 const FRAME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>';
 const RECORD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg>';
+// ツリーの行の左のフォルダのアイコン（色は CSS の color）
+const TREE_FOLDER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2h8.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" fill="currentColor"/></svg>';
 // 部品の箱にだけ並べる、部品ではないもの（吹き出し）。PART_TYPES には入れない（画面の parts には入らないため）
 const PALETTE_EXTRA = { callout: { name: '吹き出し', icon: '💬', w: 200, h: 80 } };
 const paletteEntry = (type) => (own(PALETTE_EXTRA, type) ? PALETTE_EXTRA[type] : partType(type));
@@ -1777,8 +1832,8 @@ const paletteEntry = (type) => (own(PALETTE_EXTRA, type) ? PALETTE_EXTRA[type] :
 const PALETTE_GROUPS = [
   { id: 'basic', name: '基本', types: ['text1', 'text2', 'number', 'date', 'dropdown', 'radio', 'checkbox', 'table', 'button', 'graph', 'heading', 'desc', 'divider', 'callout'] },
   { id: 'input', name: '入力画面用', types: ['file', 'user', 'datetime', 'calc'] },
-  { id: 'list', name: '一覧画面用', types: ['search', 'filter', 'pager'] },
-  { id: 'detail', name: '詳細画面用', types: ['frame', 'recordHead'] },
+  { id: 'list', name: '一覧画面用', types: ['search', 'filter', 'pager', 'tree'] },
+  { id: 'detail', name: '詳細画面用', types: ['frame', 'recordHead', 'activity'] },
   { id: 'progress', name: '進捗画面用', types: ['status', 'steps', 'tabs'] },
   { id: 'look', name: 'その他', types: ['image', 'link', 'icon'] },
 ];
@@ -2208,6 +2263,16 @@ function describePartLines(p, ctx = null) {
       eqIf('レコードの種類', v(pr.kind));
       eqIf('主な項目', (pr.items || []).map((id) => itemNameIn(ctx, id)).filter(Boolean).join('・'));
       break;
+    case 'activity': {
+      const acts = parseActivitySamples(pr.samples);
+      if (acts.length) eqIf('活動', `${acts.map((a) => a.kind || '（種類なし）').join('・')}（${acts.length} 件）`);
+      break;
+    }
+    case 'tree': {
+      const rows = parseTreeLines(pr.lines);
+      if (rows.length) eqIf('ツリー', `${rows.filter((r) => !r.depth).map((r) => r.name).join('／')}（${rows.length} 行）`);
+      break;
+    }
     case 'table':
       if (p.tableKind === 'subtable') { if (p.required) short.push('必須（1 行以上）'); }
       else if (p.tableKind === 'related') {
@@ -2418,7 +2483,7 @@ const clipText = (s, n = DIFF_CLIP) => {
   return t.length > n ? t.slice(0, n) + '…' : t;
 };
 const fromTo = (label, a, b) => `${label}：${clipText(a)} → ${clipText(b)}`;
-const LABEL_WORDS = { heading: '文字', desc: '文字', button: 'ボタンの文字', link: '文字' };
+const LABEL_WORDS = { heading: '文字', desc: '文字', button: 'ボタンの文字', link: '文字', frame: 'グループ名', activity: '見出しの文字' };
 const LABEL_POS = { top: '上', left: '左' };
 // 比べない名前の控え（{ itemId, name }・{ designId, name } の name）を外す。名前は今の名前で引いて書くので、控えの古さを違いにしない
 function stripNameCaches(v) {
@@ -5472,6 +5537,8 @@ function partInnerHtml(p, t, marks = false) {
       return `${outNo()}<div class="prhead"><div class="prh-top">${ic}<div><small>${esc(pr.kind || p.designName || '')}</small><b>${esc(pr.name)}</b></div></div>`
         + `<div class="prh-fields">${fields || '<span class="pph">主な項目は右のパネルで選びます</span>'}</div></div>`;
     }
+    case 'activity': return activityHtml(p);
+    case 'tree': return treeHtml(p);
   }
   return partLabelHtml(p, marks) + partFieldHtml(p, t);
 }
@@ -5625,6 +5692,96 @@ function iconSvg(name, color) {
   const icon = own(ICONS, name) ? ICONS[name] : ICONS.gear;
   const c = own(ICON_COLORS, color) ? ICON_COLORS[color][1] : ICON_COLORS.black[1];
   return `<svg viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon[1]}</svg>`;
+}
+
+// 活動履歴（第 14 段階。画像 q118 の案A）。種類の言葉ごとの CSS の印（ac-〇〇）と、丸の中の絵（白い線）。ほかの言葉は灰色の丸（ac-other）
+const ACTIVITY_KINDS = {
+  電話: ['call', '<path d="M6 3h3l2 5-2 1.5a11 11 0 0 0 5.5 5.5L16 13l5 2v3a2 2 0 0 1-2 2A17 17 0 0 1 4 5a2 2 0 0 1 2-2z"/>'],
+  メール: ['mail', ICONS.mail[1]],
+  作業: ['task', ICONS.check[1]],
+  予定: ['event', ICONS.calendar[1]],
+  メモ: ['note', ICONS.edit[1]],
+};
+const ACTIVITY_OTHER = ['other', '<circle cx="12" cy="12" r="3"/>'];
+const ACTIVITY_BUTTONS = ['電話を記録', 'メール', '作業', '予定'];
+// 1 行に「日付, 種類, 件名, 説明」。区切りは半角・全角のカンマとタブ（件名と説明の中の「、」では切らない。Claude が決めた）。
+// 説明は 3 つ目の区切りより後ろを全部。空の行は飛ばす
+function parseActivitySamples(text) {
+  return String(text || '').split('\n').map((line) => {
+    const f = [];
+    let rest = line;
+    for (let i = 0; i < 3; i++) {
+      const m = rest.match(/[,，\t]/);
+      if (!m) break;
+      f.push(rest.slice(0, m.index).trim());
+      rest = rest.slice(m.index + 1);
+    }
+    f.push(rest.trim());
+    const [date = '', kind = '', title = '', desc = ''] = f;
+    return date || kind || title || desc ? { date, kind, title, desc } : null;
+  }).filter(Boolean).slice(0, 30);
+}
+// 日付（2026-10-22・2026/10/22・2026年10月22日）から、月の見出し（2026年10月）と右に出す日付（10月22日）。読めない日付は月の見出しなしで、そのまま出す
+function activityDate(date) {
+  const m = String(date).normalize('NFKC').match(/^(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+  return m ? { month: `${m[1]}年${Number(m[2])}月`, day: `${Number(m[2])}月${Number(m[3])}日` } : { month: '', day: date };
+}
+// 外の枠と見出しの行はグループ枠と同じ形。月が変わる行の前に月の見出しを入れ（読めない日付の行は前の月の下）、同じ見出しの下の丸を縦の線でつなぐ
+function activityHtml(p) {
+  const pr = p.props || {};
+  const months = pr.months !== false;
+  const groups = [];
+  parseActivitySamples(pr.samples).forEach((a) => {
+    const { month, day } = activityDate(a.date);
+    const [cls, icon] = own(ACTIVITY_KINDS, a.kind) ? ACTIVITY_KINDS[a.kind] : ACTIVITY_OTHER;
+    const row = `<div class="pac-row ac-${cls}"><i class="pac-dot"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg></i>`
+      + `<div class="pac-txt"><a>${esc(a.title)}</a><small>${esc(a.desc)}</small></div><em>${esc(day)}</em></div>`;
+    const last = groups[groups.length - 1];
+    if (!last || (months && month && month !== last.month)) groups.push({ month, rows: [row] });
+    else last.rows.push(row);
+  });
+  const body = groups.map((g) => `${months && g.month ? `<div class="pac-month">${esc(g.month)}</div>` : ''}<div class="pac-grp">${g.rows.join('')}</div>`).join('');
+  const btns = pr.buttons === false ? ''
+    : `<div class="pac-btns">${ACTIVITY_BUTTONS.map((b) => `<span>${b}</span>`).join('')}</div><div class="pac-filter">絞り込み: すべての期間・すべての活動</div>`;
+  return `<div class="pframe pact"><div class="pfr-head">${partNoHtml(p)}<b>${esc(p.label)}</b></div>${btns}`
+    + `<div class="pac-body">${body || '<span class="pph">右のパネルに活動を書くと、ここに並びます</span>'}</div></div>`;
+}
+
+// ツリー（第 14 段階。画像 q119 の案A）の行。1 行に 1 つで、行の頭の空白で段を下げる（半角の空白 2 つで 1 段。全角の空白とタブは 1 つで半角 2 つ分）。
+// 段は前の行より 2 段以上は下げない。頭に「+」（全角も）を書いた行は閉じた形（closed）で、その下の段の行は描かない（hidden）。
+// path は上の段からの道筋（「契約書 > 2026年度（5）」。選んでいる行 props.current と比べる）、open は下の段を開いて描く行
+function parseTreeLines(text) {
+  const rows = [];
+  const names = []; // 段ごとの、今の行の名前
+  String(text || '').split('\n').forEach((line) => {
+    const [, lead, rest] = line.match(/^([ 　\t]*)(.*)$/);
+    const body = rest.trim();
+    const closed = /^[+＋]/.test(body);
+    const name = closed ? body.slice(1).trim() : body;
+    if (!name) return;
+    const indent = [...lead].reduce((n, c) => n + (c === ' ' ? 1 : 2), 0);
+    const depth = Math.min(Math.floor(indent / 2), rows.length ? rows[rows.length - 1].depth + 1 : 0);
+    names.length = depth;
+    names.push(name);
+    rows.push({ depth, name, closed, path: names.join(' > ') });
+  });
+  let cut = -1; // この段より深い行は描かない（-1 のときは描く）
+  rows.forEach((r, i) => {
+    r.open = !r.closed && !!rows[i + 1] && rows[i + 1].depth > r.depth;
+    r.hidden = cut >= 0 && r.depth > cut;
+    if (!r.hidden) cut = r.closed ? r.depth : -1;
+  });
+  return rows;
+}
+// 行の終わりの「（数字）」は件数として薄く出す。赤い番号はアイテムに 1 つ（左の外の上）
+function treeHtml(p) {
+  const pr = p.props || {};
+  const rows = parseTreeLines(pr.lines).filter((r) => !r.hidden).map((r) => {
+    const c = r.name.match(/^(.*?)\s*[（(](\d+)[)）]$/);
+    return `<div class="ptr-row${r.path === pr.current ? ' on' : ''}" style="padding-left:${8 + r.depth * 16}px"><i class="ptr-tw">${r.closed ? '▸' : r.open ? '▾' : ''}</i>`
+      + `${pr.folder === false ? '' : `<span class="ptr-fd">${TREE_FOLDER}</span>`}<span class="ptr-name">${esc(c ? c[1] : r.name)}</span>${c ? `<small>（${c[2]}）</small>` : ''}</div>`;
+  }).join('');
+  return `${partNoHtml(p, p.x >= 28 ? ' pno-out pno-top' : ' pno-corner')}<div class="ptree">${rows || '<span class="pph">右のパネルにツリーの行を書きます</span>'}</div>`;
 }
 
 // 入力欄の部品の、項目名より下（入力欄・選択肢・添付の枠）
@@ -9905,6 +10062,7 @@ function partCommonFieldsHtml(p) {
   if (p.type === 'image') return pfText('label', '画像の説明', p.label, { placeholder: '例: 会社のロゴ' }) + numbered;
   if (p.type === 'link') return pfText('label', '文字', p.label) + numbered;
   if (p.type === 'frame') return pfText('label', 'グループ名', p.label) + numbered;
+  if (p.type === 'activity') return pfText('label', '見出しの文字', p.label) + numbered;
   return numbered;
 }
 
@@ -10206,8 +10364,27 @@ function partTypeFieldsHtml(p) {
         + pfSeg('props.color', 'アイコンの色', pr.color, Object.entries(FRAME_COLORS))
         + itemPickFieldsHtml(p, { label: '主な項目', add: '主な項目を追加する', placeholder: '' })
         + '<p class="hint">編集・削除などのボタンは、ボタンのアイテムを見出しの上に重ねて置きます。見出しを動かすと、ボタンも一緒に動きます。</p>';
+    case 'activity':
+      return pfArea('props.samples', '活動', pr.samples, { hint: '（1 行に 1 つ。日付, 種類, 件名, 説明）', rows: 6 })
+        + '<p class="hint">種類は 電話・メール・作業・予定・メモ のどれかです（ほかの言葉は灰色の丸）。並びは書いた順のままです。</p>'
+        + pfCheck('props.buttons', '上に「電話を記録」などのボタンの行を出す', pr.buttons !== false)
+        + pfCheck('props.months', '月ごとに見出しを入れる', pr.months !== false);
+    case 'tree':
+      return pfArea('props.lines', 'ツリーの行', pr.lines, { hint: '（1 行に 1 つ）', rows: 9 })
+        + '<p class="hint">行の頭の空白 2 つで 1 段下げます。頭に「+」を書いた行は、閉じた形（▸）で描きます。行の終わりの「（数字）」は件数として薄く出します。</p>'
+        + `<div id="pf-tree-current">${treeCurrentHtml(p)}</div>`
+        + pfCheck('props.folder', 'フォルダのアイコンを出す', pr.folder !== false);
   }
   return '';
+}
+// ツリーの「選んでいる行」。描いている行の道筋から選ぶ。ツリーの行を書き換えたときは、ここだけを描き直す（refreshTreeCurrent）
+function treeCurrentHtml(p) {
+  const paths = parseTreeLines(p.props.lines).filter((r) => !r.hidden).map((r) => [r.path, r.path]);
+  return pfSelect('props.current', '選んでいる行', p.props.current, [['', '（なし）'], ...paths]);
+}
+function refreshTreeCurrent(p) {
+  const box = $('#pf-tree-current');
+  if (box && p) box.innerHTML = treeCurrentHtml(p);
 }
 
 // 移る先の欄（ボタンとリンクの文字。画像 q53 の案A）。「画面」を選ぶと、画面設計（最初は「この画面設計」）と画面の 2 つの選ぶ欄を出す。
@@ -10478,6 +10655,7 @@ function onPartFieldChange(el) {
   const out = $('#pf-out');
   if (out) out.textContent = subjectSettingText(now) || '（まだありません）';
   if (key === 'props.options') refreshChoiceInitial(now.props.options);
+  if (key === 'props.lines') refreshTreeCurrent(now);
   // 項目名を変えたときは、項目の一覧表と部品の箱の名前も合わせる（右の欄は描き直さない）
   if (key === 'label' && ui.panel === 'items') renderItemsView(currentDesign());
   if (key === 'label') renderPalette(currentDesign());
