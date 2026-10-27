@@ -1701,6 +1701,10 @@ const PART_TYPES = {
   image: { name: '画像枠', pal: '画像枠', icon: '🖼', w: 240, h: 160, label: '画像', noNumber: true, props: {} },
   link: { name: 'リンク', pal: 'リンク', icon: '🔗', w: 200, h: 24, label: 'リンク', props: { to: '', designId: '', screenId: '', url: '' } },
   icon: { name: 'アイコン', icon: '⚙', w: 32, h: 32, label: '', noNumber: true, props: { icon: 'gear', color: 'black' } },
+  // ── 第 14 段階で追加したアイテム（見た目と最初の大きさは画像 q115〜q119 のとおり）──
+  // container の種類は、ほかのアイテムを中に入れてまとめる（入っているアイテムは inFrame にその id を持つ。グループ枠の決まりは settleFrames）。
+  // グループ枠の color は、見出しの左のアイコンの色（'none' は出さない）
+  frame: { name: 'グループ枠', pal: 'グループ枠', icon: '⬚', w: 400, h: 240, label: 'グループ名', container: true, props: { color: 'blue' } },
 };
 // 部品の箱にだけ並べる、部品ではないもの（吹き出し）。PART_TYPES には入れない（画面の parts には入らないため）
 const PALETTE_EXTRA = { callout: { name: '吹き出し', icon: '💬', w: 200, h: 80 } };
@@ -3117,6 +3121,7 @@ function normalizeScreen(src, i, items = []) {
   const order = raw.map((p, k) => k).sort((a, b) => numOr(raw[a].y, 0) - numOr(raw[b].y, 0) || numOr(raw[a].x, 0) - numOr(raw[b].x, 0));
   const parts = [];
   order.forEach((k) => { parts[k] = normalizePart(raw[k], items); });
+  dropBadFrameRefs(parts);
   return {
     ...s,
     id: str(s.id) || newId('s'),
@@ -4418,7 +4423,9 @@ const actions = {
     const ids = [];
     mutateDesign(designId, (d) => {
       const sc = d.screens.find((x) => x.id === screenId);
-      if (sc) specs.forEach((spec) => ids.push(placePartIn(sc, d, spec).id));
+      if (!sc) return;
+      specs.forEach((spec) => ids.push(placePartIn(sc, d, spec).id));
+      settleFrames(sc, ids);
     });
     return ids;
   },
@@ -4439,6 +4446,7 @@ const actions = {
     mutateScreen(designId, screenId, (s, d) => {
       if (item) d.items.push(item);
       s.parts.push(p);
+      settleFrames(s, [p.id]);
     });
     return p.id;
   },
@@ -4463,19 +4471,23 @@ const actions = {
       else if (!p.itemId) applyFieldPatch(p, 'label', patch);
     });
   },
-  // 位置と大きさを変える（マス目に吸い付け、画面の中に収める）。変わらないときは履歴に積まない
+  // 位置と大きさを変える（マス目に吸い付け、画面の中に収める）。変わらないときは履歴に積まない。
+  // グループ枠を動かす（大きさは変えない）ときは、中のアイテムも一緒に動かす（まとめて動かすのと同じ。グループ枠の決まりは followFrames）
   movePart(designId, screenId, partId, rect) {
     const sc = findScreen(designId, screenId);
     const p = findPart(sc, partId);
     if (!p) return false;
     const r = fitRect(rect, sc);
     if (r.x === p.x && r.y === p.y && r.w === p.w && r.h === p.h) return false;
-    return mutatePart(designId, screenId, partId, (q) => { Object.assign(q, r); });
+    if (isContainerPart(p) && r.w === p.w && r.h === p.h) return this.moveMany(designId, screenId, [{ k: 'p', id: partId }], r.x - p.x, r.y - p.y);
+    return this.setRects(designId, screenId, [{ k: 'p', id: partId, ...r }]);
   },
-  // 部品を消す。その部品につないだ吹き出しは残し、線だけを外す（画像 q27 の決めごと）
+  // 部品を消す。その部品につないだ吹き出しは残し、線だけを外す（画像 q27 の決めごと）。
+  // グループ枠を削除したときは、中のアイテムを残し、どこにも入っていない形にする
   deletePart(designId, screenId, partId) {
     return mutatePart(designId, screenId, partId, (p, sc) => {
       sc.parts = sc.parts.filter((x) => x.id !== partId);
+      sc.parts.forEach((x) => { if (x.inFrame === partId) delete x.inFrame; });
       sc.callouts.forEach((c) => { if (c.target === partId) c.target = null; });
     });
   },
@@ -4493,14 +4505,21 @@ const actions = {
     }).filter(Boolean);
     if (!next.length) return false;
     return mutateScreen(designId, screenId, (s) => {
-      next.forEach(({ k, id, fit }) => Object.assign(k === 'p' ? findPart(s, id) : findCallout(s, id), fit));
+      const before = new Map();
+      next.forEach(({ k, id, fit }) => {
+        const o = k === 'p' ? findPart(s, id) : findCallout(s, id);
+        if (k === 'p') before.set(id, { x: o.x, y: o.y, w: o.w, h: o.h });
+        Object.assign(o, fit);
+      });
+      followFrames(s, before);
     });
   },
-  // まとめて dx・dy（ドット）動かす。どれかが画面（吹き出しは範囲）の端に当たるときは、そこで止める（並びをくずさないため）
+  // まとめて dx・dy（ドット）動かす。どれかが画面（吹き出しは範囲）の端に当たるときは、そこで止める（並びをくずさないため）。
+  // 選んだグループ枠の中のアイテムも一緒に動かす（中のアイテムが端に当たるときも止める）
   moveMany(designId, screenId, sel, dx, dy) {
     const sc = findScreen(designId, screenId);
     if (!sc) return false;
-    const rects = selRects(sc, sel);
+    const rects = selRects(sc, withFrameKids(sc, sel));
     const [ddx, ddy] = clampGroupMove(sc, rects, snapGrid(dx), snapGrid(dy));
     if (!ddx && !ddy) return false;
     return this.setRects(designId, screenId, rects.map((r) => ({ ...r, x: r.x + ddx, y: r.y + ddy })));
@@ -4518,6 +4537,7 @@ const actions = {
     if (!parts.size && !cos.size) return false;
     return mutateScreen(designId, screenId, (s) => {
       s.parts = s.parts.filter((p) => !parts.has(p.id));
+      s.parts.forEach((p) => { if (parts.has(p.inFrame)) delete p.inFrame; });
       s.callouts = s.callouts.filter((c) => !cos.has(c.id));
       s.callouts.forEach((c) => { if (parts.has(c.target)) c.target = null; });
     });
@@ -4534,7 +4554,9 @@ const actions = {
   },
   // コピーした部品と吹き出しを貼り付ける。entries は { parts: [{ part, item }], callouts: [吹き出し] }。dx・dy だけずらして置く。
   // 戻り値は貼り付けたものの sel。部品の項目の扱いは insertPartCopy と同じ（同じ画面に同じ項目を 2 回は置かない）。
-  // 吹き出しのつなぐ部品は、一緒に貼り付けた部品なら新しい部品へ、この画面にある部品ならそのまま、ほかは外す
+  // 吹き出しのつなぐ部品は、一緒に貼り付けた部品なら新しい部品へ、この画面にある部品ならそのまま、ほかは外す。
+  // グループ枠と一緒にコピーしたアイテム（kid。選んだグループ枠の中のアイテム。戻り値の sel には入れない）は新しいグループ枠に入れ、
+  // ほかのアイテムは、置いた先の真ん中で入るグループ枠を決める
   insertCopies(designId, screenId, entries, dx, dy) {
     const sc = findScreen(designId, screenId);
     const d = findDesign(store.state, designId);
@@ -4543,13 +4565,20 @@ const actions = {
     const newItems = [];
     const map = {};
     const out = [];
-    (entries.parts || []).forEach(({ part: src, item: srcItem }) => {
+    const added = [];
+    (entries.parts || []).forEach(({ part: src, item: srcItem, kid }) => {
       const r = preparePartCopy(d, work, newItems, src, { x: src.x + dx, y: src.y + dy }, srcItem, entries.designId);
       if (!r) return;
       map[src.id] = r.part.id;
       work.parts.push(r.part);
+      added.push(r.part);
       if (r.item) newItems.push(r.item);
-      out.push({ k: 'p', id: r.part.id });
+      if (!kid) out.push({ k: 'p', id: r.part.id });
+    });
+    added.forEach((p) => {
+      const f = map[p.inFrame] ? findPart(work, map[p.inFrame]) : null;
+      if (isContainerPart(f) && !isContainerPart(p)) p.inFrame = f.id;
+      else settlePart(work, p);
     });
     const newCallouts = (entries.callouts || []).map((c) => {
       const target = map[c.target] || (findPart(sc, c.target) ? c.target : null);
@@ -4851,7 +4880,10 @@ const actions = {
     const start = fitRect({ x: at.x, y: Math.max(bandHeight(d0, sc), at.y), w: t.w, h: t.h }, sc);
     const p = createPartData(type, sc, freeSpot(sc, start), itemId);
     if (p.view && 'current' in p.view) p.view.current = defaultStateId(item);
-    mutateScreen(designId, screenId, (s) => { s.parts.push(p); });
+    mutateScreen(designId, screenId, (s) => {
+      s.parts.push(p);
+      settleFrames(s, [p.id]);
+    });
     return p.id;
   },
 };
@@ -4912,6 +4944,79 @@ function preparePartCopy(d, sc, pendingItems, src, at, srcItem, srcDesignId = ''
   const target = newItem || item;
   if (target && isInputType(target.type) && isInputType(p.type)) p.type = target.type;
   return { part: p, item: newItem };
+}
+
+// ── グループ枠（第 14 段階。画像 q115 の案B）──
+// container の種類（グループ枠など）のアイテムは、ほかのアイテムを中に入れる。入っているアイテムは inFrame にその id を持ち、
+// 入っていないアイテムは inFrame の欄を持たない（標準の見た目の出力を変えないため）。container の種類は、ほかの container に入らない
+const isContainerPart = (p) => !!(p && partType(p.type) && partType(p.type).container);
+const partCenter = (p) => ({ x: p.x + p.w / 2, y: p.y + p.h / 2 });
+const rectHasPoint = (r, pt) => pt.x >= r.x && pt.x <= r.x + r.w && pt.y >= r.y && pt.y <= r.y + r.h;
+const rectHasRect = (r, o) => o.x >= r.x && o.y >= r.y && o.x + o.w <= r.x + r.w && o.y + o.h <= r.y + r.h;
+const frameKids = (sc, frameId) => sc.parts.filter((p) => p.inFrame === frameId);
+
+// 読み込んだアイテムの inFrame のうち、同じ画面にない・container でないアイテムを指すものと、container の種類が持つものを消す
+function dropBadFrameRefs(parts) {
+  const frames = new Set(parts.filter(isContainerPart).map((p) => p.id));
+  parts.forEach((p) => { if ('inFrame' in p && (isContainerPart(p) || !frames.has(p.inFrame))) delete p.inFrame; });
+}
+
+// アイテムを、真ん中があるグループ枠に入れる（重なっているときは上に描くもの＝アイテムの並びで後ろ）。どこにもなければ出す
+function settlePart(sc, p) {
+  if (isContainerPart(p)) return;
+  const c = partCenter(p);
+  const f = [...sc.parts].reverse().find((x) => isContainerPart(x) && rectHasPoint(x, c));
+  if (f) p.inFrame = f.id;
+  else delete p.inFrame;
+}
+// グループ枠を置いた・大きさを変えたとき: 全体が中にある、どこにも入っていないアイテムを入れる。入っているアイテムのうち、真ん中が外になったものを出す
+function settleFrame(sc, f) {
+  sc.parts.forEach((p) => {
+    if (isContainerPart(p)) return;
+    if (p.inFrame === f.id) { if (!rectHasPoint(f, partCenter(p))) settlePart(sc, p); }
+    else if (!p.inFrame && rectHasRect(f, p)) p.inFrame = f.id;
+  });
+}
+// 入る・出るの決まり（1 か所）。ids は置いた・動かしたアイテム（container の種類は、置いた・大きさを変えたときだけ渡す）。
+// グループ枠を先に決めてから、ほかのアイテムを決める
+function settleFrames(sc, ids) {
+  const list = ids.map((id) => findPart(sc, id)).filter(Boolean);
+  list.filter(isContainerPart).forEach((f) => settleFrame(sc, f));
+  list.filter((p) => !isContainerPart(p)).forEach((p) => settlePart(sc, p));
+}
+// 動かした後の決まり。before は動かす前の位置と大きさ（アイテムの id → { x, y, w, h }）。
+// 大きさを変えた container は入る・出るを決め直す。動かした container の中のアイテムは、一緒に動かしていなければ同じだけ動かす。
+// ほかの動かしたアイテムは、入っているグループ枠と同じだけ動いたものを除いて、入るグループ枠を決め直す
+function followFrames(sc, before) {
+  const moved = (p) => { const b = before.get(p.id); return b ? [p.x - b.x, p.y - b.y, p.w !== b.w || p.h !== b.h] : null; };
+  const settle = [];
+  before.forEach((b, id) => {
+    const f = findPart(sc, id);
+    if (!isContainerPart(f)) return;
+    const [dx, dy, resized] = moved(f);
+    if (resized) { settle.push(id); return; }
+    frameKids(sc, id).forEach((k) => { if (!before.has(k.id)) Object.assign(k, fitRect({ ...k, x: k.x + dx, y: k.y + dy }, sc)); });
+  });
+  before.forEach((b, id) => {
+    const p = findPart(sc, id);
+    if (!p || isContainerPart(p)) return;
+    const f = p.inFrame && before.has(p.inFrame) ? findPart(sc, p.inFrame) : null;
+    const [dx, dy] = moved(p);
+    const [fx, fy, resized] = f ? moved(f) : [];
+    if (!f || resized || fx !== dx || fy !== dy) settle.push(id);
+  });
+  settleFrames(sc, settle);
+}
+// 選んだもの（sel）に、選んだ container の中のアイテムを足す（まとめて動かす・ドラッグで動かすときに、一緒に動かすため）
+function withFrameKids(sc, sel) {
+  const have = new Set(sel.filter((x) => x.k === 'p').map((x) => x.id));
+  const out = [...sel];
+  sel.forEach((x) => {
+    const f = x.k === 'p' ? findPart(sc, x.id) : null;
+    if (!isContainerPart(f)) return;
+    frameKids(sc, f.id).forEach((k) => { if (!have.has(k.id)) { have.add(k.id); out.push({ k: 'p', id: k.id }); } });
+  });
+  return out;
 }
 
 // 選んだものの位置と大きさ（選んだ順）。見つからないものは除く
@@ -10828,7 +10933,8 @@ function startGroupDrag(ev, copy, hit = null) {
   flushSideField();
   blurSidePanel();
   const s = currentScreen();
-  drag = { kind: 'group', copy, hit, sx: ev.clientX, sy: ev.clientY, rects: selRects(s, ui.sel), dx: 0, dy: 0, ghosts: null, moved: false };
+  // 選んだグループ枠の中のアイテムも一緒に動かす（複製のときは、一緒に写す）
+  drag = { kind: 'group', copy, hit, sx: ev.clientX, sy: ev.clientY, rects: selRects(s, withFrameKids(s, ui.sel)), dx: 0, dy: 0, ghosts: null, moved: false };
   document.body.classList.add(copy ? 'copying' : 'moving');
 }
 function selElement(x) {
@@ -11441,11 +11547,16 @@ function onDragEnd(ev) {
 
 // ── コピー・貼り付け・複製・削除・矢印のキーで動かす（選んだものをまとめて）──
 // コピーしたものは { designId（コピーした画面設計）, parts: [{ part（部品の写し）, item（指している項目の写し。ほかの画面設計へ貼り付けるときに使う）}], callouts: [吹き出しの写し] }
+// 選んだグループ枠の中のアイテムも一緒にコピーする（選んでいないものには kid: true を付け、貼り付けた後には選ばない）
 function selectionEntries() {
   const s = currentScreen();
   const d = currentDesign();
-  const parts = ui.sel.filter((x) => x.k === 'p').map((x) => findPart(s, x.id)).filter(Boolean)
-    .map((p) => { const item = findItem(d, p.itemId); return { part: clone(p), item: item ? clone(item) : null }; });
+  const picked = new Set(ui.sel.filter((x) => x.k === 'p').map((x) => x.id));
+  const parts = withFrameKids(s, ui.sel).filter((x) => x.k === 'p').map((x) => findPart(s, x.id)).filter(Boolean)
+    .map((p) => {
+      const item = findItem(d, p.itemId);
+      return { part: clone(p), item: item ? clone(item) : null, ...(picked.has(p.id) ? {} : { kid: true }) };
+    });
   const callouts = ui.sel.filter((x) => x.k === 'c').map((x) => findCallout(s, x.id)).filter(Boolean).map(clone);
   return { designId: d.id, parts, callouts };
 }
