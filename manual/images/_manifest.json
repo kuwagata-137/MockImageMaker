@@ -31,8 +31,14 @@
  },
  "ed_callout": {
   "file": "ed_callout.png",
-  "w": 784,
+  "w": 276,
   "h": 89,
+  "dsf": 2
+ },
+ "ed_edit": {
+  "file": "ed_edit.png",
+  "w": 740,
+  "h": 316,
   "dsf": 2
  },
  "ed_import": {
@@ -62,7 +68,7 @@
  "ed_lookup_set": {
   "file": "ed_lookup_set.png",
   "w": 279,
-  "h": 962,
+  "h": 1098,
   "dsf": 2
  },
  "ed_overview": {
@@ -92,18 +98,18 @@
  "ed_settings": {
   "file": "ed_settings.png",
   "w": 279,
-  "h": 834,
+  "h": 985,
   "dsf": 2
  },
  "ed_table": {
   "file": "ed_table.png",
   "w": 279,
-  "h": 914,
+  "h": 930,
   "dsf": 2
  },
  "ex_button": {
   "file": "ex_button.png",
-  "w": 200,
+  "w": 213,
   "h": 124,
   "dsf": 2
  },
@@ -188,7 +194,7 @@
  "new_step2": {
   "file": "new_step2.png",
   "w": 464,
-  "h": 446,
+  "h": 468,
   "dsf": 2
  },
  "new_step3": {
@@ -217,7 +223,7 @@
  },
  "rv_menu": {
   "file": "rv_menu.png",
-  "w": 400,
+  "w": 412,
   "h": 209,
   "dsf": 2
  },
@@ -265,8 +271,8 @@
  },
  "sys_exportmenu": {
   "file": "sys_exportmenu.png",
-  "w": 342,
-  "h": 178,
+  "w": 407,
+  "h": 192,
   "dsf": 2
  },
  "sys_history": {
@@ -284,7 +290,7 @@
  "sys_materials": {
   "file": "sys_materials.png",
   "w": 772,
-  "h": 414,
+  "h": 474,
   "dsf": 2
  },
  "sys_mpd": {

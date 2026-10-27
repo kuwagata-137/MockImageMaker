@@ -351,14 +351,14 @@ const systemId = () => T((n) => window.__test__.store.state.systems.find((y) => 
 async function partId(design, screen, label) {
   const r = await call('get_screen', { design, screen });
   const p = r.result.parts.find((x) => x.label === label);
-  if (!p) throw new Error(`部品が見つかりません: ${design} ／ ${screen} ／ ${label}`);
+  if (!p) throw new Error(`アイテムが見つかりません: ${design} ／ ${screen} ／ ${label}`);
   return p.id;
 }
 
 // 見本を組む。システム 1 つ（役割 3・画面設計 3・スイムレーン・資料・設計ノート）と、システムに入っていない画面設計 2 つ
 // 画面設計は、作る先が kintone・Salesforce でも標準の見た目で作る（使用説明書の画像の多くは標準の見た目で説明する。ほかの見た目は 3.10 の looks で撮る）
 async function sampleAll({ notes = true, materials = true } = {}) {
-  await call('create_system', { name: SYS, description: '出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム。紙の申請書と押印をやめ、申請から精算までの進み具合を、誰でも見られるようにする。' });
+  await call('create_system', { name: SYS, description: '出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム。紙の申請書と押印をやめ、申請から精算までの進捗を、誰でも見られるようにする。' });
   await call('update_system', { system: SYS, ops: [
     { op: 'add', name: '申請者', memo: '出張する社員' }, { op: 'add', name: '上長', memo: '申請者の課の課長' }, { op: 'add', name: '経理', memo: '経理課の担当者' },
   ] });
@@ -635,7 +635,7 @@ const CHAPTERS = {
     // つながりの図
     await T(() => { window.__test__.goHome(); window.scrollTo(0, 0); document.querySelectorAll('*').forEach((el) => { if (el.scrollTop) el.scrollTop = 0; }); });
     await sleep(150);
-    await click({ sel: '.home-tools .btn', text: 'つながりの図' });
+    await click({ sel: '.home-tools .btn', text: '関連図' });
     await sleep(400);
     await shot('home_map');
   },
@@ -651,9 +651,9 @@ const CHAPTERS = {
     await page.keyboard.type('備品貸出');
     await shot('new_step2', { clip: '.modal', pad: 12, anno: [
       { box: '.modal input[name="name"]', n: 1, at: 'l', pad: 3 },
-      { box: { sel: '.modal .btn', text: '作って開く' }, n: 2, at: 'l', pad: 3 },
+      { box: { sel: '.modal .btn', text: '画面設計を作って開く' }, n: 2, at: 'l', pad: 3 },
     ] });
-    await click({ sel: '.modal .btn', text: '作って開く' });
+    await click({ sel: '.modal .btn', text: '画面設計を作って開く' });
     await page.waitForFunction(() => window.__test__.ui.view === 'editor');
     await sleep(300);
     await shot('new_step3');
@@ -717,6 +717,14 @@ const CHAPTERS = {
       { box: '.rgroup.open > .fold-pop', n: 2, pad: 2, at: 'bl' },
     ] });
     await page.keyboard.press('Escape');
+    // 3.3 の「編集」の組（q122）: 組のボタンを押して、縦に 1 列に並んだ編集のボタンを出す（ツールバーの左から「項目」の組までを切り抜く）
+    await click('.fold-btn[data-fold="edit"]');
+    await sleep(200);
+    await shot('ed_edit', { clip: [{ sel: '#toolbar .rgroup', text: 'ファイル' }, '#toolbar .rgroup[data-fold="items"]', '.rgroup.open > .fold-pop'], pad: 8, anno: [
+      { box: '.fold-btn[data-fold="edit"]', n: 1, pad: 2, at: 'l' },
+      { box: '.rgroup.open > .fold-pop', n: 2, pad: 2, at: 'r' },
+    ] });
+    await page.keyboard.press('Escape');
     await T(() => { if (document.activeElement) document.activeElement.blur(); });
     await run('deselectPart');
 
@@ -731,8 +739,8 @@ const CHAPTERS = {
     await sleep(300);
     await shot('ed_items', { anno: [
       { box: { sel: '#screen-list .db-entry', i: 0 }, n: 1, pad: 2 },
-      { box: { sel: '#db-view button', text: '項目を足す' }, n: 2, pad: 2, at: 'l' },
-      { box: { sel: '#db-view button', text: 'ほかのモックから取り込む' }, n: 3, pad: 2, at: 'r' },
+      { box: { sel: '#db-view button', text: '項目を追加する' }, n: 2, pad: 2, at: 'l' },
+      { box: { sel: '#db-view button', text: 'ほかのモックから項目を取り込む' }, n: 3, pad: 2, at: 'r' },
     ] });
     // 3.6 ルックアップ: 項目の一覧表で「社員番号」を選んだときの右の欄
     await T(() => { const t = window.__test__; const d = t.currentDesign(); t.selectItem(d.items.find((i) => i.name === '社員番号').id); });
@@ -783,7 +791,7 @@ const CHAPTERS = {
     await scrollInBox('#side-settings .field', '見た目', 8);
     await shot('look_panel', { anno: [
       { box: { sel: '#side-settings .field', text: '見た目' }, n: 1, pad: 2 },
-      { box: { sel: '#side-settings .field', text: '帯のタブ' }, n: 2, pad: 2 },
+      { box: { sel: '#side-settings .field', text: 'ヘッダーのタブ' }, n: 2, pad: 2 },
       { box: '#stage .screen-band', n: 3 },
     ] });
     await call('update_design', { design: '出張申請', look: 'kintone' });
@@ -795,9 +803,9 @@ const CHAPTERS = {
     await call('edit_screen', { design: '出張申請', ops: [{ op: 'update', screen: '詳細', itemView: 'show' }] });
     await openDesignAt('出張申請', '詳細', { zoom: 0.5 });
     await scrollCanvasTo('#stage .screen', 16);
-    await scrollInBox('#side-settings .field', '項目の出し方', 8);
+    await scrollInBox('#side-settings .field', '項目の表示', 8);
     await shot('look_show', { anno: [
-      { box: { sel: '#side-settings .field', text: '項目の出し方' }, n: 1, pad: 2 },
+      { box: { sel: '#side-settings .field', text: '項目の表示' }, n: 1, pad: 2 },
       { box: '#stage .screen', n: 2 },
     ] });
   },
@@ -860,7 +868,7 @@ const CHAPTERS = {
     await sleep(400);
     await listTop();
     await shot('sc_process', { anno: [
-      { box: { sel: '#screen-list .db-entry', text: 'ステータスの移り方' }, n: 1, pad: 2 },
+      { box: { sel: '#screen-list .db-entry', text: 'ステータスの流れ' }, n: 1, pad: 2 },
       { box: '#db-view', n: 2, pad: -4, bdx: 16, bdy: 16 },
       { box: '#side-settings', n: 3, pad: -4, at: 'tr', bdx: -16, bdy: 16 },
     ] });
@@ -868,7 +876,7 @@ const CHAPTERS = {
     await run('openFlow');
     await sleep(400);
     await listTop();
-    await shot('sc_flow', { anno: [{ box: { sel: '#screen-list .db-entry', text: '画面の移り方' }, n: 1, pad: 2 }] });
+    await shot('sc_flow', { anno: [{ box: { sel: '#screen-list .db-entry', text: '画面遷移図' }, n: 1, pad: 2 }] });
   },
 
   // 5 章 改訂履歴
@@ -886,7 +894,7 @@ const CHAPTERS = {
     await page.keyboard.press('Escape');
     await T(() => { if (document.activeElement) document.activeElement.blur(); });
     // 第 1 版を残し、項目を 1 つ足して変える
-    const rev1 = await T((id) => window.__test__.actions.addRevision(id, { note: '最初の版。ベンダーに見積もりを頼んだ。', day: '2026-10-01' }), did);
+    const rev1 = await T((id) => window.__test__.actions.addRevision(id, { note: '最初の版。ベンダーに見積もりを依頼した。', day: '2026-10-01' }), did);
     await call('edit_items', { design: '出張申請', ops: [{ op: 'add', name: '日当', type: 'number', props: { unit: '円' }, memo: '旅費規程の第 5 条で決まる' }] });
     await call('layout_screen', { design: '出張申請', screen: '新規申請', mode: 'append', layout: { columns: 2, rows: [[{ item: '日当' }]] } });
     await clearAiMarks();
@@ -894,7 +902,7 @@ const CHAPTERS = {
     await openDesignAt('出張申請', '新規申請', { zoom: 0.5 });
     // 改訂する窓
     await openDlg('openAddRevisionDialog');
-    await page.keyboard.type('日当の欄を足した。');
+    await page.keyboard.type('日当の欄を追加した。');
     await shot('rv_add', { clip: '.modal', pad: 12, anno: [
       { box: '.modal [name="rv-note"]', n: 1, at: 'l', pad: 3 },
       { box: '.modal .rv-cg', n: 2, at: 'tr', pad: 2 },
@@ -929,7 +937,7 @@ const CHAPTERS = {
     await dropAiRows();
     const did = await designId('出張申請');
     await openDesignAt('出張申請', '新規申請', { zoom: 0.5 });
-    await shot('ex_button', { clip: { sel: '#toolbar .rgroup', text: 'ファイル' }, pad: 6, anno: [{ box: { sel: '#toolbar .bigbtn', text: '出力' }, n: 1, pad: 2 }] });
+    await shot('ex_button', { clip: { sel: '#toolbar .rgroup', text: 'ファイル' }, pad: 6, anno: [{ box: { sel: '#toolbar .bigbtn', text: '画面設計を出力する' }, n: 1, pad: 2 }] });
     await run('exportDialog');
     await sleep(300);
     await shot('ex_pdf', { clip: '.modal', pad: 12 });
@@ -1016,7 +1024,7 @@ const CHAPTERS = {
     await sleep(200);
     await shot('sys_exportmenu', { clip: [{ sel: '#toolbar .rgroup', text: 'ファイル' }, '.sys-pop'], pad: 10 });
     // 説明書（PDF）の窓
-    await click({ sel: '.sys-pop [role="menuitem"]', text: '説明書' });
+    await click({ sel: '.sys-pop [role="menuitem"]', text: 'システム設計書' });
     await sleep(300);
     await shot('sys_doc', { clip: '.modal', pad: 12 });
     await closeDlg();
@@ -1083,7 +1091,7 @@ const CHAPTERS = {
     await rest();
     await shot('vd_html', { anno: [
       { box: '#sa-bar', n: 1, pad: 0, at: 'b', bdx: -200, bdy: 4 },
-      { box: { sel: '#sa-bar button', text: 'HTML を保存' }, n: 2, pad: 3, at: 'l' },
+      { box: { sel: '#sa-bar button', text: 'HTML を保存する' }, n: 2, pad: 3, at: 'l' },
     ] });
   },
 };
