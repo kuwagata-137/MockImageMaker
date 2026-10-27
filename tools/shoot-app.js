@@ -14,7 +14,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes・doc・looks・kintone をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes・doc・looks・kintone・crm をカンマで区切る）]
 // ai の場面（94〜100）は tools/shoot-app-ai.js、systems の場面（107〜133。システムとスイムレーン図）は tools/shoot-app-systems.js にある
 // toolbar の場面（134〜137）は、編集の画面のメニューバーを窓の幅ごとに撮る（q73・q74）
 // materials の場面（138〜149。システムの画面の「資料」の入口。第 9 段階の後半・画像 q67。164〜167 は MPD に出力・画像 q82。
@@ -23,6 +23,8 @@ const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
 // doc の場面（158〜163。システムの説明書〔PDF〕の窓と、表紙・スイムレーン図・設計ノートのページ。第 10 段階の後半・画像 q80・q81）は tools/shoot-app-doc.js にある
 // looks の場面（171〜182。Salesforce・kintone・標準の見た目と、表示の形・右の欄・新しい画面設計の窓。第 12 段階・画像 q105〜q108）は tools/shoot-app-looks.js にある
 // kintone の場面（183〜192。kintone のフィールドの欄と描き分け・進み具合の矢印の分かれる終わり・AI の並べ方・AI とつなぐの窓。第 13 段階・画像 q111〜q114）は tools/shoot-app-kintone.js にある
+// crm の場面（193〜210。グループ枠の見た目と動かし方・レコードの見出し・並べて表示・活動履歴・ツリー・ひな形 2 つ・アイテム一覧の組・AI が並べたレコードの画面。
+// 第 14 段階・画像 q115〜q120）は tools/shoot-app-crm.js にある。parts2 の場面 211 は、詳細画面用のアイテム（buildParts2 の「詳細」の画面）
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -355,7 +357,7 @@ async function buildParts2(page) {
       kind: item('radio', '区分', { options: ['法人', '個人'] }), staff: item('user', '担当者'), amount: item('number', '合計金額', { unit: '円' }),
     };
     const sc = (name) => ({ id: 's-' + name, name, device: 'pc', width: 1280, height: 800, showHeader: true, tablePos: 'right', parts: [], callouts: [] });
-    store.commit((s) => { const d = s.designs.find((x) => x.id === did); d.screens = [sc('一覧'), sc('新規登録'), sc('進捗'), sc('グラフ')]; });
+    store.commit((s) => { const d = s.designs.find((x) => x.id === did); d.screens = [sc('一覧'), sc('新規登録'), sc('進捗'), sc('グラフ'), sc('詳細')]; });
     const put = (sid, type, x, y, patch, w, h) => {
       const pid = a.addPart(did, sid, type, { x, y });
       if (patch) a.updatePart(did, sid, pid, patch);
@@ -391,6 +393,12 @@ async function buildParts2(page) {
     put('s-グラフ', 'graph', 528, 64, { label: '区分ごとの顧客数', props: { chart: 'pie', byItem: ids.kind, agg: 'count', samples: '法人, 60\n個人, 30\n官公庁, 10' } });
     put('s-グラフ', 'graph', 24, 400, { label: '月ごとの受注件数', props: { chart: 'line', agg: 'count' } });
     put('s-グラフ', 'graph', 528, 400, { label: '担当者ごとの受注金額', props: { chart: 'hbar', samples: '山田 太郎, 560\n佐藤 花子, 380\n鈴木 次郎, 240' } });
+    // 詳細画面用のアイテム（第 14 段階）とツリー。グループ枠の中に置いた説明文は、グループ枠に入る
+    put('s-詳細', 'recordHead', 32, 64, { props: { kind: '受注', name: '00125 空調の入れ替え', color: 'blue', items: [ids.cust, ids.staff, ids.amount], values: ['株式会社サンプル商事', '佐藤 花子', '480 万円'] } });
+    put('s-詳細', 'frame', 32, 184, { label: '受注の情報' }, 400, 240);
+    put('s-詳細', 'desc', 56, 248, { label: 'グループ枠の中に置いたアイテムは、グループ枠と一緒に動く。' }, 352);
+    put('s-詳細', 'activity', 464, 184);
+    put('s-詳細', 'tree', 896, 184);
     // 関連レコード一覧のために、顧客管理を作る
     const cid = a.createDesign('顧客管理', 'kintone');
     const ccode = a.addItem(cid, 'text1');
@@ -426,6 +434,11 @@ async function shootParts2(browser) {
   await shot(page, '35_後半のアイテム_グラフ 4 種類_60%');
   await page.click('#stage .part.pt-graph');
   await shot(page, '36_後半のアイテム_グラフの設定の欄_60%');
+  await page.click('.sl-item[data-id="s-詳細"]');
+  await page.evaluate(() => window.__test__.selectPart(null));
+  for (let i = 0; i < 2; i++) await page.click('[data-action="zoom-in"]');
+  await shot(page, '211_後半のアイテム_詳細画面用のアイテムとツリー_40%');
+  for (let i = 0; i < 2; i++) await page.click('[data-action="zoom-out"]');
   await page.evaluate((id) => window.__test__.openDesign(id), ids.cid);
   await page.click('#stage .part.pt-table');
   await shot(page, '37_後半のアイテム_関連レコード一覧と設定の欄');
@@ -875,7 +888,8 @@ async function shootRevisions(browser) {
     if (wants('notes')) await require('./shoot-app-notes')(browser, { ROOT, HTML_NAME, shot });
     if (wants('doc')) await require('./shoot-app-doc')(browser, { ROOT, HTML_NAME, shot, openDeskApp, OUT, VERSION });
     if (wants('looks')) await require('./shoot-app-looks')(browser, { ROOT, shot, openApp, OUT, VERSION });
-if (wants('kintone')) await require('./shoot-app-kintone')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
+    if (wants('kintone')) await require('./shoot-app-kintone')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
+    if (wants('crm')) await require('./shoot-app-crm')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
   } finally {
     await browser.close();
   }

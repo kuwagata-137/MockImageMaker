@@ -87,6 +87,21 @@ test('layout_screen: 縦に重ねる形 { stack, span } とレコードの見出
   app.close();
 });
 
+test('layout_screen: レコードの見出しの主な項目（props.items）は、同じ並べ方の後ろの行で作る項目も名前で指せる。ない項目は、どこが違うかを添えて断る', async () => {
+  const { app, call, send, parts, T } = await boot();
+  await call('layout_screen', { design: 'd1', screen: 's2', layout: { columns: 2, rows: [
+    [{ type: 'recordHead', props: { kind: '顧客', items: ['電話', '担当者', '顧客コード'], values: ['03-1234-5678', '佐藤 花子', 'C-001'] } }],
+    [{ frame: '顧客の情報', columns: 2, rows: [[{ item: '電話', type: 'text1' }, { item: '担当者', type: 'user' }]] }],
+  ] } });
+  const d1 = T.store.state.designs[0];
+  const head = parts('s2')[0];
+  assert.deepEqual(plain(head.props.items.map((id) => d1.items.find((it) => it.id === id).name)), ['電話', '担当者', '顧客コード']);
+  const r = await send('layout_screen', { design: 'd1', screen: 's2', layout: { rows: [[{ type: 'recordHead', props: { items: ['ない項目'] } }]] } });
+  assert.equal(r.ok, false);
+  assert.match(r.error.message, /rows\[0\]\[0\].*ない項目/);
+  app.close();
+});
+
 test('layout_screen: 書き方の誤りは、どこが違うかを添えて断る（グループ枠の中のグループ枠・重ねた stack・見出しでないアイテムの buttons・列の数・色）', async () => {
   const { app, send } = await boot();
   const bad = async (rows, re, columns) => {

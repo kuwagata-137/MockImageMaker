@@ -156,7 +156,7 @@ const LAYOUT = `# アイテムの並べ方（layout）
   "columns": 3,
   "rows": [
     [{ "type": "recordHead", "span": 3,
-       "props": { "kind": "顧客", "name": "株式会社サンプル商事" },
+       "props": { "kind": "顧客", "name": "株式会社サンプル商事", "items": ["電話", "担当者"], "values": ["03-1234-5678", "佐藤 花子"] },
        "buttons": [{ "type": "button", "label": "編集" }, { "type": "button", "label": "削除" }] }],
     [{ "span": 2, "stack": [
         { "frame": "顧客の情報", "columns": 2, "rows": [
@@ -182,6 +182,7 @@ const LAYOUT = `# アイテムの並べ方（layout）
   stack の中のグループ枠・入力の項目・表・活動履歴などは、列の幅いっぱいに広げる。stack の中に stack は書けない。次の行は、いちばん下まで伸びた列の下に 24 ドット空けて置く。
 - レコードの見出し（type "recordHead"）には buttons（ボタンの並び。アイテムと同じ書き方）を書ける。ボタンは、見出しの右の端から 16・上から 24 の所に、間を 32 ドット空けて横に並べ、見出しに入れる。
   style を省くと、最初のボタンだけ "primary" になる。buttons はレコードの見出しのほかには書けない。
+- 項目を名前で書く設定の欄（レコードの見出しの props.items・検索欄と絞り込みの props.items・グラフの props.byItem と aggItem）は、同じ並べ方の後ろの行で作る項目も指せる。
 - グループ枠とレコードの見出しに入ったアイテムは、一緒に動く。get_screen は、入っているアイテムに inFrame（グループ枠か見出しの id と名前）を返す。
   edit_parts の move・move_by でアイテムの真ん中をグループ枠の中へ動かすと入り、外へ動かすと出る（人がアプリでドラッグしたときと同じ）。グループ枠を動かすと、中のアイテムも同じだけ動く。`;
 

@@ -15497,8 +15497,11 @@ function aiLayout(tx, designId, screenId, layout, mode) {
   const d = findDesign(store.state, designId);
   const sc = findScreen(designId, screenId);
   const used = new Set(sc.parts.filter((p) => p.itemId && isItemPart(p) && oncePerScreen(partItemType(p))).map((p) => p.itemId));
-  const plan = { created: [], itemPatches: [] };
+  const plan = { created: [], itemPatches: [], late: [] };
   const rows = layout.rows.map((row, ri) => aiLayoutRow(row, `rows[${ri}]`, (e, where) => aiLayoutEntry(tx, d, e, where, used, plan)));
+  // 項目を名前で書く欄（レコードの見出しの主な項目など）は、全部の行を読んで項目を作った後に直す（後ろの行で作る項目も指せるように。第 14 段階）
+  const withCreated = { ...d, items: [...d.items, ...plan.created] };
+  plan.late.forEach(({ spec, type, props, where }) => aiWhere(where, () => { spec.props = aiProps(type, props, withCreated) || undefined; }));
   const firstY = aiFirstRowY(findDesign(store.state, designId), sc);
   const startY = sc.parts.length ? Math.ceil((Math.max(...sc.parts.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : firstY;
   // グループ枠と縦に重ねる形は、列の幅に広げて中身を layoutStack で重ね、その高さを行の高さにする。置いた後に中身を置き直し、見出しのボタンを重ねる
@@ -15613,7 +15616,7 @@ function aiLayoutRow(row, where, entry, inside = null) {
 function aiLayoutEntry(tx, d, e, where, used, plan) {
   const spec = aiWhere(where, () => {
     if (!isObj(e)) throw aiBad('アイテムは { item・type・label … } の形で書いてください。');
-    return aiLayoutSpec(tx, d, e, used, plan);
+    return aiLayoutSpec(tx, d, e, used, plan, where);
   });
   if (e.buttons == null) return spec;
   aiWhere(where, () => {
@@ -15630,7 +15633,7 @@ function aiLayoutEntry(tx, d, e, where, used, plan) {
   return spec;
 }
 // 並べ方の部品 1 つを、置く形（spec）に直す。spec は { type, w0, h0, span, itemId, tableKind, label, props, view, fields, unnumbered }
-function aiLayoutSpec(tx, d, e, used, plan) {
+function aiLayoutSpec(tx, d, e, used, plan, where) {
   let type = e.type == null ? '' : str(e.type);
   if (type && !partType(type)) throw aiBad(`アイテムの種類「${type}」はありません（get_catalog の parts を見てください）。`);
   const findIt = (ref) => aiFindOrNull(() => aiResolveItem(d, ref)) || plan.created.find((x) => x.id === aiKey(ref) || x.name === cleanName(aiKey(ref))) || null;
@@ -15646,6 +15649,7 @@ function aiLayoutSpec(tx, d, e, used, plan) {
   }
   if (e.span != null && ![1, 2, 3, 4].includes(e.span)) throw aiBad('span は 1〜4 です。');
   const spec = { span: e.span >= 2 ? e.span : undefined, fields: {}, unnumbered: e.no === null };
+  let lateProps = null; // 項目を名前で書く欄のある props（aiLayout で、全部の行を読んだ後に直す）
   if (item) {
     if (item.type === 'status') type = type === 'steps' ? 'steps' : 'status';
     else if (item.type === 'table') type = 'table';
@@ -15671,7 +15675,8 @@ function aiLayoutSpec(tx, d, e, used, plan) {
       spec.tableKind = e.tableKind == null ? 'records' : str(e.tableKind);
       if (!['records', 'related'].includes(spec.tableKind)) throw aiBad('表の中身（tableKind）は "subtable"（テーブル）・"records"（レコード一覧）・"related"（関連レコード一覧）です。');
       if (e.props != null) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), e.props, d);
-    } else spec.props = aiProps(type, e.props, d) || undefined;
+    } else if (isObj(e.props) && Object.keys(e.props).some((k) => own(AI_ITEM_REF_PROPS, `${type}.${k}`))) lateProps = e.props;
+    else spec.props = aiProps(type, e.props, d) || undefined;
     if (type === 'button') {
       spec.props = aiButtonProps(e, spec.props);
       spec.autoStyle = !(spec.props && 'style' in spec.props); // style を書かないボタン（aiAutoButtonStyles で決める）
@@ -15706,7 +15711,9 @@ function aiLayoutSpec(tx, d, e, used, plan) {
   if (type === 'table' && spec.tableKind === 'related' && spec.props && spec.props.display === 'tiles') {
     size.h = tilesHeight((spec.view && spec.view.rows) || 3, (spec.props.columns || []).length);
   }
-  return { ...spec, type, w0: size.w, h0: size.h };
+  const out = { ...spec, type, w0: size.w, h0: size.h };
+  if (lateProps) plan.late.push({ spec: out, type, props: lateProps, where });
+  return out;
 }
 function aiLayoutNewItem(d, type, name, e, plan) {
   const itemType = type === 'steps' ? 'status' : type;
