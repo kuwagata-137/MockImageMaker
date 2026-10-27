@@ -30,7 +30,7 @@ const DIALOG_FILTERS = [
   { name: 'すべてのファイル', extensions: ['*'] },
 ];
 const UNAVAILABLE_MESSAGE = '資料を読む機能は、まだ使えません。';
-const FAILED = { add: '資料を入れられませんでした。', read: '資料を読めませんでした。', cleanup: '資料のファイルを片付けられませんでした。', export: 'MPD に出力できませんでした。' };
+const FAILED = { add: '資料を追加できませんでした。', read: '資料を読めませんでした。', cleanup: '資料のファイルを片付けられませんでした。', export: 'MPD に出力できませんでした。' };
 
 // 失敗を { code, message } にする。MaterialError の文はそのまま（読む部品が残した元の例外 cause があれば console に残す）。
 // ほかは fallbackMessage の定型文（原因は console に残す）。どちらも返事にはパスを入れない
@@ -129,7 +129,7 @@ function initMaterials({ app, ipcMain, storage, headless = false, reader = null,
 
   // 開く窓（いくつでも選べる）。戻り値は選んだパスの並び（取りやめは null）
   async function askPaths(e) {
-    const options = { title: '資料を入れる', defaultPath: lastDir || app.getPath('documents'), filters: DIALOG_FILTERS, properties: ['openFile', 'multiSelections'] };
+    const options = { title: '資料を追加する', defaultPath: lastDir || app.getPath('documents'), filters: DIALOG_FILTERS, properties: ['openFile', 'multiSelections'] };
     const electronDialog = dialog || require('electron').dialog;
     const owner = ownerWindow(e);
     const answer = owner ? await electronDialog.showOpenDialog(owner, options) : await electronDialog.showOpenDialog(options);

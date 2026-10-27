@@ -93,10 +93,10 @@ function createAppLink({ target, session, clientName = () => '', launchWaitMs = 
         reject(err);
       };
       const timer = setTimeout(() => fail(new AppLinkError('no_answer', 'アプリがあいさつに応えません。')), HELLO_WAIT_MS);
-      socket.once('error', (err) => fail(new AppLinkError('connect', `アプリにつなげません（${err.code || err.message}）。`)));
+      socket.once('error', (err) => fail(new AppLinkError('connect', `アプリに接続できません（${err.code || err.message}）。`)));
       socket.on('close', () => {
-        fail(new AppLinkError('closed', 'アプリがつながりを切りました。'));
-        for (const p of c.pending.values()) p.reject(new AppLinkError('disconnected', 'アプリとのつながりが切れました。'));
+        fail(new AppLinkError('closed', 'アプリが接続を切りました。'));
+        for (const p of c.pending.values()) p.reject(new AppLinkError('disconnected', 'アプリとの接続が切れました。'));
         c.pending.clear();
         if (conn === c) conn = null;
       });
@@ -110,7 +110,7 @@ function createAppLink({ target, session, clientName = () => '', launchWaitMs = 
             resolve(c);
           } else {
             const e = msg.error || {};
-            fail(new AppLinkError(e.code || 'hello', e.message || 'アプリにつなげません。', { fatal: e.code === 'protocol' }));
+            fail(new AppLinkError(e.code || 'hello', e.message || 'アプリに接続できません。', { fatal: e.code === 'protocol' }));
           }
           return;
         }
@@ -146,7 +146,7 @@ function createAppLink({ target, session, clientName = () => '', launchWaitMs = 
         if (err) throw new AppLinkError('launch', `モックイメージメーカーを起動できませんでした（${err.message}）。インストールしてあるかを確かめてください。`, { fatal: true });
       }
       if (Date.now() >= deadline) {
-        throw new AppLinkError('no_app', `モックイメージメーカーにつなげませんでした${last ? `（${last.message}）` : ''}。アプリを起動してから、もう一度頼んでください。`);
+        throw new AppLinkError('no_app', `モックイメージメーカーに接続できませんでした${last ? `（${last.message}）` : ''}。アプリを起動してから、もう一度依頼してください。`);
       }
       await sleep(RETRY_MS);
     }
@@ -174,7 +174,7 @@ function createAppLink({ target, session, clientName = () => '', launchWaitMs = 
       if (!P.sendLine(c.socket, { id, tool, args })) {
         c.pending.delete(id);
         clearTimeout(timer);
-        reject(Object.assign(new AppLinkError('disconnected', 'アプリとのつながりが切れました。'), { notSent: true }));
+        reject(Object.assign(new AppLinkError('disconnected', 'アプリとの接続が切れました。'), { notSent: true }));
       }
     });
   }
@@ -189,8 +189,8 @@ function createAppLink({ target, session, clientName = () => '', launchWaitMs = 
         if (err.code !== 'disconnected') throw err;
         if (!err.notSent && (write || attempt >= 1)) {
           throw new AppLinkError('disconnected', write
-            ? 'アプリとのつながりが、頼みを送った後に切れました。変更が入ったかは分かりません。読み直して確かめてから、もう一度頼んでください。'
-            : 'アプリとのつながりが切れました。もう一度頼んでください。');
+            ? 'アプリとの接続が、依頼を送った後に切れました。変更が入ったかは分かりません。読み直して確かめてから、もう一度依頼してください。'
+            : 'アプリとの接続が切れました。もう一度依頼してください。');
         }
         if (attempt >= 2) throw err;
       }

@@ -25,7 +25,7 @@ const QUEUE_GRACE_MS = 10000;
 const MSG = {
   protocol: 'アプリの版が変わりました。AI のアプリを起動し直してください。',
   timeout: P.TIMEOUT_MESSAGE,
-  queueTimeout: 'ほかの頼みを実行していて、順番が来る前に時間切れになりました。この頼みは実行していません。もう一度頼んでください。',
+  queueTimeout: 'ほかの依頼を実行していて、順番が来る前に時間切れになりました。この依頼は実行していません。もう一度依頼してください。',
 };
 const TIMEOUT = Symbol('timeout');
 const STOPPED = Symbol('stopped');
@@ -151,7 +151,7 @@ function createAutomationServer({
     const job = queue.shift();
     running = job;
     runJob(job)
-      .catch((err) => log('頼みの実行で失敗しました', errText(err)))
+      .catch((err) => log('依頼の実行で失敗しました', errText(err)))
       .finally(() => {
         if (running === job) running = null;
         pump();
@@ -186,12 +186,12 @@ function createAutomationServer({
   function onLine(conn, msg) {
     if (conn.closing) return;
     if (!conn.ready) return onHello(conn, msg);
-    if (!isPlainObject(msg)) return badRequest(conn, undefined, '頼みの形が正しくありません（JSON のオブジェクトで送ってください）。');
+    if (!isPlainObject(msg)) return badRequest(conn, undefined, '依頼の形が正しくありません（JSON のオブジェクトで送ってください）。');
     if (msg.type === 'status') return reply(conn, { type: 'status', ...statusInfo(), clients: clientCount() });
     if (msg.type === 'hello') return badRequest(conn, msg.id, 'あいさつ（hello）はもう済んでいます。');
     if (msg.type !== undefined) return badRequest(conn, msg.id, `知らない type です: ${String(msg.type)}`);
-    if (!validId(msg.id)) return badRequest(conn, undefined, '頼みに id がありません。');
-    if (typeof msg.tool !== 'string' || !msg.tool) return badRequest(conn, msg.id, '頼みに tool（道具の名前）がありません。');
+    if (!validId(msg.id)) return badRequest(conn, undefined, '依頼に id がありません。');
+    if (typeof msg.tool !== 'string' || !msg.tool) return badRequest(conn, msg.id, '依頼に tool（ツールの名前）がありません。');
     if (msg.args !== undefined && !isPlainObject(msg.args)) return badRequest(conn, msg.id, 'args は JSON のオブジェクトで送ってください。');
     queue.push({
       conn,
@@ -224,7 +224,7 @@ function createAutomationServer({
     if (!server) return socket.destroy(); // 止めている途中に届いたつながり
     const conn = { socket, ready: false, closing: false, session: null, client: null, timer: null };
     conns.add(conn);
-    socket.on('error', (err) => log('つながりの失敗', errText(err)));
+    socket.on('error', (err) => log('接続の失敗', errText(err)));
     socket.on('close', () => onClose(conn));
     conn.timer = setTimeout(() => socket.destroy(), helloTimeoutMs);
     P.readLines(socket, (msg) => onLine(conn, msg), { maxBytes: maxLineBytes, onError: (err) => onBadLine(conn, err) });

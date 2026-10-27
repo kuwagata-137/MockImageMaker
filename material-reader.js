@@ -47,9 +47,9 @@ function officeLoader(label, oldExtension, newExtension, read) {
   return async (bytes) => {
     if (bytes.subarray(0, OLE2_SIGNATURE.length).equals(OLE2_SIGNATURE)) {
       if (bytes.includes(ENCRYPTED_PACKAGE)) {
-        throw fail('encrypted', `この ${label} のファイルはパスワードで守られているため、読めません。パスワードを外して保存し直してから入れ直してください。`);
+        throw fail('encrypted', `この ${label} のファイルはパスワードで守られているため、読めません。パスワードを外して保存し直してから追加し直してください。`);
       }
-      throw fail('old_format', `この資料は古い形の ${label}（${oldExtension}）です。読めません。${newExtension} に保存し直してから入れ直してください。`);
+      throw fail('old_format', `この資料は古い形の ${label}（${oldExtension}）です。読めません。${newExtension} に保存し直してから追加し直してください。`);
     }
     return read(bytes);
   };
@@ -169,7 +169,7 @@ async function addImage(page, image, isFirst, isOnlyBlock) {
     if (isOnlyBlock) throw err;
     console.warn('資料の画像を作れませんでした:', err);
     const line = isImagePartMissing(err)
-      ? `（${image.page ? `${image.page} ページは文字のないページですが、` : ''}画像の部品が動かないため読めませんでした）`
+      ? `（${image.page ? `${image.page} ページは文字のないページですが、` : ''}画像を読む機能が動かないため読めませんでした）`
       : image.page ? `（${image.page} ページの画像を作れませんでした）` : '（画像を作れませんでした）';
     return addText(page, { text: line, weight: textWeight(line) }, true);
   }

@@ -104,7 +104,7 @@ function bdmPlan(state) {
     groups: [...boxes.values()].filter((b) => b.type === GROUP_TYPE),
   };
   const steps = stepBoxes.map((box) => makeStep(box, ctx));
-  if (!steps.length) warnings.push('図に作業の箱がありません。');
+  if (!steps.length) warnings.push('図に工程がありません。');
   return {
     diagramType: info.key,
     diagramName: cleanText(state.diagramName),

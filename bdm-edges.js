@@ -30,11 +30,11 @@ function dropAtNonStep(from, to, attached, warnings) {
   const step = [from, to].find((b) => b.isStep);
   if (supplement && step && !frame) {
     attached.get(supplement.id).push(step.id);
-    const note = supplement.text ? '（補足の文字は、つながる作業のメモに入れました）' : '';
-    warnings.push(`${arrowName(from, to)}は、補足情報につながるため外しました${note}。`);
+    const note = supplement.text ? '（補足の文字は、接続している工程のメモに入れました）' : '';
+    warnings.push(`${arrowName(from, to)}は、補足情報に接続しているため外しました${note}。`);
     return;
   }
-  warnings.push(`${arrowName(from, to)}は、${frame ? 'グループ枠' : '補足情報'}につながるため外しました。`);
+  warnings.push(`${arrowName(from, to)}は、${frame ? 'MPD の枠' : '補足情報'}に接続しているため外しました。`);
 }
 
 // 矢印を読む。boxes は Map(箱の id → 箱)。→ { edges: [{ from, to, label }], supplementsOf: Map(作業の id → [補足の文字…]) }
@@ -46,7 +46,7 @@ function readEdges(rawEdges, boxes, warnings) {
     const from = boxes.get(idOf(raw.from));
     const to = boxes.get(idOf(raw.to));
     if (!from || !to) {
-      warnings.push(`矢印（${oneLine(idOf(raw.from), NAME_LENGTH) || '？'} → ${oneLine(idOf(raw.to), NAME_LENGTH) || '？'}）は、つなぐ箱が見つからないため外しました。`);
+      warnings.push(`矢印（${oneLine(idOf(raw.from), NAME_LENGTH) || '？'} → ${oneLine(idOf(raw.to), NAME_LENGTH) || '？'}）は、接続する箱が見つからないため外しました。`);
     } else if (!from.isStep || !to.isStep) dropAtNonStep(from, to, attached, warnings);
     else if (from === to) warnings.push(`${arrowName(from, to)}は、自分自身へ戻る矢印のため外しました。`);
     else if (seen.has(`${from.id}\n${to.id}`)) warnings.push(`${arrowName(from, to)}は、同じ向きの 2 本目のため外しました（1 本目を残しました）。`);
@@ -65,7 +65,7 @@ function supplementTexts(boxes, attached, warnings) {
     if (box.type !== SUPPLEMENT_TYPE) continue;
     const stepIds = [...new Set(attached.get(box.id))];
     if (!stepIds.length || !box.text) {
-      warnings.push(`補足情報「${nameOf(box)}」は、矢印でつながる作業がない（または文字がない）ため、入れませんでした。`);
+      warnings.push(`補足情報「${nameOf(box)}」は、矢印で接続している工程がない（または文字がない）ため、取り込みませんでした。`);
       continue;
     }
     for (const id of stepIds) supplementsOf.set(id, [...(supplementsOf.get(id) || []), box.text]);

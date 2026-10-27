@@ -13,7 +13,7 @@ const { bdmPlan, planFromHtml } = require('./bdm-swimlane');
 const { cleanText, isObject } = require('./bdm-values');
 
 const BAD_PLAN = 'スイムレーン図の形が正しくありません。';
-const NO_STEPS = 'スイムレーン図に作業がないので、MPD に出力しません。';
+const NO_STEPS = 'スイムレーン図に工程がないので、MPD に出力しません。';
 const KIND_NAMES = Object.freeze({ start: '始まり', task: '作業', input: 'システムへの入力', decision: '判断', doc: '書類', end: '終わり' });
 const isCol = (v) => Number.isSafeInteger(v) && v >= 0;
 const bad = (message = BAD_PLAN) => new MaterialError('bad_request', message);
@@ -70,7 +70,7 @@ function compareReadBack(read, plan, idOfKey) {
   const readById = new Map(read.steps.map((s) => [s.key, s]));
   for (const s of plan.steps) {
     const r = readById.get(idOfKey.get(s.key));
-    const name = `作業${quoted(s.text)}`;
+    const name = `工程${quoted(s.text)}`;
     if (!r) warnings.push(`${name}は、MPD で読み直すと見つかりません。`);
     else if (r.kind !== s.kind) warnings.push(`${name}は、MPD で読み直すと種類が「${KIND_NAMES[r.kind]}」になります（アプリでは「${KIND_NAMES[s.kind]}」）。`);
     else if (r.role !== cleanText(plan.lanes[s.lane]) || r.col !== ranks.get(s.col) || r.text !== cleanText(s.text)) warnings.push(`${name}は、MPD で読み直すと役割・列・文字のどれかが違います。`);

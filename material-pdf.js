@@ -47,7 +47,7 @@ async function assertAssetsAvailable(assetsDir) {
   if (verifiedAssetsDirs.has(assetsDir)) return;
   const found = await Promise.all(REQUIRED_ASSET_FOLDERS.map((name) => isDirectory(path.join(assetsDir, name))));
   if (!found.every(Boolean)) {
-    throw new MaterialError('unavailable', 'PDF を読む部品の準備ができていません。（字体と文字コード表のフォルダ cmaps・standard_fonts が見つかりません。アプリを入れ直してください。）');
+    throw new MaterialError('unavailable', 'PDF を読む機能の準備ができていません。（字体と文字コード表のフォルダ cmaps・standard_fonts が見つかりません。アプリを入れ直してください。）');
   }
   verifiedAssetsDirs.add(assetsDir);
 }
@@ -60,7 +60,7 @@ function assetUrl(assetsDir, name) {
 function readFailed(err) {
   const passwordProtected = err && err.name === 'PasswordException';
   const failure = new MaterialError('read_failed', passwordProtected
-    ? 'この PDF はパスワードで守られているので読めません。パスワードをはずした PDF を入れてください。'
+    ? 'この PDF はパスワードで守られているので読めません。パスワードをはずした PDF を追加してください。'
     : 'この PDF は読めませんでした。ファイルが壊れているか、対応していない形式かもしれません。');
   failure.cause = err;
   return failure;
