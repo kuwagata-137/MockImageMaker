@@ -180,6 +180,10 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .fold-pop{display:none;position:fixed;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.18);padding:6px 6px 0}
 .rgroup.open>.fold-pop{display:flex;flex-direction:column}
 .fold-pop>.glabel{border-top:1px solid #e2e8f0;margin-top:4px}
+/* 「編集」の組（2026-10-27・q122）: ボタンの文字が長いので、出した組のボタンを縦に 1 列に並べ、絵と文字を左に寄せる */
+.fold-pop.fold-list>.gbody{flex-direction:column;align-items:stretch;gap:1px;padding:0}
+.fold-list .tbtn{display:flex;align-items:center;gap:8px;text-align:left;padding:6px 14px 6px 8px}
+.fold-list .fl-ico{width:18px;flex-shrink:0;text-align:center}
 #toolbar.fold-open{z-index:25}
 
 .editor-body{flex:1;min-height:0;display:flex}
@@ -8672,10 +8676,13 @@ function toolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
   // たたんだ組（q73・q74）: 窓の幅が狭いとメニューバーの右が切れたため、「揃える」「項目」はいつも 1 つのボタンにする。
   // 組のボタンは #toolbar の中に残す（押せる・押せないを、ほかのボタンと同じく updateToolbarState で決めるため）
-  const foldGroup = (key, label, ico, note, title, body) => `<div class="rgroup fold" data-fold="${key}"><div class="gbody">
+  // popClass: 'fold-list' は、出した組のボタンを縦に 1 列に並べる（「編集」の組。q122）
+  const foldGroup = (key, label, ico, note, title, body, popClass = '') => `<div class="rgroup fold" data-fold="${key}"><div class="gbody">
       <button class="bigbtn fold-btn" data-action="fold-menu" data-fold="${key}" aria-expanded="false" title="${title}">${ico}${label}<span class="fold-caret">▼</span></button></div>
     <div class="glabel">${label}</div>
-    <div class="fold-pop" role="group" aria-label="${label}"><div class="gbody">${body}</div><div class="glabel">${note}</div></div></div>`;
+    <div class="fold-pop${popClass ? ` ${popClass}` : ''}" role="group" aria-label="${label}"><div class="gbody">${body}</div><div class="glabel">${note}</div></div></div>`;
+  // 縦に 1 列に並べる組のボタン（絵の幅をそろえて、文字の始まりを縦にそろえる）
+  const listBtn = (attrs, ico, text) => `<button class="tbtn" ${attrs}><span class="fl-ico">${ico}</span> ${text}</button>`;
   const addItemBtn = '<button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="項目一覧に項目を追加します"><span class="ico">＋</span>項目を<br>追加する</button>';
   return [
     group('ファイル', (standalone
@@ -8692,14 +8699,17 @@ function toolbarHtml() {
     group('履歴', `<div class="stack">
       <button class="tbtn" data-action="undo" id="tb-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" id="tb-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
-    group('編集', `<div class="stack">
-      <button class="tbtn" data-action="copy-part" id="tb-copy" title="選んだアイテムと吹き出しをコピーします（Ctrl+C）">⧉ 選んだものをコピーする</button>
-      <button class="tbtn" data-action="paste-part" id="tb-paste" title="コピーしたアイテムと吹き出しを貼り付けます（Ctrl+V）">📋 コピーしたものを貼り付ける</button></div>
-      <div class="stack">
-      <button class="tbtn" data-action="duplicate-part" id="tb-dup" title="選んだアイテムと吹き出しを複製します（Ctrl+D）">❐ 選んだものを複製する</button>
-      <button class="tbtn" data-action="delete-part" id="tb-del" title="選んだアイテムと吹き出しを削除します（Delete）">✕ 選んだものを削除する</button></div>
-      <div class="stack"><button class="tbtn" data-action="select-all" id="tb-select-all" data-screen-only title="この画面のアイテムと吹き出しを、すべて選びます（Ctrl+A）">☐ アイテムと吹き出しをすべて選ぶ</button></div>
-      <button class="bigbtn" data-action="renumber" id="tb-renumber" title="赤い番号を、上から下・左から右の順に 1 から付け直します"><span class="ico">①</span>番号を<br>振り直す</button>`),
+    // 「編集」の組（q122）: ボタンの文字に対象を書いて長くなり、窓の幅 1280 に入りきらなくなったので、「配置」「項目」と同じくたたむ。
+    // 出した組は、ボタンを縦に 1 列に並べる
+    foldGroup('edit', '編集', '<span class="ico">✎</span>', '編集（選んだアイテムと吹き出し）',
+      '編集のボタン（選んだものをコピーする・コピーしたものを貼り付ける・選んだものを複製する・選んだものを削除する・アイテムと吹き出しをすべて選ぶ・番号を振り直す）を出します', [
+        listBtn('data-action="copy-part" id="tb-copy" title="選んだアイテムと吹き出しをコピーします（Ctrl+C）"', '⧉', '選んだものをコピーする'),
+        listBtn('data-action="paste-part" id="tb-paste" title="コピーしたアイテムと吹き出しを貼り付けます（Ctrl+V）"', '📋', 'コピーしたものを貼り付ける'),
+        listBtn('data-action="duplicate-part" id="tb-dup" title="選んだアイテムと吹き出しを複製します（Ctrl+D）"', '❐', '選んだものを複製する'),
+        listBtn('data-action="delete-part" id="tb-del" title="選んだアイテムと吹き出しを削除します（Delete）"', '✕', '選んだものを削除する'),
+        listBtn('data-action="select-all" id="tb-select-all" data-screen-only title="この画面のアイテムと吹き出しを、すべて選びます（Ctrl+A）"', '☐', 'アイテムと吹き出しをすべて選ぶ'),
+        listBtn('data-action="renumber" id="tb-renumber" title="赤い番号を、上から下・左から右の順に 1 から付け直します"', '①', '番号を振り直す'),
+      ].join(''), 'fold-list'),
     foldGroup('align', '配置', alignSvg(ALIGN_BUTTONS[0][3]), '配置（最初に選んだものに合わせる）', '配置のボタン（左揃え・右揃え・上揃え・下揃え・中央揃え・整列）を出します',
       ALIGN_BUTTONS.map(([cmd, action, label, svg]) =>
         `<button class="bigbtn" data-action="${action}" data-align-cmd="${cmd}" title="選んだものを揃えます（最初に選んだものに合わせる）">${alignSvg(svg)}${label.replace('\n', '<br>')}</button>`).join('')),
