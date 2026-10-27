@@ -203,6 +203,36 @@
   "h": 800,
   "dsf": 2
  },
+ "rec_frame_set": {
+  "file": "rec_frame_set.png",
+  "w": 279,
+  "h": 467,
+  "dsf": 2
+ },
+ "rec_head_set": {
+  "file": "rec_head_set.png",
+  "w": 279,
+  "h": 799,
+  "dsf": 2
+ },
+ "rec_page": {
+  "file": "rec_page.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "rec_tiles_set": {
+  "file": "rec_tiles_set.png",
+  "w": 257,
+  "h": 200,
+  "dsf": 2
+ },
+ "rec_tree": {
+  "file": "rec_tree.png",
+  "w": 288,
+  "h": 369,
+  "dsf": 2
+ },
  "rv_add": {
   "file": "rv_add.png",
   "w": 1104,
@@ -236,7 +266,7 @@
  "sc_add": {
   "file": "sc_add.png",
   "w": 944,
-  "h": 586,
+  "h": 762,
   "dsf": 2
  },
  "sc_flow": {
@@ -248,7 +278,7 @@
  "sc_menu": {
   "file": "sc_menu.png",
   "w": 323,
-  "h": 668,
+  "h": 664,
   "dsf": 2
  },
  "sc_process": {

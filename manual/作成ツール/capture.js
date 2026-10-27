@@ -845,6 +845,44 @@ const CHAPTERS = {
     await scrollCanvasTo(`#stage .part[data-part-id="${steps}"]`, 24);
     await shot('sc_steps_branch', { clip: `#stage .part[data-part-id="${steps}"]`, pad: 24 }); // 左の外の赤い番号も入れる
   },
+  // 3.11 レコードの画面を描く（第 14 段階）: ひな形「顧客の詳細」の画面と、グループ枠・レコードの見出し・並べて表示の設定、ツリー
+  async crm() {
+    await open();
+    await call('create_design', { name: '顧客管理', target: 'Salesforce', look: 'salesforce', description: '取引先の会社の情報と、担当者・商談・問い合わせ' });
+    await call('add_screen', { design: '顧客管理', template: 'crmDetail', name: '顧客の詳細' });
+    await call('edit_screen', { design: '顧客管理', ops: [{ op: 'delete', screen: '画面 1' }] });
+    // ツリー（一覧画面用）は、別の画面に 1 つだけ置いて撮る
+    await call('add_screen', { design: '顧客管理', template: 'blank', name: '契約書の一覧' });
+    await call('layout_screen', { design: '顧客管理', screen: '契約書の一覧', layout: { columns: 4, rows: [[{ type: 'tree' }]] } });
+    await clearAiMarks();
+    const ids = await T(() => {
+      const d = window.__test__.store.state.designs.find((x) => x.name === '顧客管理');
+      const of = (name, type) => d.screens.find((s) => s.name === name).parts.find((p) => p.type === type).id;
+      return { head: of('顧客の詳細', 'recordHead'), frame: of('顧客の詳細', 'frame'), act: of('顧客の詳細', 'activity'), tiles: of('顧客の詳細', 'table'), tree: of('契約書の一覧', 'tree') };
+    });
+    const part = (id) => `#stage .part[data-part-id="${id}"]`;
+    await openDesignAt('顧客管理', '顧客の詳細', { zoom: 0.5 });
+    await scrollCanvasTo('#stage .screen', 16);
+    await shot('rec_page', { anno: [
+      { box: part(ids.head), n: 1 },
+      { box: part(ids.frame), n: 2 },
+      { box: part(ids.act), n: 3 },
+      { box: part(ids.tiles), n: 4, at: 'tr' },
+    ] });
+    for (const [name, id] of [['rec_frame_set', ids.frame], ['rec_head_set', ids.head]]) {
+      await T((x) => window.__test__.selectPart(x), id);
+      await sleep(250);
+      await shotTall(name, { clip: '#side-settings > *', pad: 12 });
+    }
+    // 並べて表示の設定は、右のパネルの「表の名前」から「アイコンの色」までを切り取る（パネル全体は縦に長いため）
+    await T((x) => window.__test__.selectPart(x), ids.tiles);
+    await sleep(250);
+    await shotTall('rec_tiles_set', { clip: [{ sel: '#side-settings .field', text: '表の名前' }, { sel: '#side-settings .field', text: 'アイコンの色' }], pad: 12 });
+    await run('deselectPart');
+    await openDesignAt('顧客管理', '契約書の一覧', { zoom: 1 });
+    await scrollCanvasTo(part(ids.tree), 24);
+    await shot('rec_tree', { clip: part(ids.tree), pad: 24 }); // 左の外の上の赤い番号も入れる
+  },
   async screens() {
     await open();
     await sampleAll({ notes: false, materials: false });
@@ -853,7 +891,7 @@ const CHAPTERS = {
     // 画面を足す窓
     await click('#screen-list .sl-add');
     await sleep(300);
-    await shot('sc_add', { clip: '.modal', pad: 12 });
+    await shotTall('sc_add', { clip: '.modal', pad: 12 }, 1100); // ひな形が 9 つになり、窓の高さ 800 には入らない（第 14 段階）
     await closeDlg();
     // 画面の一覧の「…」のメニュー
     await move({ sel: '#screen-list .sl-item', i: 1 });
