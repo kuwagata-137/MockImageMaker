@@ -249,7 +249,7 @@ test('項目を消すと、画面のアイテムは消したときの中身で�
   assert.equal($(app, '#stage .part .tag.gone').textContent, '項目なし', '編集の画面ではアイテムに札を付ける');
   assert.equal($(app, '.sl-thumb .tag'), null, '縮小画像には付けない');
   api.selectPart(pid);
-  assert.match($(app, '#side-settings .pf-banner.gone').textContent, /取引先名.*消しました/);
+  assert.match($(app, '#side-settings .pf-banner.gone').textContent, /取引先名.*削除しました/);
   assert.ok($(app, '#side-settings fieldset.pf-sec.locked').disabled, '項目の設定は直せない');
   assert.equal($(app, '#side-settings .pf-sec.here [data-pf="labelPos"]').disabled, false, 'この画面だけの設定は直せる');
   click($(app, '#side-settings [data-action="restore-item"]'));
@@ -300,7 +300,7 @@ async function bootTwo(t) {
 
 const settle = () => new Promise((r) => setTimeout(r, 0));
 
-test('取り込む窓: 元のモックを選んで項目にチェックを付けて取り込むと、一覧表のいちばん下につなげたまま足す', async (t) => {
+test('取り込む窓: 元の画面設計を選んで項目にチェックを付けて取り込むと、一覧表のいちばん下につなげたまま足す', async (t) => {
   const { app, dst, srcId, ids } = await bootTwo(t);
   click($(app, '[data-action="open-items"]'));
   click($(app, '#db-view [data-action="import-items"]'));
@@ -356,7 +356,7 @@ test('つながった項目: 元を直すと取り込んだ側も同じ操作で
   assert.ok($(app, '#side-settings fieldset.pf-sec.locked').disabled);
   assert.equal($(app, '#stage .part .tag.link').textContent, '取り込み');
   click($(app, '#side-settings [data-action="open-link-source"]'));
-  assert.equal(api.ui.designId, srcId, '元のモックを開く');
+  assert.equal(api.ui.designId, srcId, '元の画面設計を開く');
   assert.deepEqual([api.ui.panel, api.ui.itemId], ['items', ids.pref], '元の項目を選んだ一覧表');
 });
 
@@ -375,7 +375,7 @@ test('つながりを切ると、そのときの中身のこの画面設計だ�
   assert.equal(api.actions.updateItem(dstId, id, { label: '〒' }), true);
 });
 
-test('元のモックを完全に削除すると、取り込んだ項目はそのときの中身で固定し、印で知らせる。ごみ箱へ移すときは確かめる', async (t) => {
+test('元の画面設計を完全に削除すると、取り込んだ項目はそのときの中身で固定し、印で知らせる。ごみ箱へ移すときは確かめる', async (t) => {
   const { app, api, dst, src, srcId, dstId, ids } = await bootTwo(t);
   api.actions.importItems(dstId, srcId, [ids.pref, ids.tel]);
   api.goHome();
@@ -395,7 +395,7 @@ test('元のモックを完全に削除すると、取り込んだ項目はそ�
   click($(app, '[data-action="open-items"]'));
   assert.match($$(app, '#db-view tbody tr')[1].textContent, /取り込み・元なし.*もうありません/);
   click($$(app, '#db-view tbody tr')[1]);
-  assert.match($(app, '#side-settings .pf-banner.gone').textContent, /元のモック（または元の項目）はもうありません/);
+  assert.match($(app, '#side-settings .pf-banner.gone').textContent, /元の画面設計（または元の項目）はもうありません/);
   assert.equal($(app, '#side-settings [data-action="open-link-source"]'), null);
 });
 

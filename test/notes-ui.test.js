@@ -135,9 +135,9 @@ test('入口の小さな字: 確認待ち・作業中の段階があれば最初
   assert.equal(note(), '② 作業中', '確認待ちより前の段階の作業中');
   api.actions.setNoteStage('y-trip', 'flow', 'done');
   api.actions.setNoteStage('y-trip', 'items', 'done');
-  assert.equal(note(), '④ まだ');
+  assert.equal(note(), '④ 未着手');
   api.actions.setNoteStage('y-trip', 'read', 'todo');
-  assert.equal(note(), '① まだ');
+  assert.equal(note(), '① 未着手');
   api.actions.setNoteStage('y-trip', 'read', 'skipped');
   api.actions.setNoteStage('y-trip', 'screens', 'done');
   api.actions.setNoteStage('y-trip', 'docs', 'skipped');
@@ -216,7 +216,7 @@ test('真ん中の見出しと案内の文、右のパネル「設計ノート�
   assert.equal($('#sys-side .panel-title').textContent, '設計ノートについて');
   assert.deepEqual($$('#sys-side .hint').map((p) => p.textContent), [
     'AI は段階の終わりに、案をチャットに出して止まり、段階のタブを「確認待ち」（オレンジ）にします。チャットで「よい」と答えると、AI が「確認済み」（緑）にして次の段階へ進みます。',
-    'タブの色: 緑＝確認済み・オレンジ＝確認待ち・青＝作業中・灰色＝まだ・点線の枠＝確認を飛ばした。',
+    'タブの色: 緑＝確認済み・オレンジ＝確認待ち・青＝作業中・灰色＝未着手・点線の枠＝確認を飛ばした。',
     '① のタブを押すと、① で資料から読み取ったこと（業務の要約・登場人物・今の手順・様式の欄）が出ます。',
     'AI と連携していないときは、「この段階の進捗」のボタンを押して、進捗を変えられます。',
     'まだ決まっていないことに答えを書くと「決まった」になり、表の下へ移ります。',
@@ -237,7 +237,7 @@ test('進捗: ボタン（進捗の名前と ▾）と説明の文。押すと�
   assert.deepEqual(menu(), [
     ['done', '✓ 確認済みにする', 'この段階の案でよい（AI は次の段階へ進める）'],
     ['skipped', '⤼ 確かめずに進めたことにする', '「確認を飛ばした」にする'],
-    ['todo', '↺ まだに戻す', 'この段階をやり直す'],
+    ['todo', '↺ 未着手に戻す', 'この段階をやり直す'],
   ]);
   assert.ok($('#sys-menu-root .pop-menu.sys-pop'));
   assert.equal(pill().getAttribute('aria-expanded'), 'true');
@@ -313,7 +313,7 @@ test('進捗: メニューで押すと進捗が変わる（確認済み・確認
   assert.deepEqual(menu().map((m) => m[0]), ['done', 'todo']);
   click(menuItem('todo'));
   assert.deepEqual(plain(sys().notes.stages.items), { state: 'todo', confirmedAt: null });
-  assert.equal(pill().textContent, 'まだ ▾');
+  assert.equal(pill().textContent, '未着手 ▾');
   assert.equal(stateText(), 'まだ始めていません。');
   click(pill());
   assert.deepEqual(menu().map((m) => m[0]), ['done', 'skipped']);

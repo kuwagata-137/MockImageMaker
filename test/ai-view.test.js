@@ -60,7 +60,7 @@ test('「AI と連携」の窓: main の登録の文を出し、コピーでき�
   // 使用説明書の 8 章と同じく「画面設計とシステム」。Claude のデスクトップアプリは、登録した後に終了して起動し直す（第 13 段階。q114 の ⑦）
   assert.match(text(modal), /このアプリの画面設計とシステムを読んだり/);
   assert.match(text(modal), /Claude のデスクトップアプリに登録したときは、Claude のデスクトップアプリを完全に終了して/);
-  assert.match(text(modal), /AI には、画面設計とシステムをごみ箱へ移すこと・完全に削除すること・改訂履歴の行を消すこと・資料を追加することと消すことはさせません。/);
+  assert.match(text(modal), /AI には、画面設計とシステムをごみ箱へ移すこと・完全に削除すること・改訂履歴の行を削除すること・資料を追加することと削除することはさせません。/);
   assert.match(text($('[data-code="claude"]')), /^claude mcp add --env ELECTRON_RUN_AS_NODE=1 --scope user mockimagemaker/);
   assert.equal(text($('[data-code="json"]')), '{ "mcpServers": {} }');
   assert.equal($('.aic-dev'), null, 'インストールした版では開発版の断りを出さない');
@@ -99,8 +99,8 @@ test('開いている画面設計を AI が直すと、紫の帯（件数）・�
   await call('layout_screen', { design: 'd1', screen: '新規登録', mode: 'append', layout: { rows: [[{ item: '電話番号' }]] } });
   await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'search' }]] } });
   const band = $('#ai-band');
-  assert.match(text(band), /^✦Claude Code が「顧客管理」を変更しました（変更内容 \d+ 件）。変更したアイテムを紫の枠で強調しています。/);
-  assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更内容を見る', '元に戻す（Ctrl+Z）', '✕']);
+  assert.match(text(band), /^✦Claude Code が「顧客管理」を変更しました（変更点 \d+ 件）。変更したアイテムを紫の枠で強調しています。/);
+  assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更点を見る', '元に戻す（Ctrl+Z）', '✕']);
   // 開いている画面（新規登録）の、直した部品と足した部品に札。光り方は今始まった
   const tagOf = (id) => text($(`#stage .part[data-part-id="${id}"] .ai-tag`));
   assert.equal(tagOf('p3'), 'AI が変更した');
@@ -151,7 +151,7 @@ test('紫の帯は、AI が続けて直すと件数を足して出し直し、�
   const { app, T, call, $, click } = await boot();
   T.openDesign('d1');
   await call('update_design', { design: 'd1', description: 'AI の 1 回目' });
-  const count = () => Number(text($('#ai-band')).match(/変更内容 (\d+) 件/)[1]);
+  const count = () => Number(text($('#ai-band')).match(/変更点 (\d+) 件/)[1]);
   assert.equal(count(), 1);
   await call('update_design', { design: 'd1', name: '顧客台帳' });
   assert.equal(count(), 1, '同じ行（画面設計の設定変更）にまとまる');
@@ -207,12 +207,12 @@ test('紫の帯の「元に戻す」は、その後に AI が元に戻すの履�
     const { app, T, call, $, $$ } = await boot();
     T.openDesign('d1');
     await call('update_design', { design: 'd1', description: 'AI の変更' });
-    assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更内容を見る', '元に戻す（Ctrl+Z）', '✕']);
+    assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更点を見る', '元に戻す（Ctrl+Z）', '✕']);
     assert.equal((await call(...next)).ok, true);
     assert.ok($('#ai-warn'), `${next[0]}: オレンジの帯で、履歴を消したことを知らせる`);
     assert.equal(T.store.canUndo(), false);
-    assert.match(text($('#ai-band')), /Claude Code が「顧客管理」を変更しました（変更内容 1 件）。/, `${next[0]}: 紫の帯は残す`);
-    assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更内容を見る', '✕'], `${next[0]}: 「元に戻す」は出さない`);
+    assert.match(text($('#ai-band')), /Claude Code が「顧客管理」を変更しました（変更点 1 件）。/, `${next[0]}: 紫の帯は残す`);
+    assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更点を見る', '✕'], `${next[0]}: 「元に戻す」は出さない`);
     app.close();
   }
 });

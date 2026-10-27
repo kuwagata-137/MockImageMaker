@@ -145,7 +145,7 @@ async function checkNotesTools(client, env) {
   stamp = (answer.json || {}).updatedAt || stamp;
   check('E. update_notes（answer_question）: まだ決まっていないことに人の答えを書ける', !answer.isError && answer.json.changed === true && answer.json.ops[0].id === qRead.id, answer.isError ? brief(answer) : JSON.stringify(answer.json));
   const todo = await callRaw(client, 'set_stage', { system: SYSTEM_ID, stage: 'read', state: 'todo', expect: stamp });
-  check('E. set_stage: todo（まだ）には戻せず、bad_request で断られる（前の段階を変更するときは "review" に戻す、と添える）',
+  check('E. set_stage: todo（未着手）には戻せず、bad_request で断られる（前の段階を変更するときは "review" に戻す、と添える）',
     todo.isError && todo.code === 'bad_request' && /"todo".*戻せません/.test(todo.text) && /"review"/.test(todo.text), todo.isError ? `${todo.code}: ${todo.text.split('\n')[0]}` : '断られなかった');
 
   // 4. 読む

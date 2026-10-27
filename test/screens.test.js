@@ -251,7 +251,7 @@ test('画面を消す: 最後の 1 つの画面は消せない（ボタンとメ
   api.runCommand('deleteScreen');
   await tick();
   assert.equal($(app, '.modal'), null, '窓は出さない');
-  assert.match($(app, '#toast').textContent, /最後の 1 つの画面は消せません/);
+  assert.match($(app, '#toast').textContent, /最後の 1 つの画面は削除できません/);
   assert.equal(api.actions.deleteScreen(id, s1), false);
   assert.equal(design().screens.length, 1);
   api.actions.addScreen(id, 'blank', s1);

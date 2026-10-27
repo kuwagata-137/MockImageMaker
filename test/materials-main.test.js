@@ -547,7 +547,7 @@ test('preload の materialsAPI — 受け口の名前と渡す値が、materials
 
 test('preload の materialsAPI — addDropped は、場所のないファイル（ブラウザ・圧縮ファイルの中から落としたもの）を、理由を付けて入れられなかったファイルにする（デバッグとリリースの見直し③-2）', async () => {
   const { api, invocations } = loadPreload();
-  const reason = 'このパソコンの中に場所がないファイルです（ブラウザや圧縮ファイルの中から落としたものなど）。いったんフォルダに保存してから入れてください';
+  const reason = 'このパソコンのフォルダに保存されていないファイルです（ブラウザや圧縮ファイルの中からドラッグ＆ドロップしたものなど）。いったんフォルダに保存してから追加してください';
   const r = await api.addDropped(SYS, [{ name: '出張申請書.docx', fakePath: 'C:\\申請\\出張申請書.docx' }, { name: '写真.png', fakePath: '' }]);
   assert.deepEqual(invocations, [['materials:addPaths', { systemId: SYS, paths: ['C:\\申請\\出張申請書.docx'] }]]);
   assert.deepEqual(r.skipped, [{ name: '写真.png', reason }], 'main の返事の skipped の後ろに足す');

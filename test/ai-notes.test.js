@@ -208,7 +208,7 @@ test('set_stage: doing・review・done・skipped に変える。done と skipped
   const sk = ok(await call('set_stage', { system: 'y1', stage: 'flow', state: 'skipped' }));
   assert.match(sk.confirmedAt, ISO);
   const todo = ng(await call('set_stage', { system: 'y1', stage: 'read', state: 'todo' }), 'bad_request');
-  assert.equal(todo.message, '段階を "todo"（まだ）には戻せません。前の段階を変更するときは "review"（確認待ち）に戻してください。');
+  assert.equal(todo.message, '段階を "todo"（未着手）には戻せません。前の段階を変更するときは "review"（確認待ち）に戻してください。');
   ng(await call('set_stage', { system: 'y1', stage: 'design', state: 'doing' }), 'bad_request');
   const unknown = ng(await call('set_stage', { system: 'y1', stage: 'items', state: 'finished' }), 'bad_request');
   assert.equal(unknown.message, '進捗「finished」は使えません（使える進捗: doing（作業中）・review（確認待ち）・done（確認済み）・skipped（確認を飛ばした））。');
@@ -293,7 +293,7 @@ test('知らせ: システムの画面で開いているシステムの設計ノ
   ] }));
   assert.equal(T.store.undoStack.length, u0 + 1);
   assert.deepEqual(plain([T.aiView.band.kind, T.aiView.band.systemId, T.aiView.band.count, T.aiView.band.undoable, T.aiView.warn]), ['system', 'y1', 3, true, null]);
-  assert.match(app.document.querySelector('#ai-band').textContent, /Claude Code が「営業管理システム」を変更しました（変更内容 3 件）。/);
+  assert.match(app.document.querySelector('#ai-band').textContent, /Claude Code が「営業管理システム」を変更しました（変更点 3 件）。/);
   ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'doing' }));
   assert.equal(T.aiView.band.count, 4, '最初に直す前と比べた件数');
   ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'review' }));
@@ -311,7 +311,7 @@ test('知らせ: 開いていないシステムの設計ノートだけを直し
   const { app, T, call } = await boot();
   const $ = (s) => app.document.querySelector(s);
   ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'doing' }));
-  assert.match($('#ai-band').textContent, /Claude Code が「営業管理システム」を変更しました（変更内容 1 件）。/, '履歴がなければ紫の帯');
+  assert.match($('#ai-band').textContent, /Claude Code が「営業管理システム」を変更しました（変更点 1 件）。/, '履歴がなければ紫の帯');
   T.actions.updateSystem('y2', { description: '人の変更' });
   ok(await call('update_notes', { system: 'y1', ops: [{ op: 'add_question', stage: 'read', text: '問い' }] }));
   const warn = $('#ai-warn');
@@ -334,7 +334,7 @@ test('知らせ: 開いていないシステムの設計ノートだけを直し
 
 test('NOTE_STATE_NAMES: 段階の進捗の名前の表（データの区画。AI の断りの文と、設計ノートの画面が使う）', async () => {
   const { app, T } = await boot();
-  assert.deepEqual(plain(T.NOTE_STATE_NAMES), { todo: 'まだ', doing: '作業中', review: '確認待ち', done: '確認済み', skipped: '確認を飛ばした' });
+  assert.deepEqual(plain(T.NOTE_STATE_NAMES), { todo: '未着手', doing: '作業中', review: '確認待ち', done: '確認済み', skipped: '確認を飛ばした' });
   assert.deepEqual(Object.keys(T.NOTE_STATE_NAMES), plain(T.NOTE_STATES));
   app.close();
 });

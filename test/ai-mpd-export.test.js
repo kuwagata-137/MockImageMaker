@@ -99,7 +99,7 @@ test('export_bdm: 入口の道具は system と material を受け取り、時�
   assert.deepEqual(Object.keys(t.input.shape).sort(), ['material', 'system']);
   assert.match(t.description, /人に依頼されたときだけ使う/);
   assert.match(t.description, /元の資料のファイルは書き換えない/);
-  assert.match(GUIDES.rules.text, /export_bdm（スイムレーンを MPD に出力する）も、人に依頼されたときだけ使ってください。/);
-  assert.match(GUIDES.stages.text, /スイムレーンの MPD が要るときは export_bdm/);
-  assert.match(GUIDES.overview.text, /7\. スイムレーンを MPD に出力する（人に依頼されたとき）/);
+  assert.match(GUIDES.rules.text, /export_bdm（スイムレーン図を MPD に出力する）も、人に依頼されたときだけ使ってください。/);
+  assert.match(GUIDES.stages.text, /スイムレーン図の MPD が要るときは export_bdm/);
+  assert.match(GUIDES.overview.text, /7\. スイムレーン図を MPD に出力する（人に依頼されたとき）/);
 });

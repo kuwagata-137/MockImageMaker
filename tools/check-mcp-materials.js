@@ -109,7 +109,7 @@ async function checkSwimlaneFromBdm(client, env, rows) {
     refused.isError && refused.code === 'bad_request' && /replace: true/.test(refused.text) && /工程 2 つ/.test(refused.text), refused.isError ? refused.text.split('\n')[0] : '断られなかった');
   const done = await callRaw(client, 'swimlane_from_bdm', { system: SYSTEM_ID, material: bdm.id, replace: true });
   const d = done.json || {};
-  check('D. swimlane_from_bdm（replace: true）: 図の作業 8・矢印 8 で置き換わり、役割は使い回して足りない 1 つを足す',
+  check('D. swimlane_from_bdm（replace: true）: 図の作業 8・矢印 8 で置き換わり、同じ名前の役割はそのまま使い、足りない 1 つを追加する',
     !done.isError && d.diagramType === 'swimlane' && d.steps === 8 && d.edges === 8 && d.roles.added.join() === '経理' && d.roles.reused.join() === '申請者,上長' && d.changed !== false,
     done.isError ? done.text : JSON.stringify({ diagramType: d.diagramType, roles: d.roles, steps: d.steps, edges: d.edges, warnings: d.warnings }));
   const gs = await callRaw(client, 'get_system', { system: SYSTEM_ID });

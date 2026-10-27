@@ -187,7 +187,7 @@ test('カードを押すと、その画面設計の編集の画面を開く。�
   assert.deepEqual([api.ui.view, api.ui.designId], ['editor', 'd-emp']);
   const back = $('#tb-home');
   assert.equal(back.dataset.action, 'back-system');
-  assert.equal(back.textContent, '←システムへ');
+  assert.equal(back.textContent, '←システムへ戻る');
   assert.equal(back.title, '出張申請システムの画面へ戻ります');
   click(back);
   assert.deepEqual([api.ui.view, api.ui.systemId, api.ui.sysPanel], ['system', 'y-trip', 'roles'], '開いていた入口のまま');
@@ -198,14 +198,14 @@ test('カードを押すと、その画面設計の編集の画面を開く。�
   // 編集の画面から、ほかの画面設計を開いても、戻る先はシステムのまま
   click($$('#sys-list .sys-dcard')[0]);
   api.openDesign('d-cli');
-  assert.equal($('#tb-home').textContent, '←システムへ');
+  assert.equal($('#tb-home').textContent, '←システムへ戻る');
   click($('#tb-home'));
   assert.equal(api.ui.view, 'system');
   // 最初の画面から開いたとき
   api.goHome();
   api.openDesign('d-emp');
   assert.equal($('#tb-home').dataset.action, 'home');
-  assert.equal($('#tb-home').textContent, '←一覧へ');
+  assert.equal($('#tb-home').textContent, '←一覧へ戻る');
   assert.equal($('#tb-home').title, '画面設計の一覧へ戻ります');
   api.runCommand('backToSystem');
   assert.equal(api.ui.view, 'home', '戻るシステムがなければ最初の画面へ');
@@ -350,7 +350,7 @@ test('「＋ 画面設計を追加する ▾」: 最初の画面と同じ 3 つ�
   setValue($('.modal [name=name]'), '旅費の精算', 'input');
   click($('[data-dlg="ok"]'));
   await waitFor(() => api.ui.view === 'editor', { label: '編集の画面' });
-  assert.equal($('#tb-home').textContent, '←システムへ');
+  assert.equal($('#tb-home').textContent, '←システムへ戻る');
 });
 
 // ── 概要 ──
@@ -469,7 +469,7 @@ test('役割: 作業の箱のある役割の ✕ は確かめの窓（一緒に�
   await waitFor(() => $('.modal'));
   assert.equal($('.modal h2').textContent, '役割「経理」を削除しますか？');
   assert.match($('.modal-body').textContent, /役割「経理」のレーンに入っている工程 3 つと、その工程に接続している矢印 3 本も一緒に消えます。/);
-  assert.match($('.modal-body').textContent, /消した後でも、元に戻す（Ctrl\+Z）で戻せます。/);
+  assert.match($('.modal-body').textContent, /削除した後でも、元に戻す（Ctrl\+Z）で戻せます。/);
   assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['役割を削除する', 'キャンセル']);
   assert.ok($('[data-dlg="ok"]').classList.contains('danger'));
   assert.equal(app.document.activeElement, $('[data-dlg="cancel"]'));
@@ -625,7 +625,7 @@ test('AI がこのシステムだけを直したら、紫の帯と「元に戻�
   click(entry('roles'));
   const r = await call('update_system', { system: 'y-trip', ops: [{ op: 'add', name: '総務' }] });
   assert.equal(r.ok, true, JSON.stringify(r.error));
-  assert.match($('#ai-band').textContent, /Claude Code が「出張申請システム」を変更しました（変更内容 1 件）。/);
+  assert.match($('#ai-band').textContent, /Claude Code が「出張申請システム」を変更しました（変更点 1 件）。/);
   assert.ok($('#ai-band [data-action="undo"]'));
   assert.equal(api.ui.sysPanel, 'roles');
   assert.deepEqual(entries()[1], ['役割', '4 つ', true]);

@@ -225,9 +225,9 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
       const dest = path.join(OUT, '顧客管理_変更マーク.pdf');
       fs.renameSync(file, dest);
       const f = pdfFacts(dest);
-      check('PDF（変更マーク）のページ数', f.pages === 8, `${f.pages} ページ（変更内容のページで 1 ページ増える）`);
+      check('PDF（変更マーク）のページ数', f.pages === 8, `${f.pages} ページ（変更点のページで 1 ページ増える）`);
       if (f.tool) {
-        const words = ['第1版', 'からの変更内容', '削除', '取引先名'];
+        const words = ['第1版', 'からの変更点', '削除', '取引先名'];
         const missing = words.filter((w) => !f.text.replace(/\s+/g, '').includes(w));
         check('PDF（変更マーク）の文字', !missing.length, missing.length ? `見つからない: ${missing.join('・')}` : words.join('・'));
       }

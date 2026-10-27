@@ -107,9 +107,9 @@ test('説明書の窓: アプリのメニューの命令 exportDialog でも、�
   await tick();
   api.goHome();
   const more = $(`.sys-block [data-action="sys-menu"][data-id="${sysId}"]`);
-  assert.match(more.title, /システム設計書の出力/);
+  assert.match(more.title, /システム設計書を出力する/);
   click(more);
-  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明の変更…', 'システム設計書を出力…', 'このシステムを削除する（ごみ箱へ移す）']);
+  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['このシステムの名前と説明を変更する…', 'システム設計書を出力…', 'このシステムを削除する（ごみ箱へ移す）']);
   click($('.sys-pop [data-action="sys-doc"]'));
   await tick();
   assert.equal($('.modal h2').textContent, '「出張申請システム」のシステム設計書を出力する');

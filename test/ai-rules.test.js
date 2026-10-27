@@ -262,6 +262,6 @@ test('重さ: 書く頼み 1 回で、描き直しは 1 回・違いの計算（
   assert.equal(count.revisionRow, 0, '行がもうあるときは、写しの行を作らない');
   assert.equal(count.updateEditor, 1);
   assert.equal(aiRows(T.store.state.designs.find((d) => d.id === 'd1')).length, 1);
-  assert.match(app.document.querySelector('#ai-band').textContent, /変更内容 1 件/);
+  assert.match(app.document.querySelector('#ai-band').textContent, /変更点 1 件/);
   app.close();
 });

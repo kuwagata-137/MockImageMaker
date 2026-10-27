@@ -131,7 +131,7 @@ test('右のパネル: 見た目を選べ、Salesforce のときだけヘッダ�
   app.close();
 });
 
-test('項目の表示: 右のパネルで値だけ表示を選ぶと、その画面に view-show が付く。変更内容の一覧にも出る', async () => {
+test('項目の表示: 右のパネルで値だけ表示を選ぶと、その画面に view-show が付く。変更点の一覧にも出る', async () => {
   const { app, T, d } = await boot();
   const before = plain(T.store.state.designs[0]);
   T.openDesign('d1');

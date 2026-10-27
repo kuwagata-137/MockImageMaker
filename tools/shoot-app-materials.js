@@ -170,10 +170,10 @@ async function shootWaiting(ctx) {
   await late.evaluate(() => window.__test__.setMaterialWaitMs(300));
   await never('read')(late);
   await late.click(`#sys-view [data-action="sys-mat-read"][data-id="${ID.pdf}"]`);
-  await late.waitForFunction(() => /待つのをやめました/.test(document.querySelector('#toast').textContent) && !document.querySelector('#toast').hidden, { timeout: 4000 });
+  await late.waitForFunction(() => /読むのを止めました/.test(document.querySelector('#toast').textContent) && !document.querySelector('#toast').hidden, { timeout: 4000 });
   const back = await opsOf(late, ID.pdf);
   need(back.join() === 'この資料を読む,この資料を削除する', `時間切れの後にボタンが戻らない: ${back.join()}`);
-  await shot(late, '169_資料_返事が 60 秒来ないとき（待つのをやめてお知らせ。ボタンは押せる形に戻る）');
+  await shot(late, '169_資料_返事が 60 秒来ないとき（読むのを止めてお知らせ。ボタンは押せる形に戻る）');
   await late.close();
   const out = await openPage(ctx, { width: 1280, height: 800 });
   await never('bdmExport')(out);

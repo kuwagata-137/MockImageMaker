@@ -542,7 +542,7 @@ test('アプリのメニューから: アイテムをすべて選んで揃える
   app.menuCommand('openMap');
   assert.equal(api.ui.panel, 'map');
   app.menuCommand('importItems');
-  assert.ok($(app, '.modal.wide'), 'ほかのモックから取り込む窓');
+  assert.ok($(app, '.modal.wide'), 'ほかの画面設計から取り込む窓');
   click($(app, '.modal [data-dlg="cancel"]'));
   await new Promise((r) => setTimeout(r, 0));
   // 保存が済むのを待ってから閉じる（閉じた後に保存の処理が画面を触らないように）

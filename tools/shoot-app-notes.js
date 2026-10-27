@@ -173,7 +173,7 @@ async function shootTabs(ctx) {
   // 153: メニューの「確認済みにする」を押した後（③ が確認済みになり、確認の日付が付く。入口の小さな字は ④ まだ）
   await click(page, '#sys-menu-root .nt-menu [role="menuitem"][data-state="done"]');
   r = await readNotes(page);
-  need(stagesOf(r) === 'done,done,done,todo,todo' && openTab(r) === 'items' && /^確認済み（\d{4}-\d{2}-\d{2}） ▾$/.test(r.pill) && !r.menu.length && r.entry === '④ まだ',
+  need(stagesOf(r) === 'done,done,done,todo,todo' && openTab(r) === 'items' && /^確認済み（\d{4}-\d{2}-\d{2}） ▾$/.test(r.pill) && !r.menu.length && r.entry === '④ 未着手',
     `「確認済みにする」を押した後が違う: ${stagesOf(r)} ／ ${r.pill} ／ メニュー ${r.menu.length} ／ ${r.entry}`);
   need(r.undoDisabled === false, '進捗を変えたのに、元に戻す（Ctrl+Z）のボタンが使えない状態のまま');
   await toastGone(page);
@@ -181,13 +181,13 @@ async function shootTabs(ctx) {
   // 154: ④ の札で「確かめずに進めたことにする」を押す → 点線の枠の札（⤼）。今の進み具合を除いた項目は 2 つ
   await tabClick(page, 'screens');
   r = await readNotes(page);
-  need(openTab(r) === 'screens' && /^まだ ▾$/.test(r.pill), `④ の札が開かない: ${openTab(r)} ／ ${r.pill}`);
+  need(openTab(r) === 'screens' && /^未着手 ▾$/.test(r.pill), `④ の札が開かない: ${openTab(r)} ／ ${r.pill}`);
   await pillClick(page);
   r = await readNotes(page);
-  need(r.menu.join() === 'done,skipped', `まだの段階のメニューの項目が 2 つ（確認済み・確かめずに進めた）になっていない: ${r.menu.join()}`);
+  need(r.menu.join() === 'done,skipped', `未着手の段階のメニューの項目が 2 つ（確認済み・確かめずに進めた）になっていない: ${r.menu.join()}`);
   await click(page, '#sys-menu-root .nt-menu [role="menuitem"][data-state="skipped"]');
   r = await readNotes(page);
-  need(stagesOf(r) === 'done,done,done,skipped,todo' && /^確認を飛ばした（\d{4}-\d{2}-\d{2}） ▾$/.test(r.pill) && r.pillBorder === 'dashed' && r.entry === '⑤ まだ',
+  need(stagesOf(r) === 'done,done,done,skipped,todo' && /^確認を飛ばした（\d{4}-\d{2}-\d{2}） ▾$/.test(r.pill) && r.pillBorder === 'dashed' && r.entry === '⑤ 未着手',
     `確かめずに進めた段階の進捗のボタン（点線）・入口の小さな字が違う: ${stagesOf(r)} ／ ${r.pill} ／ ${r.pillBorder} ／ ${r.entry}`);
   // 点線の札が選ばれていると濃い紺で塗られて点線が見えないので、③ の札へ移ってから撮る（札の並びに、点線の ④ の札が見える）
   await tabClick(page, 'items');
@@ -205,7 +205,7 @@ async function shootTabs(ctx) {
 async function shootEmpty(ctx) {
   const { page } = await openPage(ctx, { full: false, name: '経費精算システム', description: '立て替えた経費を申請し、経理が支払うシステム。' });
   const r = await readNotes(page);
-  need(stagesOf(r) === 'todo,todo,todo,todo,todo' && openTab(r) === 'read' && /^まだ ▾$/.test(r.pill) && r.entry === 'まだ始めていません',
+  need(stagesOf(r) === 'todo,todo,todo,todo,todo' && openTab(r) === 'read' && /^未着手 ▾$/.test(r.pill) && r.entry === 'まだ始めていません',
     `まだ始めていないシステムの札・入口の小さな字が違う: ${stagesOf(r)} ／ ${openTab(r)} ／ ${r.pill} ／ ${r.entry}`);
   need(r.findings === '' && r.memo === '' && r.tables === 0 && r.decisions === 0, `まだ始めていないのに表・文字が入っている（表 ${r.tables}・読み取ったこと「${r.findings}」）`);
   await ctx.shot(page, '155_設計ノート_まだ始めていないシステム（札は 5 つとも「まだ」・表なし）');
@@ -240,7 +240,7 @@ async function shootAiBand(ctx) {
   await ai('set_stage', { system: sysId, stage: 'screens', state: 'doing' });
   await sleep(300);
   r = await readNotes(page);
-  need(/が「出張申請システム」を変更しました（変更内容 4 件）/.test(r.band || ''), `紫の帯の変更の数が 4 件になっていない: ${r.band}`);
+  need(/が「出張申請システム」を変更しました（変更点 4 件）/.test(r.band || ''), `紫の帯の変更の数が 4 件になっていない: ${r.band}`);
   need(openTab(r) === 'items' && r.openQ === 3 && r.decisions === 2 && stagesOf(r) === 'done,done,review,doing,todo',
     `AI が変更した中身が、開いている ③ の札に出ていない（開いている札 ${openTab(r)}・まだ決まっていない ${r.openQ}・決めたこと ${r.decisions}・${stagesOf(r)}）`);
   await ctx.shot(page, '157_設計ノート_AIが設計ノートだけを直したときの紫の帯（変更 4 件）');

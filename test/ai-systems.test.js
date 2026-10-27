@@ -285,7 +285,7 @@ test('q66: ほかのシステム・画面設計も変わるとき・システム
 test('知らせ: 一覧の画面で AI がシステムを直すと、紫の帯（件数つき）か、履歴を消したときはオレンジの帯で、システムの名前と「履歴」の案内を出す。Ctrl+Z の知らせもシステムの名前', async () => {
   const { app, T, call } = await boot();
   ok(await call('update_system', { system: 'y1', ops: [{ op: 'add', name: '経理' }, { op: 'add', name: '総務' }] }));
-  assert.match(app.document.querySelector('#ai-band').textContent, /Claude Code が「営業管理システム」を変更しました（変更内容 2 件）。/);
+  assert.match(app.document.querySelector('#ai-band').textContent, /Claude Code が「営業管理システム」を変更しました（変更点 2 件）。/);
   T.actions.updateSystem('y2', { description: '人の変更' });
   ok(await call('update_system', { system: 'y1', description: 'AI の変更' }));
   const warn = app.document.querySelector('#ai-warn').textContent;

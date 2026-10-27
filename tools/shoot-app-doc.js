@@ -99,7 +99,7 @@ async function shootDialogs(ctx, page, ids) {
   await page.click(`.sys-block [data-action="sys-menu"][data-id="${ids.main}"]`);
   await sleep(150);
   const items = await page.evaluate(() => [...document.querySelectorAll('.sys-pop [role="menuitem"]')].map((b) => b.textContent));
-  need(items.join() === '名前と説明の変更…,システム設計書を出力…,このシステムを削除する（ごみ箱へ移す）', `システムの「…」のメニューが違う: ${items.join()}`);
+  need(items.join() === 'このシステムの名前と説明を変更する…,システム設計書を出力…,このシステムを削除する（ごみ箱へ移す）', `システムの「…」のメニューが違う: ${items.join()}`);
   await ctx.shot(page, '159_システム設計書_最初の画面のシステムの「…」の「システム設計書を出力…」');
   await page.keyboard.press('Escape');
   // 160: 作業の箱がなく、設計ノートに行がないシステム（経費精算システム）の窓
