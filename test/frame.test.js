@@ -8,6 +8,17 @@ const { bootApp } = require('./harness');
 
 const plain = (v) => JSON.parse(JSON.stringify(v));
 const rectOf = (p) => [p.x, p.y, p.w, p.h];
+const $ = (app, sel) => app.document.querySelector(sel);
+const $$ = (app, sel) => [...app.document.querySelectorAll(sel)];
+const click = (el) => el.dispatchEvent(new el.ownerDocument.defaultView.MouseEvent('click', { bubbles: true }));
+function mouse(app, target, type, init) {
+  target.dispatchEvent(new app.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...init }));
+}
+function setValue(el, value) {
+  el.value = value;
+  el.dispatchEvent(new el.ownerDocument.defaultView.Event('change', { bubbles: true }));
+}
+const partEl = (app, id) => $$(app, '#stage .screen .part').find((e) => e.dataset.partId === id);
 
 // 白紙の画面 1 つの画面設計（標準の見た目。帯の高さ 40）を開いた状態で起動する
 async function bootScreen(t, opts) {
@@ -204,4 +215,78 @@ test('グループ枠: 読み込むときに、ない・中に入れられない
   const parts = api.store.state.designs[0].screens[0].parts;
   const inFrame = Object.fromEntries(parts.map((p) => [p.id, 'inFrame' in p ? p.inFrame : '（なし）']));
   assert.deepEqual(plain(inFrame), { f1: '（なし）', p1: 'f1', p2: '（なし）', p3: '（なし）', f2: '（なし）', p4: '（なし）', p5: '（なし）' });
+});
+
+// ── 描き方・見た目・右のパネル・設定一覧（作る順 2）──
+
+test('グループ枠の描く順: グループ枠を、ほかのアイテムより先（後ろ）に描く。選んでいるときも中のアイテムの後ろ', async (t) => {
+  const { app, api, put } = await bootScreen(t);
+  const a = put('text1', [56, 120, 320, 64]);
+  const f = put('frame', [40, 80, 400, 240]);
+  assert.deepEqual($$(app, '#stage .screen .part').map((e) => e.dataset.partId), [f, a], 'アイテムの並びでは後ろのグループ枠を、先に描く');
+  api.selectPart(f);
+  const el = partEl(app, f);
+  assert.ok(el.classList.contains('pcont') && el.classList.contains('sel'));
+  assert.match(api.appStyle(), /\.part\.pcont\.sel\{z-index:auto\}/, '選んでも、中のアイテムの前に出さない');
+});
+
+test('グループ枠の見た目: 見出しの行にアイコンとグループ名。アイコンの色を「なし」にするとアイコンを出さない。Salesforce と kintone の形', async (t) => {
+  const { app, api, did, sid, put } = await bootScreen(t);
+  const f = put('frame', [40, 80, 400, 240]);
+  const head = () => partEl(app, f).querySelector('.pframe .pfr-head');
+  assert.equal(head().querySelector('b').textContent, 'グループ名');
+  assert.ok(head().querySelector('.pfr-ic.fc-blue svg'), '最初は青いアイコン');
+  api.actions.updatePart(did(), sid(), f, { props: { color: 'none' } });
+  assert.equal(head().querySelector('.pfr-ic'), null);
+  const css = api.appStyle();
+  assert.match(css, /\.look-sf \.pframe\{/);
+  assert.match(css, /\.look-sf \.pfr-head\{[^}]*background:#f3f3f3/, 'Salesforce の見た目では、見出しの行が薄い灰色');
+  assert.match(css, /\.look-kt \.pfr-ic\{display:none\}/, 'kintone の見た目では、アイコンを出さない');
+  assert.match(css, /\.look-kt \.pfr-head::before\{content:'▼'/, 'kintone のグループの形（▼ グループ名）');
+});
+
+test('グループ枠の右のパネル: グループ名とアイコンの色を変えられる。設定一覧に、中のアイテムの番号を出す', async (t) => {
+  const { app, api, did, sid, part, put } = await bootScreen(t);
+  const f = put('frame', [40, 80, 600, 320]);
+  put('text1', [56, 120, 240, 64]);
+  const b = put('text1', [320, 120, 240, 64]);
+  put('button', [56, 240, 96, 40]);
+  put('text1', [700, 120, 240, 64]); // 外
+  api.selectPart(f);
+  assert.match($(app, '#side-settings .panel-title').textContent, /番号 1・グループ枠/);
+  setValue($(app, '#side-settings [data-pf="label"]'), '顧客の情報');
+  assert.equal(part(f).label, '顧客の情報');
+  const colors = $$(app, '#side-settings [data-pf="props.color"]');
+  assert.deepEqual(colors.map((e) => e.value), ['blue', 'green', 'orange', 'red', 'purple', 'gray', 'none']);
+  const green = colors.find((e) => e.value === 'green');
+  green.checked = true;
+  green.dispatchEvent(new app.window.Event('change', { bubbles: true }));
+  assert.equal(part(f).props.color, 'green');
+  assert.equal($(app, '#pf-out').textContent, '中のアイテム＝2〜4');
+  api.actions.updatePart(did(), sid(), b, { numbered: false });
+  api.selectPart(null);
+  api.selectPart(f);
+  assert.equal($(app, '#pf-out').textContent, '中のアイテム＝2・4', '続いていない番号は「・」でつなぐ');
+});
+
+test('グループ枠をドラッグで動かしている間は、中のアイテムの要素も一緒に動く', async (t) => {
+  const { app, part, put } = await bootScreen(t);
+  const f = put('frame', [40, 80, 400, 240]);
+  const a = put('text1', [56, 120, 320, 64]);
+  const doc = app.document;
+  mouse(app, partEl(app, f).querySelector('.pfr-head'), 'mousedown', { clientX: 100, clientY: 100 });
+  mouse(app, doc, 'mousemove', { clientX: 180, clientY: 140 });
+  assert.equal(partEl(app, f).style.left, '120px');
+  assert.deepEqual([partEl(app, a).style.left, partEl(app, a).style.top], ['136px', '160px'], 'ドラッグ中は、中のアイテムの要素も同じだけ動く');
+  assert.equal(part(a).x, 56, 'ドラッグ中はまだ保存しない');
+  mouse(app, doc, 'mouseup', { clientX: 180, clientY: 140 });
+  assert.deepEqual(rectOf(part(a)), [136, 160, 320, 64]);
+});
+
+test('アイテム一覧の組: 「詳細画面用」の組にグループ枠がある', async (t) => {
+  const { app, api } = await bootScreen(t);
+  assert.deepEqual(plain(api.PALETTE_GROUPS.map((g) => g.name)), ['基本', '入力画面用', '一覧画面用', '詳細画面用', '進捗画面用', 'その他']);
+  assert.ok($(app, '.pal-btn[data-type="frame"]'));
+  click($(app, '.pal-btn[data-type="frame"]'));
+  assert.equal(api.currentScreen().parts.at(-1).type, 'frame');
 });

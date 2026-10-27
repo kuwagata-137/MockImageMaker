@@ -311,6 +311,10 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-sf .pgraph{border-color:#e5e5e5;border-radius:4px}
 .look-sf .plink{color:#0176d3;text-decoration:none}
 .look-sf .pimage{border-color:#c9c9c9;border-radius:4px;background:#f3f3f3}
+.look-sf .pframe{border:1px solid #dddbda;border-radius:4px;box-shadow:0 2px 2px rgba(0,0,0,.10)}
+.look-sf .pfr-head{background:#f3f3f3;border-bottom:1px solid #e5e5e5;font-size:14px;color:#181818}
+.look-sf .pfr-ic{border-radius:4px}
+.look-sf .fc-blue{background:#5867e8}.look-sf .fc-green{background:#3ba755}.look-sf .fc-orange{background:#f38303}.look-sf .fc-red{background:#ea001e}.look-sf .fc-purple{background:#9050e9}.look-sf .fc-gray{background:#747474}
 /* グラフの色（graphSvg の青・黄・緑を、見た目の色に置き換える。SVG の fill・stroke の属性を CSS で上書きする） */
 .look-sf .pgraph [fill="#3b82f6"]{fill:#1b96ff}.look-sf .pgraph [stroke="#3b82f6"]{stroke:#1b96ff}
 .look-sf .pgraph [fill="#f59e0b"]{fill:#ff9a3c}.look-sf .pgraph [fill="#10b981"]{fill:#3ba755}
@@ -359,6 +363,10 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .ptabs span.on{border-color:#e3e7e8;color:#3498db}
 .look-kt .pgraph{border-color:#e3e7e8;border-radius:0}
 .look-kt .plink{color:#3498db;text-decoration:none}
+.look-kt .pframe{border:1px solid #e3e7e8;border-radius:0}
+.look-kt .pfr-head{background:#f7f9fa;border-bottom:1px solid #e3e7e8;font-size:14px;color:#333;gap:6px}
+.look-kt .pfr-ic{display:none}
+.look-kt .pfr-head::before{content:'▼';font-size:10px;color:#666}
 /* 表示の形（画面の項目の出し方。q108）。入力欄の枠の代わりに、値・鉛筆の印・下の線。kintone の見た目は、枠も線もない値 */
 .view-show .pbox{border:none;border-radius:0;border-bottom:1px solid #e5e5e5;padding:0 26px 0 0;margin-top:0;background:transparent;box-shadow:none;position:relative}
 .view-show .pbox.calc{border:none;border-bottom:1px solid #e5e5e5;background:transparent}
@@ -472,8 +480,16 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .plink{flex:1;display:flex;align-items:center;color:#2563eb;text-decoration:underline;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .picon-wrap{flex:1;display:flex;align-items:center;justify-content:center}
 .picon-wrap svg{width:100%;height:100%}
+/* グループ枠（第 14 段階。画像 q115 の下の段）。中のアイテムは、グループ枠の上に重ねて描く */
+.pframe{flex:1;min-height:0;display:flex;flex-direction:column;background:#fff;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden}
+.pfr-head{height:44px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #e2e8f0;background:#f8fafc;font-size:15px;color:#0f172a;white-space:nowrap;overflow:hidden}
+.pfr-head b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
+.pfr-ic{width:24px;height:24px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.pfr-ic svg{width:15px;height:15px}
+.fc-blue{background:#1d4ed8}.fc-green{background:#15803d}.fc-orange{background:#c2410c}.fc-red{background:#dc2626}.fc-purple{background:#9333ea}.fc-gray{background:#64748b}
 /* 選んだ部品の印と、縁のつまみ（編集の画面だけ） */
 .part.sel{outline:2px solid #2563eb;outline-offset:1px;z-index:1}
+.part.pcont.sel{z-index:auto}
 .grip{position:absolute;width:9px;height:9px;background:#fff;border:1.5px solid #2563eb;border-radius:2px;z-index:2}
 .g-nw{left:-6px;top:-6px;cursor:nwse-resize}.g-n{left:calc(50% - 5px);top:-6px;cursor:ns-resize}.g-ne{right:-6px;top:-6px;cursor:nesw-resize}
 .g-e{right:-6px;top:calc(50% - 5px);cursor:ew-resize}.g-se{right:-6px;bottom:-6px;cursor:nwse-resize}.g-s{left:calc(50% - 5px);bottom:-6px;cursor:ns-resize}
@@ -1706,6 +1722,9 @@ const PART_TYPES = {
   // グループ枠の color は、見出しの左のアイコンの色（'none' は出さない）
   frame: { name: 'グループ枠', pal: 'グループ枠', icon: '⬚', w: 400, h: 240, label: 'グループ名', container: true, props: { color: 'blue' } },
 };
+// グループ枠の見出しの左のアイコンの色（右のパネルの選択肢の順。'none' はアイコンを出さない）と、アイコンの絵（白い線。Salesforce のアイコンは写さない）
+const FRAME_COLORS = { blue: '青', green: '緑', orange: '橙', red: '赤', purple: '紫', gray: '灰', none: 'なし' };
+const FRAME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>';
 // 部品の箱にだけ並べる、部品ではないもの（吹き出し）。PART_TYPES には入れない（画面の parts には入らないため）
 const PALETTE_EXTRA = { callout: { name: '吹き出し', icon: '💬', w: 200, h: 80 } };
 const paletteEntry = (type) => (own(PALETTE_EXTRA, type) ? PALETTE_EXTRA[type] : partType(type));
@@ -1714,6 +1733,7 @@ const PALETTE_GROUPS = [
   { id: 'basic', name: '基本', types: ['text1', 'text2', 'number', 'date', 'dropdown', 'radio', 'checkbox', 'table', 'button', 'graph', 'heading', 'desc', 'divider', 'callout'] },
   { id: 'input', name: '入力画面用', types: ['file', 'user', 'datetime', 'calc'] },
   { id: 'list', name: '一覧画面用', types: ['search', 'filter', 'pager'] },
+  { id: 'detail', name: '詳細画面用', types: ['frame'] },
   { id: 'progress', name: '進捗画面用', types: ['status', 'steps', 'tabs'] },
   { id: 'look', name: 'その他', types: ['image', 'link', 'icon'] },
 ];
@@ -2060,6 +2080,15 @@ function renumberedParts(parts) {
   return parts.map((p) => (nos.has(p.id) ? { ...p, no: nos.get(p.id) } : p));
 }
 
+// グループ枠に入っているアイテムの赤い番号（「2〜4・7」。3 つ以上続く番号は「〜」でまとめる）。ctx の画面設計からグループ枠のある画面を探す
+function frameKidNosText(ctx, f) {
+  const sc = ctx && ctx.design ? ctx.design.screens.find((s) => s.parts.some((x) => x.id === f.id)) : null;
+  const nos = sc ? [...new Set(frameKids(sc, f.id).map((x) => x.no).filter((n) => n != null))].sort((a, b) => a - b) : [];
+  const runs = [];
+  nos.forEach((n) => { const r = runs[runs.length - 1]; if (r && n === r[1] + 1) r[1] = n; else runs.push([n, n]); });
+  return runs.map(([a, b]) => (b - a >= 2 ? `${a}〜${b}` : a === b ? String(a) : `${a}・${b}`)).join('・');
+}
+
 // 一覧表の「設定」の列の文。1 行目に「必須・最大 50 文字」のような短い条件を「・」でつなぎ、
 // 「選択肢＝…」のように「＝」で書く項目は 1 つずつ行を分け、最後の行にメモを足す。何も書いていない欄は出さない
 // ctx（{ design, state }）を渡すと、ルックアップの文も足す（ルックアップ元の名前を引くため）
@@ -2118,6 +2147,9 @@ function describePartLines(p, ctx = null) {
     case 'button':
       eqIf('移動先', moveTargetText(ctx, pr));
       eqIf('押したとき', v(pr.action));
+      break;
+    case 'frame':
+      eqIf('中のアイテム', frameKidNosText(ctx, p));
       break;
     case 'table':
       if (p.tableKind === 'subtable') { if (p.required) short.push('必須（1 行以上）'); }
@@ -5232,7 +5264,9 @@ function screenHtml(design, screen, { grid = false, height = screen.height, sele
   const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
   // 札は部品の右上の角から外へ出す。画面の上・右の端の部品では、画面の外へ出た分が切れるので内側に寄せる
   const edge = (p) => `${p.y < DF_OUT ? ' df-t' : ''}${p.x + p.w + DF_OUT > screen.width ? ' df-r' : ''}`;
-  const parts = screen.parts.map((p) => partHtml(resolvePart(design, p), isSel(p.id), marks, p.id === gripId, diff ? diff.parts[p.id] : null, edge(p))).join('');
+  // グループ枠などの container の種類を先に（後ろに）描き、中に入れたアイテムを上に重ねる（第 14 段階。それぞれの中はアイテムの並びのまま）
+  const order = [...screen.parts.filter(isContainerPart), ...screen.parts.filter((p) => !isContainerPart(p))];
+  const parts = order.map((p) => partHtml(resolvePart(design, p), isSel(p.id), marks, p.id === gripId, diff ? diff.parts[p.id] : null, edge(p))).join('');
   const cls = ['screen'];
   if (grid) cls.push('grid');
   if (lookOf(design).cls) cls.push(lookOf(design).cls);
@@ -5282,6 +5316,7 @@ function partHtml(p, selected = false, marks = false, withGrips = selected, diff
   const t = partType(p.type);
   const cls = ['part', 'pt-' + (t ? p.type : 'unknown')];
   if (t && t.input && p.labelPos === 'left') cls.push('lab-left');
+  if (t && t.container) cls.push('pcont');
   if (selected) cls.push('sel');
   const grips = selected && withGrips ? GRIPS.map((g) => `<span class="grip g-${g}" data-grip="${g}"></span>`).join('') : '';
   // 読み込んだデータが思わぬ形でも、ほかの部品と画面は描けるように、この部品だけを「描けない部品」の箱にする
@@ -5367,6 +5402,10 @@ function partInnerHtml(p, t, marks = false) {
       return `<div class="pdesc">${partNoHtml(p)}<span>${esc(p.label)}</span></div>`;
     case 'divider':
       return `<div class="pline">${partNoHtml(p)}<i></i></div>`;
+    case 'frame': {
+      const ic = pr.color === 'none' ? '' : `<span class="pfr-ic fc-${own(FRAME_COLORS, pr.color) ? pr.color : 'blue'}">${FRAME_ICON}</span>`;
+      return `<div class="pframe"><div class="pfr-head">${partNoHtml(p)}${ic}<b>${esc(p.label)}</b></div></div>`;
+    }
   }
   return partLabelHtml(p, marks) + partFieldHtml(p, t);
 }
@@ -9777,6 +9816,7 @@ function partCommonFieldsHtml(p) {
   if (p.type === 'graph') return pfText('label', 'グラフの名前', p.label) + numbered;
   if (p.type === 'image') return pfText('label', '画像の説明', p.label, { placeholder: '例: 会社のロゴ' }) + numbered;
   if (p.type === 'link') return pfText('label', '文字', p.label) + numbered;
+  if (p.type === 'frame') return pfText('label', 'グループ名', p.label) + numbered;
   return numbered;
 }
 
@@ -10069,6 +10109,9 @@ function partTypeFieldsHtml(p) {
     case 'icon':
       return pfSelect('props.icon', 'アイコンの種類', pr.icon, Object.entries(ICONS).map(([k, v]) => [k, v[0]]))
         + pfSeg('props.color', '色', pr.color, Object.entries(ICON_COLORS).map(([k, v]) => [k, v[0]]));
+    case 'frame':
+      return pfSeg('props.color', 'アイコンの色', pr.color, Object.entries(FRAME_COLORS))
+        + '<p class="hint">アイテムの真ん中をグループ枠の中へドラッグすると、グループ枠に入ります。グループ枠を動かすと、中のアイテムも一緒に動きます。</p>';
   }
   return '';
 }
@@ -11131,7 +11174,9 @@ function startPartDrag(ev, partId, grip) {
   if (active && active.closest && active.closest('#side-panel')) active.blur();
   const p = findPart(currentScreen(), partId);
   if (!p) return;
-  drag = { kind: grip ? 'size' : 'move', grip, id: partId, sx: ev.clientX, sy: ev.clientY, r0: { x: p.x, y: p.y, w: p.w, h: p.h }, rect: null };
+  // グループ枠を動かすときは、中のアイテムの要素も一緒に動かす（kids は動かす前の位置と大きさ）
+  const kids = grip ? [] : frameKids(currentScreen(), partId).map((k) => ({ k: 'p', id: k.id, x: k.x, y: k.y, w: k.w, h: k.h }));
+  drag = { kind: grip ? 'size' : 'move', grip, id: partId, sx: ev.clientX, sy: ev.clientY, r0: { x: p.x, y: p.y, w: p.w, h: p.h }, rect: null, kids };
   if (!grip) document.body.classList.add('moving');
 }
 
@@ -11150,12 +11195,28 @@ function dragPart(ev) {
   const dx = (ev.clientX - drag.sx) / ui.zoom;
   const dy = (ev.clientY - drag.sy) / ui.zoom;
   const r0 = drag.r0;
-  const rect = drag.kind === 'move' ? fitRect({ ...r0, x: r0.x + dx, y: r0.y + dy }, s) : resizedRect(r0, drag.grip, dx, dy, s);
+  const kids = drag.kids || [];
+  let rect;
+  if (drag.kind !== 'move') rect = resizedRect(r0, drag.grip, dx, dy, s);
+  else if (!kids.length) rect = fitRect({ ...r0, x: r0.x + dx, y: r0.y + dy }, s);
+  else {
+    // 中のアイテムが画面の端に当たるときも止める（放したときの actions.moveMany と同じ）
+    const [ddx, ddy] = clampGroupMove(s, [{ k: 'p', ...r0 }, ...kids], snapGrid(dx), snapGrid(dy));
+    rect = { ...r0, x: r0.x + ddx, y: r0.y + ddy };
+  }
   drag.rect = rect;
   // id は読み込んだデータの値なので、セレクタに埋め込まずに dataset で探す
-  const el = [...document.querySelectorAll('#stage .part')].find((e) => e.dataset.partId === drag.id);
+  const els = [...document.querySelectorAll('#stage .part')];
+  const el = els.find((e) => e.dataset.partId === drag.id);
   if (el) Object.assign(el.style, { left: rect.x + 'px', top: rect.y + 'px', width: rect.w + 'px', height: rect.h + 'px' });
-  if (s.callouts.some((c) => c.target === drag.id)) redrawCalloutLines({ ['p:' + drag.id]: rect });
+  const overrides = { ['p:' + drag.id]: rect };
+  kids.forEach((k) => {
+    const r = { ...k, x: k.x + rect.x - r0.x, y: k.y + rect.y - r0.y };
+    const kel = els.find((e) => e.dataset.partId === k.id);
+    if (kel) Object.assign(kel.style, { left: r.x + 'px', top: r.y + 'px' });
+    overrides['p:' + k.id] = r;
+  });
+  if (s.callouts.some((c) => overrides['p:' + c.target])) redrawCalloutLines(overrides);
 }
 
 // 部品の箱のボタンを押したときに、ドラッグで置くかもしれないので覚えておく（動かさずに放せば click で真ん中に置く）。
