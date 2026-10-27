@@ -314,6 +314,11 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-sf .pframe{border:1px solid #dddbda;border-radius:4px;box-shadow:0 2px 2px rgba(0,0,0,.10)}
 .look-sf .pfr-head{background:#f3f3f3;border-bottom:1px solid #e5e5e5;font-size:14px;color:#181818}
 .look-sf .pfr-ic{border-radius:4px}
+.look-sf .prhead{background:#fff;border:1px solid #dddbda;border-radius:4px;box-shadow:0 2px 2px rgba(0,0,0,.10)}
+.look-sf .prh-top small{color:#444}
+.look-sf .prh-top b{color:#181818}
+.look-sf .prh-fields small{color:#444}.look-sf .prh-fields span{color:#181818}
+.look-sf .prh-ic{border-radius:4px}
 .look-sf .fc-blue{background:#5867e8}.look-sf .fc-green{background:#3ba755}.look-sf .fc-orange{background:#f38303}.look-sf .fc-red{background:#ea001e}.look-sf .fc-purple{background:#9050e9}.look-sf .fc-gray{background:#747474}
 /* グラフの色（graphSvg の青・黄・緑を、見た目の色に置き換える。SVG の fill・stroke の属性を CSS で上書きする） */
 .look-sf .pgraph [fill="#3b82f6"]{fill:#1b96ff}.look-sf .pgraph [stroke="#3b82f6"]{stroke:#1b96ff}
@@ -367,6 +372,10 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .pfr-head{background:#f7f9fa;border-bottom:1px solid #e3e7e8;font-size:14px;color:#333;gap:6px}
 .look-kt .pfr-ic{display:none}
 .look-kt .pfr-head::before{content:'▼';font-size:10px;color:#666}
+.look-kt .prhead{background:#fff;border:none;border-bottom:1px solid #e3e7e8;border-radius:0;padding:9px 4px}
+.look-kt .prh-ic{border-radius:4px}
+.look-kt .prh-top b{color:#333}
+.look-kt .prh-fields small{color:#666}.look-kt .prh-fields span{color:#333}
 /* 表示の形（画面の項目の出し方。q108）。入力欄の枠の代わりに、値・鉛筆の印・下の線。kintone の見た目は、枠も線もない値 */
 .view-show .pbox{border:none;border-radius:0;border-bottom:1px solid #e5e5e5;padding:0 26px 0 0;margin-top:0;background:transparent;box-shadow:none;position:relative}
 .view-show .pbox.calc{border:none;border-bottom:1px solid #e5e5e5;background:transparent}
@@ -486,6 +495,17 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .pfr-head b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
 .pfr-ic{width:24px;height:24px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .pfr-ic svg{width:15px;height:15px}
+/* レコードの見出し（第 14 段階。画像 q116 の左の段）。上に重ねたボタンは、見出しの上に描く */
+.prhead{flex:1;min-width:0;min-height:0;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:9px 16px;overflow:hidden;line-height:1.25}
+.prh-top{display:flex;align-items:center;gap:12px;min-width:0}
+.prh-top>div{min-width:0}
+.prh-top small{display:block;font-size:11.5px;color:#64748b;white-space:nowrap}
+.prh-top b{display:block;font-size:18px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prh-ic{width:36px;height:36px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.prh-ic svg{width:22px;height:22px}
+.prh-fields{display:flex;gap:48px;margin-top:6px;padding-left:2px;white-space:nowrap;overflow:hidden;line-height:1.3}
+.prh-fields small{display:block;font-size:11.5px;color:#64748b}
+.prh-fields span{font-size:13.5px;color:#0f172a}
 .fc-blue{background:#1d4ed8}.fc-green{background:#15803d}.fc-orange{background:#c2410c}.fc-red{background:#dc2626}.fc-purple{background:#9333ea}.fc-gray{background:#64748b}
 /* 選んだ部品の印と、縁のつまみ（編集の画面だけ） */
 .part.sel{outline:2px solid #2563eb;outline-offset:1px;z-index:1}
@@ -1721,10 +1741,14 @@ const PART_TYPES = {
   // container の種類は、ほかのアイテムを中に入れてまとめる（入っているアイテムは inFrame にその id を持つ。グループ枠の決まりは settleFrames）。
   // グループ枠の color は、見出しの左のアイコンの色（'none' は出さない）
   frame: { name: 'グループ枠', pal: 'グループ枠', icon: '⬚', w: 400, h: 240, label: 'グループ名', container: true, props: { color: 'blue' } },
+  // レコードの見出し（画像 q116 の案A）: レコードの画面のいちばん上の帯。ボタンは上に重ねて入れる。fullWidth は、最初の幅を画面の幅から左右 32 を引いた幅にする印。
+  // kind はレコードの種類（空なら画面設計の名前）、name はレコードの名前のサンプル値、items は主な項目（項目の id）、values はそのサンプル値（items と同じ順）
+  recordHead: { name: 'レコードの見出し', pal: 'レコードの\n見出し', icon: '▤', w: 1216, h: 96, label: '', container: true, fullWidth: true, props: { kind: '', name: 'レコードの名前', color: 'blue', items: [], values: [] } },
 };
 // グループ枠の見出しの左のアイコンの色（右のパネルの選択肢の順。'none' はアイコンを出さない）と、アイコンの絵（白い線。Salesforce のアイコンは写さない）
 const FRAME_COLORS = { blue: '青', green: '緑', orange: '橙', red: '赤', purple: '紫', gray: '灰', none: 'なし' };
 const FRAME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>';
+const RECORD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg>';
 // 部品の箱にだけ並べる、部品ではないもの（吹き出し）。PART_TYPES には入れない（画面の parts には入らないため）
 const PALETTE_EXTRA = { callout: { name: '吹き出し', icon: '💬', w: 200, h: 80 } };
 const paletteEntry = (type) => (own(PALETTE_EXTRA, type) ? PALETTE_EXTRA[type] : partType(type));
@@ -1733,7 +1757,7 @@ const PALETTE_GROUPS = [
   { id: 'basic', name: '基本', types: ['text1', 'text2', 'number', 'date', 'dropdown', 'radio', 'checkbox', 'table', 'button', 'graph', 'heading', 'desc', 'divider', 'callout'] },
   { id: 'input', name: '入力画面用', types: ['file', 'user', 'datetime', 'calc'] },
   { id: 'list', name: '一覧画面用', types: ['search', 'filter', 'pager'] },
-  { id: 'detail', name: '詳細画面用', types: ['frame'] },
+  { id: 'detail', name: '詳細画面用', types: ['frame', 'recordHead'] },
   { id: 'progress', name: '進捗画面用', types: ['status', 'steps', 'tabs'] },
   { id: 'look', name: 'その他', types: ['image', 'link', 'icon'] },
 ];
@@ -1967,6 +1991,7 @@ function withViewExtras(design, p) {
     return { ...p, columns: tableColumns(p, ctx), relatedName: p.tableKind === 'related' && p.props && p.props.db ? dbLabel(state, p.props.db) : '' };
   }
   if (p.type === 'filter') return { ...p, itemNames: Object.fromEntries(design.items.map((it) => [it.id, it.name])) };
+  if (p.type === 'recordHead') return { ...p, itemNames: Object.fromEntries(design.items.map((it) => [it.id, it.name])), designName: design.name };
   return p;
 }
 
@@ -2043,7 +2068,7 @@ function freeSpot(screen, at) {
 // itemId を渡すと、その項目を指す部品を作る（項目名と設定は項目が持つ）。表の部品は tableKind で中身を決める
 function createPartData(type, screen, at, itemId = null, { tableKind = 'subtable', design = null } = {}) {
   const t = partType(type);
-  const rect = fitRect({ x: at.x, y: at.y, w: t.w, h: t.h }, screen);
+  const rect = fitRect({ x: at.x, y: at.y, w: t.fullWidth ? screen.width - 64 : t.w, h: t.h }, screen);
   const base = { id: newId('p'), type, ...rect, no: t.noNumber ? null : nextPartNo(screen), labelPos: 'top', sample: '', placeholder: '' };
   if (type === 'table') base.tableKind = itemId ? 'subtable' : tableKind === 'subtable' ? 'records' : tableKind;
   if (type === 'table') base.view = { rows: 3, samples: {}, widths: {} };
@@ -2150,6 +2175,10 @@ function describePartLines(p, ctx = null) {
       break;
     case 'frame':
       eqIf('中のアイテム', frameKidNosText(ctx, p));
+      break;
+    case 'recordHead':
+      eqIf('レコードの種類', v(pr.kind));
+      eqIf('主な項目', (pr.items || []).map((id) => itemNameIn(ctx, id)).filter(Boolean).join('・'));
       break;
     case 'table':
       if (p.tableKind === 'subtable') { if (p.required) short.push('必須（1 行以上）'); }
@@ -5405,6 +5434,13 @@ function partInnerHtml(p, t, marks = false) {
     case 'frame': {
       const ic = pr.color === 'none' ? '' : `<span class="pfr-ic fc-${own(FRAME_COLORS, pr.color) ? pr.color : 'blue'}">${FRAME_ICON}</span>`;
       return `<div class="pframe"><div class="pfr-head">${partNoHtml(p)}${ic}<b>${esc(p.label)}</b></div></div>`;
+    }
+    case 'recordHead': {
+      const ic = pr.color === 'none' ? '' : `<span class="prh-ic fc-${own(FRAME_COLORS, pr.color) ? pr.color : 'blue'}">${RECORD_ICON}</span>`;
+      const names = p.itemNames || {};
+      const fields = (pr.items || []).map((id, i) => `<div><small>${esc(names[id] || '（項目なし）')}</small><span>${esc((pr.values || [])[i] || '')}</span></div>`).join('');
+      return `${outNo()}<div class="prhead"><div class="prh-top">${ic}<div><small>${esc(pr.kind || p.designName || '')}</small><b>${esc(pr.name)}</b></div></div>`
+        + `<div class="prh-fields">${fields || '<span class="pph">主な項目は右のパネルで選びます</span>'}</div></div>`;
     }
   }
   return partLabelHtml(p, marks) + partFieldHtml(p, t);
@@ -10112,6 +10148,12 @@ function partTypeFieldsHtml(p) {
     case 'frame':
       return pfSeg('props.color', 'アイコンの色', pr.color, Object.entries(FRAME_COLORS))
         + '<p class="hint">アイテムの真ん中をグループ枠の中へドラッグすると、グループ枠に入ります。グループ枠を動かすと、中のアイテムも一緒に動きます。</p>';
+    case 'recordHead':
+      return pfText('props.kind', 'レコードの種類', pr.kind, { hint: '（空ならこの画面設計の名前）' })
+        + pfText('props.name', 'レコードの名前', pr.name, { hint: '（サンプル値）' })
+        + pfSeg('props.color', 'アイコンの色', pr.color, Object.entries(FRAME_COLORS))
+        + itemPickFieldsHtml(p, { label: '主な項目', add: '主な項目を追加する', placeholder: '' })
+        + '<p class="hint">編集・削除などのボタンは、ボタンのアイテムを見出しの上に重ねて置きます。見出しを動かすと、ボタンも一緒に動きます。</p>';
   }
   return '';
 }
@@ -10163,20 +10205,25 @@ function processFieldsHtml(p) {
 
 // 絞り込みの欄: 絞り込む項目を並べ（↑↓ で並べ替え・✕ で外す）、項目ごとに見本の値を書く
 function filterFieldsHtml(p) {
+  return itemPickFieldsHtml(p, { label: '絞り込む項目', add: '絞り込む項目を追加する', placeholder: 'すべて' });
+}
+// 項目一覧の項目を選んで並べる欄（絞り込み欄の絞り込む項目と、レコードの見出しの主な項目。props.items と props.values）。
+// 1 行に項目名・サンプル値・上へ・下へ・外す、下に追加する項目の選ぶ欄。変更は onFilterFieldChange・onFilterAction
+function itemPickFieldsHtml(p, { label, add, placeholder }) {
   const pr = p.props;
   const d = currentDesign();
   const ids = pr.items || [];
   const rows = ids.map((id, i) => {
     const it = findItem(d, id);
     return `<div class="lk-pair"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it ? it.name : '（項目なし）')}</span>
-      <input type="text" data-fl="value" data-i="${i}" value="${esc((pr.values || [])[i] || '')}" placeholder="すべて" aria-label="${esc(it ? it.name : '')}のサンプル値" style="flex:1">
+      <input type="text" data-fl="value" data-i="${i}" value="${esc((pr.values || [])[i] || '')}" placeholder="${esc(placeholder)}" aria-label="${esc(it ? it.name : '')}のサンプル値" style="flex:1">
       <button class="del-x" data-action="fl-up" data-i="${i}" title="この項目を上へ移動する" aria-label="この項目を上へ移動する"${i ? '' : ' disabled'}>↑</button>
       <button class="del-x" data-action="fl-down" data-i="${i}" title="この項目を下へ移動する" aria-label="この項目を下へ移動する"${i < ids.length - 1 ? '' : ' disabled'}>↓</button>
-      <button class="del-x" data-action="fl-del" data-i="${i}" title="この項目を絞り込む項目から外す" aria-label="この項目を絞り込む項目から外す">✕</button></div>`;
+      <button class="del-x" data-action="fl-del" data-i="${i}" title="この項目を${esc(label)}から外す" aria-label="この項目を${esc(label)}から外す">✕</button></div>`;
   }).join('');
   const choices = d.items.filter((it) => isInputType(it.type) && !ids.includes(it.id)).map((it) => [it.id, it.name]);
-  return `<div class="field">${pfLabel('絞り込む項目', '（右の入力欄にサンプル値を書く）')}${rows || '<span class="hint">まだありません。下で項目を選んで追加します。</span>'}</div>
-    <label class="field"><span>絞り込む項目を追加する</span><select data-fl="add"><option value="">（選んでください）</option>${choices.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select></label>`;
+  return `<div class="field">${pfLabel(label, '（右の入力欄にサンプル値を書く）')}${rows || '<span class="hint">まだありません。下で項目を選んで追加します。</span>'}</div>
+    <label class="field"><span>${esc(add)}</span><select data-fl="add"><option value="">（選んでください）</option>${choices.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select></label>`;
 }
 
 // ── 表の部品の設定の欄（画像 q24）──
@@ -10678,9 +10725,11 @@ function onTableColumnAction(action, id) {
 }
 
 // 絞り込みの欄の変更（data-fl）と、↑↓✕
+// 項目を選んで並べる欄（itemPickFieldsHtml）を持つアイテムの種類
+const ITEM_PICK_TYPES = ['filter', 'recordHead'];
 function onFilterFieldChange(el) {
   const p = currentPart();
-  if (!p || p.type !== 'filter') return;
+  if (!p || !ITEM_PICK_TYPES.includes(p.type)) return;
   const items = [...(p.props.items || [])];
   const values = items.map((_, i) => (p.props.values || [])[i] || '');
   if (el.dataset.fl === 'add') {
@@ -10694,7 +10743,7 @@ function onFilterFieldChange(el) {
 }
 function onFilterAction(action, i) {
   const p = currentPart();
-  if (!p || p.type !== 'filter') return;
+  if (!p || !ITEM_PICK_TYPES.includes(p.type)) return;
   const items = [...(p.props.items || [])];
   const values = items.map((_, k) => (p.props.values || [])[k] || '');
   if (action === 'fl-del') { items.splice(i, 1); values.splice(i, 1); } else {
