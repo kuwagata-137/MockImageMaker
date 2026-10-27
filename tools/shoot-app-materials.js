@@ -63,10 +63,10 @@ async function shootReader(ctx) {
   await page.evaluate(() => { window.__readReal = true; });
   await open();
   const real3 = await page.$$eval('.modal .rd-text img.rd-img', (i) => i.map((x) => ({ w: x.naturalWidth, h: x.naturalHeight })));
-  need(real3.length === 1 && /第 1 条/.test(await page.$eval('.modal .rd-text', (e) => e.textContent)), `本物の読む部品の返事が窓に出ていない（画像 ${real3.length} 枚）`);
+  need(real3.length === 1 && /第 1 条/.test(await page.$eval('.modal .rd-text', (e) => e.textContent)), `本物の読む機能の返事が窓に出ていない（画像 ${real3.length} 枚）`);
   need(real3.every((x) => x.w > 0 && x.h > 0), '本物の PDF の画像が読み込めていない（naturalWidth が 0）');
-  console.log('144・145: 本物の読む部品が返した PDF の画像:', real3.map((x) => `${x.w}x${x.h}`).join(','));
-  await shot(page, '144_資料_「読む」の窓（本物の読む部品で読んだ旅費規程.pdf。1・2 ページ目の日本語の文字）');
+  console.log('144・145: 本物の読む機能が返した PDF の画像:', real3.map((x) => `${x.w}x${x.h}`).join(','));
+  await shot(page, '144_資料_「読む」の窓（本物の読む機能で読んだ旅費規程.pdf。1・2 ページ目の日本語の文字）');
   await page.$eval('.modal .rd-text', (box) => { const h = [...box.querySelectorAll('.rd-pg')].pop(); box.scrollTop = h.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 8; }); // 3 ページ目の見出しを先頭に
   await sleep(150);
   await shot(page, '145_資料_「読む」の窓（同じ窓を下へ送った。文字のない 3 ページ目は画像）');
@@ -80,7 +80,7 @@ async function shootReplace(ctx) {
   await page.click(`#sys-view [data-action="sys-mat-swim"][data-id="${ID.bdm}"]`);
   await page.waitForSelector('.modal [data-dlg="ok"]');
   await sleep(150);
-  need(/作業の箱 7 つ・矢印 8 本/.test(await page.$eval('.modal', (e) => e.textContent)), '置き換えの確かめの窓に今の作業と矢印の数が出ない');
+  need(/工程 7 つ・矢印 8 本/.test(await page.$eval('.modal', (e) => e.textContent)), '置き換えの確かめの窓に今の作業と矢印の数が出ない');
   await shot(page, '146_資料_「スイムレーン図にする」の置き換えの確かめの窓');
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForSelector('#sys-swim .mnode.sw');
@@ -125,13 +125,13 @@ async function shootMpdExport(ctx) {
   await page.click('#toolbar [data-action="export"]');
   await page.waitForSelector('#sys-menu-root .sys-pop');
   const items = await page.$$eval('#sys-menu-root [role="menuitem"]', (bs) => bs.map((b) => `${b.querySelector('b').textContent}${b.disabled ? '（×）' : ''}`));
-  need(items.join() === '説明書（PDF）を出力…,MPD に出力…', `小さなメニューの項目が違う: ${items.join()}`);
-  await shot(page, '164_MPD_メニューバーの「出力」の小さなメニュー');
+  need(items.join() === 'システム設計書（PDF）を出力…,スイムレーン図を MPD に出力…', `小さなメニューの項目が違う: ${items.join()}`);
+  await shot(page, '164_MPD_ツールバーの「出力」の小さなメニュー');
   await page.click('#sys-menu-root [data-action="sys-export-mpd"]');
   await page.waitForSelector('.modal .mpd-pick');
   const d = await page.evaluate(() => ({ title: document.querySelector('.modal h2').textContent, rows: document.querySelectorAll('.mpd-pick label').length,
     buttons: [...document.querySelectorAll('.modal-actions button')].filter((b) => !b.hidden).map((b) => b.textContent) }));
-  need(d.title === '「出張申請システム」のスイムレーン図を MPD に出力' && d.buttons.join() === '出力…,キャンセル' && d.rows === 1, `元にする MPD を選ぶ窓が違う: ${JSON.stringify(d)}`);
+  need(d.title === '「出張申請システム」のスイムレーン図を MPD に出力する' && d.buttons.join() === 'スイムレーン図を MPD に出力…,キャンセル' && d.rows === 1, `元にする MPD を選ぶ窓が違う: ${JSON.stringify(d)}`);
   await shot(page, '165_MPD_元にする MPD を選ぶ窓');
   await page.click('.modal [data-dlg="ok"]');
   await waitToast(page);
@@ -143,7 +143,7 @@ async function shootMpdExport(ctx) {
   await none.click('#toolbar [data-action="export"]');
   await none.waitForSelector('#sys-menu-root .sys-pop');
   const why = await none.$eval('#sys-menu-root [data-action="sys-export-mpd"]', (b) => [b.disabled, b.querySelector('small').textContent]);
-  need(why[0] && why[1] === '資料に MPD がありません（左の「資料」から入れます）', `資料に MPD がないときの項目が違う: ${why.join(' ／ ')}`);
+  need(why[0] && why[1] === '資料に MPD がありません（左の「資料」から追加します）', `資料に MPD がないときの項目が違う: ${why.join(' ／ ')}`);
   await shot(none, '167_MPD_資料に MPD がないとき（「MPD に出力…」は押せず、理由を小さな字で出す）');
   await none.close();
 }
@@ -163,7 +163,7 @@ async function shootWaiting(ctx) {
   await page.click(`#sys-view [data-action="sys-mat-read"][data-id="${ID.pdf}"]`);
   await page.waitForSelector(`#sys-view .mat-busy[data-id="${ID.pdf}"]`);
   const busy = await opsOf(page, ID.pdf);
-  need(busy.join() === '読んでいます…（×）,削除（×）' && await oneLine(page), `待つ間の行のボタンが違う・折り返している: ${busy.join()}`);
+  need(busy.join() === '読んでいます…（×）,この資料を削除する（×）' && await oneLine(page), `待つ間の行のボタンが違う・折り返している: ${busy.join()}`);
   await shot(page, '168_資料_「読む」を押して返事を待つ間（押したボタンが「読んでいます…」・その行のボタンは押せない）');
   await page.close();
   const late = await openPage(ctx);
@@ -172,7 +172,7 @@ async function shootWaiting(ctx) {
   await late.click(`#sys-view [data-action="sys-mat-read"][data-id="${ID.pdf}"]`);
   await late.waitForFunction(() => /待つのをやめました/.test(document.querySelector('#toast').textContent) && !document.querySelector('#toast').hidden, { timeout: 4000 });
   const back = await opsOf(late, ID.pdf);
-  need(back.join() === '読む,削除', `時間切れの後にボタンが戻らない: ${back.join()}`);
+  need(back.join() === 'この資料を読む,この資料を削除する', `時間切れの後にボタンが戻らない: ${back.join()}`);
   await shot(late, '169_資料_返事が 60 秒来ないとき（待つのをやめてお知らせ。ボタンは押せる形に戻る）');
   await late.close();
   const out = await openPage(ctx, { width: 1280, height: 800 });
@@ -180,7 +180,7 @@ async function shootWaiting(ctx) {
   await out.click(`#sys-view [data-action="sys-mat-export"][data-id="${ID.bdm}"]`);
   await out.waitForSelector(`#sys-view .mat-busy[data-id="${ID.bdm}"]`);
   const exp = await opsOf(out, ID.bdm);
-  need(exp.join() === '読む（×）,スイムレーン図にする（×）,出力しています…（×）,削除（×）' && await oneLine(out), `出力を待つ間の行のボタンが違う・折り返している: ${exp.join()}`);
+  need(exp.join() === 'この資料を読む（×）,この図をスイムレーン図にする（×）,出力しています…（×）,この資料を削除する（×）' && await oneLine(out), `出力を待つ間の行のボタンが違う・折り返している: ${exp.join()}`);
   await shot(out, '170_資料_「MPD に出力…」の返事を待つ間（幅 1280。押したボタンが「出力しています…」）');
   await out.close();
 }

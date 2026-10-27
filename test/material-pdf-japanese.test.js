@@ -53,7 +53,7 @@ test('cmaps・standard_fonts のフォルダがない場所を渡すと unavaila
   const assertUnavailable = (promise, assetsRoot) => assert.rejects(promise, (err) => {
     assert.ok(err instanceof MaterialError);
     assert.equal(err.code, 'unavailable');
-    assert.match(err.message, /PDF を読む部品の準備ができていません/);
+    assert.match(err.message, /PDF を読む機能の準備ができていません/);
     assert.equal(err.message.includes(assetsRoot), false, '文にパスが入っている');
     return true;
   });

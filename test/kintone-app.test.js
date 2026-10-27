@@ -89,7 +89,7 @@ const valid = (schema, v, what) => {
   assert.ok(r.success, `${what}: ${JSON.stringify(r.error && r.error.issues.slice(0, 3))}`);
 };
 
-test('get_kintone_app: フォームにする画面は、項目の部品がいちばん多い画面。アプリの名前と説明は kintone-add-app・kintone-update-general-settings の形', async () => {
+test('get_kintone_app: フォームにする画面は、項目を置いたアイテムがいちばん多い画面。アプリの名前と説明は kintone-add-app・kintone-update-general-settings の形', async () => {
   const r = await getApp(lendingState());
   assert.deepEqual(r.design, { id: 'd1', name: '備品の貸し出し' });
   assert.deepEqual(r.formScreen, { id: 's1', name: '貸出の申請' });
@@ -101,7 +101,7 @@ test('get_kintone_app: フォームにする画面は、項目の部品がいち
   assert.deepEqual(r2.formScreen, { id: 's3', name: '備品の詳細' });
 });
 
-test('get_kintone_app: properties は kintone-add-form-fields の形。部品の設定を写し、レコード番号・作成者などとルックアップと関連レコード一覧は入れない', async () => {
+test('get_kintone_app: properties は kintone-add-form-fields の形。アイテムの設定を写し、レコード番号・作成者などとルックアップと関連レコード一覧は入れない', async () => {
   const r = await getApp(lendingState());
   valid(KT.properties, r.properties, 'properties');
   Object.entries(r.properties).forEach(([k, v]) => assert.equal(v.code, k, 'キーはフィールドコード'));
@@ -144,7 +144,7 @@ test('get_kintone_app: systemFields（最初からあるフィールドの直し
   valid(KT.properties, { [lk.code]: lk, [rel.code]: rel }, 'needsAppId');
 });
 
-test('get_kintone_app: layout は kintone-update-form-layout の形。縦に重なる部品を 1 行にし、見出しはラベル・区切り線は罫線・表はテーブルの行。フォームの画面にないものは下に足す', async () => {
+test('get_kintone_app: layout は kintone-update-form-layout の形。縦に重なるアイテムを 1 行にし、見出しはラベル・区切り線は罫線・表はテーブルの行。フォームの画面にないものは下に足す', async () => {
   const r = await getApp(lendingState());
   valid(KT.layout, r.layout, 'layout');
   const w = (n) => ({ width: String(n) });
@@ -196,5 +196,5 @@ test('get_kintone_app: 重なるフィールドコード・使えない文字は
   const wn = r.warnings.join('\n');
   assert.match(wn, /「貸出番号」と同じフィールドコード/);
   assert.match(wn, /「目的」.*使えない文字/);
-  assert.match(wn, /作る先も見た目も kintone ではありません/);
+  assert.match(wn, /構築先も見た目も kintone ではありません/);
 });

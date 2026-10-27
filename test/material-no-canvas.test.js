@@ -74,7 +74,7 @@ function setup(t) {
   return { addSample, readOf };
 }
 
-test('画像の部品が動かなくても、文字・Word・Excel・MPD の資料は読める', async (t) => {
+test('画像を読む機能が動かなくても、文字・Word・Excel・MPD の資料は読める', async (t) => {
   const bytes = await made;
   const env = setup(t);
   const askedBefore = canvasAsked;
@@ -90,34 +90,34 @@ test('画像の部品が動かなくても、文字・Word・Excel・MPD の資�
     assert.ok(r.result.text.startsWith(NOTICE), name);
     assert.ok(r.result.text.includes(expected), `${name} の中身が入っている`);
   }
-  assert.equal(canvasAsked, askedBefore, 'これらの資料を読むときは、画像の部品を読もうともしない');
+  assert.equal(canvasAsked, askedBefore, 'これらの資料を読むときは、画像を読む機能を読もうともしない');
 });
 
-test('画像の部品が動かなくても、PDF の文字は読める。文字のないページは、画像の部品が動かないことを書いた行になる', async (t) => {
+test('画像を読む機能が動かなくても、PDF の文字は読める。文字のないページは、画像を読む機能が動かないことを書いた行になる', async (t) => {
   const bytes = await made;
   const env = setup(t);
   const r = await env.readOf(await env.addSample('旅費規程.pdf', bytes.pdf));
   assert.equal(r.ok, true, r.error && r.error.message);
   assert.ok(r.result.text.includes('── 1 ページ ──\nTrip request'), '1 ページの文字が読める');
-  assert.ok(r.result.text.includes('（2 ページは文字のないページですが、画像の部品が動かないため読めませんでした）'), r.result.text);
+  assert.ok(r.result.text.includes('（2 ページは文字のないページですが、画像を読む機能が動かないため読めませんでした）'), r.result.text);
   assert.deepEqual(r.result.images, []);
 });
 
-test('画像の部品が動かないとき、画像の資料と、文字のないページだけの PDF は、何が使えないかを書いた失敗になる', async (t) => {
+test('画像を読む機能が動かないとき、画像の資料と、文字のないページだけの PDF は、何が使えないかを書いた失敗になる', async (t) => {
   const bytes = await made;
   const env = setup(t);
   for (const [name, content] of [['申請書の記入例.png', bytes.png], ['白紙.pdf', bytes.blankPdf]]) {
     const askedBefore = canvasAsked;
     const r = await env.readOf(await env.addSample(name, content));
-    assert.ok(canvasAsked > askedBefore, `${name} で画像の部品を読もうとして止められた（このテストが止めた形で動いている）`);
+    assert.ok(canvasAsked > askedBefore, `${name} で画像を読む機能を読もうとして止められた（このテストが止めた形で動いている）`);
     assert.equal(r.ok, false, name);
     assert.equal(r.error.code, 'unavailable', name);
-    assert.equal(r.error.message, '画像の部品が、このパソコンでは動きません。画像の資料と、PDF の文字のないページは読めません（文字・Word・Excel・MPD の資料と、PDF の文字は読めます）。', name);
+    assert.equal(r.error.message, '画像を読む機能が、このパソコンでは動きません。画像の資料と、PDF の文字のないページは読めません（文字・Word・Excel・MPD の資料と、PDF の文字は読めます）。', name);
   }
 });
 
 // 2026-10-24 にクラウドのセッションが同じ直しを別に作ったときのテスト（test/material-canvas-lazy.test.js）を、取り込むときにこのファイルへ移した
-test('読む部品を読み込んだだけでは、画像の部品を読まない。上限に収まる PNG は、描かずにそのまま渡す', async () => {
+test('読む機能を読み込んだだけでは、画像を読む機能を読まない。上限に収まる PNG は、描かずにそのまま渡す', async () => {
   const bytes = await made;
   for (const name of ['material-image.js', 'material-pdf.js']) delete require.cache[require.resolve(path.join(ROOT, name))];
   const askedBefore = canvasAsked;
@@ -128,5 +128,5 @@ test('読む部品を読み込んだだけでは、画像の部品を読まな�
   const small = await image.fitPngToBase64Limit(bytes.png);
   assert.equal(small.png, bytes.png, '上限に収まる PNG は、そのまま返す');
   assert.deepEqual([small.width, small.height], [40, 30]);
-  assert.equal(canvasAsked, askedBefore, '画像の部品を読もうともしない');
+  assert.equal(canvasAsked, askedBefore, '画像を読む機能を読もうともしない');
 });

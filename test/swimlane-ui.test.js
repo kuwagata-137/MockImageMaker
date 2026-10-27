@@ -149,7 +149,7 @@ test('メニューバー: 「編集」の組（▶ 選択・→ 接続・✕ 削
   const sel = $('#toolbar [data-action="swim-select"]');
   const con = $('#toolbar [data-action="swim-connect"]');
   const del = $('#toolbar [data-action="swim-delete"]');
-  assert.deepEqual([sel, con, del].map((b) => b.textContent.replace(/\s+/g, '')), ['▶選択', '→接続', '✕削除']);
+  assert.deepEqual([sel, con, del].map((b) => b.textContent.replace(/\s+/g, '')), ['▶選択', '→接続', '✕選んだものを削除する']);
   assert.deepEqual([sel.classList.contains('on'), con.classList.contains('on'), del.disabled], [true, false, true]);
   assert.ok($('#toolbar [data-action="zoom-fit"]'));
   assert.equal($('#toolbar [data-action="zoom-fit"]').textContent, '⊡ 全体を表示');
@@ -167,12 +167,12 @@ test('メニューバー: 「編集」の組（▶ 選択・→ 接続・✕ 削
 });
 
 // ── 作業の箱の置き場（右の欄の上半分）──
-test('置き場: 右の欄の上に 6 つ（始まり・作業・システムへの入力・判断・書類・終わり）を 3 列。スイムレーン図のほかと、役割がないときは出さない', async (t) => {
+test('置き場: 右のパネルの上に 6 つ（始まり・作業・システムへの入力・判断・書類・終わり）を 3 列。スイムレーン図のほかと、役割がないときは出さない', async (t) => {
   const { api, $, $$ } = await boot(t);
   const box = $('#sys-box');
   assert.equal(box.hidden, false);
-  assert.ok(box.classList.contains('side-box'), '部品の箱と同じ置き場の作り（設定の欄に 340 を残す）');
-  assert.match(box.querySelector('.panel-title').textContent, /作業の箱/);
+  assert.ok(box.classList.contains('side-box'), 'アイテム一覧と同じ置き場の作り（設定の欄に 340 を残す）');
+  assert.match(box.querySelector('.panel-title').textContent, /工程 （図へドラッグして置く）/);
   assert.deepEqual($$('#sys-box .pal-btn').map((b) => [b.dataset.kind, b.textContent]),
     [['start', '始まり'], ['task', '作業'], ['input', 'システムへの\n入力'], ['decision', '判断'], ['doc', '書類'], ['end', '終わり']]);
   assert.ok($$('#sys-box .pal-btn').every((b) => b.querySelector('svg')), '絵と名前');
@@ -192,7 +192,7 @@ test('置き場を押してから図を押す: 押した帯と列に置いて選
   assert.ok(pal('decision').classList.contains('on'));
   assert.equal(pal('decision').getAttribute('aria-pressed'), 'true');
   assert.ok($('#sys-swim').classList.contains('armed'));
-  assert.match($('#sys-box').textContent, /図を押すと「判断」の箱を置きます/);
+  assert.match($('#sys-box').textContent, /図を押すと「判断」を置きます/);
   press(inner(), cellAt(1, 5));
   const added = sys().swimlane.steps.at(-1);
   assert.deepEqual([added.roleId, added.col, added.kind, added.text], ['l-b', 5, 'decision', '']);
@@ -249,7 +249,7 @@ test('置き場からドラッグして図に落とす（4 ドットより動か
   assert.equal(sys().swimlane.steps.length, 9);
 });
 
-test('右の欄の選ぶ欄（役割）を変えた直後に Ctrl+Z を押すと、元に戻す（デバッグとリリースの見直し⑤-5）', async (t) => {
+test('右のパネルの選ぶ欄（役割）を変えた直後に Ctrl+Z を押すと、元に戻す（デバッグとリリースの見直し⑤-5）', async (t) => {
   const { app, $, node, step } = await boot(t);
   press(node('w-3'));
   const role = $('#sys-side [data-sw="role"]');
@@ -308,7 +308,7 @@ test('何もない所のダブルクリックで「作業」を足して選ぶ�
 });
 
 // ── つなぐ ──
-test('○＋: 箱に近づくと、いちばん近い縁の外に青い ○＋（「ほかの作業とつなぎます」）。押してから相手の箱を押すとつなぐ。つないだ矢印を選ぶ', async (t) => {
+test('○＋: 箱に近づくと、いちばん近い縁の外に青い ○＋（「ほかの工程と接続します」）。押してから相手のボックスを押すとつなぐ。つないだ矢印を選ぶ', async (t) => {
   const { api, $, node, inner, edges, side } = await boot(t);
   const X0 = api.SWIM_X0;
   const C = api.SWIM_COL;
@@ -316,7 +316,7 @@ test('○＋: 箱に近づくと、いちばん近い縁の外に青い ○＋�
   fire(node('w-2'), 'mousemove', at(X0 + C + 190, 50));
   const plus = $('#swim-plus');
   assert.ok(plus);
-  assert.equal(plus.title, 'ほかの作業とつなぎます');
+  assert.equal(plus.title, 'ほかの工程と接続します');
   assert.deepEqual([plus.dataset.step, plus.dataset.side], ['w-2', 'right']);
   assert.deepEqual([plus.style.left, plus.style.top], [`${X0 + C + 212 - 9}px`, `${56 - 9}px`], '縁の 12 外が真ん中（半径 9）');
   // 遠くへ動かすと消える
@@ -328,7 +328,7 @@ test('○＋: 箱に近づくと、いちばん近い縁の外に青い ○＋�
   assert.deepEqual(plain(api.ui.swimLink), { from: 'w-2', via: 'plus' });
   assert.ok(node('w-2').classList.contains('link-from'), '元の箱は青枠');
   assert.ok($('#sys-swim').classList.contains('linking'), '十字のカーソル');
-  assert.match(side(), /「出張申請を入力する」からつなぐ先の作業の箱を押します/);
+  assert.match(side(), /「出張申請を入力する」からの接続先の工程を押します/);
   // つなぐ途中の破線
   fire(inner(), 'mousemove', at(X0 + C * 4 + 50, 40));
   const prev = $('#swim-prev path.sw-guide');
@@ -355,12 +355,12 @@ test('つなぐ: 自分への矢印は作らない（○＋ からはやめる�
   };
   plusFrom('w-1');
   press(node('w-1'));
-  assert.equal(api.ui.swimLink, null, '自分の箱を押すと、やめる');
+  assert.equal(api.ui.swimLink, null, '自分のボックスを押すと、やめる');
   assert.equal(edges().length, n0);
   // 同じ向きの 2 本目
   plusFrom('w-1');
   press(node('w-2'));
-  assert.equal(toast(), 'この 2 つの作業は、もうつながっています');
+  assert.equal(toast(), 'この 2 つの工程は、もう接続しています');
   assert.equal(edges().length, n0);
   assert.equal(api.ui.swimLink, null);
   // 逆向き
@@ -385,7 +385,7 @@ test('接続モード（→ 接続・キー c）: 元・先を順に押してつ
   key(app, app.document.body, { key: 'c' });
   assert.equal(api.ui.swimMode, 'connect');
   assert.ok($('#sys-swim').classList.contains('linking'));
-  assert.match($('#sys-side').textContent, /つなぐ元の作業の箱を押してから、つなぐ先の作業の箱を押します/);
+  assert.match($('#sys-side').textContent, /接続元の工程を押してから、接続先の工程を押します/);
   // 動かそうとしても動かない（押した箱が元になる）
   fire(node('w-8'), 'mousedown', cellAt(2, 7));
   fire(inner(), 'mousemove', cellAt(0, 9));
@@ -421,7 +421,7 @@ test('接続モード（→ 接続・キー c）: 元・先を順に押してつ
 });
 
 // ── 矢印 ──
-test('矢印を押すと選ぶ（青・太く・両端にオレンジの ○）。右の欄に「元 → 先」・文字の欄・「この矢印を消す」。文字のない線は、乗ったときと選んだ間だけ真ん中に ○', async (t) => {
+test('矢印を押すと選ぶ（青・太く・両端にオレンジの ○）。右のパネルに「元 → 先」・文字の欄・「この矢印を消す」。文字のない線は、乗ったときと選んだ間だけ真ん中に ○', async (t) => {
   const { api, $, $$, edgeHit, edges, side } = await boot(t);
   assert.ok(!$('#sys-swim .sw-edge[data-edge="e-3"] .sw-mid'), '文字のある矢印には ○ を描かない');
   assert.ok($('#sys-swim .sw-edge[data-edge="e-1"] .sw-mid'), '文字のない矢印の真ん中の ○');
@@ -444,7 +444,7 @@ test('矢印を押すと選ぶ（青・太く・両端にオレンジの ○）�
   assert.equal(label.value, '承認');
   setValue(label, '承認する');
   assert.deepEqual(edges()[2], ['w-3', 'w-4', '承認する']);
-  assert.equal($('#sys-side [data-sw="edge-label"]'), label, '文字を直しても右の欄を描き直さない');
+  assert.equal($('#sys-side [data-sw="edge-label"]'), label, '文字を直しても右のパネルを描き直さない');
   assert.equal(app$text($('#sys-swim svg')), true);
   click($('#sys-side [data-action="sys-edge-del"]'));
   assert.equal(edges().length, 7);
@@ -477,7 +477,7 @@ test('矢印のダブルクリックで、線の真ん中に文字の欄（Enter
   assert.equal($('#sys-swim .swim-edit'), null);
 });
 
-test('矢印を消す: Delete・Backspace・メニューバーの「✕ 削除」・右クリック（その場で消す）。元に戻すで戻る', async (t) => {
+test('矢印を消す: Delete・Backspace・ツールバーの「✕ 削除」・右クリック（その場で消す）。元に戻すで戻る', async (t) => {
   const { app, api, $, edgeHit, edges } = await boot(t);
   press(edgeHit('e-2'));
   key(app, app.document.body, { key: 'Delete' });
@@ -519,7 +519,7 @@ test('付け替え: 選んだ矢印の端のオレンジの ○ を別の箱ま�
   fire(end('to'), 'mousedown');
   fire(node('w-2'), 'mousemove', { clientX: 30, clientY: 30 });
   fire(node('w-2'), 'mouseup', { clientX: 30, clientY: 30 });
-  assert.equal(toast(), 'この 2 つの作業は、もうつながっています');
+  assert.equal(toast(), 'この 2 つの工程は、もう接続しています');
   assert.deepEqual(edges()[2], ['w-3', 'w-4', '承認']);
   // 自分への矢印
   fire(end('to'), 'mousedown');
@@ -558,7 +558,7 @@ test('箱のダブルクリックで、箱の上に文字の欄（Enter で確�
   assert.equal($('#sys-swim .swim-edit'), null);
 });
 
-test('箱を消す: 右クリック（その場で消す。つながる矢印も）・Delete・メニューバーの「✕ 削除」・右の欄の「この作業を削除」。Ctrl+Z で戻る', async (t) => {
+test('箱を消す: 右クリック（その場で消す。つながる矢印も）・Delete・ツールバーの「✕ 削除」・右のパネルの「この作業を削除」。Ctrl+Z で戻る', async (t) => {
   const { app, api, $, node, sys, edges } = await boot(t);
   fire(node('w-6'), 'contextmenu');
   assert.equal(sys().swimlane.steps.some((w) => w.id === 'w-6'), false);
@@ -621,32 +621,32 @@ test('箱のドラッグ: 帯と列に吸い付いて動く（moveStep。元に�
 });
 
 // ── 右の欄（作業の設定）──
-test('右の欄: 何も選んでいないときは足し方とつなぎ方の案内。作業を選ぶと作業の設定（文字・種類・役割・使う画面とステータス・次の作業・メモ・足す・消す）', async (t) => {
+test('右のパネル: 何も選んでいないときは足し方とつなぎ方の案内。作業を選ぶと作業の設定（文字・種類・役割・使う画面とステータス・次の作業・メモ・足す・消す）', async (t) => {
   const { $, $$, node, side } = await boot(t);
-  assert.match(side(), /作業の箱を足す/);
-  assert.match(side(), /つなぐ/);
+  assert.match(side(), /工程を追加する/);
+  assert.match(side(), /工程を接続する/);
   press(node('w-3'));
-  assert.match($('#sys-side .panel-title').textContent, /作業の設定/);
+  assert.match($('#sys-side .panel-title').textContent, /工程の設定/);
   assert.equal($('#sys-side [data-sw="text"]').value, '申請を確かめる');
   assert.deepEqual($$('#sys-side [data-sw="kind"]').map((r) => [r.value, r.checked]),
     [['start', false], ['task', false], ['input', false], ['decision', true], ['doc', false], ['end', false]]);
   assert.deepEqual($$('#sys-side .sw-kinds label').map((l) => l.textContent), ['始まり', '作業', 'システムへの\n入力', '判断', '書類', '終わり']);
   assert.deepEqual($$('#sys-side [data-sw="role"] option').map((o) => [o.value, o.textContent, o.selected]), [['l-a', '申請者', false], ['l-b', '上長', true], ['l-c', '経理', false]]);
-  assert.match($('#sys-side .sw-ref').textContent, /この作業で使う画面とステータス/);
+  assert.match($('#sys-side .sw-ref').textContent, /この工程で使う画面とステータス/);
   // 次の作業（矢印）: 承認（→ 承認する）と差し戻し（→ 出張申請を入力する）
   assert.deepEqual($$('#sys-side .sw-next').map((r) => [r.querySelector('.to').textContent, r.querySelector('input').value]),
     [['→ 承認する', '承認'], ['→ 出張申請を入力する', '差し戻し']]);
   const opts = $$('#sys-side [data-sw="link-to"] option').map((o) => o.textContent);
-  assert.equal(opts[0], '＋ 次の作業をつなぐ ▾');
+  assert.equal(opts[0], '＋ 次の工程を接続する ▾');
   assert.ok(!opts.some((o) => o.startsWith('承認する') || o.startsWith('申請を確かめる') || o.startsWith('出張申請を入力する')), '自分と、もうつないだ作業は出さない');
   assert.ok(opts.includes('出張に行く（申請者）'));
   assert.equal($('#sys-side [data-sw="memo"]').tagName, 'TEXTAREA');
-  assert.equal($('#sys-side [data-action="sys-step-add"]').textContent, '＋ 作業を足す');
-  assert.equal($('#sys-side [data-action="sys-step-del"]').textContent, 'この作業を削除');
+  assert.equal($('#sys-side [data-action="sys-step-add"]').textContent, '＋ 作業を追加する');
+  assert.equal($('#sys-side [data-action="sys-step-del"]').textContent, 'この工程を削除する');
   assert.ok($('#sys-side [data-action="sys-step-del"]').classList.contains('danger'));
 });
 
-test('右の欄の作業の設定: 文字・種類・役割・メモを直す。文字とメモは右の欄を描き直さない', async (t) => {
+test('右のパネルの作業の設定: 文字・種類・役割・メモを直す。文字とメモは右のパネルを描き直さない', async (t) => {
   const { api, $, node, step, geom } = await boot(t);
   press(node('w-5'));
   const text = $('#sys-side [data-sw="text"]');
@@ -667,7 +667,7 @@ test('右の欄の作業の設定: 文字・種類・役割・メモを直す。
   assert.equal(geom().lanes.length, 3);
 });
 
-test('右の欄の「この作業で使う画面とステータス」: 画面設計はこのシステムの画面設計。選び直すと画面とステータスは（なし）に戻る', async (t) => {
+test('右のパネルの「この工程で使う画面とステータス」: 画面設計はこのシステムの画面設計。選び直すと画面とステータスは（なし）に戻る', async (t) => {
   const { $, $$, node, step } = await boot(t);
   press(node('w-2'));
   const opts = (k) => $$(`#sys-side [data-sw="${k}"] option`).map((o) => [o.value, o.textContent]);
@@ -691,7 +691,7 @@ test('右の欄の「この作業で使う画面とステータス」: 画面設
   assert.equal(node('w-2').querySelector('.ref'), null);
 });
 
-test('右の欄の「この作業で使う画面とステータス」: このシステムに入っていない画面設計を指しているときも、その名前を出す', async (t) => {
+test('右のパネルの「この工程で使う画面とステータス」: このシステムに入っていない画面設計を指しているときも、その名前を出す', async (t) => {
   const { api, $, $$, node } = await boot(t);
   api.actions.updateStep('y-trip', 'w-1', { ref: { designId: 'd-cli', screenId: null, stateId: null } });
   press(node('w-1'));
@@ -701,7 +701,7 @@ test('右の欄の「この作業で使う画面とステータス」: このシ
   assert.equal($('#sys-side [data-sw="ref-design"] option:checked').textContent, '（ない画面設計）');
 });
 
-test('右の欄の次の作業: 矢印の文字を直す・✕ で消す・「＋ 次の作業をつなぐ ▾」でつなぐ。「＋ 作業を足す」は同じ役割のいちばん右の次の列', async (t) => {
+test('右のパネルの次の作業: 矢印の文字を直す・✕ で消す・「＋ 次の工程を接続する ▾」でつなぐ。「＋ 作業を追加する」は同じ役割のいちばん右の次の列', async (t) => {
   const { api, $, $$, node, edges, sys } = await boot(t);
   press(node('w-3'));
   setValue($$('#sys-side .sw-next input')[1], '差し戻す');
@@ -782,7 +782,7 @@ test('拡大縮小しても、点から帯と列を正しく求める（倍率�
   assert.deepEqual([added.roleId, added.col], ['l-c', 9]);
 });
 
-test('ほかの図（つながりの図・ステータスの移り方の図・画面の移り方の図）と出力のスイムレーン図には、押す所を描かない', async (t) => {
+test('ほかの図（関連図・ステータスの流れの図・画面遷移図の図）と出力のスイムレーン図には、押す所を描かない', async (t) => {
   const { api, S } = await boot(t, sampleState(), null);
   const y = S().systems[0];
   const html = api.swimlaneHtml(S(), y, { idPrefix: 'xi-swim', bare: true });
@@ -795,7 +795,7 @@ test('ほかの図（つながりの図・ステータスの移り方の図・�
 // ── 見直しで見つけたもの（第 9 段階の T9）──
 // 図の上の文字の欄で直した後、右の欄を押すと文字の欄を離れて確定する（ブラウザでは、押した時点〔mousedown〕の後にフォーカスが移る）。
 // 確定のときに右の欄を作り直すと、押した欄・ボタンが click の前に消え、1 回押しても効かなかった（その後の Backspace で作業の箱が消えた）
-test('図の上の文字の欄（作業）で直してから右の欄を押す: 確定しても右の欄を作り直さず（同じ要素）、値だけ書き換える。押した欄・ボタンが 1 回で効く', async (t) => {
+test('図の上の文字の欄（作業）で直してから右のパネルを押す: 確定しても右のパネルを作り直さず（同じ要素）、値だけ書き換える。押した欄・ボタンが 1 回で効く', async (t) => {
   const { app, $, node, step, sys } = await boot(t);
   fire(node('w-5'), 'dblclick');
   const field = $('#sys-side [data-sw="text"]');
@@ -803,8 +803,8 @@ test('図の上の文字の欄（作業）で直してから右の欄を押す: 
   $('#sys-swim .swim-edit').value = '出張に行く（直した）';
   field.focus();
   assert.equal(step('w-5').text, '出張に行く（直した）', '確定する');
-  assert.equal($('#sys-side [data-sw="text"]'), field, '右の欄を作り直さない');
-  assert.equal(field.value, '出張に行く（直した）', '右の欄の文字の欄の値も書き換える');
+  assert.equal($('#sys-side [data-sw="text"]'), field, '右のパネルを作り直さない');
+  assert.equal(field.value, '出張に行く（直した）', '右のパネルの文字の欄の値も書き換える');
   assert.equal(app.document.activeElement, field, '押した欄にフォーカスが移る');
   assert.equal($('#sys-side [data-sw="role"]'), role);
   assert.equal(node('w-5').querySelector('b').textContent, '出張に行く（直した）', '図は描き直す');
@@ -818,14 +818,14 @@ test('図の上の文字の欄（作業）で直してから右の欄を押す: 
   click(del);
   assert.equal(sys().swimlane.steps.some((w) => w.id === 'w-5'), false, '1 回で消える');
 });
-test('図の上の文字の欄（矢印）で直してから右の欄を押す: 確定しても右の欄を作り直さず、矢印の文字の欄の値だけ書き換える。「この矢印を消す」が 1 回で効く', async (t) => {
+test('図の上の文字の欄（矢印）で直してから右のパネルを押す: 確定しても右のパネルを作り直さず、矢印の文字の欄の値だけ書き換える。「この矢印を消す」が 1 回で効く', async (t) => {
   const { $, edgeHit, edges } = await boot(t);
   fire(edgeHit('e-3'), 'dblclick');
   const label = $('#sys-side [data-sw="edge-label"]');
   $('#sys-swim .swim-edit').value = '急ぎ';
   label.focus();
   assert.deepEqual(edges()[2], ['w-3', 'w-4', '急ぎ']);
-  assert.equal($('#sys-side [data-sw="edge-label"]'), label, '右の欄を作り直さない');
+  assert.equal($('#sys-side [data-sw="edge-label"]'), label, '右のパネルを作り直さない');
   assert.equal(label.value, '急ぎ');
   fire(edgeHit('e-3'), 'dblclick');
   $('#sys-swim .swim-edit').value = '承認';
@@ -835,7 +835,7 @@ test('図の上の文字の欄（矢印）で直してから右の欄を押す: 
   click(del);
   assert.equal(edges().some((e) => e[0] === 'w-3' && e[1] === 'w-4'), false, '1 回で消える');
 });
-test('図の上の文字の欄で直した後、右の欄がほかの作業を出しているときは、右の欄を描き直す（矢印の先の名前を今の名前にする）', async (t) => {
+test('図の上の文字の欄で直した後、右のパネルがほかの作業を出しているときは、右のパネルを描き直す（矢印の先の名前を今の名前にする）', async (t) => {
   const { api, $, $$, node, step } = await boot(t);
   fire(node('w-2'), 'dblclick');
   $('#sys-swim .swim-edit').value = '出張を申請する';

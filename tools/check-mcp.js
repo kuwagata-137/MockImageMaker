@@ -177,8 +177,8 @@ async function phaseA() {
     layout: { columns: 2, rows: [[{ item: '申請日', type: 'date' }, { item: '申請者', type: 'user' }], [{ item: '目的', type: 'text2', span: 2 }], { align: 'right', parts: [{ type: 'button', label: '申請する', style: 'primary' }] }] },
   });
   const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).designs.find((d) => d.id === made.id);
-  check('A. 作った画面設計と並べた部品が designs.json に残る', !!saved && saved.screens[0].parts.length === 4 && saved.items.length === 3,
-    saved ? `部品 ${saved.screens[0].parts.length} つ・項目 ${saved.items.map((i) => i.name).join('・')}` : 'ない');
+  check('A. 作った画面設計と並べたアイテムが designs.json に残る', !!saved && saved.screens[0].parts.length === 4 && saved.items.length === 3,
+    saved ? `アイテム ${saved.screens[0].parts.length} つ・項目 ${saved.items.map((i) => i.name).join('・')}` : 'ない');
   // 第 13 段階: 入口の形のまま kintone の欄を書き、get_kintone_app で kintone の MCP サーバーに渡す形を読む
   await tool(client, 'edit_items', { design: made.id, ops: [{ op: 'update', item: '申請者', kintone: { type: 'CREATOR', code: 'applicant' } }] });
   const kt = await tool(client, 'get_kintone_app', { design: made.id });
@@ -216,9 +216,9 @@ async function phaseA() {
   await tool(client, 'layout_screen', { design: made.id, screen: '一覧', layout: { columns: 1, rows: [{ align: 'right', parts: [{ type: 'button', label: '＋ 新規申請', style: 'primary', to: made.firstScreen.id }] }] } });
   const flow = await tool(client, 'get_flow', { design: made.id });
   const moves = (flow.moves || []).filter((m) => m.to); // 移る先のないボタンは to: null で並ぶ
-  check('A. edit_process で書いたステータスと操作、ボタンの移る先を get_flow で読める',
+  check('A. edit_process で書いたステータスと操作、ボタンの移動先を get_flow で読める',
     flow.status && flow.status.states.length === 3 && flow.actions.length === 2 && moves.length === 1 && moves[0].to.screenId === made.firstScreen.id,
-    `ステータス ${flow.status ? flow.status.states.length : 0}・操作 ${(flow.actions || []).length}・移る先のあるボタン ${moves.length}`);
+    `ステータス ${flow.status ? flow.status.states.length : 0}・操作 ${(flow.actions || []).length}・移動先のあるボタン ${moves.length}`);
   for (const view of ['process', 'screenflow']) {
     const vi = await client.callTool({ name: 'get_view_image', arguments: { design: made.id, view } });
     const vim = vi.content.find((c) => c.type === 'image');
@@ -261,7 +261,7 @@ async function checkSystemTools(client, made) {
   check('A. システムを作り、役割・画面設計・スイムレーンを書くと、get_system・list_systems で読め、designs.json に残る（第 9 段階）',
     gs.roles.length === 2 && gs.designs.length === 1 && gs.steps.length === 3 && gs.edges.length === 2 && sw.steps.map((s) => s.col).join(',') === '0,1,2'
       && ls.systems.some((y) => y.id === ys.id) && !!saved && saved.swimlane.steps.length === 3 && saved.revisions.some((r) => r.kind === 'ai'),
-    `役割 ${gs.roles.length}・画面設計 ${gs.designs.length}・作業 ${gs.steps.length}・矢印 ${gs.edges.length}・列 ${sw.steps.map((s) => s.col).join(',')}`);
+    `役割 ${gs.roles.length}・画面設計 ${gs.designs.length}・工程 ${gs.steps.length}・矢印 ${gs.edges.length}・列 ${sw.steps.map((s) => s.col).join(',')}`);
   const vi = await client.callTool({ name: 'get_view_image', arguments: { system: ys.id, view: 'swimlane' } });
   const vim = vi.content.find((c) => c.type === 'image');
   const vb = vim ? Buffer.from(vim.data, 'base64') : Buffer.alloc(0);

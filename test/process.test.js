@@ -32,7 +32,7 @@ function withActions(actions) {
   return raw;
 }
 
-test('版 2 のデータを版 3 に直す: ステータスは id と名前、見本で出すステータスは id、操作・図の位置・移る先の入れ物と systems を足す', async (t) => {
+test('版 2 のデータを版 3 に直す: ステータスは id と名前、表示するステータス（サンプル）は id、操作・図の位置・移動先の入れ物と systems を足す', async (t) => {
   const { api } = await boot(t, null);
   const { state, blockReason } = api.migrate(plain(V2));
   assert.equal(blockReason, null);
@@ -108,7 +108,7 @@ test('版 2 で出力した HTML: こちらで変えていないと分かり、�
   assert.equal(api.changedSinceExport(d('d-order'), V2_PAYLOAD), true, '変えたら、変えたと分かる');
 });
 
-test('新しく作る画面設計・部品: 図の位置の入れ物とボタンの移る先の欄を持ち、ステータスの項目は id 付きで、見本は 2 つ目・見本の操作が 4 つ', async (t) => {
+test('新しく作る画面設計・アイテム: 図の位置の入れ物とボタンの移動先の欄を持ち、ステータスの項目は id 付きで、見本は 2 つ目・見本の操作が 4 つ', async (t) => {
   const { api, d } = await boot(t, null);
   const id = api.actions.createDesign('出張申請', 'kintone');
   assert.deepEqual(plain([d(id).processPos, d(id).flowPos]), [{}, {}]);
@@ -118,13 +118,13 @@ test('新しく作る画面設計・部品: 図の位置の入れ物とボタン
   const st = statusOf(d(id));
   assert.deepEqual(names(st.props.states), ['申請', '承認待ち', '承認済み', '完了']);
   st.props.states.forEach((s) => assert.match(s.id, /^t-/));
-  assert.deepEqual(actionRows(st), SAMPLE_ROWS, '見本の操作 4 つ（操作する人と条件は空。ユーザーが決めた q57）');
+  assert.deepEqual(actionRows(st), SAMPLE_ROWS, '見本の操作 4 つ（操作できる人と条件は空。ユーザーが決めた q57）');
   const parts = partsOf(d(id));
   assert.equal(parts[pst].view.current, st.props.states[1].id);
   assert.deepEqual(plain(parts[pbt].props), { style: 'primary', action: '', to: '', designId: '', screenId: '', url: '' });
 });
 
-test('ステータスの並びを名前で書き直す: 同じ名前は id を残し、なくなったステータスを使う操作は消え、見本で出していた部品は「なし」になる（取り込んだ側も）', async (t) => {
+test('ステータスの並びを名前で書き直す: 同じ名前は id を残し、なくなったステータスを使う操作は消え、見本で出していたアイテムは「なし」になる（取り込んだ側も）', async (t) => {
   const { api, d } = await boot(t, withActions([{ name: '確かめる', from: '確認待ち', to: '確認済み' }, { name: '終える', from: '確認済み', to: '完了' }]));
   const before = statusOf(d('d-order')).props.states;
   const keep = ['受付', '確認済み', '完了'].map((n) => idOf(before, n));
@@ -135,17 +135,17 @@ test('ステータスの並びを名前で書き直す: 同じ名前は id を�
   assert.ok(!keep.includes(st.props.states[3].id) && st.props.states[3].id.startsWith('t-'));
   assert.deepEqual(plain(st.props.actions.map((a) => a.name)), ['終える'], '消したステータスを使う操作は消える');
   const parts = partsOf(d('d-order'));
-  assert.equal(parts['p-st1'].view.current, '', '消したステータスを見本で出していた部品は「なし」');
+  assert.equal(parts['p-st1'].view.current, '', '消したステータスを見本で出していたアイテムは「なし」');
   assert.equal(parts['p-sp1'].view.current, keep[1]);
   assert.deepEqual(plain(statusOf(d('d-exp')).props), plain(st.props), '取り込んだ側にもそろう');
   assert.equal(partsOf(d('d-exp'))['p-bst'].view.current, keep[2]);
   api.actions.updateItem('d-order', 'i-st', { props: { states: ['受付', '完了'] } });
   assert.equal(partsOf(d('d-exp'))['p-bst'].view.current, keep[2]);
   api.actions.updateItem('d-order', 'i-st', { props: { states: ['受付'] } });
-  assert.equal(partsOf(d('d-exp'))['p-bst'].view.current, '', '取り込んだ側の部品も「なし」になる');
+  assert.equal(partsOf(d('d-exp'))['p-bst'].view.current, '', '取り込んだ側のアイテムも「なし」になる');
 });
 
-test('見本の操作: ひな形「進み具合」で作ったステータスの項目にも入る。版 2 から直した項目と、AI が作った項目には入れない', async (t) => {
+test('見本の操作: ひな形「進捗」で作ったステータスの項目にも入る。版 2 から直した項目と、AI が作った項目には入れない', async (t) => {
   const { api, d } = await boot(t, null);
   const id = api.actions.createDesign('出張申請', 'kintone');
   api.actions.addScreen(id, 'steps', d(id).screens[0].id);
@@ -158,7 +158,7 @@ test('見本の操作: ひな形「進み具合」で作ったステータスの
   assert.deepEqual(plain(statusOf(d(id2)).props.actions), [], 'AI が作った項目は、渡した操作だけ（Claude の案）');
 });
 
-test('ステータスを足す・名前を変える・並べ替える・消す（消すと、そのステータスを使う操作と、見本で出していた部品の「なし」も、取り込んだ側までそろう）', async (t) => {
+test('ステータスを足す・名前を変える・並べ替える・消す（消すと、そのステータスを使う操作と、見本で出していたアイテムの「なし」も、取り込んだ側までそろう）', async (t) => {
   const { api, d } = await boot(t, withActions([{ id: 'a-1', name: '確かめる', from: '確認待ち', to: '確認済み' }, { id: 'a-2', name: '終える', from: '確認済み', to: '完了' }]));
   const st = () => statusOf(d('d-order'));
   const id = (n) => idOf(st().props.states, n);
@@ -170,7 +170,7 @@ test('ステータスを足す・名前を変える・並べ替える・消す�
   const keep = id('確認済み');
   assert.equal(api.actions.renameState('d-order', 'i-st', keep, '確認した'), true);
   assert.equal(id('確認した'), keep, '名前を変えても id は同じ');
-  assert.equal(partsOf(d('d-order'))['p-sp1'].view.current, keep, '見本で出していた部品はそのまま');
+  assert.equal(partsOf(d('d-order'))['p-sp1'].view.current, keep, '見本で出していたアイテムはそのまま');
   assert.equal(api.actions.renameState('d-order', 'i-st', keep, '受付'), false, 'ほかのステータスと同じ名前にはしない');
   assert.equal(api.actions.moveState('d-order', 'i-st', nid, 1), true);
   assert.deepEqual(names(st().props.states), ['受付', '差し戻し', '確認待ち', '確認した', '完了']);
@@ -242,7 +242,7 @@ test('設定の文と違いの文: 操作は「操作「確かめる」＝確認
 });
 
 // ── ステータスの移り方の図（T5。画像 q54 の案B: 上から下へ）──
-test('ステータスの移り方の図: 箱はステータスの並びの順に上から下へ、矢印は操作（戻る操作は back）。前か次のない操作は描かない', async (t) => {
+test('ステータスの流れの図: 箱はステータスの並びの順に上から下へ、矢印は操作（戻る操作は back）。前か次のない操作は描かない', async (t) => {
   const { api, d } = await boot(t, withActions([
     { id: 'a-1', name: '確かめる', from: '確認待ち', to: '確認済み', role: '上長' },
     { id: 'a-2', name: '戻す', from: '確認済み', to: '受付', cond: '不備があるとき' },
@@ -262,7 +262,7 @@ test('ステータスの移り方の図: 箱はステータスの並びの順に
   assert.deepEqual(plain(api.processModel({ items: [] })), { nodes: [], edges: [], item: null }, 'ステータスの項目がなければ空');
 });
 
-test('ステータスの移り方の図の HTML: 箱と矢印。間の箱をまたぐ矢印は、箱の右を回る。矢印の印の id は proc（出力では頭を変えられる）', async (t) => {
+test('ステータスの流れの図の HTML: 箱と矢印。間の箱をまたぐ矢印は、箱の右を回る。矢印の印の id は proc（出力では頭を変えられる）', async (t) => {
   const { api, d, app } = await boot(t, withActions([
     { id: 'a-1', name: '確かめる', from: '確認待ち', to: '確認済み' },
     { id: 'a-4', name: '一気に終える', from: '受付', to: '完了' },
@@ -310,7 +310,7 @@ test('違いの文: 同じ名前の操作が 2 つあっても、どちらの変
   assert.match(texts, /操作「新しい操作」：なし → 確認済みから完了へ/);
 });
 
-test('貼り付け: ほかの画面設計へ貼ったステータスの印の見本は、コピーした元のステータスの名前で当て直す（同じ id でも、名前が変わっていれば名前の方）', async (t) => {
+test('貼り付け: ほかの画面設計へ貼ったステータス表示の見本は、コピーした元のステータスの名前で当て直す（同じ id でも、名前が変わっていれば名前の方）', async (t) => {
   const { api, d } = await boot(t);
   const exp = () => statusOf(d('d-exp'));
   api.actions.unlinkItem('d-exp', exp().id); // 受注管理から取り込んだ項目なので、つながりを切って直せるようにする

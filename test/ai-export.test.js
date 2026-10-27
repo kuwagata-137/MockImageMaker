@@ -53,7 +53,7 @@ test('export_design: PDF は用紙・向き・入れるページ・画面を選�
   assert.equal(r.result.paper, 'A4');
   assert.equal(r.result.orient, 'landscape');
   assert.deepEqual([r.result.cover, r.result.map, r.result.items], [true, true, true]);
-  assert.equal(r.result.pages, 5, '表紙・つながりの図・項目の一覧表・画面 2 つ');
+  assert.equal(r.result.pages, 5, '表紙・関連図・項目一覧・画面 2 つ');
   const a3 = await call('export_design', { design: 'd1', format: 'pdf', paper: 'A3', orient: 'portrait', cover: false, map: false, items: false, screens: ['一覧'] });
   assert.equal(a3.result.pages, 1);
   assert.ok(a3.render.files[0].pageSize.height > a3.render.files[0].pageSize.width, 'A3 縦');
@@ -64,7 +64,7 @@ test('export_design: PDF は用紙・向き・入れるページ・画面を選�
   app.close();
 });
 
-test('export_design: PNG は画面ごとに 1 つ、HTML は単体で開いて編集できる HTML を返す。違いの印は写しのある版とだけ比べる', async () => {
+test('export_design: PNG は画面ごとに 1 つ、HTML は単体で開いて編集できる HTML を返す。変更マークは写しのある版とだけ比べる', async () => {
   const { app, call } = await boot();
   const png = await call('export_design', { design: 'd1', format: 'png' });
   assert.equal(png.render.kind, 'png');

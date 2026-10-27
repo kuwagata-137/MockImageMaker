@@ -99,7 +99,7 @@ test('読み込みの直し: 足りない欄を補い、知らない欄は残す
           steps: [
             { id: 'w-1', roleId: 'l-a', col: 0, kind: 'start', text: '始まり' },
             { id: 'w-2', roleId: 'l-a', col: '2', kind: 'ふしぎ', text: '申請書を書く', ref: { designId: 'd-trip', screenId: 's-d-trip', extra: 'x' }, src: { id: 'bdm-1', x: 1, y: 2, w: 3, h: 4 } },
-            { id: 'w-2', roleId: 'l-nai', col: -3, kind: 'task', text: '役割の見つからない作業', ref: 'こわれた' },
+            { id: 'w-2', roleId: 'l-nai', col: -3, kind: 'task', text: '役割の見つからない工程', ref: 'こわれた' },
             { roleId: 'l-a', col: 1.6, text: 'id のない作業', src: 'こわれた', memo: 5 },
             'こわれた作業',
           ],
@@ -220,7 +220,7 @@ test('システムから外す・並べ替える: 外しても画面設計は残
 });
 
 // ── 複製して入れる ──
-test('今ある画面設計を複製して入れる: 別の id の新しい画面設計で、そのシステムにだけ入る。作る・複製するときにシステムを渡せる', async (t) => {
+test('今ある画面設計を複製して追加する: 別の id の新しい画面設計で、そのシステムにだけ入る。作る・複製するときにシステムを渡せる', async (t) => {
   const { api, S, sys, d } = await boot(t);
   const trip = api.actions.createSystem({ name: '出張申請システム' });
   const exp = api.actions.createSystem({ name: '経費精算システム' });
@@ -368,7 +368,7 @@ test('システムの更新日時は、中身が変わったときだけ変え�
 });
 
 // ── スイムレーンの作業と矢印 ──
-test('作業: 役割のある作業だけ足せる。列を書かなければいちばん右の次。直す・動かす・消す（つながる矢印も消える）', async (t) => {
+test('作業: 役割のある工程だけ足せる。列を書かなければいちばん右の次。直す・動かす・消す（つながる矢印も消える）', async (t) => {
   const { api, sys, stepOf } = await boot(t, sampleState());
   assert.equal(api.actions.addStep('y-trip', { roleId: 'l-nai', text: '出張する' }), null, '役割が見つからないと足さない');
   assert.equal(api.actions.addStep('y-trip', { roleId: 'l-app', kind: 'ふしぎ', text: '出張する' }), null, '知らない種類は足さない');
@@ -396,7 +396,7 @@ test('作業: 役割のある作業だけ足せる。列を書かなければい
   assert.equal(api.actions.deleteStep('y-trip', 'w-nai'), false);
 });
 
-test('矢印: 同じ向きの同じ 2 つの作業の間に 2 本目は作らない・自分への矢印は作らない。文を直す・消す。まとめて置き換える', async (t) => {
+test('矢印: 同じ向きの同じ 2 つの工程の間に 2 本目は作らない・自分への矢印は作らない。文を直す・消す。まとめて置き換える', async (t) => {
   const { api, sys } = await boot(t, sampleState());
   assert.equal(api.actions.addEdge('y-trip', 'w-1', 'w-2'), null, '同じ向きの 2 本目は作らない');
   assert.equal(api.actions.addEdge('y-trip', 'w-2', 'w-2'), null, '自分への矢印は作らない');
@@ -512,7 +512,7 @@ test('システムの履歴の行に戻すとき、作業の指す先を今の�
   const swim = plain(y.swimlane);
   swim.steps[0].ref = { designId: 'd-emp', screenId: 's-d-emp', stateId: null };
   // 説明だけは今と違う（同じ中身の行には戻さないため。T9 の見直し）
-  y.revisions = [{ id: 'r-1', kind: 'ai', date: OLD, note: 'Claude Code が直す前の状態', aiSession: 's-0',
+  y.revisions = [{ id: 'r-1', kind: 'ai', date: OLD, note: 'Claude Code が変更する前の状態', aiSession: 's-0',
     snapshot: { name: y.name, description: '前の説明', roles: plain(y.roles), swimlane: swim, designIds: ['d-trip', 'd-emp'] } }];
   const { api, sys, stepOf } = await boot(t, st);
   api.actions.deleteDesignForever('d-emp');
@@ -526,10 +526,10 @@ test('システムの履歴の行に戻すとき、作業の指す先を今の�
   assert.deepEqual(plain(stepOf('y-trip', 'w-3').ref), { designId: 'd-trip', screenId: 's-list', stateId: null });
 });
 
-test('「戻す前の状態」の行も、システムごとに新しい方から 10 行まで（「AI が直す前の状態」の行とは別に数える）', async (t) => {
+test('「戻す前の状態」の行も、システムごとに新しい方から 10 行まで（「AI が変更する前の状態」の行とは別に数える）', async (t) => {
   const st = sampleState();
   const y = st.systems[0];
-  y.revisions = [{ id: 'r-ai', kind: 'ai', date: OLD, note: 'Claude Code が直す前の状態', aiSession: 's-0',
+  y.revisions = [{ id: 'r-ai', kind: 'ai', date: OLD, note: 'Claude Code が変更する前の状態', aiSession: 's-0',
     snapshot: { name: y.name, description: '', roles: plain(y.roles), swimlane: plain(y.swimlane), designIds: plain(y.designIds) } }];
   const { api, sys } = await boot(t, st);
   for (let i = 0; i < 12; i++) {

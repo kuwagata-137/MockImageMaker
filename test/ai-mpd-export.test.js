@@ -66,7 +66,7 @@ test('export_bdm: 資料の MPD を id か名前で指し、main に作らせる
 test('export_bdm: MPD でない資料・作業がないスイムレーン図は bad_request、ファイルのない資料は file_missing、ない資料は not_found、資料の窓口がなければ unavailable', async () => {
   const { app, call } = await boot();
   assert.match(ng(await call('export_bdm', { system: 'y1', material: 'm1' }), 'bad_request').message, /^「受注の流れ\.txt」は MPD の資料ではありません（種類: 文字）。/);
-  assert.equal(ng(await call('export_bdm', { system: 'y4', material: 'm7' }), 'bad_request').message, 'スイムレーン図に作業がないので、MPD に出力しません。');
+  assert.equal(ng(await call('export_bdm', { system: 'y4', material: 'm7' }), 'bad_request').message, 'スイムレーン図に工程がないので、MPD に出力しません。');
   assert.match(ng(await call('export_bdm', { system: 'y1', material: 'm4' }), 'file_missing').message, /「消えた流れ\.html」のファイルがありません/);
   ng(await call('export_bdm', { system: 'y1', material: 'ない流れ.html' }), 'not_found');
   ng(await call('export_bdm', { system: 'y1' }), 'bad_request');
@@ -76,7 +76,7 @@ test('export_bdm: MPD でない資料・作業がないスイムレーン図は 
   none.app.close();
 });
 
-test('export_bdm: 役割の見つからない作業とその矢印は外し、返事の droppedSteps に数を書く。役割のある作業がなければ、そう書いて断る', async () => {
+test('export_bdm: 役割の見つからない工程とその矢印は外し、返事の droppedSteps に数を書く。役割のある工程がなければ、そう書いて断る', async () => {
   const state = exportState();
   state.systems[0].swimlane.steps[2].roleId = 'l-gone';
   const { app, call } = await boot({ state });
@@ -88,18 +88,18 @@ test('export_bdm: 役割の見つからない作業とその矢印は外し、�
   const orphan = exportState();
   orphan.systems[0].swimlane.steps.forEach((w) => { w.roleId = 'l-gone'; });
   const b = await boot({ state: orphan });
-  assert.equal(ng(await b.call('export_bdm', { system: 'y1', material: 'm2' }), 'bad_request').message, 'スイムレーン図に役割のある作業がないので、MPD に出力しません。', '作業はあるが、どれも役割が見つからない');
+  assert.equal(ng(await b.call('export_bdm', { system: 'y1', material: 'm2' }), 'bad_request').message, 'スイムレーン図に役割のある工程がないので、MPD に出力しません。', '作業はあるが、どれも役割が見つからない');
   b.app.close();
 });
 
 test('export_bdm: 入口の道具は system と material を受け取り、時間のかかる道具。手引きの守ることと段階 ⑤ に export_bdm を書く', () => {
   const t = TOOLS.find((x) => x.name === 'export_bdm');
-  assert.equal(t.title, 'MPD に出力');
+  assert.equal(t.title, 'スイムレーン図を MPD に出力する');
   assert.equal(t.slow, true);
   assert.deepEqual(Object.keys(t.input.shape).sort(), ['material', 'system']);
-  assert.match(t.description, /人に頼まれたときだけ使う/);
+  assert.match(t.description, /人に依頼されたときだけ使う/);
   assert.match(t.description, /元の資料のファイルは書き換えない/);
-  assert.match(GUIDES.rules.text, /export_bdm（スイムレーンを MPD に出力する）も、人に頼まれたときだけ使ってください。/);
+  assert.match(GUIDES.rules.text, /export_bdm（スイムレーンを MPD に出力する）も、人に依頼されたときだけ使ってください。/);
   assert.match(GUIDES.stages.text, /スイムレーンの MPD が要るときは export_bdm/);
-  assert.match(GUIDES.overview.text, /7\. スイムレーンを MPD に出力する（人に頼まれたとき）/);
+  assert.match(GUIDES.overview.text, /7\. スイムレーンを MPD に出力する（人に依頼されたとき）/);
 });

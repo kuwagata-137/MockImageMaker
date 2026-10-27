@@ -48,9 +48,9 @@ const EDGES = [
 // 履歴の行（古い順）。13:05 の「戻す前の状態」（今と同じ中身）と、14:32 の「Claude Code が直す前の状態」（役割 2・作業 5・矢印 4。
 // 画面設計の並びに、もうない画面設計 d-lost がある）
 const REVISIONS = [
-  { id: 'r-back', kind: 'restore', date: at(13, 5), note: '「Claude Code が直す前の状態（2026-10-15）」に戻す前の状態',
+  { id: 'r-back', kind: 'restore', date: at(13, 5), note: '「Claude Code が変更する前の状態（2026-10-15）」に戻す前の状態',
     snapshot: { name: '出張申請システム', description: '', roles: ROLES, swimlane: { steps: STEPS, edges: EDGES }, designIds: ['d-trip', 'd-emp'] } },
-  { id: 'r-ai', kind: 'ai', date: at(14, 32), note: 'Claude Code が直す前の状態', aiSession: 'old',
+  { id: 'r-ai', kind: 'ai', date: at(14, 32), note: 'Claude Code が変更する前の状態', aiSession: 'old',
     snapshot: { name: '出張申請システム', description: '前の説明', roles: ROLES.slice(0, 2), swimlane: { steps: STEPS.slice(0, 5), edges: EDGES.slice(0, 5).filter((e) => e.id !== 'e-4') },
       designIds: ['d-trip', 'd-emp', 'd-lost'] } },
 ];
@@ -98,7 +98,7 @@ async function boot(t, state = sampleState(), sysId = 'y-trip') {
 }
 
 // ── 配置（q62 の案A）──
-test('配置: いちばん上の帯（システムの名前と小さく「（システム）」）・メニューバー（一覧へ・元に戻す・やり直す・選択・接続・削除・拡大・縮小・全体を表示）・左の入口 5 つ（資料の窓口がないとき）・右の欄。最初はスイムレーン図', async (t) => {
+test('配置: いちばん上の帯（システムの名前と小さく「（システム）」）・メニューバー（一覧へ・元に戻す・やり直す・選択・接続・削除・拡大・縮小・全体を表示）・左の入口 5 つ（資料の窓口がないとき）・右のパネル。最初はスイムレーン図', async (t) => {
   const { $, $$, api, entries } = await boot(t);
   assert.equal($('.brandbar .brand').textContent, 'モックイメージメーカー');
   assert.equal($('#sys-title').textContent, '出張申請システム（システム）');
@@ -111,16 +111,16 @@ test('配置: いちばん上の帯（システムの名前と小さく「（シ
   assert.equal($('#toolbar [data-action="undo"]').disabled, true);
   assert.equal($('#toolbar [data-action="redo"]').disabled, true);
   // 左の入口（数）。履歴は「AI が直す前の状態」の行の数
-  assert.deepEqual(entries(), [['概要', '名前と説明', false], ['役割', '3 つ', false], ['スイムレーン図', '作業 8 つ', true], ['設計ノート', 'まだ始めていません', false], ['履歴', 'AI が直す前の状態 1', false]]);
+  assert.deepEqual(entries(), [['概要', '名前と説明', false], ['役割', '3 つ', false], ['スイムレーン図', '工程 8 つ', true], ['設計ノート', 'まだ始めていません', false], ['履歴', 'AI が変更する前の状態 1', false]]);
   assert.equal(api.ui.sysPanel, 'swimlane');
   assert.equal($('#sys-list').classList.contains('screen-list'), true, '左の欄は編集の画面と同じ幅（192）');
-  assert.ok($('#sys-side-panel.side-panel'), '右の欄は編集の画面と同じ幅');
+  assert.ok($('#sys-side-panel.side-panel'), '右のパネルは編集の画面と同じ幅');
   assert.ok($('#ai-bands'));
 });
 
 test('左の入口の小さな字: 役割・作業・履歴の行がないとき', async (t) => {
   const { api, entries } = await boot(t, sampleState(), 'y-exp');
-  assert.deepEqual(entries(), [['概要', '名前と説明', false], ['役割', 'まだありません', false], ['スイムレーン図', '作業なし', true], ['設計ノート', 'まだ始めていません', false], ['履歴', 'まだありません', false]]);
+  assert.deepEqual(entries(), [['概要', '名前と説明', false], ['役割', 'まだありません', false], ['スイムレーン図', '工程なし', true], ['設計ノート', 'まだ始めていません', false], ['履歴', 'まだありません', false]]);
   // 戻す前の状態の行だけがあるとき
   api.actions.addRole('y-exp', '申請者');
   api.store.state.systems[1].revisions.push({ id: 'r-x', kind: 'restore', date: OLD, note: '', snapshot: null });
@@ -154,11 +154,11 @@ test('入口を押すと真ん中を切り替える。最後に開いた入口�
   void app;
 });
 
-test('右の欄: 入口ごとの案内の文', async (t) => {
+test('右のパネル: 入口ごとの案内の文', async (t) => {
   const { $, entry } = await boot(t);
-  assert.match($('#sys-side').textContent, /作業の箱か矢印を押すと、ここで直せます。/);
+  assert.match($('#sys-side').textContent, /工程か矢印を押すと、ここで変更できます。/);
   click(entry('roles'));
-  assert.match($('#sys-side').textContent, /役割を直すと、スイムレーン図の帯がすぐ変わります。/);
+  assert.match($('#sys-side').textContent, /役割を変更すると、スイムレーン図のレーンがすぐ変わります。/);
   click(entry('history'));
   assert.match($('#sys-side').textContent, /「この状態に戻す…」を押すと、今の中身を「戻す前の状態」として残してから、その行の中身に置き換えます。/);
   click(entry('overview'));
@@ -166,7 +166,7 @@ test('右の欄: 入口ごとの案内の文', async (t) => {
 });
 
 // ── 左の画面設計のカード ──
-test('画面設計のカード: 小見出し「画面設計 2 つ」・designIds の順（ごみ箱の画面設計は出さない）・縮小画像と名前・共通の画面設計は緑の枠と札。いちばん下に「＋ 画面設計を入れる ▾」', async (t) => {
+test('画面設計のカード: 小見出し「画面設計 2 つ」・designIds の順（ごみ箱の画面設計は出さない）・縮小画像と名前・共通の画面設計は緑の枠と札。いちばん下に「＋ 画面設計を追加する ▾」', async (t) => {
   const { $, $$, cards } = await boot(t);
   assert.equal($('#sys-list .sys-dhead').textContent, '画面設計 2 つ');
   assert.deepEqual(cards(), ['出張申請', '社員マスタ']);
@@ -177,10 +177,10 @@ test('画面設計のカード: 小見出し「画面設計 2 つ」・designIds
   assert.equal(emp.querySelector('.share-tag').textContent, '2 つのシステムで使っている');
   assert.equal(emp.querySelector('.share-tag').title, '出張申請システム・経費精算システムで使っています');
   assert.equal(trip.querySelector('.share-tag'), null);
-  assert.equal($('#sys-list .sys-add').textContent, '＋ 画面設計を入れる ▾');
+  assert.equal($('#sys-list .sys-add').textContent, '＋ 画面設計を追加する ▾');
 });
 
-test('カードを押すと、その画面設計の編集の画面を開く。メニューバーの「← システムへ」（命令 backToSystem）でシステムの画面へ戻る。最初の画面から開いたときは今までどおり', async (t) => {
+test('カードを押すと、その画面設計の編集の画面を開く。ツールバーの「← システムへ」（命令 backToSystem）でシステムの画面へ戻る。最初の画面から開いたときは今までどおり', async (t) => {
   const { app, api, $, $$, entry } = await boot(t);
   click(entry('roles'));
   click($$('#sys-list .sys-dcard')[1]);
@@ -243,7 +243,7 @@ test('カードの「…」: 開く・上へ動かす・下へ動かす・この
   click(more(0));
   assert.equal(api.ui.sysDesignMenu, 'd-trip');
   const items = () => $$('#sys-menu-root [role="menuitem"]');
-  assert.deepEqual(items().map((b) => b.textContent), ['開く', '上へ移動', '下へ移動', 'このシステムから外す']);
+  assert.deepEqual(items().map((b) => b.textContent), ['この画面設計を開く', 'この画面設計を上へ移動する', 'この画面設計を下へ移動する', '画面設計をこのシステムから外す']);
   assert.deepEqual(items().map((b) => b.disabled), [false, true, false, false]);
   assert.equal(more(0).getAttribute('aria-expanded'), 'true');
   click(items()[2]);
@@ -326,11 +326,11 @@ test('真ん中の欄に打ちかけのまま左のカードを並べ替えて�
   assert.equal($('#sys-view [data-sy="desc"]').value, '出張の申請から精算までを扱う', '描き直した欄にも残る');
 });
 
-test('「＋ 画面設計を入れる ▾」: 最初の画面と同じ 3 つのメニュー。入れたら左のカードを描き直す', async (t) => {
+test('「＋ 画面設計を追加する ▾」: 最初の画面と同じ 3 つのメニュー。入れたら左のカードを描き直す', async (t) => {
   const { app, api, $, $$, cards } = await boot(t);
   click($('#sys-list .sys-add'));
   assert.equal(api.ui.sysMenu, 'add:y-trip');
-  assert.deepEqual($$('#sys-menu-root [role="menuitem"] b').map((b) => b.textContent), ['新しい画面設計を作る', '今ある画面設計を入れる', '今ある画面設計を複製して入れる']);
+  assert.deepEqual($$('#sys-menu-root [role="menuitem"] b').map((b) => b.textContent), ['新しい画面設計を作る', '今ある画面設計を追加する', '今ある画面設計を複製して追加する']);
   key(app, app.document.body, { key: 'Escape' });
   assert.equal(api.ui.sysMenu, null);
   assert.equal(app.document.activeElement, $('#sys-list .sys-add'));
@@ -361,7 +361,7 @@ test('概要: 名前（1 行）と説明（複数行）の欄。直すと update
   const desc = $('#sys-view textarea[data-sy="desc"]');
   assert.equal(name.value, '出張申請システム');
   assert.equal(desc.value, '出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム');
-  assert.equal($('#sys-view .sys-sum').textContent, '画面設計 2 つ・役割 3 つ・作業 8 つ・矢印 8 本');
+  assert.equal($('#sys-view .sys-sum').textContent, '画面設計 2 つ・役割 3 つ・工程 8 つ・矢印 8 本');
   name.focus();
   setValue(name, '出張と精算のシステム');
   assert.equal(sys().name, '出張と精算のシステム');
@@ -415,12 +415,12 @@ test('概要: 打ちかけの文字は、命令・窓を離れるとき・AI が
 });
 
 // ── 役割（q64 の案A）──
-test('役割: 番号・名前・メモ（薄い字）・作業の数・↑↓✕。足す（空いている番号の「役割 N」）・名前を直す・同じ名前と空の名前は断る・メモ・並べ替え', async (t) => {
+test('役割: 番号・名前・メモ（入力のヒント）・作業の数・↑↓✕。足す（空いている番号の「役割 N」）・名前を直す・同じ名前と空の名前は断る・メモ・並べ替え', async (t) => {
   const { app, api, $, $$, entry, sys, toast } = await boot(t);
   click(entry('roles'));
   const rows = () => $$('#sys-view .sys-role');
   assert.deepEqual(rows().map((r) => [r.querySelector('.no').textContent, r.querySelector('[data-sy="role-name"]').value, r.querySelector('.cnt').textContent]),
-    [['1', '申請者', '作業 3 つ'], ['2', '上長', '作業 2 つ'], ['3', '経理', '作業 3 つ']]);
+    [['1', '申請者', '工程 3 つ'], ['2', '上長', '工程 2 つ'], ['3', '経理', '工程 3 つ']]);
   assert.equal(rows()[0].querySelector('[data-sy="role-memo"]').placeholder, 'この役割の人・部署など');
   const btn = (i, a) => rows()[i].querySelector(`[data-action="${a}"]`);
   assert.equal(btn(0, 'sys-role-up').disabled, true);
@@ -430,7 +430,7 @@ test('役割: 番号・名前・メモ（薄い字）・作業の数・↑↓✕
   click($('#sys-view [data-action="sys-role-add"]'));
   assert.deepEqual(sys().roles.map((r) => r.name), ['申請者', '上長', '経理', '役割 1']);
   assert.equal(app.document.activeElement, rows()[3].querySelector('[data-sy="role-name"]'), '足した役割の名前を打てるように');
-  assert.equal(rows()[3].querySelector('.cnt').textContent, '作業なし');
+  assert.equal(rows()[3].querySelector('.cnt').textContent, '工程なし');
   click($('#sys-view [data-action="sys-role-add"]'));
   assert.deepEqual(sys().roles.map((r) => r.name).slice(3), ['役割 1', '役割 2']);
   // 名前を直す
@@ -468,9 +468,9 @@ test('役割: 作業の箱のある役割の ✕ は確かめの窓（一緒に�
   click(del(2));
   await waitFor(() => $('.modal'));
   assert.equal($('.modal h2').textContent, '役割「経理」を削除しますか？');
-  assert.match($('.modal-body').textContent, /役割「経理」の帯に入っている作業の箱 3 つと、その箱につながる矢印 3 本も一緒に消えます。/);
+  assert.match($('.modal-body').textContent, /役割「経理」のレーンに入っている工程 3 つと、その工程に接続している矢印 3 本も一緒に消えます。/);
   assert.match($('.modal-body').textContent, /消した後でも、元に戻す（Ctrl\+Z）で戻せます。/);
-  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['削除する', 'キャンセル']);
+  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['役割を削除する', 'キャンセル']);
   assert.ok($('[data-dlg="ok"]').classList.contains('danger'));
   assert.equal(app.document.activeElement, $('[data-dlg="cancel"]'));
   click($('[data-dlg="cancel"]'));
@@ -497,7 +497,7 @@ test('役割: 矢印のない作業の箱だけの役割の確かめの窓は、
   click(entry('roles'));
   click($$('#sys-view .sys-role')[3].querySelector('[data-action="sys-role-del"]'));
   await waitFor(() => $('.modal'));
-  assert.match($('.modal-body').textContent, /役割「総務」の帯に入っている作業の箱 1 つも一緒に消えます。/);
+  assert.match($('.modal-body').textContent, /役割「総務」のレーンに入っている工程 1 つも一緒に消えます。/);
   click($('[data-dlg="cancel"]'));
 });
 
@@ -554,10 +554,10 @@ test('スイムレーン図の拡大縮小（ui.sysZoom）: メニューバー�
 
 test('スイムレーン図: 役割がないときは案内の文と「役割を足す」（役割の入口へ移り、「役割 1」を足す）', async (t) => {
   const { app, api, $, sys } = await boot(t, sampleState(), 'y-exp');
-  assert.match($('#sys-view').textContent, /まず「役割」で、申請者・上長などの役割を足します。役割ごとに横の帯ができます。/);
+  assert.match($('#sys-view').textContent, /まず「役割」で、申請者・上長などの役割を追加します。役割ごとにレーンができます。/);
   assert.equal($('#sys-swim'), null);
   const add = $('#sys-view [data-action="sys-role-first"]');
-  assert.equal(add.textContent, '役割を足す');
+  assert.equal(add.textContent, '役割を追加する');
   click(add);
   assert.equal(api.ui.sysPanel, 'roles');
   assert.deepEqual(sys('y-exp').roles.map((r) => r.name), ['役割 1']);
@@ -568,12 +568,12 @@ test('スイムレーン図: 役割がないときは案内の文と「役割を
 test('履歴: 日時・行（AI の行は紫・戻す前の状態は灰色）・そのときの中身・「この状態に戻す…」。新しい行が上', async (t) => {
   const { $, $$, entry } = await boot(t);
   click(entry('history'));
-  assert.match($('#sys-view .map-note').textContent, /AI がこのシステム（名前・説明・役割・スイムレーン図・画面設計の並び）を直す前の中身を、自動で残しています（新しい方から 10 行まで）。「この状態に戻す…」で戻したときは、戻す前の中身を「戻す前の状態」の行に残します（これも新しい方から 10 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。/);
+  assert.match($('#sys-view .map-note').textContent, /AI がこのシステム（名前・説明・役割・スイムレーン図・画面設計の並び）を変更する前の中身を、自動で記録しています（新しい方から 10 行まで）。「この状態に戻す…」で戻したときは、戻す前の中身を「戻す前の状態」の行に残します（これも新しい方から 10 行まで）。中の画面設計の履歴は、それぞれの画面設計の「改訂履歴」にあります。/);
   assert.deepEqual($$('#sys-view thead th').map((e) => e.textContent), ['日時', '行', 'そのときの中身', '']);
   const rows = $$('#sys-view tbody tr').map((tr) => [...tr.children].map((td) => td.textContent));
   assert.deepEqual(rows, [
-    ['2026-10-15 14:32', 'Claude Code が直す前の状態', '役割 2 つ・作業 5 つ・矢印 4 本・画面設計 2 つ', 'この状態に戻す…'],
-    ['2026-10-15 13:05', '戻す前の状態', '役割 3 つ・作業 8 つ・矢印 8 本・画面設計 2 つ', 'この状態に戻す…'],
+    ['2026-10-15 14:32', 'Claude Code が変更する前の状態', '役割 2 つ・工程 5 つ・矢印 4 本・画面設計 2 つ', 'この状態に戻す…'],
+    ['2026-10-15 13:05', '戻す前の状態', '役割 3 つ・工程 8 つ・矢印 8 本・画面設計 2 つ', 'この状態に戻す…'],
   ]);
   assert.ok($$('#sys-view tbody tr')[0].querySelector('.h-ai'));
   assert.ok($$('#sys-view tbody tr')[1].querySelector('.h-auto'));
@@ -582,7 +582,7 @@ test('履歴: 日時・行（AI の行は紫・戻す前の状態は灰色）・
 test('履歴: 行がないときの案内', async (t) => {
   const { $, entry } = await boot(t, sampleState(), 'y-exp');
   click(entry('history'));
-  assert.match($('#sys-view').textContent, /まだ履歴はありません。AI がこのシステムを直すと、直す前の中身がここに残ります。/);
+  assert.match($('#sys-view').textContent, /まだ履歴はありません。AI がこのシステムを変更すると、変更する前の中身がここに残ります。/);
   assert.equal($('#sys-view table'), null);
 });
 
@@ -591,10 +591,10 @@ test('履歴の「この状態に戻す…」: 確かめの窓（今の中身の
   click(entry('history'));
   click($$('#sys-view [data-action="sys-rev-restore"]')[0]);
   await waitFor(() => $('.modal'));
-  assert.equal($('.modal h2').textContent, '「2026-10-15 14:32 の Claude Code が直す前の状態」に戻しますか？');
-  assert.match($('.modal-body').textContent, /今の中身（役割 3 つ・作業 8 つ・矢印 8 本・画面設計 2 つ）は「戻す前の状態」として履歴に残ります。元に戻す（Ctrl\+Z）でも戻せます。/);
-  assert.match($('.modal-body').textContent, /写しにある画面設計のうち 1 つは、もうないので入りません。/);
-  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['戻す', 'キャンセル']);
+  assert.equal($('.modal h2').textContent, '「2026-10-15 14:32 の Claude Code が変更する前の状態」に戻しますか？');
+  assert.match($('.modal-body').textContent, /今の中身（役割 3 つ・工程 8 つ・矢印 8 本・画面設計 2 つ）は「戻す前の状態」として履歴に残ります。元に戻す（Ctrl\+Z）でも戻せます。/);
+  assert.match($('.modal-body').textContent, /その時点の中身にある画面設計のうち 1 つは、もうないので入りません。/);
+  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['この状態に戻す', 'キャンセル']);
   assert.ok($('[data-dlg="ok"]').classList.contains('danger'));
   assert.equal(app.document.activeElement, $('[data-dlg="cancel"]'));
   click($('[data-dlg="ok"]'));
@@ -603,8 +603,8 @@ test('履歴の「この状態に戻す…」: 確かめの窓（今の中身の
   assert.deepEqual(sys().designIds, ['d-trip', 'd-emp']);
   assert.equal(api.ui.sysPanel, 'history');
   const rows = $$('#sys-view tbody tr').map((tr) => tr.children[1].textContent);
-  assert.deepEqual(rows, ['戻す前の状態', 'Claude Code が直す前の状態', '戻す前の状態']);
-  assert.equal($$('#sys-view tbody tr')[0].children[2].textContent, '役割 3 つ・作業 8 つ・矢印 8 本・画面設計 2 つ');
+  assert.deepEqual(rows, ['戻す前の状態', 'Claude Code が変更する前の状態', '戻す前の状態']);
+  assert.equal($$('#sys-view tbody tr')[0].children[2].textContent, '役割 3 つ・工程 8 つ・矢印 8 本・画面設計 2 つ');
   assert.deepEqual(entries()[1], ['役割', '2 つ', false]);
   key(app, app.document.body, { key: 'z', ctrlKey: true });
   assert.equal(sys().roles.length, 3);
@@ -625,11 +625,11 @@ test('AI がこのシステムだけを直したら、紫の帯と「元に戻�
   click(entry('roles'));
   const r = await call('update_system', { system: 'y-trip', ops: [{ op: 'add', name: '総務' }] });
   assert.equal(r.ok, true, JSON.stringify(r.error));
-  assert.match($('#ai-band').textContent, /Claude Code が「出張申請システム」を直しました（変更 1 件）。/);
+  assert.match($('#ai-band').textContent, /Claude Code が「出張申請システム」を変更しました（変更内容 1 件）。/);
   assert.ok($('#ai-band [data-action="undo"]'));
   assert.equal(api.ui.sysPanel, 'roles');
   assert.deepEqual(entries()[1], ['役割', '4 つ', true]);
-  assert.deepEqual(entries()[4], ['履歴', 'AI が直す前の状態 2', false]);
+  assert.deepEqual(entries()[4], ['履歴', 'AI が変更する前の状態 2', false]);
   assert.equal(roleRows($), 4);
   click($('#ai-band [data-action="undo"]'));
   assert.equal(sys().roles.length, 3);
@@ -641,7 +641,7 @@ test('AI がほかの画面設計・ほかのシステムを直したときの�
   const { api, $, call } = await boot(t);
   const r = await call('update_design', { design: 'd-cli', description: 'AI の説明' });
   assert.equal(r.ok, true, JSON.stringify(r.error));
-  assert.match($('#ai-band').textContent, /Claude Code が「取引先マスタ」を直しました。/);
+  assert.match($('#ai-band').textContent, /Claude Code が「取引先マスタ」を変更しました。/);
   assert.ok($('#ai-band [data-action="ai-open-design"]'));
   const v = await call('update_system', { system: 'y-exp', description: 'AI の変更' });
   assert.equal(v.ok, true, JSON.stringify(v.error));
@@ -650,7 +650,7 @@ test('AI がほかの画面設計・ほかのシステムを直したときの�
   api.actions.updateSystem('y-trip', { description: '人の変更' });
   const w = await call('update_system', { system: 'y-exp', name: '経費精算システム２' });
   assert.equal(w.ok, true, JSON.stringify(w.error));
-  assert.match($('#ai-warn').textContent, /Claude Code が「経費精算システム２」を直したので、元に戻す（Ctrl\+Z）の履歴を消しました。/);
+  assert.match($('#ai-warn').textContent, /Claude Code が「経費精算システム２」を変更したので、元に戻す（Ctrl\+Z）の履歴を消しました。/);
   assert.match($('#ai-warn').textContent, /開いている「出張申請システム」は変わっていません。/);
   click($('#ai-warn [data-action="ai-open-system-history"]'));
   assert.deepEqual([api.ui.view, api.ui.systemId, api.ui.sysPanel], ['system', 'y-exp', 'history']);
@@ -701,17 +701,17 @@ test('命令: 編集の画面だけの命令は、この画面で来ても何も
 });
 
 // ── 見直しで見つけたもの（第 9 段階の T9）──
-test('役割の入口の説明: まだない動き（ステータスの操作の「操作する人」と同じ名前を同じ役割として扱う）は書かない', async (t) => {
+test('役割の入口の説明: まだない動き（ステータスの操作の「操作できる人」と同じ名前を同じ役割として扱う）は書かない', async (t) => {
   const { $, entry } = await boot(t);
   click(entry('roles'));
-  assert.equal($('#sys-view .map-note').textContent, '役割は、スイムレーン図の横の帯になります。上から順に帯を並べます。');
+  assert.equal($('#sys-view .map-note').textContent, '役割は、スイムレーン図のレーンになります。上から順にレーンを並べます。');
 });
 
 test('履歴の「この状態に戻す…」: 今と同じ中身の行では、確かめの窓を出さず何もしない（行も更新日時も元に戻すの履歴も変えない）。お知らせで知らせる', async (t) => {
   // 15:00 の「戻す前の状態」は、今と同じ中身（いちばん上の行）
   const st = sampleState();
   const y0 = st.systems[0];
-  y0.revisions.push({ id: 'r-same', kind: 'restore', date: at(15, 0), note: '「Claude Code が直す前の状態（2026-10-15）」に戻す前の状態',
+  y0.revisions.push({ id: 'r-same', kind: 'restore', date: at(15, 0), note: '「Claude Code が変更する前の状態（2026-10-15）」に戻す前の状態',
     snapshot: plain({ name: y0.name, description: y0.description, roles: y0.roles, swimlane: y0.swimlane, designIds: y0.designIds }) });
   const { app, api, $, $$, entry, sys, toast } = await boot(t, st);
   click(entry('history'));

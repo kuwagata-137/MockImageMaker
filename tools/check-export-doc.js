@@ -16,7 +16,7 @@ const { normalizeRadicals } = require('../material-text');
 const OLD = '2026-10-01T00:00:00.000Z';
 const NO_REF = { designId: null, screenId: null, stateId: null };
 const step = (id, roleId, col, kind, text) => ({ id, roleId, col, kind, text, memo: '', ref: { ...NO_REF }, src: null });
-const DOCS_PATH = 'C:\\Users\\someone\\Documents\\モックイメージメーカー\\AI の出力\\出張申請システム_説明書.pdf';
+const DOCS_PATH = 'C:\\Users\\someone\\Documents\\モックイメージメーカー\\AI の出力\\出張申請システム_システム設計書.pdf';
 // 続きのページに分かれる表の、全部の行の文字（どの行も、ほかの行の文字の頭にならない名前にする。「〇〇 1 番」と「〇〇 10 番」）
 const n = (count, f) => Array.from({ length: count }, (_, i) => f(i + 1));
 const ROWS = { screens: n(24, (k) => `社員の画面 ${k} 番`), items: n(40, (k) => `規程の項目 ${k} 番`), decisions: n(40, (k) => `決めたこと ${k} の文`),
@@ -34,7 +34,7 @@ function addDocSample(sample, { design, screen, item }) {
   const stages = ['read', 'flow', 'items', 'screens'];
   const decisions = ROWS.decisions.map((t, i) => ({ id: `nd${i + 1}`, date: '2026-10-20', stage: stages[Math.floor(i / 10)],
     text: `${t}。` + '承認は上長の 1 段にする。'.repeat(i % 3), reason: `理由 ${i + 1}` }));
-  decisions.push({ id: 'nd-docs', date: '2026-10-20', stage: 'docs', text: '説明書を出力した場所の行', reason: DOCS_PATH });
+  decisions.push({ id: 'nd-docs', date: '2026-10-20', stage: 'docs', text: 'システム設計書を出力した場所の行', reason: DOCS_PATH });
   const questions = ROWS.questions.map((t, i) => ({ id: `nq${i + 1}`, date: '2026-10-20', stage: stages[i % 4], text: t,
     answer: i % 3 === 0 ? `答え ${i + 1}` : '', resolvedAt: i % 3 === 0 ? '2026-10-20T01:00:00.000Z' : null }));
   const system = {
@@ -99,7 +99,7 @@ async function checkSystemDoc({ page, OUT, check, waitFile, enableTestHooks }) {
   await enableTestHooks(page);
   await page.evaluate(() => window.__test__.openSystem('y1'));
   await page.waitForSelector('#toolbar [data-action="export"]');
-  const file = path.join(OUT, '出張申請システム_説明書.pdf');
+  const file = path.join(OUT, '出張申請システム_システム設計書.pdf');
   if (fs.existsSync(file)) fs.unlinkSync(file); // fs.rmSync は日本語の名前で Node ごと落ちる（2026-10-14）
   await page.click('#toolbar [data-action="export"]');
   await page.waitForSelector('#sys-menu-root [data-action="sys-export-doc"]'); // 第 11 段階から、「出力」は小さなメニューを開く
@@ -126,13 +126,13 @@ async function checkSystemDoc({ page, OUT, check, waitFile, enableTestHooks }) {
   check('6. 説明書のページの見出しの順と、下の端の「n / N」・表紙の「全 N ページ」', !bad.length, bad.slice(0, 5).join('／') || app.pages.map((x) => x.head).filter((h, i, a) => a.indexOf(h) === i).slice(0, 12).join(' → '));
   check('6. 表紙の一覧の始まりのページの番号が、その画面設計の表紙のページ', !app.wrong.length, app.wrong.join('／') || '社員マスタ・旅費規程・顧客管理');
   const heads = app.pages.map((x) => x.head);
-  const split = ['画面の一覧（続き）', '改訂履歴（続き）', 'データベースの項目の一覧表（続き）', '設計ノート（続き）'].filter((h) => !heads.includes(h));
-  check('6. 表紙の画面の一覧・改訂履歴・項目の一覧表・設計ノートが、続きのページに分かれる', !split.length, split.length ? `分かれていない: ${split.join('・')}` : '4 つとも分かれた');
+  const split = ['画面の一覧（続き）', '改訂履歴（続き）', '項目一覧（続き）', '設計ノート（続き）'].filter((h) => !heads.includes(h));
+  check('6. 表紙の画面の一覧・改訂履歴・項目一覧・設計ノートが、続きのページに分かれる', !split.length, split.length ? `分かれていない: ${split.join('・')}` : '4 つとも分かれた');
   const all = texts.join('');
   const lost = Object.values(ROWS).flat().filter((w) => !all.includes(w.replace(/\s+/g, '')));
   check('6. 分かれた表の全部の行の文字が PDF にある（ページの下の端で切れて消えていない）', !lost.length, lost.length ? `見つからない: ${lost.slice(0, 8).join('・')}`
     : `画面 ${ROWS.screens.length}・版 ${ROWS.revisions.length}・項目 ${ROWS.items.length}・決めたこと ${ROWS.decisions.length}・まだ決まっていないこと ${ROWS.questions.length} の行`);
-  const leak = ['someone', '説明書を出力した場所の行'].filter((w) => all.includes(w));
+  const leak = ['someone', 'システム設計書を出力した場所の行'].filter((w) => all.includes(w));
   check('6. 設計ノートの ⑤（docs）の行（出力したファイルの場所）は PDF に入らない', !leak.length, leak.length ? `入っている: ${leak.join('・')}` : '入っていない');
 }
 

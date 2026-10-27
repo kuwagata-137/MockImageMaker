@@ -24,7 +24,7 @@ test('前の版を見ている間・保存を止めている間・確かめの�
   T.store.startViewing(T.store.state);
   let r = await call(...desc('見ている間'));
   assert.equal(r.error.code, 'viewing');
-  assert.match(r.error.message, /「顧客管理」の前の版を見ているため、今は直せません。.*「見るのをやめる」/);
+  assert.match(r.error.message, /「顧客管理」の前の版を見ているため、今は変更できません。.*「前の版を見るのをやめる」/);
   assert.equal((await call('get_design', { design: 'd1' })).ok, true);
   T.store.stopViewing();
   T.store.blockReason = '保存データを読み込めませんでした（壊れています）。';
@@ -59,13 +59,13 @@ test('人がドラッグしている間は約 2 秒待って断る。日本語�
   app.close();
 });
 
-test('読んだ後に人が直したとき（expect が今の更新の印と違う）と、ごみ箱の画面設計は断る', async () => {
+test('読んだ後に人が直したとき（expect が今の更新日時と違う）と、ごみ箱の画面設計は断る', async () => {
   const { app, T, call } = await boot();
   const read = await call('get_design', { design: 'd1' });
   T.actions.updateDesignInfo('d1', { description: '人が直した' });
   const r = await call('update_design', { design: 'd1', expect: read.result.updatedAt, description: 'AI の古い中身' });
   assert.equal(r.error.code, 'stale');
-  assert.match(r.error.message, /「顧客管理」は、読んだ後にアプリで直されました。読み直してから頼んでください/);
+  assert.match(r.error.message, /「顧客管理」は、読んだ後にアプリで変更されました。読み直してから依頼してください/);
   const fresh = await call('get_design', { design: 'd1' });
   assert.equal((await call('update_design', { design: 'd1', expect: fresh.result.updatedAt, description: '読み直した' })).ok, true);
   const t = await call('update_design', { design: '出張申請', description: 'x' });
@@ -143,7 +143,7 @@ test('8-2: 開いていない画面設計・新しい画面設計を AI が変�
   assert.equal(T.store.redoStack.length, 0);
   // 知らせはメニューバーの下のオレンジの帯（q51 の案A。test/ai-view.test.js でくわしく確かめる）
   const warn = () => app.document.querySelector('#ai-warn');
-  assert.match(warn().textContent, /Claude Code が「受注管理」を直したので、元に戻す（Ctrl\+Z）の履歴を消しました。開いている「顧客管理」は変わっていません。/);
+  assert.match(warn().textContent, /Claude Code が「受注管理」を変更したので、元に戻す（Ctrl\+Z）の履歴を消しました。開いている「顧客管理」は変わっていません。/);
   assert.equal(d('d1').description, '人の変更');
   T.actions.updateDesignInfo('d1', { description: '人の変更 2' });
   assert.equal((await call('create_design', { name: '経費精算' })).ok, true);
@@ -152,19 +152,19 @@ test('8-2: 開いていない画面設計・新しい画面設計を AI が変�
   app.close();
 });
 
-test('8-3: 「AI が直す前の状態」の行は、接続ごと・画面設計ごとに最初の 1 回だけ。写しは直す前の中身', async () => {
+test('8-3: 「AI が変更する前の状態」の行は、接続ごと・画面設計ごとに最初の 1 回だけ。写しは直す前の中身', async () => {
   const { app, call, d } = await boot();
   assert.equal((await call(...desc('1 回目'))).ok, true);
   assert.equal((await call(...desc('2 回目'))).ok, true);
   let rows = aiRows(d('d1'));
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].note, 'Claude Code が直す前の状態');
+  assert.equal(rows[0].note, 'Claude Code が変更する前の状態');
   assert.equal(rows[0].no, null);
   assert.equal(rows[0].snapshot.description, '取引先と顧客の連絡先を管理する。');
   assert.equal((await call('update_design', { design: 'd1', description: '別の接続' }, 's-2', 'cursor')).ok, true);
   rows = aiRows(d('d1'));
   assert.equal(rows.length, 2);
-  assert.equal(rows[1].note, 'cursor が直す前の状態');
+  assert.equal(rows[1].note, 'cursor が変更する前の状態');
   assert.equal(rows[1].snapshot.description, '2 回目');
   // 新しく作った画面設計には残さない。受注管理は別の画面設計なので、最初の変更で 1 行
   const c = await call('create_design', { name: '出張申請 2' });
@@ -173,7 +173,7 @@ test('8-3: 「AI が直す前の状態」の行は、接続ごと・画面設計
   app.close();
 });
 
-test('8-3: 何も変わらない頼み・失敗した頼みでは行も更新の印も変わらない。元に戻すで行も一緒に消え、次の変更でまた残る', async () => {
+test('8-3: 何も変わらない頼み・失敗した頼みでは行も更新日時も変わらない。元に戻すで行も一緒に消え、次の変更でまた残る', async () => {
   const { app, T, call, d } = await boot();
   T.openDesign('d1');
   const at0 = d('d1').updatedAt;
@@ -194,7 +194,7 @@ test('8-3: 何も変わらない頼み・失敗した頼みでは行も更新の
   app.close();
 });
 
-test('8-5: 右の欄の打ちかけの文字は、AI が書く前に人の 1 回の変更として確定する', async () => {
+test('8-5: 右のパネルの打ちかけの文字は、AI が書く前に人の 1 回の変更として確定する', async () => {
   const { app, T, call, d } = await boot();
   T.openDesign('d1');
   const ta = app.document.querySelector('#side-settings [data-field="design-desc"]');
@@ -211,7 +211,7 @@ test('8-5: 右の欄の打ちかけの文字は、AI が書く前に人の 1 回
   app.close();
 });
 
-test('8-5: 日本語を変換している間は、画像・出力の道具で右の欄の打ちかけの文字を確定しない（変換が終われば、確定してから描く）', async () => {
+test('8-5: 日本語を変換している間は、画像・出力の道具で右のパネルの打ちかけの文字を確定しない（変換が終われば、確定してから描く）', async () => {
   const { app, T, call, d } = await boot(systemState());
   T.openDesign('d1');
   assert.equal((await call(...desc('AI の変更'))).ok, true);
@@ -244,7 +244,7 @@ test('保存に失敗したときは、save_failed を返す', async () => {
   app.close();
 });
 
-test('重さ: 書く頼み 1 回で、描き直しは 1 回・違いの計算（designDiff）は最初の頼みで 1 回。「AI が直す前の状態」の行がもうあれば、写しの行（revisionRow）を作らない', async () => {
+test('重さ: 書く頼み 1 回で、描き直しは 1 回・違いの計算（designDiff）は最初の頼みで 1 回。「AI が変更する前の状態」の行がもうあれば、写しの行（revisionRow）を作らない', async () => {
   const { app, T, call } = await boot();
   T.openDesign('d1');
   const win = app.window;
@@ -262,6 +262,6 @@ test('重さ: 書く頼み 1 回で、描き直しは 1 回・違いの計算（
   assert.equal(count.revisionRow, 0, '行がもうあるときは、写しの行を作らない');
   assert.equal(count.updateEditor, 1);
   assert.equal(aiRows(T.store.state.designs.find((d) => d.id === 'd1')).length, 1);
-  assert.match(app.document.querySelector('#ai-band').textContent, /変更 1 件/);
+  assert.match(app.document.querySelector('#ai-band').textContent, /変更内容 1 件/);
   app.close();
 });

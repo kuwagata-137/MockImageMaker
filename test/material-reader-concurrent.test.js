@@ -95,7 +95,7 @@ test('同時に読む — 1 つの読みが失敗しても、続く読みは成�
     assert.equal(settled[2].value.text, `${NOTICE}\n読める`);
   });
 
-  await t.test('読み取りの部品が普通の Error を投げた読みの後でも、続く読みは動く', async () => {
+  await t.test('読み取りのアイテムが普通の Error を投げた読みの後でも、続く読みは動く', async () => {
     let calls = 0;
     const reader = createMaterialReader({
       bdmBlocks: (html) => {
@@ -114,7 +114,7 @@ test('同時に読む — 1 つの読みが失敗しても、続く読みは成�
 });
 
 test('read_failed — 元の例外を err.cause に残す（文は変えない・パスを入れない）', async (t) => {
-  await t.test('reader の read: 読み取りの部品が投げた例外が cause に入る', async () => {
+  await t.test('reader の read: 読み取りのアイテムが投げた例外が cause に入る', async () => {
     const original = new Error('内部の失敗');
     const reader = createMaterialReader({ bdmBlocks: () => { throw original; } });
     const file = samples.writeSample(dir, 'cause-bdm.html', samples.utf8Bytes('x'));

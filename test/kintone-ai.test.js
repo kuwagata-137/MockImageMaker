@@ -34,7 +34,7 @@ test('edit_items: add と update で kintone の欄を書ける。書いた欄�
   app.close();
 });
 
-test('edit_items: kintone の欄の断り（部品の種類で選べない種類・自動計算の値でない項目の計算式・使えないコード・ほかに書いたコードとの重なり・ステータス・知らない欄）', async () => {
+test('edit_items: kintone の欄の断り（アイテムの種類で選べない種類・自動計算でない項目の計算式・使えないコード・ほかに書いたコードとの重なり・ステータス・知らない欄）', async () => {
   const st = sampleState();
   st.designs[0].items.push(item('st', 'ステータス', 'status', { props: { states: [{ id: 't1', name: '申請' }], actions: [] } }));
   st.designs[0].items[1].kintone = { code: '顧客名' };
@@ -42,7 +42,7 @@ test('edit_items: kintone の欄の断り（部品の種類で選べない種類
   const before = JSON.stringify(d('d1').items);
   const bad = async (kt, item = '顧客コード') => ng(await call('edit_items', ops({ op: 'update', item, kintone: kt })), 'bad_request').message;
   assert.match(await bad({ type: 'ORGANIZATION_SELECT' }), /SINGLE_LINE_TEXT・LINK・RECORD_NUMBER/);
-  assert.match(await bad({ formula: 'a + b' }), /自動計算の値/);
+  assert.match(await bad({ formula: 'a + b' }), /自動計算/);
   assert.match(await bad({ code: '1件目' }), /フィールドコードに使えません/);
   assert.match(await bad({ code: '顧客名' }), /「顧客名」と同じフィールドコード/);
   assert.match(await bad({ code: 'x' }, 'ステータス'), /プロセス管理/);
@@ -79,7 +79,7 @@ test('layout: 新しく作る項目に kintone の欄を書ける。今ある項
   app.close();
 });
 
-test('入口の形: edit_items の add・update と layout の部品は kintone（{ type, code, formula } か null）を受け、kintone の知らない欄は断る', () => {
+test('入口の形: edit_items の add・update と layout のアイテムは kintone（{ type, code, formula } か null）を受け、kintone の知らない欄は断る', () => {
   const SC = require('../mcp-schemas');
   const ops = (o) => SC.itemOps.safeParse([o]).success;
   assert.equal(ops({ op: 'add', type: 'user', name: '担当部署', kintone: { type: 'ORGANIZATION_SELECT', code: '部署' } }), true);
@@ -91,7 +91,7 @@ test('入口の形: edit_items の add・update と layout の部品は kintone�
   assert.equal(lay({ item: '登録した人', kintone: { label: 'x' } }), false);
 });
 
-test('get_design: 項目とテーブルの列に、書いた kintone の欄（種類は今の部品の種類で読む種類と名前）。get_catalog: kintoneTypes', async () => {
+test('get_design: 項目とテーブルの列に、書いた kintone の欄（種類は今のアイテムの種類で読む種類と名前）。get_catalog: kintoneTypes', async () => {
   const st = sampleState();
   st.designs[0].items[0].kintone = { type: 'RECORD_NUMBER', code: '顧客番号' };
   st.designs[0].items.push(item('tb', '明細', 'table', { props: { columns: [{ id: 'c1', name: '品名', type: 'text1', required: false, memo: '', props: {}, kintone: { code: '品名' } }] } }));

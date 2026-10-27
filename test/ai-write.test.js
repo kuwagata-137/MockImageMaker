@@ -17,7 +17,7 @@ async function boot(state = sampleState()) {
 const ok = (r) => { assert.equal(r.ok, true, JSON.stringify(r.error)); return r.result; };
 const ng = (r, code) => { assert.equal(r.ok, false); if (code) assert.equal(r.error.code, code, r.error.message); return r.error; };
 
-test('create_design: 名前・作る先・説明で作り、最初の画面の id を返す。同じ名前は注意を添える。名前がなければ断る', async () => {
+test('create_design: 名前・構築先・説明で作り、最初の画面の id を返す。同じ名前は注意を添える。名前がなければ断る', async () => {
   const { app, call, d } = await boot();
   const r = ok(await call('create_design', { name: '出張申請', target: 'KINTONE', description: '出張の申請と承認。' }));
   assert.equal(r.name, '出張申請');
@@ -32,7 +32,7 @@ test('create_design: 名前・作る先・説明で作り、最初の画面の i
   app.close();
 });
 
-test('update_design: 名前・作る先・説明を直す。空の名前・直す欄がないときは断る。変わらなければ changed が false', async () => {
+test('update_design: 名前・構築先・説明を直す。空の名前・直す欄がないときは断る。変わらなければ changed が false', async () => {
   const { app, call, d } = await boot();
   const r = ok(await call('update_design', { design: '顧客管理', name: '顧客台帳', target: '社内のシステム', description: '' }));
   assert.equal(d('d1').name, '顧客台帳');
@@ -172,7 +172,7 @@ test('add_screen: copyOf でスマホ・タブレットの画面を複製する�
   app.close();
 });
 
-test('edit_screen: 名前・機器・高さ・帯・一覧表の位置を直す・並べ替える・消す。最後の 1 つは消せない', async () => {
+test('edit_screen: 名前・機器・高さ・帯・設定一覧の位置を直す・並べ替える・消す。最後の 1 つは消せない', async () => {
   const { app, call, d } = await boot();
   ok(await call('edit_screen', { design: 'd1', ops: [
     { op: 'update', screen: '一覧', name: '顧客の一覧', device: 'tablet', height: 1100, showHeader: false, tablePos: 'bottom' },
@@ -187,7 +187,7 @@ test('edit_screen: 名前・機器・高さ・帯・一覧表の位置を直す�
   app.close();
 });
 
-test('layout_screen: 2 列・span・幅の広い部品・ボタンの行（右寄せ・見た目・移る先）・項目を作る・画面を伸ばす', async () => {
+test('layout_screen: 2 列・span・幅の広いアイテム・ボタンの行（右寄せ・見た目・移動先）・項目を作る・画面を伸ばす', async () => {
   const { app, call, d } = await boot();
   const r = ok(await call('layout_screen', { design: 'd1', screen: '一覧', mode: 'replace', layout: { columns: 2, rows: [
     [{ item: '顧客コード' }, { item: '顧客名' }],
@@ -227,14 +227,14 @@ test('layout_screen: ステータスの項目がまだないとき、status・st
   app.close();
 });
 
-test('layout_screen: append は今の部品の下から置く。同じ項目を同じ画面に 2 回は断る。ステータスの印は見本の状態を選べる', async () => {
+test('layout_screen: append は今のアイテムの下から置く。同じ項目を同じ画面に 2 回は断る。ステータス表示は見本の状態を選べる', async () => {
   const { app, call, d } = await boot();
   const r = ok(await call('layout_screen', { design: 'd1', screen: '新規登録', layout: { rows: [[{ type: 'status', current: '承認済み' }], [{ type: 'date', label: '契約日', labelPos: 'left', sample: '2026-10-14' }]] } }));
   assert.equal(r.parts[0].y, 152 + 64 + 24); // 今のいちばん下（新規登録の顧客名 152＋64）の下に 24
   const sc = d('d1').screens[0];
   const st = sc.parts.find((p) => p.type === 'status');
   const states = d('d1').items.find((x) => x.type === 'status').props.states;
-  assert.equal(st.view.current, states.find((s) => s.name === '承認済み').id, '見本で出すステータスは id で持つ');
+  assert.equal(st.view.current, states.find((s) => s.name === '承認済み').id, '表示するステータス（サンプル）は id で持つ');
   const date = sc.parts.find((p) => p.type === 'date');
   assert.deepEqual([date.labelPos, date.sample], ['left', '2026-10-14']);
   assert.ok(d('d1').items.some((x) => x.name === '契約日' && x.type === 'date'));
@@ -274,7 +274,7 @@ test('edit_parts: 項目名（項目に書く）・ボタンの見た目・位�
   app.close();
 });
 
-test('edit_parts: 表の中身を変える・見本の行の数・ボタンの style と to・レコード一覧の列', async () => {
+test('edit_parts: 表の中身を変える・サンプルの行数・ボタンの style と to・レコード一覧の列', async () => {
   const { app, call, d } = await boot();
   ok(await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'table' }], [{ type: 'button', label: '登録' }]] } }));
   ok(await call('edit_parts', { design: 'd1', screen: '一覧', ops: [
@@ -294,7 +294,7 @@ test('edit_parts: 表の中身を変える・見本の行の数・ボタンの s
   app.close();
 });
 
-test('edit_callouts: 足す（つなぐ部品が画面の左半分なら左の画面の外。第 13 段階）・直す・動かす・消す。色と線の先は検める', async () => {
+test('edit_callouts: 足す（つなぐアイテムが画面の左半分なら左の画面の外。第 13 段階）・直す・動かす・消す。色と線の先は検める', async () => {
   const { app, call, d } = await boot();
   const r = ok(await call('edit_callouts', { design: 'd1', screen: '新規登録', ops: [
     { op: 'add', text: '50 文字まで。', target: 2, color: 'red', tip: 'dot' },
@@ -317,7 +317,7 @@ test('edit_callouts: 足す（つなぐ部品が画面の左半分なら左の�
   app.close();
 });
 
-test('add_revision と restore_revision: 版の番号を返す。戻すと「戻す前の状態」が残り、「AI が直す前の状態」は足さない', async () => {
+test('add_revision と restore_revision: 版の番号を返す。戻すと「戻す前の状態」が残り、「AI が変更する前の状態」は足さない', async () => {
   const { app, call, d } = await boot();
   const r1 = ok(await call('add_revision', { design: 'd1', note: '最初の版' }));
   assert.deepEqual([r1.revision.no, r1.revision.title], [1, '第 1 版']);

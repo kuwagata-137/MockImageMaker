@@ -106,10 +106,10 @@ async function buildTrip(page) {
   const detail = d.screens.find((s) => s.name === '詳細');
   report(d.description === '社員が出張の前に申請し、上長が承認する。' && screens.join() === '新規申請,詳細,一覧'
     && TRIP_PARTS.every(([, n]) => items.includes(n)) && !!status && d.screens[0].parts.length === 6,
-  '画面設計「出張申請」: 説明・画面の名前の変更・項目の部品 4 つとステータスとボタン・ひな形の画面 2 つ', `画面 ${screens.join('・')} ／ 項目 ${items.join('・')}`);
+  '画面設計「出張申請」: 説明・画面の名前の変更・項目のアイテム 4 つとステータスとボタン・ひな形の画面 2 つ', `画面 ${screens.join('・')} ／ 項目 ${items.join('・')}`);
   report(button && button.label === '申請する' && button.props.to === 'screen' && detail && button.props.screenId === detail.id
     && status.props.actions[0].role === '申請者' && processNodes === status.props.states.length && flowNodes >= 2,
-  'ボタンの移る先（詳細）と操作する人。ステータスの移り方と画面の移り方の図が出る', `ステータスの図の箱 ${processNodes} ／ 画面の図の箱 ${flowNodes}`);
+  'ボタンの移動先（詳細）と操作できる人。ステータスの流れと画面遷移図の図が出る', `ステータスの図の箱 ${processNodes} ／ 画面の図の箱 ${flowNodes}`);
   report(d.revisions.length === 1 && d.revisions[0].kind === 'revision' && d.revisions[0].no === 1 && !!d.revisions[0].snapshot,
     '改訂する（第 1 版と写し）', d.revisions.map((r) => `第 ${r.no} 版・${r.note}`).join('、'));
   return d;
@@ -121,7 +121,7 @@ async function buildEmployee(page) {
   await addParts(page, EMPLOYEE_PARTS);
   const d = designNamed(await stateOf(page), EMPLOYEE);
   report(d.screens.map((s) => s.name).join() === '一覧' && d.items.map((x) => x.name).join() === EMPLOYEE_PARTS.map(([, n]) => n).join(),
-    '画面設計「社員マスタ」: 画面の名前の変更・項目の部品 3 つ', d.items.map((x) => x.name).join('・'));
+    '画面設計「社員マスタ」: 画面の名前の変更・項目のアイテム 3 つ', d.items.map((x) => x.name).join('・'));
   return d;
 }
 

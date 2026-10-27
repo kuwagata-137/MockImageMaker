@@ -95,7 +95,7 @@ async function shootToolbar(browser) {
   const width = async (w) => {
     await page.setViewport({ width: w, height: 860 });
     const m = await page.evaluate(() => { const tb = document.querySelector('#toolbar'); return { client: tb.clientWidth, scroll: tb.scrollWidth }; });
-    console.log(`メニューバーの幅（窓の中の幅 ${w}）:`, JSON.stringify(m));
+    console.log(`ツールバーの幅（窓の中の幅 ${w}）:`, JSON.stringify(m));
   };
   await page.click('.card-open[data-id="d1"]');
   await page.evaluate(() => {
@@ -108,6 +108,22 @@ async function shootToolbar(browser) {
   await shot(page, '134_メニューバー_窓の幅1280');
   await page.click('#toolbar .fold-btn[data-fold="align"]');
   await shot(page, '135_メニューバー_揃えるの組を出した_窓の幅1280');
+  await page.keyboard.press('Escape');
+  // 「編集」の組（q122）: 出した組のボタンが縦に 1 列に並び、絵と文字が左に寄り、窓の中に収まるか
+  await page.click('#toolbar .fold-btn[data-fold="edit"]');
+  const edit = await page.evaluate(() => {
+    const pop = document.querySelector('#toolbar .rgroup[data-fold="edit"] .fold-pop');
+    const rs = [...pop.querySelectorAll('button')].map((b) => b.getBoundingClientRect());
+    const box = pop.getBoundingClientRect();
+    return {
+      buttons: rs.length,
+      oneColumn: rs.every((r, i) => i === 0 || (Math.abs(r.left - rs[0].left) < 1 && r.top >= rs[i - 1].bottom - 1)),
+      sameWidth: rs.every((r) => Math.abs(r.width - rs[0].width) < 1),
+      inWindow: box.left >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight,
+    };
+  });
+  console.log(`${edit.buttons === 6 && edit.oneColumn && edit.sameWidth && edit.inWindow ? 'OK' : 'NG'} 「編集」の組を出すと、ボタン 6 つが縦に 1 列に並び、窓の中に収まる:`, JSON.stringify(edit));
+  await shot(page, '138_ツールバー_編集の組を出した_窓の幅1280');
   await page.keyboard.press('Escape');
   await width(1904); // 窓の幅 1920 の中の幅
   await page.click('#toolbar .fold-btn[data-fold="items"]');
@@ -209,34 +225,34 @@ async function shootParts(browser) {
   const page = await openApp(browser, PARTS_SAMPLE);
   await page.click('.card-open[data-id="d1"]');
   for (let i = 0; i < 6; i++) await page.click('[data-action="zoom-out"]');
-  await shot(page, '13_部品_仕上がりイメージの画面と一覧表_40%');
+  await shot(page, '13_アイテム_仕上がりイメージの画面と一覧表_40%');
   for (let i = 0; i < 3; i++) await page.click('[data-action="zoom-in"]');
   // 部品の箱から「数値」をドラッグして画面に置く
   const scr = await (await page.$('#stage .screen')).boundingBox();
   await dragMouse(page, await center(page, '.pal-btn[data-type="number"]'), { x: scr.x + scr.width * 0.83, y: scr.y + scr.height * 0.12 });
-  await shot(page, '14_部品_箱からドラッグして置いた後');
+  await shot(page, '14_アイテム_箱からドラッグして置いた後');
   // 置いた部品を動かし、右下のつまみで大きくする
   const placed = await center(page, '#stage .part.sel');
   await dragMouse(page, placed, { x: placed.x, y: placed.y + 120 });
   const grip = await center(page, '#stage .part.sel .g-se');
   await dragMouse(page, grip, { x: grip.x + 60, y: grip.y });
-  await shot(page, '15_部品_動かして大きくした後');
+  await shot(page, '15_アイテム_動かして大きくした後');
   // 顧客名を選んで、右下の設定の欄を見る
   await page.click('#stage .part[data-part-id="p1"]');
-  await shot(page, '16_部品_顧客名を選んだところ');
+  await shot(page, '16_アイテム_顧客名を選んだところ');
   await page.click('#stage .part[data-part-id="p5"]');
-  await shot(page, '17_部品_ラジオボタンを選んだところ');
+  await shot(page, '17_アイテム_ラジオボタンを選んだところ');
   // 選ぶのをやめて、一覧表を下に置く
   await page.keyboard.press('Escape');
   // 機器の種類などと同じく、選択のボタンは見えている文字（span）を押す（input は隠してある）
   await page.click('[data-field="table-pos"][value="bottom"] + span');
   await page.click('[data-action="zoom-out"]');
-  await shot(page, '18_部品_一覧表を画面の下に置いた_60%');
+  await shot(page, '18_アイテム_一覧表を画面の下に置いた_60%');
   // 部品の箱の「基本」を閉じる
   await page.click('.pal-head[data-id="basic"]');
-  await shot(page, '19_部品_部品の箱の基本を閉じた');
+  await shot(page, '19_アイテム_アイテム一覧の基本を閉じた');
   await page.click('[data-action="home"]');
-  await shot(page, '20_一覧_部品の入った縮小画像');
+  await shot(page, '20_一覧_アイテムの入った縮小画像');
   await page.close();
 }
 
@@ -293,15 +309,15 @@ async function shootDatabase(browser) {
   const page = await openApp(browser, DB_SAMPLE);
   await page.click('.card-open[data-id="d1"]');
   for (let i = 0; i < 3; i++) await page.click('[data-action="zoom-out"]');
-  await shot(page, '21_項目_部品の箱のデータベースの項目の組_70%');
+  await shot(page, '21_項目_アイテム一覧のデータベースの項目の組_70%');
   await page.click('#stage .part[data-part-id="p2"]');
-  await shot(page, '22_項目_部品を選んだ設定の欄（2 つの枠）');
+  await shot(page, '22_項目_アイテムを選んだ設定の欄（2 つの枠）');
   await page.click('#stage .part[data-part-id="p5"]');
   await page.evaluate(() => { const s = document.querySelector('#side-settings'); s.scrollTop += s.querySelector('.lk-box').getBoundingClientRect().top - s.getBoundingClientRect().top - 8; });
   await shot(page, '30_ルックアップ_探す項目を選んだところ');
   await page.click('[data-action="open-items"]');
   await page.click('#db-view tr[data-id="i2"]');
-  await shot(page, '23_項目_データベースの項目の一覧表');
+  await shot(page, '23_項目_項目一覧');
   await page.click('#db-view [data-action="add-item-menu"]');
   await shot(page, '24_項目_項目を足すメニュー');
   await page.keyboard.press('Escape');
@@ -312,10 +328,10 @@ async function shootDatabase(browser) {
   await page.click('.modal [data-dlg="ok"]');
   await page.click('.sl-item');
   await page.click('#stage .part[data-part-id="p6"]');
-  await shot(page, '26_項目_項目を消した後に残った部品');
+  await shot(page, '26_項目_項目を消した後に残ったアイテム');
   // 取り込んだ項目（都道府県）を選ぶ
   await page.click('#stage .part[data-part-id="p7"]');
-  await shot(page, '27_取り込み_取り込んだ項目の部品を選んだところ');
+  await shot(page, '27_取り込み_取り込んだ項目のアイテムを選んだところ');
   // ほかのモックから取り込む窓（メニューバーの「項目」の組はたたんであるので、先に組のボタンを押す。q74）
   await page.click('#toolbar .fold-btn[data-fold="items"]');
   await page.click('#toolbar [data-action="import-items"]');
@@ -339,7 +355,7 @@ async function buildParts2(page) {
       kind: item('radio', '区分', { options: ['法人', '個人'] }), staff: item('user', '担当者'), amount: item('number', '合計金額', { unit: '円' }),
     };
     const sc = (name) => ({ id: 's-' + name, name, device: 'pc', width: 1280, height: 800, showHeader: true, tablePos: 'right', parts: [], callouts: [] });
-    store.commit((s) => { const d = s.designs.find((x) => x.id === did); d.screens = [sc('一覧'), sc('新規登録'), sc('進み具合'), sc('グラフ')]; });
+    store.commit((s) => { const d = s.designs.find((x) => x.id === did); d.screens = [sc('一覧'), sc('新規登録'), sc('進捗'), sc('グラフ')]; });
     const put = (sid, type, x, y, patch, w, h) => {
       const pid = a.addPart(did, sid, type, { x, y });
       if (patch) a.updatePart(did, sid, pid, patch);
@@ -363,13 +379,13 @@ async function buildParts2(page) {
     a.updateItem(did, tItem.id, { props: { columns: cols } });
     a.updatePart(did, 's-新規登録', tb, { view: { samples: { c0: ['コピー用紙 A4', 'ボールペン 黒'], c1: ['10', '20'], c2: ['450 円', '120 円'], c3: ['4,500 円', '2,400 円'] }, widths: { c0: 260 } } });
     // 進み具合と見た目用
-    put('s-進み具合', 'status', 24, 64);
-    put('s-進み具合', 'steps', 232, 64);
-    put('s-進み具合', 'tabs', 24, 136);
-    put('s-進み具合', 'image', 24, 200, { label: '会社のロゴ' });
-    put('s-進み具合', 'link', 296, 200, { label: '受注の詳しい画面を開く', props: { to: 'screen', screenId: 's-新規登録' } });
+    put('s-進捗', 'status', 24, 64);
+    put('s-進捗', 'steps', 232, 64);
+    put('s-進捗', 'tabs', 24, 136);
+    put('s-進捗', 'image', 24, 200, { label: '会社のロゴ' });
+    put('s-進捗', 'link', 296, 200, { label: '受注の詳しい画面を開く', props: { to: 'screen', screenId: 's-新規登録' } });
     ['gear', 'bell', 'mail', 'trash', 'edit', 'info', 'search', 'plus', 'check', 'close', 'user', 'calendar', 'home', 'star', 'download', 'upload'].forEach((icon, i) =>
-      put('s-進み具合', 'icon', 296 + (i % 8) * 48, 248 + Math.floor(i / 8) * 48, { props: { icon, color: ['black', 'blue', 'red', 'gray'][i % 4] } }));
+      put('s-進捗', 'icon', 296 + (i % 8) * 48, 248 + Math.floor(i / 8) * 48, { props: { icon, color: ['black', 'blue', 'red', 'gray'][i % 4] } }));
     // グラフの画面
     put('s-グラフ', 'graph', 24, 64, { label: '月ごとの受注金額', props: { byItem: ids.date, byUnit: '月ごと', aggItem: ids.amount, unit: '万円' } });
     put('s-グラフ', 'graph', 528, 64, { label: '区分ごとの顧客数', props: { chart: 'pie', byItem: ids.kind, agg: 'count', samples: '法人, 60\n個人, 30\n官公庁, 10' } });
@@ -398,21 +414,21 @@ async function shootParts2(browser) {
   const ids = await buildParts2(page);
   await page.evaluate((id) => window.__test__.openDesign(id), ids.did);
   for (let i = 0; i < 4; i++) await page.click('[data-action="zoom-out"]');
-  await shot(page, '31_後半の部品_一覧の画面（検索・絞り込み・レコード一覧・ページ送り）_60%');
+  await shot(page, '31_後半のアイテム_一覧の画面（検索・絞り込み・レコード一覧・ページ送り）_60%');
   await page.click('.sl-item[data-id="s-新規登録"]');
-  await shot(page, '32_後半の部品_テーブルと一覧表の枝番_60%');
+  await shot(page, '32_後半のアイテム_テーブルと一覧表の枝番_60%');
   await page.click('#stage .part.pt-table');
   await page.click('#side-settings [data-action="tb-col"][data-id="c1"]');
-  await shot(page, '33_後半の部品_テーブルの列を選んだ設定の欄_60%');
-  await page.click('.sl-item[data-id="s-進み具合"]');
-  await shot(page, '34_後半の部品_ステータス・進み具合・タブ・見た目用_60%');
+  await shot(page, '33_後半のアイテム_テーブルの列を選んだ設定の欄_60%');
+  await page.click('.sl-item[data-id="s-進捗"]');
+  await shot(page, '34_後半のアイテム_ステータス・進捗・タブ・その他_60%');
   await page.click('.sl-item[data-id="s-グラフ"]');
-  await shot(page, '35_後半の部品_グラフ 4 種類_60%');
+  await shot(page, '35_後半のアイテム_グラフ 4 種類_60%');
   await page.click('#stage .part.pt-graph');
-  await shot(page, '36_後半の部品_グラフの設定の欄_60%');
+  await shot(page, '36_後半のアイテム_グラフの設定の欄_60%');
   await page.evaluate((id) => window.__test__.openDesign(id), ids.cid);
   await page.click('#stage .part.pt-table');
-  await shot(page, '37_後半の部品_関連レコード一覧と設定の欄');
+  await shot(page, '37_後半のアイテム_関連レコード一覧と設定の欄');
   await page.close();
 }
 
@@ -429,8 +445,8 @@ async function shootCallouts(browser) {
   });
   await dragMouse(page, await center(page, '.pal-btn[data-type="callout"]'), await center(page, '#stage .part[data-part-id="p1"]'));
   const placed = await page.evaluate(() => window.__test__.currentScreen().callouts.map((c) => [c.target, c.x, c.y]));
-  console.log('部品の上に落とした吹き出し（つないだ部品・位置）:', JSON.stringify(placed));
-  await shot(page, '38_吹き出し_部品の上に落として置いた_50%');
+  console.log('アイテムの上に落とした吹き出し（つないだアイテム・位置）:', JSON.stringify(placed));
+  await shot(page, '38_吹き出し_アイテムの上に落として置いた_50%');
   // 吹き出しを、画面の左の外の余白へ動かす
   const co = await center(page, '#stage .callout');
   const scr = await (await page.$('#stage .screen')).boundingBox();
@@ -442,14 +458,14 @@ async function shootCallouts(browser) {
   await page.click('#stage .callout');
   await dragMouse(page, await center(page, '#stage [data-co-handle]'), await center(page, '#stage .part[data-part-id="p5"]'));
   const linked = await page.evaluate(() => window.__test__.currentScreen().callouts.map((c) => c.target));
-  console.log('つなぎ直した後の部品:', JSON.stringify(linked));
+  console.log('つなぎ直した後のアイテム:', JSON.stringify(linked));
   await shot(page, '40_吹き出し_線の先をドラッグして区分につないだ_50%');
   // つないだ部品（区分）を動かすと、線も付いてくる（動かしている途中を撮る）
   const p5 = await center(page, '#stage .part[data-part-id="p5"]');
   await page.mouse.move(p5.x, p5.y);
   await page.mouse.down();
   await page.mouse.move(p5.x + 200, p5.y + 60, { steps: 8 });
-  await shot(page, '41_吹き出し_つないだ部品を動かしている途中_50%');
+  await shot(page, '41_吹き出し_つないだアイテムを動かしている途中_50%');
   await page.mouse.up();
   // 設定の欄で赤・矢印にし、文字を書く
   await page.click('#stage .callout');
@@ -489,7 +505,7 @@ async function shootMulti(browser) {
   await page.click('#stage .part[data-part-id="p2"]');
   await page.keyboard.up('Control');
   console.log('Ctrl で足した後:', JSON.stringify((await info()).sel));
-  await shot(page, '45_まとめて_Ctrlで足した（右の欄に揃えるボタン）_50%');
+  await shot(page, '45_まとめて_Ctrlで足した（右のパネルに揃えるボタン）_50%');
   await page.click('#toolbar .fold-btn[data-fold="align"]'); // 「揃える」の組はたたんであるので、先に組のボタンを押す（q74）
   await page.click('#toolbar [data-action="align-left"]');
   const b2 = (await info()).pos;
@@ -505,7 +521,7 @@ async function shootMulti(browser) {
   await shot(page, '47_まとめて_Ctrlを押しながらドラッグしている途中_50%');
   await page.mouse.up();
   await page.keyboard.up('Control');
-  console.log('複製した後の部品の数:', before, '→', Object.keys((await info()).pos).length);
+  console.log('複製した後のアイテムの数:', before, '→', Object.keys((await info()).pos).length);
   await shot(page, '48_まとめて_Ctrlのドラッグで複製した_50%');
   await page.close();
 }
@@ -532,7 +548,7 @@ async function shootScreens(browser) {
   console.log('ひな形から足した後の画面:', JSON.stringify(await names()));
   for (let i = 0; i < 5; i++) await page.click('[data-action="zoom-out"]');
   const all = await ids();
-  const shotNames = ['61_画面_ひな形_入力_50%', '62_画面_ひな形_詳細_50%', '63_画面_ひな形_一覧_50%', '64_画面_ひな形_グラフ_50%', '65_画面_ひな形_集計_50%', '66_画面_ひな形_進み具合_50%'];
+  const shotNames = ['61_画面_ひな形_入力_50%', '62_画面_ひな形_詳細_50%', '63_画面_ひな形_一覧_50%', '64_画面_ひな形_グラフ_50%', '65_画面_ひな形_集計_50%', '66_画面_ひな形_進捗_50%'];
   for (let i = 0; i < shotNames.length; i++) {
     await page.click(`.sl-item[data-id="${all[i + 1]}"]`);
     await shot(page, shotNames[i]);
@@ -624,7 +640,7 @@ async function shootMap(browser) {
   await page.click('[data-action="home-map"]');
   const edges = await page.evaluate(() => window.__test__.mapModel(window.__test__.store.state).edges.map((e) => `${e.kind}: ${e.from} → ${e.to}`));
   console.log('矢印:', JSON.stringify(edges));
-  await shot(page, '49_図_最初の画面のつながりの図');
+  await shot(page, '49_図_最初の画面の関連図');
   // 社員名簿（つながりのない箱。つながった箱の下にある）を右下へドラッグする（途中で撮る）
   const node = '#home-map .mnode[data-node="d:d6"]';
   const c = await center(page, node);
@@ -640,7 +656,7 @@ async function shootMap(browser) {
   console.log('押した後:', JSON.stringify(await page.evaluate(() => [window.__test__.ui.view, window.__test__.currentDesign().name])));
   await page.setViewport({ width: 1400, height: 860 });
   await page.click('[data-action="open-map"]');
-  await shot(page, '52_図_編集の画面のつながりの図（顧客管理）');
+  await shot(page, '52_図_編集の画面の関連図（顧客管理）');
   // 編集の画面の図でも動かせる（画面設計ごとに覚える）
   const n3 = await center(page, '#design-map .mnode[data-node="d:d3"]');
   await dragMouse(page, n3, { x: n3.x + 40, y: n3.y + 240 });
@@ -683,7 +699,7 @@ async function shootExport(browser) {
   await doc.setViewport({ width: 1200, height: 900 });
   await doc.setContent(pdf.html, { waitUntil: 'load' });
   const pages = await doc.$$('body > .pg');
-  const labels = ['74_出力_PDF_表紙', '75_出力_PDF_つながりの図', '76_出力_PDF_項目の一覧表', '77_出力_PDF_画面のページ（吹き出しと一覧表）'];
+  const labels = ['74_出力_PDF_表紙', '75_出力_PDF_関連図', '76_出力_PDF_項目一覧', '77_出力_PDF_画面のページ（吹き出しと一覧表）'];
   for (let i = 0; i < Math.min(pages.length, labels.length); i++) {
     const file = path.join(OUT, `v${VERSION}_${labels[i]}.png`);
     await pages[i].screenshot({ path: file });
@@ -708,7 +724,7 @@ async function shootExport(browser) {
   await sa.waitForFunction(() => window.__test__ && window.__test__.ready);
   await shot(sa, '78_出力_単体で開いたHTML');
   await sa.evaluate(() => window.__test__.runCommand('openMap'));
-  await shot(sa, '79_出力_単体で開いたHTMLのつながりの図');
+  await shot(sa, '79_出力_単体で開いたHTMLの関連図');
   // ベンダーが直したことにして保存し直した文字を作り、アプリで取り込む
   const vendor = await sa.evaluate(() => {
     const T = window.__test__;
@@ -735,7 +751,7 @@ async function shootRevisions(browser) {
   const page = await openDeskApp(browser, DB_SAMPLE);
   const r1 = await page.evaluate(() => {
     const T = window.__test__;
-    const id = T.actions.addRevision('d1', { note: '最初の版。ベンダーに見積もりを頼んだ。', day: '2026-10-08' });
+    const id = T.actions.addRevision('d1', { note: '最初の版。ベンダーに見積もりを依頼した。', day: '2026-10-08' });
     T.actions.updateItem('d1', 'i3', { props: { options: ['法人', '個人', '団体'] } }); // 設定変更
     T.actions.movePart('d1', 's1', 'p6', { x: 528, y: 328, w: 472, h: 64 }); // 位置変更
     T.actions.movePart('d1', 's1', 'p5', { x: 24, y: 240, w: 304, h: 64 }); // 大きさ変更
@@ -749,7 +765,7 @@ async function shootRevisions(browser) {
   await shot(page, '82_改訂_▼のメニュー');
   await page.click('#rev-menu-root [data-action="add-revision"]');
   await page.waitForSelector('.modal [name="rv-note"]');
-  await page.type('.modal [name="rv-note"]', '区分に「団体」を足し、受付日の欄を足した。');
+  await page.type('.modal [name="rv-note"]', '区分に「団体」を足し、受付日の欄を追加した。');
   await shot(page, '83_改訂_改訂する窓（変更内容の一覧）');
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForFunction(() => !document.querySelector('.modal'));
@@ -760,7 +776,7 @@ async function shootRevisions(browser) {
   await page.click(`.modal tr[data-rev="${r1}"] [data-rv="view"]`);
   await page.waitForSelector('#rv-band:not([hidden])');
   await page.click('#stage .part[data-part-id="p3"]');
-  await shot(page, '85_改訂_前の版を見る（部品を選んだ）');
+  await shot(page, '85_改訂_前の版を見る（アイテムを選んだ）');
   await page.click('#screen-list [data-action="open-items"]');
   await shot(page, '86_改訂_前の版を見る（データベースの項目）');
   await page.click('#rv-band [data-action="rev-restore-viewing"]');
@@ -777,7 +793,7 @@ async function shootRevisions(browser) {
     box.querySelector('[data-xdiff]').checked = true;
     box.querySelector('[data-xdiffrev]').value = id;
   }, r1);
-  await shot(page, '88_改訂_出力の窓の違いの印');
+  await shot(page, '88_改訂_出力の窓の変更マーク');
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForFunction(() => window.__xp.some((x) => x[0] === 'pdf'));
   const pdf = await page.evaluate(() => window.__xp.find((x) => x[0] === 'pdf')[1]);
@@ -794,7 +810,7 @@ async function shootRevisions(browser) {
     await pages[i].screenshot({ path: file });
     console.log('saved', path.relative(ROOT, file));
   }
-  console.log('違いの印の PDF のページの数:', pages.length);
+  console.log('変更マークの PDF のページの数:', pages.length);
   await doc.close();
   // 第 2 版と比べた HTML を出力して、HTML の中で 1 つ直してから撮る
   const r2 = await page.evaluate(() => window.__test__.latestVersion(window.__test__.currentDesign()).id);

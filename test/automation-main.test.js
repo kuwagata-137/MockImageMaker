@@ -221,7 +221,7 @@ test('export_bdm の仕上げ: 資料の窓口がなければ unavailable。bdmE
   const app = { isPackaged: false, getPath: () => ROOT };
   const none = await createRenderFinisher({ app, renderer: {}, headless: true }).finish(bdmPage());
   assert.deepEqual([none.ok, none.error.code], [false, 'unavailable']);
-  const noSteps = { ok: false, error: { code: 'bad_request', message: 'スイムレーン図に作業がないので、MPD に出力しません。' } };
+  const noSteps = { ok: false, error: { code: 'bad_request', message: 'スイムレーン図に工程がないので、MPD に出力しません。' } };
   const failed = await createRenderFinisher({ app, renderer: {}, headless: true, materials: { bdmExport: async () => noSteps } }).finish(bdmPage());
   assert.deepEqual(failed, noSteps);
   const thrown = await createRenderFinisher({ app, renderer: {}, headless: true, materials: { bdmExport: async () => { throw new Error('壊れた'); } } }).finish(bdmPage());

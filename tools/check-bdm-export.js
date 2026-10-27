@@ -67,7 +67,7 @@ const FRESH = {
 const withState = (st) => injectBdmState(BDM_APP, st);
 const CASES = [
   { no: 1, label: '取り込んだ図をそのまま', src: withState(TRIP), payload: () => payloadOf(planFromHtml(withState(TRIP))) },
-  { no: 2, label: '役割と作業を足した図', src: withState(TRIP), payload: () => grownPayload(payloadOf(planFromHtml(withState(TRIP)))) },
+  { no: 2, label: '役割と作業を追加した図', src: withState(TRIP), payload: () => grownPayload(payloadOf(planFromHtml(withState(TRIP)))) },
   { no: 3, label: '横の図に新しい箱だけ', src: withState({ ...BLANK, orientation: 'horizontal' }), payload: () => FRESH },
   { no: 4, label: '本体だけの HTML', src: BDM_APP, payload: () => FRESH },
 ];

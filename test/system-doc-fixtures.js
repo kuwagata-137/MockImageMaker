@@ -11,7 +11,7 @@ const ALL = { paper: 'A4', orient: 'landscape', systemCover: true, swimlane: tru
 // 画面設計を 1 つ出力するときの全部のページ
 const PER = { paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, process: true, flow: true };
 // ⑤（説明書と出力）の決めたことに AI が書く、出力したファイルの場所（説明書の PDF に入れない）
-const DOCS_PATH = 'D:\\共有\\モックイメージメーカー\\AI の出力\\出張申請システム_説明書.pdf';
+const DOCS_PATH = 'D:\\共有\\モックイメージメーカー\\AI の出力\\出張申請システム_システム設計書.pdf';
 
 async function buildDesigns(api) {
   const call = async (tool, args) => {
@@ -68,13 +68,13 @@ function buildSystems(api, { steps = true, notes = true } = {}) {
     a.addNoteDecision(sys, { stage: 'items', text: '経費精算は、出張申請と別の画面設計にする', reason: '精算は経理が確かめるため' });
     a.addNoteDecision(sys, { stage: 'read', text: '役割は、申請者・上長・経理の 3 つにする', reason: '旅費規程の第 5 条から' });
     a.addNoteDecision(sys, { stage: 'flow', text: '承認は上長の 1 段にする', reason: '現場の手間を減らすため' });
-    a.addNoteDecision(sys, { stage: 'docs', text: '説明書を出力した', reason: DOCS_PATH });
+    a.addNoteDecision(sys, { stage: 'docs', text: 'システム設計書を出力した', reason: DOCS_PATH });
     a.addNoteDecision(sys, { stage: 'flow' }); // 空の行（PDF に入れない）
     a.addNoteQuestion(sys, { stage: 'items', text: '宿泊費の上限を、役職で変えるか' });
     const q = a.addNoteQuestion(sys, { stage: 'read', text: '海外出張も、このシステムで申請するか' });
     a.answerNoteQuestion(sys, q, '国内だけにする');
     a.addNoteQuestion(sys, { stage: 'flow', text: '部長の承認は要るか' });
-    a.addNoteQuestion(sys, { stage: 'docs', text: '説明書は A3 で出すか' });
+    a.addNoteQuestion(sys, { stage: 'docs', text: 'システム設計書は A3 で出すか' });
   }
   return sys;
 }

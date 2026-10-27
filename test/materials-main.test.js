@@ -146,7 +146,7 @@ test('materials:pick — 開く窓（いくつでも選べる）で選んだフ�
   assert.deepEqual(r.skipped, []);
 
   const first = env.dialogCalls[0];
-  assert.equal(first.title, '資料を入れる');
+  assert.equal(first.title, '資料を追加する');
   assert.deepEqual(first.properties, ['openFile', 'multiSelections']);
   assert.equal(first.defaultPath, env.documentsDir);
   assert.equal(first.filters.length, 2);

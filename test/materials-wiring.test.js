@@ -61,9 +61,9 @@ function setup(t, extra = {}) {
 
 const sizeOf = (png) => ({ width: png.readUInt32BE(16), height: png.readUInt32BE(20) });
 
-test('createReadingParts — 読む部品は、初めて読む頼みが来るまで読み込まない（exceljs などの読み込みで起動が遅れないように）', async (t) => {
+test('createReadingParts — 読む機能は、初めて読む頼みが来るまで読み込まない（exceljs などの読み込みで起動が遅れないように）', async (t) => {
   const readerPath = require.resolve('../material-reader');
-  assert.equal(require.cache[readerPath], undefined, 'この試しの前に、読む部品が読み込まれていない');
+  assert.equal(require.cache[readerPath], undefined, 'この試しの前に、読む機能が読み込まれていない');
   const parts = createReadingParts();
   assert.equal(typeof parts.reader.read, 'function');
   assert.equal(typeof parts.bdm.planFromHtml, 'function');
@@ -231,7 +231,7 @@ test('materials:bdmExport — 資料の MPD を元に作った HTML を、保存
   fs.mkdirSync(path.dirname(target), { recursive: true });
   const r = await env.ipc('materials:bdmExport', { systemId: SYS, file: bdm.file, plan: EXPORT_PLAN, name: '出張申請システム_スイムレーン.html' });
   assert.deepEqual(r, { ok: true, path: target, warnings: [], counts: { lanes: 2, steps: 2, edges: 1 } });
-  assert.deepEqual(asked, [{ title: 'MPD に出力する', name: '出張申請システム_スイムレーン.html', ext: 'html', label: 'HTML ファイル' }]);
+  assert.deepEqual(asked, [{ title: 'MPD の保存先を選ぶ', name: '出張申請システム_スイムレーン.html', ext: 'html', label: 'HTML ファイル' }]);
   const read = planFromHtml(fs.readFileSync(target, 'utf8'));
   assert.deepEqual(read.roles, ['申請者', '上長']);
   assert.deepEqual(read.steps.map((s) => [s.role, s.kind, s.text]), [['申請者', 'start', '出張が決まる'], ['上長', 'task', '承認する']]);

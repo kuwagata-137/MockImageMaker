@@ -39,7 +39,7 @@ function notedState() {
 }
 
 // ── 読む ──
-test('get_notes: 段階ごとの進み具合（state と確認の日時）・読み取ったこと・メモ・決めたこと・まだ決まっていないこと・更新の印を返す。ごみ箱のシステムも読める', async () => {
+test('get_notes: 段階ごとの進捗（state と確認の日時）・読み取ったこと・メモ・決めたこと・まだ決まっていないこと・更新日時を返す。ごみ箱のシステムも読める', async () => {
   const { app, call } = await boot(notedState());
   const r = ok(await call('get_notes', { system: '営業管理システム' }));
   assert.deepEqual(r, {
@@ -85,7 +85,7 @@ test('get_notes: 決めたこと・まだ決まっていないことが多いと
   app.close();
 });
 
-test('list_systems・get_system: 段階ごとの進み具合の名前（stages）を返す', async () => {
+test('list_systems・get_system: 段階ごとの進捗の名前（stages）を返す', async () => {
   const { app, call } = await boot(notedState());
   const all = { read: 'done', flow: 'review', items: 'todo', screens: 'todo', docs: 'todo' };
   const rows = ok(await call('list_systems', { trashed: true })).systems;
@@ -102,7 +102,7 @@ test('list_systems・get_system: 段階ごとの進み具合の名前（stages�
 });
 
 // ── 書く ──
-test('update_notes: 読み取ったこと・メモ・決めたことと理由・まだ決まっていないことを ops で 1 回の変更として書く。added は足した行の id。返事の updatedAt が新しい更新の印', async () => {
+test('update_notes: 読み取ったこと・メモ・決めたことと理由・まだ決まっていないことを ops で 1 回の変更として書く。added は足した行の id。返事の updatedAt が新しい更新日時', async () => {
   const { app, call, sys } = await boot();
   const r = ok(await call('update_notes', { system: '営業管理システム', expect: OLD, ops: [
     { op: 'set_findings', text: '営業が顧客を登録し、上長が確かめる。\n様式「顧客登録票」の欄: 顧客名・区分' },
@@ -168,8 +168,8 @@ test('update_notes: 断る（空の文の add・知らない段階・知らな�
   await bad({ op: 'remove_decision', id: 'nq1' }, 'not_found');
   await bad({ op: 'remove_question', id: 'nq-nai' }, 'not_found');
   await bad({ op: 'answer_question', id: 'nq-nai', answer: 'ある' }, 'not_found');
-  await bad({ op: 'edit_decision', id: 'nd1' }, 'bad_request', /直す欄（stage・text・reason）/);
-  await bad({ op: 'edit_question', id: 'nq1' }, 'bad_request', /直す欄（stage・text）/);
+  await bad({ op: 'edit_decision', id: 'nd1' }, 'bad_request', /変更する欄（stage・text・reason）/);
+  await bad({ op: 'edit_question', id: 'nq1' }, 'bad_request', /変更する欄（stage・text）/);
   await bad({ op: 'edit_question', id: 'nq1', text: ' ' }, 'bad_request', /空/);
   await bad({ op: 'set_findings', text: 'あ'.repeat(8001) }, 'bad_request', /8000 字まで.*8001 字/);
   await bad({ op: 'set_memo', text: 'い'.repeat(8001) }, 'bad_request', /8000 字まで/);
@@ -189,7 +189,7 @@ test('update_notes: 断る（空の文の add・知らない段階・知らな�
   app.close();
 });
 
-test('set_stage: doing・review・done・skipped に変える。done と skipped で確認の日時が入り、同じ進み具合は changed: false で確認の日時も変わらない。todo と知らない段階・進み具合は断る（断りの文は NOTE_STATE_NAMES の名前）', async () => {
+test('set_stage: doing・review・done・skipped に変える。done と skipped で確認の日時が入り、同じ進捗は changed: false で確認の日時も変わらない。todo と知らない段階・進捗は断る（断りの文は NOTE_STATE_NAMES の名前）', async () => {
   const { app, call, sys } = await boot();
   const r1 = ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'doing' }));
   assert.deepEqual([r1.stage, r1.state, r1.confirmedAt, r1.changed], ['read', 'doing', null, true]);
@@ -204,14 +204,14 @@ test('set_stage: doing・review・done・skipped に変える。done と skipped
   assert.equal(sys('y1').notes.stages.read.confirmedAt, r3.confirmedAt);
   assert.equal(r3.warnings, undefined);
   const again = ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'done' }));
-  assert.deepEqual([again.changed, again.state, again.confirmedAt, again.updatedAt], [false, 'done', r3.confirmedAt, r3.updatedAt], '同じ進み具合は何も変えない');
+  assert.deepEqual([again.changed, again.state, again.confirmedAt, again.updatedAt], [false, 'done', r3.confirmedAt, r3.updatedAt], '同じ進捗は何も変えない');
   const sk = ok(await call('set_stage', { system: 'y1', stage: 'flow', state: 'skipped' }));
   assert.match(sk.confirmedAt, ISO);
   const todo = ng(await call('set_stage', { system: 'y1', stage: 'read', state: 'todo' }), 'bad_request');
-  assert.equal(todo.message, '段階を "todo"（まだ）には戻せません。前の段階を直すときは "review"（確認待ち）に戻してください。');
+  assert.equal(todo.message, '段階を "todo"（まだ）には戻せません。前の段階を変更するときは "review"（確認待ち）に戻してください。');
   ng(await call('set_stage', { system: 'y1', stage: 'design', state: 'doing' }), 'bad_request');
   const unknown = ng(await call('set_stage', { system: 'y1', stage: 'items', state: 'finished' }), 'bad_request');
-  assert.equal(unknown.message, '進み具合「finished」は使えません（使える進み具合: doing（作業中）・review（確認待ち）・done（確認済み）・skipped（確認を飛ばした））。');
+  assert.equal(unknown.message, '進捗「finished」は使えません（使える進捗: doing（作業中）・review（確認待ち）・done（確認済み）・skipped（確認を飛ばした））。');
   ng(await call('set_stage', { system: 'y1', state: 'doing' }), 'bad_request');
   assert.deepEqual(Object.values(sys('y1').notes.stages).map((s) => s.state), ['done', 'skipped', 'todo', 'todo', 'todo']);
   // 前の段階を直すときは review に戻す（確認の日時は消える）
@@ -254,7 +254,7 @@ test('書けない間（前の版を見ている間・保存を止めている�
 });
 
 // ── 「AI が直す前の状態」の行と知らせ ──
-test('設計ノートだけを直しても、システムの履歴に「AI が直す前の状態」の行は増えない（設計ノートは写しに入らない）。中身を直したときは今までどおり 1 行', async () => {
+test('設計ノートだけを直しても、システムの履歴に「AI が変更する前の状態」の行は増えない（設計ノートは写しに入らない）。中身を直したときは今までどおり 1 行', async () => {
   const { app, call, sys } = await boot();
   ok(await call('update_notes', { system: 'y1', ops: [{ op: 'set_findings', text: '読み取ったこと' }, { op: 'add_question', stage: 'read', text: '問い' }] }));
   ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'review' }));
@@ -266,7 +266,7 @@ test('設計ノートだけを直しても、システムの履歴に「AI が�
   app.close();
 });
 
-test('notesChangeCount: 段階（進み具合と確認の日時）・読み取ったこと・メモと、決めたこと・まだ決まっていないことの行の足す・消す・直すを 1 件ずつ数える', async () => {
+test('notesChangeCount: 段階（進捗と確認の日時）・読み取ったこと・メモと、決めたこと・まだ決まっていないことの行の足す・消す・直すを 1 件ずつ数える', async () => {
   const { app, T } = await boot();
   const row = (id, extra = {}) => ({ id, date: '2026-10-02', stage: 'items', text: `行 ${id}`, reason: '', ...extra });
   const a = plain(T.normalizeNotes({ decisions: [row('nd1'), row('nd2')], questions: [{ ...row('nq1'), answer: '', resolvedAt: null }] }));
@@ -293,7 +293,7 @@ test('知らせ: システムの画面で開いているシステムの設計ノ
   ] }));
   assert.equal(T.store.undoStack.length, u0 + 1);
   assert.deepEqual(plain([T.aiView.band.kind, T.aiView.band.systemId, T.aiView.band.count, T.aiView.band.undoable, T.aiView.warn]), ['system', 'y1', 3, true, null]);
-  assert.match(app.document.querySelector('#ai-band').textContent, /Claude Code が「営業管理システム」を直しました（変更 3 件）。/);
+  assert.match(app.document.querySelector('#ai-band').textContent, /Claude Code が「営業管理システム」を変更しました（変更内容 3 件）。/);
   ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'doing' }));
   assert.equal(T.aiView.band.count, 4, '最初に直す前と比べた件数');
   ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'review' }));
@@ -311,11 +311,11 @@ test('知らせ: 開いていないシステムの設計ノートだけを直し
   const { app, T, call } = await boot();
   const $ = (s) => app.document.querySelector(s);
   ok(await call('set_stage', { system: 'y1', stage: 'read', state: 'doing' }));
-  assert.match($('#ai-band').textContent, /Claude Code が「営業管理システム」を直しました（変更 1 件）。/, '履歴がなければ紫の帯');
+  assert.match($('#ai-band').textContent, /Claude Code が「営業管理システム」を変更しました（変更内容 1 件）。/, '履歴がなければ紫の帯');
   T.actions.updateSystem('y2', { description: '人の変更' });
   ok(await call('update_notes', { system: 'y1', ops: [{ op: 'add_question', stage: 'read', text: '問い' }] }));
   const warn = $('#ai-warn');
-  assert.match(warn.textContent, /Claude Code が「営業管理システム」を直したので、元に戻す（Ctrl\+Z）の履歴を消しました。/);
+  assert.match(warn.textContent, /Claude Code が「営業管理システム」を変更したので、元に戻す（Ctrl\+Z）の履歴を消しました。/);
   assert.doesNotMatch(warn.textContent, /戻せます/);
   assert.equal(warn.querySelector('[data-action="ai-open-system-history"]'), null);
   const btn = warn.querySelector('[data-action="ai-open-system-notes"]');
@@ -326,13 +326,13 @@ test('知らせ: 開いていないシステムの設計ノートだけを直し
   T.goHome();
   T.actions.updateSystem('y2', { description: '人の変更 2' });
   ok(await call('update_system', { system: 'y1', ops: [{ op: 'add', name: '経理' }] }));
-  assert.match($('#ai-warn').textContent, /AI の変更を戻すときは、「営業管理システム」の履歴の「Claude Code が直す前の状態」から戻せます。/);
+  assert.match($('#ai-warn').textContent, /AI の変更を戻すときは、「営業管理システム」の履歴の「Claude Code が変更する前の状態」から戻せます。/);
   assert.ok($('#ai-warn [data-action="ai-open-system-history"]'));
   assert.equal($('#ai-warn [data-action="ai-open-system-notes"]'), null);
   app.close();
 });
 
-test('NOTE_STATE_NAMES: 段階の進み具合の名前の表（データの区画。AI の断りの文と、設計ノートの画面が使う）', async () => {
+test('NOTE_STATE_NAMES: 段階の進捗の名前の表（データの区画。AI の断りの文と、設計ノートの画面が使う）', async () => {
   const { app, T } = await boot();
   assert.deepEqual(plain(T.NOTE_STATE_NAMES), { todo: 'まだ', doing: '作業中', review: '確認待ち', done: '確認済み', skipped: '確認を飛ばした' });
   assert.deepEqual(Object.keys(T.NOTE_STATE_NAMES), plain(T.NOTE_STATES));

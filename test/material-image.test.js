@@ -70,7 +70,7 @@ test('toPng — 画素が 1 億を超える画像は、読み込まずに too_la
   await assert.rejects(toPng(pngHead(20000, 28000)), (err) => {
     assert.ok(err instanceof MaterialError, String(err));
     assert.equal(err.code, 'too_large', err.message);
-    assert.equal(err.message, 'この画像は画素が多すぎるため（20000×28000）、読めません。画素が 1 億より少なくなるように小さくして保存し直してから、入れ直してください。');
+    assert.equal(err.message, 'この画像は画素が多すぎるため（20000×28000）、読めません。画素が 1 億より少なくなるように小さくして保存し直してから、追加し直してください。');
     return true;
   });
   // ちょうど 1 億画素は、大きさでは断らない（中身がないので、読み込む部品が read_failed にする）

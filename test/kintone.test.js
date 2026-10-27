@@ -16,7 +16,7 @@ async function boot(state = sampleState()) {
   return { app, T, d };
 }
 
-test('kintone の種類の選択肢は部品の種類ごとに決まり、先頭が既定（自動で入る種類には印がある）', async () => {
+test('kintone の種類の選択肢はアイテムの種類ごとに決まり、先頭が既定（自動で入る種類には印がある）', async () => {
   const { app, T } = await boot();
   const ids = (type) => plain(T.kintoneChoices(type)).map((k) => k.id);
   assert.deepEqual(ids('text1'), ['SINGLE_LINE_TEXT', 'LINK', 'RECORD_NUMBER']);
@@ -65,7 +65,7 @@ test('項目とテーブルの列の kintone の欄は、文字でない値を�
   app.close();
 });
 
-test('選んでいる kintone の種類は、部品の種類の選択肢にないとき既定に戻して読む（データは消さない）', async () => {
+test('選んでいる kintone の種類は、アイテムの種類の選択肢にないとき既定に戻して読む（データは消さない）', async () => {
   const st = sampleState();
   st.designs[0].items[0].kintone = { type: 'ORGANIZATION_SELECT', code: '', formula: '' };
   const { app, T, d } = await boot(st);
@@ -143,7 +143,7 @@ async function selectOn(st, partId) {
 const ktSel = (app) => $(app, '#side-settings select[data-pf="kintone.type"]');
 const ktCode = (app) => $(app, '#side-settings input[data-pf="kintone.code"]');
 
-test('右の欄: kintone の画面設計の項目に「kintone のフィールド」の欄（種類の選択肢は部品の種類ごと・既定に印・フィールドコードの薄い字は項目名から作ったコード）', async () => {
+test('右のパネル: kintone の画面設計の項目に「kintone のフィールド」の欄（種類の選択肢はアイテムの種類ごと・既定に印・フィールドコードの入力のヒントは項目名から作ったコード）', async () => {
   const { app } = await selectOn(kintoneState(), 'pu');
   assert.ok($$(app, '#side-settings .pf-sep').some((e) => e.textContent === 'kintone のフィールド'));
   assert.deepEqual($$(app, '#side-settings select[data-pf="kintone.type"] option').map((o) => [o.value, o.textContent]), [
@@ -153,11 +153,11 @@ test('右の欄: kintone の画面設計の項目に「kintone のフィール�
   assert.equal(ktSel(app).value, 'USER_SELECT');
   assert.equal(ktCode(app).value, '');
   assert.equal(ktCode(app).placeholder, '担当部署');
-  assert.equal($(app, '#side-settings [data-pf="kintone.formula"]'), null, '計算式の欄は自動計算の値だけ');
+  assert.equal($(app, '#side-settings [data-pf="kintone.formula"]'), null, '計算式の欄は自動計算だけ');
   app.close();
 });
 
-test('右の欄: kintone の種類とフィールドコードを書くと項目に入り、既定の種類を選び直すと空に戻す', async () => {
+test('右のパネル: kintone の種類とフィールドコードを書くと項目に入り、既定の種類を選び直すと空に戻す', async () => {
   const { app, d } = await selectOn(kintoneState(), 'pu');
   setValue(ktSel(app), 'ORGANIZATION_SELECT');
   assert.deepEqual(d('d1').items.find((x) => x.id === 'iu').kintone, { type: 'ORGANIZATION_SELECT', code: '', formula: '' });
@@ -169,7 +169,7 @@ test('右の欄: kintone の種類とフィールドコードを書くと項目�
   app.close();
 });
 
-test('右の欄: 自動計算の値には kintone の計算式の欄。使えない文字・ほかの項目に書いたコードとの重なりは欄の下に赤い字で知らせる（保存は止めない）', async () => {
+test('右のパネル: 自動計算には kintone の計算式の欄。使えない文字・ほかの項目に書いたコードとの重なりは欄の下に赤い字で知らせる（保存は止めない）', async () => {
   const st = kintoneState();
   st.designs[0].items[1].kintone = { code: '顧客名' };
   const { app, d } = await selectOn(st, 'pc');
@@ -185,7 +185,7 @@ test('右の欄: 自動計算の値には kintone の計算式の欄。使えな
   app.close();
 });
 
-test('右の欄: テーブルは種類を選ばずフィールドコードだけ。選んだ列にも kintone の欄が出て、列に入る。ステータスには出さない', async () => {
+test('右のパネル: テーブルは種類を選ばずフィールドコードだけ。選んだ列にも kintone の欄が出て、列に入る。ステータスには出さない', async () => {
   const { app, d } = await selectOn(kintoneState(), 'pt');
   assert.equal(ktSel(app), null);
   assert.ok(ktCode(app));
@@ -201,7 +201,7 @@ test('右の欄: テーブルは種類を選ばずフィールドコードだけ
   s.app.close();
 });
 
-test('右の欄: kintone の画面設計でないとき（作る先も見た目も kintone でない）は欄を出さない', async () => {
+test('右のパネル: kintone の画面設計でないとき（構築先も見た目も kintone でない）は欄を出さない', async () => {
   const st = kintoneState();
   st.designs[0].target = 'salesforce';
   const { app } = await selectOn(st, 'pu');
@@ -216,7 +216,7 @@ const partBox = (html, id) => {
   return m ? m[1] : '';
 };
 
-test('描き分け: 自動で入る種類（レコード番号・作成者など）は、点線の枠に「（自動で入る）」。見本の値を書いたときは見本の値。kintone の画面設計でないときは描き分けない', async () => {
+test('描き分け: 自動で入る種類（レコード番号・作成者など）は、点線の枠に「（自動で入る）」。サンプル値を書いたときはサンプル値。kintone の画面設計でないときは描き分けない', async () => {
   const st = kintoneState();
   st.designs[0].items[0].kintone = { type: 'RECORD_NUMBER' };
   st.designs[0].items[1].kintone = { type: 'RECORD_NUMBER' };
@@ -232,7 +232,7 @@ test('描き分け: 自動で入る種類（レコード番号・作成者など
   app.close();
 });
 
-test('描き分け: 組織選択は建物の印と「組織を選択」、グループ選択は 2 人の印と「グループを選択」（薄い字を書いたときは、その字）', async () => {
+test('描き分け: 組織選択は建物の印と「組織を選択」、グループ選択は 2 人の印と「グループを選択」（入力のヒントを書いたときは、その字）', async () => {
   const st = kintoneState();
   st.designs[0].items.find((x) => x.id === 'iu').kintone = { type: 'ORGANIZATION_SELECT' };
   const { app, T } = await boot(st);
@@ -245,7 +245,7 @@ test('描き分け: 組織選択は建物の印と「組織を選択」、グル
   app.close();
 });
 
-test('部品の設定の一覧表: kintone の画面設計で書いてあるときだけ、kintone の種類・フィールドコード・kintone の計算式の行を足す（テーブルの列の行も）', async () => {
+test('設定一覧: kintone の画面設計で書いてあるときだけ、kintone の種類・フィールドコード・kintone の計算式の行を足す（テーブルの列の行も）', async () => {
   const st = kintoneState();
   const items = st.designs[0].items;
   items.find((x) => x.id === 'iu').kintone = { type: 'ORGANIZATION_SELECT', code: '部署' };
@@ -263,7 +263,7 @@ test('部品の設定の一覧表: kintone の画面設計で書いてあると�
   app.close();
 });
 
-test('kintone の画面設計: 作る先が kintone か、見た目が kintone のとき', async () => {
+test('kintone の画面設計: 構築先が kintone か、見た目が kintone のとき', async () => {
   const { app, T } = await boot();
   const k = (target, look) => T.isKintoneDesign({ target, look });
   assert.deepEqual([k('kintone', 'standard'), k('salesforce', 'kintone'), k('salesforce', 'salesforce'), k('その他', undefined)], [true, true, false, false]);

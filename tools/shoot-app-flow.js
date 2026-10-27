@@ -70,7 +70,7 @@ module.exports = async function shootFlow(browser, env) {
   await page.setViewport({ width: 1600, height: 1000 });
   await page.evaluate((id) => { window.__test__.openDesign(id); window.__test__.runCommand('openProcess'); }, A);
   await sleep(150);
-  await shot(page, '54_流れ_ステータスの移り方の図（右の欄にステータスと操作）');
+  await shot(page, '54_流れ_ステータスの流れの図（右のパネルにステータスと操作）');
   // 55: 箱をドラッグで動かした後（位置を覚える）
   const box = await page.evaluate(() => {
     const d = window.__test__.currentDesign();
@@ -83,13 +83,13 @@ module.exports = async function shootFlow(browser, env) {
   await page.mouse.move(box.x + 280, box.y - 40, { steps: 10 });
   await page.mouse.up();
   await sleep(100);
-  console.log('覚えた位置（ステータスの移り方）:', JSON.stringify(await page.evaluate(() => window.__test__.currentDesign().processPos)));
-  await shot(page, '55_流れ_ステータスの移り方の図_箱を動かした後');
+  console.log('覚えた位置（ステータスの流れ）:', JSON.stringify(await page.evaluate(() => window.__test__.currentDesign().processPos)));
+  await shot(page, '55_流れ_ステータスの流れの図_箱を動かした後');
   // 56: 画面の移り方の図（ほかの画面設計の画面は、行き先も来る元も灰色の点線の箱。q55 の案A・q58）
   await page.setViewport({ width: 1780, height: 760 });
   await page.evaluate(() => window.__test__.runCommand('openFlow'));
   await sleep(150);
-  await shot(page, '56_流れ_画面の移り方の図');
+  await shot(page, '56_流れ_画面遷移図の図');
   // 57・58: 右の欄（リンクの文字の移る先の欄〔q53 の案A〕・ステータスの印の欄〔q52 の案A〕）。部品の箱の組を閉じて、右の欄を縦に長く撮る
   await page.setViewport({ width: 1440, height: 1500 });
   const pick = async (label, type) => {
@@ -107,9 +107,9 @@ module.exports = async function shootFlow(browser, env) {
     await sleep(150);
   };
   await pick('経費精算を入力する');
-  await elShot(page, '#side-panel', '57_流れ_リンクの文字の移る先の欄');
+  await elShot(page, '#side-panel', '57_流れ_リンクの移動先の欄');
   await pick(null, 'status');
-  await elShot(page, '#side-panel', '58_流れ_ステータスの印の右の欄（ステータスと操作）');
+  await elShot(page, '#side-panel', '58_流れ_ステータス表示の右のパネル（ステータスと操作）');
   // 59: 画面を消す確かめの窓（ほかの画面設計の分も、画面設計ごとに数える。q60）
   await page.setViewport({ width: 1400, height: 860 });
   await page.evaluate(() => {
@@ -126,8 +126,8 @@ module.exports = async function shootFlow(browser, env) {
   await shot(page, '101_流れ_出力の窓（入れるページ）');
   await page.click('.modal [data-dlg="cancel"]');
   // 102〜104: PDF のページ（印刷用の文書を、用紙の大きさのページごとに撮る）
-  for (const [orient, scenes] of [['landscape', { ステータスの移り方: '102_流れ_PDF_ステータスの移り方（A4横）', 画面の移り方: '104_流れ_PDF_画面の移り方（A4横）' }],
-    ['portrait', { ステータスの移り方: '103_流れ_PDF_ステータスの移り方（A4縦）' }]]) {
+  for (const [orient, scenes] of [['landscape', { ステータスの移り方: '102_流れ_PDF_ステータスの流れ（A4横）', 画面の移り方: '104_流れ_PDF_画面遷移図（A4横）' }],
+    ['portrait', { ステータスの移り方: '103_流れ_PDF_ステータスの流れ（A4縦）' }]]) {
     const html = await page.evaluate((id, o) => {
       const T = window.__test__;
       return T.exportDocument(T.store.state.designs.find((x) => x.id === id), T.store.state, { paper: 'A4', orient: o, cover: true, map: true, items: true, process: true, flow: true }).html;
@@ -147,7 +147,7 @@ module.exports = async function shootFlow(browser, env) {
     await doc.close();
   }
   // 105・106: AI の図の画像（get_view_image）
-  for (const [view, name] of [['process', '105_流れ_AIの図の画像（ステータスの移り方）'], ['screenflow', '106_流れ_AIの図の画像（画面の移り方）']]) {
+  for (const [view, name] of [['process', '105_流れ_AIの図の画像（ステータスの流れ）'], ['screenflow', '106_流れ_AIの図の画像（画面遷移図）']]) {
     const r = await page.evaluate((id, v) => window.__test__.aiDispatch('get_view_image', { design: id, view: v }, { session: 's-1', client: 'claude-code' }), A, view);
     if (!r.ok) throw new Error(`get_view_image: ${JSON.stringify(r.error)}`);
     console.log(`get_view_image（${view}）:`, JSON.stringify(r.result));

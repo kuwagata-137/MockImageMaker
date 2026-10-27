@@ -100,13 +100,13 @@ test('左の一覧: ごみ箱にないシステムを作った順に、名前と
   assert.equal($('.sys-block .sys-desc').textContent, '出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム');
   assert.deepEqual(cards(), ['出張申請', '社員マスタ']);
   const open = $('.sys-head [data-action="open-system"]');
-  assert.equal(open.textContent, '開く');
+  assert.equal(open.textContent, 'このシステムを開く');
   assert.ok(open.classList.contains('primary'));
-  assert.equal($('.sys-head [data-action="sys-add-menu"]').textContent, '＋ 画面設計を入れる ▾');
+  assert.equal($('.sys-head [data-action="sys-add-menu"]').textContent, '＋ 画面設計を追加する ▾');
   assert.equal($('.sys-head [data-action="sys-menu"]').textContent, '…');
   // 見出しのボタン: 「＋ 新しい画面設計」（ふつうの見た目・data-action は new のまま）と「＋ 新しいシステム」（目立つ）
   const head = $$('.home-head button').map((b) => b.textContent);
-  assert.deepEqual(head, ['▦ カードで並べる', '⇄ つながりの図', '⇩ HTML を取り込む', '＋ 新しい画面設計', '＋ 新しいシステム']);
+  assert.deepEqual(head, ['▦ 並べて表示', '⇄ 関連図', '⇩ HTML を取り込む', '＋ 新しい画面設計', '＋ 新しいシステム']);
   assert.equal($('.home-head [data-action="new"]').classList.contains('primary'), false);
   assert.ok($('.home-head [data-action="new-system"]').classList.contains('primary'));
   assert.match($('.home-note').textContent, /システムごとに、入っている画面設計を並べています。/);
@@ -128,7 +128,7 @@ test('左の一覧の選び替え: 「システムに入っていない」は点
   const y = api.actions.createSystem({ name: '日報システム' });
   click(item(y));
   assert.equal($('.sys-block .sys-head .meta').textContent, '画面設計 0 つ・役割 0 つ');
-  assert.match($('.sys-block').textContent, /まだ画面設計が入っていません。「＋ 画面設計を入れる」から入れます。/);
+  assert.match($('.sys-block').textContent, /まだ画面設計が入っていません。「＋ 画面設計を追加する」から追加します。/);
   api.actions.trashSystem(y);
   assert.equal(api.ui.homeGroup, null, '選んでいないことにする');
   assert.deepEqual(rows()[0], ['出張申請システム', '2 つ', true], 'いちばん上を出す');
@@ -166,7 +166,7 @@ test('共通の画面設計: ごみ箱にないシステム 2 つ以上に入っ
   assert.equal($('.card[data-id="d-emp"]').classList.contains('shared'), false, 'ごみ箱のシステムは数えない');
 });
 
-test('名前で探す: 左は当たるまとまりだけ（数は当たった数）、右は選んだまとまりの中で当たるカード。システムの名前が当たれば、そのシステムのカードを全部', async (t) => {
+test('名前で検索: 左は当たるまとまりだけ（数は当たった数）、右は選んだまとまりの中で当たるカード。システムの名前が当たれば、そのシステムのカードを全部', async (t) => {
   const { api, $, rows, cards, item } = await boot(t);
   click(item('y-trip'));
   setValue($('#home-search'), 'マスタ');
@@ -191,7 +191,7 @@ test('「＋ 新しいシステム」の窓: 名前は要る・説明は書か�
   click($('.home-head [data-action="new-system"]'));
   await waitFor(() => $('.modal'));
   assert.equal($('.modal h2').textContent, '新しいシステム');
-  assert.deepEqual(dialogButtons($$), ['作る', 'キャンセル']);
+  assert.deepEqual(dialogButtons($$), ['システムを作る', 'キャンセル']);
   assert.equal($('.modal [name=description]').tagName, 'TEXTAREA');
   click($('[data-dlg="ok"]'));
   assert.match($('.modal-error').textContent, /名前を書いてください/);
@@ -222,7 +222,7 @@ test('「＋ 新しいシステム」の窓: 名前は要る・説明は書か�
 test('「…」のメニュー: 名前と説明を変える（元に戻すで戻る）・ごみ箱へ移す（確かめの窓は出さない）', async (t) => {
   const { app, api, $, $$, sys, rows } = await boot(t);
   click($('.sys-head [data-action="sys-menu"]'));
-  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明の変更…', '削除（ごみ箱へ移す）']);
+  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明の変更…', 'このシステムを削除する（ごみ箱へ移す）']);
   key(app, app.document.body, { key: 'Escape' });
   assert.equal($('.sys-pop'), null, 'Esc で閉じる');
   click($('.sys-head [data-action="sys-menu"]'));
@@ -230,7 +230,7 @@ test('「…」のメニュー: 名前と説明を変える（元に戻すで戻
   await waitFor(() => $('.modal'));
   assert.equal($('.sys-pop'), null, 'メニューは閉じる');
   assert.equal($('.modal h2').textContent, '名前と説明の変更');
-  assert.deepEqual(dialogButtons($$), ['変更する', 'キャンセル']);
+  assert.deepEqual(dialogButtons($$), ['名前と説明を変更する', 'キャンセル']);
   assert.equal($('.modal [name=name]').value, '出張申請システム');
   assert.equal($('.modal [name=description]').value, '出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム');
   setValue($('.modal [name=name]'), ' ');
@@ -292,10 +292,10 @@ test('ごみ箱: システムも出す（「システム」と「画面設計」
   // 完全に削除
   click($('.trash-row.sys [data-action="delete-system-forever"][data-id="y-old"]'));
   await waitFor(() => $('.modal'));
-  assert.equal($('.modal h2').textContent, '完全に削除');
+  assert.equal($('.modal h2').textContent, '「古いシステム」を完全に削除しますか？');
   assert.equal($('.modal-body').textContent.trim(),
     '「古いシステム」を完全に削除します。システムの役割とスイムレーン図が消えます。入っていた画面設計は消えません。元に戻せません（元に戻す〔Ctrl+Z〕の履歴も消えます）。');
-  assert.deepEqual(dialogButtons($$), ['完全に削除する', 'キャンセル'], '画面設計の窓と同じ「完全に削除する」');
+  assert.deepEqual(dialogButtons($$), ['システムを完全に削除する', 'キャンセル'], '画面設計の窓と同じ「完全に削除する」');
   assert.ok($('[data-dlg="ok"]').classList.contains('danger'));
   assert.equal($('[data-dlg="cancel"]').ownerDocument.activeElement, $('[data-dlg="cancel"]'), '最初のフォーカスはキャンセル');
   click($('[data-dlg="ok"]'));
@@ -316,7 +316,7 @@ test('画面設計をごみ箱へ移す: システムに入っていれば確か
   assert.equal($('.modal h2').textContent, '「社員マスタ」をごみ箱へ移しますか？');
   assert.match($('.modal-body').textContent, /「社員マスタ」は、出張申請システム・経費精算システムで使っています。ごみ箱へ移すと、どのシステムからも見えなくなります。ごみ箱から戻すと、元のシステムに戻ります。/);
   assert.doesNotMatch($('.modal-body').textContent, /取り込んでいます/);
-  assert.deepEqual(dialogButtons($$), ['ごみ箱へ移す', 'キャンセル']);
+  assert.deepEqual(dialogButtons($$), ['画面設計をごみ箱へ移す', 'キャンセル']);
   assert.equal(app.document.activeElement, $('[data-dlg="cancel"]'));
   click($('[data-dlg="cancel"]'));
   await waitFor(() => !$('.modal'));
@@ -352,7 +352,7 @@ test('画面設計をごみ箱へ移す: システムに入っていれば確か
 test('カードの「…」の「このシステムから外す」: システムのまとまりのカードだけに出る。外しても画面設計は残る。複製はそのシステムに入れる', async (t) => {
   const { api, $, $$, S, sys, cards, item } = await boot(t);
   click($('.card-more[data-id="d-emp"]'));
-  assert.deepEqual($$('.card-menu [role="menuitem"]').map((b) => b.textContent), ['名前の変更', '複製', '出力…', 'このシステムから外す', '削除（ごみ箱へ移す）']);
+  assert.deepEqual($$('.card-menu [role="menuitem"]').map((b) => b.textContent), ['名前の変更', 'この画面設計を複製する', 'この画面設計を出力…', '画面設計をこのシステムから外す', 'この画面設計を削除する（ごみ箱へ移す）']);
   click($('.card-menu [data-action="remove-from-system"]'));
   assert.deepEqual(sys('y-trip').designIds, ['d-trip', 'd-gone']);
   assert.ok(S().designs.some((x) => x.id === 'd-emp'));
@@ -376,7 +376,7 @@ test('カードの「…」の「このシステムから外す」: システム
   assert.deepEqual(plain(api.systemsOf(S(), copy2.id)), []);
 });
 
-test('「＋ 画面設計を入れる ▾」のメニュー（q46）: 新しい画面設計を作る・今ある画面設計を入れる・複製して入れる（小さな字の説明つき）', async (t) => {
+test('「＋ 画面設計を追加する ▾」のメニュー（q46）: 新しい画面設計を作る・今ある画面設計を追加する・複製して入れる（小さな字の説明つき）', async (t) => {
   const { app, $, $$ } = await boot(t);
   const btn = $('.sys-head [data-action="sys-add-menu"]');
   click(btn);
@@ -385,22 +385,22 @@ test('「＋ 画面設計を入れる ▾」のメニュー（q46）: 新しい�
   const items = $$('.sys-pop [role="menuitem"]').map((b) => [b.dataset.action, b.querySelector('b').textContent, (b.querySelector('small') || {}).textContent || '']);
   assert.deepEqual(items, [
     ['sys-add-new', '新しい画面設計を作る', ''],
-    ['sys-add-same', '今ある画面設計を入れる', '同じもの。編集内容は常に自動で同期する'],
-    ['sys-add-copy', '今ある画面設計を複製して入れる', '別のもの。新しい id。同期しない'],
+    ['sys-add-same', '今ある画面設計を追加する', '同じもの。編集内容は常に自動で同期する'],
+    ['sys-add-copy', '今ある画面設計を複製して追加する', '別のもの。新しい id。同期しない'],
   ]);
   click(app.document.querySelector('.home-head h1'));
   assert.equal($('.sys-pop'), null, 'ほかの所を押すと閉じる');
 });
 
-test('今ある画面設計を入れる窓（q47）: いくつでも選べる。このシステムに入っているものは薄くして選べない。ごみ箱の画面設計は出さない。名前とシステムで絞る。入れるのは 1 回の変更', async (t) => {
+test('今ある画面設計を追加する窓（q47）: いくつでも選べる。このシステムに入っているものは薄くして選べない。ごみ箱の画面設計は出さない。名前とシステムで絞り込む。入れるのは 1 回の変更', async (t) => {
   const { app, api, $, $$, sys, item, cards } = await boot(t);
   click(item('y-exp'));
   click($('.sys-head [data-action="sys-add-menu"]'));
   click($('.sys-pop [data-action="sys-add-same"]'));
   await waitFor(() => $('.modal'));
-  assert.equal($('.modal h2').textContent, '今ある画面設計を入れる（経費精算システム）');
+  assert.equal($('.modal h2').textContent, '今ある画面設計を追加する（経費精算システム）');
   assert.match($('.modal-body').textContent, /ほかのシステムにある画面設計を選んで、経費精算システムにも並べます。選んだ画面設計の編集内容は、常に自動で同期します。/);
-  assert.deepEqual(dialogButtons($$), ['入れる', 'キャンセル']);
+  assert.deepEqual(dialogButtons($$), ['画面設計を追加する', 'キャンセル']);
   const names = () => $$('.pick-card:not([hidden]) .bd b').map((e) => e.textContent);
   assert.deepEqual(names(), ['取引先マスタ', '出張申請', '社員マスタ', '経費精算', '日報'], '更新の新しい順。ごみ箱の画面設計は出さない');
   const card = (id) => $(`.pick-card[data-pick="${id}"]`);
@@ -412,14 +412,14 @@ test('今ある画面設計を入れる窓（q47）: いくつでも選べる。
   assert.ok(card('d-emp').disabled);
   assert.equal(card('d-emp').querySelector('.pick-in').textContent, 'このシステムに入っている');
   assert.ok($('[data-dlg="ok"]').disabled, '選んでいないときは押せない');
-  assert.equal($('.pick-note').textContent, '入れる画面設計を選んでください（いくつでも選べます）。');
+  assert.equal($('.pick-note').textContent, '追加する画面設計を選んでください（いくつでも選べます）。');
   click(card('d-emp'));
   assert.equal(card('d-emp').getAttribute('aria-pressed'), 'false', '薄い札は選べない');
   click(card('d-trip'));
   assert.equal(card('d-trip').getAttribute('aria-pressed'), 'true');
   assert.equal($('[data-dlg="ok"]').disabled, false);
   assert.equal($('.pick-note').textContent,
-    '選んでいるもの：出張申請（1 つ）。経費精算システムにも並び、カードに「2 つのシステムで使っている」の札が付きます。別のものとして使いたいときは、「＋ 画面設計を入れる」の「複製して入れる」を使います。');
+    '選んでいるもの：出張申請（1 つ）。経費精算システムにも並び、画面設計に「2 つのシステムで使っている」のマークが付きます。別のものとして使いたいときは、「＋ 画面設計を追加する」の「今ある画面設計を複製して追加する」を使います。');
   // 名前で探す・システムで絞る
   setValue($('.pick-search'), '日報');
   assert.deepEqual(names(), ['日報']);
@@ -439,21 +439,21 @@ test('今ある画面設計を入れる窓（q47）: いくつでも選べる。
   await waitFor(() => !$('.modal'));
   assert.deepEqual(sys('y-exp').designIds, ['d-exp', 'd-emp', 'd-trip', 'd-daily'], '見えていない札も、選んだものは入れる');
   assert.equal(api.store.undoStack.length, undo0 + 1, '1 回の変更');
-  assert.equal($('#toast').textContent, '2 つの画面設計を経費精算システムに入れました。');
+  assert.equal($('#toast').textContent, '2 つの画面設計を経費精算システムに追加しました。');
   assert.deepEqual(cards(), ['経費精算', '社員マスタ', '出張申請', '日報']);
   assert.ok($('.card[data-id="d-trip"]').classList.contains('shared'));
   key(app, app.document.body, { key: 'z', ctrlKey: true });
   assert.deepEqual(sys('y-exp').designIds, ['d-exp', 'd-emp'], 'Ctrl+Z 1 回で戻る');
 });
 
-test('今ある画面設計を複製して入れる窓: このシステムに入っているものも選べる。複製は「◯◯ のコピー」でこのシステムにだけ入る（1 回の変更）', async (t) => {
+test('今ある画面設計を複製して追加する窓: このシステムに入っているものも選べる。複製は「◯◯ のコピー」でこのシステムにだけ入る（1 回の変更）', async (t) => {
   const { app, api, $, $$, S, sys, item } = await boot(t);
   click(item('y-exp'));
   click($('.sys-head [data-action="sys-add-menu"]'));
   click($('.sys-pop [data-action="sys-add-copy"]'));
   await waitFor(() => $('.modal'));
-  assert.equal($('.modal h2').textContent, '今ある画面設計を複製して入れる（経費精算システム）');
-  assert.deepEqual(dialogButtons($$), ['複製して入れる', 'キャンセル']);
+  assert.equal($('.modal h2').textContent, '今ある画面設計を複製して追加する（経費精算システム）');
+  assert.deepEqual(dialogButtons($$), ['画面設計を複製して追加する', 'キャンセル']);
   const card = (id) => $(`.pick-card[data-pick="${id}"]`);
   assert.equal(card('d-emp').disabled, false);
   assert.equal(card('d-emp').querySelector('.pick-in'), null);
@@ -463,7 +463,7 @@ test('今ある画面設計を複製して入れる窓: このシステムに入
   assert.equal($('.modal-error').hidden, true, '肯定のボタンを押せないときの Enter は何もしない（T9 の見直し）');
   click(card('d-emp'));
   assert.equal($('.pick-note').textContent,
-    '選んでいるもの：社員マスタ（1 つ）。選んだ画面設計を複製して、経費精算システムに入れます。複製は別のもので、元を直しても変わりません。');
+    '選んでいるもの：社員マスタ（1 つ）。選んだ画面設計を複製して、経費精算システムに追加します。複製は別のもので、元を変更しても変わりません。');
   const before = S().designs.length;
   const undo0 = api.store.undoStack.length;
   click($('[data-dlg="ok"]'));
@@ -475,7 +475,7 @@ test('今ある画面設計を複製して入れる窓: このシステムに入
   assert.deepEqual(sys('y-exp').designIds, ['d-exp', 'd-emp', copy.id]);
   assert.deepEqual(sys('y-trip').designIds, ['d-trip', 'd-gone', 'd-emp']);
   assert.equal(api.store.undoStack.length, undo0 + 1);
-  assert.equal($('#toast').textContent, '「社員マスタ のコピー」を経費精算システムに入れました。');
+  assert.equal($('#toast').textContent, '「社員マスタ のコピー」を経費精算システムに追加しました。');
   assert.equal($(`.card[data-id="${copy.id}"]`).classList.contains('shared'), false);
   api.runCommand('undo');
   assert.equal(S().designs.length, before);
@@ -486,7 +486,7 @@ test('新しい画面設計の窓の「入れるシステム」: 最初は選ん
   const { app, api, $, $$, S, sys, item } = await boot(t);
   click($('.home-head [data-action="new"]'));
   await waitFor(() => $('.modal'));
-  assert.deepEqual($$('.modal [name=system] option').map((o) => o.textContent), ['（入れない）', '出張申請システム', '経費精算システム']);
+  assert.deepEqual($$('.modal [name=system] option').map((o) => o.textContent), ['（追加しない）', '出張申請システム', '経費精算システム']);
   assert.equal($('.modal [name=system]').value, 'y-trip');
   click($('[data-dlg="cancel"]'));
   await waitFor(() => !$('.modal'));
@@ -615,7 +615,7 @@ test('AI がシステムを作ると一覧を描き直し、紫の帯の「開�
   // 開いているシステムを AI が直す: 紫の帯（「開く」は出さない。元に戻すの 1 回分として積む〔q66〕）
   const u = await call('update_system', { system: r.result.id, description: 'AI が書いた説明' });
   assert.equal(u.ok, true, JSON.stringify(u.error));
-  assert.match($('#ai-band').textContent, /Claude Code が「在庫管理システム」を直しました（変更 1 件）。/);
+  assert.match($('#ai-band').textContent, /Claude Code が「在庫管理システム」を変更しました（変更内容 1 件）。/);
   assert.equal($('#ai-band [data-action="ai-open-system"]'), null);
   assert.ok($('#ai-band [data-action="undo"]'));
   click($('#ai-band [data-action="ai-band-close"]'));
@@ -643,8 +643,8 @@ test('画面設計の「完全に削除」の窓: システムに入っていれ
   click($('.trash-row [data-action="delete-forever"][data-id="d-emp"]'));
   await waitFor(() => $('.modal'));
   assert.match($('.modal-body').textContent,
-    /「社員マスタ」は、出張申請システム・経費精算システムに入っています。完全に削除すると、どのシステムからも外れ、スイムレーン図の作業の指す先も外れます。/);
-  assert.deepEqual(dialogButtons($$), ['完全に削除する', 'キャンセル']);
+    /「社員マスタ」は、出張申請システム・経費精算システムに入っています。完全に削除すると、どのシステムからも外れ、スイムレーン図の工程の指す先も外れます。/);
+  assert.deepEqual(dialogButtons($$), ['画面設計を完全に削除する', 'キャンセル']);
   click($('[data-dlg="cancel"]'));
   await waitFor(() => !$('.modal'));
   // どのシステムにも入っていない画面設計（ごみ箱のシステムにだけ入っている日報も）では書かない
@@ -652,12 +652,12 @@ test('画面設計の「完全に削除」の窓: システムに入っていれ
   click($('.trash-row [data-action="delete-forever"][data-id="d-daily"]'));
   await waitFor(() => $('.modal'));
   assert.doesNotMatch($('.modal-body').textContent, /に入っています/);
-  assert.deepEqual(dialogButtons($$), ['完全に削除する', 'キャンセル']);
+  assert.deepEqual(dialogButtons($$), ['画面設計を完全に削除する', 'キャンセル']);
   click($('[data-dlg="cancel"]'));
   await waitFor(() => !$('.modal'));
 });
 
-test('入れる窓・複製して入れる窓: 名前で探す欄の Enter では入れない（窓は開いたまま）。肯定のボタンを押せないときの Enter も何もしない。ほかの窓の Enter は今までどおり', async (t) => {
+test('入れる窓・複製して入れる窓: 名前で検索欄の Enter では入れない（窓は開いたまま）。肯定のボタンを押せないときの Enter も何もしない。ほかのウィンドウの Enter は今までどおり', async (t) => {
   const { app, $, $$, sys, item } = await boot(t);
   click(item('y-exp'));
   for (const mode of ['same', 'copy']) {
@@ -675,7 +675,7 @@ test('入れる窓・複製して入れる窓: 名前で探す欄の Enter で�
     setValue($('.pick-search'), '取引');
     key(app, $('.pick-search'), { key: 'Enter' });
     await new Promise((r) => setTimeout(r, 20));
-    assert.ok($('.modal'), `${mode}: 名前で探す欄の Enter では入れない`);
+    assert.ok($('.modal'), `${mode}: 名前で検索欄の Enter では入れない`);
     assert.deepEqual(sys('y-exp').designIds, ids);
     // 名前で探す欄の外（システムで絞る欄）の Enter は、今までどおり肯定
     key(app, $('.pick-sys'), { key: 'Enter' });

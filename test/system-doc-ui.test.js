@@ -49,19 +49,19 @@ async function openDocDialog(api, $) {
   await tick();
 }
 
-test('説明書の窓: システムの画面のメニューバーの「出力」の小さなメニューから開く。題・ボタンの並び（「出力…」が左）・印 8 つは最初は全部。出力すると <名前>_説明書.pdf', async (t) => {
+test('説明書の窓: システムの画面のツールバーの「出力」の小さなメニューから開く。題・ボタンの並び（「出力…」が左）・印 8 つは最初は全部。出力すると <名前>_システム設計書.pdf', async (t) => {
   const { app, api, $, $$, xapi, toast } = await boot(t);
   const btn = $('#toolbar [data-action="export"]');
-  assert.ok(btn, 'メニューバーの「ファイル」の組に「出力」');
+  assert.ok(btn, 'ツールバーの「ファイル」の組に「出力」');
   assert.match(btn.closest('.rgroup').querySelector('.glabel').textContent, /ファイル/);
   click(btn);
-  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.querySelector('b').textContent), ['説明書（PDF）を出力…', 'MPD に出力…']);
+  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.querySelector('b').textContent), ['システム設計書（PDF）を出力…', 'スイムレーン図を MPD に出力…']);
   click($('.sys-pop [data-action="sys-export-doc"]'));
   await tick();
   assert.equal($('.sys-pop'), null, '項目を押すとメニューは閉じる');
-  assert.equal($('.modal h2').textContent, '「出張申請システム」の説明書を出力');
-  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['出力…', 'キャンセル']);
-  assert.match($('.modal .xp-note').textContent, /入っている画面設計 2 つ（出張申請・経費精算）の画面のページは、全部入れます。/);
+  assert.equal($('.modal h2').textContent, '「出張申請システム」のシステム設計書を出力する');
+  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['システム設計書を出力…', 'キャンセル']);
+  assert.match($('.modal .xp-note').textContent, /入っている画面設計 2 つ（出張申請・経費精算）の画面のページは、全部出力します。/);
   assert.deepEqual(pageChecks($$), PAGE_KEYS.map((k) => [k, true, false]));
   assert.match($('.modal').textContent, /設計ノート（決めたことと理由・まだ決まっていないこと）/);
   assert.equal($('.modal [name="dp-paper"]:checked').value, 'A4');
@@ -72,17 +72,17 @@ test('説明書の窓: システムの画面のメニューバーの「出力」
   assert.equal(xapi.calls.length, 1);
   const [kind, p] = xapi.calls[0];
   assert.equal(kind, 'savePdf');
-  assert.equal(p.name, '出張申請システム_説明書.pdf');
+  assert.equal(p.name, '出張申請システム_システム設計書.pdf');
   assert.equal(p.open, true);
   assert.equal(p.pageSize.width.toFixed(3), (297 / 25.4).toFixed(3));
   assert.equal(p.pageSize.height.toFixed(3), (210 / 25.4).toFixed(3));
-  assert.match(p.html, /<title>出張申請システム_説明書<\/title>/);
-  assert.match(p.html, /システムの説明書/);
-  assert.equal(toast(), '説明書（PDF）を出力しました（C:\\出力\\出張申請システム_説明書.pdf）。');
+  assert.match(p.html, /<title>出張申請システム_システム設計書<\/title>/);
+  assert.match(p.html, /システム設計書/);
+  assert.equal(toast(), 'システム設計書（PDF）を出力しました（C:\\出力\\出張申請システム_システム設計書.pdf）。');
   void app;
 });
 
-test('説明書の窓: アプリのメニューの命令 exportDialog でも、システムの画面では小さなメニューを開け閉めする（Esc で閉じると「出力」へ戻る）。最初の画面のシステムの「…」に「説明書を出力…」', async (t) => {
+test('説明書の窓: アプリのメニューの命令 exportDialog でも、システムの画面では小さなメニューを開け閉めする（Esc で閉じると「出力」へ戻る）。最初の画面のシステムの「…」に「システム設計書を出力…」', async (t) => {
   const { app, api, $, $$, sysId } = await boot(t);
   const btn = $('#toolbar [data-action="export"]');
   assert.equal(btn.getAttribute('aria-haspopup'), 'menu');
@@ -102,34 +102,34 @@ test('説明書の窓: アプリのメニューの命令 exportDialog でも、�
   click($('#sys-list .db-entry[data-panel="roles"]'));
   assert.equal(api.ui.sysMenu, null, 'メニューの外を押すと閉じる');
   await openDocDialog(api, $);
-  assert.equal($('.modal h2').textContent, '「出張申請システム」の説明書を出力');
+  assert.equal($('.modal h2').textContent, '「出張申請システム」のシステム設計書を出力する');
   click($('[data-dlg="cancel"]'));
   await tick();
   api.goHome();
   const more = $(`.sys-block [data-action="sys-menu"][data-id="${sysId}"]`);
-  assert.match(more.title, /説明書を出力/);
+  assert.match(more.title, /システム設計書の出力/);
   click(more);
-  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明の変更…', '説明書を出力…', '削除（ごみ箱へ移す）']);
+  assert.deepEqual($$('.sys-pop [role="menuitem"]').map((b) => b.textContent), ['名前と説明の変更…', 'システム設計書を出力…', 'このシステムを削除する（ごみ箱へ移す）']);
   click($('.sys-pop [data-action="sys-doc"]'));
   await tick();
-  assert.equal($('.modal h2').textContent, '「出張申請システム」の説明書を出力');
+  assert.equal($('.modal h2').textContent, '「出張申請システム」のシステム設計書を出力する');
   click($('[data-dlg="cancel"]'));
   await tick();
   // 最初の画面でアプリのメニューの命令が来たときは、お知らせだけ（窓を開かない）
   api.runCommand('exportDialog');
   await tick();
   assert.equal($('.modal'), null);
-  assert.match($('#toast').textContent, /システムの「…」から「説明書を出力…」/);
+  assert.match($('#toast').textContent, /システムの「…」から「システム設計書を出力…」/);
 });
 
-test('説明書の窓: ブラウザで開いたとき（exportAPI なし）は、メニューバーの「出力」と「…」の「説明書を出力…」を出さない。命令が来たらお知らせだけ', async (t) => {
+test('説明書の窓: ブラウザで開いたとき（exportAPI なし）は、ツールバーの「出力」と「…」の「システム設計書を出力…」を出さない。命令が来たらお知らせだけ', async (t) => {
   const { api, $, $$, sysId, toast } = await boot(t, { exportAPI: null });
   assert.equal($('#toolbar [data-action="export"]'), null);
   api.runCommand('exportDialog');
   await tick();
   assert.equal($('.sys-pop'), null, 'ブラウザでは小さなメニューを出さない');
   assert.equal($('.modal'), null);
-  assert.equal(toast(), '説明書（PDF）は、デスクトップ版のアプリで出力できます。');
+  assert.equal(toast(), 'システム設計書（PDF）は、デスクトップ版のアプリで出力できます。');
   api.goHome();
   const more = $(`.sys-block [data-action="sys-menu"][data-id="${sysId}"]`);
   assert.doesNotMatch(more.title, /説明書/);
@@ -143,7 +143,7 @@ test('説明書の窓: 出せないページは印を外して押せなくし、
   await openDocDialog(api, $);
   assert.deepEqual(pageChecks($$), [['systemCover', true, false], ['swimlane', false, true], ['notes', false, true],
     ['cover', true, false], ['map', true, false], ['items', true, false], ['process', true, false], ['flow', true, false]]);
-  assert.match($('.modal').textContent, /作業の箱がないので、出しません/);
+  assert.match($('.modal').textContent, /工程がないので、出しません/);
   assert.match($('.modal').textContent, /設計ノートに行がないので、出しません/);
   click($('[data-dlg="cancel"]'));
   await tick();
@@ -159,12 +159,12 @@ test('説明書の窓: 出せないページは印を外して押せなくし、
   click($('[data-dlg="ok"]'));
   await tick();
   assert.ok($('.modal'), '窓は閉じない');
-  assert.equal($('.modal-error').textContent, '入れるページを 1 つ以上選んでください。');
+  assert.equal($('.modal-error').textContent, '出力するページを 1 つ以上選んでください。');
   cover.checked = true;
   click($('[data-dlg="ok"]'));
   await settle();
   assert.equal(xapi.calls.length, 1, '表紙だけでも出力できる');
-  assert.equal(xapi.calls[0][1].name, '空のシステム_説明書.pdf');
+  assert.equal(xapi.calls[0][1].name, '空のシステム_システム設計書.pdf');
 });
 
 test('説明書の窓: 選んだ設定はアプリを閉じるまで覚える（押せなかった印は前の設定のまま）。画面設計の出力の窓の設定は変わらない。スライドは横だけ', async (t) => {
@@ -184,7 +184,7 @@ test('説明書の窓: 選んだ設定はアプリを閉じるまで覚える（
   assert.equal(p.open, false);
   assert.equal(p.pageSize.width.toFixed(3), (297 / 25.4).toFixed(3), 'A3 縦');
   assert.doesNotMatch(p.html, /設計ノート<\/h2>/);
-  assert.doesNotMatch(p.html, /つながりの図<\/h2>/);
+  assert.doesNotMatch(p.html, /関連図<\/h2>/);
   // 作業の箱を全部消したシステムで開き直す: スイムレーン図は押せないが、覚えた設定（入れる）は変わらない
   const y = api.store.state.systems.find((x) => x.name === '出張申請システム');
   for (const w of [...y.swimlane.steps]) api.actions.deleteStep(y.id, w.id);
@@ -211,7 +211,7 @@ test('説明書の窓: 打ちかけの文字を、窓を開く前に保存する
   click($('[data-dlg="ok"]'));
   await settle();
   assert.equal(xapi.calls.length, 1);
-  assert.equal(toast(), '説明書（PDF）を作っています…');
+  assert.equal(toast(), 'システム設計書（PDF）を作っています…');
   await openDocDialog(api, $);
   assert.equal($('.modal'), null, '待つ間は窓を開かない');
   click($('#toolbar [data-action="export"]'));
@@ -221,7 +221,7 @@ test('説明書の窓: 打ちかけの文字を、窓を開く前に保存する
   xapi.release();
   await tick();
   await tick();
-  assert.match(toast(), /説明書（PDF）を出力しました/);
+  assert.match(toast(), /システム設計書（PDF）を出力しました/);
   await openDocDialog(api, $);
   assert.ok($('.modal'), '待ちが終わると、また開ける');
   void app;
@@ -247,7 +247,7 @@ test('説明書の窓: 「作っています…」のお知らせが描かれて
   click($('[data-dlg="ok"]'));
   await tick();
   await tick();
-  assert.equal(toast(), '説明書（PDF）を作っています…');
+  assert.equal(toast(), 'システム設計書（PDF）を作っています…');
   assert.equal($('#toast').hidden, false);
   assert.equal(xapi.calls.length, 0, '画面が描かれる前には組まない');
   frames.splice(0).forEach((cb) => cb(0));
@@ -255,11 +255,11 @@ test('説明書の窓: 「作っています…」のお知らせが描かれて
   assert.equal(xapi.calls.length, 1);
   await new Promise((r) => setTimeout(r, 3700));
   assert.equal($('#toast').hidden, false, '保存し終わるまで出したまま');
-  assert.equal(toast(), '説明書（PDF）を作っています…');
+  assert.equal(toast(), 'システム設計書（PDF）を作っています…');
   xapi.release();
   await tick();
   await tick();
-  assert.match(toast(), /説明書（PDF）を出力しました/);
+  assert.match(toast(), /システム設計書（PDF）を出力しました/);
 });
 
 test('説明書の窓: 保存の窓でキャンセルしたときは知らせない。失敗したときは「出力できませんでした」。どちらの後も、また開ける', async (t) => {
@@ -274,13 +274,13 @@ test('説明書の窓: 保存の窓でキャンセルしたときは知らせな
   assert.ok($('.modal'));
   click($('[data-dlg="ok"]'));
   await settle();
-  assert.equal(toast(), '説明書（PDF）を出力できませんでした（書き込めません）。');
+  assert.equal(toast(), 'システム設計書（PDF）を出力できませんでした（書き込めません）。');
   await openDocDialog(api, $);
   assert.ok($('.modal'));
 });
 
-test('設計ノートの右の欄: 説明書（PDF）の最後のページに、決めたことと理由と、まだ決まっていないこと（答えのある行も）が入ると書く（q80 案C）', async (t) => {
+test('設計ノートの右のパネル: 説明書（PDF）の最後のページに、決めたことと理由と、まだ決まっていないこと（答えのある行も）が入ると書く（q80 案C）', async (t) => {
   const { $ } = await boot(t);
   click($('#sys-list .db-entry[data-panel="notes"]'));
-  assert.match($('#sys-side').textContent, /決めたことと理由と、まだ決まっていないこと（答えのある行も）は、システムの説明書（PDF）の最後のページに入ります（⑤ の行は入りません）。/);
+  assert.match($('#sys-side').textContent, /決めたことと理由と、まだ決まっていないこと（答えのある行も）は、システム設計書（PDF）の最後のページに入ります（⑤ の行は入りません）。/);
 });

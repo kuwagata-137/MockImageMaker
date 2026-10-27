@@ -251,7 +251,7 @@ test('exportBdmHtml — 矢印: 文字が変われば fromLabel・toLabel を空
 test('exportBdmHtml — 始まり・終わりは矢印で読み直されるので、食い違えば warnings で知らせる', () => {
   const payload = flow(['申請者'], [step('a', 0, 0, 'task', '申請する'), step('b', 0, 1, 'end', '受付')], [['b', 'a']]);
   const out = exportBdmHtml(saved(BLANK), payload);
-  assert.deepEqual(out.warnings, ['作業「受付」は、MPD で読み直すと種類が「始まり」になります（アプリでは「終わり」）。']);
+  assert.deepEqual(out.warnings, ['工程「受付」は、MPD で読み直すと種類が「始まり」になります（アプリでは「終わり」）。']);
 });
 
 test('exportBdmHtml — id: 元の uid が小さい・id が e 番号でない・同じ id があっても、重ならない id を振り、uid は最後の番号', () => {
@@ -330,7 +330,7 @@ test('exportBdmHtml — 元にする図の形', async (t) => {
     failsWith(() => exportBdmHtml(page(), payload), 'read_failed', /MultipurposeDiagramMaker で保存した図の中身が見つかりません/);
   });
   await t.test('作業がない・形の違う渡す形は bad_request', () => {
-    failsWith(() => exportBdmHtml(saved(TRIP), flow(['申請者'], [])), 'bad_request', /作業がないので、MPD に出力しません/);
+    failsWith(() => exportBdmHtml(saved(TRIP), flow(['申請者'], [])), 'bad_request', /工程がないので、MPD に出力しません/);
     for (const bad of [null, { lanes: [], steps: 'x', edges: [] }, flow(['申請者'], [step('a', 1, 0, 'task', 'x')]), flow(['申請者'], [step('a', 0, -1, 'task', 'x')]),
       flow(['申請者'], [step('a', 0, 0, 'memo', 'x')]), flow(['申請者'], [step('a', 0, 0, 'task', 'x'), step('a', 0, 1, 'task', 'y')])]) {
       failsWith(() => exportBdmHtml(saved(TRIP), bad), 'bad_request', /スイムレーン図の形が正しくありません/);

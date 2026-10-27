@@ -15,18 +15,18 @@ test('トレイのアイコン: AI がつながっている間と、窓が見え
   // 人が起動し、AI もつながっている: 紫の点
   const both = trayModel({ clients: cc, visible: true });
   assert.deepEqual([both.show, both.dot], [true, true]);
-  assert.equal(both.tooltip, 'モックイメージメーカー\nAI がつながっています（Claude Code）');
-  assert.equal(both.connected, 'つながっている AI：Claude Code');
+  assert.equal(both.tooltip, 'モックイメージメーカー\nAI と連携しています（Claude Code）');
+  assert.equal(both.connected, '連携している AI：Claude Code');
   // AI が起動した（裏だけで動いている）: 紫の点・窓は閉じている
   const bg = trayModel({ clients: cc, visible: false });
-  assert.equal(bg.tooltip, 'モックイメージメーカー\nAI がつながっています（Claude Code）\n窓は閉じています。押すと開きます。');
+  assert.equal(bg.tooltip, 'モックイメージメーカー\nAI と連携しています（Claude Code）\nウィンドウは閉じています。押すと開きます。');
   // 窓を閉じた後で AI が切れた（30 秒たつと終わる）: 点なし
   const left = trayModel({ clients: [], visible: false });
   assert.deepEqual([left.show, left.dot], [true, false]);
-  assert.equal(left.connected, 'つながっている AI はありません');
+  assert.equal(left.connected, '連携している AI はありません');
   // 2 つ・知らない名前はそのまま・空は「AI」
   const two = trayModel({ clients: [...cc, { client: 'cursor' }, { client: '' }], visible: true });
-  assert.equal(two.connected, 'つながっている AI：Claude Code・cursor・AI');
+  assert.equal(two.connected, '連携している AI：Claude Code・cursor・AI');
   assert.ok(trayModel({ clients: Array.from({ length: 20 }, () => ({ client: 'x'.repeat(40) })), visible: false }).tooltip.length <= 127, 'Windows の上限 127 字');
 });
 
@@ -63,7 +63,7 @@ test('トレイのアイコン: 16・24・32 ドットの PNG。紺の四角に�
   assert.deepEqual(px(dot, 32, 22, 22), [124, 58, 237, 255], '点ありの右下は紫');
 });
 
-test('「AI とつなぐ」の登録の文: インストールした版は MockImageMaker.exe を Node として動かし、app.asar の中の入口を渡す', () => {
+test('「AI と連携」の登録の文: インストールした版は MockImageMaker.exe を Node として動かし、app.asar の中の入口を渡す', () => {
   const where = { packaged: true, execPath: 'C:\\Users\\o\'neil\\AppData\\Local\\Programs\\mockimagemaker\\MockImageMaker.exe', resourcesPath: 'C:\\Users\\o\'neil\\AppData\\Local\\Programs\\mockimagemaker\\resources', root: 'X' };
   const info = connectInfo(where);
   assert.equal(info.dev, false);
@@ -75,7 +75,7 @@ test('「AI とつなぐ」の登録の文: インストールした版は MockI
   assert.deepEqual(json, { mcpServers: { mockimagemaker: { command: where.execPath, args: [`${where.resourcesPath}\\app.asar\\mcp-server.js`], env: { ELECTRON_RUN_AS_NODE: '1' } } } });
 });
 
-test('「AI とつなぐ」の登録の文: 開発版は別の名前（mockimagemaker-dev）で、node で作業フォルダの入口を動かす', () => {
+test('「AI と連携」の登録の文: 開発版は別の名前（mockimagemaker-dev）で、node で作業フォルダの入口を動かす', () => {
   const info = connectInfo({ packaged: false, execPath: 'E', resourcesPath: 'R', root: 'C:\\work\\MockImageMaker' });
   assert.equal(info.dev, true);
   assert.equal(info.claudeCommand, "claude mcp add --scope user mockimagemaker-dev node 'C:\\work\\MockImageMaker\\mcp-server.js'");
@@ -83,7 +83,7 @@ test('「AI とつなぐ」の登録の文: 開発版は別の名前（mockimage
   assert.equal(claudeAddCommand(mcpServerEntry({ packaged: false, root: 'D:\\a b' })), "claude mcp add --scope user mockimagemaker-dev node 'D:\\a b\\mcp-server.js'");
 });
 
-test('「AI とつなぐ」の登録の文: 場所は、動いている OS でなく、渡された場所の形（Windows は「\\」・ほかは「/」）でつなぐ', () => {
+test('「AI と連携」の登録の文: 場所は、動いている OS でなく、渡された場所の形（Windows は「\\」・ほかは「/」）でつなぐ', () => {
   // CI（Linux）で Windows の場所を渡しても、Windows（手元）で Linux の場所を渡しても崩れない
   assert.deepEqual(mcpServerEntry({ packaged: false, root: '/home/u/MockImageMaker' }).args, ['/home/u/MockImageMaker/mcp-server.js']);
   assert.deepEqual(mcpServerEntry({ packaged: true, execPath: '/opt/mim/MockImageMaker', resourcesPath: '/opt/mim/resources' }).args, ['/opt/mim/resources/app.asar/mcp-server.js']);

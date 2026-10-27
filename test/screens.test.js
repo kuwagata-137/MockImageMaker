@@ -39,7 +39,7 @@ async function bootEditor(t, opts = {}) {
 test('ひな形から画面を足す: 開いている画面のすぐ後ろに入り、名前はひな形の名前（重なれば「一覧 2」）。白紙は番号の名前', async (t) => {
   const { api, id, design, names } = await bootEditor(t);
   const s1 = design().screens[0].id;
-  assert.deepEqual(plain(api.SCREEN_TEMPLATES.map((x) => x.name)), ['白紙', '入力', '詳細', '一覧', 'グラフ', '集計', '進み具合']);
+  assert.deepEqual(plain(api.SCREEN_TEMPLATES.map((x) => x.name)), ['白紙', '入力', '詳細', '一覧', 'グラフ', '集計', '進捗']);
   const a = api.actions.addScreen(id, 'list', s1);
   assert.deepEqual(names(), ['画面 1', '一覧']);
   api.actions.addScreen(id, 'list', s1);
@@ -47,13 +47,13 @@ test('ひな形から画面を足す: 開いている画面のすぐ後ろに入
   const b = api.actions.addScreen(id, 'blank', a);
   assert.deepEqual(names(), ['画面 1', '一覧 2', '一覧', '画面 4']);
   const s = design().screens.find((x) => x.id === b);
-  assert.deepEqual(plain([s.device, s.width, s.height, s.showHeader, s.tablePos, s.parts.length]), ['pc', 1280, 800, true, 'right', 0], '機器はパソコン。白紙は帯だけ');
+  assert.deepEqual(plain([s.device, s.width, s.height, s.showHeader, s.tablePos, s.parts.length]), ['pc', 1280, 800, true, 'right', 0], '機器はパソコン。白紙はヘッダーだけ');
   assert.equal(api.actions.addScreen(id, 'nothing', s1), null, '知らないひな形では足さない');
   api.store.undo();
   assert.deepEqual(names(), ['画面 1', '一覧 2', '一覧'], '元に戻すで消える');
 });
 
-test('ひな形の中身: 入力・詳細・進み具合は、項目がなければ見本の項目を 3 つ作り、項目を 2 列で並べる', async (t) => {
+test('ひな形の中身: 入力・詳細・進捗は、項目がなければ見本の項目を 3 つ作り、項目を 2 列で並べる', async (t) => {
   const { api, id, design, screenOf } = await bootEditor(t);
   const s1 = design().screens[0].id;
   const input = screenOf(api.actions.addScreen(id, 'input', s1));
@@ -80,7 +80,7 @@ test('ひな形の中身: 入力・詳細・進み具合は、項目がなけれ
   assert.equal(design().items.filter((it) => it.type === 'status').length, 1, 'ステータスの項目は 1 つだけ');
 });
 
-test('ひな形の中身: 項目の一覧表の項目を全部並べ、テーブルは下に置き、画面が足りなければ下へ伸ばす。部品は重ならない', async (t) => {
+test('ひな形の中身: 項目一覧の項目を全部並べ、テーブルは下に置き、画面が足りなければ下へ伸ばす。アイテムは重ならない', async (t) => {
   const { api, id, design, screenOf, addItem } = await bootEditor(t);
   const s1 = design().screens[0].id;
   ['顧客コード', '顧客名', '電話番号', 'メール', '住所', '担当者', '業種', '従業員数', '資本金', '設立日', '取引開始日', '備考'].forEach((n, i) => addItem(s1, i === 11 ? 'text2' : 'text1', n, 48 + i * 72));
@@ -94,7 +94,7 @@ test('ひな形の中身: 項目の一覧表の項目を全部並べ、テーブ
   assert.ok(table.y > lastInput.y, 'テーブルは入力欄の下');
   assert.equal(table.tableKind, 'subtable');
   assert.ok(input.height > 800, '画面を下へ伸ばす');
-  assert.ok(input.parts.every((p) => p.y + p.h <= input.height), '部品は画面からはみ出さない');
+  assert.ok(input.parts.every((p) => p.y + p.h <= input.height), 'アイテムは画面からはみ出さない');
   // 項目名のない部品（ボタン・検索・絞り込みなど）の番号の札は、部品の左の外（左 28 ドットから 24 ドットの幅）に付く。札が隣の部品に重ならないこと
   // （一覧のひな形で、絞り込みの札が検索の欄の「検索」ボタンに重なっていた。デバッグとリリースの見直し⑥-1）
   const OUT_NO_TYPES = ['button', 'search', 'filter', 'pager', 'status', 'steps', 'tabs', 'link'];
@@ -124,7 +124,7 @@ test('ひな形の中身: 一覧はレコード一覧（列は項目の最初の
   assert.equal(design().items.length, n, '項目は増えない');
 });
 
-test('画面の複製: すぐ後ろに入り「◯◯ のコピー」。部品と吹き出しの id は新しく、同じ項目を指す。吹き出しのつなぐ部品と、自分を指すリンクの文字は付け直す', async (t) => {
+test('画面の複製: すぐ後ろに入り「◯◯ のコピー」。アイテムと吹き出しの id は新しく、同じ項目を指す。吹き出しのつなぐアイテムと、自分を指すリンクは付け直す', async (t) => {
   const { api, id, design, names, screenOf, addItem } = await bootEditor(t);
   const s1 = design().screens[0].id;
   const s2 = api.actions.addScreen(id, 'blank', s1);
@@ -137,17 +137,17 @@ test('画面の複製: すぐ後ろに入り「◯◯ のコピー」。部品�
   const c = screenOf(api.actions.duplicateScreen(id, s1));
   assert.deepEqual(names(), ['画面 1', '画面 1 のコピー', '画面 2']);
   const src = screenOf(s1);
-  assert.ok(c.parts.every((p) => !src.parts.some((q) => q.id === p.id)), '部品の id は新しい');
+  assert.ok(c.parts.every((p) => !src.parts.some((q) => q.id === p.id)), 'アイテムの id は新しい');
   assert.notEqual(c.callouts[0].id, src.callouts[0].id);
-  assert.equal(c.callouts[0].target, c.parts[0].id, '吹き出しは写した部品につながる');
+  assert.equal(c.callouts[0].target, c.parts[0].id, '吹き出しは写したアイテムにつながる');
   assert.equal(c.parts[0].itemId, src.parts[0].itemId, '同じ項目を指す');
   assert.equal(design().items.length, 1, '項目は増えない');
-  assert.deepEqual(plain(c.parts.slice(1).map((p) => p.props.screenId)), [c.id, s2], '自分を指すリンクの文字は新しい画面へ、ほかの画面へのものはそのまま');
+  assert.deepEqual(plain(c.parts.slice(1).map((p) => p.props.screenId)), [c.id, s2], '自分を指すリンクは新しい画面へ、ほかの画面へのものはそのまま');
   api.actions.duplicateScreen(id, s1);
   assert.equal(names()[1], '画面 1 のコピー 2', '名前が重なれば番号を付ける');
 });
 
-test('画面設計の複製でも、画面・部品・吹き出し・リンクの文字の移る先を付け直す（画面の複製と同じ作りを使う）', async (t) => {
+test('画面設計の複製でも、画面・アイテム・吹き出し・リンクの移動先を付け直す（画面の複製と同じ作りを使う）', async (t) => {
   const { api, id, design, addItem } = await bootEditor(t);
   const s1 = design().screens[0].id;
   const s2 = api.actions.addScreen(id, 'blank', s1);
@@ -198,7 +198,7 @@ test('並べ替え: moveScreen と「…」のメニューの上へ・下へ。�
   assert.equal($(app, '.screen-menu'), null, 'Esc で閉じる');
 });
 
-test('画面を消す: 確かめの窓に部品・吹き出し・リンクの文字の数を書く。項目は残り、移る先は外れる。元に戻すで戻る', async (t) => {
+test('画面を消す: 確かめの窓にアイテム・吹き出し・リンクの数を書く。項目は残り、移動先は外れる。元に戻すで戻る', async (t) => {
   const { app, api, id, design, names, screenOf, addItem } = await bootEditor(t);
   const s1 = design().screens[0].id;
   const s2 = api.actions.addScreen(id, 'blank', s1);
@@ -213,9 +213,9 @@ test('画面を消す: 確かめの窓に部品・吹き出し・リンクの文
   await waitFor(() => $(app, '.modal'));
   const text = $(app, '.modal').textContent;
   assert.match(text, /「画面 2」の画面を削除しますか/);
-  assert.match(text, /部品 1 個と吹き出し 1 個が消えます/);
-  assert.match(text, /項目の一覧表に残ります/);
-  assert.match(text, /リンクの文字 1 個が、この画面を移る先にしています/);
+  assert.match(text, /アイテム 1 個と吹き出し 1 個が消えます/);
+  assert.match(text, /項目一覧に残ります/);
+  assert.match(text, /リンク 1 個が、この画面を移動先にしています/);
   assert.equal(app.document.activeElement, $(app, '.modal [data-dlg="cancel"]'), '最初はキャンセルを選んだ状態');
   click($(app, '.modal [data-dlg="cancel"]'));
   await tick();
@@ -227,7 +227,7 @@ test('画面を消す: 確かめの窓に部品・吹き出し・リンクの文
   assert.deepEqual(names(), ['画面 1', '画面 3']);
   assert.equal(api.ui.screenId, s3, '消した画面のすぐ下の画面を開く');
   assert.equal(design().items.length, 1, '項目は一覧表に残る');
-  assert.equal(screenOf(s1).parts.find((p) => p.id === link).props.screenId, '', 'リンクの文字の移る先は外れる');
+  assert.equal(screenOf(s1).parts.find((p) => p.id === link).props.screenId, '', 'リンクの移動先は外れる');
   api.store.undo();
   assert.deepEqual(names(), ['画面 1', '画面 2', '画面 3'], '元に戻すで戻る');
   assert.equal(screenOf(s1).parts.find((p) => p.id === link).props.screenId, s2);
@@ -236,7 +236,7 @@ test('画面を消す: 確かめの窓に部品・吹き出し・リンクの文
   click($(app, `.sl-more[data-id="${s3}"]`));
   click($(app, '.screen-menu [data-action="screen-del"]'));
   await waitFor(() => $(app, '.modal'));
-  assert.match($(app, '.modal').textContent, /部品も吹き出しもありません/);
+  assert.match($(app, '.modal').textContent, /アイテムも吹き出しもありません/);
   click($(app, '.modal [data-dlg="ok"]'));
   await tick();
   assert.equal(api.ui.screenId, s2);
@@ -262,9 +262,9 @@ test('「画面を足す」の窓: ひな形 7 つの札。選んで「足す」
   const { app, api, design, names } = await bootEditor(t);
   click($(app, '.sl-add'));
   await waitFor(() => $(app, '.modal'));
-  assert.deepEqual($$(app, '.modal .tpl > b').map((b) => b.textContent), ['白紙', '入力', '詳細', '一覧', 'グラフ', '集計', '進み具合']);
+  assert.deepEqual($$(app, '.modal .tpl > b').map((b) => b.textContent), ['白紙', '入力', '詳細', '一覧', 'グラフ', '集計', '進捗']);
   assert.equal($$(app, '.modal .tpl .thumb').length, 7, '縮小画像付き');
-  assert.match($(app, '.modal').textContent, /今開いている「画面 1」の画面のすぐ後ろに足します/);
+  assert.match($(app, '.modal').textContent, /今開いている「画面 1」の画面のすぐ後ろに追加します/);
   assert.ok($(app, '.modal .tpl.sel[data-tpl="blank"]'), '最初は白紙を選んでいる');
   click($(app, '.modal .tpl[data-tpl="list"]'));
   assert.deepEqual($$(app, '.modal .tpl.sel').map((b) => b.dataset.tpl), ['list']);
@@ -294,7 +294,7 @@ test('「画面を足す」の窓: ひな形 7 つの札。選んで「足す」
   assert.equal(names().length, 4);
 });
 
-test('画面の一覧: 番号と名前・「…」から名前を変える・メニューバーの「画面を複製」', async (t) => {
+test('画面の一覧: 番号と名前・「…」から名前を変える・ツールバーの「画面を複製」', async (t) => {
   const { app, api, id, design, names } = await bootEditor(t);
   const s1 = design().screens[0].id;
   api.actions.addScreen(id, 'input', s1);
@@ -338,12 +338,12 @@ test('PageUp・PageDown で前後の画面へ（入力欄の中では使わな�
   await tick();
   click($(app, '[data-action="open-items"]'));
   app.menuCommand('nextScreen');
-  assert.deepEqual([api.ui.panel, api.ui.screenId], ['screen', s2], '項目の一覧表を出しているときも、メニューからは画面へ移る');
+  assert.deepEqual([api.ui.panel, api.ui.screenId], ['screen', s2], '項目一覧を出しているときも、メニューからは画面へ移る');
   await api.store.adapter.pending;
   await storage.whenIdle();
 });
 
-test('リンクの文字の「移る画面」には、開いている画面を出さない', async (t) => {
+test('リンクの「移る画面」には、開いている画面を出さない', async (t) => {
   const { app, api, id, design } = await bootEditor(t);
   const s1 = design().screens[0].id;
   const s2 = api.actions.addScreen(id, 'blank', s1);
@@ -387,7 +387,7 @@ test('白紙の画面の名前は、使われていない番号にする（画�
   assert.deepEqual(names(), ['画面 1', '画面 3', '画面 4']);
 });
 
-test('移る先を「URL を書く」に変えたリンクの文字は、画面を消すときに数えない', async (t) => {
+test('移動先を「URL を書く」に変えたリンクは、画面を消すときに数えない', async (t) => {
   const { app, api, id, design } = await bootEditor(t);
   const s1 = design().screens[0].id;
   const s2 = api.actions.addScreen(id, 'blank', s1);
@@ -397,7 +397,7 @@ test('移る先を「URL を書く」に変えたリンクの文字は、画面�
   click($(app, `.sl-item[data-id="${s2}"]`));
   api.runCommand('deleteScreen');
   await waitFor(() => $(app, '.modal'));
-  assert.doesNotMatch($(app, '.modal').textContent, /リンクの文字/);
+  assert.doesNotMatch($(app, '.modal').textContent, /リンク/);
   click($(app, '.modal [data-dlg="cancel"]'));
   await tick();
 });
@@ -413,7 +413,7 @@ test('長い名前の画面を複製しても、名前は 100 文字までで「
   assert.ok(c2.endsWith(' のコピー 2') && c2.length <= 100, c2);
 });
 
-test('項目の一覧表・つながりの図を出している間は、開いている画面の複製・消すは使わない（「…」のメニューからは使える）', async (t) => {
+test('項目一覧・関連図を出している間は、開いている画面の複製・消すは使わない（「…」のメニューからは使える）', async (t) => {
   const { app, api, id, design, names } = await bootEditor(t);
   const s1 = design().screens[0].id;
   const s2 = api.actions.addScreen(id, 'blank', s1);
@@ -456,7 +456,7 @@ test('画面を足して元に戻すと、足す前に開いていた画面へ�
   assert.equal(api.ui.screenId, s2, 'いちばん上の画面ではなく、複製する前の画面');
 });
 
-test('窓を Esc で閉じても、選んでいる部品は外れない', async (t) => {
+test('窓を Esc で閉じても、選んでいるアイテムは外れない', async (t) => {
   const { app, api, id, design } = await bootEditor(t);
   const s1 = design().screens[0].id;
   api.actions.addScreen(id, 'blank', s1);
@@ -468,7 +468,7 @@ test('窓を Esc で閉じても、選んでいる部品は外れない', async 
   key(app, $(app, '.modal [data-dlg="cancel"]'), { key: 'Escape' });
   await tick();
   assert.equal($(app, '.modal'), null, '窓は閉じる');
-  assert.equal(api.ui.partId, pid, '部品は選んだまま');
+  assert.equal(api.ui.partId, pid, 'アイテムは選んだまま');
 });
 
 test('「…」のメニューを開いたまま、ほかの画面の縮小画像を押すとメニューを閉じる。メニューの項目は押す前に打ちかけの文字を保存する', async (t) => {

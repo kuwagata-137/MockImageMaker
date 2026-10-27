@@ -198,13 +198,13 @@ test('保存データを読めなかったときは、store.blockReason に理�
   ok.close();
 });
 
-test('改訂履歴の自動の行 ai は「AI が直す前の状態」と出て、版の番号は付かない', async () => {
+test('改訂履歴の自動の行 ai は「AI が変更する前の状態」と出て、版の番号は付かない', async () => {
   const { app, T } = await bootSample();
   const d1 = T.store.state.designs.find((d) => d.id === 'd1');
-  const row = T.revisionRow(d1, 'ai', { note: 'Claude Code が直す前の状態' });
+  const row = T.revisionRow(d1, 'ai', { note: 'Claude Code が変更する前の状態' });
   assert.equal(row.kind, 'ai');
   assert.equal(row.no, null);
-  assert.equal(T.revisionTitle(row), 'AI が直す前の状態');
+  assert.equal(T.revisionTitle(row), 'AI が変更する前の状態');
   assert.equal(T.nextVersionNo(d1), 1);
   app.close();
 });

@@ -73,19 +73,21 @@ const CASES = [
   ['顧客管理・A4 横・全部', 'd1', { paper: 'A4', orient: 'landscape', ...ALL }],
   ['顧客管理・A3 縦・全部', 'd1', { paper: 'A3', orient: 'portrait', ...ALL }],
   ['顧客管理・スライド・表紙なし', 'd1', { paper: 'slide', orient: 'landscape', ...ALL, cover: false }],
-  ['顧客管理・A4 横・第 1 版との違いの印', 'd1', { paper: 'A4', orient: 'landscape', ...ALL, diffRevId: 'r1' }],
+  ['顧客管理・A4 横・第 1 版との変更マーク', 'd1', { paper: 'A4', orient: 'landscape', ...ALL, diffRevId: 'r1' }],
   ['顧客管理・A4 横・画面 1 つだけ', 'd1', { paper: 'A4', orient: 'landscape', ...ALL, screenIds: ['s2'] }],
   ['受注管理・A4 横・全部', 'd4', { paper: 'A4', orient: 'landscape', ...ALL }],
 ];
 // 直す前のコード（0fd1bde）で取った値。{ total, sha }。表紙のある 4 つは、表紙の説明の高さの上限を行の高さの倍数にしたとき（デバッグとリリースの見直し②-3）に
-// 取り直した（変わったのは .cv-desc の max-height の数字だけ。前の値に戻すと、前の sha と同じになることを確かめた）
+// 取り直した（変わったのは .cv-desc の max-height の数字だけ。前の値に戻すと、前の sha と同じになることを確かめた）。
+// 2026-10-27 の用語の直し（計画外）で、ページの文（見出し・札・説明の文）が変わったので取り直した。直す前のアプリで前の値になること、
+// 文字（テキストと title などの属性）を空にして比べると、ページの数・HTML の形・CSS が直す前と同じことを確かめた
 const GOLDEN = {
-  '顧客管理・A4 横・全部': { total: 7, sha: '09f747d55f48ef7b756b2516836cc437baee697da5a68d453b561ff8529eece1' },
-  '顧客管理・A3 縦・全部': { total: 7, sha: '9777c583e79826d61c7bf13e216cc26c34b9f9b2378631a179f71e9c02bf5e7a' },
-  '顧客管理・スライド・表紙なし': { total: 6, sha: '9d51de731edbd75fee34d6e0cedc1563564f0f82c4ce169bc1c221deab26425d' },
-  '顧客管理・A4 横・第 1 版との違いの印': { total: 8, sha: '833123eb6690cc68030539c250530c5487d5cfa393b3b020248fe4bb6e285267' },
-  '顧客管理・A4 横・画面 1 つだけ': { total: 6, sha: '3c99394e06b263f90c7f46ebf7e30264d7e934a153e02ca5a5a947fae8279366' },
-  '受注管理・A4 横・全部': { total: 4, sha: '030309505da3eba6f7ab26102bc54b94ab4e9d6ef2f32f69eca1cbe8e9361241' },
+  '顧客管理・A4 横・全部': { total: 7, sha: '33531a08dcbea05c8db00784103581edba053981b8bfd36cf02265055e5c2828' },
+  '顧客管理・A3 縦・全部': { total: 7, sha: '55a12fd8157d3487a48986b2d96164bcd0f62bfb3b1f5ddb4cf69d1ec9768048' },
+  '顧客管理・スライド・表紙なし': { total: 6, sha: '702cda555b944ac5427c114eb366a17d4d10295528e79325a7d4cd8712021f27' },
+  '顧客管理・A4 横・第 1 版との変更マーク': { total: 8, sha: '75ff554dc50cf3a0fdac5c23d6452f4003f3dba916c2a5cefa557e19bf348099' },
+  '顧客管理・A4 横・画面 1 つだけ': { total: 6, sha: 'e0e443b46a8d84341a3849d33999967a8d0349ccb0f2d4a23f7d0432c39fd01d' },
+  '受注管理・A4 横・全部': { total: 4, sha: '8d472f3d432b46a08f26bac97bcfef3f8e2fb823e5a9dcb9bed436aaa1ae5488' },
 };
 
 async function boot(t) {
@@ -107,7 +109,7 @@ test('exportDocument の pageStart・grandTotal: 下の端の「n / N」・表�
   const cover = parse(doc.pages[0]);
   assert.match(cover.querySelector('.cv-foot').textContent, /全 20 ページ/);
   const listNos = [...cover.querySelectorAll('.cv-list tbody td.no')].map((x) => Number(x.textContent));
-  assert.deepEqual(listNos, [6, 7, 8, 9, 10, 11], '表紙の一覧: つながりの図・項目の一覧表・ステータスの移り方・画面の移り方・画面 2 つ');
+  assert.deepEqual(listNos, [6, 7, 8, 9, 10, 11], '表紙の一覧: 関連図・項目一覧・ステータスの流れ・画面遷移図・画面 2 つ');
   const foots = [...doc.pages].slice(1).map((h) => parse(h).querySelector('.pg-foot span:last-child').textContent);
   assert.deepEqual(foots, ['6 / 20', '7 / 20', '8 / 20', '9 / 20', '10 / 20', '11 / 20']);
   // 表紙なし・違いの印つきでも、最初のページが pageStart
@@ -116,7 +118,7 @@ test('exportDocument の pageStart・grandTotal: 下の端の「n / N」・表�
   assert.equal(parse(nc.pages[nc.pages.length - 1]).querySelector('.pg-foot span:last-child').textContent, `${3 + nc.total - 1} / 9`);
 });
 
-test('exportDocument の idTag: つながりの図・ステータスの移り方・画面の移り方の矢印の印の id の頭に足す（既定は今のまま）', async (t) => {
+test('exportDocument の idTag: 関連図・ステータスの流れ・画面遷移図の矢印の印の id の頭に足す（既定は今のまま）', async (t) => {
   const { api, d } = await boot(t);
   const opts = { paper: 'A4', orient: 'landscape', ...ALL };
   const tagged = api.exportDocument(d('d1'), api.store.state, { ...opts, idTag: '-d2' }, EXPORTED_AT).pages.join('\n');
@@ -150,5 +152,5 @@ test('今の画面設計の PDF のページは、第 10 段階の後半の直�
     const pages = doc.pages.join('\n').split(`モックイメージメーカー v${api.APP_VERSION} で出力`).join('モックイメージメーカー v1.00 で出力');
     got[label] = { total: doc.total, sha: sha(pages) };
   }
-  assert.deepEqual(got, GOLDEN, '見本の値: ' + JSON.stringify(got, null, 2));
+  assert.deepEqual(got, GOLDEN, 'サンプル値: ' + JSON.stringify(got, null, 2));
 });

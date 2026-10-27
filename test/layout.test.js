@@ -33,7 +33,7 @@ const E = (t, w, h, extra = {}) => ({ t, w, h, ...extra });
 const sizeOf = (e) => ({ type: e.t, w: e.w, h: e.h });
 const at = (placed) => placed.map((p) => [p.type, p.x, p.y, p.w, p.h]);
 
-test('layoutPlacements: パソコンは 2 列（左の端 32・480）。行の間は 24、次の行は前の行のいちばん下の部品の下から', async () => {
+test('layoutPlacements: パソコンは 2 列（左の端 32・480）。行の間は 24、次の行は前の行のいちばん下のアイテムの下から', async () => {
   const app = bootApp();
   const T = await app.api();
   const r = T.layoutPlacements({ columns: 2, rows: [[E('text1', 320, 64), E('text2', 400, 120)], [E('date', 200, 64)]] }, { width: 1280, startY: 64, sizeOf });
@@ -42,7 +42,7 @@ test('layoutPlacements: パソコンは 2 列（左の端 32・480）。行の�
   app.close();
 });
 
-test('layoutPlacements: 1 行に 3 つ書くと折り返す。幅 400 に入らない部品は 2 列をまたぎ、span:2 は 848 まで広げる', async () => {
+test('layoutPlacements: 1 行に 3 つ書くと折り返す。幅 400 に入らないアイテムは 2 列をまたぎ、span:2 は 848 まで広げる', async () => {
   const app = bootApp();
   const T = await app.api();
   const r = T.layoutPlacements({ columns: 2, rows: [
@@ -72,7 +72,7 @@ test('layoutPlacements: 2 列はパソコン（幅 912 以上）だけ。タブ�
   app.close();
 });
 
-test('layoutPlacements: align の行は部品の間を 32 空けて横に並べ、左・真ん中・右に寄せる。前の行との間は 32', async () => {
+test('layoutPlacements: align の行はアイテムの間を 32 空けて横に並べ、左・真ん中・右に寄せる。前の行との間は 32', async () => {
   const app = bootApp();
   const T = await app.api();
   const btns = [E('button', 96, 40), E('button', 96, 40)];
@@ -88,7 +88,7 @@ test('layoutPlacements: align の行は部品の間を 32 空けて横に並べ�
   app.close();
 });
 
-test('placeParts: 決めた位置に部品を置き、番号を順に付け、下からはみ出すときは画面を伸ばす（元に戻す 1 回で戻る）', async () => {
+test('placeParts: 決めた位置にアイテムを置き、番号を順に付け、下からはみ出すときは画面を伸ばす（元に戻す 1 回で戻る）', async () => {
   const app = bootApp({ localStorage: { 'mockimagemaker.v1': JSON.stringify(stateWith([])) } });
   const T = await app.api();
   const sid = T.store.state.designs[0].screens[0].id;

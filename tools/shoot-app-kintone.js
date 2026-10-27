@@ -61,7 +61,7 @@ function sampleState() {
     screens: [
       sc('s_input', '貸し出しの申請', 760, form('n', false)),
       sc('s_detail', '貸し出しの詳細', 680, form('v', true), { itemView: 'show' }),
-      sc('s_steps', '進み具合の矢印', 136, [ip('w1', 'st', 'steps', 32, 64, 1, '', { w: 1216, h: 40, view: { current: 't5', showWord: true } })]),
+      sc('s_steps', '進捗バー', 136, [ip('w1', 'st', 'steps', 32, 64, 1, '', { w: 1216, h: 40, view: { current: 't5', showWord: true } })]),
       sc('s_ai', 'AI が並べた画面', 800, []),
       sc('s_grid', 'AI が 4 列で並べた画面', 800, []),
     ],
@@ -131,24 +131,24 @@ module.exports = async function shootKintone(browser, env) {
     while (box && !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
     if (box) box.scrollTop += sep.getBoundingClientRect().top - box.getBoundingClientRect().top - 40;
   });
-  await shot(page, '183_kintone_右の欄_kintoneのフィールド');
+  await shot(page, '183_kintone_右のパネル_kintoneのフィールド');
   await page.evaluate(() => window.__test__.goHome());
 
   // 184・185: kintone の種類で描いた入力の形と、表示の形
-  await shootScreen('s_input', '184_kintone_kintoneの種類で描いた入力の形');
-  await shootScreen('s_detail', '185_kintone_kintoneの種類で描いた表示の形');
+  await shootScreen('s_input', '184_kintone_kintoneの種類で描いた入力欄で表示');
+  await shootScreen('s_detail', '185_kintone_kintoneの種類で描いた値だけ表示');
 
   // 186〜189: 進み具合の矢印の分かれる終わり（却下）。標準の見た目は見本が「承認待ち」と「却下」、Salesforce・kintone の見た目は「却下」
   await setLook('standard');
   await setCurrent('t2');
   const noTable = { table: false, callouts: false };
-  await shootScreen('s_steps', '186_kintone_進み具合の矢印_分かれる終わり_標準_見本が承認待ち', noTable, STEPS_CLIP - 48); // 標準の帯は 48 ドット低い
+  await shootScreen('s_steps', '186_kintone_進捗バー_分かれる終わり_標準_見本が承認待ち', noTable, STEPS_CLIP - 48); // 標準の帯は 48 ドット低い
   await setCurrent('t5');
-  await shootScreen('s_steps', '187_kintone_進み具合の矢印_分かれる終わり_標準_見本が却下', noTable, STEPS_CLIP - 48);
+  await shootScreen('s_steps', '187_kintone_進捗バー_分かれる終わり_標準_見本が却下', noTable, STEPS_CLIP - 48);
   await setLook('salesforce');
-  await shootScreen('s_steps', '188_kintone_進み具合の矢印_分かれる終わり_Salesforce_見本が却下', noTable, STEPS_CLIP);
+  await shootScreen('s_steps', '188_kintone_進捗バー_分かれる終わり_Salesforce_見本が却下', noTable, STEPS_CLIP);
   await setLook('kintone');
-  await shootScreen('s_steps', '189_kintone_進み具合の矢印_分かれる終わり_kintone_見本が却下', noTable, STEPS_CLIP);
+  await shootScreen('s_steps', '189_kintone_進捗バー_分かれる終わり_kintone_見本が却下', noTable, STEPS_CLIP);
 
   // 190: AI が並べたボタン（幅は文字に合わせ、style を書かないと行の最初だけ青）と、場所を書かずに置いた吹き出し（左半分の部品は左の外）
   const laid = await ai(page, 'layout_screen', { design: 'dk', screen: 's_ai', layout: { columns: 2, rows: [

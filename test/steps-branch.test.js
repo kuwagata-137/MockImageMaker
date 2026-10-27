@@ -31,7 +31,7 @@ async function stepsHtml(props, current, look = 'standard') {
   const html = T.screenHtml(d, d.screens[0]);
   app.close();
   const m = html.match(/<div class="psteps[^"]*">([\s\S]*?)<\/div>/);
-  assert.ok(m, '進み具合の矢印がない');
+  assert.ok(m, '進捗バーがない');
   return m[1];
 }
 const END = (name, from, on = false) => `<i class="pst-sep"></i><em class="pst-from">${from}から分かれる終わり</em><b class="pst-end${on ? ' on' : ''}">${name}</b>`;

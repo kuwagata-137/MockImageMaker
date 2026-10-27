@@ -38,7 +38,7 @@ test('ブラウザで開くと、画面設計のない一覧が出る', async (t
   assert.equal(app.window.localStorage.getItem(KEY), null, '何もしなければ保存しない');
 });
 
-test('新規作成の窓で名前と作る先を聞き、白紙の画面 1 つで編集の画面を開く', async (t) => {
+test('新規作成の窓で名前と構築先を聞き、白紙の画面 1 つで編集の画面を開く', async (t) => {
   const { app, api } = await boot();
   t.after(() => app.close());
   click($(app, '[data-action="new"]'));
@@ -49,7 +49,7 @@ test('新規作成の窓で名前と作る先を聞き、白紙の画面 1 つ�
   setValue($(app, '.modal .target-select'), '__other__');
   assert.equal($(app, '.modal .target-other').hidden, false, 'その他を選ぶと名前の欄が出る');
   click($(app, '[data-dlg="ok"]'));
-  assert.match($(app, '.modal-error').textContent, /作る先の名前/);
+  assert.match($(app, '.modal-error').textContent, /構築先の名前/);
   $(app, '.modal .target-other').value = '社内の受付システム';
   click($(app, '[data-dlg="ok"]'));
   await waitFor(() => api.ui.view === 'editor', { label: '編集の画面' });
@@ -87,7 +87,7 @@ test('一覧: 更新の新しい順に並び、名前で探せる', async (t) =>
   assert.equal(ids.length, 3);
 });
 
-test('カードの「…」から名前の変更と複製ができ、元に戻す・やり直すで戻せる', async (t) => {
+test('画面設計の「…」から名前の変更と複製ができ、元に戻す・やり直すで戻せる', async (t) => {
   const { app, api } = await boot();
   t.after(() => app.close());
   const id = api.actions.createDesign('顧客管理アプリ', 'kintone');
@@ -165,7 +165,7 @@ test('画面設計を開くときと一覧へ戻るときに、元に戻すの�
   assert.equal(api.store.canUndo(), false);
 });
 
-test('編集の画面: 右の欄で画面設計の情報と画面の設定を変えられる', async (t) => {
+test('編集の画面: 右のパネルで画面設計の情報と画面の設定を変えられる', async (t) => {
   const { app, api } = await boot();
   t.after(() => app.close());
   const id = api.actions.createDesign('顧客管理アプリ', 'kintone');
@@ -423,7 +423,7 @@ test('小さな窓: ボタンは Windows の決まりで、肯定を左・取り
   click($(app, '[data-action="delete-forever"]'));
   await waitFor(() => $(app, '.modal'));
   assert.deepEqual(order(), ['ok', 'cancel'], '肯定が左、キャンセルが右');
-  assert.equal($(app, '.modal [data-dlg="ok"]').textContent, '完全に削除する');
+  assert.equal($(app, '.modal [data-dlg="ok"]').textContent, '画面設計を完全に削除する');
   assert.equal(app.document.activeElement, $(app, '.modal [data-dlg="cancel"]'), '危ない窓のフォーカスはキャンセル');
   await closeDialog();
   // ふつうの窓（画面を足す）: ［足す］［キャンセル］の並び。フォーカスは肯定のボタン
@@ -432,7 +432,7 @@ test('小さな窓: ボタンは Windows の決まりで、肯定を左・取り
   api.runCommand('addScreen');
   await waitFor(() => $(app, '.modal'));
   assert.deepEqual(order(), ['ok', 'cancel']);
-  assert.equal($(app, '.modal [data-dlg="ok"]').textContent, '足す');
+  assert.equal($(app, '.modal [data-dlg="ok"]').textContent, '画面を追加する');
   assert.equal(app.document.activeElement, $(app, '.modal [data-dlg="ok"]'), 'ふつうの窓のフォーカスは肯定のボタン');
   await closeDialog();
   // 「閉じる」だけの窓（改訂履歴）: OK は隠し、閉じるにフォーカス
@@ -458,7 +458,7 @@ test('小さな窓: 名前の欄で Enter を押すと OK になる', async (t) 
   await waitFor(() => cardNames(app)[0] === '顧客管理', { label: '名前の変更' });
 });
 
-test('右の欄で打ちかけの文字は、高さのドラッグ・一覧へ戻る前に保存される', async (t) => {
+test('右のパネルで打ちかけの文字は、高さのドラッグ・一覧へ戻る前に保存される', async (t) => {
   const { app, api } = await boot();
   t.after(() => app.close());
   const id = api.actions.createDesign('顧客管理アプリ', 'kintone');
@@ -522,7 +522,7 @@ test('ヘルプ > 使い方: ブラウザで開いたときは manual/manual.htm
   assert.deepEqual(calls, [['manual/manual.html', '_blank', 'noopener']]);
 });
 
-test('アプリのメニューから: 部品をすべて選んで揃える・項目の一覧表とつながりの図を開く・取り込む窓を開く', async (t) => {
+test('アプリのメニューから: アイテムをすべて選んで揃える・項目一覧と関連図を開く・取り込む窓を開く', async (t) => {
   const st = createMainStorage();
   t.after(() => st.cleanup());
   const { app, api } = await boot({ storage: st });
@@ -553,7 +553,7 @@ test('アプリのメニューから: 部品をすべて選んで揃える・項
 // 第 9 段階の見直し（T9）: フォーカスが見えない radio・checkbox に残っていても、元に戻す・やり直すは効く（どの画面でも）。
 // 文字の欄の中の Ctrl+Z は、今までどおりブラウザの文字の取り消しに任せる
 // （編集の画面の右の欄は、押した後に描き直してフォーカスが外れることが多いので、キーを radio・checkbox の上で起こして確かめる）
-test('編集の画面の右の欄: 機器（radio）・帯（checkbox）の上の Ctrl+Z・Ctrl+Y も効く。文字の欄の中の Ctrl+Z は効かせない', async (t) => {
+test('編集の画面の右のパネル: 機器（radio）・帯（checkbox）の上の Ctrl+Z・Ctrl+Y も効く。文字の欄の中の Ctrl+Z は効かせない', async (t) => {
   const { app, api } = await boot();
   t.after(() => app.close());
   const id = api.actions.createDesign('顧客管理', 'kintone');
