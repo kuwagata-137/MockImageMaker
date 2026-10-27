@@ -69,7 +69,7 @@ function buildAppMenu() {
         { type: 'separator' },
         // 出力する（PDF・HTML・PNG）は開いている画面設計を、取り込むは一覧へ戻ってから（第 5 段階）。
         // システムの画面では、出力するは小さなメニュー（説明書〔PDF〕・MPD に出力）を開け閉めする（第 10 段階の後半・第 11 段階）
-        commandItem('出力…', 'exportDialog'),
+        commandItem('画面設計を出力…', 'exportDialog'),
         commandItem('HTML を取り込む…', 'importHtml'),
         { type: 'separator' },
         // 改訂する・改訂履歴は、開いている画面設計について行う（第 6 段階）
@@ -78,7 +78,7 @@ function buildAppMenu() {
         { type: 'separator' },
         commandItem('一覧へ戻る', 'goHome'),
         { type: 'separator' },
-        { role: 'quit', label: '終了' },
+        { role: 'quit', label: 'モックイメージメーカーを終了する' },
       ],
     },
     {
@@ -87,18 +87,18 @@ function buildAppMenu() {
         commandItem('元に戻す', 'undo', 'CmdOrCtrl+Z'),
         commandItem('やり直す', 'redo', 'CmdOrCtrl+Y'),
         { type: 'separator' },
-        { role: 'cut', label: '切り取り' },
-        { role: 'copy', label: 'コピー' },
-        { role: 'paste', label: '貼り付け' },
-        { role: 'selectAll', label: 'すべて選択' },
+        { role: 'cut', label: '選んだ文字を切り取る' },
+        { role: 'copy', label: '選んだ文字をコピーする' },
+        { role: 'paste', label: '文字を貼り付ける' },
+        { role: 'selectAll', label: '文字をすべて選ぶ' },
         { type: 'separator' },
         // 部品の操作。Ctrl+C・Ctrl+V は上の文字のコピー・貼り付けと同じキーで、ページが入力欄の外のときだけ部品に使う
-        commandItem('部品をコピー', 'copyPart'),
-        commandItem('部品を貼り付け', 'pastePart'),
-        commandItem('部品を複製', 'duplicatePart', 'CmdOrCtrl+D'),
-        commandItem('部品を削除', 'deletePart', 'Delete'),
+        commandItem('選んだものをコピーする', 'copyPart'),
+        commandItem('コピーしたものを貼り付ける', 'pastePart'),
+        commandItem('選んだものを複製する', 'duplicatePart', 'CmdOrCtrl+D'),
+        commandItem('選んだものを削除する', 'deletePart', 'Delete'),
         // Ctrl+A は上の「すべて選択」と同じキーで、ページが入力欄の外のときだけ部品と吹き出しに使う
-        commandItem('部品と吹き出しをすべて選ぶ', 'selectAll'),
+        commandItem('アイテムと吹き出しをすべて選ぶ', 'selectAll'),
         { type: 'separator' },
         commandItem('番号を振り直す', 'renumber'),
       ],
@@ -107,9 +107,9 @@ function buildAppMenu() {
       // 画面の一覧の操作（メニューバーの「画面」の組と同じ）。PageUp・PageDown はページが入力欄の外のときだけ画面を移るのに使う
       label: '画面',
       submenu: [
-        commandItem('画面を足す…', 'addScreen'),
-        commandItem('画面を複製', 'duplicateScreen'),
-        commandItem('画面を削除…', 'deleteScreen'),
+        commandItem('画面を追加する…', 'addScreen'),
+        commandItem('画面を複製する', 'duplicateScreen'),
+        commandItem('画面を削除する…', 'deleteScreen'),
         { type: 'separator' },
         commandItem('前の画面へ', 'prevScreen', 'PageUp'),
         commandItem('次の画面へ', 'nextScreen', 'PageDown'),
@@ -117,21 +117,21 @@ function buildAppMenu() {
     },
     {
       // いくつか選んだ部品と吹き出しを、最初に選んだものに合わせて揃える（メニューバーの「揃える」の組と同じ）
-      label: '揃える',
+      label: '配置',
       submenu: [
-        commandItem('左に揃える', 'alignLeft'),
-        commandItem('左右の中央に揃える', 'alignHCenter'),
-        commandItem('右に揃える', 'alignRight'),
+        commandItem('左揃え', 'alignLeft'),
+        commandItem('左右中央揃え', 'alignHCenter'),
+        commandItem('右揃え', 'alignRight'),
         { type: 'separator' },
-        commandItem('上に揃える', 'alignTop'),
-        commandItem('上下の中央に揃える', 'alignVCenter'),
-        commandItem('下に揃える', 'alignBottom'),
+        commandItem('上揃え', 'alignTop'),
+        commandItem('上下中央揃え', 'alignVCenter'),
+        commandItem('下揃え', 'alignBottom'),
         { type: 'separator' },
-        commandItem('横に等間隔に並べる', 'distributeH'),
-        commandItem('縦に等間隔に並べる', 'distributeV'),
+        commandItem('左右に整列', 'distributeH'),
+        commandItem('上下に整列', 'distributeV'),
         { type: 'separator' },
-        commandItem('同じ幅にする', 'sameWidth'),
-        commandItem('同じ高さにする', 'sameHeight'),
+        commandItem('幅を揃える', 'sameWidth'),
+        commandItem('高さを揃える', 'sameHeight'),
       ],
     },
     {
@@ -139,12 +139,12 @@ function buildAppMenu() {
       label: '項目',
       submenu: [
         commandItem('データベースの項目を開く', 'openItems'),
-        commandItem('つながりの図を開く', 'openMap'),
-        commandItem('ステータスの移り方を開く', 'openProcess'),
-        commandItem('画面の移り方を開く', 'openFlow'),
+        commandItem('関連図を開く', 'openMap'),
+        commandItem('ステータスの流れを開く', 'openProcess'),
+        commandItem('画面遷移図を開く', 'openFlow'),
         { type: 'separator' },
-        commandItem('項目を足す', 'addItemMenu'),
-        commandItem('ほかのモックから取り込む', 'importItems'),
+        commandItem('項目を追加する', 'addItemMenu'),
+        commandItem('ほかのモックから項目を取り込む', 'importItems'),
       ],
     },
     {
@@ -152,7 +152,7 @@ function buildAppMenu() {
       submenu: [
         commandItem('拡大', 'zoomIn', 'CmdOrCtrl+='),
         commandItem('縮小', 'zoomOut', 'CmdOrCtrl+-'),
-        commandItem('100% に戻す', 'zoomReset', 'CmdOrCtrl+0'),
+        commandItem('表示を 100% に戻す', 'zoomReset', 'CmdOrCtrl+0'),
         { type: 'separator' },
         { role: 'togglefullscreen', label: '全画面表示' },
         // 再読み込みと開発者ツールは、開発中（npm start）だけ出す
@@ -163,12 +163,12 @@ function buildAppMenu() {
     },
     {
       label: 'ウィンドウ',
-      submenu: [{ role: 'minimize', label: '最小化' }, { role: 'close', label: '閉じる' }],
+      submenu: [{ role: 'minimize', label: 'ウィンドウを最小化する' }, { role: 'close', label: 'ウィンドウを閉じる' }],
     },
     {
       // 使い方（使用説明書。2026-10-24）と、AI（Claude Code など）とつなぐ方法の窓（第 7 段階。q49）
       label: 'ヘルプ',
-      submenu: [commandItem('使い方', 'openManual'), { type: 'separator' }, commandItem('AI とつなぐ…', 'aiConnect')],
+      submenu: [commandItem('使い方', 'openManual'), { type: 'separator' }, commandItem('AI と連携…', 'aiConnect')],
     },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));

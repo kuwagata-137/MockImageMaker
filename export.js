@@ -122,7 +122,7 @@ function initExport(app, ipcMain, { headless = false, renderer = createPageRende
 
   ipcMain.handle('export:saveHtml', async (e, { name, html }) => {
     try {
-      const file = await askSavePath(e, { title: 'HTML に出力する', name, ext: 'html', label: 'HTML ファイル' });
+      const file = await askSavePath(e, { title: 'HTML の保存先を選ぶ', name, ext: 'html', label: 'HTML ファイル' });
       if (!file) return { ok: false, canceled: true };
       await fsp.writeFile(file, String(html), 'utf8');
       return { ok: true, path: file };
@@ -133,7 +133,7 @@ function initExport(app, ipcMain, { headless = false, renderer = createPageRende
 
   ipcMain.handle('export:pdf', async (e, { name, html, pageSize, open }) => {
     try {
-      const file = await askSavePath(e, { title: 'PDF に出力する', name, ext: 'pdf', label: 'PDF' });
+      const file = await askSavePath(e, { title: 'PDF の保存先を選ぶ', name, ext: 'pdf', label: 'PDF' });
       if (!file) return { ok: false, canceled: true };
       const data = await renderer.renderPdf({ html, pageSize });
       await fsp.writeFile(file, data);
@@ -155,7 +155,7 @@ function initExport(app, ipcMain, { headless = false, renderer = createPageRende
         await fsp.mkdir(fixedDir, { recursive: true });
         targets = files.map((f) => ({ file: path.join(fixedDir, safeName(f.name, 'screen.png')), page: f }));
       } else if (files.length === 1) {
-        const file = await askSavePath(e, { title: 'PNG に出力する', name: files[0].name, ext: 'png', label: 'PNG 画像' });
+        const file = await askSavePath(e, { title: 'PNG の保存先を選ぶ', name: files[0].name, ext: 'png', label: 'PNG 画像' });
         if (!file) return { ok: false, canceled: true };
         targets = [{ file, page: files[0] }];
       } else {
@@ -167,7 +167,7 @@ function initExport(app, ipcMain, { headless = false, renderer = createPageRende
         const exists = targets.filter((t) => fs.existsSync(t.file));
         if (exists.length) {
           const ans = await dialog.showMessageBox(winOf(e), {
-            type: 'question', buttons: ['上書きする', 'キャンセル'], defaultId: 1, cancelId: 1, title: 'PNG に出力する',
+            type: 'question', buttons: ['ファイルを上書きする', 'キャンセル'], defaultId: 1, cancelId: 1, title: 'PNG の保存先を選ぶ',
             message: `同じ名前のファイルが ${exists.length} つあります。上書きしますか？`,
             detail: exists.slice(0, 10).map((t) => path.basename(t.file)).join('\n') + (exists.length > 10 ? '\n…' : ''),
           });
