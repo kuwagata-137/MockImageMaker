@@ -47,7 +47,7 @@ async function assertAssetsAvailable(assetsDir) {
   if (verifiedAssetsDirs.has(assetsDir)) return;
   const found = await Promise.all(REQUIRED_ASSET_FOLDERS.map((name) => isDirectory(path.join(assetsDir, name))));
   if (!found.every(Boolean)) {
-    throw new MaterialError('unavailable', 'PDF を読む機能の準備ができていません。（字体と文字コード表のフォルダ cmaps・standard_fonts が見つかりません。アプリを入れ直してください。）');
+    throw new MaterialError('unavailable', 'PDF を読む機能の準備ができていません。（字体と文字コード表のフォルダ cmaps・standard_fonts が見つかりません。アプリをインストールし直してください。）');
   }
   verifiedAssetsDirs.add(assetsDir);
 }

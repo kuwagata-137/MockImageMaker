@@ -34,7 +34,7 @@ function dropAtNonStep(from, to, attached, warnings) {
     warnings.push(`${arrowName(from, to)}は、補足情報に接続しているため外しました${note}。`);
     return;
   }
-  warnings.push(`${arrowName(from, to)}は、${frame ? 'MPD の枠' : '補足情報'}に接続しているため外しました。`);
+  warnings.push(`${arrowName(from, to)}は、${frame ? 'MPD のグループ枠' : '補足情報'}に接続しているため外しました。`);
 }
 
 // 矢印を読む。boxes は Map(箱の id → 箱)。→ { edges: [{ from, to, label }], supplementsOf: Map(作業の id → [補足の文字…]) }
@@ -46,7 +46,7 @@ function readEdges(rawEdges, boxes, warnings) {
     const from = boxes.get(idOf(raw.from));
     const to = boxes.get(idOf(raw.to));
     if (!from || !to) {
-      warnings.push(`矢印（${oneLine(idOf(raw.from), NAME_LENGTH) || '？'} → ${oneLine(idOf(raw.to), NAME_LENGTH) || '？'}）は、接続する箱が見つからないため外しました。`);
+      warnings.push(`矢印（${oneLine(idOf(raw.from), NAME_LENGTH) || '？'} → ${oneLine(idOf(raw.to), NAME_LENGTH) || '？'}）は、接続するシェイプが見つからないため外しました。`);
     } else if (!from.isStep || !to.isStep) dropAtNonStep(from, to, attached, warnings);
     else if (from === to) warnings.push(`${arrowName(from, to)}は、自分自身へ戻る矢印のため外しました。`);
     else if (seen.has(`${from.id}\n${to.id}`)) warnings.push(`${arrowName(from, to)}は、同じ向きの 2 本目のため外しました（1 本目を残しました）。`);

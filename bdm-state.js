@@ -16,7 +16,7 @@ const { MaterialError } = require('./material-error');
 
 const NOT_FOUND = 'MultipurposeDiagramMaker で保存した図の中身が見つかりません。';
 const BROKEN = '図の中身を読めません（保存した HTML が壊れているようです）。';
-const NO_NODES = '図の中身に箱の一覧（nodes）がありません。';
+const NO_NODES = '図の中身にシェイプの一覧（nodes）がありません。';
 
 // ① 印の script の直後（空白をはさんで window.__SWIMLANE_STATE__= に { が続く所）。match の終わりが { の位置
 const STATE_SCRIPT = /<script\b[^>]*?\sid\s*=\s*["']swimlane-state["'][^>]*>\s*window\.__SWIMLANE_STATE__\s*=\s*(?=\{)/gi;
