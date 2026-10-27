@@ -105,6 +105,8 @@ test('入口の選べる値（機器・見た目・項目の表示・表の中�
   const align = JSON.parse(html.match(/const AI_ALIGN = (\[[^\]]*\]);/)[1].replace(/'/g, '"'));
   assert.deepEqual(align, SC.ALIGN_HOW);
   assert.equal(Number(html.match(/const BAND_TABS_MAX = (\d+);/)[1]), SC.S.bandTabs._def.maxLength.value, 'Salesforce のヘッダーのタブの数の上限');
+  // グループ枠のアイコンの色（第 14 段階）
+  assert.deepEqual([...html.match(/const FRAME_COLORS = \{([^}]*)\};/)[1].matchAll(/(\w+):/g)].map((m) => m[1]), SC.FRAME_COLORS);
 });
 
 test('アプリがなくても、道具の一覧・read_guide・resources は返り、アプリを起動しない。道具を呼ぶと 1 回だけ起動し、つなげなければ日本語で断る', async (t) => {

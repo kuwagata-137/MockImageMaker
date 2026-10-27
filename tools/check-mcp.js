@@ -7,6 +7,7 @@
 //     道具は 36 個。edit_process でステータスと操作を書き、移る先を持つボタンを並べると、get_flow で読め、get_view_image は PNG（長い辺が 1568 以下。第 8 段階）。
 //     システムを作って役割・画面設計・スイムレーンを書くと、get_system・list_systems で読め、designs.json に残り、スイムレーン図の画像は PNG（第 9 段階）。
 //     edit_items で kintone の欄を書くと、get_kintone_app が kintone の MCP サーバーに渡す形を返す（第 13 段階）。
+//     グループ枠・縦に重ねる形・レコードの見出しのボタンで画面を並べると、get_screen が inFrame を返し、get_kintone_app がグループ（GROUP）を返す（第 14 段階）。
 //     status で、窓が見えていない・裏の起動・ページの準備ができている。2 つ目の起動（--background）では窓を出す印が付かない。
 //     前に人が窓を最大化して閉じていても（window-state.json の isMaximized）、裏の起動では窓が画面に出ない（status の onScreen）。
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり始め（automation.json が消える）、プロセスも消える
@@ -201,6 +202,18 @@ async function phaseA() {
     pdf1.folder === EXPORT_DIR && names[0] === '出張申請（確かめ）.pdf' && names[1] === '出張申請（確かめ） (2).pdf' && head(pdf1.files[0], 4) === '%PDF'
       && png.files.length === 1 && head(png.files[0], 4).slice(1) === 'PNG' && /mim-embedded/.test(fs.readFileSync(html.files[0], 'utf8')),
     names.join('、'));
+  // 第 14 段階: 入口の形のまま、グループ枠・縦に重ねる形・レコードの見出しのボタンでレコードの画面を並べ、get_screen の inFrame と get_kintone_app のグループを読む
+  const rec = await tool(client, 'add_screen', { design: made.id, name: '詳細', layout: { columns: 3, rows: [
+    [{ type: 'recordHead', span: 3, props: { kind: '出張申請' }, buttons: [{ type: 'button', label: '編集' }] }],
+    [{ span: 2, stack: [{ frame: '申請の情報', columns: 2, rows: [[{ item: '申請日' }, { item: '申請者' }]] }, { type: 'activity' }] },
+      { stack: [{ type: 'table', tableKind: 'related', label: '経費', props: { display: 'tiles', db: '経費', columns: ['日付', '金額'] } }] }],
+  ] } });
+  const rs = await tool(client, 'get_screen', { design: made.id, screen: rec.screen.id });
+  const inFrame = rs.parts.filter((p) => p.inFrame).map((p) => p.inFrame.name);
+  const kg = await tool(client, 'get_kintone_app', { design: made.id, screen: '詳細' });
+  check('A. グループ枠・縦に重ねる形・見出しのボタンで並べ、get_screen の inFrame と get_kintone_app のグループ（GROUP）を読める（第 14 段階）',
+    rs.parts.length === 7 && inFrame.join('・') === 'レコードの見出し・申請の情報・申請の情報' && kg.properties['申請の情報'] && kg.properties['申請の情報'].type === 'GROUP' && kg.layout[0].type === 'GROUP',
+    `アイテム ${rs.parts.map((p) => p.type).join('・')} ／ inFrame ${inFrame.join('・')} ／ layout ${kg.layout.map((r) => r.type).join('・')}`);
   // 第 8 段階の道具（ステータスの移り方と画面の移り方）
   const tl = await client.listTools();
   const NEW_TOOLS = ['edit_process', 'get_flow', 'get_view_image', 'list_systems', 'get_system', 'create_system', 'update_system', 'add_to_system', 'remove_from_system', 'set_swimlane',

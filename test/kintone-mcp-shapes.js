@@ -52,7 +52,9 @@ const REFERENCE_TABLE = field('REFERENCE_TABLE', {
   })),
 });
 const SUBTABLE = field('SUBTABLE', { fields: opt(z.record(s, z.union(IN_TABLE))) });
-const property = z.union([...SYSTEM, ...IN_TABLE, REFERENCE_TABLE, SUBTABLE]);
+// グループ（第 14 段階で写した。2026-10-27 に見た版の groupSchema）
+const GROUP = field('GROUP', { openGroup: opt(b) });
+const property = z.union([...SYSTEM, ...IN_TABLE, REFERENCE_TABLE, SUBTABLE, GROUP]);
 const properties = z.record(s, property);
 
 // フォームの並び（kintone-update-form-layout の layout）

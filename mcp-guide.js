@@ -148,7 +148,42 @@ const LAYOUT = `# アイテムの並べ方（layout）
 - ステータス表示（status）・進捗バー（steps）: current（サンプルとして表示するステータス）。ステータスの項目がなければ「ステータス」の項目を作る。
 - ボタン: style（ボタンの色。"primary" 強調（青）・"normal" 通常（白））。style を省くと、その行の最初のボタンだけ "primary"、ほかは "normal" になる。幅は文字に合わせる（96 より狭くしない）。
 - ボタンとリンク: to（移動先）。この画面設計の画面は "一覧" か { "screen": "一覧" }、ほかの画面設計の画面は { "design": "経費精算", "screen": "精算の入力" }、
-  URL は { "url": "https://…" }、なしは null。to に書けるのは、もうある画面だけです（これから作る画面は、先に add_screen で作る）。移動先は、画面遷移図の矢印になります。ボタンの「押したとき」の文（props.action）には、画面の移動のほかに行うこと（保存する・確かめるなど）を書きます。`;
+  URL は { "url": "https://…" }、なしは null。to に書けるのは、もうある画面だけです（これから作る画面は、先に add_screen で作る）。移動先は、画面遷移図の矢印になります。ボタンの「押したとき」の文（props.action）には、画面の移動のほかに行うこと（保存する・確かめるなど）を書きます。
+
+## レコードの画面の書き方の例（顧客の詳細の画面。3 列）
+1 件のレコードの画面（Salesforce のレコードの画面など）は、いちばん上にレコードの見出し、その下に、グループ枠に入れた項目・活動履歴・関連レコード一覧の並べて表示を、左右の列に別々に重ねます。
+{
+  "columns": 3,
+  "rows": [
+    [{ "type": "recordHead", "span": 3,
+       "props": { "kind": "顧客", "name": "株式会社サンプル商事" },
+       "buttons": [{ "type": "button", "label": "編集" }, { "type": "button", "label": "削除" }] }],
+    [{ "span": 2, "stack": [
+        { "frame": "顧客の情報", "columns": 2, "rows": [
+          [{ "item": "顧客名", "type": "text1" }, { "item": "電話", "type": "text1" }],
+          [{ "item": "担当者", "type": "user" }, { "item": "住所", "type": "text1" }]
+        ] },
+        { "type": "activity" }
+      ] },
+     { "stack": [
+        { "type": "table", "tableKind": "related", "label": "商談", "props": { "display": "tiles", "db": "商談", "columns": ["商談名", "金額"] } },
+        { "type": "table", "tableKind": "related", "label": "問い合わせ", "props": { "display": "tiles", "db": "問い合わせ", "columns": ["件名", "状況"] } }
+      ] }]
+  ]
+}
+
+## グループ枠・縦に重ねる形・レコードの見出しのボタンの決まり
+- { "frame": "グループ名", "color", "columns": 1〜2, "rows": [...] } は、グループ枠を 1 つ置き、中に rows を並べて入れる。
+  グループ枠の幅は、置いた列の幅（1・2 列の並べ方で 1 つだけの行は 2 列の幅いっぱい 848、2 つ並べた行は 400、3・4 列は列の幅か span の幅）。
+  中は左右と下を 24、上を 64（見出しの行）空け、columns が 2 なら 2 列（列の間 32）に並べる。入力の項目・表・グラフ・説明文・見出しは、中の列の幅いっぱいに広げる。
+  高さは中身に合わせる（中に何も置かないときは 160。get_catalog の layout.frame）。rows には、アイテムの並びとボタンの行（align）を書ける（グループ枠と stack は書けない）。
+  color はグループ名の左のアイコンの色（"blue"〔省いたとき〕・"green"・"orange"・"red"・"purple"・"gray"・"none"〔出さない〕）。
+- { "stack": [アイテムかグループ枠, …], "span" } は、1 つの列の中に、上から 24 ドット空けて重ねて置く。左右の列が別々の高さになる画面に使う。
+  stack の中のグループ枠・入力の項目・表・活動履歴などは、列の幅いっぱいに広げる。stack の中に stack は書けない。次の行は、いちばん下まで伸びた列の下に 24 ドット空けて置く。
+- レコードの見出し（type "recordHead"）には buttons（ボタンの並び。アイテムと同じ書き方）を書ける。ボタンは、見出しの右の端から 16・上から 24 の所に、間を 32 ドット空けて横に並べ、見出しに入れる。
+  style を省くと、最初のボタンだけ "primary" になる。buttons はレコードの見出しのほかには書けない。
+- グループ枠とレコードの見出しに入ったアイテムは、一緒に動く。get_screen は、入っているアイテムに inFrame（グループ枠か見出しの id と名前）を返す。
+  edit_parts の move・move_by でアイテムの真ん中をグループ枠の中へ動かすと入り、外へ動かすと出る（人がアプリでドラッグしたときと同じ）。グループ枠を動かすと、中のアイテムも同じだけ動く。`;
 
 const CATALOG = `# アイテムのカタログ
 
@@ -156,7 +191,13 @@ const CATALOG = `# アイテムのカタログ
 - parts[].type: アイテムの種類（layout の type・edit_items の type に書く）。parts[].props: 設定の欄の説明と値の形。parts[].itemProps: 項目だけにある設定の欄。
 - parts[].item が「データベースの項目になる」のアイテム（入力欄）は、置くと項目を指す。項目名・必須・設定は項目が持つ（edit_items で変更する）。
 - 表（type "table"）は tableKind で 3 種類に分かれる: "subtable"（テーブル。行を追加できる明細。データベースの項目になる）・"records"（レコード一覧。このデータベースのレコードを並べる）・"related"（関連レコード一覧。ほかのデータベースのレコードを条件で並べる）。
+- 関連レコード一覧（tableKind "related"）は、props.display で表示のしかたを選ぶ: "table"（表。省いたとき）・"tiles"（並べて表示。1 件ごとに 1 列目の値と、2 列目からの「列名: 値」を縦に並べる。高さは件数と列の数で決まる）。props.color は並べて表示のアイコンの色。
 - ステータス表示（status）と進捗バー（steps）は、画面設計に 1 つだけあるステータスの項目を指す。ステータスの並びと、ステータスを進める操作は edit_process で書く（edit_items の props.states でも並びだけは書ける）。
+- レコードの画面のアイテム: グループ枠（frame）・レコードの見出し（recordHead）・活動履歴（activity）・ツリー（tree）。
+  parts[].container が true のアイテム（グループ枠とレコードの見出し）は、中にアイテムを入れて一緒に動かす（read_guide の "layout"）。グループ枠とレコードの見出しは、ほかのグループ枠には入らない。
+  レコードの見出しの props.items は主な項目（項目名か id の配列）、props.values はそのサンプル値（items と同じ順）。
+  活動履歴の props.samples は 1 行に「日付, 種類, 件名, 説明」（種類は 電話・メール・作業・予定・メモ）。ツリーの props.lines は 1 行に 1 つ（頭の空白 2 つで 1 段下げ、頭に「+」を書いた行は閉じた形）。
+  templates の "crmDetail"（顧客の詳細）と "crmCase"（問い合わせ対応の 3 列）は、これらのアイテムで並べたレコードの画面のひな形。
 - itemTypes: edit_items の add に書ける項目の種類。templates: add_screen の template に書けるひな形。devices: 機器。targets: 構築先。callout: 吹き出しの色（color）と線の先（tip）。layout: 並べ方の数（read_guide の "layout"）。
 - looks: 見た目（create_design・update_design の look）と、見た目ごとのヘッダーの高さ（bandHeight）・ヘッダーがある画面の並べ方の最初の行（firstRowY）。itemViews: 画面の項目の表示（edit_screen の itemView）。
 - kintoneTypes: 項目とテーブルの列の kintone の欄に書ける kintone の種類（type・名前・選べるアイテムの種類 parts・選ばないとその種類になるアイテムの種類 defaultFor・kintone が値を入れるか auto）。read_guide の "kintone"。
@@ -266,6 +307,8 @@ kintone の画面設計（構築先か見た目が kintone）は、項目とテ�
 ## get_kintone_app の返事
 - formScreen: フォームにした画面（screen を省くと、項目を置いたアイテムがいちばん多い画面）。layout は、この画面のアイテムの並び（縦に重なるアイテムを 1 行にまとめ、左から並べる）。
   見出し・説明文はラベル、区切り線は罫線、テーブルは SUBTABLE の行になる。この画面に置いていない項目と関連レコード一覧は、いちばん下に 1 行ずつ追加する。
+  グループ枠は kintone のグループ（GROUP）になる。中にフィールドになるアイテムがあるグループ枠だけを、properties（type "GROUP"・openGroup true）と layout の GROUP の行にする（中は同じ決まりで ROW の行にする）。
+  kintone のグループにはテーブルを入れられないので、グループ枠の中のテーブルはグループの後ろに置き、warnings で知らせる。レコードの見出し・活動履歴・ツリーは kintone のフィールドにないので、フォームに入れず、warnings で知らせる。
 - properties: kintone-add-form-fields の properties（フィールドコード → 設定）。アイテムの設定（必須・最大文字数・初期値・選択肢・単位・小数点以下の桁数・テーブルの列）をコピーする。
 - systemFields: kintone のアプリに最初からあるフィールド（レコード番号など）。追加せずに、kintone-get-form-fields で今のフィールドコードを読んでから、code と label を変更する。
 - needsAppId・howTo・manualSteps・warnings: 上の進め方のとおりに使う。`;

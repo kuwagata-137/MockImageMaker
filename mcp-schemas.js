@@ -16,6 +16,8 @@ const LOOKS = ['standard', 'salesforce', 'kintone'];
 const ITEM_VIEWS = ['input', 'show'];
 const BAND_TABS_MAX = 12;
 const TABLE_KINDS = ['subtable', 'records', 'related'];
+// グループ枠・レコードの見出し・関連レコード一覧の並べて表示のアイコンの色（第 14 段階）。ページの FRAME_COLORS と同じ
+const FRAME_COLORS = ['blue', 'green', 'orange', 'red', 'purple', 'gray', 'none'];
 const CALLOUT_COLORS = ['yellow', 'red', 'blue', 'gray'];
 const CALLOUT_TIPS = ['dot', 'arrow', 'none'];
 const ALIGN_HOW = ['left', 'hcenter', 'right', 'top', 'vcenter', 'bottom', 'hdist', 'vdist', 'width', 'height'];
@@ -84,10 +86,25 @@ const layoutPart = obj({
   memo: opt(z.string().describe('新しく作る項目のメモ')),
   kintone: opt(S.kintone.describe('項目の kintone のフィールドの情報（新しく作る項目にも、今ある項目にも書ける。read_guide の "kintone"）')),
   allowSameName: opt(z.boolean().describe('同じ名前の項目があっても新しく作る')),
+  buttons: opt(z.lazy(() => z.array(layoutPart).min(1)).describe('レコードの見出し（type "recordHead"）の右に重ねて置くボタン（type "button"。layout のアイテムと同じ書き方）')),
 });
+const alignRow = obj({ align: opt(z.enum(['left', 'center', 'right'])), parts: z.array(layoutPart).min(1) }).describe('列に合わせず横に並べ、左・真ん中・右に寄せる行（ボタンの行）');
+// グループ枠の形と縦に重ねる形（第 14 段階）。グループ枠の中にはグループ枠と stack を置けず、stack の中には stack を置けない
+const span = opt(z.number().int().min(1).max(4).describe('またぐ列の数（1〜4）'));
+const layoutFrame = obj({
+  frame: z.string().describe('グループ枠を 1 つ置き、中に rows を並べて入れる（値はグループ名）。高さは中身に合わせる'),
+  color: opt(z.enum(FRAME_COLORS).describe('見出しの左のアイコンの色（省くと "blue"。"none" で出さない）')),
+  columns: opt(z.number().int().min(1).max(2).describe('グループ枠の中の列の数（1 か 2。省くと 1）')),
+  rows: z.array(z.union([z.array(layoutPart).min(1), alignRow])).describe('グループ枠の中に、上から順に置く行（中に何も置かないときは []）'),
+  span,
+});
+const layoutStack = obj({
+  stack: z.array(z.union([layoutPart, layoutFrame])).min(1).describe('1 つの列の中に、上から重ねて置くアイテムとグループ枠'),
+  span,
+}).describe('縦に重ねる形（左右の列が別々の高さになる並び）');
 const layoutRow = z.union([
-  z.array(layoutPart).min(1).describe('1 行に並べるアイテム（左の列から）'),
-  obj({ align: opt(z.enum(['left', 'center', 'right'])), parts: z.array(layoutPart).min(1) }).describe('列に合わせず横に並べ、左・真ん中・右に寄せる行（ボタンの行）'),
+  z.array(z.union([layoutPart, layoutFrame, layoutStack])).min(1).describe('1 行に並べるアイテム・グループ枠・縦に重ねる形（左の列から）'),
+  alignRow,
 ]);
 const layout = obj({
   columns: opt(z.number().int().min(1).max(4).describe('列の数（1〜4。2 列はパソコンの画面だけ。3・4 列は列の幅が 160 より狭くなる機器では列を減らす）')),
@@ -273,5 +290,5 @@ module.exports = {
   z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps), processOps: opsOf(processOps),
   roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('工程の並び（今のスイムレーン図の工程を全部置き換える。空の並びで工程を全部消す）'),
   swimEdges: z.array(swimEdge).describe('矢印の並び（今の矢印を全部置き換える。省くと、今の矢印のうち両端の工程が残っているものを残す。[] で全部消す）'),
-  materialInputs, noteInputs, promptArgs, DEVICES, LOOKS, ITEM_VIEWS, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, NOTE_STAGES, NOTE_STATES,
+  materialInputs, noteInputs, promptArgs, DEVICES, LOOKS, ITEM_VIEWS, TABLE_KINDS, FRAME_COLORS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, NOTE_STAGES, NOTE_STATES,
 };

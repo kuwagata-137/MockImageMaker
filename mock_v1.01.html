@@ -1614,6 +1614,8 @@ function layoutColumns(columns, width) {
 }
 // 並べ方から位置と大きさを決める（純関数）。rows の 1 つは、部品の並び（配列）か { align: 'left'・'center'・'right', parts: [...] }。
 // sizeOf(entry) は、その部品の種類と最初の大きさ { type, w, h } を返す。entry.span（2〜4）は、その数の列をまたいで広げる（1・2 列では 2 列の幅いっぱい）。
+// 中身に合わせて高さが決まる入れ物（AI の並べ方のグループ枠と縦に重ねる形。第 14 段階）は、sizeOf が { type, fill: true, heightAt(w) } を返す。
+// 入れ物は列の幅に広げ（2 列の並べ方では 1 つの列、1 列の並べ方と span では 2 列の幅、3・4 列では列の幅）、高さは heightAt(幅) で決める。
 // 戻り値 { placed: [{ entry, type, x, y, w, h }]（置く順）, nextY（次に置ける y。最後の行のいちばん下＋24）}
 function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
   const cols = layoutColumns(columns, width);
@@ -1622,7 +1624,12 @@ function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
   let y = startY;
   const sized = (entry) => {
     const s = sizeOf(entry);
-    const w = entry && entry.span >= 2 ? Math.min(LAYOUT_SPAN_W, maxW) : Math.min(s.w, maxW);
+    const span = !!(entry && entry.span >= 2);
+    if (s.fill) {
+      const w = span || cols === 1 ? Math.min(LAYOUT_SPAN_W, maxW) : Math.min(LAYOUT_COL_W, maxW);
+      return { entry, type: s.type, w, h: s.heightAt(w) };
+    }
+    const w = span ? Math.min(LAYOUT_SPAN_W, maxW) : Math.min(s.w, maxW);
     return { entry, type: s.type, w, h: s.h };
   };
   // 1 行分を y に置き、次の行の y へ進める
@@ -1665,8 +1672,8 @@ function layoutGridLines(row, width, cols, sizeOf) {
     const s = sizeOf(entry);
     const k = Math.min(cols, entry && entry.span >= 2 ? entry.span : 1);
     if (c + k > cols) { lines.push(line); line = []; c = 0; }
-    const w = k > 1 ? k * columnWidth + (k - 1) * LAYOUT_GRID_GAP : Math.min(s.w, columnWidth);
-    line.push({ entry, type: s.type, x: columnsLeft[c], w, h: s.h });
+    const w = k > 1 ? k * columnWidth + (k - 1) * LAYOUT_GRID_GAP : s.fill ? columnWidth : Math.min(s.w, columnWidth);
+    line.push({ entry, type: s.type, x: columnsLeft[c], w, h: s.fill ? s.heightAt(w) : s.h });
     c += k;
   });
   lines.push(line);
@@ -1753,6 +1760,17 @@ function layoutInFrame(rows, { x, w, startY, columns = 1, sizeOf }) {
     putLine(line);
   });
   return { placed, bottom };
+}
+// レコードの見出しの上に重ねるボタンの位置（見出しの右の端から 16・上から 24・ボタンの間 32。ひな形と AI の並べ方で同じ）。
+// buttons は [{ entry, type, w, h }]（左から）。戻り値は x・y を付けたもの
+function recordHeadButtons(head, buttons) {
+  const total = buttons.reduce((n, b) => n + b.w, 0) + LAYOUT_ALIGN_GAP * Math.max(0, buttons.length - 1);
+  let x = head.x + head.w - 16 - total;
+  return buttons.map((b) => {
+    const q = { ...b, x, y: head.y + 24 };
+    x += b.w + LAYOUT_ALIGN_GAP;
+    return q;
+  });
 }
 
 // 画面に部品を 1 つ置く（commit はしない）。下の端が画面からはみ出すときは、画面を下へ伸ばす（部品が上へずれないように）。
@@ -1883,10 +1901,8 @@ function crmTemplateInto(sc, design, templateId, { put, items, Y }) {
   };
   const putHead = (props) => {
     const head = put('recordHead', TPL_LEFT, Y(56), { props });
-    const y = head.y + 24; // レコードの名前の行の高さ（8 ドットのマス目に合わせる）
-    const x = head.x + head.w - 16 - PART_TYPES.button.w;
-    put('button', x - LAYOUT_ALIGN_GAP - PART_TYPES.button.w, y, { label: '編集', props: { style: 'normal' } });
-    put('button', x, y, { label: '削除', props: { style: 'normal' } });
+    recordHeadButtons(head, ['編集', '削除'].map((label) => ({ entry: { label }, type: 'button', w: PART_TYPES.button.w, h: PART_TYPES.button.h })))
+      .forEach((b) => put('button', b.x, b.y, { label: b.entry.label, props: { style: 'normal' } }));
     return head.y + head.h + TPL_GAP;
   };
   if (templateId === 'crmDetail') {
@@ -14264,6 +14280,9 @@ function aiPartSummary(d, sc, raw, ctx) {
   if (hasMoveTarget(raw)) out.to = aiMoveSummary(d, raw, ctx.state);
   if ((raw.type === 'status' || raw.type === 'steps') && raw.view) out.current = stateNameOf((p.props && p.props.states) || [], raw.view.current);
   if (raw.type === 'table') Object.assign(out, aiTableViewSummary(p));
+  // 入っているグループ枠・レコードの見出し（第 14 段階）
+  const frame = raw.inFrame ? findPart(sc, raw.inFrame) : null;
+  if (frame) out.inFrame = { id: frame.id, name: partTitle(frame) };
   return out;
 }
 // 表の見本の行の数と見本の値（列名ごと。値の入った列だけ。第 13 段階。q114 の ⑤）
@@ -14361,6 +14380,7 @@ function aiGetFlow(args) {
 const AI_TEXT_PROPS = { maxLen: '最大文字数（数字の文字。例 "50"）', initial: '初期値（文字）' };
 const AI_CHOICE_PROPS = { options: '選択肢（文字の配列）', initial: '初期値（選択肢の 1 つ。なしは ""）' };
 const AI_DIR = '並べ方: "h"（横）・"v"（縦）';
+const AI_FRAME_COLOR = `見出しの左のアイコンの色: ${Object.entries(FRAME_COLORS).map(([k, n]) => `"${k}"（${n}）`).join('・')}`;
 // ボタン・リンクの文字の移る先の欄（ふつうは props でなく、部品の to で書く。layout と edit_parts の to）
 const AI_MOVE_PROPS = {
   to: '移動先: ""（なし）・"screen"（画面）・"url"。ふつうは props でなく、アイテムの to（{ "screen": "一覧" }）で書く',
@@ -14385,6 +14405,8 @@ const AI_PROP_NOTES = {
     columns: 'レコード一覧・関連レコード一覧の列（項目名の配列。関連レコード一覧は元のデータベースの項目名）',
     sort: '並び順（文）', perPage: '1 ページの件数（数字の文字。レコード一覧）', limit: '最大件数（数字の文字。関連レコード一覧）',
     db: '関連レコード一覧の元のデータベース（画面設計の名前か id）', cond: '関連レコード一覧の条件 { from: 元の項目名, to: この画面設計の項目名 }',
+    display: '関連レコード一覧の表示のしかた: "table"（表）・"tiles"（並べて表示）。並べて表示は Salesforce のレコードの画面の右の列の形で、1 件ごとに 1 列目をリンク、2 列目からは「列名: 値」を並べる',
+    color: '関連レコード一覧の並べて表示の見出しのアイコンの色（frame の color と同じ値。最初は "orange"）',
   },
   graph: {
     chart: `グラフの種類: ${Object.keys(CHART_NAMES).map((k) => `"${k}"（${CHART_NAMES[k]}）`).join('・')}`,
@@ -14398,6 +14420,20 @@ const AI_PROP_NOTES = {
   tabs: { tabs: 'タブの名前（文字の配列）', current: '選んでいるタブ（tabs の 1 つ）' },
   link: AI_MOVE_PROPS,
   icon: { icon: `アイコン: ${Object.keys(ICONS).map((k) => `"${k}"（${ICONS[k][0]}）`).join('・')}`, color: `色: ${Object.keys(ICON_COLORS).map((k) => `"${k}"（${ICON_COLORS[k][0]}）`).join('・')}` },
+  // 第 14 段階のアイテム。frame・recordHead は中にアイテムを入れる（container）。並べ方では layout の frame の形と recordHead の buttons で書く
+  frame: { color: AI_FRAME_COLOR },
+  recordHead: {
+    kind: 'レコードの種類（例 "顧客"。"" ならこの画面設計の名前）', name: 'レコードの名前のサンプル値（例 "株式会社サンプル商事"）', color: AI_FRAME_COLOR,
+    items: '主な項目（項目名か id の配列。見出しの下の段に、項目名と値を横に並べる）', values: '主な項目のサンプル値（items と同じ順の文字の配列）',
+  },
+  activity: {
+    samples: '活動（1 行に「日付, 種類, 件名, 説明」。区切りはカンマかタブ。種類は 電話・メール・作業・予定・メモ のどれか〔ほかの言葉は灰色の丸〕。並びは書いた順のまま）',
+    buttons: '上に「電話を記録」などのボタンの行を出す（true・false）', months: '月ごとに見出しを入れる（true・false）',
+  },
+  tree: {
+    lines: 'ツリーの行（1 行に 1 つ。行の頭の空白 2 つで 1 段下げる。頭に「+」を書いた行は閉じた形で、その下の段は描かない。行の終わりの「（数字）」は件数として薄く出す）',
+    current: '選んでいる行（上の段からの道筋を " > " でつなぐ。例 "契約書 > 2026年度（5）"。"" はなし）', folder: 'フォルダのアイコンを出す（true・false）',
+  },
 };
 // 項目の設定（edit_items の props）だけにある欄
 const AI_ITEM_PROP_NOTES = {
@@ -14412,6 +14448,7 @@ function aiGetCatalog() {
       type, name: t.name, group: group(type), w: t.w, h: t.h,
       item: isInputType(type) ? 'データベースの項目になる' : type === 'table' ? 'テーブルのときだけ項目になる' : type === 'status' || type === 'steps' ? 'ステータスの項目を指す' : null,
       numbered: !t.noNumber, props: AI_PROP_NOTES[type] || {}, ...(AI_ITEM_PROP_NOTES[type] ? { itemProps: AI_ITEM_PROP_NOTES[type] } : {}),
+      ...(t.container ? { container: true } : {}), // 中にアイテムを入れる種類（第 14 段階。入っているアイテムは get_screen の inFrame）
     })),
     itemTypes: [...Object.keys(PART_TYPES).filter(isInputType), 'table', 'status'],
     tableKinds: { ...TABLE_KINDS },
@@ -14425,6 +14462,8 @@ function aiGetCatalog() {
       // 3・4 列（第 13 段階）。パソコンの画面の幅での列の左の端と幅。ほかの機器では、その画面の幅で分け、列の幅が gridMinWidth より狭くなるときは列を減らす
       grid3: layoutGrid(DEVICES.pc.width, 3), grid4: layoutGrid(DEVICES.pc.width, 4), gridGap: LAYOUT_GRID_GAP, gridMinWidth: LAYOUT_GRID_MIN,
       rowGap: TPL_GAP, alignGap: LAYOUT_ALIGN_GAP, firstRowY: { withHeader: AI_FIRST_ROW_Y, withoutHeader: AI_FIRST_ROW_Y_NOHEADER }, grid: GRID,
+      // グループ枠の形（第 14 段階）: 中のアイテムまでの左右と下の空き・上の端から中の 1 行目まで・中に何も並べないときの高さ
+      frame: { padding: FRAME_PAD, top: FRAME_TOP, emptyHeight: FRAME_EMPTY_H },
     },
     // 見た目（第 12 段階）。帯の高さと、帯がある画面の並べ方の最初の行（firstRowY）は見た目で変わる
     looks: LOOKS.map((l) => ({ id: l.id, name: l.label, bandHeight: l.band, firstRowY: l.band + AI_FIRST_ROW_Y - LOOKS[0].band })),
@@ -14448,6 +14487,7 @@ const aiFirstRowY = (d, sc) => (sc.showHeader ? bandHeight(d, sc) + AI_FIRST_ROW
 // （入力の形は test/kintone-mcp-shapes.js に写して見比べる）。元のアプリの ID はモックイメージメーカーでは分からないので、空にして needsAppId に分ける
 const KT_UNIT_BEFORE = ['$', '¥', '￥', '€', '£']; // 数の前に付ける単位。ほかの単位（円・個・日など）は数の後ろ（Claude が決めた）
 const KT_REF_SIZES = ['1', '3', '5', '10', '20', '30', '40', '50']; // 関連レコード一覧の件数（kintone で選べる数）
+const KT_NO_FIELD_TYPES = ['recordHead', 'activity', 'tree']; // kintone のフィールドにないアイテム（get_kintone_app の warnings で知らせる。第 14 段階）
 const ktText = (v) => str(v).trim();
 const ktUnit = (u) => (ktText(u) ? { unit: ktText(u), unitPosition: KT_UNIT_BEFORE.includes(ktText(u)) ? 'BEFORE' : 'AFTER' } : {});
 const ktOptions = (list) => Object.fromEntries((Array.isArray(list) ? list : []).map((o, i) => [o, { label: o, index: String(i) }]));
@@ -14544,8 +14584,10 @@ function kintoneRelatedFields(S, d, codes, warn) {
   return out;
 }
 // フォームの並び（kintone-update-form-layout の layout）。画面の部品を、縦に重なるものを 1 行にまとめて左から並べる。
-// テーブルは SUBTABLE の行。見出し・説明の文字はラベル、区切り線は罫線。その画面に置いていない項目と関連レコード一覧は、いちばん下に 1 行ずつ足す
-function kintoneFormLayout(d, sc, codes, related, warn) {
+// テーブルは SUBTABLE の行。見出し・説明の文字はラベル、区切り線は罫線。その画面に置いていない項目と関連レコード一覧は、いちばん下に 1 行ずつ足す。
+// グループ枠（第 14 段階）は kintone のグループ（GROUP）にし、中のフィールドをグループの行に入れる（中にフィールドがないグループ枠は出さない）。
+// テーブルは kintone のグループに入れられないので、グループの後ろに置く。作ったグループは groups に { code, label } を入れる（used はもう使ったコード）
+function kintoneFormLayout(d, sc, codes, related, warn, { groups = [], used = new Set() } = {}) {
   const subtable = (it) => ({ type: 'SUBTABLE', code: codes[it.id], fields: (it.props.columns || []).map((c) => ({ type: kintoneTypeOf(c, true), code: codes[c.id] })) });
   const itemField = (it, size) => (it.type === 'table' ? subtable(it) : { type: kintoneTypeOf(it), code: codes[it.id], ...(size ? { size } : {}) });
   const placed = new Set();
@@ -14561,23 +14603,44 @@ function kintoneFormLayout(d, sc, codes, related, warn) {
     placed.add(it);
     return itemField(it, size);
   };
-  const parts = sc.parts.map((raw) => ({ raw, f: fieldOf(raw) })).filter((x) => x.f).sort((a, b) => a.raw.y - b.raw.y || a.raw.x - b.raw.x);
-  const rows = [];
-  parts.forEach((x) => {
-    const cur = rows[rows.length - 1];
-    if (cur && x.raw.y < cur.bottom) { cur.list.push(x); cur.bottom = Math.max(cur.bottom, x.raw.y + x.raw.h); } else rows.push({ list: [x], bottom: x.raw.y + x.raw.h });
+  // 縦に重なるものを 1 行にまとめ、行の中は左から（[{ raw, f }] → フィールドの並びの並び）
+  const rowsOf = (list) => {
+    const rows = [];
+    [...list].sort((a, b) => a.raw.y - b.raw.y || a.raw.x - b.raw.x).forEach((x) => {
+      const cur = rows[rows.length - 1];
+      if (cur && x.raw.y < cur.bottom) { cur.list.push(x); cur.bottom = Math.max(cur.bottom, x.raw.y + x.raw.h); } else rows.push({ list: [x], bottom: x.raw.y + x.raw.h });
+    });
+    return rows.map((r) => r.list.sort((a, b) => a.raw.x - b.raw.x).map((x) => x.f));
+  };
+  const frames = new Map(sc.parts.filter((p) => p.type === 'frame').map((f) => [f.id, []]));
+  const top = [];
+  sc.parts.forEach((raw) => {
+    const f = fieldOf(raw);
+    if (!f) return;
+    (raw.inFrame && frames.has(raw.inFrame) ? frames.get(raw.inFrame) : top).push({ raw, f });
+  });
+  const after = new Map(); // グループのコード → グループの後ろに置くテーブル
+  frames.forEach((kids, id) => {
+    if (!kids.length) return;
+    const label = partTitle(findPart(sc, id));
+    const code = kintoneUniqueCode(kintoneCodeOf(label), used);
+    groups.push({ code, label });
+    const tables = kids.filter((x) => x.f.type === 'SUBTABLE');
+    tables.forEach((x) => warn(`「${(findItem(d, x.raw.itemId) || { name: x.f.code }).name}」（テーブル）は kintone のグループに入れられないので、グループ「${label}」の後ろに置きました。`));
+    after.set(code, tables.map((x) => x.f));
+    top.push({ raw: findPart(sc, id), f: { type: 'GROUP', code, layout: rowsOf(kids.filter((x) => !tables.includes(x))).flatMap(kintoneLayoutRows) } });
   });
   const missing = [...d.items.filter((it) => it.type !== 'status' && !placed.has(it)), ...related.filter((r) => !placed.has(r))];
   missing.forEach((x) => warn(`「${x.label || x.name}」はフォームにした画面「${sc.name}」に置いていないので、layout のいちばん下に追加しました。`));
   const tail = missing.map((x) => [x.kind ? { type: 'REFERENCE_TABLE', code: x.code } : itemField(x, null)]);
-  return [...rows.map((r) => r.list.sort((a, b) => a.raw.x - b.raw.x).map((x) => x.f)), ...tail].flatMap(kintoneLayoutRows);
+  return [...rowsOf(top), ...tail].flatMap(kintoneLayoutRows).flatMap((x) => (x.type === 'GROUP' ? [x, ...after.get(x.code)] : [x]));
 }
-// 1 行の並び（左から）を、kintone の行にする。テーブル（SUBTABLE）は 1 行を使うので、その前と後ろで行を分ける
+// 1 行の並び（左から）を、kintone の行にする。テーブル（SUBTABLE）とグループ（GROUP）は 1 行を使うので、その前と後ろで行を分ける
 function kintoneLayoutRows(fields) {
   const out = [];
   let row = null;
   fields.forEach((f) => {
-    if (f.type === 'SUBTABLE') { out.push(f); row = null; return; }
+    if (f.type === 'SUBTABLE' || f.type === 'GROUP') { out.push(f); row = null; return; }
     if (!row) { row = { type: 'ROW', fields: [] }; out.push(row); }
     row.fields.push(f);
   });
@@ -14633,7 +14696,13 @@ function aiGetKintoneApp(args) {
   });
   const related = kintoneRelatedFields(S, d, codes, warn);
   const needsAppId = [...fields.filter((it) => it.lookup).map((it) => kintoneLookupField(S, d, it, codes, warn)), ...related];
-  const layout = kintoneFormLayout(d, sc, codes, related, warn);
+  // グループ枠は kintone のグループ（GROUP。第 14 段階）。グループのフィールドは properties のいちばん後ろに追加する
+  const groups = [];
+  const layout = kintoneFormLayout(d, sc, codes, related, warn, { groups, used: new Set([...Object.values(codes), ...related.map((r) => r.code)]) });
+  groups.forEach((g) => { properties[g.code] = { type: 'GROUP', code: g.code, label: g.label, openGroup: true }; });
+  // kintone のフィールドにないアイテム（第 14 段階）
+  sc.parts.filter((p) => KT_NO_FIELD_TYPES.includes(p.type)).forEach((p) => warn(
+    `「${partTitle(p)}」（${partTypeName(p.type)}）は kintone のフィールドにないので、フォームに入れていません。kintone で同じ見た目にするときは、JavaScript かプラグインで作ります（人に確かめてください）。`));
   if (d.name.length > 64) warn(`アプリの名前は 64 文字までなので、画面設計の名前の初めの 64 文字にしました。`);
   return {
     design: { id: d.id, name: d.name }, formScreen: { id: sc.id, name: sc.name },
@@ -14895,9 +14964,10 @@ const AI_PROP_ENUMS = {
   'radio.dir': ['h', 'v'], 'checkbox.dir': ['h', 'v'], 'button.style': ['primary', 'normal'],
   'graph.chart': Object.keys(CHART_NAMES), 'graph.agg': Object.keys(AGG_NAMES),
   'icon.icon': Object.keys(ICONS), 'icon.color': Object.keys(ICON_COLORS), 'link.to': ['', 'screen', 'url'], 'button.to': ['', 'screen', 'url'],
+  'frame.color': Object.keys(FRAME_COLORS), 'recordHead.color': Object.keys(FRAME_COLORS),
 };
 // 項目を名前か id で書く欄（id に直して入れる）
-const AI_ITEM_REF_PROPS = { 'graph.byItem': 'one', 'graph.aggItem': 'one', 'search.items': 'many', 'filter.items': 'many' };
+const AI_ITEM_REF_PROPS = { 'graph.byItem': 'one', 'graph.aggItem': 'one', 'search.items': 'many', 'filter.items': 'many', 'recordHead.items': 'many' };
 // 部品の種類の設定の欄（PART_TYPES の props）を検め、直して返す。知らない欄・形の違う値は、使える欄・値を添えて断る。
 // cur は直す部品の今の props（新しい部品は書かない。移る先の designId・screenId を片方だけ書いたとき、もう片方を今の移る先に合わせるため）
 function aiProps(type, props, d, cur = null) {
@@ -15032,11 +15102,20 @@ function aiItemProps(d, item, props, tx = null) {
 // レコード一覧・関連レコード一覧の部品の設定。列は項目名（関連レコード一覧は元のデータベースの項目名）で書く
 function aiTablePartProps(kind, cur, props, d) {
   if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
-  const allowed = kind === 'related' ? ['columns', 'sort', 'limit', 'db', 'cond'] : ['columns', 'sort', 'perPage'];
+  const allowed = kind === 'related' ? ['columns', 'sort', 'limit', 'db', 'cond', 'display', 'color'] : ['columns', 'sort', 'perPage'];
   Object.keys(props).forEach((k) => { if (!allowed.includes(k)) throw aiBad(`${TABLE_KINDS[kind]}の設定に「${k}」という欄はありません（使える欄: ${allowed.join('・')}）。`); });
   const S = store.state;
   const next = normalizeTablePartProps(clone(cur || {}));
   ['sort', 'perPage', 'limit'].forEach((k) => { if (k in props) next[k] = aiStrVal(props[k], k); });
+  // 関連レコード一覧の表示のしかたと、並べて表示のアイコンの色（第 14 段階）
+  if ('display' in props) {
+    if (!['table', 'tiles'].includes(props.display)) throw aiBad('display に書ける値は "table"（表）・"tiles"（並べて表示）です。');
+    next.display = props.display;
+  }
+  if ('color' in props) {
+    if (!own(FRAME_COLORS, props.color)) throw aiBad(`color に書ける値は ${Object.keys(FRAME_COLORS).map((x) => `"${x}"`).join('・')} です。`);
+    next.color = props.color;
+  }
   if ('db' in props) {
     const src = aiFindOrNull(() => aiResolveDesign(S, props.db));
     next.db = src ? { designId: src.id, name: src.name, free: false } : { designId: null, name: cleanName(aiStrVal(props.db, 'db')), free: true };
@@ -15419,28 +15498,21 @@ function aiLayout(tx, designId, screenId, layout, mode) {
   const sc = findScreen(designId, screenId);
   const used = new Set(sc.parts.filter((p) => p.itemId && isItemPart(p) && oncePerScreen(partItemType(p))).map((p) => p.itemId));
   const plan = { created: [], itemPatches: [] };
-  const entry = (e, where) => {
-    try {
-      if (!isObj(e)) throw aiBad('アイテムは { item・type・label … } の形で書いてください。');
-      return aiLayoutSpec(tx, d, e, used, plan);
-    } catch (err) {
-      if (err instanceof AiRefusal) err.message = `${where}: ${err.message}`;
-      throw err;
-    }
-  };
-  const rows = layout.rows.map((row, ri) => {
-    if (isAlignRow(row)) {
-      const align = row.align == null ? 'left' : row.align;
-      if (!['left', 'center', 'right'].includes(align)) throw aiBad(`rows[${ri}].align は "left"・"center"・"right" です。`);
-      return { align, parts: row.parts.map((e, pi) => entry(e, `rows[${ri}].parts[${pi}]`)) };
-    }
-    if (!Array.isArray(row)) throw aiBad(`rows[${ri}] はアイテムの並び（配列）か { align, parts } の形で書いてください。`);
-    return row.map((e, pi) => entry(e, `rows[${ri}][${pi}]`));
-  });
-  rows.forEach((row) => aiAutoButtonStyles(isAlignRow(row) ? row.parts : row));
+  const rows = layout.rows.map((row, ri) => aiLayoutRow(row, `rows[${ri}]`, (e, where) => aiLayoutEntry(tx, d, e, where, used, plan)));
   const firstY = aiFirstRowY(findDesign(store.state, designId), sc);
   const startY = sc.parts.length ? Math.ceil((Math.max(...sc.parts.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : firstY;
-  const { placed } = layoutPlacements({ rows, columns }, { width: sc.width, startY, sizeOf: (s) => ({ type: s.type, w: s.w0, h: s.h0 }) });
+  // グループ枠と縦に重ねる形は、列の幅に広げて中身を layoutStack で重ね、その高さを行の高さにする。置いた後に中身を置き直し、見出しのボタンを重ねる
+  const inner = (s) => ({ type: s.type, w: s.w0, h: s.h0 });
+  const blocksOf = (s) => (s.stack ? s.stack : [s]);
+  const sizeOf = (s) => (s.stack || s.frame != null
+    ? { type: 'block', fill: true, heightAt: (w) => layoutStack(blocksOf(s), { x: 0, w, startY: 0, sizeOf: inner }).nextY - TPL_GAP }
+    : inner(s));
+  const expand = (list) => list.flatMap((pl) => {
+    if (pl.type === 'block') return expand(layoutStack(blocksOf(pl.entry), { x: pl.x, w: pl.w, startY: pl.y, sizeOf: inner }).placed);
+    if (pl.type !== 'recordHead' || !pl.entry.buttons) return [pl];
+    return [pl, ...recordHeadButtons(pl, pl.entry.buttons.map((b) => ({ entry: b, type: 'button', w: b.w0, h: b.h0 })))];
+  });
+  const placed = expand(layoutPlacements({ rows, columns }, { width: sc.width, startY, sizeOf }).placed);
   // 置くと画面が伸びる（placePartIn と同じく、下に TPL_LEFT 空ける）ときは、上限を超えないか見る
   const bottom = placed.reduce((m, pl) => Math.max(m, pl.y + pl.h + TPL_LEFT), 0);
   if (bottom > sc.height) aiCheckBottom(bottom, '並べたアイテムの下の端');
@@ -15464,6 +15536,7 @@ function aiLayout(tx, designId, screenId, layout, mode) {
       if (e.unnumbered) p.no = null;
       ids.push(p.id);
     });
+    settleFrames(s, ids); // グループ枠と見出しの中に置いたアイテムを入れる（人が置いたときと同じ決まり）
   });
   const dd = findDesign(store.state, designId);
   const s = findScreen(designId, screenId);
@@ -15473,6 +15546,88 @@ function aiLayout(tx, designId, screenId, layout, mode) {
     return { id: p.id, no: p.no, type: p.type, label: partTitle(r), item: p.itemId && isItemPart(p) ? r.label : null, x: p.x, y: p.y, w: p.w, h: p.h };
   });
   return { parts, createdItems: plan.created.map((it) => ({ id: it.id, name: it.name, type: it.type })) };
+}
+// 頼みのどこが違うかを、断る文の頭に付ける（rows[0][1] など）
+function aiWhere(where, fn) {
+  try {
+    return fn();
+  } catch (err) {
+    if (err instanceof AiRefusal) err.message = `${where}: ${err.message}`;
+    throw err;
+  }
+}
+// 並べ方の 1 行。アイテムの並び（配列）か { align, parts }（ボタンの行）。並びには、グループ枠の形 { frame, color, columns, rows, span } と
+// 縦に重ねる形 { stack: [アイテム・グループ枠の形 …], span } も書ける（第 14 段階。inside が 'frame' のとき〔グループ枠の中〕は書けない）。
+// entry(e, where) はアイテム 1 つを置く形（spec）に直す。style を書かないボタンは、行ごとに最初のボタンだけ青
+function aiLayoutRow(row, where, entry, inside = null) {
+  const isFrame = (b) => isObj(b) && 'frame' in b;
+  const isStack = (b) => isObj(b) && 'stack' in b;
+  const span = (b, w) => aiWhere(w, () => {
+    if (b.span != null && ![1, 2, 3, 4].includes(b.span)) throw aiBad('span は 1〜4 です。');
+    return b.span >= 2 ? b.span : undefined;
+  });
+  const frame = (b, w) => {
+    const head = aiWhere(w, () => {
+      const color = b.color == null ? 'blue' : b.color;
+      if (!own(FRAME_COLORS, color)) throw aiBad(`グループ枠の color に書ける値は ${Object.keys(FRAME_COLORS).map((x) => `"${x}"`).join('・')} です。`);
+      const columns = b.columns == null ? 1 : b.columns;
+      if (![1, 2].includes(columns)) throw aiBad('グループ枠の columns は 1 か 2 です。');
+      if (!Array.isArray(b.rows)) throw aiBad('グループ枠の rows は行の配列で書いてください（中に何も置かないときは []）。');
+      return { frame: aiStrVal(b.frame, 'frame').trim(), color, columns };
+    });
+    const rows = b.rows.map((r, ri) => aiLayoutRow(r, `${w}.rows[${ri}]`, entry, 'frame'));
+    return { ...head, rows, span: span(b, w), label: head.frame, props: { color: head.color }, fields: {} };
+  };
+  const stack = (b, w) => {
+    if (!Array.isArray(b.stack) || !b.stack.length) throw aiBad(`${w}: stack はアイテムかグループ枠の配列で書いてください（1 つ以上）。`);
+    const list = b.stack.map((x, i) => {
+      const wi = `${w}.stack[${i}]`;
+      if (isStack(x)) throw aiBad(`${wi}: stack の中に stack は置けません。`);
+      return isFrame(x) ? frame(x, wi) : entry(x, wi);
+    });
+    aiAutoButtonStyles(list);
+    return { stack: list, span: span(b, w) };
+  };
+  if (isAlignRow(row)) {
+    const align = row.align == null ? 'left' : row.align;
+    if (!['left', 'center', 'right'].includes(align)) throw aiBad(`${where}.align は "left"・"center"・"right" です。`);
+    const parts = row.parts.map((e, pi) => {
+      if (isFrame(e) || isStack(e)) throw aiBad(`${where}.parts[${pi}]: ボタンの行（align）には、グループ枠と stack は置けません。`);
+      return entry(e, `${where}.parts[${pi}]`);
+    });
+    aiAutoButtonStyles(parts);
+    return { align, parts };
+  }
+  if (!Array.isArray(row)) throw aiBad(`${where} はアイテムの並び（配列）か { align, parts } の形で書いてください。`);
+  const list = row.map((e, pi) => {
+    const w = `${where}[${pi}]`;
+    if (inside === 'frame' && (isFrame(e) || isStack(e))) throw aiBad(`${w}: グループ枠の中に、グループ枠と stack は置けません。`);
+    if (isFrame(e)) return frame(e, w);
+    if (isStack(e)) return stack(e, w);
+    return entry(e, w);
+  });
+  aiAutoButtonStyles(list);
+  return list;
+}
+// 並べ方のアイテム 1 つ（aiLayoutSpec）。レコードの見出しには buttons（ボタンの並び。見出しの右に重ねて置き、見出しに入れる）を書ける
+function aiLayoutEntry(tx, d, e, where, used, plan) {
+  const spec = aiWhere(where, () => {
+    if (!isObj(e)) throw aiBad('アイテムは { item・type・label … } の形で書いてください。');
+    return aiLayoutSpec(tx, d, e, used, plan);
+  });
+  if (e.buttons == null) return spec;
+  aiWhere(where, () => {
+    if (spec.type !== 'recordHead') throw aiBad('buttons を書けるのは、レコードの見出し（recordHead）だけです。');
+    if (!Array.isArray(e.buttons) || !e.buttons.length) throw aiBad('buttons はボタンの配列で書いてください（1 つ以上）。');
+  });
+  spec.buttons = e.buttons.map((b, i) => {
+    const w = `${where}.buttons[${i}]`;
+    const s = aiLayoutEntry(tx, d, b, w, used, plan);
+    if (s.type !== 'button') throw aiBad(`${w}: buttons に書けるのはボタン（type "button"）だけです。`);
+    return s;
+  });
+  aiAutoButtonStyles(spec.buttons);
+  return spec;
 }
 // 並べ方の部品 1 つを、置く形（spec）に直す。spec は { type, w0, h0, span, itemId, tableKind, label, props, view, fields, unnumbered }
 function aiLayoutSpec(tx, d, e, used, plan) {
@@ -15546,6 +15701,10 @@ function aiLayoutSpec(tx, d, e, used, plan) {
     const rows = aiSampleRows(spec.view && spec.view.rows, samples);
     spec.view = { ...(spec.view || {}), rows, samples };
     size.h = tableHeight(rows);
+  }
+  // 関連レコード一覧の並べて表示の高さは、件数と列の数から（第 14 段階）
+  if (type === 'table' && spec.tableKind === 'related' && spec.props && spec.props.display === 'tiles') {
+    size.h = tilesHeight((spec.view && spec.view.rows) || 3, (spec.props.columns || []).length);
   }
   return { ...spec, type, w0: size.w, h0: size.h };
 }
