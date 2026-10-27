@@ -182,7 +182,7 @@ const roleOps = z.discriminatedUnion('op', [
   op('add', { name: z.string().describe('役割の名前（例 "申請者"・"上長"・"経理"）'), memo: opt(z.string().describe('役割のメモ')) }, '役割を追加する（いちばん下のレーン）'),
   op('rename', { role: S.role, name: z.string() }, '役割の名前を変える（同じシステムに同じ名前の役割は作れない）'),
   op('set_memo', { role: S.role, memo: z.string() }, '役割のメモを書く'),
-  op('move', { role: S.role, to: z.number().int().min(0).describe('動かした後の位置（0 がいちばん上のレーン）') }, '役割（スイムレーンのレーン）を並べ替える'),
+  op('move', { role: S.role, to: z.number().int().min(0).describe('動かした後の位置（0 がいちばん上のレーン）') }, '役割（スイムレーン図のレーン）を並べ替える'),
   op('delete', { role: S.role }, '役割を消す（その役割の工程と、その工程に接続している矢印も消える）'),
 ]);
 
@@ -212,7 +212,7 @@ const swimStep = obj({
 });
 const swimEdge = obj({
   id: opt(z.string().describe('今ある矢印の id（get_system の edges[].id）。書くと、その矢印の id のまま元・先・文字を変更する。' +
-    '書かなくても、同じ「元 → 先」の矢印が今あれば、その id を使い回す。新しい矢印は書かない')),
+    '書かなくても、同じ「元 → 先」の矢印が今あれば、その id をそのまま使う。新しい矢印は書かない')),
   from: z.string().describe('矢印の元の工程（key か id か文字）'),
   to: z.string().describe('矢印の先の工程（key か id か文字）'),
   label: opt(z.string().describe('矢印の文字（例 "差し戻し"）。省くと、今の矢印の文字のまま（新しい矢印は文字なし）')),
@@ -261,7 +261,7 @@ const noteInputs = {
   update: { system: S.system, expect: S.expect, ops: opsOf(noteOps) },
   stage: {
     system: S.system, stage: noteStage,
-    state: z.enum(NOTE_STATES).describe('進捗: "doing"（作業中）・"review"（確認待ち）・"done"（確認済み）・"skipped"（確認を飛ばした）。"todo"（まだ）には戻せない（断る。前の段階を変更するときは "review" に戻す）'),
+    state: z.enum(NOTE_STATES).describe('進捗: "doing"（作業中）・"review"（確認待ち）・"done"（確認済み）・"skipped"（確認を飛ばした）。"todo"（未着手）には戻せない（断る。前の段階を変更するときは "review" に戻す）'),
     expect: S.expect,
   },
 };
@@ -271,7 +271,7 @@ const promptArgs = (args) => Object.fromEntries(Object.entries(args).map(([k, a]
 
 module.exports = {
   z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps), processOps: opsOf(processOps),
-  roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('工程の並び（今のスイムレーンの工程を全部置き換える。空の並びで工程を全部消す）'),
+  roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('工程の並び（今のスイムレーン図の工程を全部置き換える。空の並びで工程を全部消す）'),
   swimEdges: z.array(swimEdge).describe('矢印の並び（今の矢印を全部置き換える。省くと、今の矢印のうち両端の工程が残っているものを残す。[] で全部消す）'),
   materialInputs, noteInputs, promptArgs, DEVICES, LOOKS, ITEM_VIEWS, TABLE_KINDS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, NOTE_STAGES, NOTE_STATES,
 };
