@@ -20,7 +20,7 @@
  "ai_connect": {
   "file": "ai_connect.png",
   "w": 784,
-  "h": 954,
+  "h": 976,
   "dsf": 2
  },
  "ed_align": {
@@ -37,7 +37,7 @@
  },
  "ed_edit": {
   "file": "ed_edit.png",
-  "w": 740,
+  "w": 750,
   "h": 316,
   "dsf": 2
  },
@@ -109,7 +109,7 @@
  },
  "ex_button": {
   "file": "ex_button.png",
-  "w": 213,
+  "w": 223,
   "h": 124,
   "dsf": 2
  },
@@ -194,7 +194,7 @@
  "new_step2": {
   "file": "new_step2.png",
   "w": 464,
-  "h": 468,
+  "h": 486,
   "dsf": 2
  },
  "new_step3": {
@@ -223,7 +223,7 @@
  },
  "rv_menu": {
   "file": "rv_menu.png",
-  "w": 412,
+  "w": 423,
   "h": 209,
   "dsf": 2
  },
@@ -247,7 +247,7 @@
  },
  "sc_menu": {
   "file": "sc_menu.png",
-  "w": 321,
+  "w": 323,
   "h": 668,
   "dsf": 2
  },
@@ -271,7 +271,7 @@
  },
  "sys_exportmenu": {
   "file": "sys_exportmenu.png",
-  "w": 407,
+  "w": 417,
   "h": 192,
   "dsf": 2
  },

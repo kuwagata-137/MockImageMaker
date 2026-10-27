@@ -740,7 +740,7 @@ const CHAPTERS = {
     await shot('ed_items', { anno: [
       { box: { sel: '#screen-list .db-entry', i: 0 }, n: 1, pad: 2 },
       { box: { sel: '#db-view button', text: '項目を追加する' }, n: 2, pad: 2, at: 'l' },
-      { box: { sel: '#db-view button', text: 'ほかのモックから項目を取り込む' }, n: 3, pad: 2, at: 'r' },
+      { box: { sel: '#db-view button', text: 'ほかの画面設計から項目を取り込む' }, n: 3, pad: 2, at: 'r' },
     ] });
     // 3.6 ルックアップ: 項目の一覧表で「社員番号」を選んだときの右の欄
     await T(() => { const t = window.__test__; const d = t.currentDesign(); t.selectItem(d.items.find((i) => i.name === '社員番号').id); });
