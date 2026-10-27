@@ -1556,12 +1556,40 @@ const SCREEN_TEMPLATES = [
   { id: 'graph', name: 'グラフ', note: 'グラフを 2 つ' },
   { id: 'agg', name: '集計', note: '表とグラフ' },
   { id: 'steps', name: '進捗', note: '進捗バー・承認のボタン' },
+  { id: 'crmDetail', name: '顧客の詳細', note: 'レコードの見出しの下に 2 列' },
+  { id: 'crmCase', name: '問い合わせ対応の 3 列', note: 'レコードの見出しと進捗バーの下に 3 列' },
 ];
 const TPL_LEFT = 32; // ひな形で部品を置く左の端
 const TPL_COL2 = 480; // 項目を 2 列で並べるときの右の列（幅 400 の部品の右に 48 空ける）
 const TPL_GAP = 24; // 項目の行の間
 // データベースの項目がまだないときに、入力・詳細・進み具合へ置く見本の項目
 const TPL_SAMPLE_ITEMS = [['text1', '項目名 1'], ['date', '項目名 2'], ['dropdown', '項目名 3']];
+// 「顧客の詳細」「問い合わせ対応の 3 列」（第 14 段階。画像 q120）のサンプル。項目は、データベースの項目がないときに項目一覧に追加する
+// （sample はアイテムのサンプル値、span は 2 列の幅、props は項目の設定）。関連レコード一覧は [見出しの文字と元のデータベースの名前, アイコンの色, [[列の名前, 1 件目, 2 件目] …]]
+const CRM_CUSTOMER_ITEMS = [
+  { type: 'text1', name: '顧客名', sample: '株式会社サンプル商事', required: true }, { type: 'text1', name: '顧客番号', sample: 'C-00125' },
+  { type: 'text1', name: '電話', sample: '03-1234-5678' }, { type: 'text1', name: '業種', sample: '卸売業' },
+  { type: 'text1', name: '住所', sample: '東京都千代田区（架空）' }, { type: 'user', name: '担当者', sample: '佐藤 花子' },
+  { type: 'text1', name: '地域', sample: '関東' }, { type: 'number', name: '年間の売上', sample: '1,200', props: { unit: '万円' } },
+];
+const CRM_CASE_CUSTOMER_ITEMS = [
+  { type: 'text1', name: '顧客名', sample: '株式会社サンプル商事', required: true }, { type: 'text1', name: '電話', sample: '03-1234-5678' },
+  { type: 'text1', name: 'メール', sample: 'yamada@example.com' },
+];
+const CRM_CASE_ITEMS = [
+  { type: 'text1', name: '件名', sample: 'エアコンが冷えない', required: true, span: 2 },
+  { type: 'dropdown', name: '優先度', sample: '高', props: { options: ['高', '中', '低'] } }, { type: 'dropdown', name: '発生源', sample: '電話', props: { options: ['電話', 'メール', 'Web'] } },
+  { type: 'date', name: '受付日', sample: '2026-10-20' }, { type: 'dropdown', name: '連絡方法', sample: '電話', props: { options: ['電話', 'メール'] } },
+  { type: 'user', name: '担当者', sample: '佐藤 花子' }, { type: 'text2', name: '説明', sample: '冷房が効かないとの電話。リモコンにエラーの番号 E-11 が出ている。', span: 2 },
+];
+const CRM_CASE_STATES = ['新規', '対応中', 'エスカレーション', '回答待ち', 'クローズ'];
+const CRM_RELATED = {
+  contacts: ['顧客の担当者', 'green', [['氏名', '山田 太郎', '鈴木 一郎'], ['役職', '総務部長', '施設の担当'], ['電話', '03-1234-5679', '03-1234-5680'], ['メール', 'yamada@example.com', 'suzuki@example.com']]],
+  deals: ['商談', 'orange', [['商談名', '空調の入れ替え', '保守の契約の更新'], ['段階', '提案', '受注'], ['金額', '480 万円', '36 万円'], ['完了予定日', '2026-12-15', '2026-09-30']]],
+  cases: ['問い合わせ', 'orange', [['問い合わせ番号', '00002934', '00002811'], ['件名', 'エアコンが冷えない', 'リモコンの交換'], ['状況', '対応中', 'クローズ'], ['受付日', '2026-10-20', '2026-09-02']]],
+  others: ['ほかの問い合わせ', 'orange', [['問い合わせ番号', '00002811', '00002702'], ['件名', 'リモコンの交換', '点検の日の相談'], ['状況', 'クローズ', 'クローズ']]],
+  articles: ['ナレッジの記事', 'green', [['記事名', 'エラー E-11 が出たとき', '冷房が効かないとき'], ['種類', '故障の直し方', 'よくある質問']]],
+};
 
 // ── 並べ方（第 7 段階。設計書の 9-3）──
 // 行と列だけを決めれば、位置と大きさを決まりどおりに決める。ひな形と AI の並べ方（layout）の両方がこれを使う（置き方の決まりを 1 か所にするため）
@@ -1660,14 +1688,82 @@ function layoutAlignLines(parts, maxW) {
 // 部品の最初の大きさ（並べ方の sizeOf に使う）
 const defaultPartSize = (type) => ({ type, w: partType(type).w, h: partType(type).h });
 
+// ── 縦に重ねる並べ方と、グループ枠の中の並べ方（第 14 段階）──
+// Salesforce のレコードの画面のように、列ごとに上から重ねて置く（左右の列は別々の高さになる）。ひな形「顧客の詳細」「問い合わせ対応の 3 列」と、
+// AI の並べ方（layout の stack・frame）の両方がこれを使う（置き方の決まりを 1 か所にするため）
+const FRAME_PAD = 24; // グループ枠の左右と下の、中のアイテムまでの空き
+const FRAME_TOP = 64; // グループ枠の上の端から、中の 1 行目のアイテムまで（見出しの行 44 と空き 20）
+const FRAME_EMPTY_H = 160; // 中に何も並べないグループ枠の高さ
+const isFrameBlock = (b) => isObj(b) && typeof b.frame === 'string';
+// 列の幅いっぱいに広げる種類（入力の項目・表・グラフ・説明文・見出し・区切り線・第 14 段階のアイテム）。ほかは最初の幅（列より広ければ列の幅）
+const STRETCH_TYPES = ['table', 'graph', 'desc', 'heading', 'divider', 'frame', 'recordHead', 'activity', 'tree'];
+const stretchType = (type) => !!partType(type) && (!!partType(type).input || STRETCH_TYPES.includes(type));
+// blocks を、x から幅 w の 1 つの列に、startY から上から順に重ねる。block はアイテム 1 つか、グループ枠 { frame: 'グループ名', color, columns（1〜2）, rows }。
+// sizeOf(entry) は { type, w, h }。戻り値 { placed: [{ entry, type, x, y, w, h }]（置く順。グループ枠は中のアイテムより前）, nextY }
+function layoutStack(blocks, { x, w, startY, sizeOf }) {
+  const placed = [];
+  let y = startY;
+  (Array.isArray(blocks) ? blocks : []).forEach((b) => {
+    if (isFrameBlock(b)) {
+      const inner = layoutInFrame(b.rows, { x: x + FRAME_PAD, w: w - FRAME_PAD * 2, startY: y + FRAME_TOP, columns: b.columns, sizeOf });
+      const h = inner.placed.length ? Math.ceil((inner.bottom + FRAME_PAD - y) / GRID) * GRID : FRAME_EMPTY_H;
+      placed.push({ entry: b, type: 'frame', x, y, w, h }, ...inner.placed);
+      y += h + TPL_GAP;
+      return;
+    }
+    const s = sizeOf(b);
+    placed.push({ entry: b, type: s.type, x, y, w: stretchType(s.type) ? w : Math.min(s.w, w), h: s.h });
+    y += s.h + TPL_GAP;
+  });
+  return { placed, nextY: y };
+}
+// グループ枠の中に rows を並べる。rows の 1 つは、アイテムの並び（配列。columns が 2 なら 2 つずつ横に並べ、span が 2 以上のアイテムは 1 行を使う）か、
+// { align: 'left'・'center'・'right', parts: [...] }（ボタンの行。最初の幅で並べる）。2 列は、列の幅が 160 以上になるときだけ。列の間は 32。
+// 戻り値 { placed, bottom（最後の行のいちばん下）}
+function layoutInFrame(rows, { x, w, startY, columns = 1, sizeOf }) {
+  const cols = columns >= 2 && w >= LAYOUT_GRID_MIN * 2 + LAYOUT_ALIGN_GAP ? 2 : 1;
+  const colW = cols === 2 ? Math.floor((w - LAYOUT_ALIGN_GAP) / 2 / GRID) * GRID : w;
+  const fit = (s, width) => (stretchType(s.type) ? width : Math.min(s.w, width));
+  const placed = [];
+  let y = startY;
+  let bottom = startY;
+  const putLine = (line) => {
+    if (!line.length) return;
+    line.forEach((p) => placed.push({ ...p, y }));
+    bottom = y + Math.max(...line.map((p) => p.h));
+    y = bottom + TPL_GAP;
+  };
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    if (isAlignRow(row)) {
+      const parts = row.parts.map((e) => { const s = sizeOf(e); return { entry: e, type: s.type, w: Math.min(s.w, w), h: s.h }; });
+      layoutAlignLines(parts, w).forEach((line) => {
+        const total = line.reduce((n, p) => n + p.w, 0) + LAYOUT_ALIGN_GAP * (line.length - 1);
+        let px = row.align === 'right' ? x + w - total : row.align === 'center' ? x + Math.floor((w - total) / 2 / GRID) * GRID : x;
+        putLine(line.map((p) => { const q = { ...p, x: px }; px += p.w + LAYOUT_ALIGN_GAP; return q; }));
+      });
+      return;
+    }
+    let line = [];
+    (Array.isArray(row) ? row : []).forEach((entry) => {
+      const s = sizeOf(entry);
+      if (cols === 1 || (entry && entry.span >= 2)) { putLine(line); line = []; putLine([{ entry, type: s.type, x, w: fit(s, w), h: s.h }]); return; }
+      if (line.length >= cols) { putLine(line); line = []; }
+      line.push({ entry, type: s.type, x: line.length ? x + colW + LAYOUT_ALIGN_GAP : x, w: fit(s, colW), h: s.h });
+    });
+    putLine(line);
+  });
+  return { placed, bottom };
+}
+
 // 画面に部品を 1 つ置く（commit はしない）。下の端が画面からはみ出すときは、画面を下へ伸ばす（部品が上へずれないように）。
-// spec: { type, x, y, w, h, itemId, tableKind, label, props, view }。戻り値は置いた部品
-function placePartIn(sc, design, { type, x, y, w, h, itemId = null, tableKind = 'subtable', label, props, view }) {
+// spec: { type, x, y, w, h, itemId, tableKind, label, props, view, sample }。戻り値は置いた部品
+function placePartIn(sc, design, { type, x, y, w, h, itemId = null, tableKind = 'subtable', label, props, view, sample }) {
   const t = partType(type);
   const bottom = y + (h || t.h) + TPL_LEFT;
   if (bottom > sc.height) sc.height = snapHeight(Math.ceil(bottom / GRID) * GRID, sc.device);
   const p = createPartData(type, sc, { x, y }, itemId, { tableKind, design });
   if (label != null) p.label = label;
+  if (sample) p.sample = sample;
   if (props) p.props = { ...p.props, ...props };
   if (view) p.view = type === 'table' ? normalizeTableView({ ...p.view, ...view }) : { ...p.view, ...view };
   // 書いた位置と大きさで画面に収める（createPartData は種類の最初の大きさで収めるので、最初の幅より狭い部品が右の端で左へずれないように）
@@ -1749,9 +1845,77 @@ function screenFromTemplate(design, templateId, name) {
       flowItems(Y(136), [['承認する', 'primary'], ['差し戻す', 'normal']]);
       break;
     }
+    case 'crmDetail': case 'crmCase': crmTemplateInto(sc, design, templateId, { put, items, Y }); break;
     default: break; // 白紙は帯だけ
   }
   return { screen: sc, items };
+}
+
+// ひな形「顧客の詳細」（左 784・右 400 の 2 列）と「問い合わせ対応の 3 列」（288・576・288）。画像 q120 の並び。
+// いちばん上にレコードの見出しと、見出しの右に重ねたボタン（編集・削除）。その下に、列ごとに上から重ねる（layoutStack）。
+// 項目は、データベースの項目があれば入力の種類の項目を、なければサンプルの項目を項目一覧に追加して、グループ枠に並べる。
+// 関連レコード一覧の元は「一覧にないデータベース」の名前で書く（同じ名前の画面設計があれば、mutateDesign の relinkFreeDbs が接続する）
+function crmTemplateInto(sc, design, templateId, { put, items, Y }) {
+  const own = design.items.filter((it) => isInputType(it.type)).map((it) => ({ item: it }));
+  const sample = (specs) => specs.map((s) => {
+    const it = createItemData(s.type, s.name);
+    if (s.required) it.required = true;
+    if (s.props) it.props = { ...it.props, ...s.props };
+    items.push(it);
+    return { item: it, sample: s.sample, span: s.span };
+  });
+  const related = ([name, color, cols]) => {
+    const columns = cols.map(([n]) => ({ id: newId('c'), ref: { itemId: null, name: n } }));
+    const samples = Object.fromEntries(columns.map((c, i) => [c.id, cols[i].slice(1)]));
+    return { type: 'table', tableKind: 'related', label: name, h: tilesHeight(2, columns.length), view: { rows: 2, samples },
+      props: { display: 'tiles', color, db: { designId: null, name, free: true }, columns } };
+  };
+  const activity = { type: 'activity' };
+  const sizeOf = (e) => (e.item ? defaultPartSize(partTypeOfItem(e.item.type)) : { type: e.type, w: partType(e.type).w, h: e.h || partType(e.type).h });
+  const putStack = (blocks, x, w, y) => layoutStack(blocks, { x, w, startY: y, sizeOf }).placed.forEach(({ entry: e, type, x: px, y: py, w: pw, h: ph }) => put(type, px, py, {
+    w: pw, h: ph, itemId: e.item ? e.item.id : null, tableKind: e.tableKind, sample: e.sample, view: e.view,
+    label: type === 'frame' ? e.frame : e.label, props: type === 'frame' ? { color: e.color || 'blue' } : e.props,
+  }));
+  // 見出しの主な項目は、名前で選んだサンプルの項目（データベースの項目があるときは、入力の種類の最初の 4 つで、値は空）
+  const headOf = (entries, names) => {
+    const picked = own.length ? entries.slice(0, 4) : names.map((n) => entries.find((e) => e.item.name === n)).filter(Boolean);
+    return { items: picked.map((e) => e.item.id), values: picked.map((e) => (own.length ? '' : e.sample || '')) };
+  };
+  const putHead = (props) => {
+    const head = put('recordHead', TPL_LEFT, Y(56), { props });
+    const y = head.y + 24; // レコードの名前の行の高さ（8 ドットのマス目に合わせる）
+    const x = head.x + head.w - 16 - PART_TYPES.button.w;
+    put('button', x - LAYOUT_ALIGN_GAP - PART_TYPES.button.w, y, { label: '編集', props: { style: 'normal' } });
+    put('button', x, y, { label: '削除', props: { style: 'normal' } });
+    return head.y + head.h + TPL_GAP;
+  };
+  if (templateId === 'crmDetail') {
+    const entries = own.length ? own : sample(CRM_CUSTOMER_ITEMS);
+    const y = putHead({ kind: '顧客', name: '株式会社サンプル商事', ...headOf(entries, ['電話', '業種', '担当者', '地域']) });
+    putStack([{ frame: '顧客の情報', color: 'blue', columns: 2, rows: [entries] }, activity], TPL_LEFT, 784, y);
+    putStack([related(CRM_RELATED.contacts), related(CRM_RELATED.deals), related(CRM_RELATED.cases)], TPL_LEFT + 784 + 32, 400, y);
+  } else {
+    const customer = own.length ? [] : sample(CRM_CASE_CUSTOMER_ITEMS);
+    const entries = own.length ? own : sample(CRM_CASE_ITEMS);
+    const y0 = putHead({ kind: '問い合わせ', name: '00002934 エアコンが冷えない',
+      ...headOf(own.length ? own : [...entries, ...customer], ['優先度', '顧客名', '担当者', '受付日']) });
+    let status = design.items.find((it) => it.type === 'status');
+    let current = status ? defaultStateId(status) : '';
+    if (!status) {
+      status = createItemData('status');
+      const states = normalizeStates(CRM_CASE_STATES);
+      status.props = { states, actions: sampleActions(states) };
+      current = states[1].id;
+      items.push(status);
+    }
+    const steps = put('steps', TPL_LEFT, y0, { itemId: status.id, w: sc.width - TPL_LEFT * 2, view: { current } });
+    const y = steps.y + steps.h + TPL_GAP;
+    putStack([{ frame: '顧客の情報', color: 'blue', columns: 1, rows: [customer] }, related(CRM_RELATED.others)], TPL_LEFT, 288, y);
+    putStack([{ frame: '問い合わせの情報', color: 'orange', columns: 2, rows: [entries] }], TPL_LEFT + 288 + 32, 576, y);
+    putStack([activity, related(CRM_RELATED.articles)], TPL_LEFT + 288 + 32 + 576 + 32, 288, y);
+  }
+  sc.itemView = 'show';
+  settleFrames(sc, sc.parts.map((p) => p.id));
 }
 
 // ── 項目と部品 ──

@@ -39,7 +39,7 @@ async function bootEditor(t, opts = {}) {
 test('ひな形から画面を足す: 開いている画面のすぐ後ろに入り、名前はひな形の名前（重なれば「一覧 2」）。白紙は番号の名前', async (t) => {
   const { api, id, design, names } = await bootEditor(t);
   const s1 = design().screens[0].id;
-  assert.deepEqual(plain(api.SCREEN_TEMPLATES.map((x) => x.name)), ['白紙', '入力', '詳細', '一覧', 'グラフ', '集計', '進捗']);
+  assert.deepEqual(plain(api.SCREEN_TEMPLATES.map((x) => x.name)), ['白紙', '入力', '詳細', '一覧', 'グラフ', '集計', '進捗', '顧客の詳細', '問い合わせ対応の 3 列']);
   const a = api.actions.addScreen(id, 'list', s1);
   assert.deepEqual(names(), ['画面 1', '一覧']);
   api.actions.addScreen(id, 'list', s1);
@@ -258,12 +258,12 @@ test('画面を消す: 最後の 1 つの画面は消せない（ボタンとメ
   assert.equal($(app, '#tb-del-screen').disabled, false, '2 つになれば押せる');
 });
 
-test('「画面を足す」の窓: ひな形 7 つの札。選んで「足す」・ダブルクリック・「今の画面を複製」。足した画面を開く', async (t) => {
+test('「画面を足す」の窓: ひな形 9 つの札。選んで「足す」・ダブルクリック・「今の画面を複製」。足した画面を開く', async (t) => {
   const { app, api, design, names } = await bootEditor(t);
   click($(app, '.sl-add'));
   await waitFor(() => $(app, '.modal'));
-  assert.deepEqual($$(app, '.modal .tpl > b').map((b) => b.textContent), ['白紙', '入力', '詳細', '一覧', 'グラフ', '集計', '進捗']);
-  assert.equal($$(app, '.modal .tpl .thumb').length, 7, '縮小画像付き');
+  assert.deepEqual($$(app, '.modal .tpl > b').map((b) => b.textContent), ['白紙', '入力', '詳細', '一覧', 'グラフ', '集計', '進捗', '顧客の詳細', '問い合わせ対応の 3 列']);
+  assert.equal($$(app, '.modal .tpl .thumb').length, 9, '縮小画像付き');
   assert.match($(app, '.modal').textContent, /今開いている「画面 1」の画面のすぐ後ろに追加します/);
   assert.ok($(app, '.modal .tpl.sel[data-tpl="blank"]'), '最初は白紙を選んでいる');
   click($(app, '.modal .tpl[data-tpl="list"]'));

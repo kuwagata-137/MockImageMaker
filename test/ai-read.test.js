@@ -185,7 +185,7 @@ test('get_catalog: アイテムの種類・設定の欄の説明・ひな形・�
   assert.match(c.parts.find((p) => p.type === 'button').props.style, /primary/);
   assert.match(c.parts.find((p) => p.type === 'status').itemProps.states, /ステータスの並び/);
   assert.equal(c.parts.find((p) => p.type === 'heading').numbered, false);
-  assert.deepEqual(c.templates.map((t) => t.id), ['blank', 'input', 'detail', 'list', 'graph', 'agg', 'steps']);
+  assert.deepEqual(c.templates.map((t) => t.id), ['blank', 'input', 'detail', 'list', 'graph', 'agg', 'steps', 'crmDetail', 'crmCase']);
   assert.deepEqual(c.devices.phone, { label: 'スマホ', width: 375, height: 667 });
   assert.deepEqual(c.layout.columnsLeft, [32, 480]);
   assert.equal(c.layout.spanWidth, 848);
