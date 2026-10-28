@@ -74,14 +74,14 @@ async function exportVia(app, api, designId, init = () => {}) {
 }
 const pageChecks = (app) => plain($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => [x.dataset.xpage, x.checked, x.disabled]));
 
-test('出力の窓: 「入れるページ」に「ステータスの移り方」「画面の移り方」。操作がない・移る先がないときは、外して押せなくし、理由を添える', async (t) => {
+test('出力の窓: 「入れるページ」に「ステータスの流れ」「画面遷移図」。操作がない・移動先がないときは、外して押せなくし、理由を添える', async (t) => {
   const empty = await boot(t, { full: false });
   const done = empty.api.openExportDialog(empty.A);
   await tick();
   assert.deepEqual(pageChecks(empty.app).slice(3), [['process', false, true], ['flow', false, true]]);
   const box = $(empty.app, '[data-xbox="pdf"]').textContent;
-  assert.match(box, /ステータスの移り方ステータスを進める操作がないので、出しません/);
-  assert.match(box, /画面の移り方ボタン・リンクの文字の移る先がないので、出しません/);
+  assert.match(box, /ステータスの流れステータスを進める操作がないので、出しません/);
+  assert.match(box, /画面遷移図ボタン・リンクの移動先がないので、出しません/);
   click($(empty.app, '[data-dlg="cancel"]'));
   await done;
   const { app, api, A } = await boot(t);
@@ -92,14 +92,14 @@ test('出力の窓: 「入れるページ」に「ステータスの移り方」
   await done2;
 });
 
-test('PDF: 表紙 → 項目の一覧表 → ステータスの移り方 → 画面の移り方 → 画面の順（つながりの図はルックアップ・取り込みがないので出ない）。表紙の画面の一覧にも 2 つの行', async (t) => {
+test('PDF: 表紙 → 項目一覧 → ステータスの流れ → 画面遷移図 → 画面の順（関連図はルックアップ・取り込みがないので出ない）。表紙の画面の一覧にも 2 つの行', async (t) => {
   const { app, api, A, pdfPages } = await boot(t);
   await exportVia(app, api, A);
   const pages = pdfPages();
   assert.deepEqual(plain(pages.map((p) => (p.querySelector('.pg-head h2') || p.querySelector('.cv-title')).textContent)),
-    ['出張申請', 'データベースの項目の一覧表', 'ステータスの移り方', '画面の移り方', '1　一覧', '2　詳細']);
+    ['出張申請', '項目一覧', 'ステータスの流れ', '画面遷移図', '1　一覧', '2　詳細']);
   assert.deepEqual(plain([...pages[0].querySelectorAll('.cv-list tbody tr')].map((tr) => [...tr.cells].map((c) => c.textContent))), [
-    ['データベースの項目の一覧表', '', '2'], ['ステータスの移り方', '', '3'], ['画面の移り方', '', '4'],
+    ['項目一覧', '', '2'], ['ステータスの流れ', '', '3'], ['画面遷移図', '', '4'],
     ['1　一覧', 'パソコン', '5'], ['2　詳細', 'パソコン', '6'],
   ]);
   // ステータスの移り方のページ: 左に図（上から下へ）、右に操作の一覧表（q59）
@@ -109,22 +109,22 @@ test('PDF: 表紙 → 項目の一覧表 → ステータスの移り方 → 画
   assert.equal(pp.querySelectorAll('.mnode').length, 4);
   assert.ok(pp.querySelector('svg marker[id^="xp-proc-"]'), '矢印の印の id は編集の画面と重ならない頭');
   assert.equal(pp.querySelector('[id="map-inner"]'), null);
-  assert.deepEqual(plain([...pp.querySelectorAll('.xp-itable thead th')].map((th) => th.textContent)), ['番号', '操作', '前のステータス → 次のステータス', '操作する人', '条件']);
+  assert.deepEqual(plain([...pp.querySelectorAll('.xp-itable thead th')].map((th) => th.textContent)), ['番号', '操作', '前のステータス → 次のステータス', '操作できる人', '条件']);
   assert.deepEqual(plain([...pp.querySelectorAll('.xp-itable tbody tr')].map((tr) => [...tr.cells].map((c) => c.textContent))), [
     ['1', '申請する', '申請 → 承認待ち', '', ''], ['2', '承認する', '承認待ち → 承認済み', '', ''],
     ['3', '差し戻す', '承認待ち → 申請', '', ''], ['4', '完了にする', '承認済み → 完了', '', ''],
   ]);
-  assert.match(pp.querySelector('.pg-foot').textContent, /出張申請 ／ ステータスの移り方\s*3 \/ 6/);
+  assert.match(pp.querySelector('.pg-foot').textContent, /出張申請 ／ ステータスの流れ\s*3 \/ 6/);
   // 画面の移り方のページ
   const fp = pages[3];
-  assert.match(fp.querySelector('.pg-head').textContent, /画面 2 つ・移る先 2 本/);
-  assert.match(fp.querySelector('.xp-legend').textContent, /ボタン.*リンクの文字.*ほかの画面設計の画面/);
+  assert.match(fp.querySelector('.pg-head').textContent, /画面 2 つ・移動先 2 つ/);
+  assert.match(fp.querySelector('.xp-legend').textContent, /ボタン.*リンク.*ほかの画面設計の画面/);
   assert.equal(fp.querySelectorAll('.mnode').length, 3, '2 つの画面と、ほかの画面設計の画面 1 つ');
   assert.ok(fp.querySelector('svg marker[id^="xp-flow-"]'));
-  assert.match(fp.querySelector('.pg-foot').textContent, /出張申請 ／ 画面の移り方\s*4 \/ 6/);
+  assert.match(fp.querySelector('.pg-foot').textContent, /出張申請 ／ 画面遷移図\s*4 \/ 6/);
 });
 
-test('PDF のステータスの移り方のページ: 横の用紙は図の右に表、縦の用紙（表を右に置くと狭い）は図の下に表', async (t) => {
+test('PDF のステータスの流れのページ: 横の用紙は図の右に表、縦の用紙（表を右に置くと狭い）は図の下に表', async (t) => {
   const { api, A, d } = await boot(t);
   const procPage = (orient) => {
     const doc = api.exportDocument(d(A), api.store.state, { paper: 'A4', orient, cover: false, process: true });
@@ -141,7 +141,7 @@ test('PDF のステータスの移り方のページ: 横の用紙は図の右�
 
 // デバッグとリリースの見直し②-2: 操作の一覧表の 1 行がページに入らず途中までになっても、断り書きが出なかった（項目の一覧表は出る）。
 // jsdom では大きさを測れないので、測る関数を差し替える（本文は 1000×600、「とても長い条件」の行だけ 5000 の高さ、ほかは 20）
-test('PDF のステータスの移り方のページ: 操作の一覧表の行が 1 行でもページに入らないときは「長い行は途中まで」と小見出しに書く（続きのページも）', async (t) => {
+test('PDF のステータスの流れのページ: 操作一覧の行が 1 行でもページに入らないときは「長い行は途中まで」と小見出しに書く（続きのページも）', async (t) => {
   const { app, api, A, d } = await boot(t);
   app.window.Element.prototype.getBoundingClientRect = function () {
     const [width, height] = this.classList.contains('pg-body') ? [1000, 600]
@@ -156,30 +156,30 @@ test('PDF のステータスの移り方のページ: 操作の一覧表の行�
     });
     const doc = api.exportDocument(d(A), api.store.state, { paper: 'A4', orient: 'landscape', cover: false, process: true });
     const parse = (h) => new app.window.DOMParser().parseFromString(h, 'text/html');
-    return doc.pages.map(parse).filter((p) => /^ステータスの移り方/.test(p.querySelector('.pg-head h2').textContent))
+    return doc.pages.map(parse).filter((p) => /^ステータスの流れ/.test(p.querySelector('.pg-head h2').textContent))
       .map((p) => [p.querySelector('.pg-head h2').textContent, p.querySelector('.pg-head span').textContent]);
   };
   // 1 つ目の操作が長いとき: 図の横の表（1 ページ目）がその行で切れる
   const first = subsWithLong(0);
-  assert.equal(first[0][0], 'ステータスの移り方');
+  assert.equal(first[0][0], 'ステータスの流れ');
   assert.ok(first[0][1].endsWith('・' + NOTE), first[0][1]);
   assert.ok(first.slice(1).every(([, sub]) => !sub.includes(NOTE)), JSON.stringify(first));
   // 4 つ目の操作が長いとき: 1 ページ目には入らず、続きのページでその行が切れる
   const last = subsWithLong(3);
   assert.ok(!last[0][1].includes(NOTE), last[0][1]);
-  const cont = last.filter(([h]) => h === 'ステータスの移り方（続き）');
+  const cont = last.filter(([h]) => h === 'ステータスの流れ（続き）');
   assert.equal(cont.length, 1, JSON.stringify(last));
-  assert.equal(cont[0][1], '操作の一覧表・' + NOTE);
+  assert.equal(cont[0][1], '操作一覧・' + NOTE);
 });
 
-test('PDF: 「ステータスの移り方」「画面の移り方」のチェックを外すと、そのページを入れない。選んだ設定はアプリを閉じるまで覚える', async (t) => {
+test('PDF: 「ステータスの流れ」「画面遷移図」のチェックを外すと、そのページを入れない。選んだ設定はアプリを閉じるまで覚える', async (t) => {
   const { app, api, A, pdfPages } = await boot(t);
   await exportVia(app, api, A, (m) => {
     m.querySelector('[data-xpage="process"]').checked = false;
     m.querySelector('[data-xpage="flow"]').checked = false;
   });
   const names = plain(pdfPages().map((p) => (p.querySelector('.pg-head h2') || p.querySelector('.cv-title')).textContent));
-  assert.deepEqual(names, ['出張申請', 'データベースの項目の一覧表', '1　一覧', '2　詳細']);
+  assert.deepEqual(names, ['出張申請', '項目一覧', '1　一覧', '2　詳細']);
   const done = api.openExportDialog(A);
   await tick();
   assert.deepEqual(pageChecks(app).slice(3), [['process', false, false], ['flow', false, false]]);
@@ -187,16 +187,16 @@ test('PDF: 「ステータスの移り方」「画面の移り方」のチェッ
   await done;
 });
 
-test('PDF: ステータスの移り方と画面の移り方のページだけでも出力できる（画面を全部外しても）', async (t) => {
+test('PDF: ステータスの流れと画面遷移図のページだけでも出力できる（画面を全部外しても）', async (t) => {
   const { app, api, A, pdfPages } = await boot(t);
   await exportVia(app, api, A, (m) => {
     m.querySelectorAll('[data-xpage]').forEach((x) => { x.checked = ['process'].includes(x.dataset.xpage); });
     m.querySelectorAll('[data-xscreen]').forEach((x) => { x.checked = false; });
   });
-  assert.deepEqual(plain(pdfPages().map((p) => p.querySelector('.pg-head h2').textContent)), ['ステータスの移り方']);
+  assert.deepEqual(plain(pdfPages().map((p) => p.querySelector('.pg-head h2').textContent)), ['ステータスの流れ']);
 });
 
-test('AI の export_design: process・flow で 2 つのページを入れる・外す（既定は入れる。操作・移る先がなければ入れない）', async (t) => {
+test('AI の export_design: process・flow で 2 つのページを入れる・外す（既定は入れる。操作・移動先がなければ入れない）', async (t) => {
   const { api, A } = await boot(t);
   const call = async (tool, args = {}) => plain(await api.aiDispatch(tool, args, { session: 's-1', client: 'claude-code' }));
   const r = await call('export_design', { design: A, format: 'pdf' });
@@ -205,7 +205,7 @@ test('AI の export_design: process・flow で 2 つのページを入れる・�
   const off = await call('export_design', { design: A, format: 'pdf', process: false, flow: false });
   assert.deepEqual([off.result.process, off.result.flow, off.result.pages], [false, false, 4]);
   const only = await call('export_design', { design: A, format: 'pdf', cover: false, map: false, items: false, flow: false, screens: [] });
-  assert.equal(only.result.pages, 1, 'ステータスの移り方のページだけ');
+  assert.equal(only.result.pages, 1, 'ステータスの流れのページだけ');
   const B2 = api.actions.createDesign('日報', 'その他');
   const none = await call('export_design', { design: B2, format: 'pdf' });
   assert.deepEqual([none.result.process, none.result.flow], [false, false]);

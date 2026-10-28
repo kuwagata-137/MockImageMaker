@@ -32,26 +32,26 @@ async function boot({ state = sampleState(), ai = fakeAiAPI() } = {}) {
 }
 const text = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
 
-test('紫の札: AI がつながっている間だけ、いちばん上の帯の右に出す（一覧の画面と編集の画面）。押すと「AI とつなぐ」の窓', async () => {
+test('紫の札: AI がつながっている間だけ、いちばん上の帯の右に出す（一覧の画面と編集の画面）。押すと「AI と連携」の窓', async () => {
   const { app, T, $, click, ai } = await boot();
   assert.equal($('#ai-chip').hidden, true);
   ai.statusCb({ clients: [{ session: 's-1', client: 'claude-code' }] });
   assert.equal($('#ai-chip').hidden, false);
-  assert.equal(text($('#ai-chip')), 'Claude Code がつながっています');
+  assert.equal(text($('#ai-chip')), 'Claude Code と連携しています');
   T.openDesign('d1');
-  assert.equal(text($('#ai-chip')), 'Claude Code がつながっています', '編集の画面にも出る');
+  assert.equal(text($('#ai-chip')), 'Claude Code と連携しています', '編集の画面にも出る');
   ai.statusCb({ clients: [{ session: 's-1', client: 'claude-code' }, { session: 's-2', client: 'cursor' }] });
-  assert.equal(text($('#ai-chip')), 'AI が 2 つつながっています（Claude Code・cursor）');
+  assert.equal(text($('#ai-chip')), '連携している AI が 2 つあります（Claude Code・cursor）');
   click('#ai-chip');
   await tick();
-  assert.match(text($('#dialog-root .modal')), /AI とつなぐ.*今つながっている AI：Claude Code・cursor/);
+  assert.match(text($('#dialog-root .modal')), /AI と連携.*今連携している AI：Claude Code・cursor/);
   ai.statusCb({ clients: [] });
-  assert.match(text($('#aic-status')), /今つながっている AI はありません。/, '窓を開いている間も、つながりの数を描き直す');
+  assert.match(text($('#aic-status')), /今連携している AI はありません。/, '窓を開いている間も、つながりの数を描き直す');
   assert.equal($('#ai-chip').hidden, true);
   app.close();
 });
 
-test('「AI とつなぐ」の窓: main の登録の文を出し、コピーできる。ブラウザで開いたとき（aiAPI がない）は出さない。開いている間も AI の書く頼みは通る', async () => {
+test('「AI と連携」の窓: main の登録の文を出し、コピーできる。ブラウザで開いたとき（aiAPI がない）は出さない。開いている間も AI の書く頼みは通る', async () => {
   const { app, T, call, $, $$, ai } = await boot();
   T.runCommand('aiConnect');
   await tick();
@@ -60,11 +60,11 @@ test('「AI とつなぐ」の窓: main の登録の文を出し、コピーで�
   // 使用説明書の 8 章と同じく「画面設計とシステム」。Claude のデスクトップアプリは、登録した後に終了して起動し直す（第 13 段階。q114 の ⑦）
   assert.match(text(modal), /このアプリの画面設計とシステムを読んだり/);
   assert.match(text(modal), /Claude のデスクトップアプリに登録したときは、Claude のデスクトップアプリを完全に終了して/);
-  assert.match(text(modal), /AI には、画面設計とシステムをごみ箱へ移すこと・完全に削除すること・改訂履歴の行を消すこと・資料を入れることと消すことはさせません。/);
+  assert.match(text(modal), /AI には、画面設計とシステムをごみ箱へ移すこと・完全に削除すること・改訂履歴の行を削除すること・資料を追加することと削除することはさせません。/);
   assert.match(text($('[data-code="claude"]')), /^claude mcp add --env ELECTRON_RUN_AS_NODE=1 --scope user mockimagemaker/);
   assert.equal(text($('[data-code="json"]')), '{ "mcpServers": {} }');
   assert.equal($('.aic-dev'), null, 'インストールした版では開発版の断りを出さない');
-  assert.deepEqual($$('.modal-actions button:not([hidden])').map((b) => b.textContent), ['閉じる']);
+  assert.deepEqual($$('.modal-actions button:not([hidden])').map((b) => b.textContent), ['このウィンドウを閉じる']);
   $('[data-copy="claude"]').click();
   await tick();
   assert.deepEqual(ai.copied, [ai.copied[0]]);
@@ -90,7 +90,7 @@ test('「AI とつなぐ」の窓: main の登録の文を出し、コピーで�
   web.close();
 });
 
-test('開いている画面設計を AI が直すと、紫の帯（件数）・開いている画面の部品の札と光り方・ほかの画面の縮小画像の「AI」の印を出す', async () => {
+test('開いている画面設計を AI が直すと、紫の帯（件数）・開いている画面のアイテムの札と光り方・ほかの画面の縮小画像の「AI」の印を出す', async () => {
   const { app, T, call, $, $$, click } = await boot();
   T.openDesign('d1');
   assert.equal($('#ai-band'), null);
@@ -99,14 +99,14 @@ test('開いている画面設計を AI が直すと、紫の帯（件数）・�
   await call('layout_screen', { design: 'd1', screen: '新規登録', mode: 'append', layout: { rows: [[{ item: '電話番号' }]] } });
   await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'search' }]] } });
   const band = $('#ai-band');
-  assert.match(text(band), /^✦Claude Code が「顧客管理」を直しました（変更 \d+ 件）。直した部品を紫の枠で光らせています。/);
-  assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更内容を見る', '元に戻す（Ctrl+Z）', '✕']);
+  assert.match(text(band), /^✦Claude Code が「顧客管理」を変更しました（変更点 \d+ 件）。変更したアイテムを紫の枠で強調しています。/);
+  assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更点を見る', '元に戻す（Ctrl+Z）', '✕']);
   // 開いている画面（新規登録）の、直した部品と足した部品に札。光り方は今始まった
   const tagOf = (id) => text($(`#stage .part[data-part-id="${id}"] .ai-tag`));
-  assert.equal(tagOf('p3'), 'AI が直した');
+  assert.equal(tagOf('p3'), 'AI が変更した');
   assert.equal(tagOf('p1'), '');
   const added = $$('#stage .screen .part').find((el) => !['p1', 'p2', 'p3'].includes(el.dataset.partId));
-  assert.equal(text(added.querySelector('.ai-tag')), 'AI が足した');
+  assert.equal(text(added.querySelector('.ai-tag')), 'AI が追加した');
   assert.ok(added.classList.contains('ai-glow'));
   // ほかの画面（一覧）は切り替えず、縮小画像に「AI」の印。開くと印が消えて光る
   assert.equal(T.ui.screenId, 's1');
@@ -119,22 +119,22 @@ test('開いている画面設計を AI が直すと、紫の帯（件数）・�
   // 変更内容を見る（AI が最初に直す前と今の違い）
   click('[data-action="ai-show-changes"]');
   await tick();
-  assert.match(text($('#dialog-root .modal h2')), /Claude Code が「顧客管理」を直した内容/);
+  assert.match(text($('#dialog-root .modal h2')), /Claude Code が「顧客管理」を変更した内容/);
   assert.match(text($('#dialog-root .modal')), /区分 → 顧客区分/);
   $('[data-dlg="cancel"]').click();
   app.close();
 });
 
-test('光らせるのは、その 1 回の頼みで変わった部品だけ。札（AI が足した・直した）は紫の帯が出ている間の合計。見ていない画面は、開いたときに見ていない間の分を光らせる', async () => {
+test('強調するのは、その 1 回の頼みで変わったアイテムだけ。札（AI が追加した・直した）は紫の帯が出ている間の合計。見ていない画面は、開いたときに見ていない間の分を強調する', async () => {
   const { app, T, call, $, $$, click } = await boot();
   T.openDesign('d1');
   const el = (id) => $(`#stage .part[data-part-id="${id}"]`);
   await call('edit_items', { design: 'd1', ops: [{ op: 'update', item: '区分', name: '顧客区分' }] });
   assert.ok(el('p3').classList.contains('ai-glow'));
   await call('edit_parts', { design: 'd1', screen: '新規登録', ops: [{ op: 'move', part: 'p1', x: 32, y: 240 }] });
-  assert.equal(text(el('p3').querySelector('.ai-tag')), 'AI が直した', '前の頼みで直した部品の札は残す');
-  assert.equal(el('p3').classList.contains('ai-glow'), false, '前の頼みで直した部品は、光らせ直さない');
-  assert.equal(text(el('p1').querySelector('.ai-tag')), 'AI が直した');
+  assert.equal(text(el('p3').querySelector('.ai-tag')), 'AI が変更した', '前の頼みで直したアイテムの札は残す');
+  assert.equal(el('p3').classList.contains('ai-glow'), false, '前の頼みで直したアイテムは、強調し直さない');
+  assert.equal(text(el('p1').querySelector('.ai-tag')), 'AI が変更した');
   assert.ok(el('p1').classList.contains('ai-glow'));
   // 見ていない画面（一覧）を 2 回直したら、開いたときに 2 回分を光らせる
   await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'search' }]] } });
@@ -151,11 +151,11 @@ test('紫の帯は、AI が続けて直すと件数を足して出し直し、�
   const { app, T, call, $, click } = await boot();
   T.openDesign('d1');
   await call('update_design', { design: 'd1', description: 'AI の 1 回目' });
-  const count = () => Number(text($('#ai-band')).match(/変更 (\d+) 件/)[1]);
+  const count = () => Number(text($('#ai-band')).match(/変更点 (\d+) 件/)[1]);
   assert.equal(count(), 1);
   await call('update_design', { design: 'd1', name: '顧客台帳' });
   assert.equal(count(), 1, '同じ行（画面設計の設定変更）にまとまる');
-  assert.match(text($('#ai-band')), /「顧客台帳」を直しました/);
+  assert.match(text($('#ai-band')), /「顧客台帳」を変更しました/);
   await call('edit_items', { design: 'd1', ops: [{ op: 'add', name: '備考', type: 'text2' }] });
   assert.equal(count(), 2);
   // 人が直すと閉じる
@@ -179,11 +179,11 @@ test('オレンジの帯: AI がほかの画面設計を直して履歴を消し
   T.actions.updateDesignInfo('d1', { description: '人の変更' });
   await call('update_design', { design: '受注管理', description: 'AI の変更' });
   const warn = $('#ai-warn');
-  assert.match(text(warn), /Claude Code が「受注管理」を直したので、元に戻す（Ctrl\+Z）の履歴を消しました。開いている「顧客管理」は変わっていません。/);
-  assert.match(text(warn), /「受注管理」の改訂履歴の「Claude Code が直す前の状態」から戻せます。/);
+  assert.match(text(warn), /Claude Code が「受注管理」を変更したので、元に戻す（Ctrl\+Z）の履歴を消しました。開いている「顧客管理」は変わっていません。/);
+  assert.match(text(warn), /「受注管理」の改訂履歴の「Claude Code が変更する前の状態」から戻せます。/);
   assert.equal($('#ai-band'), null, '紫の帯は出さない');
   T.runCommand('undo');
-  assert.equal(text($('#toast')), '元に戻せる操作はありません（AI が「受注管理」を直したときに、履歴を消しました）。');
+  assert.equal(text($('#toast')), '元に戻せる操作はありません（AI が「受注管理」を変更したときに、履歴を消しました）。');
   T.actions.updateDesignInfo('d1', { description: '人の変更 2' });
   assert.ok($('#ai-warn'), '人が直しても残る');
   // 「受注管理」の改訂履歴を開く
@@ -191,7 +191,7 @@ test('オレンジの帯: AI がほかの画面設計を直して履歴を消し
   await tick();
   assert.equal(T.ui.designId, 'd2');
   assert.match(text($('#dialog-root .modal')), /改訂履歴/);
-  assert.match(text($('#dialog-root .modal')), /Claude Code が直す前の状態/);
+  assert.match(text($('#dialog-root .modal')), /Claude Code が変更する前の状態/);
   $('[data-dlg="cancel"]').click();
   assert.equal($('#ai-warn'), null, 'ほかの画面設計を開いたら片付ける');
   // ✕ で閉じる
@@ -207,17 +207,17 @@ test('紫の帯の「元に戻す」は、その後に AI が元に戻すの履�
     const { app, T, call, $, $$ } = await boot();
     T.openDesign('d1');
     await call('update_design', { design: 'd1', description: 'AI の変更' });
-    assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更内容を見る', '元に戻す（Ctrl+Z）', '✕']);
+    assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更点を見る', '元に戻す（Ctrl+Z）', '✕']);
     assert.equal((await call(...next)).ok, true);
     assert.ok($('#ai-warn'), `${next[0]}: オレンジの帯で、履歴を消したことを知らせる`);
     assert.equal(T.store.canUndo(), false);
-    assert.match(text($('#ai-band')), /Claude Code が「顧客管理」を直しました（変更 1 件）。/, `${next[0]}: 紫の帯は残す`);
-    assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更内容を見る', '✕'], `${next[0]}: 「元に戻す」は出さない`);
+    assert.match(text($('#ai-band')), /Claude Code が「顧客管理」を変更しました（変更点 1 件）。/, `${next[0]}: 紫の帯は残す`);
+    assert.deepEqual($$('#ai-band button').map((b) => b.textContent), ['変更点を見る', '✕'], `${next[0]}: 「元に戻す」は出さない`);
     app.close();
   }
 });
 
-test('前の版を見ている間は、画面の一覧の「AI」の印を出さず、開いても印と光らせ方を使わない。見るのをやめると元どおり働く', async () => {
+test('前の版を見ている間は、画面の一覧の「AI」の印を出さず、開いても印と強調し方を使わない。見るのをやめると元どおり働く', async () => {
   const { app, T, call, $, click } = await boot();
   T.openDesign('d1');
   await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'search' }]] } });
@@ -230,7 +230,7 @@ test('前の版を見ている間は、画面の一覧の「AI」の印を出さ
   click('#screen-list .sl-item[data-id="s2"]');
   assert.equal(T.ui.screenId, 's2');
   assert.equal(T.aiView.unseen.has('s2'), true, '見ている間に開いても、印は消さない');
-  assert.equal(T.aiView.glow.has('s2'), false, '見ている間に開いても、光らせ始めない');
+  assert.equal(T.aiView.glow.has('s2'), false, '見ている間に開いても、強調し始めない');
   click('[data-action="rev-stop-view"]');
   assert.equal(T.store.isViewing, false);
   assert.equal(T.ui.screenId, 's1');
@@ -265,37 +265,37 @@ test('元に戻すの履歴がないときに AI がほかの画面設計を直�
   T.openDesign('d1');
   await call('update_design', { design: '受注管理', description: 'AI の変更' });
   assert.equal($('#ai-warn'), null);
-  assert.match(text($('#ai-band')), /Claude Code が「受注管理」を直しました。開いている「顧客管理」は変わっていません。.*「受注管理」を開く/);
+  assert.match(text($('#ai-band')), /Claude Code が「受注管理」を変更しました。開いている「顧客管理」は変わっていません。.*「受注管理」を開く/);
   click('[data-action="ai-open-design"]');
   assert.equal(T.ui.designId, 'd2');
   assert.equal($('#ai-band'), null);
   app.close();
 });
 
-test('一覧の画面: AI が作った・直したカードに紫の枠と札、帯に「開く」。画面設計を開くと消え、編集中に AI が直したカードは一覧に戻ったときに出す', async () => {
+test('一覧の画面: AI が作った・直したカードに紫の枠と札、帯に「開く」。画面設計を開くと消え、編集中に AI が変更したカードは一覧に戻ったときに出す', async () => {
   const { app, T, call, $, click } = await boot();
   const c = await call('create_design', { name: '経費精算', target: 'kintone' });
   const card = (id) => $(`.card[data-id="${id}"]`);
   assert.ok(card(c.result.id).classList.contains('ai-mark'));
   assert.ok(card(c.result.id).classList.contains('ai-glow'));
   assert.equal(text(card(c.result.id).querySelector('.ai-card-tag')), 'AI が作った');
-  assert.match(text($('#ai-band')), /Claude Code が「経費精算」を作りました。開く/);
+  assert.match(text($('#ai-band')), /Claude Code が「経費精算」を作りました。この画面設計を開く/);
   await call('update_design', { design: c.result.id, description: '立て替えた経費を申請する。' });
   assert.equal(text(card(c.result.id).querySelector('.ai-card-tag')), 'AI が作った', '作ったカードは「作った」のまま');
   await call('update_design', { design: 'd2', description: 'AI の変更' });
-  assert.equal(text(card('d2').querySelector('.ai-card-tag')), 'AI が直した');
+  assert.equal(text(card('d2').querySelector('.ai-card-tag')), 'AI が変更した');
   click('#ai-band [data-action="ai-open-design"]');
   assert.equal(T.ui.designId, 'd2');
   // 編集中に AI がほかの画面設計を直す → 一覧に戻ったときにカードに出す
   await call('update_design', { design: 'd1', description: '編集中の AI の変更' });
   T.goHome();
   assert.equal(card(c.result.id).querySelector('.ai-card-tag'), null, '前に一覧で見せた印は消えている');
-  assert.equal(text(card('d1').querySelector('.ai-card-tag')), 'AI が直した');
-  assert.ok(card('d1').classList.contains('ai-glow'), '一覧に出したときに光らせる');
+  assert.equal(text(card('d1').querySelector('.ai-card-tag')), 'AI が変更した');
+  assert.ok(card('d1').classList.contains('ai-glow'), '一覧に出したときに強調する');
   app.close();
 });
 
-test('改訂履歴に版を足しただけのときは、お知らせ（黒い帯）で知らせる', async () => {
+test('改訂履歴に版を追加しただけのときは、お知らせ（黒い帯）で知らせる', async () => {
   const { app, T, call, $ } = await boot();
   T.openDesign('d1');
   await call('add_revision', { design: 'd1', note: '最初の版' });
@@ -304,7 +304,7 @@ test('改訂履歴に版を足しただけのときは、お知らせ（黒い�
   app.close();
 });
 
-test('「AI が直す前の状態」の行は、画面設計ごとに新しい方から 10 行まで（人の付けた版の行は消さない）', async () => {
+test('「AI が変更する前の状態」の行は、画面設計ごとに新しい方から 10 行まで（人の付けた版の行は消さない）', async () => {
   const { app, T, call } = await boot();
   T.actions.addRevision('d1', { note: '人の第 1 版' });
   for (let i = 1; i <= 12; i++) assert.equal((await call('update_design', { design: 'd1', description: `接続 ${i} の変更` }, `s-${i}`)).ok, true);

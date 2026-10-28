@@ -34,7 +34,7 @@ test('説明書のページの並び: システムの表紙 → スイムレー�
   const one = (n) => api.exportDocument(d(n), api.store.state, PER, AT).pages.length;
   const [a, b] = [one('出張申請'), one('経費精算')];
   assert.equal(N, 2 + a + b + 1);
-  assert.equal(names[0], '表紙:システムの説明書:出張申請システム');
+  assert.equal(names[0], '表紙:システム設計書:出張申請システム');
   assert.equal(names[1], 'スイムレーン図');
   assert.equal(names[2], '表紙:画面設計書:出張申請');
   assert.equal(names[2 + a], '表紙:画面設計書:経費精算');
@@ -77,14 +77,14 @@ test('説明書の全部のページで、要素の id と矢印の印の id が
   assert.deepEqual([...new Set(dup)], []);
 });
 
-test('システムの表紙: 小見出し・名前・説明・数・役割とメモ・作る先・ほかの（ごみ箱でない）システムでも使っている画面設計の札・出力した日', async (t) => {
+test('システムの表紙: 小見出し・名前・説明・数・役割とメモ・構築先・ほかの（ごみ箱でない）システムでも使っている画面設計の札・出力した日', async (t) => {
   const { parse, doc, api } = await boot(t);
   const c = parse(doc().pages[0]);
-  assert.equal(c.querySelector('.cv-kicker').textContent, 'システムの説明書');
+  assert.equal(c.querySelector('.cv-kicker').textContent, 'システム設計書');
   assert.match(c.querySelector('.cv-desc').textContent, /出張の事前申請と/);
   const meta = c.querySelector('.cv-meta').textContent;
   assert.match(meta, /出力した日 2026-10-20/);
-  assert.match(meta, /役割 3 つ・画面設計 2 つ・作業 7 つ/);
+  assert.match(meta, /役割 3 つ・画面設計 2 つ・工程 7 つ/);
   const roles = [...c.querySelectorAll('.cv-revs tbody tr')].map((tr) => [...tr.querySelectorAll('td')].map((td) => td.textContent));
   assert.deepEqual(JSON.parse(JSON.stringify(roles)), [['申請者', '出張する社員'], ['上長', '申請者の所属の課長'], ['経理', '経理課の担当']]);
   const tr = (n) => [...c.querySelectorAll('.cv-list tbody tr')].find((x) => x.querySelector('.nm').childNodes[0].textContent === n);
@@ -98,7 +98,7 @@ test('システムの表紙: 小見出し・名前・説明・数・役割とメ
 test('スイムレーン図のページ: 凡例と図（矢印の印の id の頭は xp-swim）。左の端はシステムの名前', async (t) => {
   const { parse, doc } = await boot(t);
   const p = parse(doc().pages[1]);
-  assert.equal(p.querySelector('.pg-head span').textContent, '役割ごとの帯に、作業の箱を左から順に並べた業務の流れ');
+  assert.equal(p.querySelector('.pg-head span').textContent, '役割ごとのレーンに、工程を左から順に並べた業務の流れ');
   assert.match(p.querySelector('.xp-legend').textContent, /戻る流れ/);
   assert.ok(p.querySelector('.pg-body').innerHTML.includes('xp-swim-arrow'));
   assert.equal(p.querySelectorAll('.mnode').length, 7);
@@ -124,7 +124,7 @@ test('設計ノートのページ（q80 案C）: 決めたことと理由（段�
   assert.equal(trs[2].className, 'done');
   assert.notEqual(trs[0].className, 'done');
   const all = x.pages.join('\n');
-  assert.ok(!all.includes('共有') && !all.includes('説明書は A3 で出すか') && !all.includes('説明書を出力した'), '⑤（docs）の行は入れない');
+  assert.ok(!all.includes('共有') && !all.includes('システム設計書は A3 で出すか') && !all.includes('システム設計書を出力した'), '⑤（docs）の行は入れない');
   assert.equal(p.querySelector('.pg-foot span').textContent, '出張申請システム ／ 設計ノート');
 });
 
@@ -186,7 +186,7 @@ test('画面設計が入っていないシステム: 表紙の一覧は「（画
   assert.match(c.querySelector('.cv-revs').textContent, /（役割はまだありません）/);
   assert.ok(c.querySelector('.cv-cols').classList.contains('stack'));
   assert.deepEqual(JSON.parse(JSON.stringify(x.designs)), []);
-  assert.match(x.html, /<title>空のシステム_説明書<\/title>/);
+  assert.match(x.html, /<title>空のシステム_システム設計書<\/title>/);
 });
 
 test('表紙の札「〇〇でも使っている」: ほかのシステムの名前は 2 つまで、残りは「ほか N つ」。名前の切れ目でだけ折り返す（見直しの B-5）', async (t) => {

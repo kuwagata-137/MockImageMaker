@@ -46,7 +46,7 @@ async function buildRun(h) {
   const dir = path.join(h.USER_DATA_MAT, 'data', 'files', sysId);
   const same = rows.every((m, i) => fs.existsSync(path.join(dir, m.file)) && fs.readFileSync(path.join(dir, m.file)).equals(fs.readFileSync(files[i])));
   let ok = report(table.map((t) => t.join('=')).join() === SIX.map((n, i) => `${n}=${KIND_NAMES[i]}`).join() && listFiles(dir).length === 6 && same && rows.every((m) => /^m-[A-Za-z0-9-]+\.[a-z0-9]+$/.test(m.file)),
-    '「＋ ファイルを入れる…」で 6 種類を入れると、表に 6 行・置き場（data/files/<システムの id>/）に 6 つのファイル（見本と同じ中身）', table.map((t) => `${t[0]}（${t[1]}）`).join('、'));
+    '「＋ 資料を追加する…」で 6 種類を入れると、表に 6 行・置き場（data/files/<システムの id>/）に 6 つのファイル（見本と同じ中身）', table.map((t) => `${t[0]}（${t[1]}）`).join('、'));
   const sequential = await page.evaluate(readAll, rows, sysId, false);
   ok = checkReads(sequential) && ok;
   ok = checkParallelReads(await page.evaluate(readAll, rows, sysId, true), sequential) && ok;
@@ -77,7 +77,7 @@ async function swimFromBdm(page, rows) {
   });
   return report(plan.ok && plan.plan.roles.join() === '申請者,上長,経理' && plan.plan.steps.length === 8 && y.roles.join() === '申請者,上長,経理' && y.steps.length === 8 && y.edges === 8
     && y.steps.every((w) => w.src && w.src.material === bdm.id),
-  '本物の Electron の bdmPlan の案から、「スイムレーン図にする」で役割 3・作業 8・矢印 8 が入り、作業の src に資料の id が入る', `案 ${plan.ok ? `役割 ${plan.plan.roles.length}・作業 ${plan.plan.steps.length}` : JSON.stringify(plan.error)} ／ 図 役割 ${y.roles.join('・')}・作業 ${y.steps.length}・矢印 ${y.edges}`);
+  '本物の Electron の bdmPlan の案から、「スイムレーン図にする」で役割 3・工程 8・矢印 8 が入り、作業の src に資料の id が入る', `案 ${plan.ok ? `役割 ${plan.plan.roles.length}・工程 ${plan.plan.steps.length}` : JSON.stringify(plan.error)} ／ 図 役割 ${y.roles.join('・')}・工程 ${y.steps.length}・矢印 ${y.edges}`);
 }
 
 // 「MPD に出力…」（第 11 段階。資料の MPD の行）。窓を出さない起動では、保存の窓の代わりに MIM_EXPORT_DIR に書く（export.js の askSavePath）。
@@ -95,8 +95,8 @@ async function mpdExport(page, rows, dir) {
   const keys = (p) => p.steps.map((s) => s.key).sort().join();
   return report(toast.includes(file) && read.roles.join() === '申請者,上長,経理' && read.steps.length === 8 && read.edges.length === 8
     && keys(read) === keys(planFromHtml(before.toString('utf8'))) && before.equals(fs.readFileSync(src)),
-  '「MPD に出力…」で <システムの名前>_スイムレーン.html を書き、読み直すと役割 3・作業 8・矢印 8（箱は元の MPD の箱の id のまま）。元の資料のファイルは変わらない',
-  `${toast} ／ 読み直し 役割 ${read.roles.join('・')}・作業 ${read.steps.length}・矢印 ${read.edges.length}`);
+  '「MPD に出力…」で <システムの名前>_スイムレーン.html を書き、読み直すと役割 3・工程 8・矢印 8（箱は元の MPD の箱の id のまま）。元の資料のファイルは変わらない',
+  `${toast} ／ 読み直し 役割 ${read.roles.join('・')}・工程 ${read.steps.length}・矢印 ${read.edges.length}`);
 }
 
 // ファイルを落とす操作を CDP で試す。戻り値は { added: 入った行の数, error: 失敗の文（なければ ''） }

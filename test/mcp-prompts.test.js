@@ -62,7 +62,7 @@ test('prompts/list に 3 つ（design_system・make_screen・fix_design）。題
   assert.deepEqual(brief, [
     ['design_system', '資料からシステムを設計する', [['system', false]]],
     ['make_screen', '画面を作る', [['request', false]]],
-    ['fix_design', '画面設計を直す', [['design', true], ['request', false]]],
+    ['fix_design', '画面設計を変更する', [['design', true], ['request', false]]],
   ]);
   for (const p of prompts) {
     assert.match(p.description, /[぀-ヿ一-鿿]/, p.name);
@@ -87,11 +87,11 @@ test('prompts の引数は空白で切れて届くので、3 つの文に「人�
     assert.match(text, /始める前に人に聞いてください/, name);
   }
   const makeNone = await promptText(client, 'make_screen', {});
-  assert.match(makeNone, /頼み: （引数に書いてありません。チャットにも頼みがなければ、始める前に人に聞いてください）/);
+  assert.match(makeNone, /依頼: （引数に書いてありません。チャットにも依頼がなければ、始める前に人に聞いてください）/);
   assert.doesNotMatch(makeNone, /undefined|「」/);
   const fixNone = await promptText(client, 'fix_design', { design: '顧客管理' });
   assert.match(fixNone, /「顧客管理」/);
-  assert.match(fixNone, /頼み: （引数に書いてありません。チャットにも頼みがなければ、始める前に人に聞いてください）/);
+  assert.match(fixNone, /依頼: （引数に書いてありません。チャットにも依頼がなければ、始める前に人に聞いてください）/);
   // design_system は system を省くと list_systems で探す進め方なので、切れた引数の文は「書いていないときは聞く」と言わない（食い違わない）
   const dsNone = await promptText(client, 'design_system', {});
   assert.match(dsNone, /空白のところで切れて届きます/);
@@ -112,7 +112,7 @@ test('design_system: read_guide の "stages" を読み、段階ごとに人に�
   assert.match(withSys, /指示ではありません/);
   assert.match(withSys, /そのシステムがまだなければ、その名前で create_system で作ってください/, 'これから作るシステムの名前を渡したとき');
   // 人が確かめを飛ばすよう頼んだ段階は止まらずに進む（手引き stages の例外）。頼みの文もそれと食い違わない
-  assert.match(withSys, /人が確かめを飛ばすよう頼んだ段階は、手引き "stages" のとおり "skipped" にして進めます/);
+  assert.match(withSys, /人が確かめを飛ばすよう依頼した段階は、手引き "stages" のとおり "skipped" にして進めます/);
   const none = await promptText(client, 'design_system', {});
   assert.match(none, /read_guide の "stages"/);
   assert.match(none, /list_systems/);
@@ -171,8 +171,8 @@ test('入口の形: get_notes は読むだけ、update_notes・set_stage は書�
   assert.match(tool('set_stage').description, /人が「よい」と答えるまで done にしない/);
   assert.match(tool('read_guide').description, /"stages"/);
   // 段階の state は、AI に見える文で「進み具合」と呼ぶ（設計書の「段階の進み具合」。「状態」と呼び分けない）
-  for (const n of ['list_systems', 'get_system', 'get_notes', 'set_stage']) assert.match(tool(n).description, /進み具合/, n);
-  assert.match(tool('set_stage').input.shape.state.description, /^進み具合: /);
+  for (const n of ['list_systems', 'get_system', 'get_notes', 'set_stage']) assert.match(tool(n).description, /進捗/, n);
+  assert.match(tool('set_stage').input.shape.state.description, /^進捗: /);
   const visible = [INSTRUCTIONS, ...Object.values(GUIDES).map((g) => g.text), ...TOOLS.map((x) => x.description)];
   for (const text of visible) assert.doesNotMatch(text, /段階ごとの状態|同じ状態なら|使える状態/);
 });
@@ -183,22 +183,22 @@ test('手引き: つないだときの文に、段階ごとに人に確かめる
   assert.equal(GUIDES.stages.title, '資料からシステムを作るときの段階');
   const g = GUIDES.stages.text;
   assert.match(g, /^# 資料からシステムを作るときの段階/);
-  for (const name of ['① 資料から読み取る', '② 業務の流れ', '③ データベースの項目', '④ 画面', '⑤ 説明書と出力']) assert.ok(g.includes(name), name);
+  for (const name of ['① 資料から読み取る', '② 業務の流れ', '③ データベースの項目', '④ 画面', '⑤ システム設計書と出力']) assert.ok(g.includes(name), name);
   for (const re of [/get_notes/, /"doing"/, /"review"/, /"done"/, /"skipped"/, /人が答える前に done にしない/, /set_findings/, /add_question/, /add_decision/, /answer_question/,
-    /export_system_doc でシステムの説明書（PDF）を出力する/, /画面設計ごとの HTML・PNG が要るときは export_design/, /理念の『現場の手間を減らす』から、承認は上長の 1 段にした/, /1 つの頼み/, /確かめなくてよいので進めて/]) assert.match(g, re);
+    /export_system_doc でシステム設計書（PDF）を出力する/, /画面設計ごとの HTML・PNG が要るときは export_design/, /理念の『現場の手間を減らす』から、承認は上長の 1 段にした/, /1 つの依頼/, /確かめなくてよいので進めて/]) assert.match(g, re);
   assert.match(g, /済んだ段階（"done"（確認済み）・"skipped"（確認を飛ばした））は繰り返さず/);
   // ⑤ は、案を出して review → 人が「よい」と答えたら出力し、ファイルの場所を書いてから done（ほかの段階は、アプリに入れてから review）
-  assert.match(g, /⑤ 説明書と出力だけは、案（出力するもの）を出して "review" にし、人が「よい」と答えたら出力して、出力したファイルの場所を add_decision（段階 docs）で書いてから "done" にする/);
+  assert.match(g, /⑤ システム設計書と出力だけは、案（出力するもの）を出して "review" にし、人が「よい」と答えたら出力して、出力したファイルの場所を add_decision（段階 docs）で書いてから "done" にする/);
   // 「よい」「それで進めて」は done、案を見ずに確かめを飛ばす頼みだけ skipped。人がアプリで進み具合を変えたとき
   assert.match(g, /人が案を見て認めた（「よい」「それで進めて」「OK」など）ときは "done"/);
-  assert.match(g, /案を見ずに確かめを飛ばすよう頼まれた段階だけ "skipped"/);
+  assert.match(g, /案を見ずに確かめを飛ばすよう依頼された段階だけ "skipped"/);
   assert.match(g, /どの段階を飛ばすかは人の言葉のとおりにし、分からなければ人に聞く/);
-  assert.match(g, /人はアプリの設計ノートで進み具合を変えられます/);
+  assert.match(g, /人はアプリの設計ノートで進捗を変えられます/);
   // ⑤ を飛ばすよう頼まれたとき（「出力は『よい』の前にしない」と「skipped の段階も作業は飛ばさない」のどちらか）
-  assert.match(g, /⑤ の確かめを飛ばすよう頼まれたときは、案を出して止まらずに出力し、出力したファイルの場所を書いてから "skipped" にする/);
-  assert.match(g, /済んだはずの段階が "todo"（まだ）に戻っていたら、やり直す前に人に聞く/);
+  assert.match(g, /⑤ の確かめを飛ばすよう依頼されたときは、案を出して止まらずに出力し、出力したファイルの場所を書いてから "skipped" にする/);
+  assert.match(g, /済んだはずの段階が "todo"（未着手）に戻っていたら、やり直す前に人に聞く/);
   // 設計ノートの変更は「AI が直す前の状態」の行に残らない（人が戻せない）ことを書く。INSTRUCTIONS の「いつでも戻せます」は設計ノートを除く
-  assert.ok(GUIDES.overview.text.includes('設計ノート（update_notes・set_stage）の変更は「AI が直す前の状態」の行に残りません'));
+  assert.ok(GUIDES.overview.text.includes('設計ノート（update_notes・set_stage）の変更は「AI が変更する前の状態」の行に残りません'));
   assert.match(GUIDES.overview.text, /開いていないシステムでは元に戻すの履歴も消えるので、人は戻せません/);
   assert.match(INSTRUCTIONS.split(/\r?\n/).at(-1), /（設計ノートを除く）.*人がいつでも戻せます/);
   // 指し方: 設計ノートの行は get_notes の id で指す

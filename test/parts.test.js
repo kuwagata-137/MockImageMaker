@@ -40,21 +40,21 @@ async function bootEditor(t) {
   return { app, api, id, screen, parts, add, partEl };
 }
 
-test('部品の箱: 5 つの組に 26 種類の部品と吹き出し。組の見出しで閉じたり開いたりできる', async (t) => {
+test('アイテム一覧: 6 つの組に 30 種類のアイテムと吹き出し。組の見出しで閉じたり開いたりできる', async (t) => {
   const { app, api } = await bootEditor(t);
-  assert.deepEqual($$(app, '.pal-head').map((e) => e.textContent.replace(/\s+/g, ' ').trim()), ['▼ データベースの項目0', '▼ 基本14', '▼ 入力の画面用4', '▼ 一覧の画面用3', '▼ 進み具合の画面用3', '▼ 見た目用3']);
-  assert.equal($$(app, '.pal-btn').length, 27);
+  assert.deepEqual($$(app, '.pal-head').map((e) => e.textContent.replace(/\s+/g, ' ').trim()), ['▼ データベースの項目0', '▼ 基本14', '▼ 入力画面用4', '▼ 一覧画面用4', '▼ 詳細画面用3', '▼ 進捗画面用3', '▼ その他3']);
+  assert.equal($$(app, '.pal-btn').length, 31);
   click($(app, '.pal-head[data-id="basic"]'));
-  assert.equal($$(app, '.pal-btn').length, 13, '基本を閉じた');
+  assert.equal($$(app, '.pal-btn').length, 17, '基本を閉じた');
   assert.equal(api.ui.paletteClosed.basic, true);
   api.goHome();
   api.openDesign(api.store.state.designs[0].id);
-  assert.equal($$(app, '.pal-btn').length, 13, '画面設計を開き直しても閉じたまま');
+  assert.equal($$(app, '.pal-btn').length, 17, '画面設計を開き直しても閉じたまま');
   click($(app, '.pal-head[data-id="basic"]'));
-  assert.equal($$(app, '.pal-btn').length, 27);
+  assert.equal($$(app, '.pal-btn').length, 31);
 });
 
-test('部品を置く: 押すと帯の下に置き、番号が付き、選んだ状態になる。続けて押すとずらして置く', async (t) => {
+test('アイテムを置く: 押すと帯の下に置き、番号が付き、選んだ状態になる。続けて押すとずらして置く', async (t) => {
   const { app, api, parts, add, partEl } = await bootEditor(t);
   const a = add('text1');
   assert.deepEqual(plain([a.x, a.y, a.w, a.h, a.no, a.label]), [0, 40, 320, 64, 1, '項目名']);
@@ -74,7 +74,7 @@ test('部品を置く: 押すと帯の下に置き、番号が付き、選んだ
   assert.equal(parts().length, 4, '元に戻すで消える');
 });
 
-test('置いた部品の見た目: 薄い字・見本の値・必須の印・単位・選択肢・ボタンの番号は左の外', async (t) => {
+test('置いたアイテムの見た目: 入力のヒント・サンプル値・必須の印・単位・選択肢・ボタンの番号は左の外', async (t) => {
   const { api, add, partEl, screen } = await bootEditor(t);
   const ids = ['text1', 'number', 'dropdown', 'radio', 'checkbox', 'button', 'file', 'calc'].map((type) => add(type).id);
   const el = (i) => partEl(ids[i]);
@@ -89,13 +89,13 @@ test('置いた部品の見た目: 薄い字・見本の値・必須の印・単
   api.actions.updatePart(api.ui.designId, sc.id, ids[1], { props: { unit: '人' } });
   api.actions.updatePart(api.ui.designId, sc.id, ids[0], { labelPos: 'left' });
   assert.equal(el(0).querySelector('.pval').textContent, '山田商事');
-  assert.equal(el(0).querySelector('.pph'), null, '見本の値を書くと薄い字は出さない');
+  assert.equal(el(0).querySelector('.pph'), null, 'サンプル値を書くと入力のヒントは出さない');
   assert.ok(el(0).querySelector('.preq'), '必須の印');
   assert.ok(el(0).classList.contains('lab-left'), '項目名を左に置ける');
   assert.equal(el(1).querySelector('.pr').textContent, '人');
 });
 
-test('部品を動かす・大きさを変える: マス目に吸い付き、画面からはみ出さない。放したときに 1 回だけ保存する', async (t) => {
+test('アイテムを動かす・大きさを変える: マス目に吸い付き、画面からはみ出さない。放したときに 1 回だけ保存する', async (t) => {
   const { app, api, add, partEl, parts } = await bootEditor(t);
   const p = add('text1');
   const doc = app.document;
@@ -128,7 +128,7 @@ test('部品を動かす・大きさを変える: マス目に吸い付き、画
   assert.deepEqual([parts()[0].x, parts()[0].y], [368, 80]);
 });
 
-test('ハンドのときは、部品を押しても選ばない・動かさない', async (t) => {
+test('ハンドのときは、アイテムを押しても選ばない・動かさない', async (t) => {
   const { app, api, add, partEl, parts } = await bootEditor(t);
   const p = add('number');
   api.selectPart(null);
@@ -156,7 +156,7 @@ test('設定の欄: 書いた設定が画面と一覧表の「設定」の文に
 
   check(field('numbered'), false);
   assert.equal(parts()[0].no, null);
-  assert.match($(app, '.ptable').textContent, /番号の付いた部品はまだありません/);
+  assert.match($(app, '.ptable').textContent, /番号の付いたアイテムはまだありません/);
   check(field('numbered'), true);
   assert.equal(parts()[0].no, 1);
 });
@@ -181,7 +181,7 @@ test('設定の欄: 選択肢を書き換えると初期値の選び方も変わ
   assert.equal($$(app, '#stage .part.sel .pmark.ck.on').length, 2);
 });
 
-test('設定の欄: 打ちかけの文字は、ほかの部品を選ぶ前に保存される', async (t) => {
+test('設定の欄: 打ちかけの文字は、ほかのアイテムを選ぶ前に保存される', async (t) => {
   const { app, api, add, partEl, parts } = await bootEditor(t);
   const a = add('text1');
   const b = add('number');
@@ -195,7 +195,7 @@ test('設定の欄: 打ちかけの文字は、ほかの部品を選ぶ前に保
   assert.equal(api.ui.partId, b.id);
 });
 
-test('キー: Delete・矢印・Esc・Ctrl+C・Ctrl+V・Ctrl+D。入力欄の中では部品を動かさない', async (t) => {
+test('キー: Delete・矢印・Esc・Ctrl+C・Ctrl+V・Ctrl+D。入力欄の中ではアイテムを動かさない', async (t) => {
   const { app, api, add, parts } = await bootEditor(t);
   const body = app.document.body;
   const p = add('text1');
@@ -223,7 +223,7 @@ test('キー: Delete・矢印・Esc・Ctrl+C・Ctrl+V・Ctrl+D。入力欄の中
   assert.match($(app, '#side-settings').textContent, /画面設計の情報/, '選んでいないときは画面設計の情報');
 });
 
-test('メニューバーの編集: 選んでいないときは押せない。番号を振り直すは上から下・左から右の順', async (t) => {
+test('ツールバーの編集: 選んでいないときは押せない。番号を振り直すは上から下・左から右の順', async (t) => {
   const { app, api, parts, screen } = await bootEditor(t);
   assert.ok($(app, '#tb-copy').disabled && $(app, '#tb-del').disabled && $(app, '#tb-paste').disabled && $(app, '#tb-renumber').disabled);
   const sid = screen().id;
@@ -241,19 +241,25 @@ test('メニューバーの編集: 選んでいないときは押せない。番
 });
 
 // 窓の幅が狭いと、メニューバーの右が切れたため（q73・q74）。jsdom では位置を測れないので、出した組の位置は tools/shoot-app.js で確かめる
-test('メニューバーのたたんだ組: 「揃える」「項目」はいつも 1 つのボタン。押すと組のボタンを下に出し、中のボタンを押したら閉じる', async (t) => {
+test('ツールバーのたたんだ組: 「編集」「配置」「項目」はいつも 1 つのボタン。押すと組のボタンを下に出し、中のボタンを押したら閉じる', async (t) => {
   const { app, api, parts, screen } = await bootEditor(t);
   const fold = (k) => $(app, `#toolbar .fold-btn[data-fold="${k}"]`);
   const group = (k) => $(app, `#toolbar .rgroup[data-fold="${k}"]`);
   const isOpen = (k) => group(k).classList.contains('open') && fold(k).getAttribute('aria-expanded') === 'true';
-  assert.deepEqual($$(app, '#toolbar .rgroup > .glabel').map((e) => e.textContent), ['ファイル', '画面', '履歴', '編集', '揃える', '項目', 'モード', '表示']);
-  assert.match(fold('align').textContent, /揃える/);
+  assert.deepEqual($$(app, '#toolbar .rgroup > .glabel').map((e) => e.textContent), ['ファイル', '画面', '履歴', '編集', '配置', '項目', 'モード', '表示']);
+  assert.match(fold('align').textContent, /配置/);
   assert.match(fold('items').textContent, /項目/);
   // 中のボタンは #toolbar の中に残す（押せる・押せないを、ほかのボタンと同じく決めるため）
   assert.equal($$(app, '#toolbar .rgroup[data-fold="align"] .fold-pop [data-align-cmd]').length, 8);
   assert.ok($(app, '#toolbar .rgroup[data-fold="items"] .fold-pop [data-action="add-item-menu"]'));
   assert.ok($(app, '#toolbar .rgroup[data-fold="items"] .fold-pop [data-action="import-items"]'));
-  assert.ok(!isOpen('align') && !isOpen('items'));
+  // 「編集」の組（q122）: 出した組のボタンは、対象を書いた文字のまま縦に 1 列に並ぶ（fold-list）
+  assert.match(fold('edit').textContent, /編集/);
+  assert.deepEqual($$(app, '#toolbar .rgroup[data-fold="edit"] .fold-pop.fold-list button').map((b) => b.id),
+    ['tb-copy', 'tb-paste', 'tb-dup', 'tb-del', 'tb-select-all', 'tb-renumber']);
+  assert.equal($(app, '#tb-copy').textContent, '⧉ 選んだものをコピーする');
+  assert.equal($(app, '#toolbar .rgroup[data-fold="align"] .fold-pop.fold-list'), null, '縦に 1 列に並べるのは「編集」の組だけ');
+  assert.ok(!isOpen('align') && !isOpen('items') && !isOpen('edit'));
   assert.equal(fold('align').getAttribute('aria-expanded'), 'false');
 
   // 押すと開き、もう一度押すと閉じる。ほかの組を押すと入れ替わる。外を押すと閉じる
@@ -283,6 +289,15 @@ test('メニューバーのたたんだ組: 「揃える」「項目」はいつ
   assert.equal(api.ui.foldMenu, null, '押したら閉じる');
   const xs = ids.map((id) => parts().find((p) => p.id === id).x);
   assert.equal(xs[1], xs[0], '左に揃えた');
+  // 「編集」の組の「選んだものを複製する」も、押すと複製して閉じる
+  const before = parts().length;
+  click(fold('edit'));
+  assert.ok(isOpen('edit'));
+  click($(app, '#tb-dup'));
+  assert.equal(api.ui.foldMenu, null, '「編集」の組も、押したら閉じる');
+  assert.equal(parts().length, before + 2);
+  api.runCommand('undo');
+  api.runCommand('selectAll');
   // 押せないボタン（等間隔は 3 つから）を押しても閉じない
   click(fold('align'));
   const dist = $(app, '#toolbar .fold-pop [data-action="distribute-h"]');
@@ -320,9 +335,9 @@ test('メニューバーのたたんだ組: 「揃える」「項目」はいつ
   assert.ok(!isOpen('items'));
 });
 
-test('一覧表: 番号の順に並び、行を押すとその部品を選ぶ。画面の右か下かを選べる', async (t) => {
+test('一覧表: 番号の順に並び、行を押すとそのアイテムを選ぶ。画面の右か下かを選べる', async (t) => {
   const { app, api, add, screen } = await bootEditor(t);
-  assert.match($(app, '.ptable').textContent, /番号の付いた部品はまだありません/);
+  assert.match($(app, '.ptable').textContent, /番号の付いたアイテムはまだありません/);
   const a = add('text1');
   add('heading');
   const c = add('button');
@@ -342,7 +357,7 @@ test('一覧表: 番号の順に並び、行を押すとその部品を選ぶ。
   assert.equal(c.no, 2);
 });
 
-test('画面: 下の縁はいちばん下の部品より上げられない。機器を変えると、はみ出す部品を画面の中へ寄せる', async (t) => {
+test('画面: 下の縁はいちばん下のアイテムより上げられない。機器を変えると、はみ出すアイテムを画面の中へ寄せる', async (t) => {
   const { app, api, screen, parts } = await bootEditor(t);
   const sid = screen().id;
   const did = api.ui.designId;
@@ -350,7 +365,7 @@ test('画面: 下の縁はいちばん下の部品より上げられない。機
   api.actions.updateScreen(did, sid, { height: 1200 });
   api.actions.movePart(did, sid, parts()[0].id, { ...parts()[0], y: 1000 });
   api.actions.updateScreen(did, sid, { height: 800 });
-  assert.equal(screen().height, 1120, '部品の下の端（1000＋120）まで');
+  assert.equal(screen().height, 1120, 'アイテムの下の端（1000＋120）まで');
   api.actions.updateScreen(did, sid, { device: 'phone' });
   const p = parts()[0];
   assert.deepEqual([p.x, p.w], [0, 368], '幅 375 の中に収める');
@@ -358,7 +373,7 @@ test('画面: 下の縁はいちばん下の部品より上げられない。機
   assert.ok($(app, '#stage .part'));
 });
 
-test('データの形: 部品の足りない項目を補い、知らない種類・項目は残して描く', async (t) => {
+test('データの形: アイテムの足りない項目を補い、知らない種類・項目は残して描く', async (t) => {
   const { app, api } = await bootEditor(t);
   const { state } = api.migrate({
     designs: [{ id: 'd1', name: '顧客管理', screens: [{ id: 's1', parts: [
@@ -371,18 +386,18 @@ test('データの形: 部品の足りない項目を補い、知らない種類
   const [p1, p2] = design.screens[0].parts;
   assert.equal(design.screens[0].parts.length, 2);
   assert.deepEqual(plain([p1.x, p1.y, p1.w, p1.h, p1.no, p1.labelPos, p1.extra]), [24, 0, 320, 64, 2, 'top', 'x']);
-  assert.equal(design.items.length, 1, '入力欄の部品から項目を 1 つ作る');
+  assert.equal(design.items.length, 1, '入力欄のアイテムから項目を 1 つ作る');
   const item = design.items[0];
   assert.equal(p1.itemId, item.id);
   assert.equal(p1.label, undefined, '項目名と設定は項目に移す');
   assert.deepEqual(plain([item.name, item.type, item.required, item.memo]), ['項目名', 'text1', false, '']);
   assert.deepEqual(plain(item.props), { maxLen: '50', initial: '', future: 1 });
-  assert.deepEqual(plain([p2.type, p2.no, p2.data]), ['chart', 3, [1, 2]], '知らない種類の部品は中身を残す');
+  assert.deepEqual(plain([p2.type, p2.no, p2.data]), ['chart', 3, [1, 2]], '知らない種類のアイテムは中身を残す');
 
   api.store.commit((s) => { s.designs = state.designs; });
   api.openDesign('d1');
-  assert.match($(app, '#stage .pt-unknown').textContent, /この版では描けない部品（chart）/);
-  assert.match($(app, '.ptable').textContent, /この版では描けない部品/);
+  assert.match($(app, '#stage .pt-unknown').textContent, /この版では描けないアイテム（chart）/);
+  assert.match($(app, '.ptable').textContent, /この版では描けないアイテム/);
   mouse(app, $(app, '#stage .pt-unknown'), 'mousedown', { clientX: 0, clientY: 0 });
   mouse(app, app.document, 'mouseup', {});
   assert.match($(app, '#side-settings').textContent, /この版では設定を変えられません/);
@@ -399,7 +414,7 @@ test('純関数: 設定の文・マス目への吸い付き・番号の振り直
   assert.equal(d('datetime', { props: { initial: 'now' } }), '初期値＝今の日時');
   assert.equal(d('radio', { props: { options: ['法人', '個人'], initial: '法人' } }), '選択肢＝法人／個人\n初期値＝法人');
   assert.equal(d('checkbox', { props: { options: ['電話', 'メール'], initial: [] } }), '選択肢＝電話／メール');
-  assert.equal(d('user', { required: true, props: { multiple: true, scope: '営業部の社員' } }), '必須・複数人を選べる\n選べる人＝営業部の社員');
+  assert.equal(d('user', { required: true, props: { multiple: true, scope: '営業部の社員' } }), '必須・複数選択できる\n選択できるユーザー＝営業部の社員');
   assert.equal(d('file', { required: true, props: { maxCount: '3', accept: 'PDF' } }), '必須・3 個まで\nファイル＝PDF');
   assert.equal(d('calc', { props: { formula: '数量×単価', unit: '円' } }), '計算式＝数量×単価\n単位＝円');
   assert.equal(d('button', { required: true, props: { action: '一覧の画面へ戻る' } }), '押したとき＝一覧の画面へ戻る', 'ボタンに必須は出さない');
@@ -417,7 +432,7 @@ test('純関数: 設定の文・マス目への吸い付き・番号の振り直
   assert.equal(api.minScreenHeight({ device: 'pc', parts: [{ y: 0, h: 64 }] }), 800);
 });
 
-test('画面設計の複製: 部品も写し、部品の id は新しくする', async (t) => {
+test('画面設計の複製: アイテムも写し、アイテムの id は新しくする', async (t) => {
   const { api, add } = await bootEditor(t);
   const p = add('text1');
   const copyId = api.actions.duplicateDesign(api.ui.designId);
@@ -460,7 +475,7 @@ test('選択肢を打っている間も初期値の欄が追いつき、離れ�
   assert.match($(app, '.ptable .c-set').textContent, /選択肢＝電話／メール／FAX\n初期値＝電話/);
 });
 
-test('一覧表の行は押した時点（mousedown）で選ぶ。打ちかけの文字は前の部品に保存する', async (t) => {
+test('一覧表の行は押した時点（mousedown）で選ぶ。打ちかけの文字は前のアイテムに保存する', async (t) => {
   const { app, api, add, parts } = await bootEditor(t);
   const a = add('text1');
   const b = add('number');
@@ -471,10 +486,10 @@ test('一覧表の行は押した時点（mousedown）で選ぶ。打ちかけ�
   mouse(app, $(app, `.ptable tr[data-id="${b.id}"] td`), 'mousedown', {});
   assert.equal(api.ui.partId, b.id);
   assert.equal(parts()[0].label, '顧客名');
-  assert.equal(parts()[1].label, '項目名', '後から選んだ部品には書かない');
+  assert.equal(parts()[1].label, '項目名', '後から選んだアイテムには書かない');
 });
 
-test('機器の種類を変えても、部品を縦に寄せて重ねない（画面を下へ伸ばして収める）', async (t) => {
+test('機器の種類を変えても、アイテムを縦に寄せて重ねない（画面を下へ伸ばして収める）', async (t) => {
   const { api, screen, parts } = await bootEditor(t);
   const did = api.ui.designId;
   const sid = screen().id;
@@ -482,7 +497,7 @@ test('機器の種類を変えても、部品を縦に寄せて重ねない（�
   api.actions.addPart(did, sid, 'button', { x: 400, y: 680 });
   api.actions.updateScreen(did, sid, { device: 'phone' });
   assert.deepEqual(plain(parts().map((p) => [p.x, p.y])), [[272, 736], [272, 680]], '縦は動かさず、横だけ画面の中へ寄せる');
-  assert.equal(screen().height, 779, 'スマホの 1 画面分（667）から 8 ドットずつ、いちばん下の部品（776）まで伸ばす');
+  assert.equal(screen().height, 779, 'スマホの 1 画面分（667）から 8 ドットずつ、いちばん下のアイテム（776）まで伸ばす');
 });
 
 test('矢印のキーで動かせないとき（画面の端）は、履歴に積まない', async (t) => {
@@ -503,7 +518,7 @@ test('ボタンの番号は、左に入る幅がないときは左上の角に�
   assert.match(no(far), /pno-out/);
 });
 
-test('読み込んだデータが思わぬ形でも起動でき、部品の id の重なり・文字の番号・形の違う設定を直す', async (t) => {
+test('読み込んだデータが思わぬ形でも起動でき、アイテムの id の重なり・文字の番号・形の違う設定を直す', async (t) => {
   const raw = {
     schemaVersion: 1,
     designs: [{ id: 'd1', name: '顧客管理', screens: [
@@ -526,14 +541,14 @@ test('読み込んだデータが思わぬ形でも起動でき、部品の id �
   assert.deepEqual(plain([p2.type, p2.w, p2.h]), ['constructor', 16, 16], '知らない種類は残し、見えない大きさは 16 にする');
   assert.deepEqual(plain([p3.props.multiple, p3.props.scope]), [true, '12']);
   api.openDesign('d1');
-  assert.match($(app, `#stage .part[data-part-id="${p2.id}"]`).textContent, /この版では描けない部品（constructor）/);
+  assert.match($(app, `#stage .part[data-part-id="${p2.id}"]`).textContent, /この版では描けないアイテム（constructor）/);
   api.selectPart(p1.id);
   assert.match($(app, '#side-settings .panel-title').textContent, /番号 2・ラジオボタン/);
 });
 
 // ── 第 3 段階の後半の部品（表・グラフと、一覧の画面用・進み具合の画面用・見た目用。画像 q24〜q26）──
 
-test('後半の部品: 最初の大きさ・赤い番号・見た目。表はテーブルの項目、ステータスの 2 つは 1 つのステータスの項目を指す', async (t) => {
+test('後半のアイテム: 最初の大きさ・赤い番号・見た目。表はテーブルの項目、ステータスの 2 つは 1 つのステータスの項目を指す', async (t) => {
   const { app, api, parts, add, partEl } = await bootEditor(t);
   const sizes = {
     table: [640, 168], graph: [480, 320], search: [320, 40], filter: [480, 40], pager: [360, 32],
@@ -541,31 +556,31 @@ test('後半の部品: 最初の大きさ・赤い番号・見た目。表はテ
   };
   const placed = Object.keys(sizes).map((type) => add(type));
   placed.forEach((p) => assert.deepEqual(plain([p.type, p.w, p.h]), plain([p.type, ...sizes[p.type]])));
-  assert.deepEqual(plain(placed.filter((p) => p.no == null).map((p) => p.type)), ['image', 'icon'], '画像の置き場とアイコンには番号を付けない');
+  assert.deepEqual(plain(placed.filter((p) => p.no == null).map((p) => p.type)), ['image', 'icon'], '画像枠とアイコンには番号を付けない');
   const design = api.currentDesign();
   assert.deepEqual(plain(design.items.map((it) => [it.type, it.name])), [['table', '明細'], ['status', 'ステータス']]);
   const [table, , , , , status, steps] = parts();
   assert.equal(table.tableKind, 'subtable');
-  assert.equal(status.itemId, steps.itemId, 'ステータスの印と進み具合の矢印は同じ項目');
+  assert.equal(status.itemId, steps.itemId, 'ステータス表示と進捗バーは同じ項目');
   assert.deepEqual(plain(status.props.states.map((s) => s.name)), ['申請', '承認待ち', '承認済み', '完了']);
   const el = (p, sel) => partEl(p.id).querySelector(sel);
   assert.equal(el(placed[0], '.ptbl').querySelectorAll('th').length, 3, 'テーブルの最初の列は 3 つ');
   assert.equal(el(placed[0], '.ptbl-ops').children.length, 3, '行ごとに ＋ − を描く');
-  assert.ok(el(placed[1], '.pgraph svg rect'), 'グラフは見本の値から描く');
-  assert.match(el(placed[2], '.psearch').textContent, /キーワードで探す.*検索/);
+  assert.ok(el(placed[1], '.pgraph svg rect'), 'グラフはサンプル値から描く');
+  assert.match(el(placed[2], '.psearch').textContent, /キーワードで検索.*検索/);
   assert.match(el(placed[4], '.ppager').textContent, /200 件中 1〜20 件/);
   assert.equal(el(placed[5], '.pbadge').textContent, '承認待ち');
   assert.equal(el(placed[6], '.psteps .on').textContent, '承認待ち');
   assert.equal(el(placed[6], '.psteps .done').textContent, '申請');
   assert.equal(el(placed[7], '.ptabs .on').textContent, '基本情報');
   assert.match(el(placed[8], '.pimage').textContent, /画像/);
-  assert.equal(el(placed[9], '.plink').textContent, 'リンクの文字');
+  assert.equal(el(placed[9], '.plink').textContent, 'リンク');
   assert.ok(el(placed[10], '.picon-wrap svg'));
-  assert.equal($$(app, '.pal-item').length, 2, '部品の箱の項目の組に、明細とステータスが並ぶ');
+  assert.equal($$(app, '.pal-item').length, 2, 'アイテム一覧の項目の組に、明細とステータスが並ぶ');
   assert.ok(api.actions.addItemPart(design.id, api.currentScreen().id, status.itemId, { x: 0, y: 600 }), 'ステータスは同じ画面に何度でも置ける');
 });
 
-test('表（テーブル）: 列の名前・種類・見本の値・幅を書き、見本の行の数で高さが変わる。一覧表は列ごとに枝番の行', async (t) => {
+test('表（テーブル）: 列の名前・種類・サンプル値・幅を書き、サンプルの行数で高さが変わる。一覧表は列ごとに枝番の行', async (t) => {
   const { app, api, parts, add } = await bootEditor(t);
   const p = add('table');
   api.selectPart(p.id);
@@ -607,7 +622,7 @@ test('表の中身: レコード一覧にするとテーブルの項目を消し
   assert.deepEqual(plain(api.currentDesign().items.map((it) => it.name)), ['顧客コード'], 'ほかで使っていないテーブルの項目は消す');
   assert.deepEqual(plain(now.props.columns.map((c) => c.ref.name)), ['顧客コード'], '列はこの画面設計の項目から');
   setValue($(app, '#side-settings [data-pf="props.sort"]'), '顧客コードの小さい順');
-  assert.match($$(app, '.ptable tbody tr')[0].children[3].textContent, /1 ページ 20 件.*並べ順＝顧客コードの小さい順/s);
+  assert.match($$(app, '.ptable tbody tr')[0].children[3].textContent, /1 ページ 20 件.*並び順＝顧客コードの小さい順/s);
   assert.equal($$(app, '.ptable tbody tr')[1].children[0].textContent, '1-1');
   assert.ok($(app, '#stage .ptbl td.ic'), 'レコード一覧は左に詳しく見る印の列');
   // 関連レコード一覧
@@ -638,7 +653,7 @@ test('表の中身: レコード一覧にするとテーブルの項目を消し
   assert.equal(parts()[0].itemId, api.currentDesign().items[1].id);
 });
 
-test('グラフ: 種類・分類・集計・見本の値。一覧表に「グラフ＝」「分類＝」「集計＝」を書く', async (t) => {
+test('グラフ: 種類・分類・集計・サンプル値。一覧表に「グラフ＝」「分類＝」「集計＝」を書く', async (t) => {
   const { app, api, add, partEl } = await bootEditor(t);
   const did = api.ui.designId;
   const date = api.actions.addItem(did, 'date');
@@ -646,7 +661,7 @@ test('グラフ: 種類・分類・集計・見本の値。一覧表に「グラ
   const amount = api.actions.addItem(did, 'number');
   api.actions.updateItem(did, amount, { label: '合計金額' });
   const g = add('graph');
-  assert.equal(partEl(g.id).querySelectorAll('.pgraph rect').length, 6, '最初の見本の値は 6 か月分');
+  assert.equal(partEl(g.id).querySelectorAll('.pgraph rect').length, 6, '最初のサンプル値は 6 か月分');
   api.selectPart(g.id);
   setValue($(app, '#side-settings [data-pf="label"]'), '月ごとの受注金額');
   setValue($(app, '#side-settings [data-pf="props.byItem"]'), date);
@@ -662,7 +677,7 @@ test('グラフ: 種類・分類・集計・見本の値。一覧表に「グラ
   assert.match($(app, '.ptable').textContent, /集計＝レコードの件数（万円）/);
 });
 
-test('検索の欄・絞り込みの欄・ページ送り・タブ・リンク・アイコンの設定の欄と一覧表の文', async (t) => {
+test('検索欄・絞り込み欄・ページ送り・タブ・リンク・アイコンの設定の欄と一覧表の文', async (t) => {
   const { app, api, parts, add, partEl } = await bootEditor(t);
   const did = api.ui.designId;
   const ids = ['区分', '担当者', '受注日'].map((label) => {
@@ -706,15 +721,15 @@ test('検索の欄・絞り込みの欄・ページ送り・タブ・リンク�
   assert.equal(partEl(ic.id).querySelector('svg').getAttribute('stroke'), '#dc2626');
   const rows = $$(app, '.ptable tbody tr').map((r) => `${r.children[2].textContent}｜${r.children[3].textContent}`);
   assert.deepEqual(plain(rows), [
-    '検索の欄｜「検索」ボタンなし\n探す項目＝区分・受注日',
-    '絞り込みの欄｜絞り込む項目＝区分・担当者',
+    '検索欄｜「検索」ボタンなし\n検索する項目＝区分・受注日',
+    '絞り込み欄｜絞り込む項目＝区分・担当者',
     'ページ送り｜1 ページ 50 件',
     'タブ｜タブ＝基本情報／明細',
-    'リンクの文字｜移る先＝画面 2の画面',
+    'リンク｜移動先＝画面 2の画面',
   ]);
 });
 
-test('ステータス: 並びは項目に 1 つ。並びを直すと、ステータスの印と進み具合の矢印の両方が変わる', async (t) => {
+test('ステータス: 並びは項目に 1 つ。並びを直すと、ステータス表示と進捗バーの両方が変わる', async (t) => {
   const { app, api, add, partEl } = await bootEditor(t);
   const st = add('status');
   const sp = add('steps');
@@ -742,7 +757,7 @@ test('ステータス: 並びは項目に 1 つ。並びを直すと、ステー
 
 // ── 吹き出し（画像 q27）──
 
-test('吹き出し: 部品を選んで部品の箱の「吹き出し」を押すと、その部品の右上につないで置く。線と点を描く', async (t) => {
+test('吹き出し: アイテムを選んでアイテム一覧の「吹き出し」を押すと、そのアイテムの右上につないで置く。線と点を描く', async (t) => {
   const { app, api, add, screen } = await bootEditor(t);
   const p = add('text1');
   api.selectPart(p.id);
@@ -759,7 +774,7 @@ test('吹き出し: 部品を選んで部品の箱の「吹き出し」を押す
   assert.equal($(app, '.sl-thumb .callout'), null, '縮小画像には描かない');
 });
 
-test('吹き出しの設定の欄: 文字・つなぐ部品・線の先の形・色', async (t) => {
+test('吹き出しの設定の欄: 文字・つなぐアイテム・線の先の形・色', async (t) => {
   const { app, api, add, screen } = await bootEditor(t);
   const a = add('text1');
   const b = add('button');
@@ -778,11 +793,11 @@ test('吹き出しの設定の欄: 文字・つなぐ部品・線の先の形・
   assert.ok($(app, '#stage .callout.cc-red'));
   assert.match($(app, '#co-lines line').getAttribute('marker-end'), /co-arrow-red/);
   assert.equal($(app, '#co-lines line').getAttribute('stroke'), '#dc2626', '線の色も枠に合わせる');
-  assert.equal($$(app, '#side-settings [data-co="target"] option').length, 3, 'つながない・部品 2 つ');
+  assert.equal($$(app, '#side-settings [data-co="target"] option').length, 3, 'つながない・アイテム 2 つ');
   assert.ok(b);
 });
 
-test('吹き出し: 置ける範囲は画面のまわり 240 ドットまで。つないだ部品を消すと線だけ消え、元に戻すで戻る', async (t) => {
+test('吹き出し: 置ける範囲は画面のまわり 240 ドットまで。つないだアイテムを消すと線だけ消え、元に戻すで戻る', async (t) => {
   const { app, api, add, screen } = await bootEditor(t);
   const p = add('text1');
   const id = api.actions.addCallout(api.ui.designId, screen().id, { x: -1000, y: 5000 }, p.id);
@@ -844,13 +859,13 @@ const ctrlClick = (app, el) => {
   mouse(app, app.document, 'mouseup', { clientX: 10, clientY: 10, ctrlKey: true });
 };
 
-test('まとめて選ぶ: Ctrl を押しながら押すと足す・もう一度押すと外す。右の欄に「揃える」を出し、最初に選んだものに「基準」の札', async (t) => {
+test('まとめて選ぶ: Ctrl を押しながら押すと足す・もう一度押すと外す。右のパネルに「揃える」を出し、最初に選んだものに「基準」の札', async (t) => {
   const { app, api, ids, partEl } = await bootThree(t);
   ctrlClick(app, partEl(ids[1]));
   ctrlClick(app, partEl(ids[0]));
   assert.deepEqual(plain(api.ui.sel.map((x) => x.id)), plain([ids[1], ids[0]]));
   assert.equal(api.ui.partId, null, '2 つ選んでいるときは partId は空');
-  assert.match($(app, '#side-settings .panel-title').textContent, /2 個を選んでいます ?（部品 2・吹き出し 0）/);
+  assert.match($(app, '#side-settings .panel-title').textContent, /2 個を選んでいます ?（アイテム 2・吹き出し 0）/);
   assert.ok(partEl(ids[1]).classList.contains('sel-ref'), '最初に選んだものが基準');
   assert.ok($(app, '#stage .sel-box'), '全体を点線で囲む');
   assert.equal($$(app, '#stage .grip').length, 0, '縁のつまみは出さない');
@@ -868,7 +883,7 @@ test('揃える: 基準（最初に選んだもの）に合わせる。等間隔
   api.ui.sel = [{ k: 'p', id: ids[0] }, { k: 'p', id: ids[1] }, { k: 'p', id: ids[2] }];
   api.runCommand('alignLeft');
   assert.deepEqual(plain(ids.map((id) => at(id).x)), [160, 160, 160], 'いちばん左（40）ではなく、基準の 160 に合わせる');
-  assert.ok(app, 'メニューバーのボタンは 1 つ目のテストで確かめた');
+  assert.ok(app, 'ツールバーのボタンは 1 つ目のテストで確かめた');
   api.store.undo();
   assert.deepEqual(plain(ids.map((id) => at(id).x)), [160, 40, 96]);
   api.runCommand('alignRight');
@@ -886,7 +901,7 @@ test('まとめて動かす・消す・番号: 矢印のキーは全部を動か
   const { app, api, ids, at, screen } = await bootThree(t);
   const cid = api.actions.addCallout(api.ui.designId, screen().id, { x: -232, y: 48 }, ids[0]);
   api.runCommand('selectAll');
-  assert.equal(api.ui.sel.length, 4, '部品 3 と吹き出し 1');
+  assert.equal(api.ui.sel.length, 4, 'アイテム 3 と吹き出し 1');
   key(app, app.document.body, { key: 'ArrowLeft' });
   assert.deepEqual(plain([at(ids[1]).x, screen().callouts[0].x]), [32, -240], 'まとめて 8 ドット');
   key(app, app.document.body, { key: 'ArrowLeft' });
@@ -905,7 +920,7 @@ test('まとめて動かす・消す・番号: 矢印のキーは全部を動か
   assert.equal(screen().callouts[0].target, ids[0], '元に戻すで、つながりも戻る');
 });
 
-test('まとめてコピー・貼り付け: 一緒にコピーした部品につないだ吹き出しは、貼り付けた部品につなぐ', async (t) => {
+test('まとめてコピー・貼り付け: 一緒にコピーしたアイテムにつないだ吹き出しは、貼り付けたアイテムにつなぐ', async (t) => {
   const { api, ids, screen } = await bootThree(t);
   api.actions.addCallout(api.ui.designId, screen().id, { x: -232, y: 48 }, ids[0]);
   const cid = screen().callouts[0].id;
@@ -915,17 +930,17 @@ test('まとめてコピー・貼り付け: 一緒にコピーした部品につ
   assert.equal(screen().parts.length, 4);
   assert.equal(screen().callouts.length, 2);
   const newPart = screen().parts[3];
-  assert.equal(screen().callouts[1].target, newPart.id, '貼り付けた部品へつなぐ');
+  assert.equal(screen().callouts[1].target, newPart.id, '貼り付けたアイテムへつなぐ');
   assert.deepEqual(plain(api.ui.sel.map((x) => x.k)), ['p', 'c'], '貼り付けたものを選ぶ');
   assert.notEqual(newPart.itemId, screen().parts[0].itemId, '同じ画面なので項目も写す');
   api.ui.sel = [{ k: 'c', id: cid }];
   api.runCommand('duplicatePart');
-  assert.equal(screen().callouts[2].target, ids[0], '吹き出しだけを複製すると、元の部品につないだまま');
+  assert.equal(screen().callouts[2].target, ids[0], '吹き出しだけを複製すると、元のアイテムにつないだまま');
 });
 
 // ── 見直し用のエージェントが見つけた不具合（後半の部品と吹き出し）──
 
-test('表: 見本の行の数を増やして画面の下からはみ出すときは、表を上へずらさず、画面を下へ伸ばす', async (t) => {
+test('表: サンプルの行数を増やして画面の下からはみ出すときは、表を上へずらさず、画面を下へ伸ばす', async (t) => {
   const { api, add, screen } = await bootEditor(t);
   const tb = add('table');
   api.actions.movePart(api.ui.designId, screen().id, tb.id, { ...tb, y: 600 });
@@ -950,7 +965,7 @@ test('表: スマホの画面を伸ばすときも、高さは機器の 1 画面
   assert.equal(api.snapHeight(h, 'phone'), h, '読み込み直しても同じ高さ');
 });
 
-test('取り込んだテーブル: この画面だけの設定で列を選んで、見本の値を書ける（項目の設定の枠は直せない）', async (t) => {
+test('取り込んだテーブル: この画面だけの設定で列を選んで、サンプル値を書ける（項目の設定の枠は直せない）', async (t) => {
   const { app, api } = await bootEditor(t);
   const srcId = api.ui.designId;
   const sid = api.currentScreen().id;
@@ -1024,7 +1039,7 @@ function pressLikeBrowser(app, el) {
   click(el);
 }
 
-test('右の欄に打ちかけのまま、部品の箱のボタン・組の見出し・項目の一覧表の ✕・「自動で並べ直す」を押しても、1 回目で効き、打った文字も残る（デバッグとリリースの見直し⑤-4）', async (t) => {
+test('右のパネルに打ちかけのまま、アイテム一覧のボタン・組の見出し・項目一覧の ✕・「自動で並べ直す」を押しても、1 回目で効き、打った文字も残る（デバッグとリリースの見直し⑤-4）', async (t) => {
   const { app, api, add, screen } = await bootEditor(t);
   add('status');
   api.selectPart(null);
@@ -1037,7 +1052,7 @@ test('右の欄に打ちかけのまま、部品の箱のボタン・組の見�
   const status = () => api.currentDesign().items[0];
   typeIn('#side-settings [data-field="design-desc"]', '出張の申請を管理する');
   pressLikeBrowser(app, $(app, '.pal-btn[data-type="button"]'));
-  assert.equal(screen().parts.length, 2, '部品の箱のボタン: 1 回目で部品を置く');
+  assert.equal(screen().parts.length, 2, 'アイテム一覧のボタン: 1 回目でアイテムを置く');
   assert.equal(desc(), '出張の申請を管理する');
 
   api.selectPart(null);
@@ -1052,7 +1067,7 @@ test('右の欄に打ちかけのまま、部品の箱のボタン・組の見�
   click($(app, '#db-view [data-action="select-item"]'));
   typeIn('#side-settings [data-pf="label"]', '申請の状態');
   pressLikeBrowser(app, $(app, '#db-view .del-x[data-action="delete-item"]'));
-  assert.ok($(app, '.modal'), '項目の一覧表の ✕: 1 回目で確かめの窓を出す');
+  assert.ok($(app, '.modal'), '項目一覧の ✕: 1 回目で確かめの窓を出す');
   assert.equal(status().name, '申請の状態');
   click($(app, '.modal [data-dlg="cancel"]'));
 
@@ -1064,7 +1079,7 @@ test('右の欄に打ちかけのまま、部品の箱のボタン・組の見�
   assert.equal(status().props.states[0].name, '下書き');
 });
 
-test('部品を選んだまま画面の一覧の「…」・改訂の ▼・「揃える」のメニューを開いて矢印・Delete を押しても、部品は動かず消えない（デバッグとリリースの見直し⑤-6）', async (t) => {
+test('アイテムを選んだまま画面の一覧の「…」・改訂の ▼・「揃える」のメニューを開いて矢印・Delete を押しても、アイテムは動かず消えない（デバッグとリリースの見直し⑤-6）', async (t) => {
   const { app, api, add, screen, partEl } = await bootEditor(t);
   const a = add('button');
   const b = add('text1');
@@ -1077,7 +1092,7 @@ test('部品を選んだまま画面の一覧の「…」・改訂の ▼・「�
     const focused = app.document.activeElement;
     assert.ok(focused && focused.closest('.screen-menu, .rv-menu, .fold-pop'), `${label}: メニューの項目にフォーカスがある`);
     ['ArrowDown', 'ArrowLeft', 'Delete'].forEach((k) => key(app, app.document.activeElement, { key: k }));
-    assert.equal(JSON.stringify(screen()), before, `${label}: 部品は動かず消えない`);
+    assert.equal(JSON.stringify(screen()), before, `${label}: アイテムは動かず消えない`);
   };
   click($(app, `.sl-more[data-id="${screen().id}"]`));
   keysInMenu('画面の一覧の「…」');
@@ -1105,7 +1120,7 @@ test('画面の高さをドラッグしている途中に Ctrl+Z で画面が消
   assert.equal(screen().height, 800, '前の画面の高さは変えない');
 });
 
-test('縮小して見ているとき、押しただけで手が少し（4 ドットより少なく）動いても、部品・吹き出し・選んだもの・つながりは変わらない（デバッグとリリースの見直し⑤-3）', async (t) => {
+test('縮小して見ているとき、押しただけで手が少し（4 ドットより少なく）動いても、アイテム・吹き出し・選んだもの・つながりは変わらない（デバッグとリリースの見直し⑤-3）', async (t) => {
   const { app, api, add, screen, partEl } = await bootEditor(t);
   const a = add('text1');
   const b = add('button');
@@ -1121,13 +1136,13 @@ test('縮小して見ているとき、押しただけで手が少し（4 ドッ
     mouse(app, app.document, 'mouseup', { clientX: 102, clientY: 101 });
   };
   press(partEl(b.id));
-  assert.equal(JSON.stringify(screen()), before, '部品');
+  assert.equal(JSON.stringify(screen()), before, 'アイテム');
   press($(app, '#stage .callout'));
   assert.equal(JSON.stringify(screen()), before, '吹き出し');
   press($(app, '#stage [data-co-handle]'));
   assert.equal(JSON.stringify(screen()), before, '線の先の ○（つながりを外さない）');
   press(partEl(a.id), { ctrlKey: true });
-  assert.equal(api.ui.sel.length, 2, '部品 2 つを選んだ');
+  assert.equal(api.ui.sel.length, 2, 'アイテム 2 つを選んだ');
   press(partEl(b.id));
   assert.equal(JSON.stringify(screen()), before, '選んだものをまとめて');
   assert.equal(api.store.undoStack.length, undo0, '履歴に積まない');
@@ -1152,7 +1167,7 @@ test('吹き出しの文字を打ちかけのまま、線の先の ○ をドラ
   assert.equal($(app, '#side-settings [data-co="text"]').value, '必ず入れる', '作り直した欄にも残る');
 });
 
-test('グラフの見本の値: 全角の数字・桁の区切り・単位を読み、数字のない行は描かない。0 でない値が 1 つの円グラフは円で描く', async (t) => {
+test('グラフのサンプル値: 全角の数字・桁の区切り・単位を読み、数字のない行は描かない。0 でない値が 1 つの円グラフは円で描く', async (t) => {
   const { api, add, screen, partEl } = await bootEditor(t);
   const g = add('graph');
   api.actions.updatePart(api.ui.designId, screen().id, g.id, { props: { chart: 'hbar', samples: '4月, １２０\n5月, 1,200\n6月, abc\n7月, 120万' } });

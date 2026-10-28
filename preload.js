@@ -55,7 +55,7 @@ contextBridge.exposeInMainWorld('aiAPI', {
 
 // 落としたファイルのうち、このパソコンの中に場所がないもの（ブラウザや圧縮ファイルの中から落としたものなど。webUtils の場所が空）の、
 // 入れられなかった理由（ページのお知らせ「「<名前>」は入れられませんでした。<理由>。」に出す。黙って外れていた。デバッグとリリースの見直し③-2）
-const NO_PATH_REASON = 'このパソコンの中に場所がないファイルです（ブラウザや圧縮ファイルの中から落としたものなど）。いったんフォルダに保存してから入れてください';
+const NO_PATH_REASON = 'このパソコンのフォルダに保存されていないファイルです（ブラウザや圧縮ファイルの中からドラッグ＆ドロップしたものなど）。いったんフォルダに保存してから追加してください';
 function addDroppedFiles(systemId, files) {
   const list = Array.from(files || []).map((f) => ({ name: String((f && f.name) || ''), path: webUtils.getPathForFile(f) }));
   const noPath = list.filter((x) => !x.path).map((x) => ({ name: x.name, reason: NO_PATH_REASON }));

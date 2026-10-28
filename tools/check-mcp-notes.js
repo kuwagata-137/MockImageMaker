@@ -71,7 +71,7 @@ async function checkWithoutApp(client, env) {
   const REQUEST = '顧客管理の一覧の画面を作って';
   const ms = promptText(await client.getPrompt({ name: 'make_screen', arguments: { request: REQUEST } }));
   check('E. make_screen は request を省ける（省くと「引数に書いてありません」）。文に頼みと、切れた引数の読み方が入る。"stages" を読ませる文も set_stage もない',
-    /頼み: （引数に書いてありません。/.test(msNone) && ms.includes(REQUEST) && /空白のところで切れて届きます/.test(ms) && /"overview"/.test(ms) && !/stages/.test(ms) && !/set_stage/.test(ms),
+    /依頼: （引数に書いてありません。/.test(msNone) && ms.includes(REQUEST) && /空白のところで切れて届きます/.test(ms) && /"overview"/.test(ms) && !/stages/.test(ms) && !/set_stage/.test(ms),
     `省いたとき ${msNone.length} 字 ／ 頼みあり ${ms.length} 字`);
   const noDesign = await rejected(client.getPrompt({ name: 'fix_design', arguments: { request: '電話番号の欄を足して' } }));
   const fx = promptText(await client.getPrompt({ name: 'fix_design', arguments: { design: '顧客管理', request: '電話番号の欄を足して' } }));
@@ -118,12 +118,12 @@ async function checkNotesTools(client, env) {
   ] });
   const wj = w.json || {};
   const added = wj.added || [];
-  check('E. update_notes（set_findings・add_question 2 つ・add_decision・set_memo）: 操作 5 つが 1 回で入り、added が足した 3 行の id を返し、更新の印が変わる',
+  check('E. update_notes（set_findings・add_question 2 つ・add_decision・set_memo）: 操作 5 つが 1 回で入り、added が足した 3 行の id を返し、更新日時が変わる',
     !w.isError && wj.ops.length === 5 && added.map((a) => a.op).join() === 'add_question,add_question,add_decision' && added.every((a) => typeof a.id === 'string' && a.id) && new Set(added.map((a) => a.id)).size === 3
       && wj.changed === true && !!wj.updatedAt && wj.updatedAt !== f.updatedAt,
     w.isError ? brief(w) : `added ${added.map((a) => `${a.op}:${a.id}`).join('・')} ／ updatedAt ${f.updatedAt} → ${wj.updatedAt}`);
   const stale = await callRaw(client, 'update_notes', { system: SYSTEM_ID, expect: f.updatedAt, ops: [{ op: 'set_memo', text: '古い expect で書いた' }] });
-  check('E. update_notes: 読んだ後に更新の印が変わっていれば（古い expect）、stale で断られる', stale.isError && stale.code === 'stale', stale.isError ? stale.code : '断られなかった');
+  check('E. update_notes: 読んだ後に更新日時が変わっていれば（古い expect）、stale で断られる', stale.isError && stale.code === 'stale', stale.isError ? stale.code : '断られなかった');
   const [qRead, , dFlow] = added;
 
   // 3. set_stage
@@ -145,7 +145,7 @@ async function checkNotesTools(client, env) {
   stamp = (answer.json || {}).updatedAt || stamp;
   check('E. update_notes（answer_question）: まだ決まっていないことに人の答えを書ける', !answer.isError && answer.json.changed === true && answer.json.ops[0].id === qRead.id, answer.isError ? brief(answer) : JSON.stringify(answer.json));
   const todo = await callRaw(client, 'set_stage', { system: SYSTEM_ID, stage: 'read', state: 'todo', expect: stamp });
-  check('E. set_stage: todo（まだ）には戻せず、bad_request で断られる（前の段階を直すときは "review" に戻す、と添える）',
+  check('E. set_stage: todo（未着手）には戻せず、bad_request で断られる（前の段階を変更するときは "review" に戻す、と添える）',
     todo.isError && todo.code === 'bad_request' && /"todo".*戻せません/.test(todo.text) && /"review"/.test(todo.text), todo.isError ? `${todo.code}: ${todo.text.split('\n')[0]}` : '断られなかった');
 
   // 4. 読む
@@ -165,7 +165,7 @@ async function checkNotesTools(client, env) {
   const gs = await callRaw(client, 'get_system', { system: SYSTEM_ID });
   const row = ((ls.json || {}).systems || []).find((y) => y.id === SYSTEM_ID);
   const expectStages = { read: 'done', flow: 'todo', items: 'todo', screens: 'todo', docs: 'todo' };
-  check('E. list_systems の行と get_system の返事の stages に、段階ごとの進み具合（read だけ done）が出る',
+  check('E. list_systems の行と get_system の返事の stages に、段階ごとの進捗（read だけ done）が出る',
     !!row && JSON.stringify(row.stages) === JSON.stringify(expectStages) && !gs.isError && JSON.stringify(gs.json.stages) === JSON.stringify(expectStages),
     `list_systems ${JSON.stringify(row && row.stages)} ／ get_system ${JSON.stringify(gs.json && gs.json.stages)}`);
   return { pid: a && a.pid, stamp, noteIds: { qRead: qRead.id, dFlow: dFlow.id } };
@@ -178,12 +178,12 @@ async function checkSystemDocTool(client, env, info) {
   const j = r.json || {};
   const file = (j.files || [])[0] || '';
   const head = file && fs.existsSync(file) ? fs.readFileSync(file).subarray(0, 4).toString() : '';
-  check('E. export_system_doc: 決めたフォルダに <システムの名前>_説明書.pdf を書き、返事のページ数・入れたページ（表紙・スイムレーン図・設計ノート）が合う',
-    !r.isError && j.folder === EXPORT_DIR && path.basename(file) === `${SYSTEM_NAME}_説明書.pdf` && head === '%PDF'
+  check('E. export_system_doc: 決めたフォルダに <システムの名前>_システム設計書.pdf を書き、返事のページ数・入れたページ（表紙・スイムレーン図・設計ノート）が合う',
+    !r.isError && j.folder === EXPORT_DIR && path.basename(file) === `${SYSTEM_NAME}_システム設計書.pdf` && head === '%PDF'
       && j.pages === 3 && JSON.stringify(j.included) === JSON.stringify({ systemCover: true, swimlane: true, notes: true }) && Array.isArray(j.designs) && j.designs.length === 0,
     r.isError ? brief(r) : `${path.basename(file)}（${head}）・${j.pages} ページ・${JSON.stringify(j.included)}`);
   const g = await callRaw(client, 'get_notes', { system: SYSTEM_ID });
-  check('E. export_system_doc は書く頼みではない（システムの更新の印が変わらない）', !g.isError && g.json.updatedAt === info.stamp, `updatedAt ${g.json && g.json.updatedAt}`);
+  check('E. export_system_doc は書く頼みではない（システムの更新日時が変わらない）', !g.isError && g.json.updatedAt === info.stamp, `updatedAt ${g.json && g.json.updatedAt}`);
 }
 
 // 5. アプリが終わった後の designs.json
@@ -200,7 +200,7 @@ function checkSaved(env, info) {
       && n.findings === FINDINGS && n.memo === MEMO && (n.decisions || []).length === 1 && dec.id === info.noteIds.dFlow && dec.stage === 'flow' && dec.text === D_FLOW && dec.reason === D_REASON
       && qs.length === 2 && qR.answer === ANSWER && ISO.test(qR.resolvedAt || '') && qI.text === Q_ITEMS && qI.answer === '' && qI.resolvedAt === null && saved.updatedAt === info.stamp,
     saved ? `${stagesOf({ stages: n.stages })} ／ 決めたこと ${(n.decisions || []).length}・まだ決まっていないこと ${qs.length} ／ updatedAt ${saved.updatedAt}` : 'システムがない');
-  check('E. 設計ノートだけを直したので、designs.json に「AI が直す前の状態」の行が増えていない', !!saved && saved.revisions.filter((r) => r.kind === 'ai').length === 0 && saved.roles.length === 2,
+  check('E. 設計ノートだけを直したので、designs.json に「AI が変更する前の状態」の行が増えていない', !!saved && saved.revisions.filter((r) => r.kind === 'ai').length === 0 && saved.roles.length === 2,
     saved ? `改訂履歴の行 ${saved.revisions.length}・役割 ${saved.roles.length}` : 'システムがない');
 }
 
@@ -209,7 +209,7 @@ async function phaseNotes(env) {
   const { openEntry, check, waitAppQuit, quitDetail, USER_DATA, STATE_FILE, IDLE_MS } = env;
   await placeSampleSystem({ userData: USER_DATA, systemId: SYSTEM_ID, systemName: SYSTEM_NAME, names: [], idPrefix: 'm-check-', description: '設計ノートの確かめの見本' });
   const placed = (JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).systems || []).find((y) => y.id === SYSTEM_ID);
-  check('E. 起動の前に、見本のシステム（役割 2・作業 2）を置いた', !!placed && placed.roles.length === 2 && placed.swimlane.steps.length === 2 && path.basename(STATE_FILE) === 'designs.json', placed ? placed.name : 'ない');
+  check('E. 起動の前に、見本のシステム（役割 2・工程 2）を置いた', !!placed && placed.roles.length === 2 && placed.swimlane.steps.length === 2 && path.basename(STATE_FILE) === 'designs.json', placed ? placed.name : 'ない');
   const { client } = await openEntry();
   await checkWithoutApp(client, env);
   const info = await checkNotesTools(client, env);

@@ -31,11 +31,11 @@ function sampleState() {
   const table = (id, x, y, w, h, no, label, ids, samples, rows) => op(id, 'table', x, y, w, h, no, label, { columns: cols(ids), sort: '受付日の新しい順' },
     { tableKind: 'records', view: { rows, samples: Object.fromEntries(samples.map((s, i) => ['c' + i, s])), widths: {} } });
   const list = sc('s_list', '問い合わせの一覧', 800, [
-    op('l1', 'search', 32, 64, 320, 40, 1, '検索の欄', { button: true }),
-    op('l2', 'filter', 384, 64, 480, 40, 2, '絞り込みの欄'),
+    op('l1', 'search', 32, 64, 320, 40, 1, '検索欄', { button: true }),
+    op('l2', 'filter', 384, 64, 480, 40, 2, '絞り込み欄'),
     op('l3', 'button', 1120, 64, 128, 40, 3, '＋ 新規', { style: 'primary' }),
     table('l4', 32, 128, 1216, 248, 4, '問い合わせの一覧', ['i_no', 'i_sub', 'i_cust', 'i_pri', 'i_date'],
-      [['00002934', '00002933', '00002931', '00002930', '00002928'], ['エアコンが冷えない', '請求書の再発行', '点検の日の変更', '部品の取り寄せ', '引っ越しの手続き'],
+      [['00002934', '00002933', '00002931', '00002930', '00002928'], ['エアコンが冷えない', '請求書の再発行', '点検の日の変更', 'アイテムの取り寄せ', '引っ越しの手続き'],
         ['山田 太郎', '鈴木 一郎', '高橋 花子', '田中 次郎', '伊藤 三郎'], ['高', '低', '中', '高', '中'], ['2026-10-20', '2026-10-20', '2026-10-19', '2026-10-19', '2026-10-18']], 5),
     op('l5', 'pager', 32, 384, 360, 32, 5, 'ページ送り', { perPage: '20', total: '128', showCount: true }),
     op('l6', 'graph', 32, 448, 584, 320, 6, '優先度ごとの件数', { chart: 'bar', samples: '高, 5\n中, 12\n低, 7', unit: '件' }),
@@ -88,7 +88,7 @@ module.exports = async function shootLooks(browser, { ROOT, shot, openApp, OUT, 
       return T.exportPngDocs(d, T.store.state, null, null, { table: false, callouts: false }).map((x) => ({ html: x.html, width: x.width, height: x.height }));
     });
     const doc = await browser.newPage();
-    for (const [i, name] of ['一覧', '入力', '詳細_表示の形'].entries()) {
+    for (const [i, name] of ['一覧', '入力', '詳細_値だけ表示'].entries()) {
       await doc.setViewport({ width: docs[i].width, height: docs[i].height });
       await doc.setContent(docs[i].html, { waitUntil: 'load' });
       const file = path.join(OUT, `v${VERSION}_${label[i]}_${name}.png`);
@@ -109,7 +109,7 @@ module.exports = async function shootLooks(browser, { ROOT, shot, openApp, OUT, 
     T.openScreen('s_detail');
   });
   await page.setViewport({ width: 1400, height: 1000 });
-  await shot(page, '180_見た目_右の欄_Salesforce');
+  await shot(page, '180_見た目_右のパネル_Salesforce');
   // 新しい画面設計の窓（作る先 kintone → 見た目 kintone。作る先を Salesforce にすると見た目も Salesforce）
   await page.click('[data-action="home"]');
   await page.click('[data-action="new"]');
@@ -117,6 +117,6 @@ module.exports = async function shootLooks(browser, { ROOT, shot, openApp, OUT, 
   await page.type('.modal [name=name]', '顧客管理');
   await shot(page, '181_見た目_新しい画面設計の窓');
   await page.select('.modal .target-select', 'b:salesforce');
-  await shot(page, '182_見た目_新しい画面設計の窓_作る先をSalesforceにした');
+  await shot(page, '182_見た目_新しい画面設計の窓_構築先をSalesforceにした');
   await page.close();
 };

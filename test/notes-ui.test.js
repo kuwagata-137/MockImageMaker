@@ -105,7 +105,7 @@ test('入口: 資料の窓口があれば 6 つ（資料と履歴の間に「設
   assert.deepEqual(plain(api.SYS_PANELS), ['overview', 'roles', 'swimlane', 'materials', 'notes', 'history']);
   assert.deepEqual(entries().map((e) => e[1]), ['概要', '役割', 'スイムレーン図', '資料', '設計ノート', '履歴']);
   assert.deepEqual(entries()[4], ['📓', '設計ノート', '③ 確認待ち']);
-  assert.equal(entry('notes').title, '段階ごとの進み具合・決めたことと理由・まだ決まっていないことを開きます');
+  assert.equal(entry('notes').title, '段階ごとの進捗・決めたことと理由・まだ決まっていないことを開きます');
   assert.equal(entry('notes').classList.contains('active'), false);
   click(entry('notes'));
   assert.equal(api.ui.sysPanel, 'notes');
@@ -135,9 +135,9 @@ test('入口の小さな字: 確認待ち・作業中の段階があれば最初
   assert.equal(note(), '② 作業中', '確認待ちより前の段階の作業中');
   api.actions.setNoteStage('y-trip', 'flow', 'done');
   api.actions.setNoteStage('y-trip', 'items', 'done');
-  assert.equal(note(), '④ まだ');
+  assert.equal(note(), '④ 未着手');
   api.actions.setNoteStage('y-trip', 'read', 'todo');
-  assert.equal(note(), '① まだ');
+  assert.equal(note(), '① 未着手');
   api.actions.setNoteStage('y-trip', 'read', 'skipped');
   api.actions.setNoteStage('y-trip', 'screens', 'done');
   api.actions.setNoteStage('y-trip', 'docs', 'skipped');
@@ -155,7 +155,7 @@ test('札: 5 つ（段階の名前と印〔確認済み ✓・確認待ち ●�
     ['read', '✓', 'done', false], ['flow', '✓', 'done', false], ['items', '●', 'review', true], ['screens', '–', 'todo', false], ['docs', '–', 'todo', false],
   ]);
   assert.deepEqual(['read', 'flow', 'items', 'screens', 'docs'].map((k) => tab(k).firstChild.textContent),
-    ['① 資料から読み取る', '② 業務の流れ', '③ データベースの項目', '④ 画面', '⑤ 説明書と出力']);
+    ['① 資料から読み取る', '② 業務の流れ', '③ データベースの項目', '④ 画面', '⑤ システム設計書と出力']);
   assert.equal(tab('items').getAttribute('aria-pressed'), 'true');
   assert.equal(api.ui.notesStages['y-trip'], 'items');
   api.actions.setNoteStage('y-trip', 'flow', 'doing');
@@ -208,24 +208,24 @@ test('札を押すと、描き直した後の選んだ札にフォーカスを�
 });
 
 // ── 見出し・右の欄 ──
-test('真ん中の見出しと案内の文、右の欄「設計ノートについて」の案内', async (t) => {
+test('真ん中の見出しと案内の文、右のパネル「設計ノートについて」の案内', async (t) => {
   const { $, $$ } = await boot(t);
   assert.equal($('#sys-view h3').textContent, '設計ノート（出張申請システム）');
   assert.equal($('#sys-view .map-note').textContent,
-    'AI が資料からこのシステムを作るときに、段階ごとに読み取ったこと・決めたことと理由・まだ決まっていないことを書きます。人も直せます（欄を離れると保存します）。');
+    'AI が資料からこのシステムを作るときに、段階ごとに読み取ったこと・決めたことと理由・まだ決まっていないことを書きます。人も変更できます（欄を離れると保存します）。');
   assert.equal($('#sys-side .panel-title').textContent, '設計ノートについて');
   assert.deepEqual($$('#sys-side .hint').map((p) => p.textContent), [
-    'AI は段階の終わりに、案をチャットに出して止まり、段階の札を「確認待ち」（オレンジ）にします。チャットで「よい」と答えると、AI が「確認済み」（緑）にして次の段階へ進みます。',
-    '札の色: 緑＝確認済み・オレンジ＝確認待ち・青＝作業中・灰色＝まだ・点線の枠＝確認を飛ばした。',
-    '① の札を押すと、① で資料から読み取ったこと（業務の要約・登場人物・今の手順・様式の欄）が出ます。',
-    'AI とつないでいないときは、「この段階の進み具合」のボタンを押して、進み具合を変えられます。',
+    'AI は段階の終わりに、案をチャットに出して止まり、段階のタブを「確認待ち」（オレンジ）にします。チャットで「よい」と答えると、AI が「確認済み」（緑）にして次の段階へ進みます。',
+    'タブの色: 緑＝確認済み・オレンジ＝確認待ち・青＝作業中・灰色＝未着手・点線の枠＝確認を飛ばした。',
+    '① のタブを押すと、① で資料から読み取ったこと（業務の要約・登場人物・今の手順・様式の欄）が出ます。',
+    'AI と連携していないときは、「この段階の進捗」のボタンを押して、進捗を変えられます。',
     'まだ決まっていないことに答えを書くと「決まった」になり、表の下へ移ります。',
-    '決めたことと理由と、まだ決まっていないこと（答えのある行も）は、システムの説明書（PDF）の最後のページに入ります（⑤ の行は入りません）。',
+    '決めたことと理由と、まだ決まっていないこと（答えのある行も）は、システム設計書（PDF）の最後のページに入ります（⑤ の行は入りません）。',
   ]);
 });
 
 // ── この段階の進み具合 ──
-test('進み具合: ボタン（進み具合の名前と ▾）と説明の文。押すとメニュー（確認待ちなら 3 つ）。外を押す・Esc で閉じる', async (t) => {
+test('進捗: ボタン（進捗の名前と ▾）と説明の文。押すとメニュー（確認待ちなら 3 つ）。外を押す・Esc で閉じる', async (t) => {
   const { app, api, $, pill, stateText, menu, tab } = await boot(t);
   assert.equal(pill().textContent, '確認待ち ▾');
   assert.ok(pill().classList.contains('nt-pill') && pill().classList.contains('review'));
@@ -237,7 +237,7 @@ test('進み具合: ボタン（進み具合の名前と ▾）と説明の文�
   assert.deepEqual(menu(), [
     ['done', '✓ 確認済みにする', 'この段階の案でよい（AI は次の段階へ進める）'],
     ['skipped', '⤼ 確かめずに進めたことにする', '「確認を飛ばした」にする'],
-    ['todo', '↺ まだに戻す', 'この段階をやり直す'],
+    ['todo', '↺ 未着手に戻す', 'この段階をやり直す'],
   ]);
   assert.ok($('#sys-menu-root .pop-menu.sys-pop'));
   assert.equal(pill().getAttribute('aria-expanded'), 'true');
@@ -269,7 +269,7 @@ test('進み具合: ボタン（進み具合の名前と ▾）と説明の文�
   assert.equal(menu().length, 3);
 });
 
-test('進み具合: メニューを開いたまま真ん中を送ると閉じる（ボタンから離れるため）。左の「＋ 画面設計を入れる ▾」のメニューは、真ん中を送っても閉じない', async (t) => {
+test('進捗: メニューを開いたまま真ん中を送ると閉じる（ボタンから離れるため）。左の「＋ 画面設計を追加する ▾」のメニューは、真ん中を送っても閉じない', async (t) => {
   const { app, api, $, pill, menu } = await boot(t);
   const scroll = (el) => el.dispatchEvent(new app.window.Event('scroll'));
   click(pill());
@@ -290,13 +290,13 @@ test('進み具合: メニューを開いたまま真ん中を送ると閉じる
   assert.ok($('#sys-menu-root .sys-pop'));
 });
 
-test('進み具合: メニューで押すと進み具合が変わる（確認済み・確認を飛ばしたは日付も）。メニューは今の進み具合を除いた 2 つ。元に戻すで戻る', async (t) => {
+test('進捗: メニューで押すと進捗が変わる（確認済み・確認を飛ばしたは日付も）。メニューは今の進捗を除いた 2 つ。元に戻すで戻る', async (t) => {
   const { app, api, pill, stateText, menu, menuItem, tabs, sys } = await boot(t);
   const today = api.todayDay();
   click(pill());
   click(menuItem('done'));
   assert.equal(api.ui.sysMenu, null, '押したら閉じる');
-  assert.equal(app.document.activeElement, pill(), '描き直した進み具合のボタンにフォーカスを戻す（Esc で閉じたときと同じ）');
+  assert.equal(app.document.activeElement, pill(), '描き直した進捗のボタンにフォーカスを戻す（Esc で閉じたときと同じ）');
   assert.equal(sys().notes.stages.items.state, 'done');
   assert.match(sys().notes.stages.items.confirmedAt, ISO);
   assert.equal(pill().textContent, `確認済み（${today}） ▾`);
@@ -313,7 +313,7 @@ test('進み具合: メニューで押すと進み具合が変わる（確認済
   assert.deepEqual(menu().map((m) => m[0]), ['done', 'todo']);
   click(menuItem('todo'));
   assert.deepEqual(plain(sys().notes.stages.items), { state: 'todo', confirmedAt: null });
-  assert.equal(pill().textContent, 'まだ ▾');
+  assert.equal(pill().textContent, '未着手 ▾');
   assert.equal(stateText(), 'まだ始めていません。');
   click(pill());
   assert.deepEqual(menu().map((m) => m[0]), ['done', 'skipped']);
@@ -326,7 +326,7 @@ test('進み具合: メニューで押すと進み具合が変わる（確認済
   assert.equal(sys().notes.stages.items.state, 'skipped');
 });
 
-test('進み具合: AI が書いて描き直しても、開いているメニューの中のフォーカスは同じ項目に戻る。その項目がなくなったら進み具合のボタンへ（終わりの見直し A の Minor 5）', async (t) => {
+test('進捗: AI が書いて描き直しても、開いているメニューの中のフォーカスは同じ項目に戻る。その項目がなくなったら進捗のボタンへ（終わりの見直し A の Minor 5）', async (t) => {
   const { app, api, pill, menu, menuItem, call } = await boot(t);
   click(pill());
   menuItem('skipped').focus();
@@ -378,11 +378,11 @@ test('表: まだ決まっていないこと（開いている札の段階だけ
     [['TEXTAREA', 1], ['TEXTAREA', 1], ['TEXTAREA', 1], ['TEXTAREA', 1]]);
   assert.deepEqual($$('#sys-view .nt-qs [data-action="sys-note-del-q"]').map((b) => [b.dataset.id, b.textContent]), [['nq-1', '✕'], ['nq-3', '✕'], ['nq-4', '✕']]);
   assert.match($('#sys-view [data-action="sys-note-del-q"]').title, /^この行を削除/);
-  assert.equal($('#sys-view [data-action="sys-note-add-q"]').textContent, '＋ まだ決まっていないことを足す');
+  assert.equal($('#sys-view [data-action="sys-note-add-q"]').textContent, '＋ まだ決まっていないことを追加する');
   assert.deepEqual($$('#sys-view .nt-ds th').map((th) => th.textContent), ['日付', '段階', '決めたこと', '理由', '']);
   assert.deepEqual(dRows(), [['nd-3', '2026-10-19', '③', '経費精算は、出張申請と別の画面設計にする', '精算は経理が確かめ、出張のない経費も入るため']]);
   assert.deepEqual($$('#sys-view [data-action="sys-note-del-d"]').map((b) => b.dataset.id), ['nd-3']);
-  assert.equal($('#sys-view [data-action="sys-note-add-d"]').textContent, '＋ 決めたことを足す');
+  assert.equal($('#sys-view [data-action="sys-note-add-d"]').textContent, '＋ 決めたことを追加する');
   click(tab('read'));
   assert.deepEqual(heads().slice(1, 3), [['まだ決まっていないこと（①）', 'なし（決まったもの 1 つ）'], ['決めたことと理由（①）', '1 つ']]);
   assert.deepEqual(qRows(), [['nq-2', '①', '海外出張も、このシステムで申請するか', '国内だけにする', '10/19 に決まった', true]]);
@@ -608,8 +608,8 @@ test('描き直してもフォーカスは同じ行の同じ欄に戻る（行�
   const el = field('note-q-text', 'nq-3');
   el.focus();
   el.setSelectionRange(2, 5);
-  ok(await call('update_notes', { system: 'y-trip', ops: [{ op: 'add_question', stage: 'items', text: 'AI が足した問い' }] }));
-  assert.deepEqual(qRows().map((r) => r[2]).slice(0, 3), ['宿泊費の上限を、役職で変えるか', '「出張の目的」の欄を、必ず書く欄にするか', 'AI が足した問い'], '真ん中を描き直した');
+  ok(await call('update_notes', { system: 'y-trip', ops: [{ op: 'add_question', stage: 'items', text: 'AI が追加した問い' }] }));
+  assert.deepEqual(qRows().map((r) => r[2]).slice(0, 3), ['宿泊費の上限を、役職で変えるか', '「出張の目的」の欄を、必ず書く欄にするか', 'AI が追加した問い'], '真ん中を描き直した');
   const now = app.document.activeElement;
   assert.notEqual(now, el, '作り直した欄');
   assert.deepEqual([now.tagName, now.dataset.sy, now.dataset.note, now.selectionStart, now.selectionEnd], ['TEXTAREA', 'note-q-text', 'nq-3', 2, 5], '行の欄の textarea でも戻る');
@@ -640,7 +640,7 @@ test('紫の帯の「開く」: 設計ノートだけを直したときは設計
   ok(await call('set_stage', { system: 'y-trip', stage: 'items', state: 'done' }));
   assert.equal($('#ai-band [data-action="ai-open-system"]'), null);
   const open = $('#ai-band [data-action="ai-open-system-notes"]');
-  assert.deepEqual([open.textContent, open.dataset.id], ['開く', 'y-trip']);
+  assert.deepEqual([open.textContent, open.dataset.id], ['このシステムを開く', 'y-trip']);
   click(open);
   assert.deepEqual([api.ui.view, api.ui.systemId, api.ui.sysPanel], ['system', 'y-trip', 'notes']);
   // 設計ノートを直した後に中身も直した（同じ帯）: 前に開いていた入口で開く

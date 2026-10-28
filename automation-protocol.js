@@ -18,8 +18,8 @@ const AUTOMATION_FILE = 'automation.json';
 const MAX_LINE_BYTES = 16 * 1024 * 1024; // 1 行の大きさの上限（画面の画像の返事が入る大きさ）
 // 時間切れの文（main の automation.js と入口の automation-client.js で同じ）。時間切れにした頼みも、アプリの中では遅れて実行されて
 // 変更が入ることがあるので、AI が頼み直して 2 回入らないように、読む道具で確かめてから頼み直すよう伝える（デバッグとリリースの見直し④-3）
-const TIMEOUT_MESSAGE = 'アプリが時間内に応えませんでした（時間切れ）。書く頼みは、遅れて実行されて変更が入ったかもしれません。'
-  + '頼み直す前に、読む道具（list_designs・get_design など）で今の中身を確かめてください。';
+const TIMEOUT_MESSAGE = 'アプリが時間内に応えませんでした（時間切れ）。書く依頼は、遅れて実行されて変更が入ったかもしれません。'
+  + '依頼し直す前に、読むツール（list_designs・get_design など）で今の中身を確かめてください。';
 const SOCKET_PATH_MAX = 100; // Unix ソケットの道の長さの上限（Linux 107・macOS 103 バイト）より少し短く
 
 // パイプの道。Windows 以外で dir の中の道が長すぎるときは、一時フォルダに置く（長いと listen できないため）

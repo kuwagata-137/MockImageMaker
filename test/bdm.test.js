@@ -292,17 +292,17 @@ test('bdmPlan — グループ枠（group_box）と補足情報（supplement）'
   const g = (id, text, x, y, w, h) => box(id, 'group_box', x, y, w, h, text, '__virtual__');
   await t.test('グループ枠は作業にしない。中にある作業のメモに枠の名前を書く（外の作業には書かない）', () => {
     const plan = bdmPlan(swim([g('g1', 'A 部門', 20, 80, 300, 200), box('n1', 'rect', 30, 100, 120, 40, '中', 'L1'), box('n2', 'rect', 400, 100, 120, 40, '外', 'L2')]));
-    assert.deepEqual(plan.steps.map((s) => [s.key, s.memo]), [['n1', '枠: A 部門'], ['n2', '']]);
+    assert.deepEqual(plan.steps.map((s) => [s.key, s.memo]), [['n1', 'MPD のグループ枠: A 部門'], ['n2', '']]);
   });
   await t.test('枠が入れ子なら、外の枠から順に書く', () => {
     const plan = bdmPlan(swim([g('in', 'A 部門', 20, 80, 300, 200), g('out', 'B 部門', 0, 60, 600, 400), box('n1', 'rect', 30, 100, 120, 40, '中', 'L1')]));
-    assert.equal(plan.steps[0].memo, '枠: B 部門・A 部門');
+    assert.equal(plan.steps[0].memo, 'MPD のグループ枠: B 部門・A 部門');
   });
   await t.test('グループ枠につながる矢印は外し、warnings に書く', () => {
     const plan = bdmPlan(swim([g('g1', 'A 部門', 20, 80, 300, 200), box('n1', 'rect', 30, 100, 120, 40, '中', 'L1'), box('n2', 'rect', 30, 300, 120, 40, '次', 'L1')],
       [edge('e1', 'n1', 'g1'), edge('e2', 'g1', 'n2'), edge('e3', 'n1', 'n2')]));
     assert.deepEqual(plan.edges, [{ from: 'n1', to: 'n2', label: '' }]);
-    assert.equal(plan.warnings.filter((w) => /グループ枠/.test(w)).length, 2);
+    assert.equal(plan.warnings.filter((w) => /MPD のグループ枠/.test(w)).length, 2);
   });
   await t.test('補足情報は作業にせず、矢印でつながる作業のメモに文字を足す（矢印の向きは問わない）', () => {
     const plan = bdmPlan(swim([box('s', 'supplement', 30, 160, 130, 40, '社内の旅費規程を参照', 'L1'), box('n1', 'rect', 30, 100, 120, 40, '申請', 'L1'),
@@ -320,7 +320,7 @@ test('bdmPlan — グループ枠（group_box）と補足情報（supplement）'
     const plan = bdmPlan(swim([box('s', 'supplement', 30, 160, 130, 40, '迷子', 'L1'), box('n1', 'rect', 30, 100, 120, 40, '申請', 'L1')]));
     assert.equal(plan.steps.length, 1);
     assert.equal(plan.steps[0].memo, '');
-    assert.ok(plan.warnings.some((w) => /迷子/.test(w) && /つながる作業がない/.test(w)), plan.warnings.join('|'));
+    assert.ok(plan.warnings.some((w) => /迷子/.test(w) && /接続している工程がない/.test(w)), plan.warnings.join('|'));
   });
   await t.test('箱にしなかった物は、列の数にも矢印の数にも入らない', () => {
     const plan = bdmPlan(swim([g('g1', 'A', 0, 0, 600, 600), box('s', 'supplement', 30, 500, 130, 40, '補', 'L1'), box('n1', 'rect', 30, 100, 120, 40, '申請', 'L1')], [edge('e1', 'n1', 's')]));
@@ -447,7 +447,7 @@ test('bdmPlan — 矢印', async (t) => {
   await t.test('つなぐ箱がない矢印・形の違う矢印は外す', () => {
     const plan = two([edge('e1', 'a', 'zzz'), edge('e2', 'zzz', 'b'), null, 'x', { id: 'e5' }, edge('e6', 'a', 'b')]);
     assert.deepEqual(plan.edges, [{ from: 'a', to: 'b', label: '' }]);
-    assert.equal(plan.warnings.filter((w) => /つなぐ箱が見つからない/.test(w)).length, 3);
+    assert.equal(plan.warnings.filter((w) => /接続するシェイプが見つからない/.test(w)).length, 3);
   });
   await t.test('矢印がない（edges がない）図も読める', () => {
     assert.deepEqual(bdmPlan({ ...swim([box('a', 'rect', 30, 100, 100, 40, 'あ', 'L1')]), edges: undefined }).edges, []);
@@ -478,7 +478,7 @@ test('bdmPlan — 箱の読み方（key・src・形の違う箱）', async (t) =
     const plan = bdmPlan(swim([]));
     assert.deepEqual(plan.steps, []);
     assert.deepEqual(plan.roles, ['申請者', '上長', '経理']);
-    assert.deepEqual(plan.warnings, ['図に作業の箱がありません。']);
+    assert.deepEqual(plan.warnings, ['図に工程がありません。']);
   });
 });
 
@@ -560,14 +560,14 @@ test('実際の BDM の HTML（参考/diagram_v8.31.html の </head> の前に�
     const blank = { diagramType: 'swimlane', orientation: 'vertical', lanes: [], nodes: [], edges: [], uid: 0, diagramName: '', appVer: '8.31' };
     const plan = planFromHtml(writeHtml('blank-real.html', blank));
     assert.deepEqual([plan.roles, plan.steps, plan.edges], [[], [], []]);
-    assert.deepEqual(plan.warnings, ['図に作業の箱がありません。']);
+    assert.deepEqual(plan.warnings, ['図に工程がありません。']);
   });
   await t.test('白紙の図を保存した HTML（箱が 0 個・レーンだけ）は、空の図（steps が空）として読める', () => {
     const blank = { diagramType: 'swimlane', orientation: 'vertical', lanes: [lane('e1', 'レーン1'), lane('e2', 'レーン2'), lane('e3', 'レーン3')], nodes: [], edges: [], uid: 3, diagramName: '', appVer: '8.31' };
     const plan = planFromHtml(writeHtml('blank.html', blank));
     assert.deepEqual(plan.roles, ['レーン1', 'レーン2', 'レーン3']);
     assert.deepEqual(plan.steps, []);
-    assert.deepEqual(plan.warnings, ['図に作業の箱がありません。']);
+    assert.deepEqual(plan.warnings, ['図に工程がありません。']);
   });
   await t.test('読めない図の種類（ガントチャート）を保存した HTML は unsupported', () => {
     const html = writeHtml('gantt.html', { ...TRIP, diagramType: 'gantt' });

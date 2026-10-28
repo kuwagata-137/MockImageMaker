@@ -46,7 +46,7 @@ function readBoxes(rawNodes, vertical, warnings) {
     if (!id || boxes.has(id)) skipped += 1;
     else boxes.set(id, readBox(id, node, vertical));
   }
-  if (skipped) warnings.push(`箱として読めない物が ${skipped} 個ありました（形が違う・id がない・id が重なる）。読み込みませんでした。`);
+  if (skipped) warnings.push(`シェイプとして読めない物が ${skipped} 個ありました（形が違う・id がない・id が重なる）。読み込みませんでした。`);
   return boxes;
 }
 
@@ -70,7 +70,7 @@ function memoOf(box, notes, ctx) {
   const span = CROSSLANE_TYPES.has(box.type) ? spanRoles(ctx.laneMap, box.node) : [];
   if (span.length > 1) lines.push(`またがるレーン: ${span.join('・')}`);
   const frames = groupNamesOf(box, ctx.groups);
-  if (frames.length) lines.push(`枠: ${frames.join('・')}`);
+  if (frames.length) lines.push(`MPD のグループ枠: ${frames.join('・')}`);
   for (const text of ctx.supplementsOf.get(box.id) || []) lines.push(`補足: ${text}`);
   return lines.join('\n');
 }
@@ -90,7 +90,7 @@ function makeStep(box, ctx) {
 
 // 図の中身 → スイムレーン図の案。読めない図の種類は unsupported・中身が使えない形は read_failed
 function bdmPlan(state) {
-  if (!isObject(state) || !Array.isArray(state.nodes)) throw new MaterialError('read_failed', '図の中身に箱の一覧（nodes）がありません。');
+  if (!isObject(state) || !Array.isArray(state.nodes)) throw new MaterialError('read_failed', '図の中身にシェイプの一覧（nodes）がありません。');
   const info = diagramInfo(state.diagramType);
   const vertical = (state.orientation || 'vertical') === 'vertical'; // BDM の isV()
   const warnings = [];
@@ -104,7 +104,7 @@ function bdmPlan(state) {
     groups: [...boxes.values()].filter((b) => b.type === GROUP_TYPE),
   };
   const steps = stepBoxes.map((box) => makeStep(box, ctx));
-  if (!steps.length) warnings.push('図に作業の箱がありません。');
+  if (!steps.length) warnings.push('図に工程がありません。');
   return {
     diagramType: info.key,
     diagramName: cleanText(state.diagramName),

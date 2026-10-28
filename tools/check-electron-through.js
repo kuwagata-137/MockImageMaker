@@ -89,9 +89,9 @@ async function dumpPage(page) {
     const parts = [...document.querySelectorAll('#stage .part')].map((el) => {
       const r = el.getBoundingClientRect();
       const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return `部品 ${el.dataset.partId.slice(0, 6)} ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}×${Math.round(r.height)} 真ん中の上: ${top ? top.className || top.tagName : 'なし'}（${top && top.closest('.part') ? top.closest('.part').dataset.partId.slice(0, 6) : '-'}）`;
+      return `アイテム ${el.dataset.partId.slice(0, 6)} ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}×${Math.round(r.height)} 真ん中の上: ${top ? top.className || top.tagName : 'なし'}（${top && top.closest('.part') ? top.closest('.part').dataset.partId.slice(0, 6) : '-'}）`;
     });
-    return [`窓の大きさ ${innerWidth}×${innerHeight}`, ...parts, 'ui: ' + ui,'窓: ' + pick('.modal'), 'お知らせ: ' + pick('#toast'), '右の欄:', pick('#side-panel'), 'システムの右の欄:', pick('#sys-side')].join('\n');
+    return [`窓の大きさ ${innerWidth}×${innerHeight}`, ...parts, 'ui: ' + ui,'窓: ' + pick('.modal'), 'お知らせ: ' + pick('#toast'), '右のパネル:', pick('#side-panel'), 'システムの右のパネル:', pick('#sys-side')].join('\n');
   });
   fs.writeFileSync(path.join(BASE, 'failed.txt'), text);
 }

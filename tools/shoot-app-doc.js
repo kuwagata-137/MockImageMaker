@@ -51,7 +51,7 @@ async function buildSample() {
     { op: 'add_decision', stage: 'read', text: '役割は、申請者・上長・経理の 3 つにする', reason: '旅費規程の第 5 条と、出張申請書の承認の欄から' },
     { op: 'add_decision', stage: 'flow', text: '承認は上長の 1 段にする', reason: '理念の「現場の手間を減らす」から' },
     { op: 'add_decision', stage: 'items', text: '経費精算は、出張申請と別の画面設計にする', reason: '精算は経理が確かめ、出張のない経費も入るため' },
-    { op: 'add_decision', stage: 'docs', text: '説明書を出力した', reason: 'C:\\Users\\user\\Documents\\モックイメージメーカー\\AI の出力\\出張申請システム_説明書.pdf' },
+    { op: 'add_decision', stage: 'docs', text: 'システム設計書を出力した', reason: 'C:\\Users\\user\\Documents\\モックイメージメーカー\\AI の出力\\出張申請システム_システム設計書.pdf' },
   ] });
   const qRead = w.added.filter((a) => a.op === 'add_question')[2].id;
   await call('update_notes', { system: main, ops: [{ op: 'answer_question', id: qRead, answer: '国内だけにする（総務に確かめた）' }] });
@@ -85,11 +85,11 @@ async function shootDialogs(ctx, page, ids) {
   await page.click('#sys-menu-root [data-action="sys-export-doc"]');
   await page.waitForSelector('.modal [data-dpage]');
   let d = await readDialog(page);
-  need(d.title === '「出張申請システム」の説明書を出力' && d.buttons.join() === '出力…,キャンセル', `窓の題・ボタンの並びが違う: ${d.title} ／ ${d.buttons.join()}`);
+  need(d.title === '「出張申請システム」のシステム設計書を出力する' && d.buttons.join() === 'システム設計書を出力…,キャンセル', `窓の題・ボタンの並びが違う: ${d.title} ／ ${d.buttons.join()}`);
   need(d.pages.length === 8 && d.pages.every(([, on, off]) => on && !off), `最初は 8 つの印が全部入って押せるはず: ${JSON.stringify(d.pages)}`);
   need(/入っている画面設計 2 つ（出張申請・経費精算）/.test(d.note), `窓の説明の文が違う: ${d.note}`);
   await sleep(150);
-  await ctx.shot(page, '158_説明書_システムの画面のメニューバーの「出力」と説明書の窓');
+  await ctx.shot(page, '158_システム設計書_システムの画面のツールバーの「出力」と説明書の窓');
   // 説明書を出力する（161〜163 で撮る PDF のページ）
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForFunction(() => window.__xp.some((x) => x[0] === 'pdf'), { timeout: 30000 });
@@ -99,8 +99,8 @@ async function shootDialogs(ctx, page, ids) {
   await page.click(`.sys-block [data-action="sys-menu"][data-id="${ids.main}"]`);
   await sleep(150);
   const items = await page.evaluate(() => [...document.querySelectorAll('.sys-pop [role="menuitem"]')].map((b) => b.textContent));
-  need(items.join() === '名前と説明の変更…,説明書を出力…,削除（ごみ箱へ移す）', `システムの「…」のメニューが違う: ${items.join()}`);
-  await ctx.shot(page, '159_説明書_最初の画面のシステムの「…」の「説明書を出力…」');
+  need(items.join() === 'このシステムの名前と説明を変更する…,システム設計書を出力…,このシステムを削除する（ごみ箱へ移す）', `システムの「…」のメニューが違う: ${items.join()}`);
+  await ctx.shot(page, '159_システム設計書_最初の画面のシステムの「…」の「システム設計書を出力…」');
   await page.keyboard.press('Escape');
   // 160: 作業の箱がなく、設計ノートに行がないシステム（経費精算システム）の窓
   await page.evaluate((id) => window.__test__.openSystem(id), ids.other);
@@ -110,16 +110,16 @@ async function shootDialogs(ctx, page, ids) {
   await page.waitForSelector('.modal [data-dpage]');
   d = await readDialog(page);
   const off = d.pages.filter(([, , dis]) => dis).map(([k, , , why]) => `${k}:${why}`);
-  need(off.join() === 'swimlane:作業の箱がないので、出しません,notes:設計ノートに行がないので、出しません', `押せない印と理由が違う: ${off.join()}`);
+  need(off.join() === 'swimlane:工程がないので、出しません,notes:設計ノートに行がないので、出しません', `押せない印と理由が違う: ${off.join()}`);
   await sleep(150);
-  await ctx.shot(page, '160_説明書_押せない印のある窓（作業の箱なし・設計ノートの行なし）');
+  await ctx.shot(page, '160_システム設計書_押せない印のある窓（作業の箱なし・設計ノートの行なし）');
   await page.click('.modal [data-dlg="cancel"]');
 }
 
 // 161〜163: 出力した PDF のページ（印刷用の HTML を別のページに描いて撮る）
 async function shootPages(ctx, page) {
   const pdf = await page.evaluate(() => window.__xp.find((x) => x[0] === 'pdf')[1]);
-  need(pdf.name === '出張申請システム_説明書.pdf', `ファイルの名前が違う: ${pdf.name}`);
+  need(pdf.name === '出張申請システム_システム設計書.pdf', `ファイルの名前が違う: ${pdf.name}`);
   const doc = await ctx.browser.newPage();
   await doc.setViewport({ width: 1200, height: 900 });
   await doc.setContent(pdf.html, { waitUntil: 'load' });
@@ -133,14 +133,14 @@ async function shootPages(ctx, page) {
       roles: pgs[0].querySelectorAll('.cv-revs tbody tr').length,
       swim: (pgs[1].querySelector('.pg-head h2') || {}).textContent, boxes: pgs[1].querySelectorAll('.mnode').length,
       notes: (last.querySelector('.pg-head h2') || {}).textContent, tables: last.querySelectorAll('table.xp-itable').length, done: last.querySelectorAll('tr.done').length,
-      docsRow: document.body.textContent.includes('説明書を出力した'),
+      docsRow: document.body.textContent.includes('システム設計書を出力した'),
     };
   });
-  need(facts.kicker === 'システムの説明書' && facts.share.join() === '経費精算システムでも使っている' && facts.roles === 3, `システムの表紙が違う: ${JSON.stringify(facts)}`);
+  need(facts.kicker === 'システム設計書' && facts.share.join() === '経費精算システムでも使っている' && facts.roles === 3, `システムの表紙が違う: ${JSON.stringify(facts)}`);
   need(facts.swim === 'スイムレーン図' && facts.boxes === 7, `スイムレーン図のページが違う: ${facts.swim}・箱 ${facts.boxes}`);
   need(facts.notes === '設計ノート' && facts.tables === 2 && facts.done === 1 && !facts.docsRow, `設計ノートのページが違う: ${JSON.stringify(facts)}`);
   const pages = await doc.$$('body > .pg');
-  const shots = [[0, '161_説明書_PDF_システムの表紙'], [1, '162_説明書_PDF_スイムレーン図のページ'], [pages.length - 1, '163_説明書_PDF_設計ノートのページ']];
+  const shots = [[0, '161_システム設計書_PDF_システムの表紙'], [1, '162_システム設計書_PDF_スイムレーン図のページ'], [pages.length - 1, '163_システム設計書_PDF_設計ノートのページ']];
   for (const [i, label] of shots) {
     const file = path.join(ctx.OUT, `v${ctx.VERSION}_${label}.png`);
     await pages[i].screenshot({ path: file });

@@ -23,7 +23,7 @@ async function boot() {
 }
 const tablePart = (r) => r.parts.find((p) => p.type === 'table');
 
-test('layout: テーブルに列名で見本の値を書くと、列の id ごとに入り、値の数に合わせて行を増やす。get_screen で列名ごとに読める', async () => {
+test('layout: テーブルに列名でサンプル値を書くと、列の id ごとに入り、値の数に合わせて行を増やす。get_screen で列名ごとに読める', async () => {
   const { app, T, call, part } = await boot();
   await call('layout_screen', { design: 'd1', screen: 's2', layout: { rows: [[{
     item: '明細', type: 'table', tableKind: 'subtable', props: { columns: [{ name: '品名' }, { name: '数量', type: 'number' }] },
@@ -39,18 +39,18 @@ test('layout: テーブルに列名で見本の値を書くと、列の id ご�
   app.close();
 });
 
-test('edit_parts: レコード一覧に見本の値を書ける。列を書き直しても、同じ名前の列の見本の値は残る', async () => {
+test('edit_parts: レコード一覧にサンプル値を書ける。列を書き直しても、同じ名前の列のサンプル値は残る', async () => {
   const { app, call, part } = await boot();
   await call('layout_screen', { design: 'd1', screen: 's2', layout: { rows: [[{ type: 'table', tableKind: 'records', props: { columns: ['顧客コード', '顧客名'] } }]] } });
   await call('edit_parts', { design: 'd1', screen: 's2', ops: [{ op: 'update', part: 1, samples: { 顧客名: ['株式会社サンプル', '見本商事'] } }] });
   await call('edit_parts', { design: 'd1', screen: 's2', ops: [{ op: 'update', part: 1, props: { columns: ['顧客名', '区分'] } }] });
   const g = await call('get_screen', { design: 'd1', screen: 's2' });
   assert.deepEqual(tablePart(g).samples, { 顧客名: ['株式会社サンプル', '見本商事'] });
-  assert.equal(part(1).view.rows, 3, '値が見本の行の数より少ないときは、行の数を変えない');
+  assert.equal(part(1).view.rows, 3, '値がサンプルの行数より少ないときは、行の数を変えない');
   app.close();
 });
 
-test('samples の断り: 表でない部品・ない列・20 行を超える値', async () => {
+test('samples の断り: 表でないアイテム・ない列・20 行を超える値', async () => {
   const { app, raw, call } = await boot();
   await call('layout_screen', { design: 'd1', screen: 's2', layout: { rows: [[{ type: 'table', tableKind: 'records', props: { columns: ['顧客名'] } }], [{ item: '顧客名' }]] } });
   const ng = async (op) => {

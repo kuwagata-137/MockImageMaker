@@ -141,13 +141,13 @@ test('edit_items: ステータスの項目の操作（actions）は edit_process
   assert.deepEqual([s.states, s.actions], [['申請', '承認待ち', '承認済み'], 2]);
   const cat = ok(await call('get_catalog'));
   assert.match(cat.parts.find((p) => p.type === 'status').itemProps.states, /edit_process/);
-  assert.match(cat.parts.find((p) => p.type === 'button').props.to, /移る先/);
+  assert.match(cat.parts.find((p) => p.type === 'button').props.to, /移動先/);
   assert.match(cat.parts.find((p) => p.type === 'link').props.designId, /画面設計/);
   app.close();
 });
 
 // ── get_flow ──
-test('get_flow: ステータスと操作（名前で）・画面・ボタンとリンクの文字の移る先・ほかの画面設計から移ってくるもの', async () => {
+test('get_flow: ステータスと操作（名前で）・画面・ボタンとリンクの移動先・ほかの画面設計から移ってくるもの', async () => {
   const { app, call, d } = await boot();
   const r = ok(await call('get_flow', { design: '顧客管理' }));
   assert.deepEqual(r.design, { id: 'd1', name: '顧客管理', updatedAt: d('d1').updatedAt });
@@ -170,9 +170,9 @@ test('get_flow: ステータスと操作（名前で）・画面・ボタンと�
   app.close();
 });
 
-test('get_flow: 大きいときは 操作・移る先・移ってくるもの の順に分けて nextCursor を付ける（どのページも目安の 24,000 字に収まる）', async () => {
+test('get_flow: 大きいときは 操作・移動先・移ってくるもの の順に分けて nextCursor を付ける（どのページも目安の 24,000 字に収まる）', async () => {
   const st = flowState();
-  st.designs[0].screens[1].parts = Array.from({ length: 300 }, (_, i) => movePart(`lx${i}`, 'link', 32, 64 + i * 32, null, `新規登録の画面へ移るリンクの文字の見本 ${i}`, { to: 'screen', screenId: 's1' }));
+  st.designs[0].screens[1].parts = Array.from({ length: 300 }, (_, i) => movePart(`lx${i}`, 'link', 32, 64 + i * 32, null, `新規登録の画面へ移るリンクの見本 ${i}`, { to: 'screen', screenId: 's1' }));
   const { app, call } = await boot(st);
   const pages = [];
   let cursor = null;
@@ -191,7 +191,7 @@ test('get_flow: 大きいときは 操作・移る先・移ってくるもの �
 });
 
 // ── get_view_image ──
-test('get_view_image: つながりの図・ステータスの移り方の図・画面の移り方の図を、PNG にする文書で返す。ステータスの項目がなければ断る', async () => {
+test('get_view_image: 関連図・ステータスの流れの図・画面遷移図の図を、PNG にする文書で返す。ステータスの項目がなければ断る', async () => {
   const { app, call } = await boot();
   const p = await call('get_view_image', { design: '顧客管理', view: 'process' });
   assert.equal(p.ok, true);
@@ -218,7 +218,7 @@ test('get_view_image: つながりの図・ステータスの移り方の図・�
 });
 
 // ── to（移る先）──
-test('to: ボタンとリンクの文字の移る先を、この画面設計の画面・ほかの画面設計の画面・URL・null（なし）で書く。「押したとき」の文は書き換えない', async () => {
+test('to: ボタンとリンクの移動先を、この画面設計の画面・ほかの画面設計の画面・URL・null（なし）で書く。「押したとき」の文は書き換えない', async () => {
   const { app, call, d } = await boot();
   const r = ok(await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [
     { align: 'right', parts: [
@@ -256,7 +256,7 @@ test('to: ボタンとリンクの文字の移る先を、この画面設計の�
 });
 
 // ── 見直し（第 8 段階）で見つけた不具合 ──
-test('props の designId・screenId: 片方だけ書いても、もう片方は部品の今の移る先に合わせる（画面は今の画面設計の中で探す・画面設計を変えたら画面は外す）', async () => {
+test('props の designId・screenId: 片方だけ書いても、もう片方はアイテムの今の移動先に合わせる（画面は今の画面設計の中で探す・画面設計を変えたら画面は外す）', async () => {
   const st = flowState();
   st.designs[1].screens.push(screen('s-d2b', '受注の入力'));
   const { app, call, d } = await boot(st);
@@ -285,7 +285,7 @@ test('edit_items・layout_screen: ステータスの並び（states）の同じ�
   app.close();
 });
 
-test('edit_screen の delete: ほかの画面設計の移る先も外れるときは、その画面設計にも「AI が直す前の状態」の行を残し、返事で知らせる', async () => {
+test('edit_screen の delete: ほかの画面設計の移動先も外れるときは、その画面設計にも「AI が変更する前の状態」の行を残し、返事で知らせる', async () => {
   const st = flowState();
   st.designs[2].screens[0].parts.push(movePart('l8', 'link', 32, 64, 1, '申請へ', { to: 'screen', designId: 'd1', screenId: 's1' }));
   const { app, call, d } = await boot(st);
@@ -296,21 +296,21 @@ test('edit_screen の delete: ほかの画面設計の移る先も外れると�
     assert.equal(linkIn(x, id === 'd2' ? 'l9' : 'l8').props.screenId, '');
     const row = x.revisions.find((rv) => rv.kind === 'ai');
     assert.ok(row, `${x.name} に直す前の行がない`);
-    assert.equal(row.note, 'Claude Code が直す前の状態');
+    assert.equal(row.note, 'Claude Code が変更する前の状態');
     assert.equal(linkIn(row.snapshot, id === 'd2' ? 'l9' : 'l8').props.screenId, 's1');
   });
   assert.ok(r.warnings.some((w) => /「受注管理」1 個・「出張申請」1 個/.test(w)), JSON.stringify(r.warnings));
   app.close();
 });
 
-test('get_view_image: ごみ箱にある画面設計のつながりの図は、箱のない画像を返さずに断る（ステータスの移り方・画面の移り方は描ける）', async () => {
+test('get_view_image: ごみ箱にある画面設計の関連図は、箱のない画像を返さずに断る（ステータスの流れ・画面遷移図は描ける）', async () => {
   const { app, call } = await boot();
   ng(await call('get_view_image', { design: '出張申請', view: 'map' }), 'trashed');
   ok(await call('get_view_image', { design: '出張申請', view: 'screenflow' }));
   app.close();
 });
 
-test('to: まだない画面を移る先に書くと、「先に add_screen で作ってから」と添えて断る（Claude Code から試したとき、AI がこれから作る画面を書いて断られた）', async () => {
+test('to: まだない画面を移動先に書くと、「先に add_screen で作ってから」と添えて断る（Claude Code から試したとき、AI がこれから作る画面を書いて断られた）', async () => {
   const { app, call } = await boot();
   const e = ng(await call('layout_screen', { design: 'd1', screen: '一覧', layout: { rows: [[{ type: 'button', label: '詳細へ', to: '詳細' }]] } }), 'not_found');
   assert.match(e.message, /「詳細」という「顧客管理」の画面は見つかりません/);

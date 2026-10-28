@@ -75,12 +75,12 @@ function makeTwoVersions(api) {
   api.actions.movePart('d1', 's1', 'p3', { x: 400, y: 64, w: 480, h: 64 }); // 大きさ変更
   api.actions.deletePart('d1', 's1', 'p4'); // 削除
   const added = api.actions.addPart('d1', 's1', 'date', { x: 32, y: 400 }); // 追加
-  const r2 = api.actions.addRevision('d1', { note: '日付を足した。' });
+  const r2 = api.actions.addRevision('d1', { note: '日付を追加した。' });
   return { r1, r2, added };
 }
 
 // ── 改訂する ──
-test('改訂する: 版の番号・日付・変えた内容と、revisions を除いた写しを残す。カードの「最新の版」は第 1 版', async (t) => {
+test('改訂する: 版の番号・日付・改訂内容と、revisions を除いた写しを残す。カードの「最新の版」は第 1 版', async (t) => {
   const { api } = await bootSample(t);
   const id = api.actions.addRevision('d1', { note: '  最初の版。  ' });
   const d = d1(api);
@@ -90,7 +90,7 @@ test('改訂する: 版の番号・日付・変えた内容と、revisions を�
   assert.equal(r.kind, 'revision');
   assert.equal(r.no, 1);
   assert.equal(r.note, '最初の版。', '前後の空白を取る');
-  assert.equal(r.changes, null, '第 1 版には変更内容の一覧がない');
+  assert.equal(r.changes, null, '第 1 版には変更点の一覧がない');
   assert.equal(r.baseNo, null);
   assert.equal(r.snapshot.revisions, undefined, '写しに改訂履歴は入れない');
   assert.deepEqual(r.snapshot.screens, plain(d.screens));
@@ -105,7 +105,7 @@ test('改訂する: 版の番号・日付・変えた内容と、revisions を�
   assert.equal(api.revisionLabel(d1(api)), '第 2 版');
 });
 
-test('改訂する: ひとつ前の版と比べて、変更内容の一覧（設定変更・位置変更・大きさ変更・削除・追加・吹き出し）を残す', async (t) => {
+test('改訂する: ひとつ前の版と比べて、変更点の一覧（設定変更・位置変更・大きさ変更・削除・追加・吹き出し）を残す', async (t) => {
   const { api } = await bootSample(t);
   api.actions.updateCallout('d1', 's1', 'k1', { text: '顧客コードは 10 桁。' });
   const { r2, added } = makeTwoVersions(api);
@@ -118,12 +118,12 @@ test('改訂する: ひとつ前の版と比べて、変更内容の一覧（設
   assert.equal(by('顧客名', '位置変更').text, '左 32・上 152 → 左 32・上 240');
   assert.equal(by('区分', '大きさ変更').text, '幅 320・高さ 64 → 幅 480・高さ 64');
   const del = by('郵便番号', '削除');
-  assert.ok(del, '消した部品は「削除」の行');
-  assert.equal(del.no, '（4）', '消した部品の番号は前の版のもの');
+  assert.ok(del, '消したアイテムは「削除」の行');
+  assert.equal(del.no, '（4）', '消したアイテムの番号は前の版のもの');
   assert.equal(del.k, 'del');
   const add = r.changes.find((x) => x.change === '追加' && x.k === 'add' && x.screen === '新規登録');
-  assert.ok(add, '足した部品は「追加」の行');
-  assert.equal(add.text, '日付を足した');
+  assert.ok(add, '足したアイテムは「追加」の行');
+  assert.equal(add.text, '日付を追加した');
   assert.equal(add.no, String(d.screens[0].parts.find((p) => p.id === added).no));
   // 第 1 版の後に吹き出しの文字を変えたので、第 1 版の写しには前の文字がない（改訂する前に変えた）。ここでは第 2 版で変わっていない
   assert.ok(!r.changes.some((x) => /吹き出し/.test(x.name)), '吹き出しは第 1 版から変えていない');
@@ -145,7 +145,7 @@ test('改訂する: 版の番号は付け直さない。いちばん新しい版
   assert.deepEqual(plain(d1(api).revisions.map((r) => r.no)), [1, 3]);
 });
 
-test('改訂する: 書き直す（✎）は版の行の変えた内容と日付だけ。自動の行は書き直さない', async (t) => {
+test('改訂する: 書き直す（✎）は版の行の改訂内容と日付だけ。自動の行は書き直さない', async (t) => {
   const { api } = await bootSample(t);
   const id = api.actions.addRevision('d1', { note: '最初' });
   api.actions.updateRevision('d1', id, { note: '最初の版。見積もりを頼んだ。', day: '2026-09-28' });
@@ -160,7 +160,7 @@ test('改訂する: 書き直す（✎）は版の行の変えた内容と日付
 });
 
 // ── 取り込んだ項目の固定（ロードマップの申し送り）──
-test('写し: ほかのモックから取り込んだ項目は、改訂したときの中身で固定する（元が後で変わっても、写しは変わらない）', async (t) => {
+test('写し: ほかの画面設計から取り込んだ項目は、改訂したときの中身で固定する（元が後で変わっても、写しは変わらない）', async (t) => {
   const { api } = await bootSample(t);
   const id = api.actions.addRevision('d1');
   api.actions.updateItem('d2', 'a1', { props: { maxLen: '10' } });
@@ -183,7 +183,7 @@ test('前の版を見る: 編集の画面を写しで描き、上に黄色い帯
   assert.equal(band.hidden, false);
   assert.match(band.textContent, /第 1 版（.+）を見ています/);
   // 第 1 版の中身（郵便番号の部品がある・日付の部品がない）で描く
-  assert.ok($(app, '#stage .part[data-part-id="p4"]'), '第 1 版にあった部品を描く');
+  assert.ok($(app, '#stage .part[data-part-id="p4"]'), '第 1 版にあったアイテムを描く');
   assert.equal($$(app, '#stage .part').length, 4);
   assert.equal(api.currentDesign().items.find((x) => x.id === 'i1').required, true, '第 1 版では必須');
   // 直せない（mutateDesign が止まる）。メニューバーは拡大縮小などのほかは押せない
@@ -194,14 +194,14 @@ test('前の版を見る: 編集の画面を写しで描き、上に黄色い帯
   assert.equal(api.ui.foldMenu, null);
   assert.ok(!$(app, '#toolbar .rgroup[data-fold="align"]').classList.contains('open'));
   assert.ok(['align', 'items'].every((k) => $(app, `#toolbar .fold-btn[data-fold="${k}"]`).disabled), 'たたんだ組のボタンも押せない');
-  assert.equal($(app, '#side-box').hidden, true, '部品の箱は出さない');
+  assert.equal($(app, '#side-box').hidden, true, 'アイテム一覧は出さない');
   assert.equal(api.store.canUndo(), false);
   assert.equal(api.runCommand('deletePart'), true);
-  assert.match($(app, '#toast').textContent, /前の版を見ている間は、直せません/);
+  assert.match($(app, '#toast').textContent, /前の版を見ている間は、変更できません/);
   // 部品を押すと選べて、右の欄で設定を見られる（欄は押せない）
   api.selectPart('p1');
   assert.ok($$(app, '#side-settings input').length > 0);
-  assert.ok($$(app, '#side-settings input').every((x) => x.disabled), '右の欄の欄は押せない');
+  assert.ok($$(app, '#side-settings input').every((x) => x.disabled), '右のパネルの欄は押せない');
   assert.equal(app.window.localStorage.getItem(STORAGE_KEY), savedBefore, '見ている間は保存しない');
   // 見るのをやめる
   click($(app, '#rv-band [data-action="rev-stop-view"]'));
@@ -235,7 +235,7 @@ test('前の版に戻す: 今の中身を「戻す前の状態」として残し
   assert.ok(api.actions.restoreRevision('d1', r1));
   const d = d1(api);
   assert.equal(d.screens[0].parts.length, 4);
-  assert.ok(d.screens[0].parts.some((p) => p.id === 'p4'), '第 1 版の部品が戻る');
+  assert.ok(d.screens[0].parts.some((p) => p.id === 'p4'), '第 1 版のアイテムが戻る');
   const auto = d.revisions[d.revisions.length - 1];
   assert.equal(auto.kind, 'restore');
   assert.equal(auto.no, null);
@@ -252,7 +252,7 @@ test('前の版に戻す: 今の中身を「戻す前の状態」として残し
   assert.equal(d1(api).revisions.length, 2);
 });
 
-test('前の版に戻す: 取り込んだ項目は、元のモックとつなぎ直して今の中身に合わせる（q43）。元がもうなければ写しの中身で固定する', async (t) => {
+test('前の版に戻す: 取り込んだ項目は、元の画面設計とつなぎ直して今の中身に合わせる（q43）。元がもうなければ写しの中身で固定する', async (t) => {
   const { api } = await bootSample(t);
   const id = api.actions.addRevision('d1');
   api.actions.unlinkItem('d1', 'i4'); // つながりを切った（この画面設計だけの項目になった）
@@ -287,7 +287,7 @@ test('前の版に戻す: 取り込む前の状態（自動の行）からも戻
 });
 
 // ── 違いの判定 ──
-test('違い: 画面の追加・削除と画面の設定、画面に置いていない項目、吹き出しの追加・削除・変更を、変更内容の一覧に出す', async (t) => {
+test('違い: 画面の追加・削除と画面の設定、画面に置いていない項目、吹き出しの追加・削除・変更を、変更点の一覧に出す', async (t) => {
   const { api } = await bootSample(t);
   const base = api.designFromSnapshot(d1(api), { snapshot: plain(d1(api)) });
   api.actions.updateScreen('d1', 's1', { name: '登録', showHeader: false });
@@ -302,14 +302,14 @@ test('違い: 画面の追加・削除と画面の設定、画面に置いてい
   assert.ok(rows.some((x) => x.screen === '画面設計' && /説明：/.test(x.text)));
   const sc = rows.find((x) => x.change === '画面の設定変更');
   assert.match(sc.text, /画面の名前：新規登録 → 登録/);
-  assert.match(sc.text, /帯：あり → なし/);
+  assert.match(sc.text, /ヘッダー：あり → なし/);
   assert.ok(rows.some((x) => x.change === '画面の追加' && x.k === 'add'));
   assert.equal(res.screens[newScreen].isNew, true);
   assert.ok(rows.some((x) => x.screen === 'データベースの項目' && x.change === '追加' && /数値/.test(x.text)));
   assert.ok(rows.some((x) => x.screen === 'データベースの項目' && x.change === '設定変更' && /項目名：備考 → 備考欄/.test(x.text)));
   assert.ok(rows.some((x) => /^吹き出し/.test(x.name) && x.change === '削除'));
   assert.ok(rows.some((x) => /^吹き出し/.test(x.name) && x.change === '追加'));
-  assert.deepEqual(plain(res.counts), { new: 1, chg: 0, del: 1 }, '部品と吹き出しの数（吹き出し 1 つ足して 1 つ消した）');
+  assert.deepEqual(plain(res.counts), { new: 1, chg: 0, del: 1 }, 'アイテムと吹き出しの数（吹き出し 1 つ足して 1 つ消した）');
   // 画面を消すと「画面の削除」
   api.actions.deleteScreen('d1', newScreen);
   api.actions.addScreen('d1', 'blank', 's1');
@@ -319,7 +319,7 @@ test('違い: 画面の追加・削除と画面の設定、画面に置いてい
   assert.ok(api.designDiff(base2, d1(api), api.store.state).rows.some((x) => x.change === '画面の削除'));
 });
 
-test('違い: 何も変えていなければ、変更内容の一覧は空。並べ替え（項目の順）だけでは違いにしない', async (t) => {
+test('違い: 何も変えていなければ、変更点の一覧は空。並べ替え（項目の順）だけでは違いにしない', async (t) => {
   const { api } = await bootSample(t);
   const base = api.designFromSnapshot(d1(api), { snapshot: plain(d1(api)) });
   api.actions.moveItem('d1', 'i5', 0);
@@ -345,7 +345,7 @@ test('メニューバー: 「改訂履歴」ボタンで改訂履歴の窓、▼
   const m = $(app, '.modal');
   assert.match(m.querySelector('h2').textContent, /改訂する/);
   assert.match(m.textContent, /第 1 版/);
-  assert.match(m.textContent, /第 1 版なので、変更内容の一覧はありません/);
+  assert.match(m.textContent, /第 1 版なので、変更点の一覧はありません/);
   m.querySelector('[name="rv-note"]').value = '最初の版。';
   click(m.querySelector('[data-dlg="ok"]'));
   await waitFor(() => d1(api).revisions.length === 1);
@@ -363,12 +363,12 @@ test('メニューバー: 「改訂履歴」ボタンで改訂履歴の窓、▼
   const h = $(app, '.modal');
   assert.match(h.querySelector('h2').textContent, /「顧客管理」の改訂履歴/);
   assert.equal(h.querySelector('[data-dlg="ok"]').hidden, true, '「閉じる」だけの窓');
-  assert.equal(h.querySelector('[data-dlg="cancel"]').textContent, '閉じる');
+  assert.equal(h.querySelector('[data-dlg="cancel"]').textContent, 'このウィンドウを閉じる');
   assert.equal($$(app, '.modal .rv-list tbody tr').length, 1);
   click($(app, '.modal [data-dlg="cancel"]'));
 });
 
-test('改訂履歴の窓: 新しい行が上。件数を押すと変更内容の一覧が開く。見る・戻す・書き直す・消すのボタン', async (t) => {
+test('改訂履歴の窓: 新しい行が上。件数を押すと変更点の一覧が開く。見る・戻す・書き直す・消すのボタン', async (t) => {
   const { app, api } = await bootSample(t);
   api.openDesign('d1');
   const { r1, r2 } = makeTwoVersions(api);
@@ -382,14 +382,14 @@ test('改訂履歴の窓: 新しい行が上。件数を押すと変更内容の
   assert.match(cnt.textContent, /5 件/);
   click(cnt);
   assert.ok($(app, '.modal tr.exp .cg-table'), '一覧が行の下に開く');
-  assert.match($(app, '.modal tr.exp').textContent, /第 1 版からの変更内容/);
+  assert.match($(app, '.modal tr.exp').textContent, /第 1 版からの変更点/);
   click(cnt);
   assert.ok(!$(app, '.modal tr.exp'), 'もう一度押すと閉じる');
   // 書き直す
   click(trs[1].querySelector('[data-rv="edit"]'));
   await tick();
   const e = $(app, '.modal');
-  assert.match(e.querySelector('h2').textContent, /「第 1 版」を書き直す/);
+  assert.match(e.querySelector('h2').textContent, /「第 1 版」の内容と日付を書き換える/);
   e.querySelector('[name="rv-note"]').value = '書き直した。';
   click(e.querySelector('[data-dlg="ok"]'));
   await waitFor(() => d1(api).revisions[0].note === '書き直した。');
@@ -430,7 +430,7 @@ test('改訂履歴の窓: 行を消す確かめの窓。写しのない行の「
   click($(app, '.modal [data-dlg="cancel"]'));
 });
 
-test('複製: 画面設計を複製しても、改訂履歴は写さない（部品の id を付け直すため）', async (t) => {
+test('複製: 画面設計を複製しても、改訂履歴は写さない（アイテムの id を付け直すため）', async (t) => {
   const { api } = await bootSample(t);
   api.actions.addRevision('d1');
   const id = api.actions.duplicateDesign('d1');
@@ -453,14 +453,14 @@ async function exportWith(app, api, kind, revId = null) {
   return { res: await done, box };
 }
 
-test('出力: 版がないときは「違いの印」を押せない。版があれば、比べる版を選べる（新しい版が上）', async (t) => {
+test('出力: 版がないときは「変更マーク」を押せない。版があれば、比べる版を選べる（新しい版が上）', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   api.openExportDialog('d1');
   await tick();
   ['pdf', 'html', 'png'].forEach((k) => {
     const xd = $(app, `.modal [data-xbox="${k}"] [data-xdiff]`);
-    assert.ok(xd, `${k} に違いの印の欄`);
+    assert.ok(xd, `${k} に変更マークの欄`);
     assert.equal(xd.disabled, true);
   });
   assert.match($(app, '.modal [data-xbox="pdf"]').textContent, /まだ版がありません/);
@@ -474,7 +474,7 @@ test('出力: 版がないときは「違いの印」を押せない。版があ
   click($(app, '.modal [data-dlg="cancel"]'));
 });
 
-test('出力（PDF）: 表紙の次に変更内容のページ。画面のページに札・違いの数・削除した部品。表紙の見出しは「改訂履歴」', async (t) => {
+test('出力（PDF）: 表紙の次に変更内容のページ。画面のページに札・違いの数・削除したアイテム。表紙の見出しは「改訂履歴」', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   const { r1 } = makeTwoVersions(api);
@@ -490,29 +490,29 @@ test('出力（PDF）: 表紙の次に変更内容のページ。画面のペー
   const doc = new app.window.DOMParser().parseFromString(call[1].html, 'text/html');
   const pages = [...doc.querySelectorAll('body > .pg')];
   assert.match(pages[0].textContent, /改訂履歴/);
-  assert.match(pages[0].textContent, /第 1 版（.+）からの変更内容/, '表紙の画面の一覧に変更内容のページ');
-  assert.match(pages[1].querySelector('.pg-head h2').textContent, /第 1 版（.+）からの変更内容/);
+  assert.match(pages[0].textContent, /第 1 版（.+）からの変更点/, '表紙の画面の一覧に変更内容のページ');
+  assert.match(pages[1].querySelector('.pg-head h2').textContent, /第 1 版（.+）からの変更点/);
   assert.ok(pages[1].querySelector('.cg-k.del'), '変更内容の表に「削除」');
   const screenPage = pages.find((p) => p.querySelector('.xp-zone'));
-  assert.ok(screenPage.querySelector('.part[data-part-id="p1"] .df-chg'), '設定を変えた部品に「変」');
-  assert.ok(screenPage.querySelector('.part .df-new'), '足した部品に「新」');
+  assert.ok(screenPage.querySelector('.part[data-part-id="p1"] .df-chg'), '設定を変えたアイテムに「変」');
+  assert.ok(screenPage.querySelector('.part .df-new'), '足したアイテムに「新」');
   assert.match(screenPage.querySelector('.df-sum').textContent, /第 1 版（.+）との違い：新 1・変 3・削除 1/);
-  assert.match(screenPage.querySelector('.df-del').textContent, /削除した部品（第 1 版にあって、今はない部品。番号は第 1 版のもの）/);
+  assert.match(screenPage.querySelector('.df-del').textContent, /削除したアイテム（第 1 版にあって、今はないアイテム。番号は第 1 版のもの）/);
   assert.match(screenPage.querySelector('.df-del').textContent, /郵便番号/);
   assert.ok(screenPage.querySelector('.ptable .df-in.df-chg'), '一覧表の番号の前にも札');
 });
 
-test('出力（PNG）: 違いの印を選ぶと、画面ごとの画像に札と削除した部品が入る', async (t) => {
+test('出力（PNG）: 変更マークを選ぶと、画面ごとの画像に札と削除したアイテムが入る', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   const { r1 } = makeTwoVersions(api);
   await exportWith(app, api, 'png', r1);
   const files = xapi.calls.find((c) => c[0] === 'savePng')[1].files;
   assert.match(files[0].html, /class="df df-new"/);
-  assert.match(files[0].html, /削除した部品/);
+  assert.match(files[0].html, /削除したアイテム/);
 });
 
-test('出力（HTML）: 比べる版の写しだけを入れ、開いたときから札と帯（違いの数・変更内容の一覧・印を隠す）。直すと比べ直す', async (t) => {
+test('出力（HTML）: 比べる版の控えだけを入れ、開いたときから札と帯（違いの数・変更点の一覧・印を隠す）。直すと比べ直す', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   const { r2 } = makeTwoVersions(api);
@@ -523,7 +523,7 @@ test('出力（HTML）: 比べる版の写しだけを入れ、開いたとき�
   assert.equal(payload.diffBase.title, '第 2 版');
   assert.ok(payload.diffBase.snapshot.screens);
   assert.ok(payload.data.designs[0].revisions.every((r) => !('snapshot' in r)), 'ほかの行の写しは入れない');
-  assert.ok(Array.isArray(payload.data.designs[0].revisions[1].changes), '変更内容の一覧は入れる');
+  assert.ok(Array.isArray(payload.data.designs[0].revisions[1].changes), '変更点の一覧は入れる');
   // 単体で開く
   const sa = bootApp({ html, url: 'https://localhost/vendor/customer.html' });
   const sapi = await sa.api();
@@ -531,17 +531,17 @@ test('出力（HTML）: 比べる版の写しだけを入れ、開いたとき�
   assert.match($(sa, '#sa-diff').textContent, /第 2 版（.+）との違い：新 0・変 0・削除 0/);
   sapi.actions.updateItem('d1', 'i2', { required: true });
   await waitFor(() => /変 1/.test($(sa, '#sa-diff').textContent));
-  assert.ok($(sa, '#stage .part[data-part-id="p2"] .df-chg'), '直した部品に札');
+  assert.ok($(sa, '#stage .part[data-part-id="p2"] .df-chg'), '直したアイテムに札');
   // 変更内容の一覧
   click($(sa, '[data-action="diff-list"]'));
   await tick();
-  assert.match($(sa, '.modal h2').textContent, /第 2 版（.+）からの変更内容/);
+  assert.match($(sa, '.modal h2').textContent, /第 2 版（.+）からの変更点/);
   assert.match($(sa, '.modal').textContent, /条件：最大 50 文字 → 必須・最大 50 文字/);
   click($(sa, '.modal [data-dlg="cancel"]'));
   // 印を隠す・出す
   click($(sa, '[data-action="diff-toggle"]'));
   assert.ok(!$(sa, '#stage .df'), '札が消える');
-  assert.equal($(sa, '#sa-diff-toggle').textContent, '印を出す');
+  assert.equal($(sa, '#sa-diff-toggle').textContent, '変更マークを表示する');
   click($(sa, '[data-action="diff-toggle"]'));
   assert.ok($(sa, '#stage .df'));
   // 保存し直した HTML にも、比べる版を持ち回る
@@ -555,7 +555,7 @@ test('出力（HTML）: 比べる版の写しだけを入れ、開いたとき�
   click($(sa, '.modal [data-dlg="cancel"]'));
 });
 
-test('出力（HTML）: 違いの印を選ばなければ、写しも帯も入らない', async (t) => {
+test('出力（HTML）: 変更マークを選ばなければ、写しも帯も入らない', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   makeTwoVersions(api);
@@ -565,7 +565,7 @@ test('出力（HTML）: 違いの印を選ばなければ、写しも帯も入�
   assert.ok(!html.includes('"snapshot"'));
 });
 
-test('出力（HTML）: 版の後にルックアップ元の名前を変えても、開いた HTML で「変」にしない（比べる版の写しの名前の控えも今の名前に直す）', async (t) => {
+test('出力（HTML）: 版の後にルックアップ元の名前を変えても、開いた HTML で「変」にしない（比べる版の控えの名前の控えも今の名前に直す）', async (t) => {
   const xapi = fakeExportAPI();
   const state = sampleState();
   state.designs[0].items[0].lookup = { db: { designId: 'd2', name: '住所の共通項目' }, key: { itemId: 'a1', name: '郵便番号' }, copies: [] };
@@ -581,7 +581,7 @@ test('出力（HTML）: 版の後にルックアップ元の名前を変えて�
   assert.ok(!$(sa, '#stage .df'), '札は出ない');
 });
 
-test('出力: 画面の上・右の端にある部品の札は、画面の外で切れないように内側に寄せる', async (t) => {
+test('出力: 画面の上・右の端にあるアイテムの札は、画面の外で切れないように内側に寄せる', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   const r1 = api.actions.addRevision('d1');
@@ -591,13 +591,13 @@ test('出力: 画面の上・右の端にある部品の札は、画面の外で
   await exportWith(app, api, 'pdf', r1);
   const doc = new app.window.DOMParser().parseFromString(xapi.calls.find((c) => c[0] === 'savePdf')[1].html, 'text/html');
   const badge = (id) => doc.querySelector(`.xp-zone .part[data-part-id="${id}"] .df`);
-  assert.ok(badge('p3').classList.contains('df-r'), '右の端の部品の札は内側へ');
-  assert.ok(badge('p1').classList.contains('df-t'), '上の端の部品の札は内側へ');
-  assert.ok(!badge('p2').classList.contains('df-r') && !badge('p2').classList.contains('df-t'), '端でない部品の札はそのまま');
+  assert.ok(badge('p3').classList.contains('df-r'), '右の端のアイテムの札は内側へ');
+  assert.ok(badge('p1').classList.contains('df-t'), '上の端のアイテムの札は内側へ');
+  assert.ok(!badge('p2').classList.contains('df-r') && !badge('p2').classList.contains('df-t'), '端でないアイテムの札はそのまま');
 });
 
 // ── ブラウザで保存しきれないとき ──
-test('保存: ブラウザで保存できなかったときの赤い帯に、改訂履歴の古い版を消すと空きが増えることを書く', async (t) => {
+test('保存: ブラウザで保存できなかったときの赤い帯に、改訂履歴の古い版を削除すると空きが増えることを書く', async (t) => {
   const { app, api } = await bootSample(t);
   const proto = app.window.Storage.prototype;
   const orig = proto.setItem;
@@ -607,11 +607,11 @@ test('保存: ブラウザで保存できなかったときの赤い帯に、改
   } finally {
     proto.setItem = orig;
   }
-  assert.match($(app, '#banner').textContent, /改訂履歴の古い版を消すと、空きが増えます/);
+  assert.match($(app, '#banner').textContent, /改訂履歴の古い版を削除すると、空きが増えます/);
 });
 
 // ── 見直しで見つかった不具合（2026-10-14）──
-test('元に戻すの履歴: 版の写しは写さずに同じものを指す（版が増えても、1 回の操作と履歴が重くならない）。写しは凍らせ、保存データには入る', async (t) => {
+test('元に戻すの履歴: 版の控えは写さずに同じものを指す（版が増えても、1 回の操作と履歴が重くならない）。写しは凍らせ、保存データには入る', async (t) => {
   const { app, api } = await bootSample(t);
   api.actions.addRevision('d1');
   api.actions.addRevision('d1');
@@ -632,7 +632,7 @@ test('元に戻すの履歴: 版の写しは写さずに同じものを指す（
   assert.equal(saved.revisions[0].snapshot.screens[0].parts[0].x, 32);
 });
 
-test('違い: 項目を一覧表から消した後に残った部品と、スマホの画面の高さで、変えていないのに「変」にしない', async (t) => {
+test('違い: 項目を一覧表から消した後に残ったアイテムと、スマホの画面の高さで、変えていないのに「変」にしない', async (t) => {
   const { api } = await bootSample(t);
   api.actions.deleteItem('d1', 'i2'); // 顧客名の部品は、消したときの中身で残る
   api.actions.updateScreen('d1', 's1', { device: 'phone' });
@@ -654,9 +654,9 @@ test('違い: 画面に置いた項目を一覧表から消すと「データベ
   const del = rows.find((x) => x.screen === 'データベースの項目' && x.name === '顧客名');
   assert.ok(del, '消した項目の行');
   assert.equal(del.change, '削除');
-  assert.match(del.text, /画面に置いた部品は、消したときの中身で残っている/);
+  assert.match(del.text, /画面に置いたアイテムは、削除したときの中身で残っている/);
   const part = rows.find((x) => x.screen === '新規登録' && x.name === '顧客名');
-  assert.match(part.text, /データベースの項目の一覧表から消した/, '残った部品の行に、項目を消したことを書く');
+  assert.match(part.text, /項目一覧から削除した/, '残ったアイテムの行に、項目を消したことを書く');
   assert.ok(!/そのほかの設定/.test(part.text));
   const ren = rows.find((x) => x.screen === 'データベースの項目' && x.name === '備考欄');
   assert.ok(ren, '置き方が変わった項目も、項目どうしで比べる');

@@ -149,7 +149,7 @@ async function shootTabs(ctx) {
   // 150: ③ の札（最初に開く札。確認待ちの段階）
   let r = await readNotes(page);
   need(r.tabs.length === 5 && stagesOf(r) === 'done,done,review,todo,todo' && openTab(r) === 'items', `最初の札の並びが見本と違う: ${JSON.stringify(r.tabs)}`);
-  need(/^確認待ち ▾$/.test(r.pill) && r.entry === '③ 確認待ち' && r.activeEntry === 'notes', `進み具合のボタン・入口の小さな字が違う: ${r.pill} ／ ${r.entry}`);
+  need(/^確認待ち ▾$/.test(r.pill) && r.entry === '③ 確認待ち' && r.activeEntry === 'notes', `進捗のボタン・入口の小さな字が違う: ${r.pill} ／ ${r.entry}`);
   need(r.findings === null && /ベンダーとの打ち合わせ/.test(r.memo) && r.openQ === 2 && r.doneQ === 0 && r.decisions === 1, `③ の札の中身が違う（読み取ったこと ${r.findings}・まだ決まっていない ${r.openQ}・決まった ${r.doneQ}・決めたこと ${r.decisions}）`);
   // 行の欄は 1 行の textarea: 1 行の文は 1 行の欄（前の input）と同じ高さ（約 29 ドット）、長い理由（約 60 字）は折り返して 2 行以上の高さ（1 行増えるごとに字の行の高さ約 19 ドット）
   const oneLine = Math.min(...r.rows.map((x) => x.h));
@@ -168,27 +168,27 @@ async function shootTabs(ctx) {
   await pillClick(page);
   r = await readNotes(page);
   const gap = r.menuRect ? { dx: Math.round(r.menuRect.l - r.pillRect.l), dy: Math.round(r.menuRect.t - r.pillRect.b) } : null;
-  need(r.menu.join() === 'done,skipped,todo' && r.expanded === 'true' && gap && Math.abs(gap.dx) <= 20 && gap.dy >= -2 && gap.dy <= 12, `進み具合のメニューが、ボタンの左下に 3 つの項目で開いていない: ${JSON.stringify({ menu: r.menu, expanded: r.expanded, gap })}`);
-  await shot(page, '152_設計ノート_進み具合のメニューを開いたところ（③ 確認待ち。項目は 3 つ）');
+  need(r.menu.join() === 'done,skipped,todo' && r.expanded === 'true' && gap && Math.abs(gap.dx) <= 20 && gap.dy >= -2 && gap.dy <= 12, `進捗のメニューが、ボタンの左下に 3 つの項目で開いていない: ${JSON.stringify({ menu: r.menu, expanded: r.expanded, gap })}`);
+  await shot(page, '152_設計ノート_進捗のメニューを開いたところ（③ 確認待ち。項目は 3 つ）');
   // 153: メニューの「確認済みにする」を押した後（③ が確認済みになり、確認の日付が付く。入口の小さな字は ④ まだ）
   await click(page, '#sys-menu-root .nt-menu [role="menuitem"][data-state="done"]');
   r = await readNotes(page);
-  need(stagesOf(r) === 'done,done,done,todo,todo' && openTab(r) === 'items' && /^確認済み（\d{4}-\d{2}-\d{2}） ▾$/.test(r.pill) && !r.menu.length && r.entry === '④ まだ',
+  need(stagesOf(r) === 'done,done,done,todo,todo' && openTab(r) === 'items' && /^確認済み（\d{4}-\d{2}-\d{2}） ▾$/.test(r.pill) && !r.menu.length && r.entry === '④ 未着手',
     `「確認済みにする」を押した後が違う: ${stagesOf(r)} ／ ${r.pill} ／ メニュー ${r.menu.length} ／ ${r.entry}`);
-  need(r.undoDisabled === false, '進み具合を変えたのに、元に戻す（Ctrl+Z）のボタンが使えない状態のまま');
+  need(r.undoDisabled === false, '進捗を変えたのに、元に戻す（Ctrl+Z）のボタンが使えない状態のまま');
   await toastGone(page);
   await shot(page, '153_設計ノート_メニューで「確認済みにする」を押した後（③ が確認済み）');
   // 154: ④ の札で「確かめずに進めたことにする」を押す → 点線の枠の札（⤼）。今の進み具合を除いた項目は 2 つ
   await tabClick(page, 'screens');
   r = await readNotes(page);
-  need(openTab(r) === 'screens' && /^まだ ▾$/.test(r.pill), `④ の札が開かない: ${openTab(r)} ／ ${r.pill}`);
+  need(openTab(r) === 'screens' && /^未着手 ▾$/.test(r.pill), `④ の札が開かない: ${openTab(r)} ／ ${r.pill}`);
   await pillClick(page);
   r = await readNotes(page);
-  need(r.menu.join() === 'done,skipped', `まだの段階のメニューの項目が 2 つ（確認済み・確かめずに進めた）になっていない: ${r.menu.join()}`);
+  need(r.menu.join() === 'done,skipped', `未着手の段階のメニューの項目が 2 つ（確認済み・確かめずに進めた）になっていない: ${r.menu.join()}`);
   await click(page, '#sys-menu-root .nt-menu [role="menuitem"][data-state="skipped"]');
   r = await readNotes(page);
-  need(stagesOf(r) === 'done,done,done,skipped,todo' && /^確認を飛ばした（\d{4}-\d{2}-\d{2}） ▾$/.test(r.pill) && r.pillBorder === 'dashed' && r.entry === '⑤ まだ',
-    `確かめずに進めた段階の進み具合のボタン（点線）・入口の小さな字が違う: ${stagesOf(r)} ／ ${r.pill} ／ ${r.pillBorder} ／ ${r.entry}`);
+  need(stagesOf(r) === 'done,done,done,skipped,todo' && /^確認を飛ばした（\d{4}-\d{2}-\d{2}） ▾$/.test(r.pill) && r.pillBorder === 'dashed' && r.entry === '⑤ 未着手',
+    `確かめずに進めた段階の進捗のボタン（点線）・入口の小さな字が違う: ${stagesOf(r)} ／ ${r.pill} ／ ${r.pillBorder} ／ ${r.entry}`);
   // 点線の札が選ばれていると濃い紺で塗られて点線が見えないので、③ の札へ移ってから撮る（札の並びに、点線の ④ の札が見える）
   await tabClick(page, 'items');
   r = await readNotes(page);
@@ -205,7 +205,7 @@ async function shootTabs(ctx) {
 async function shootEmpty(ctx) {
   const { page } = await openPage(ctx, { full: false, name: '経費精算システム', description: '立て替えた経費を申請し、経理が支払うシステム。' });
   const r = await readNotes(page);
-  need(stagesOf(r) === 'todo,todo,todo,todo,todo' && openTab(r) === 'read' && /^まだ ▾$/.test(r.pill) && r.entry === 'まだ始めていません',
+  need(stagesOf(r) === 'todo,todo,todo,todo,todo' && openTab(r) === 'read' && /^未着手 ▾$/.test(r.pill) && r.entry === 'まだ始めていません',
     `まだ始めていないシステムの札・入口の小さな字が違う: ${stagesOf(r)} ／ ${openTab(r)} ／ ${r.pill} ／ ${r.entry}`);
   need(r.findings === '' && r.memo === '' && r.tables === 0 && r.decisions === 0, `まだ始めていないのに表・文字が入っている（表 ${r.tables}・読み取ったこと「${r.findings}」）`);
   await ctx.shot(page, '155_設計ノート_まだ始めていないシステム（札は 5 つとも「まだ」・表なし）');
@@ -240,9 +240,9 @@ async function shootAiBand(ctx) {
   await ai('set_stage', { system: sysId, stage: 'screens', state: 'doing' });
   await sleep(300);
   r = await readNotes(page);
-  need(/が「出張申請システム」を直しました（変更 4 件）/.test(r.band || ''), `紫の帯の変更の数が 4 件になっていない: ${r.band}`);
+  need(/が「出張申請システム」を変更しました（変更点 4 件）/.test(r.band || ''), `紫の帯の変更の数が 4 件になっていない: ${r.band}`);
   need(openTab(r) === 'items' && r.openQ === 3 && r.decisions === 2 && stagesOf(r) === 'done,done,review,doing,todo',
-    `AI が直した中身が、開いている ③ の札に出ていない（開いている札 ${openTab(r)}・まだ決まっていない ${r.openQ}・決めたこと ${r.decisions}・${stagesOf(r)}）`);
+    `AI が変更した中身が、開いている ③ の札に出ていない（開いている札 ${openTab(r)}・まだ決まっていない ${r.openQ}・決めたこと ${r.decisions}・${stagesOf(r)}）`);
   await ctx.shot(page, '157_設計ノート_AIが設計ノートだけを直したときの紫の帯（変更 4 件）');
   // 最初の画面に戻る（戻ると紫の帯は消える）。そこで AI が設計ノートだけをもう一度直すと、帯の「開く」は設計ノートの入口で開く
   await page.evaluate(() => window.__test__.goHome());

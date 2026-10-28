@@ -41,7 +41,7 @@ function addScreen(api, designId, name) {
   return sid;
 }
 
-test('データの形 v1 → v2: 入力欄の部品 1 つから項目を 1 つ作り、部品は項目を指す（同じ名前でもまとめない）', async (t) => {
+test('データの形 v1 → v2: 入力欄のアイテム 1 つから項目を 1 つ作り、アイテムは項目を指す（同じ名前でもまとめない）', async (t) => {
   const { api } = await bootEditor(t);
   const { state, blockReason } = api.migrate({
     schemaVersion: 1,
@@ -68,7 +68,7 @@ test('データの形 v1 → v2: 入力欄の部品 1 つから項目を 1 つ�
   assert.equal(p1.label, undefined);
 });
 
-test('入力欄の部品を置くと項目が足され、設定の欄の変更は項目に書く。部品を消しても項目は残る', async (t) => {
+test('入力欄のアイテムを置くと項目が足され、設定の欄の変更は項目に書く。アイテムを消しても項目は残る', async (t) => {
   const { app, api, design, items, resolved, add } = await bootEditor(t);
   const pid = add('text1');
   add('button');
@@ -89,7 +89,7 @@ test('入力欄の部品を置くと項目が足され、設定の欄の変更�
   assert.equal(design().screens[0].parts.length, 2);
 });
 
-test('同じ項目は、ほかの画面の部品も同じ中身で描く。同じ画面へ貼り付けると項目も写す', async (t) => {
+test('同じ項目は、ほかの画面のアイテムも同じ中身で描く。同じ画面へ貼り付けると項目も写す', async (t) => {
   const { api, design, items, add } = await bootEditor(t);
   const pid = add('text1');
   api.actions.updatePart(design().id, design().screens[0].id, pid, { label: '顧客名' });
@@ -101,7 +101,7 @@ test('同じ項目は、ほかの画面の部品も同じ中身で描く。同�
   const s2 = design().screens[1];
   assert.equal(s2.parts[0].itemId, items()[0].id, 'ほかの画面へは同じ項目を指して貼り付ける');
   api.actions.updatePart(design().id, sid2, s2.parts[0].id, { label: '顧客の名前' });
-  assert.equal(api.resolvePart(design(), design().screens[0].parts[0]).label, '顧客の名前', '別の画面の部品も変わる');
+  assert.equal(api.resolvePart(design(), design().screens[0].parts[0]).label, '顧客の名前', '別の画面のアイテムも変わる');
   api.runCommand('pastePart');
   assert.equal(items().length, 2, '同じ画面には同じ項目を 2 回置かないので、項目を写す');
   assert.equal(items()[1].name, '顧客の名前');
@@ -125,7 +125,7 @@ test('ほかの画面設計へ貼り付けると、項目も一緒に足す', as
   assert.deepEqual(plain(d2.items.map((it) => [it.name, it.props.options])), [['区分', ['法人', '個人']], ['区分', ['法人', '個人']]]);
 });
 
-test('項目を指す部品の項目が見つからないときは、部品が持っている中身で描き、設定は書き換えない', async (t) => {
+test('項目を指すアイテムの項目が見つからないときは、アイテムが持っている中身で描き、設定は書き換えない', async (t) => {
   const { app, api } = await bootEditor(t);
   const { state } = api.migrate({
     schemaVersion: 2,
@@ -155,7 +155,7 @@ function check(el, on) {
 
 const rowNames = (app) => $$(app, '#db-view tbody tr').map((r) => r.children[1].textContent.trim());
 
-test('項目の一覧表: 左の一覧のいちばん上から開き、項目・種類・設定・置いている画面を並べる', async (t) => {
+test('項目一覧: 左の一覧のいちばん上から開き、項目・種類・設定・置いている画面を並べる', async (t) => {
   const { app, api, design, items, add } = await bootEditor(t);
   const pid = add('text1');
   api.actions.updatePart(design().id, design().screens[0].id, pid, { label: '顧客名', required: true, props: { maxLen: '50' } });
@@ -166,7 +166,7 @@ test('項目の一覧表: 左の一覧のいちばん上から開き、項目・
   assert.ok($(app, '.db-entry').classList.contains('active'));
   assert.equal($(app, '.sl-item.active'), null, '画面の縮小画像は選んでいない形にする');
   assert.equal($(app, '#canvas-wrap').hidden, true);
-  assert.equal($(app, '#side-box').hidden, true, '部品の箱は出さない');
+  assert.equal($(app, '#side-box').hidden, true, 'アイテム一覧は出さない');
   assert.deepEqual(plain(rowNames(app)), ['顧客名', '項目名']);
   const cells = $$(app, '#db-view tbody tr')[0].children;
   assert.deepEqual(plain([...cells].slice(2, 6).map((c) => c.textContent.trim())), ['テキスト（1行）', '必須・最大 50 文字', '－', '画面 1']);
@@ -176,13 +176,13 @@ test('項目の一覧表: 左の一覧のいちばん上から開き、項目・
   assert.equal(items().length, 2);
 });
 
-test('項目の一覧表: 「＋ 項目を足す」で種類を選んで足し、右の欄で名前と種類を直すと画面の部品も変わる', async (t) => {
+test('項目一覧: 「＋ 項目を足す」で種類を選んで足し、右のパネルで名前と種類を直すと画面のアイテムも変わる', async (t) => {
   const { app, api, design, items, add } = await bootEditor(t);
   const pid = add('text1');
   click($(app, '[data-action="open-items"]'));
   click($(app, '#db-view [data-action="add-item-menu"]'));
   assert.ok($(app, '#db-view .pop-menu'));
-  assert.equal($$(app, '#db-view .pop-menu button').length, 12, '入力欄の部品の 11 種類と表（テーブル）');
+  assert.equal($$(app, '#db-view .pop-menu button').length, 12, '入力欄のアイテムの 11 種類と表（テーブル）');
   click($(app, '#db-view .pop-menu [data-type="date"]'));
   assert.equal($(app, '#db-view .pop-menu'), null);
   assert.equal(items().length, 2);
@@ -194,13 +194,13 @@ test('項目の一覧表: 「＋ 項目を足す」で種類を選んで足し�
   assert.equal(rowNames(app)[0], '契約日', '表もすぐ変わる');
   setValue($(app, '#side-settings [data-pf="type"]'), 'date');
   assert.equal(items()[0].type, 'date');
-  assert.equal(design().screens[0].parts.find((p) => p.id === pid).type, 'date', '画面の部品の種類も変わる');
+  assert.equal(design().screens[0].parts.find((p) => p.id === pid).type, 'date', '画面のアイテムの種類も変わる');
   assert.match($(app, '#side-settings .pf-used').textContent, /画面 1/);
   api.store.undo();
   assert.equal(items()[0].type, 'text1');
 });
 
-test('部品の箱の「データベースの項目」: 置いていない項目を先に並べ、押すと画面に置く。同じ画面には 2 回置けない', async (t) => {
+test('アイテム一覧の「データベースの項目」: 置いていない項目を先に並べ、押すと画面に置く。同じ画面には 2 回置けない', async (t) => {
   const { app, api, design, add } = await bootEditor(t);
   add('text1');
   const iid = api.actions.addItem(design().id, 'dropdown');
@@ -218,7 +218,7 @@ test('部品の箱の「データベースの項目」: 置いていない項目
   assert.equal(design().items.length, 2, '項目は増えない');
 });
 
-test('部品を選んだときの右の欄は「項目の設定」と「この画面だけの設定」に分ける', async (t) => {
+test('アイテムを選んだときの右のパネルは「項目の設定」と「この画面だけの設定」に分ける', async (t) => {
   const { app, api, add } = await bootEditor(t);
   api.selectPart(add('text1'));
   const secs = $$(app, '#side-settings .pf-sec');
@@ -228,38 +228,38 @@ test('部品を選んだときの右の欄は「項目の設定」と「この�
   assert.ok(secs[0].querySelector('[data-pf="label"]') && secs[0].querySelector('[data-pf="required"]') && secs[0].querySelector('[data-pf="memo"]'));
   assert.match(secs[1].textContent, /この画面だけの設定\s*画面 1の画面/);
   assert.ok(secs[1].querySelector('[data-pf="labelPos"]') && secs[1].querySelector('[data-pf="sample"]') && secs[1].querySelector('[data-pf="numbered"]'));
-  assert.match($(app, '#side-settings').textContent, /この画面から部品を削除/);
-  assert.match($(app, '#side-settings').textContent, /項目は、データベースの項目の一覧表に残ります/);
+  assert.match($(app, '#side-settings').textContent, /この画面からアイテムを削除/);
+  assert.match($(app, '#side-settings').textContent, /項目は、項目一覧に残ります/);
 });
 
-test('項目を消すと、画面の部品は消したときの中身で固定され、「項目の一覧表に戻す」で戻せる', async (t) => {
+test('項目を消すと、画面のアイテムは消したときの中身で固定され、「項目一覧に戻す」で戻せる', async (t) => {
   const { app, api, design, items, add } = await bootEditor(t);
   const pid = add('text1');
   api.actions.updatePart(design().id, design().screens[0].id, pid, { label: '取引先名', required: true });
   const iid = items()[0].id;
   click($(app, '[data-action="open-items"]'));
   click($(app, `#db-view [data-action="delete-item"][data-id="${iid}"]`));
-  assert.match($(app, '.modal').textContent, /画面 1の画面にある部品は残り/);
+  assert.match($(app, '.modal').textContent, /画面 1の画面にあるアイテムは残り/);
   click($(app, '.modal [data-dlg="ok"]'));
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(items().length, 0);
   const p = design().screens[0].parts[0];
-  assert.deepEqual(plain([p.itemId, p.label, p.required]), [iid, '取引先名', true], '部品に中身を写して残す');
+  assert.deepEqual(plain([p.itemId, p.label, p.required]), [iid, '取引先名', true], 'アイテムに中身を写して残す');
   click($(app, '.sl-item'));
-  assert.equal($(app, '#stage .part .tag.gone').textContent, '項目なし', '編集の画面では部品に札を付ける');
+  assert.equal($(app, '#stage .part .tag.gone').textContent, '項目なし', '編集の画面ではアイテムに札を付ける');
   assert.equal($(app, '.sl-thumb .tag'), null, '縮小画像には付けない');
   api.selectPart(pid);
-  assert.match($(app, '#side-settings .pf-banner.gone').textContent, /取引先名.*消しました/);
+  assert.match($(app, '#side-settings .pf-banner.gone').textContent, /取引先名.*削除しました/);
   assert.ok($(app, '#side-settings fieldset.pf-sec.locked').disabled, '項目の設定は直せない');
   assert.equal($(app, '#side-settings .pf-sec.here [data-pf="labelPos"]').disabled, false, 'この画面だけの設定は直せる');
   click($(app, '#side-settings [data-action="restore-item"]'));
   assert.equal(items().length, 1);
   assert.deepEqual(plain([items()[0].id, items()[0].name, items()[0].required]), [iid, '取引先名', true]);
-  assert.equal(design().screens[0].parts[0].label, undefined, '部品はまた項目を指す');
+  assert.equal(design().screens[0].parts[0].label, undefined, 'アイテムはまた項目を指す');
   assert.equal($(app, '#side-settings .pf-banner.gone'), null);
 });
 
-test('項目の一覧表: 並べ替え（つまみのドラッグと同じ操作）と、Delete のキーで消す', async (t) => {
+test('項目一覧: 並べ替え（つまみのドラッグと同じ操作）と、Delete のキーで消す', async (t) => {
   const { app, api, design, items } = await bootEditor(t);
   const ids = ['text1', 'number', 'date'].map((type) => api.actions.addItem(design().id, type));
   assert.equal(api.actions.moveItem(design().id, ids[0], 3), true);
@@ -300,7 +300,7 @@ async function bootTwo(t) {
 
 const settle = () => new Promise((r) => setTimeout(r, 0));
 
-test('取り込む窓: 元のモックを選んで項目に印を付けて取り込むと、一覧表のいちばん下につなげたまま足す', async (t) => {
+test('取り込む窓: 元の画面設計を選んで項目にチェックを付けて取り込むと、一覧表のいちばん下につなげたまま足す', async (t) => {
   const { app, dst, srcId, ids } = await bootTwo(t);
   click($(app, '[data-action="open-items"]'));
   click($(app, '#db-view [data-action="import-items"]'));
@@ -311,7 +311,7 @@ test('取り込む窓: 元のモックを選んで項目に印を付けて取り
   const rowText = () => $$(app, '.imp-items tbody tr').map((r) => r.children[1].textContent.replace(/\s+/g, ' ').trim());
   assert.deepEqual(plain(rowText()), ['郵便番号', '都道府県', '電話番号 同じ名前の項目があります']);
   click($(app, '.modal [data-dlg="ok"]'));
-  assert.match($(app, '.modal-error').textContent, /印を付けて/);
+  assert.match($(app, '.modal-error').textContent, /チェックを付けて/);
   check($(app, `[data-imp-item="${ids.zip}"]`), true);
   check($(app, `[data-imp-item="${ids.pref}"]`), true);
   assert.match($(app, '[data-imp-foot]').textContent, /新しく 2 個/);
@@ -345,22 +345,22 @@ test('つながった項目: 元を直すと取り込んだ側も同じ操作で
   assert.deepEqual(plain(linked().props.options), ['北海道', '青森県', '岩手県']);
   assert.equal(dst().updatedAt, before, '取り込んだ側の更新日時は変えない');
   api.actions.updateItem(srcId, ids.pref, { type: 'radio' });
-  assert.equal(dst().screens[0].parts[0].type, 'radio', '種類を変えると、取り込んだ側の部品の種類も変わる');
+  assert.equal(dst().screens[0].parts[0].type, 'radio', '種類を変えると、取り込んだ側のアイテムの種類も変わる');
   api.store.undo();
   api.store.undo();
   assert.deepEqual(plain([linked().name, linked().type]), ['都道府県', 'dropdown'], '元に戻すで両方戻る');
   // 設定の欄: 灰色で直せず、元のモックを開く・つながりを切るがある
   api.openDesign(dstId);
   api.selectPart(pid);
-  assert.match($(app, '#side-settings .pf-banner.link').textContent, /住所の共通項目.*つながっています/);
+  assert.match($(app, '#side-settings .pf-banner.link').textContent, /住所の共通項目.*連動しています/);
   assert.ok($(app, '#side-settings fieldset.pf-sec.locked').disabled);
   assert.equal($(app, '#stage .part .tag.link').textContent, '取り込み');
   click($(app, '#side-settings [data-action="open-link-source"]'));
-  assert.equal(api.ui.designId, srcId, '元のモックを開く');
+  assert.equal(api.ui.designId, srcId, '元の画面設計を開く');
   assert.deepEqual([api.ui.panel, api.ui.itemId], ['items', ids.pref], '元の項目を選んだ一覧表');
 });
 
-test('つながりを切ると、そのときの中身のこの画面設計だけの項目になり、元を直しても変わらない', async (t) => {
+test('つながりを切ると、そのときの中身のこの画面設計だけの項目になり、元を変更しても変わらない', async (t) => {
   const { app, api, dst, srcId, dstId, ids } = await bootTwo(t);
   api.actions.importItems(dstId, srcId, [ids.zip]);
   const id = dst().items[1].id;
@@ -371,11 +371,11 @@ test('つながりを切ると、そのときの中身のこの画面設計だ�
   assert.equal(dst().items[1].link, null);
   assert.equal($(app, '#side-settings fieldset.pf-sec.locked'), null, '直せるようになる');
   api.actions.updateItem(srcId, ids.zip, { label: '郵便番号（7 桁）' });
-  assert.equal(dst().items[1].name, '郵便番号', '元を直しても変わらない');
+  assert.equal(dst().items[1].name, '郵便番号', '元を変更しても変わらない');
   assert.equal(api.actions.updateItem(dstId, id, { label: '〒' }), true);
 });
 
-test('元のモックを完全に削除すると、取り込んだ項目はそのときの中身で固定し、印で知らせる。ごみ箱へ移すときは確かめる', async (t) => {
+test('元の画面設計を完全に削除すると、取り込んだ項目はそのときの中身で固定し、印で知らせる。ごみ箱へ移すときは確かめる', async (t) => {
   const { app, api, dst, src, srcId, dstId, ids } = await bootTwo(t);
   api.actions.importItems(dstId, srcId, [ids.pref, ids.tel]);
   api.goHome();
@@ -395,7 +395,7 @@ test('元のモックを完全に削除すると、取り込んだ項目はそ�
   click($(app, '[data-action="open-items"]'));
   assert.match($$(app, '#db-view tbody tr')[1].textContent, /取り込み・元なし.*もうありません/);
   click($$(app, '#db-view tbody tr')[1]);
-  assert.match($(app, '#side-settings .pf-banner.gone').textContent, /元のモック（または元の項目）はもうありません/);
+  assert.match($(app, '#side-settings .pf-banner.gone').textContent, /元の画面設計（または元の項目）はもうありません/);
   assert.equal($(app, '#side-settings [data-action="open-link-source"]'), null);
 });
 
@@ -413,7 +413,7 @@ test('元の項目を消したときも固定する。取り込んだ項目を�
   assert.equal(dst().items[2].name, '電話番号');
 });
 
-test('取り込んだ項目の部品を、元の画面設計へ貼り付けると、元の項目を指す', async (t) => {
+test('取り込んだ項目のアイテムを、元の画面設計へ貼り付けると、元の項目を指す', async (t) => {
   const { api, dst, src, srcId, dstId, ids } = await bootTwo(t);
   api.actions.importItems(dstId, srcId, [ids.zip]);
   const pid = api.actions.addItemPart(dstId, dst().screens[0].id, dst().items[1].id, { x: 0, y: 48 });
@@ -447,7 +447,7 @@ async function bootLookup(t) {
   return { ...ctx, masterId, custId, m, c, parts, cust };
 }
 
-test('ルックアップ: 探す項目に、元のデータベース・探す元の項目・一緒に写す項目を書き、写す先はその場で作れる', async (t) => {
+test('ルックアップ: 探す項目に、元のデータベース・探す元の項目・ほかの項目へのコピーを書き、写す先はその場で作れる', async (t) => {
   const { app, api, masterId, m, c, cust } = await bootLookup(t);
   click($(app, '[data-action="open-items"]'));
   click($(app, `#db-view tr[data-id="${c.code}"]`));
@@ -468,9 +468,9 @@ test('ルックアップ: 探す項目に、元のデータベース・探す元
   assert.deepEqual(plain([items[2].name, items[2].type]), ['住所', 'text1']);
   const lk = items[0].lookup;
   assert.deepEqual(plain([lk.db.designId, lk.key.itemId, lk.copies.map((x) => [x.from.itemId, x.to.itemId])]), plain([masterId, m.code, [[m.name, c.name], [m.addr, items[2].id]]]));
-  assert.equal($(app, '#pf-out').textContent, 'ルックアップ＝取引先マスタの「取引先コード」で探す\n一緒に写す＝取引先名 → 取引先名、住所 → 住所');
+  assert.equal($(app, '#pf-out').textContent, 'ルックアップ＝取引先マスタの「取引先コード」で検索\nほかの項目へのコピー＝取引先名 → 取引先名、住所 → 住所');
   const row = (id) => $(app, `#db-view tr[data-id="${id}"]`).textContent.replace(/\s+/g, ' ');
-  assert.match(row(c.code), /ルックアップ 取引先マスタ › 取引先コード ?（この値で取引先マスタを探す）/);
+  assert.match(row(c.code), /ルックアップ 取引先マスタ › 取引先コード ?（この値で取引先マスタを検索する）/);
   assert.match(row(c.name), /ルックアップ 取引先マスタ › 取引先名 ?（取引先コードで引く）/);
   api.store.undo();
   assert.equal(cust().items.length, 2, '元に戻すで、作った項目も消える');
@@ -487,16 +487,16 @@ test('ルックアップの印: 項目名の後ろに札、探す項目に「取
   assert.equal(el(parts.name).querySelector('.pph').textContent, '（取引先コードから自動で入る）');
   assert.ok($(app, '.sl-thumb .reftag'), 'ルックアップの札は縮小画像（出力と同じ見た目）にも出す');
   const rows = $$(app, '.ptable tbody tr').map((r) => r.children[3].textContent);
-  assert.deepEqual(plain(rows), ['ルックアップ＝取引先マスタの「取引先コード」で探す\n一緒に写す＝取引先名 → 取引先名', 'ルックアップ＝取引先マスタの「取引先名」（取引先コードで引く）']);
+  assert.deepEqual(plain(rows), ['ルックアップ＝取引先マスタの「取引先コード」で検索\nほかの項目へのコピー＝取引先名 → 取引先名', 'ルックアップ＝取引先マスタの「取引先名」（取引先コードで引く）']);
   // 一緒に写される項目の設定の欄から、探す項目の設定を開く
   api.selectPart(parts.name);
   assert.match($(app, '#side-settings .pf-banner.ref').textContent, /「取引先コード」のルックアップで、取引先マスタの「取引先名」が入ります/);
   assert.equal($(app, '#side-settings [data-lk="on"]'), null, '写される項目にはルックアップの欄を出さない');
   click($(app, '#side-settings [data-action="open-lookup-key"]'));
-  assert.equal(api.ui.partId, parts.code, '同じ画面の探す項目の部品を選ぶ');
+  assert.equal(api.ui.partId, parts.code, '同じ画面の探す項目のアイテムを選ぶ');
   // 元のデータベースの名前を変えると、文も変わる
   api.actions.renameDesign(masterId, '取引先台帳');
-  assert.match($(app, '.ptable').textContent, /取引先台帳の「取引先コード」で探す/);
+  assert.match($(app, '.ptable').textContent, /取引先台帳の「取引先コード」で検索/);
 });
 
 test('ルックアップ: 一覧にないデータベースは名前を書く。ルックアップを書けない種類にすると外れる', async (t) => {
@@ -510,7 +510,7 @@ test('ルックアップ: 一覧にないデータベースは名前を書く。
   click($(app, '#side-settings [data-action="lk-add"]'));
   setValue($(app, '#side-settings [data-lk="fromName"][data-i="0"]'), '勘定科目名');
   setValue($(app, '#side-settings [data-lk="to"][data-i="0"]'), c.name);
-  assert.equal($(app, '#pf-out').textContent, 'ルックアップ＝会計システムの「勘定科目コード」で探す\n一緒に写す＝勘定科目名 → 取引先名');
+  assert.equal($(app, '#pf-out').textContent, 'ルックアップ＝会計システムの「勘定科目コード」で検索\nほかの項目へのコピー＝勘定科目名 → 取引先名');
   click($(app, '#side-settings [data-action="lk-del"][data-i="0"]'));
   assert.equal(cust().items[0].lookup.copies.length, 0);
   setValue($(app, '#side-settings [data-pf="type"]'), 'dropdown');
@@ -565,7 +565,7 @@ async function bootMap(t) {
   return { ...ctx, orderId, dailyId, oldId, order, node };
 }
 
-test('つながりの図の箱と矢印: ルックアップ・関連レコード一覧は元 → 引く側、取り込みは元 → 取り込んだ側。ごみ箱のものは描かない', async (t) => {
+test('関連図の箱と矢印: ルックアップ・関連レコード一覧は元 → 引く側、取り込みは元 → 取り込んだ側。ごみ箱のものは描かない', async (t) => {
   const { api, masterId, custId, orderId, dailyId } = await bootMap(t);
   const model = api.mapModel(api.store.state);
   const keyName = Object.fromEntries(model.nodes.map((n) => [n.key, n.name]));
@@ -590,7 +590,7 @@ test('つながりの図の箱と矢印: ルックアップ・関連レコード
   assert.deepEqual(plain(focus.edges.map((e) => e.kind).sort()), ['link', 'lookup']);
 });
 
-test('つながりの図: 矢印が輪になっても（ルックアップと関連レコード一覧の行きと帰り）、列は右へ送られ続けず、2 本の線は重ねない', async (t) => {
+test('関連図: 矢印が輪になっても（ルックアップと関連レコード一覧の行きと帰り）、列は右へ送られ続けず、2 本の線は重ねない', async (t) => {
   const { app, api, masterId, custId, orderId, dailyId } = await bootMap(t);
   // 顧客管理に「受注の履歴」（受注管理のレコードを並べる関連レコード一覧）を置く。受注管理 → 顧客管理 の矢印で輪になる
   const sid = api.store.state.designs.find((d) => d.id === custId).screens[0].id;
@@ -615,7 +615,7 @@ test('つながりの図: 矢印が輪になっても（ルックアップと関
   assert.equal(orderNode.style.height, '96px', '役目の行が長いときは 2 行に折り返し、箱も高くする');
 });
 
-test('つながりの図: 線がほかの箱に重なるときは、その箱の上か下の隙間を通す', async (t) => {
+test('関連図: 線がほかの箱に重なるときは、その箱の上か下の隙間を通す', async (t) => {
   const { app, api, masterId, custId, orderId, dailyId } = await bootMap(t);
   api.goHome();
   click($(app, '[data-action="home-map"]'));
@@ -629,7 +629,7 @@ test('つながりの図: 線がほかの箱に重なるときは、その箱の
   assert.ok(ds.filter((d) => d !== lookup).every((d) => !d.includes(' L')), 'ほかの線は重ならないので、そのまま引く');
 });
 
-test('最初の画面: 「つながりの図」に切り替えると、名前で探す欄・カード・ごみ箱の代わりに図を出す。箱を押すとその画面設計を開く', async (t) => {
+test('最初の画面: 「関連図」に切り替えると、名前で検索欄・カード・ごみ箱の代わりに図を出す。箱を押すとその画面設計を開く', async (t) => {
   const { app, api, masterId, node } = await bootMap(t);
   api.goHome();
   click($(app, '[data-action="home-map"]'));
@@ -664,7 +664,7 @@ test('最初の画面: 「つながりの図」に切り替えると、名前で
   assert.ok($(app, '#home-search'));
 });
 
-test('最初の画面の図: 箱をドラッグで動かすと位置を覚え（マス目に吸い付く）、更新日時は変えない。「自動で並べ直す」で戻す', async (t) => {
+test('最初の画面の図: ボックスをドラッグで動かすと位置を覚え（マス目に吸い付く）、更新日時は変えない。「自動で並べ直す」で戻す', async (t) => {
   const { app, api, dailyId, node } = await bootMap(t);
   api.goHome();
   click($(app, '[data-action="home-map"]'));
@@ -685,17 +685,17 @@ test('最初の画面の図: 箱をドラッグで動かすと位置を覚え（
   assert.deepEqual(plain(api.store.state.settings.mapPos['d:' + dailyId]), { x: 0, y: 0 });
 });
 
-test('編集の画面: 左の一覧の「つながりの図」で、この画面設計と直接つながる画面設計だけの図を出し、位置は画面設計ごとに覚える', async (t) => {
+test('編集の画面: 左の一覧の「関連図」で、この画面設計と直接つながる画面設計だけの図を出し、位置は画面設計ごとに覚える', async (t) => {
   const { app, api, masterId, custId, orderId, node, cust } = await bootMap(t);
   api.openDesign(custId);
-  assert.match($(app, '[data-action="open-map"]').textContent, /つながりの図\s*2 つとつながっている/);
+  assert.match($(app, '[data-action="open-map"]').textContent, /関連図\s*2 つと関連している/);
   click($(app, '[data-action="open-map"]'));
   assert.equal(api.ui.panel, 'map');
   assert.ok($(app, '[data-action="open-map"]').classList.contains('active'));
   assert.equal($(app, '#db-view').hidden, false);
   assert.equal($(app, '#canvas-wrap').hidden, true);
-  assert.equal($(app, '#side-panel').hidden, true, '右の欄は隠して、図を広く見せる');
-  assert.match($(app, '#db-view .map-note').textContent, /「顧客管理」と、直接つながる画面設計を描きます/);
+  assert.equal($(app, '#side-panel').hidden, true, '右のパネルは隠して、図を広く見せる');
+  assert.match($(app, '#db-view .map-note').textContent, /「顧客管理」と、直接関連する画面設計を描きます/);
   assert.equal($$(app, '#design-map .mnode').length, 3);
   assert.ok(node('d:' + custId).classList.contains('cur'));
   assert.match(node('d:' + custId).textContent, /顧客管理（この画面設計）/);
@@ -716,11 +716,11 @@ test('編集の画面: 左の一覧の「つながりの図」で、この画面
   assert.deepEqual(plain(cust().mapPos), {});
   dragNode(app, node('d:' + orderId), 0, 0);
   assert.equal(api.ui.designId, orderId);
-  assert.equal($(app, '#side-panel').hidden, false, '開いた画面設計は画面を出すので、右の欄も出す');
-  assert.match($(app, '[data-action="open-map"]').textContent, /2 つとつながっている/, '受注管理は、顧客管理と会計システムにつながる');
+  assert.equal($(app, '#side-panel').hidden, false, '開いた画面設計は画面を出すので、右のパネルも出す');
+  assert.match($(app, '[data-action="open-map"]').textContent, /2 つと関連している/, '受注管理は、顧客管理と会計システムにつながる');
 });
 
-test('つながりの図の位置: 読み込むときに、形の合わない位置は捨てる。画面設計がないときは案内を出す', async (t) => {
+test('関連図の位置: 読み込むときに、形の合わない位置は捨てる。画面設計がないときは案内を出す', async (t) => {
   const app = bootApp();
   const api = await app.api();
   t.after(() => app.close());
@@ -752,7 +752,7 @@ test('何も変わらなかった変更は、元に戻すの履歴に積まな�
   assert.equal(api.store.canRedo(), true, '何も変わらない保存では、やり直すも消えない');
 });
 
-test('貼り付け: コピーした後で項目の種類を変えていたら、貼った部品の種類も項目に合わせる', async (t) => {
+test('貼り付け: コピーした後で項目の種類を変えていたら、貼ったアイテムの種類も項目に合わせる', async (t) => {
   const { app, api, design, items, add } = await bootEditor(t);
   const pid = add('text1');
   api.selectPart(pid);
@@ -768,7 +768,7 @@ test('貼り付け: コピーした後で項目の種類を変えていたら、
   assert.deepEqual(plain([pasted.itemId, pasted.type]), plain([items()[0].id, 'number']), 'ほかの画面へは同じ項目を指し、種類は数値');
 });
 
-test('貼り付け: 一覧表から消した項目の部品をコピーしていても、消した項目は生き返らない', async (t) => {
+test('貼り付け: 一覧表から消した項目のアイテムをコピーしていても、消した項目は生き返らない', async (t) => {
   const { api, design, screen, items, add } = await bootEditor(t);
   const pid = add('text1');
   const oldId = items()[0].id;
@@ -778,9 +778,9 @@ test('貼り付け: 一覧表から消した項目の部品をコピーしてい
   api.runCommand('pastePart');
   const [orphan, pasted] = screen().parts;
   assert.equal(api.findItem(design(), oldId), null, '消した項目は一覧表に戻らない');
-  assert.equal(orphan.label, '項目名', '消した後に残った部品は、固定したまま');
+  assert.equal(orphan.label, '項目名', '消した後に残ったアイテムは、固定したまま');
   assert.notEqual(pasted.itemId, oldId);
-  assert.ok(api.findItem(design(), pasted.itemId), '貼った部品は、新しい id の写しを指す');
+  assert.ok(api.findItem(design(), pasted.itemId), '貼ったアイテムは、新しい id の写しを指す');
 });
 
 test('ステータスの項目は画面設計に 1 つだけ: ほかの画面設計へ貼る・取り込む・一覧表に戻すのどれでも 2 つにならない', async (t) => {
@@ -795,7 +795,7 @@ test('ステータスの項目は画面設計に 1 つだけ: ほかの画面設
   const bStatus = statusOf()[0].id;
   api.runCommand('pastePart');
   assert.equal(statusOf().length, 1, '貼っても 1 つ');
-  assert.ok(api.currentScreen().parts.every((p) => p.itemId === bStatus), '貼った部品は、案件管理のステータスを指す');
+  assert.ok(api.currentScreen().parts.every((p) => p.itemId === bStatus), '貼ったアイテムは、案件管理のステータスを指す');
   // 取り込む: 案件管理にはもうあるので、受注管理のステータスは取り込まない
   const aStatus = api.store.state.designs.find((d) => d.id === aId).items[0].id;
   assert.equal(api.actions.importItems(bId, aId, [aStatus]), 0);
@@ -809,7 +809,7 @@ test('ステータスの項目は画面設計に 1 つだけ: ほかの画面設
   assert.ok(api.currentScreen().parts.every((p) => p.itemId === fresh && p.label === undefined), '3 つとも新しいステータスを指す');
 });
 
-test('項目の一覧表に戻す: 1 つの画面に同じ項目の部品が 2 つ残っていたら、2 つ目は項目の写しを指す', async (t) => {
+test('項目一覧に戻す: 1 つの画面に同じ項目のアイテムが 2 つ残っていたら、2 つ目は項目の写しを指す', async (t) => {
   const { api, design, screen, items, add } = await bootEditor(t);
   add('text1');
   const id = items()[0].id;
@@ -828,7 +828,7 @@ test('項目の一覧表に戻す: 1 つの画面に同じ項目の部品が 2 �
   assert.deepEqual(plain(items().map((it) => it.name)), ['項目名', '項目名']);
 });
 
-test('画面設計の複製: 吹き出しのつなぐ部品と、リンクの文字の移る先を、複製の中の部品と画面に付け直す', async (t) => {
+test('画面設計の複製: 吹き出しのつなぐアイテムと、リンクの移動先を、複製の中のアイテムと画面に付け直す', async (t) => {
   const { api, design, screen, add } = await bootEditor(t);
   const did = design().id;
   const sid = screen().id;
@@ -840,12 +840,12 @@ test('画面設計の複製: 吹き出しのつなぐ部品と、リンクの文
   const copy = api.store.state.designs.find((d) => d.id === copyId);
   const cs = copy.screens[0];
   assert.notEqual(cs.id, sid);
-  assert.equal(cs.callouts[0].target, cs.parts[0].id, '吹き出しは複製の部品につなぐ');
-  assert.equal(cs.parts.find((p) => p.type === 'link').props.screenId, cs.id, 'リンクの文字は複製の画面へ移る');
+  assert.equal(cs.callouts[0].target, cs.parts[0].id, '吹き出しは複製のアイテムにつなぐ');
+  assert.equal(cs.parts.find((p) => p.type === 'link').props.screenId, cs.id, 'リンクは複製の画面へ移る');
   assert.equal(screen().callouts[0].target, pid, '元はそのまま');
 });
 
-test('壊れた保存データ: 項目を指さない部品の itemId・項目を消した後の部品の壊れたルックアップ・重なった画面設計の id でも落ちない', async (t) => {
+test('壊れた保存データ: 項目を指さないアイテムの itemId・項目を消した後のアイテムの壊れたルックアップ・重なった画面設計の id でも落ちない', async (t) => {
   const { app, api } = await bootEditor(t);
   const { state } = api.migrate({
     schemaVersion: 2,
@@ -880,7 +880,7 @@ test('表の中身をテーブルから変えても、ほかの画面設計が�
   assert.equal(order.items[0].link.lost, false, '取り込んだ側は「元なし」にならない');
 });
 
-test('項目の一覧表で表の項目を選んだとき、右の欄の「設定」の文は一覧表の文と同じ', async (t) => {
+test('項目一覧で表の項目を選んだとき、右のパネルの「設定」の文は一覧表の文と同じ', async (t) => {
   const { app, items, add } = await bootEditor(t);
   add('table');
   click($(app, '[data-action="open-items"]'));
@@ -892,7 +892,7 @@ test('項目の一覧表で表の項目を選んだとき、右の欄の「設�
 
 // ── 見直し用のエージェントが見つけた不具合（つながりの図）──
 
-test('つながりの図: 箱を押すときに手が少しぶれても（吸い付けた位置が元と同じなら）、押しただけとして開き、履歴にも積まない', async (t) => {
+test('関連図: 箱を押すときに手が少しぶれても（吸い付けた位置が元と同じなら）、押しただけとして開き、履歴にも積まない', async (t) => {
   const { app, api, masterId, node } = await bootMap(t);
   api.goHome();
   click($(app, '[data-action="home-map"]'));
@@ -904,7 +904,7 @@ test('つながりの図: 箱を押すときに手が少しぶれても（吸い
   assert.ok(api.store.undoStack.length <= n);
 });
 
-test('つながりの図: 後から足した画面設計の箱は、ドラッグして覚えた箱と重ならない所に置く', async (t) => {
+test('関連図: 後から足した画面設計の箱は、ドラッグして覚えた箱と重ならない所に置く', async (t) => {
   const app = bootApp();
   const api = await app.api();
   t.after(() => app.close());

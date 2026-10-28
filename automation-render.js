@@ -30,8 +30,8 @@ function createRenderFinisher({ app, renderer, headless = false, materials = nul
 
   // 資料を読む。finishRead の返事 { ok, content, images } を、ページの返事の result（system・material）と合わせる。失敗はその code と文で返す
   async function finishMaterial(rest, render) {
-    const failed = { ok: false, error: { code: 'read_failed', message: '資料を読めませんでした。もう一度頼んでください。' } };
-    if (!materials) return { ok: false, error: { code: 'unavailable', message: '資料の置き場を使えません。アプリを起動し直してください。' } };
+    const failed = { ok: false, error: { code: 'read_failed', message: '資料を読めませんでした。もう一度依頼してください。' } };
+    if (!materials) return { ok: false, error: { code: 'unavailable', message: '資料を使えません。アプリを起動し直してください。' } };
     let r;
     try {
       r = await materials.finishRead(render);
@@ -46,7 +46,7 @@ function createRenderFinisher({ app, renderer, headless = false, materials = nul
   // MPD に出力する（export_bdm。第 11 段階）。render は { kind: 'bdm', systemId, file, plan, name }。資料の窓口（materials-main.js の bdmExport）が
   // 資料の MPD を元に HTML を作り、ここで AI の出力のフォルダに書く。返事の result に files・folder・warnings（読み直しの食い違い）を足す
   async function finishBdm(rest, render) {
-    if (!materials || typeof materials.bdmExport !== 'function') return { ok: false, error: { code: 'unavailable', message: '資料の置き場を使えません。アプリを起動し直してください。' } };
+    if (!materials || typeof materials.bdmExport !== 'function') return { ok: false, error: { code: 'unavailable', message: '資料を使えません。アプリを起動し直してください。' } };
     const failed = { code: 'render_failed', message: 'MPD に出力できませんでした。' };
     let r;
     try {

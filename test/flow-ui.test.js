@@ -32,7 +32,7 @@ async function bootEditor(t) {
 }
 
 // ── ステータスと操作の欄（q52 の案A）──
-test('ステータスと操作の欄: ステータスの印を選ぶと、ステータスの行と操作のカードを出す。ステータスの名前を直す・並べ替える・足す', async (t) => {
+test('ステータスと操作の欄: ステータス表示を選ぶと、ステータスの行と操作のカードを出す。ステータスの名前を直す・並べ替える・足す', async (t) => {
   const { app, add, item, idOf, side } = await bootEditor(t);
   add('status');
   const rows = () => plain($$(app, '#side-settings [data-ps]').map((e) => e.value));
@@ -65,7 +65,7 @@ test('ステータスと操作の欄: ステータスの印を選ぶと、ステ
   assert.equal(rows()[5], '新しいステータス 2');
 });
 
-test('操作のカード: 名前・前と次のステータス・操作する人・条件を直す。前と次を同じにはできない。並べ替え・消す・足す', async (t) => {
+test('操作のカード: 名前・前と次のステータス・操作できる人・条件を直す。前と次を同じにはできない。並べ替え・消す・足す', async (t) => {
   const { app, api, add, item, idOf, side } = await bootEditor(t);
   add('status');
   const a = () => item().props.actions[0];
@@ -127,7 +127,7 @@ test('ステータスを消す: 使う操作があれば確かめの窓（最初
   assert.equal(side('[data-action="ps-del"]').disabled, true, '最後の 1 つの ✕ は押せない');
 });
 
-test('ステータスと操作の欄の打ちかけの文字は、ほかの部品を選ぶ前に保存される', async (t) => {
+test('ステータスと操作の欄の打ちかけの文字は、ほかのアイテムを選ぶ前に保存される', async (t) => {
   const { app, api, add, item, idOf } = await bootEditor(t);
   const b = add('button');
   const st = add('status');
@@ -161,7 +161,7 @@ test('取り込んだステータスの項目は、ステータスと操作の�
 });
 
 // ── 移る先の欄（q53 の案A）──
-test('ボタンの移る先の欄: なし・画面・URL。画面を選ぶと、画面設計（この画面設計が先、ほかは名前の順、ごみ箱は出さない）と画面の 2 つの選ぶ欄', async (t) => {
+test('ボタンの移動先の欄: なし・画面・URL。画面を選ぶと、画面設計（この画面設計が先、ほかは名前の順、ごみ箱は出さない）と画面の 2 つの選ぶ欄', async (t) => {
   const { app, api, id, add, side } = await bootEditor(t);
   const s1 = api.currentScreen().id;
   const s2 = api.actions.addScreen(id, 'blank', s1);
@@ -189,7 +189,7 @@ test('ボタンの移る先の欄: なし・画面・URL。画面を選ぶと、
   assert.deepEqual(opts('[data-pf="props.screenId"]'), ['（選んでください）', '精算の入力の画面']);
   const bs = api.store.state.designs.find((x) => x.id === B).screens[0].id;
   setValue(side('[data-pf="props.screenId"]'), bs);
-  assert.match(side('#pf-out').textContent, /移る先＝経費精算 ／ 精算の入力の画面/);
+  assert.match(side('#pf-out').textContent, /移動先＝経費精算 ／ 精算の入力の画面/);
   setValue(side('[data-pf="props.designId"]'), '');
   assert.deepEqual(plain([props().designId, props().screenId]), ['', '']);
   setValue(side('[data-pf="props.to"]'), 'url');
@@ -205,7 +205,7 @@ test('ボタンの移る先の欄: なし・画面・URL。画面を選ぶと、
 });
 
 // ── 見直し（第 8 段階）で見つけた不具合 ──
-test('進み具合の矢印の「今のステータス（見本）」には「（なし）」がある（空のときは「（なし）」を選んだ形）。ステータスの印は、空のとき並びの 1 つ目を描くので、選択肢は並びだけ', async (t) => {
+test('進捗バーの「今のステータス（見本）」には「（なし）」がある（空のときは「（なし）」を選んだ形）。ステータス表示は、空のとき並びの 1 つ目を描くので、選択肢は並びだけ', async (t) => {
   const { add, api, idOf, side } = await bootEditor(t);
   const sp = add('steps');
   api.selectPart(sp.id);
@@ -221,7 +221,7 @@ test('進み具合の矢印の「今のステータス（見本）」には「�
   assert.equal(sel().options[0].textContent, '申請');
 });
 
-test('ステータスの名前を直すと、同じ右の欄の「見本で出すステータス」の選ぶ欄の名前もすぐ変わる', async (t) => {
+test('ステータスの名前を直すと、同じ右のパネルの「表示するステータス（サンプル）」の選ぶ欄の名前もすぐ変わる', async (t) => {
   const { add, api, idOf, side } = await bootEditor(t);
   const st = add('status');
   api.selectPart(st.id);
@@ -230,7 +230,7 @@ test('ステータスの名前を直すと、同じ右の欄の「見本で出�
   assert.equal(side(`select[data-pf="view.current"] option[value="${first}"]`).textContent, '下書き');
 });
 
-test('ステータスと操作の名前の欄を空にして打ち直している途中に、ほかの窓へ移っても、欄を元の名前に戻さない', async (t) => {
+test('ステータスと操作の名前の欄を空にして打ち直している途中に、ほかのウィンドウへ移っても、欄を元の名前に戻さない', async (t) => {
   const { app, add, api, item, idOf } = await bootEditor(t);
   const st = add('status');
   api.selectPart(st.id);

@@ -33,7 +33,7 @@ const MESSAGE = {
   missing: 'ファイルが見つかりません',
   notFile: 'ふつうのファイルではありません',
   unreadable: 'ファイルを読めません',
-  copyFailed: 'ファイルを写せませんでした',
+  copyFailed: 'ファイルをコピーできませんでした',
   badSource: 'ファイルの指定が正しくありません',
 };
 
@@ -171,7 +171,7 @@ function createMaterialFiles({ root, maxBytes = MATERIAL_MAX_BYTES }) {
       (addedThisRun[systemId] = addedThisRun[systemId] || []).push(file);
       return { added: { id, name, kind, size: st.size, file, legacy } };
     } catch (err) {
-      console.warn('資料を写せませんでした:', err); // 元の例外（パスを含む）は console にだけ残す。返事の理由は定型の文
+      console.warn('資料をコピーできませんでした:', err); // 元の例外（パスを含む）は console にだけ残す。返事の理由は定型の文
       return skip(name, MESSAGE.copyFailed);
     }
   }

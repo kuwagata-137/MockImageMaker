@@ -44,7 +44,7 @@ function sampleState() {
           questions: [{ id: 'nq-1', date: '2026-10-02', stage: 'read', text: '宿泊費の上限は役職で変わるか', answer: '', resolvedAt: null }],
           memo: '様式の欄は後で確かめる',
         },
-        revisions: [{ id: 'r-1', kind: 'ai', date: OLD, note: 'Claude Code が直す前の状態', aiSession: 's-0',
+        revisions: [{ id: 'r-1', kind: 'ai', date: OLD, note: 'Claude Code が変更する前の状態', aiSession: 's-0',
           snapshot: { name: '出張申請システム', description: '前の説明', roles: plain(roles), swimlane: plain(swimlane), designIds: ['d-trip'] } }],
       }),
       system('y-exp', '経費精算システム'),
@@ -63,12 +63,12 @@ async function boot(t, state = sampleState()) {
 const notesOf = (sys, id) => plain(sys(id).notes);
 
 // ── 定数 ──
-test('定数: 段階の鍵と順・段階の名前・進み具合・文の上限。SCHEMA_VERSION は 3 のまま', async (t) => {
+test('定数: 段階の鍵と順・段階の名前・進捗・文の上限。SCHEMA_VERSION は 3 のまま', async (t) => {
   const { api } = await boot(t);
   assert.equal(api.SCHEMA_VERSION, 3);
   assert.deepEqual(plain(api.NOTE_STAGES), ['read', 'flow', 'items', 'screens', 'docs']);
   assert.deepEqual(plain(api.NOTE_STAGE_NAMES), {
-    read: '① 資料から読み取る', flow: '② 業務の流れ', items: '③ データベースの項目', screens: '④ 画面', docs: '⑤ 説明書と出力',
+    read: '① 資料から読み取る', flow: '② 業務の流れ', items: '③ データベースの項目', screens: '④ 画面', docs: '⑤ システム設計書と出力',
   });
   assert.deepEqual(plain(api.NOTE_STATES), ['todo', 'doing', 'review', 'done', 'skipped']);
   assert.equal(api.NOTE_TEXT_MAX, 8000);
@@ -97,7 +97,7 @@ test('読み込み: 設計ノートがオブジェクトでない（null・配�
   assert.deepEqual(plain(api.migrate(plain(raw)).state.systems[0].notes), emptyNotes(), 'notes の欄がないシステム');
 });
 
-test('読み込み: 段階は 5 つの鍵を必ず持ち、知らない進み具合は todo・confirmedAt は空でない文字だけ残す（付け直さない）。知らない段階の鍵と知らない欄は残る', async (t) => {
+test('読み込み: 段階は 5 つの鍵を必ず持ち、知らない進捗は todo・confirmedAt は空でない文字だけ残す（付け直さない）。知らない段階の鍵と知らない欄は残る', async (t) => {
   const { api } = await boot(t);
   const out = plain(api.normalizeNotes({
     stages: {
@@ -111,7 +111,7 @@ test('読み込み: 段階は 5 つの鍵を必ず持ち、知らない進み具
     future: { keep: 1 },
   }));
   assert.deepEqual(Object.keys(out.stages), ['read', 'flow', 'items', 'screens', 'docs', 'extra', 'other'], '5 つの鍵が順に並び、知らない鍵はその後ろ');
-  assert.deepEqual(out.stages.read, { state: 'todo', confirmedAt: null, future: 1 }, '知らない進み具合は todo・数の confirmedAt は null・段階の中の知らない欄は残る');
+  assert.deepEqual(out.stages.read, { state: 'todo', confirmedAt: null, future: 1 }, '知らない進捗は todo・数の confirmedAt は null・段階の中の知らない欄は残る');
   assert.deepEqual(out.stages.flow, todo(), '段階がオブジェクトでなければ todo');
   assert.deepEqual(out.stages.items, { state: 'done', confirmedAt: DONE_AT });
   assert.deepEqual(out.stages.screens, { state: 'done', confirmedAt: null }, 'done でも confirmedAt は読み込みでは付け直さない');
@@ -186,7 +186,7 @@ test('読み込み: こわれた設計ノートでも起動でき（ページの
 });
 
 // ── 段階の進み具合 ──
-test('setNoteStage: done・skipped になったときだけ confirmedAt を入れ、ほかの進み具合では null。同じ進み具合・知らない段階／進み具合・ないシステムは false', async (t) => {
+test('setNoteStage: done・skipped になったときだけ confirmedAt を入れ、ほかの進捗では null。同じ進捗・知らない段階／進捗・ないシステムは false', async (t) => {
   const { api, sys } = await boot(t);
   const stage = (k) => plain(sys('y-trip').notes.stages[k]);
   assert.deepEqual(stage('items'), todo());

@@ -209,7 +209,7 @@ test('deleteMaterial: 行だけを消す（ファイルは消さない）。元�
   assert.equal(api.store.undoStack.length, undo0);
 });
 
-test('「AI が直す前の状態」の写し（systemContentOf）に資料は入らない', async (t) => {
+test('「AI が変更する前の状態」の写し（systemContentOf）に資料は入らない', async (t) => {
   const { api, sys } = await boot(t);
   assert.deepEqual(plain(api.SYSTEM_CONTENT_KEYS), ['name', 'description', 'roles', 'swimlane', 'designIds']);
   assert.equal('materials' in api.systemContentOf(sys('y-trip')), false);
@@ -296,7 +296,7 @@ test('swimlaneFromPlan: 別の資料の案（同じ key の箱）や、資料の
   assert.deepEqual(y.swimlane.steps.map((w) => w.src.material), [null, null, null, null]);
 });
 
-test('swimlaneFromPlan: 作業の src.material は、読み込み（2 回通す）と「AI が直す前の状態」の写しの直しでも残る', async (t) => {
+test('swimlaneFromPlan: 作業の src.material は、読み込み（2 回通す）と「AI が変更する前の状態」の写しの直しでも残る', async (t) => {
   const { api } = await boot(t);
   api.actions.swimlaneFromPlan('y-trip', plain(PLAN), { materialId: BDM });
   const once = api.migrate(plain(api.store.state)).state;

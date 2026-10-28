@@ -67,7 +67,7 @@ async function boot(t) {
   return { app, api, $, blurWindow, sys, design, untyped };
 }
 
-test('システムの概要の説明（CRLF の改行）: フォーカスしてほかの窓へ移るだけでは保存しない。打つと保存し、打ち戻すと元の文を保存する', async (t) => {
+test('システムの概要の説明（CRLF の改行）: フォーカスしてほかのウィンドウへ移るだけでは保存しない。打つと保存し、打ち戻すと元の文を保存する', async (t) => {
   const { api, blurWindow, sys, untyped } = await boot(t);
   api.openSystem('y-cust', { panel: 'overview' });
   const el = untyped('#sys-view [data-sy="desc"]', () => sys().description, () => sys().updatedAt);
@@ -81,20 +81,20 @@ test('システムの概要の説明（CRLF の改行）: フォーカスして�
   assert.equal(sys().description, '一行目\n二行目', '打ち戻した文を保存する');
 });
 
-test('役割のメモ（改行・前後の空白）: フォーカスしてほかの窓へ移るだけでは保存しない', async (t) => {
+test('役割のメモ（改行・前後の空白）: フォーカスしてほかのウィンドウへ移るだけでは保存しない', async (t) => {
   const { api, sys, untyped } = await boot(t);
   api.openSystem('y-cust', { panel: 'roles' });
   untyped('#sys-view [data-sy="role-memo"][data-role="l-sales"]', () => sys().roles[0].memo, () => sys().updatedAt);
   untyped('#sys-view [data-sy="role-memo"][data-role="l-boss"]', () => sys().roles[1].memo, () => sys().updatedAt);
 });
 
-test('資料のメモ（改行）: フォーカスしてほかの窓へ移るだけでは保存しない', async (t) => {
+test('資料のメモ（改行）: フォーカスしてほかのウィンドウへ移るだけでは保存しない', async (t) => {
   const { api, sys, untyped } = await boot(t);
   api.openSystem('y-cust', { panel: 'materials' });
   untyped('#sys-view [data-sy="mat-memo"][data-mat="m-1"]', () => sys().materials[0].memo, () => sys().updatedAt);
 });
 
-test('スイムレーン図の作業の設定（作業の文字〔改行〕・メモ〔CRLF〕・矢印の文字〔改行〕）と矢印の設定の文字: フォーカスしてほかの窓へ移るだけでは保存しない', async (t) => {
+test('スイムレーン図の作業の設定（作業の文字〔改行〕・メモ〔CRLF〕・矢印の文字〔改行〕）と矢印の設定の文字: フォーカスしてほかのウィンドウへ移るだけでは保存しない', async (t) => {
   const { api, sys, untyped } = await boot(t);
   api.openSystem('y-cust', { panel: 'swimlane' });
   api.selectStep('w-1');
@@ -105,7 +105,7 @@ test('スイムレーン図の作業の設定（作業の文字〔改行〕・�
   untyped('#sys-side [data-sw="edge-label"][data-edge="e-1"]', () => sys().swimlane.edges[0].label, () => sys().updatedAt);
 });
 
-test('画面設計の説明（CRLF の改行）・部品の文字（改行）とメモ（CRLF）: フォーカスしてほかの窓へ移るだけでは保存しない', async (t) => {
+test('画面設計の説明（CRLF の改行）・アイテムの文字（改行）とメモ（CRLF）: フォーカスしてほかのウィンドウへ移るだけでは保存しない', async (t) => {
   const { api, design, untyped } = await boot(t);
   api.openDesign('d-cust');
   untyped('#side-settings [data-field="design-desc"]', () => design().description, () => design().updatedAt);

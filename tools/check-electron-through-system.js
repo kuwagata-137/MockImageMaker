@@ -45,14 +45,14 @@ async function materialsToSwimlane(page) {
   const read = await page.$eval('.modal .rd-text', (e) => e.textContent);
   await page.click('.modal [data-dlg="cancel"]');
   await noModal(page);
-  report(mats.length === 6 && /旅費規程/.test(read), '資料: 「＋ ファイルを入れる…」で 6 種類を入れ、Word の行の「読む」の窓に規程の文が出る',
+  report(mats.length === 6 && /旅費規程/.test(read), '資料: 「＋ 資料を追加する…」で 6 種類を入れ、Word の行の「読む」の窓に規程の文が出る',
     `資料 ${mats.map((m) => m.name).join('・')}`);
   const bdm = mats.find((m) => m.kind === 'bdm');
   await page.click(`#sys-view [data-action="sys-mat-swim"][data-id="${bdm.id}"]`);
   await page.waitForFunction(() => window.__test__.ui.sysPanel === 'swimlane', { timeout: 60000 });
   const y = systemOf(await stateOf(page));
   report(y.roles.map((r) => r.name).join() === '申請者,上長,経理' && y.swimlane.steps.length === 8 && y.swimlane.edges.length === 8,
-    '資料の MPD の行の「スイムレーン図にする」で、役割 3・作業 8・矢印 8 が入る', `役割 ${y.roles.map((r) => r.name).join('・')}`);
+    '資料の MPD の行の「スイムレーン図にする」で、役割 3・工程 8・矢印 8 が入る', `役割 ${y.roles.map((r) => r.name).join('・')}`);
 }
 
 // 役割の入口の「＋ 役割を足す」で「総務」を足す（足すと名前の欄が選ばれた形でフォーカスが来る）

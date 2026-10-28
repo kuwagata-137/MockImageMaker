@@ -14,7 +14,7 @@ async function boot(t, opts) {
   return { ...b, call };
 }
 
-test('export_system_doc: 既定は全部のページを入れ、返事にページ数・入れたページ・画面設計ごとの始まりのページを書く。ファイルは <名前>_説明書.pdf', async (t) => {
+test('export_system_doc: 既定は全部のページを入れ、返事にページ数・入れたページ・画面設計ごとの始まりのページを書く。ファイルは <名前>_システム設計書.pdf', async (t) => {
   const { call, api, d, sysId } = await boot(t);
   const r = await call('export_system_doc', { system: '出張申請システム' });
   assert.equal(r.ok, true, JSON.stringify(r.error));
@@ -33,10 +33,10 @@ test('export_system_doc: 既定は全部のページを入れ、返事にペー�
   assert.equal(r.render.kind, 'pdf');
   assert.equal(r.render.files.length, 1);
   const f = r.render.files[0];
-  assert.equal(f.name, '出張申請システム_説明書.pdf');
+  assert.equal(f.name, '出張申請システム_システム設計書.pdf');
   assert.ok(Math.abs(f.pageSize.width - 11.69) < 0.05 && f.pageSize.width > f.pageSize.height, 'A4 横');
-  assert.match(f.html, /<title>出張申請システム_説明書<\/title>/);
-  assert.match(f.html, /システムの説明書/);
+  assert.match(f.html, /<title>出張申請システム_システム設計書<\/title>/);
+  assert.match(f.html, /システム設計書/);
   assert.ok(!f.html.includes(DOCS_PATH.slice(0, 6)), '⑤ の行（出力したファイルの場所）は入れない');
 });
 
@@ -71,16 +71,16 @@ test('export_system_doc: 知らないシステムは断る。ページが 1 つ�
   api.actions.createSystem({ name: '空のシステム', description: '' });
   const none = await call('export_system_doc', { system: '空のシステム', systemCover: false });
   assert.equal(none.error.code, 'bad_request');
-  assert.match(none.error.message, /入れるページが 1 つもありません。/);
+  assert.match(none.error.message, /出力するページが 1 つもありません。/);
   const cover = await call('export_system_doc', { system: '空のシステム' });
   assert.equal(cover.result.pages, 1, '表紙だけ');
   assert.deepEqual(cover.result.designs, []);
   const old = await call('export_system_doc', { system: '古い申請システム' });
   assert.equal(old.ok, true, 'ごみ箱のシステムも出せる');
-  assert.equal(old.render.files[0].name, '古い申請システム_説明書.pdf');
+  assert.equal(old.render.files[0].name, '古い申請システム_システム設計書.pdf');
 });
 
-test('export_system_doc: 書く頼みではない（元に戻すの履歴・システムの履歴の行・更新の印が変わらない）', async (t) => {
+test('export_system_doc: 書く頼みではない（元に戻すの履歴・システムの履歴の行・更新日時が変わらない）', async (t) => {
   const { call, api, y } = await boot(t);
   const undo0 = api.store.undoStack.length;
   const before = plain({ revisions: y().revisions, updatedAt: y().updatedAt });
@@ -94,7 +94,7 @@ test('手引き: ⑤ の段階で export_system_doc を使うと書き、「守�
   const { TOOLS } = require('../mcp-tools');
   const stages = GUIDES.stages.text;
   const row5 = stages.split('\n').find((l) => l.startsWith('| ⑤'));
-  assert.match(row5, /export_system_doc でシステムの説明書（PDF）を出力する/);
+  assert.match(row5, /export_system_doc でシステム設計書（PDF）を出力する/);
   assert.match(GUIDES.rules.text, /export_system_doc/);
   assert.match(INSTRUCTIONS + stages, /export_system_doc/);
   const tool = TOOLS.find((x) => x.name === 'export_system_doc');

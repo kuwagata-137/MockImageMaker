@@ -43,7 +43,7 @@ async function bootTwo(t, opts = {}) {
   return { app, api, A, B, a1, a2, b1, b2, d, put, part, setting };
 }
 
-test('ボタンもリンクの文字も移る先を持ち、ほかの画面設計の画面も指せる。設定の文は「移る先＝経費精算 ／ 精算の入力の画面」', async (t) => {
+test('ボタンもリンクも移動先を持ち、ほかの画面設計の画面も指せる。設定の文は「移動先＝経費精算 ／ 精算の入力の画面」', async (t) => {
   const { api, A, B, a1, a2, b1, put, setting } = await bootTwo(t);
   const own = put(A, a2, 'button', { to: 'screen', screenId: a1 }, '一覧へ');
   const other = put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1, action: '精算を始める' }, '精算する');
@@ -51,18 +51,18 @@ test('ボタンもリンクの文字も移る先を持ち、ほかの画面設�
   const url = put(A, a2, 'link', { to: 'url', url: 'https://example.com/' });
   const gone = put(A, a2, 'button', { to: 'screen', designId: B, screenId: 's-nai' });
   const none = put(A, a2, 'button', { to: 'screen' });
-  assert.equal(setting(A, own), '移る先＝一覧の画面');
-  assert.equal(setting(A, other), '移る先＝経費精算 ／ 精算の入力の画面\n押したとき＝精算を始める');
-  assert.equal(setting(A, self), '移る先＝一覧の画面', '自分の画面設計を名指ししても、この画面設計の画面');
-  assert.equal(setting(A, url), '移る先＝https://example.com/');
-  assert.equal(setting(A, gone), '移る先＝（ない画面）');
+  assert.equal(setting(A, own), '移動先＝一覧の画面');
+  assert.equal(setting(A, other), '移動先＝経費精算 ／ 精算の入力の画面\n押したとき＝精算を始める');
+  assert.equal(setting(A, self), '移動先＝一覧の画面', '自分の画面設計を名指ししても、この画面設計の画面');
+  assert.equal(setting(A, url), '移動先＝https://example.com/');
+  assert.equal(setting(A, gone), '移動先＝（ない画面）');
   assert.equal(setting(A, none), '', '画面を選んでいないときは書かない');
   // 移る先の画面設計の名前・画面の名前を変えると、文も変わる
   api.actions.updateDesignInfo(B, { name: '経費の精算' });
-  assert.equal(setting(A, other), '移る先＝経費の精算 ／ 精算の入力の画面\n押したとき＝精算を始める');
+  assert.equal(setting(A, other), '移動先＝経費の精算 ／ 精算の入力の画面\n押したとき＝精算を始める');
 });
 
-test('画面の複製: 自分を指す移る先は新しい画面へ、ほかの画面とほかの画面設計の画面を指す移る先はそのまま（ボタンも）', async (t) => {
+test('画面の複製: 自分を指す移動先は新しい画面へ、ほかの画面とほかの画面設計の画面を指す移動先はそのまま（ボタンも）', async (t) => {
   const { api, A, B, a1, a2, b1, d, put } = await bootTwo(t);
   put(A, a2, 'button', { to: 'screen', screenId: a2 });
   put(A, a2, 'button', { to: 'screen', screenId: a1 });
@@ -74,7 +74,7 @@ test('画面の複製: 自分を指す移る先は新しい画面へ、ほかの
   ]);
 });
 
-test('画面設計の複製: この画面設計の画面を指す移る先は複製の画面へ付け直し、ほかの画面設計の画面はそのまま。画面の移り方の図の位置の鍵も付け直す', async (t) => {
+test('画面設計の複製: この画面設計の画面を指す移動先は複製の画面へ付け直し、ほかの画面設計の画面はそのまま。画面遷移図の図の位置の鍵も付け直す', async (t) => {
   const { api, A, B, a1, a2, b1, d, put } = await bootTwo(t);
   put(A, a2, 'button', { to: 'screen', screenId: a1 });
   put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 });
@@ -85,7 +85,7 @@ test('画面設計の複製: この画面設計の画面を指す移る先は複
   assert.deepEqual(plain(copy.flowPos), { ['s:' + c1.id]: { x: 40, y: 40 }, ['x:' + B + '/' + b1]: { x: 440, y: 40 } });
 });
 
-test('画面を消す: ほかの画面設計のボタンとリンクの文字の移る先も外れ、確かめの窓に画面設計ごとの数を書く。元に戻す 1 回で全部戻る', async (t) => {
+test('画面を消す: ほかの画面設計のボタンとリンクの移動先も外れ、確かめの窓に画面設計ごとの数を書く。元に戻す 1 回で全部戻る', async (t) => {
   const { app, api, A, B, a1, a2, b1, b2, d, put, part } = await bootTwo(t);
   const p1 = put(A, a2, 'button', { to: 'screen', screenId: a1 });
   const p2 = put(A, a2, 'link', { to: 'screen', designId: A, screenId: a1 });
@@ -99,13 +99,13 @@ test('画面を消す: ほかの画面設計のボタンとリンクの文字の
   click($(app, `.sl-item[data-id="${a1}"]`));
   api.runCommand('deleteScreen');
   await waitFor(() => $(app, '.modal'));
-  assert.match($(app, '.modal').textContent, /ボタンとリンクの文字 3 個が、この画面を移る先にしています（この画面設計から 2 個・「経費精算」から 1 個）。移る先は外れます。/);
+  assert.match($(app, '.modal').textContent, /ボタンとリンク 3 個が、この画面を移動先にしています（この画面設計から 2 個・「経費精算」から 1 個）。移動先は外れます。/);
   click($(app, '.modal [data-dlg="ok"]'));
   await tick();
   assert.deepEqual(plain([p1, p2, p4].map((id) => part(id === p4 ? B : A, id).props.screenId)), ['', '', '']);
   assert.equal(part(B, p3).props.screenId, b2);
   assert.equal(part(B, p5).props.screenId, a1);
-  assert.notEqual(d(B).updatedAt, bUpdated, '移る先が外れた画面設計は、更新日時も変わる');
+  assert.notEqual(d(B).updatedAt, bUpdated, '移動先が外れた画面設計は、更新日時も変わる');
   api.store.undo();
   assert.deepEqual(plain([p1, p2, p4].map((id) => part(id === p4 ? B : A, id).props.screenId)), [a1, a1, a1]);
   assert.equal(d(B).updatedAt, bUpdated);
@@ -119,10 +119,10 @@ test('画面を消す確かめの窓: この画面設計からだけなら、画
   api.runCommand('deleteScreen');
   await waitFor(() => $(app, '.modal'));
   const text = $(app, '.modal').textContent;
-  assert.match(text, /ボタンとリンクの文字 1 個が、この画面を移る先にしています。移る先は外れます。/);
+  assert.match(text, /ボタンとリンク 1 個が、この画面を移動先にしています。移動先は外れます。/);
 });
 
-test('完全に削除: その画面設計の画面を指していた移る先は、画面設計も画面も外れる（更新日時は変えない）。ごみ箱にある間は外さない', async (t) => {
+test('完全に削除: その画面設計の画面を指していた移動先は、画面設計も画面も外れる（更新日時は変えない）。ごみ箱にある間は外さない', async (t) => {
   const { api, A, B, b1, d, put, part } = await bootTwo(t);
   const p = put(A, d(A).screens[0].id, 'button', { to: 'screen', designId: B, screenId: b1 });
   api.actions.trashDesign(B);
@@ -133,7 +133,7 @@ test('完全に削除: その画面設計の画面を指していた移る先は
   assert.equal(d(A).updatedAt, updated);
 });
 
-test('貼り付け: ほかの画面設計へ貼ると、元の画面設計の画面を指す移る先は元の画面設計を名指しし、貼る先の画面設計を名指ししていたものは「この画面設計」になる', async (t) => {
+test('貼り付け: ほかの画面設計へ貼ると、元の画面設計の画面を指す移動先は元の画面設計を名指しし、貼る先の画面設計を名指ししていたものは「この画面設計」になる', async (t) => {
   const { app, api, A, B, a1, a2, b1, b2, d, put } = await bootTwo(t);
   put(A, a2, 'button', { to: 'screen', screenId: a1 });
   put(A, a2, 'link', { to: 'screen', designId: B, screenId: b2 });
@@ -152,7 +152,7 @@ test('貼り付け: ほかの画面設計へ貼ると、元の画面設計の画
   assert.deepEqual(plain(d(A).screens[0].parts.map((p) => [p.type, p.props.designId, p.props.screenId])), [['button', '', a1], ['link', B, b2]]);
 });
 
-test('出力する HTML: 移る先のほかの画面設計と、入ってくる移る先の名前を screenPeers に入れ、単体で開いても設定の文に名前が出る', async (t) => {
+test('出力する HTML: 移動先のほかの画面設計と、入ってくる移動先の名前を screenPeers に入れ、単体で開いても設定の文に名前が出る', async (t) => {
   const { api, A, B, a1, a2, b1, b2, put } = await bootTwo(t);
   const out = put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
   put(B, b2, 'link', { to: 'screen', designId: A, screenId: a1 }, '出張申請の一覧へ戻る');
@@ -162,19 +162,19 @@ test('出力する HTML: 移る先のほかの画面設計と、入ってくる�
     screens: [{ id: b1, name: '精算の入力' }, { id: b2, name: '一覧' }],
     refs: [{ from: b2, to: a1, type: 'link', label: '出張申請の一覧へ戻る' }],
   }]);
-  assert.deepEqual(plain(payload.peers), [], 'つながりの図の箱は増やさない');
+  assert.deepEqual(plain(payload.peers), [], '関連図の箱は増やさない');
   const html = api.buildStandaloneHtml(api.store.state.designs.find((x) => x.id === A), api.store.state);
   const app2 = bootApp({ html, url: 'https://localhost/vendor/a.html' });
   t.after(() => app2.close());
   const api2 = await app2.api();
   const d2 = api2.currentDesign();
   const sc = d2.screens.find((s) => s.id === a2);
-  assert.equal(api2.tableRows(sc, d2, api2.store.state).find((r) => r.id === out).setting, '移る先＝経費精算 ／ 精算の入力の画面');
+  assert.equal(api2.tableRows(sc, d2, api2.store.state).find((r) => r.id === out).setting, '移動先＝経費精算 ／ 精算の入力の画面');
   assert.deepEqual(plain(api2.standaloneInfo().screenPeers), plain(payload.screenPeers));
 });
 
 // ── 画面の移り方の図（T5。画像 q55 の案A・q58）──
-test('画面の移り方の図: 箱はこの画面設計の画面と、行き先・来る元のほかの画面設計の画面。同じ 2 つの画面の間の同じ種類の矢印は 1 本にまとめる', async (t) => {
+test('画面遷移図の図: 箱はこの画面設計の画面と、行き先・来る元のほかの画面設計の画面。同じ 2 つの画面の間の同じ種類の矢印は 1 本にまとめる', async (t) => {
   const { api, A, B, a1, a2, b1, b2, d, put } = await bootTwo(t);
   const C = api.actions.createDesign('顧客管理', 'kintone');
   const c1 = d(C).screens[0].id;
@@ -203,7 +203,7 @@ test('画面の移り方の図: 箱はこの画面設計の画面と、行き先
   assert.ok(pos['s:' + a1].x < pos['s:' + a2].x && pos['s:' + a2].x < pos['x:' + B + '/' + b1].x);
 });
 
-test('画面の移り方の図: つながりのない画面は、画面の並びの順に並べる', async (t) => {
+test('画面遷移図の図: つながりのない画面は、画面の並びの順に並べる', async (t) => {
   const { api, A, a2, d } = await bootTwo(t);
   const a3 = api.actions.addScreen(A, 'blank', a2);
   api.actions.updateScreen(A, a3, { name: 'あ' });
@@ -213,7 +213,7 @@ test('画面の移り方の図: つながりのない画面は、画面の並び
   assert.deepEqual(plain(keys), plain(d(A).screens.map((s) => 's:' + s.id)), '名前の順ではなく、画面の並びの順');
 });
 
-test('画面の移り方の図の HTML: ほかの画面設計の画面は灰色の点線の箱（ext）で「「経費精算」の画面」。矢印の印の id は flow', async (t) => {
+test('画面遷移図の図の HTML: ほかの画面設計の画面は灰色の点線の箱（ext）で「「経費精算」の画面」。矢印の印の id は flow', async (t) => {
   const { app, api, A, B, a2, b1, d, put } = await bootTwo(t);
   put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
   const box = app.document.createElement('div');
@@ -221,12 +221,12 @@ test('画面の移り方の図の HTML: ほかの画面設計の画面は灰色�
   const ext = box.querySelector('.mnode.ext');
   assert.equal(ext.dataset.node, 'x:' + B + '/' + b1);
   assert.match(ext.textContent, /精算の入力「経費精算」の画面/);
-  assert.match(box.querySelector('.mnode:not(.ext)').textContent, /一覧パソコン部品 0 個/);
+  assert.match(box.querySelector('.mnode:not(.ext)').textContent, /一覧パソコンアイテム 0 個/);
   assert.match(box.querySelector('svg path[marker-end]').getAttribute('marker-end'), /^url\(#flow-arrow-/);
   assert.equal(box.querySelector('.map-inner').dataset.view, 'flow');
 });
 
-test('画面の移り方の図: 単体で開いた HTML では、ほかの画面設計の画面を screenPeers から描く（行き先も来る元も）', async (t) => {
+test('画面遷移図の図: 単体で開いた HTML では、ほかの画面設計の画面を screenPeers から描く（行き先も来る元も）', async (t) => {
   const { api, A, B, a1, a2, b1, b2, put } = await bootTwo(t);
   put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
   put(B, b2, 'link', { to: 'screen', designId: A, screenId: a1 }, '戻る');
@@ -242,7 +242,7 @@ test('画面の移り方の図: 単体で開いた HTML では、ほかの画面
 });
 
 // ── 見直し（第 8 段階）で見つけた不具合 ──
-test('出力する HTML: ごみ箱にある画面設計は screenPeers に「ごみ箱」の印を付けて入れ、単体で開いたときは図に描かず、移る先の画面設計の選択肢にも出さない', async (t) => {
+test('出力する HTML: ごみ箱にある画面設計は screenPeers に「ごみ箱」の印を付けて入れ、単体で開いたときは図に描かず、移動先の画面設計の選択肢にも出さない', async (t) => {
   const { api, A, B, a1, a2, b1, put } = await bootTwo(t);
   const out = put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
   api.actions.trashDesign(B);
@@ -257,7 +257,7 @@ test('出力する HTML: ごみ箱にある画面設計は screenPeers に「ご
   const d2 = api2.currentDesign();
   assert.equal(plain(api2.flowModel(api2.store.state, d2).edges).length, 0, '単体で開いても、ごみ箱の画面設計を描かない');
   const sc = d2.screens.find((s) => s.id === a2);
-  assert.equal(api2.tableRows(sc, d2, api2.store.state).find((r) => r.id === out).setting, '移る先＝経費精算 ／ 精算の入力の画面');
+  assert.equal(api2.tableRows(sc, d2, api2.store.state).find((r) => r.id === out).setting, '移動先＝経費精算 ／ 精算の入力の画面');
   api2.openScreen(a2);
   api2.selectPart(out);
   const opts = [...app2.document.querySelectorAll('#side-settings select[data-pf="props.designId"] option')].map((o) => o.textContent);
@@ -265,7 +265,7 @@ test('出力する HTML: ごみ箱にある画面設計は screenPeers に「ご
   assert.ok(a1);
 });
 
-test('画面の移り方の図: 単体で開いた HTML では、ほかの画面設計の箱の説明に「開けません」と書く', async (t) => {
+test('画面遷移図の図: 単体で開いた HTML では、ほかの画面設計の箱の説明に「開けません」と書く', async (t) => {
   const { api, A, B, a2, b1, put } = await bootTwo(t);
   put(A, a2, 'button', { to: 'screen', designId: B, screenId: b1 }, '精算する');
   const html = api.buildStandaloneHtml(api.store.state.designs.find((x) => x.id === A), api.store.state);

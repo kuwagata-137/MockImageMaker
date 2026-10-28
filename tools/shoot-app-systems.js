@@ -174,13 +174,13 @@ async function shootHome(page, shot) {
   await page.click('.sys-pop [data-action="sys-add-same"]');
   await page.waitForSelector('.modal .pick-card');
   await page.click(`.modal .pick-card[data-pick="${await idOf(page, '出張申請')}"]`);
-  await shot(page, '111_システム_今ある画面設計を入れる窓（1つ選んだ）');
+  await shot(page, '111_システム_今ある画面設計を追加する窓（1つ選んだ）');
   await cancelDialog(page);
   await page.click('.sys-head [data-action="sys-add-menu"]');
   await page.click('.sys-pop [data-action="sys-add-copy"]');
   await page.waitForSelector('.modal .pick-card');
   await page.click(`.modal .pick-card[data-pick="${await idOf(page, '取引先マスタ')}"]`);
-  await shot(page, '112_システム_今ある画面設計を複製して入れる窓（1つ選んだ）');
+  await shot(page, '112_システム_今ある画面設計を複製して追加する窓（1つ選んだ）');
   await cancelDialog(page);
   // 113: 共通の画面設計（社員マスタ）をごみ箱へ移す確かめの窓
   const emp = await idOf(page, '社員マスタ');
@@ -228,7 +228,7 @@ async function shootSwimlane(page, shot) {
   await clickAt(page, '#sys-swim .mnode.sw', '承認する');
   await page.mouse.move(700, 900); // 箱から離す（箱の上では青い ○＋ が出る）
   await sleep(80);
-  await shot(page, '117_システム_スイムレーン図_100%で箱を選んだ（右の欄に作業の設定）');
+  await shot(page, '117_システム_スイムレーン図_100%で箱を選んだ（右のパネルに作業の設定）');
   await page.keyboard.press('Escape');
   // 118・119: 箱の右の縁に近づくと出る青い ○＋ と、押した後のつなぐ途中の青い破線
   const b = await stepBox(page, '出張申請を入力する');
@@ -257,7 +257,7 @@ async function shootSwimlane(page, shot) {
   const lab = await edgeLabelAt(page, '承認');
   await page.mouse.click(lab.x, lab.y);
   await sleep(120);
-  await shot(page, '121_システム_スイムレーン図_矢印を選んだ（両端のオレンジの○と右の欄）');
+  await shot(page, '121_システム_スイムレーン図_矢印を選んだ（両端のオレンジの○と右のパネル）');
   const end = await rectOf(page, '#sys-swim .sw-ends.sel .sw-end[data-end="to"]');
   await dragShot(page, shot, '122_システム_スイムレーン図_付け替えのドラッグの途中', end, { x: e.l + 30, y: e.t + 25 });
   await page.keyboard.press('Escape');

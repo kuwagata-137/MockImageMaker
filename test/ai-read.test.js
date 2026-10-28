@@ -22,7 +22,7 @@ test('aiAPI があれば、起動の終わりに頼みの受け口を付けて r
   assert.equal(res.ok, true);
   assert.deepEqual(res.result.designs.map((d) => d.name).sort(), ['受注管理', '顧客管理']);
   const bad = plain(await fake.handler({ tool: 'delete_design', args: {} }));
-  assert.deepEqual(bad, { ok: false, error: { code: 'unknown_tool', message: '「delete_design」という道具はありません。' } });
+  assert.deepEqual(bad, { ok: false, error: { code: 'unknown_tool', message: '「delete_design」というツールはありません。' } });
   app.close();
 });
 
@@ -85,7 +85,7 @@ test('get_design: ごみ箱の画面設計も読める。見つからない・�
   app.close();
 });
 
-test('get_screen: 部品（id・赤い番号・項目・位置・設定の文）・吹き出しのつなぐ部品・部品の設定の一覧表を返す', async () => {
+test('get_screen: アイテム（id・赤い番号・項目・位置・設定の文）・吹き出しのつなぐアイテム・設定一覧を返す', async () => {
   const { app, call } = await boot();
   const r = await call('get_screen', { design: '顧客管理', screen: '新規登録' });
   assert.equal(r.ok, true);
@@ -142,7 +142,7 @@ test('大きい返事は分ける。項目が 300 個あると nextCursor を返
   app.close();
 });
 
-test('get_screen: 部品が 150 個あっても、どのページも目安（24,000 字）以下。続きを読むと、部品・吹き出し・一覧表の行が重ならずに全部そろう', async () => {
+test('get_screen: アイテムが 150 個あっても、どのページも目安（24,000 字）以下。続きを読むと、アイテム・吹き出し・一覧表の行が重ならずに全部そろう', async () => {
   const st = sampleState();
   const d1 = st.designs[0];
   d1.items = Array.from({ length: 150 }, (_, i) => item(`x${i}`, `項目 ${i + 1}`, 'dropdown', { memo: '説明の文。'.repeat(4), props: { options: ['あ', 'い', 'う'], initial: '' } }));
@@ -173,7 +173,7 @@ test('get_screen: 部品が 150 個あっても、どのページも目安（24,
   app.close();
 });
 
-test('get_catalog: 部品の種類・設定の欄の説明・ひな形・機器・並べ方の数を返す', async () => {
+test('get_catalog: アイテムの種類・設定の欄の説明・ひな形・機器・並べ方の数を返す', async () => {
   const { app, T, call } = await boot();
   const r = await call('get_catalog');
   assert.equal(r.ok, true);
@@ -181,11 +181,11 @@ test('get_catalog: 部品の種類・設定の欄の説明・ひな形・機器�
   assert.deepEqual(c.parts.map((p) => p.type), Object.keys(T.PART_TYPES));
   const text1 = c.parts.find((p) => p.type === 'text1');
   assert.deepEqual([text1.w, text1.h, text1.numbered, text1.item], [320, 64, true, 'データベースの項目になる']);
-  assert.match(text1.props.maxLen, /最大の文字数/);
+  assert.match(text1.props.maxLen, /最大文字数/);
   assert.match(c.parts.find((p) => p.type === 'button').props.style, /primary/);
   assert.match(c.parts.find((p) => p.type === 'status').itemProps.states, /ステータスの並び/);
   assert.equal(c.parts.find((p) => p.type === 'heading').numbered, false);
-  assert.deepEqual(c.templates.map((t) => t.id), ['blank', 'input', 'detail', 'list', 'graph', 'agg', 'steps']);
+  assert.deepEqual(c.templates.map((t) => t.id), ['blank', 'input', 'detail', 'list', 'graph', 'agg', 'steps', 'crmDetail', 'crmCase']);
   assert.deepEqual(c.devices.phone, { label: 'スマホ', width: 375, height: 667 });
   assert.deepEqual(c.layout.columnsLeft, [32, 480]);
   assert.equal(c.layout.spanWidth, 848);

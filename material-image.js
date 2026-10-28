@@ -30,7 +30,7 @@ function readFailed() {
   return new MaterialError('read_failed', 'この画像は読めませんでした。ファイルが壊れているか、対応していない形式かもしれません。');
 }
 
-const IMAGE_PART_MISSING = '画像の部品が、このパソコンでは動きません。画像の資料と、PDF の文字のないページは読めません（文字・Word・Excel・MPD の資料と、PDF の文字は読めます）。';
+const IMAGE_PART_MISSING = '画像を読む機能が、このパソコンでは動きません。画像の資料と、PDF の文字のないページは読めません（文字・Word・Excel・MPD の資料と、PDF の文字は読めます）。';
 
 // 画像の部品。読めたものは 2 回目から使い回す（読めなかったときは控えないので、次に描くときにもう一度読む）。元の例外は cause に残す
 let canvasLib = null;
@@ -68,7 +68,7 @@ function headerSize(bytes) {
 async function decodeImage(bytes) {
   const size = headerSize(bytes);
   if (size && size.width * size.height > MAX_IMAGE_PIXELS) {
-    throw new MaterialError('too_large', `この画像は画素が多すぎるため（${size.width}×${size.height}）、読めません。画素が 1 億より少なくなるように小さくして保存し直してから、入れ直してください。`);
+    throw new MaterialError('too_large', `この画像は画素が多すぎるため（${size.width}×${size.height}）、読めません。画素が 1 億より少なくなるように小さくして保存し直してから、追加し直してください。`);
   }
   const { loadImage } = loadCanvas();
   try {

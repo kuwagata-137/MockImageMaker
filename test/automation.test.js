@@ -321,7 +321,7 @@ test('時間切れで timeout を返し、次の頼みへ進む。isSlow の頼�
   // 時間切れの文は、頼みが遅れて実行されて変更が入ったかもしれないこと・頼み直す前に読む道具で確かめることを伝える（見直し④-3）。入口（automation-client.js）も同じ文
   const r1 = await c.next();
   assert.deepEqual([r1.id, r1.ok, r1.error.code], [1, false, 'timeout']);
-  assert.match(r1.error.message, /時間切れ.*変更が入ったかもしれません.*頼み直す前に.*list_designs/s);
+  assert.match(r1.error.message, /時間切れ.*変更が入ったかもしれません.*依頼し直す前に.*list_designs/s);
   assert.equal(r1.error.message, require('../automation-protocol').TIMEOUT_MESSAGE);
   const e1 = Date.now() - t0;
   assert.ok(e1 >= 120 && e1 < 550, `時間切れまで ${e1}ms`);

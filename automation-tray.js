@@ -16,14 +16,14 @@ const clientLabel = (c) => CLIENT_NAMES[c] || String(c || '').replace(/\s+/g, ' 
 // アイコンを出すか・紫の点・マウスを乗せたときの文（Windows は 127 字まで）・メニューのいちばん上の行
 function trayModel({ clients = [], visible = true } = {}) {
   const labels = clients.map((c) => clientLabel(c && c.client));
-  const lines = [APP_NAME, labels.length ? `AI がつながっています（${labels.join('・')}）` : '裏で動いています（AI はつながっていません）'];
-  if (!visible) lines.push('窓は閉じています。押すと開きます。');
+  const lines = [APP_NAME, labels.length ? `AI と連携しています（${labels.join('・')}）` : '裏で動いています（AI とは連携していません）'];
+  if (!visible) lines.push('ウィンドウは閉じています。押すと開きます。');
   return {
     show: labels.length > 0 || !visible,
     dot: labels.length > 0,
     labels,
     tooltip: lines.join('\n').slice(0, 127),
-    connected: labels.length ? `つながっている AI：${labels.join('・')}` : 'つながっている AI はありません',
+    connected: labels.length ? `連携している AI：${labels.join('・')}` : '連携している AI はありません',
   };
 }
 
@@ -129,9 +129,9 @@ function initTray({ automation, showWindow, openConnect, quit, headless = false 
       { label: model.connected, enabled: false },
       { type: 'separator' },
       { label: 'モックイメージメーカーを開く', click: () => showWindow() },
-      { label: 'AI とつなぐ…', click: () => openConnect() },
+      { label: 'AI と連携…', click: () => openConnect() },
       { type: 'separator' },
-      { label: '終了', click: () => quit() },
+      { label: 'モックイメージメーカーを終了する', click: () => quit() },
     ]));
   }
   automation.onStateChange(update);
@@ -143,7 +143,7 @@ function initTray({ automation, showWindow, openConnect, quit, headless = false 
       if (notified || !model.dot) return;
       notified = true;
       const title = '裏で動き続けています';
-      const body = `AI（${model.labels.join('・')}）がつながっているので、窓を閉じてもアプリは終わりません。タスクトレイのアイコンから、また開けます。`;
+      const body = `AI（${model.labels.join('・')}）と連携しているので、ウィンドウを閉じてもアプリは終わりません。タスクトレイのアイコンから、また開けます。`;
       if (Notification.isSupported()) new Notification({ title, body, silent: true }).show();
       else if (tray) tray.displayBalloon({ title, content: body });
     },

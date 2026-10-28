@@ -106,15 +106,15 @@ async function checkSwimlaneFromBdm(client, env, rows) {
   const bdm = rowOf(rows, SAMPLE_FILES.bdm);
   const refused = await callRaw(client, 'swimlane_from_bdm', { system: SYSTEM_ID, material: bdm.id });
   check('D. swimlane_from_bdm: 今の図に作業があると、replace なしでは断られる（置き換えて消える作業の数を知らせる）',
-    refused.isError && refused.code === 'bad_request' && /replace: true/.test(refused.text) && /作業 2 つ/.test(refused.text), refused.isError ? refused.text.split('\n')[0] : '断られなかった');
+    refused.isError && refused.code === 'bad_request' && /replace: true/.test(refused.text) && /工程 2 つ/.test(refused.text), refused.isError ? refused.text.split('\n')[0] : '断られなかった');
   const done = await callRaw(client, 'swimlane_from_bdm', { system: SYSTEM_ID, material: bdm.id, replace: true });
   const d = done.json || {};
-  check('D. swimlane_from_bdm（replace: true）: 図の作業 8・矢印 8 で置き換わり、役割は使い回して足りない 1 つを足す',
+  check('D. swimlane_from_bdm（replace: true）: 図の作業 8・矢印 8 で置き換わり、同じ名前の役割はそのまま使い、足りない 1 つを追加する',
     !done.isError && d.diagramType === 'swimlane' && d.steps === 8 && d.edges === 8 && d.roles.added.join() === '経理' && d.roles.reused.join() === '申請者,上長' && d.changed !== false,
     done.isError ? done.text : JSON.stringify({ diagramType: d.diagramType, roles: d.roles, steps: d.steps, edges: d.edges, warnings: d.warnings }));
   const gs = await callRaw(client, 'get_system', { system: SYSTEM_ID });
   const g = gs.json || {};
-  check(`D. get_system は資料の一覧（${COUNT} つ・file なし）と、置き換えたスイムレーン図（役割 3・作業 8・矢印 8）を返す`,
+  check(`D. get_system は資料の一覧（${COUNT} つ・file なし）と、置き換えたスイムレーン図（役割 3・工程 8・矢印 8）を返す`,
     !gs.isError && g.roles.length === 3 && g.steps.length === 8 && g.edges.length === 8 && g.materials.length === COUNT && g.materialsTotal === COUNT && g.materials.every((m) => !('file' in m)),
     gs.isError ? gs.text : `役割 ${g.roles.map((r) => r.name).join('・')} ／ 作業 ${g.steps.length} ／ 矢印 ${g.edges.length} ／ 資料 ${g.materials.length}`);
   // designs.json に残る（保存は少し遅れる）。作業の src に資料の id が入り、直す前の状態（作業 2 つ）の行が残る
@@ -122,7 +122,7 @@ async function checkSwimlaneFromBdm(client, env, rows) {
   const read = () => (JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).systems || []).find((y) => y.id === SYSTEM_ID);
   await waitUntil(() => { saved = read(); return saved && saved.swimlane.steps.length === 8; }, 8000, 'designs.json に置き換えた図が残らない');
   const aiRow = saved.revisions.find((r) => r.kind === 'ai');
-  check('D. designs.json に置き換えた図が残り、作業の src に資料の id が入り、AI が直す前の状態（作業 2 つ）の行が残る',
+  check('D. designs.json に置き換えた図が残り、作業の src に資料の id が入り、AI が変更する前の状態（工程 2 つ）の行が残る',
     saved.swimlane.steps.every((w) => w.src && w.src.material === bdm.id) && !!aiRow && !!aiRow.snapshot && aiRow.snapshot.swimlane.steps.length === 2 && saved.materials.length === COUNT,
     `作業の src.material ${[...new Set(saved.swimlane.steps.map((w) => w.src && w.src.material))].join('・')} ／ 行 ${saved.revisions.map((r) => r.kind).join('・')}`);
 }
@@ -148,7 +148,7 @@ async function checkExportBdm(client, env, rows) {
   }
   const orig = planFromHtml(before.toString('utf8'));
   const keys = (p) => p.steps.map((s) => s.key).sort().join();
-  check('D. export_bdm: 入れた図を元の MPD に入れて <システムの名前>_スイムレーン.html に書く。読み直すと役割 3・作業 8・矢印 8 で、作業の箱は元の箱の id のまま。docId は null・注意なし',
+  check('D. export_bdm: 入れた図を元の MPD に入れて <システムの名前>_スイムレーン.html に書く。読み直すと役割 3・工程 8・矢印 8 で、作業の箱は元の箱の id のまま。docId は null・注意なし',
     !r.isError && e.folder === EXPORT_DIR && path.basename(file) === '出張申請システム（資料の確かめ）_スイムレーン.html' && e.lanes === 3 && e.steps === 8 && e.edges === 8
       && read.roles.length === 3 && read.steps.length === 8 && read.edges.length === 8 && keys(read) === keys(orig) && state.docId === null
       && Array.isArray(e.warnings) && !e.warnings.length,

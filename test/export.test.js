@@ -47,7 +47,7 @@ function sampleState() {
           screen('s2', '新規登録', [ipart('p5', 32, 112, 1, 'i1')]),
         ],
       }),
-      design('d2', '住所の共通項目', 'その他の作る先', { items: [item('a1', '郵便番号', 'text1', { props: { maxLen: '8' } })] }),
+      design('d2', '住所の共通項目', 'その他の構築先', { items: [item('a1', '郵便番号', 'text1', { props: { maxLen: '8' } })] }),
       design('d3', '取引先マスタ', 'kintone', { items: [item('b1', '取引先コード', 'text1'), item('b2', '取引先名', 'text1')] }),
       design('d4', '受注管理', 'kintone', {
         items: [item('e1', '顧客コード', 'text1', { lookup: { db: { designId: 'd1', name: '顧客管理', free: false }, key: { itemId: 'i1', name: '顧客コード' }, copies: [] } })],
@@ -120,13 +120,13 @@ test('出力の窓: メニューバー・カードの「…」・アプリのメ
   assert.ok($(app, '.card-menu [data-action="export-design"]'), 'カードの「…」に「出力…」');
   click($(app, '.card-menu [data-action="export-design"]'));
   await tick();
-  assert.equal($(app, '.modal h2').textContent, '「顧客管理」を出力');
+  assert.equal($(app, '.modal h2').textContent, '「顧客管理」を出力する');
   assert.deepEqual($$(app, '.xp-kind').map((b) => [b.dataset.xkind, b.disabled]), [['pdf', false], ['html', false], ['png', false]]);
   assert.equal($(app, '.xp-kind.on').dataset.xkind, 'pdf');
   assert.equal($(app, '[name="xp-paper"]:checked').value, 'A4');
   assert.equal($(app, '[name="xp-orient"]:checked').value, 'landscape');
   assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => [x.dataset.xpage, x.checked, x.disabled]),
-    [['cover', true, false], ['map', true, false], ['items', true, false], ['process', false, true], ['flow', false, true]], '操作も移る先もないので、ステータスの移り方と画面の移り方は押せない');
+    [['cover', true, false], ['map', true, false], ['items', true, false], ['process', false, true], ['flow', false, true]], '操作も移動先もないので、ステータスの流れと画面遷移図は押せない');
   assert.equal($$(app, '[data-xbox="pdf"] [data-xscreen]:checked').length, 2, '画面は全部選んである');
   // 札を押すと、その形の設定だけが出る
   click($(app, '[data-xkind="png"]'));
@@ -136,7 +136,7 @@ test('出力の窓: メニューバー・カードの「…」・アプリのメ
   assert.equal($(app, '.modal'), null);
   // メニューバーとアプリのメニュー（開いている画面設計を出力する）
   api.openDesign('d1');
-  assert.ok($(app, '#toolbar [data-action="export"]'), 'メニューバーの「ファイル」に「出力」');
+  assert.ok($(app, '#toolbar [data-action="export"]'), 'ツールバーの「ファイル」に「出力」');
   click($(app, '#toolbar [data-action="export"]'));
   await tick();
   assert.ok($(app, '.modal .xp-kinds'), 'メニューバーから開く');
@@ -157,7 +157,7 @@ test('出力の窓: つながりがない・項目がないときは、そのペ
   await tick();
   assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => [x.dataset.xpage, x.checked, x.disabled]),
     [['cover', true, false], ['map', false, true], ['items', false, true], ['process', false, true], ['flow', false, true]]);
-  assert.match($(app, '[data-xbox="pdf"]').textContent, /つながりがないので、出しません/);
+  assert.match($(app, '[data-xbox="pdf"]').textContent, /関連がないので、出しません/);
   click($(app, '[name="xp-paper"][value="slide"]'));
   $(app, '[name="xp-paper"][value="slide"]').dispatchEvent(new app.window.Event('change', { bubbles: true }));
   assert.ok($$(app, '[name="xp-orient"]').every((x) => x.disabled), 'スライドのときは向きを選べない');
@@ -277,7 +277,7 @@ test('PDF の表紙: 説明の高さの上限は、行の高さ（13 × 1.75 ド
   }
 });
 
-test('PDF: 表紙・つながりの図・項目の一覧表・画面の順のページ。ページ番号・用紙の大きさ（@page とインチ）・書いたら開く', async (t) => {
+test('PDF: 表紙・関連図・項目一覧・画面の順のページ。ページ番号・用紙の大きさ（@page とインチ）・書いたら開く', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
   const res = await exportVia(app, api, 'd1');
@@ -295,11 +295,11 @@ test('PDF: 表紙・つながりの図・項目の一覧表・画面の順のペ
   assert.match(pages[0].textContent, /全 5 ページ/);
   assert.match(pages[0].textContent, /まだ改訂履歴はありません/);
   assert.deepEqual([...pages[0].querySelectorAll('.cv-list tbody tr')].map((tr) => [...tr.cells].map((c) => c.textContent)),
-    [['つながりの図', '', '2'], ['データベースの項目の一覧表', '', '3'], ['1　詳細', 'パソコン', '4'], ['2　新規登録', 'パソコン', '5']]);
-  assert.equal(pages[1].querySelector('.pg-head h2').textContent, 'つながりの図');
+    [['関連図', '', '2'], ['項目一覧', '', '3'], ['1　詳細', 'パソコン', '4'], ['2　新規登録', 'パソコン', '5']]);
+  assert.equal(pages[1].querySelector('.pg-head h2').textContent, '関連図');
   assert.equal(pages[1].querySelectorAll('.mnode').length, 4, 'この画面設計と、直接つながる 3 つ');
-  assert.equal(pages[2].querySelector('.pg-head h2').textContent, 'データベースの項目の一覧表');
-  assert.deepEqual([...pages[2].querySelectorAll('.xp-itable thead th')].map((th) => th.textContent), ['項目名', '部品の種類', '設定', 'ルックアップ元・取り込み元', '置いている画面']);
+  assert.equal(pages[2].querySelector('.pg-head h2').textContent, '項目一覧');
+  assert.deepEqual([...pages[2].querySelectorAll('.xp-itable thead th')].map((th) => th.textContent), ['項目名', '項目の種類', '設定', 'ルックアップ元・取り込み元', '置いている画面']);
   const rows = [...pages[2].querySelectorAll('.xp-itable tbody tr')].map((tr) => [...tr.cells].map((c) => c.textContent));
   assert.equal(rows.length, 4);
   assert.match(rows[1][3], /ルックアップ：取引先マスタ › 取引先コード/);
@@ -310,7 +310,7 @@ test('PDF: 表紙・つながりの図・項目の一覧表・画面の順のペ
   assert.deepEqual([...pages[3].querySelectorAll('.pg-foot span')].map((s) => s.textContent), ['顧客管理 ／ 1　詳細', '4 / 5']);
   assert.ok(pages[3].querySelector('.screen'), '画面');
   assert.ok(pages[3].querySelector('.callout.cc-yellow'), '吹き出し');
-  assert.ok(pages[3].querySelector('.ptable'), '部品の設定の一覧表');
+  assert.ok(pages[3].querySelector('.ptable'), '設定一覧');
   assert.equal(pages[0].querySelector('.pg-foot'), null, '表紙には下の端の行を出さない');
 });
 
@@ -353,7 +353,7 @@ test('PDF: 用紙は A4・A3 の縦横とスライド（16:9）。外したペ�
   assert.match(doc({ paper: 'A3', orient: 'portrait' }).html, /@page\{size:297\.000mm 420\.000mm;margin:0\}/);
   const a = doc({ paper: 'A4', cover: false, map: false });
   assert.equal(a.total, 3, '表の 1 ページと画面 2 つ');
-  assert.match(a.pages[0], /データベースの項目の一覧表/);
+  assert.match(a.pages[0], /項目一覧/);
   assert.match(a.pages[2], /3 \/ 3/);
   const b = doc({ paper: 'A4', items: false, screenIds: ['s2'] });
   assert.equal(b.total, 3, '表紙・図・新規登録');
@@ -381,7 +381,7 @@ function fakeMeasure(app) {
   };
 }
 
-test('PDF の画面のページ: 部品の設定の表が縦に長くて画面ごと小さく縮むときは、表を広げて低くし、いちばん大きく出せる幅にする（PNG は 560 のまま）', async (t) => {
+test('PDF の画面のページ: アイテムの設定の表が縦に長くて画面ごと小さく縮むときは、表を広げて低くし、いちばん大きく出せる幅にする（PNG は 560 のまま）', async (t) => {
   const { app, api } = await bootSample(t);
   fakeMeasure(app);
   const d = api.store.state.designs.find((x) => x.id === 'd1');
@@ -485,7 +485,7 @@ test('単体で開いたとき: つながった項目は「元なし」になら
   assert.equal(model.edges.length, 3, 'ルックアップ（取引先マスタ → 顧客管理・顧客管理 → 受注管理）と取り込み');
   api.runCommand('openMap');
   assert.match($(app, '#db-view .mnode[data-node="d:d4"]').textContent, /項目 1 個・画面 1/);
-  assert.equal($(app, '#screen-list .db-entry[data-action="open-map"] small').textContent, '3 つとつながっている');
+  assert.equal($(app, '#screen-list .db-entry[data-action="open-map"] small').textContent, '3 つと関連している');
 });
 
 test('単体で開いたとき: 「HTML を保存」（Ctrl+S も）で、直した中身を入れた HTML を保存し直す。保存しないまま閉じようとすると止める', async (t) => {
@@ -632,7 +632,7 @@ test('取り込み: このアプリの出力でない HTML・新しい版のア�
   assert.equal(JSON.stringify(api.store.state), before, '何も変えない');
 });
 
-test('取り込み: 作る先の自由な名前は選択肢に足す。最初の画面の「HTML を取り込む」とアプリのメニューから、デスクトップは開く窓で選ぶ', async (t) => {
+test('取り込み: 構築先の自由な名前は選択肢に足す。最初の画面の「HTML を取り込む」とアプリのメニューから、デスクトップは開く窓で選ぶ', async (t) => {
   const state = sampleState();
   state.designs[0].target = 'Excel マクロ';
   const src = await exportHtmlText(t, state);
@@ -712,7 +712,7 @@ test('取り込み: 取り込んだ項目の元にルックアップがあり、
   assert.equal((await api.importHtmlText(html)).status, 'same');
 });
 
-test('取り込み: ごみ箱にある画面設計と同じ中身なら、中身は変えずに一覧に戻す。一覧になければ、作る先はその画面設計の分だけ選択肢に足す', async (t) => {
+test('取り込み: ごみ箱にある画面設計と同じ中身なら、中身は変えずに一覧に戻す。一覧になければ、構築先はその画面設計の分だけ選択肢に足す', async (t) => {
   const { html, app, api } = await exportHtmlText(t);
   api.actions.trashDesign('d1');
   const r = await api.importHtmlText(html);
@@ -723,7 +723,7 @@ test('取り込み: ごみ箱にある画面設計と同じ中身なら、中身
   const payload = JSON.parse(html.match(/id="mim-embedded">([^\n]*)<\/script>/)[1]);
   payload.data.designs[0].id = 'd-new';
   payload.data.designs[0].target = 'Excel マクロ';
-  payload.data.settings.customTargets = ['Excel マクロ', '試した作る先'];
+  payload.data.settings.customTargets = ['Excel マクロ', '試した構築先'];
   const text = html.replace(/id="mim-embedded">[^\n]*<\/script>/, () => `id="mim-embedded">${JSON.stringify(payload).replace(/</g, '\\u003c')}</script>`);
   assert.equal((await api.importHtmlText(text)).status, 'added');
   assert.deepEqual(plain(api.store.state.settings.customTargets), ['Excel マクロ']);
@@ -769,7 +769,7 @@ test('単体で開いたとき: 関連レコード一覧の元がこの HTML に
   assert.equal(JSON.stringify(api.store.state), before, '触っただけでは変わらない');
 });
 
-test('単体で開いたとき: ルックアップ元がない項目は部品の種類を変えられない。窓を開いている間の Ctrl+S も止める。壊れたデータでは閉じるのを止めない', async (t) => {
+test('単体で開いたとき: ルックアップ元がない項目はアイテムの種類を変えられない。窓を開いている間の Ctrl+S も止める。壊れたデータでは閉じるのを止めない', async (t) => {
   const { html } = await exportHtmlText(t);
   const { app, api } = await bootStandalone(t, html);
   api.runCommand('openItems');
@@ -784,7 +784,7 @@ test('単体で開いたとき: ルックアップ元がない項目は部品の
   const key = new app.window.KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true });
   app.document.querySelector('.modal').dispatchEvent(key);
   assert.equal(key.defaultPrevented, true, 'ブラウザの「名前を付けて保存」を止める');
-  assert.match($(app, '#toast').textContent, /窓を閉じてから保存/);
+  assert.match($(app, '#toast').textContent, /ウィンドウを閉じてから保存/);
   click($(app, '[data-dlg="cancel"]'));
   // 壊れたデータ（画面設計が 0 件）
   const broken = html.replace(/"designs":\[\{[\s\S]*\}\]\},"peers"/, '"designs":[]},"peers"');
@@ -795,7 +795,7 @@ test('単体で開いたとき: ルックアップ元がない項目は部品の
   assert.equal(ev.defaultPrevented, false, '閉じるのを止めない');
 });
 
-test('単体で開いたとき: 作る先の「その他」に打ちかけの名前も保存に入る。保存の窓が使えないときはダウンロードにする', async (t) => {
+test('単体で開いたとき: 構築先の「その他」に打ちかけの名前も保存に入る。保存の窓が使えないときはダウンロードにする', async (t) => {
   const { html } = await exportHtmlText(t);
   const { app, api } = await bootStandalone(t, html);
   const sel = $(app, '#side-settings .target-select');
@@ -813,7 +813,7 @@ test('単体で開いたとき: 作る先の「その他」に打ちかけの名
   assert.equal(res.ok, true);
   assert.equal(res.download, true, 'ダウンロードにした');
   assert.deepEqual(downloads, ['顧客管理.html']);
-  assert.equal(api.currentDesign().target, 'Access', '打ちかけの作る先も入る');
+  assert.equal(api.currentDesign().target, 'Access', '打ちかけの構築先も入る');
 });
 
 test('PNG のファイルの名前: 長くても拡張子（.png）は残す', () => {

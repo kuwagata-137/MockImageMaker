@@ -20,7 +20,7 @@
  "ai_connect": {
   "file": "ai_connect.png",
   "w": 784,
-  "h": 954,
+  "h": 976,
   "dsf": 2
  },
  "ed_align": {
@@ -31,8 +31,14 @@
  },
  "ed_callout": {
   "file": "ed_callout.png",
-  "w": 784,
+  "w": 276,
   "h": 89,
+  "dsf": 2
+ },
+ "ed_edit": {
+  "file": "ed_edit.png",
+  "w": 750,
+  "h": 316,
   "dsf": 2
  },
  "ed_import": {
@@ -62,7 +68,7 @@
  "ed_lookup_set": {
   "file": "ed_lookup_set.png",
   "w": 279,
-  "h": 962,
+  "h": 1098,
   "dsf": 2
  },
  "ed_overview": {
@@ -92,18 +98,18 @@
  "ed_settings": {
   "file": "ed_settings.png",
   "w": 279,
-  "h": 834,
+  "h": 985,
   "dsf": 2
  },
  "ed_table": {
   "file": "ed_table.png",
   "w": 279,
-  "h": 914,
+  "h": 930,
   "dsf": 2
  },
  "ex_button": {
   "file": "ex_button.png",
-  "w": 200,
+  "w": 223,
   "h": 124,
   "dsf": 2
  },
@@ -188,13 +194,43 @@
  "new_step2": {
   "file": "new_step2.png",
   "w": 464,
-  "h": 446,
+  "h": 486,
   "dsf": 2
  },
  "new_step3": {
   "file": "new_step3.jpg",
   "w": 1280,
   "h": 800,
+  "dsf": 2
+ },
+ "rec_frame_set": {
+  "file": "rec_frame_set.png",
+  "w": 279,
+  "h": 467,
+  "dsf": 2
+ },
+ "rec_head_set": {
+  "file": "rec_head_set.png",
+  "w": 279,
+  "h": 799,
+  "dsf": 2
+ },
+ "rec_page": {
+  "file": "rec_page.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "rec_tiles_set": {
+  "file": "rec_tiles_set.png",
+  "w": 257,
+  "h": 200,
+  "dsf": 2
+ },
+ "rec_tree": {
+  "file": "rec_tree.png",
+  "w": 288,
+  "h": 369,
   "dsf": 2
  },
  "rv_add": {
@@ -217,7 +253,7 @@
  },
  "rv_menu": {
   "file": "rv_menu.png",
-  "w": 400,
+  "w": 423,
   "h": 209,
   "dsf": 2
  },
@@ -230,7 +266,7 @@
  "sc_add": {
   "file": "sc_add.png",
   "w": 944,
-  "h": 586,
+  "h": 762,
   "dsf": 2
  },
  "sc_flow": {
@@ -241,8 +277,8 @@
  },
  "sc_menu": {
   "file": "sc_menu.png",
-  "w": 321,
-  "h": 668,
+  "w": 323,
+  "h": 664,
   "dsf": 2
  },
  "sc_process": {
@@ -265,8 +301,8 @@
  },
  "sys_exportmenu": {
   "file": "sys_exportmenu.png",
-  "w": 342,
-  "h": 178,
+  "w": 417,
+  "h": 192,
   "dsf": 2
  },
  "sys_history": {
@@ -284,7 +320,7 @@
  "sys_materials": {
   "file": "sys_materials.png",
   "w": 772,
-  "h": 414,
+  "h": 474,
   "dsf": 2
  },
  "sys_mpd": {

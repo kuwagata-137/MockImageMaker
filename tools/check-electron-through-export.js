@@ -42,9 +42,9 @@ async function exportSystem(page, out, { systemName, newStep, decision }) {
   await systemExportMenu(page, 'sys-export-doc');
   await page.waitForSelector('.modal [data-dpage]');
   await dialogOk(page);
-  const doc = await waitFile(path.join(out, `${systemName}_説明書.pdf`), '説明書の PDF');
+  const doc = await waitFile(path.join(out, `${systemName}_システム設計書.pdf`), '説明書の PDF');
   const d = await pdfHas(doc, [systemName, '出張申請', '社員マスタ', '新規申請', newStep, decision]);
-  report(!d.missing.length, 'システムの「出力」→「説明書を出力…」で説明書の PDF ができ、画面設計・作業・設計ノートの文字が入る',
+  report(!d.missing.length, 'システムの「出力」→「システム設計書を出力…」で説明書の PDF ができ、画面設計・作業・設計ノートの文字が入る',
     d.missing.length ? `見つからない: ${d.missing.join('・')}` : `${d.pages} ページ`);
   await systemExportMenu(page, 'sys-export-mpd');
   await page.waitForSelector('.modal input[name="mpd-pick"]');
@@ -56,7 +56,7 @@ async function exportSystem(page, out, { systemName, newStep, decision }) {
   report(plan.roles.join() === y.roles.map((r) => r.name).join() && plan.steps.length === y.swimlane.steps.length && plan.edges.length === y.swimlane.edges.length
     && plan.steps.some((s) => s.text === newStep),
   '「MPD に出力…」の窓で MPD を選んで出力すると、読み直した図がスイムレーン図と同じ（足した役割と作業も入る）',
-  `役割 ${plan.roles.join('・')}・作業 ${plan.steps.length}・矢印 ${plan.edges.length}`);
+  `役割 ${plan.roles.join('・')}・工程 ${plan.steps.length}・矢印 ${plan.edges.length}`);
 }
 
 // 出力の窓を開き、pick(page) で選んでから「出力…」を押す
@@ -77,8 +77,8 @@ async function exportDesign(page, out, design) {
   });
   const pdf = await waitFile(path.join(out, `${design.name}.pdf`), '画面設計の PDF');
   const screens = design.screens.map((s) => s.name);
-  const p = await pdfHas(pdf, ['画面設計書', design.name, 'データベースの項目の一覧表', 'ステータスの移り方', '画面の移り方', ...screens]);
-  report(!p.missing.length, '画面設計の「出力」の窓で PDF（A4 横）ができ、表紙・項目の一覧表・ステータスの移り方・画面の移り方・画面が入る',
+  const p = await pdfHas(pdf, ['画面設計書', design.name, '項目一覧', 'ステータスの流れ', '画面遷移図', ...screens]);
+  report(!p.missing.length, '画面設計の「出力」の窓で PDF（A4 横）ができ、表紙・項目一覧・ステータスの流れ・画面遷移図・画面が入る',
     p.missing.length ? `見つからない: ${p.missing.join('・')}` : `${p.pages} ページ`);
   await exportVia(page, (q) => q.click('[data-xkind="png"]'));
   const pngs = screens.map((s, i) => path.join(out, `${design.name}_${String(i + 1).padStart(2, '0')}_${s}.png`));

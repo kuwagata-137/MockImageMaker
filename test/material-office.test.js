@@ -141,7 +141,7 @@ test('Excel — 日本の組み込みの書式番号（numFmtId 27〜36・50〜5
 test('パスワードで守った Word・Excel は、古い形でなく、パスワードのため読めないと伝える（デバッグとリリースの見直し③-4）', async () => {
   for (const [name, kind, label] of [['pw.xlsx', 'excel', 'Excel'], ['pw.docx', 'word', 'Word']]) {
     const file = samples.writeSample(dir, name, samples.encryptedOfficeBytes());
-    const want = `この ${label} のファイルはパスワードで守られているため、読めません。パスワードを外して保存し直してから入れ直してください。`;
+    const want = `この ${label} のファイルはパスワードで守られているため、読めません。パスワードを外して保存し直してから追加し直してください。`;
     await rejectsWith(readKind(file, kind), 'encrypted', new RegExp('^' + want + '$'));
   }
 });

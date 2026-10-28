@@ -68,7 +68,7 @@ async function startApp(t, dir, onRequest, opts = {}) {
   return { srv, calls };
 }
 
-test('道具は 36 個（第 9 段階の前半でシステムの 7 個、後半で資料の 3 個、第 10 段階の前半で設計ノートの 3 個、後半で説明書の 1 個、第 11 段階で MPD への出力の 1 個、第 13 段階で kintone のアプリの形の 1 個を足した）で、説明は日本語。入口の道具は、read_guide のほかはページの AI_TOOLS とぴったり同じ', () => {
+test('道具は 36 個（第 9 段階の前半でシステムの 7 個、後半で資料の 3 個、第 10 段階の前半で設計ノートの 3 個、後半で説明書の 1 個、第 11 段階で MPD への出力の 1 個、第 13 段階で kintone のアプリの形の 1 個を追加した）で、説明は日本語。入口の道具は、read_guide のほかはページの AI_TOOLS とぴったり同じ', () => {
   assert.equal(TOOLS.length, 36);
   for (const t of TOOLS) {
     assert.match(t.name, /^[a-z_]+$/, t.name);
@@ -87,7 +87,7 @@ test('道具は 36 個（第 9 段階の前半でシステムの 7 個、後半�
   assert.deepEqual(TOOLS.filter((t) => t.slow).map((t) => t.name).sort(), [...SLOW_TOOLS].sort());
 });
 
-test('入口の選べる値（機器・見た目・項目の出し方・表の中身・吹き出しの色と線の先・揃え方・スイムレーンの作業の種類・設計ノートの段階と進み具合）は、ページの値とそろう', async () => {
+test('入口の選べる値（機器・見た目・項目の表示・表の中身・吹き出しの色と線の先・揃え方・スイムレーンの作業の種類・設計ノートの段階と進捗）は、ページの値とそろう', async () => {
   const app = bootApp();
   const T = await app.api();
   const cat = JSON.parse(JSON.stringify(await T.aiDispatch('get_catalog', {}, {}))).result;
@@ -104,7 +104,9 @@ test('入口の選べる値（機器・見た目・項目の出し方・表の�
   const html = fs.readFileSync(path.join(REPO, HTML_NAME), 'utf8');
   const align = JSON.parse(html.match(/const AI_ALIGN = (\[[^\]]*\]);/)[1].replace(/'/g, '"'));
   assert.deepEqual(align, SC.ALIGN_HOW);
-  assert.equal(Number(html.match(/const BAND_TABS_MAX = (\d+);/)[1]), SC.S.bandTabs._def.maxLength.value, 'Salesforce の帯のタブの数の上限');
+  assert.equal(Number(html.match(/const BAND_TABS_MAX = (\d+);/)[1]), SC.S.bandTabs._def.maxLength.value, 'Salesforce のヘッダーのタブの数の上限');
+  // グループ枠のアイコンの色（第 14 段階）
+  assert.deepEqual([...html.match(/const FRAME_COLORS = \{([^}]*)\};/)[1].matchAll(/(\w+):/g)].map((m) => m[1]), SC.FRAME_COLORS);
 });
 
 test('アプリがなくても、道具の一覧・read_guide・resources は返り、アプリを起動しない。道具を呼ぶと 1 回だけ起動し、つなげなければ日本語で断る', async (t) => {
@@ -126,7 +128,7 @@ test('アプリがなくても、道具の一覧・read_guide・resources は返
   assert.equal(fs.existsSync(marker), false, 'まだ起動していない');
   const r = await call(client, 'list_designs');
   assert.equal(r.isError, true);
-  assert.match(textOf(r), /モックイメージメーカーにつなげませんでした/);
+  assert.match(textOf(r), /モックイメージメーカーに接続できませんでした/);
   assert.match(textOf(r), /"code":"no_app"/);
   await delay(200);
   assert.equal(fs.readFileSync(marker, 'utf8'), 'x', '1 回だけ起動した');
@@ -182,7 +184,7 @@ test('資料の画像（返事の images）は、JSON の文の後に PNG の im
   assert.deepEqual(both.content.map((c) => [c.type, c.data || null]), [['image', 'Q0ND'], ['text', null], ['image', 'RERE']]);
 });
 
-test('入力の形に合わない頼み（知らない欄・知らない操作）は、アプリへ送らずに断る', async (t) => {
+test('入力欄で表示に合わない頼み（知らない欄・知らない操作）は、アプリへ送らずに断る', async (t) => {
   const dir = makeDir(t);
   const { calls } = await startApp(t, dir, () => ({ ok: true, result: {} }));
   const client = await openEntry(t, dir);
@@ -196,7 +198,7 @@ test('入力の形に合わない頼み（知らない欄・知らない操作�
   assert.equal(calls.length, 0);
 });
 
-test('get_system の返事の作業と矢印は、そのまま set_swimlane の入力の形に通ってアプリに届く。add_to_system・remove_from_system の expect も通る（第 9 段階の見直し）', async (t) => {
+test('get_system の返事の作業と矢印は、そのまま set_swimlane の入力欄で表示に通ってアプリに届く。add_to_system・remove_from_system の expect も通る（第 9 段階の見直し）', async (t) => {
   const { systemState, STORAGE_KEY } = require('./ai-fixtures');
   const app = bootApp({ localStorage: { [STORAGE_KEY]: JSON.stringify(systemState()) } });
   const T = await app.api();

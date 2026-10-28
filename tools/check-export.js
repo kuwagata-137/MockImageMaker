@@ -70,7 +70,7 @@ const SAMPLE = addDocSample({
           { id: 'p6', type: 'button', x: 32, y: 200, w: 96, h: 40, no: 2, label: '保存', props: { style: 'primary', action: '', to: 'screen', designId: '', screenId: 's1', url: '' } }]),
       ],
     }),
-    design('d2', '住所の共通項目', 'その他の作る先', { items: [item('a1', '郵便番号', 'text1', { props: { maxLen: '8' } })] }),
+    design('d2', '住所の共通項目', 'その他の構築先', { items: [item('a1', '郵便番号', 'text1', { props: { maxLen: '8' } })] }),
     design('d3', '取引先マスタ', 'kintone', { items: [item('b1', '取引先コード', 'text1'), item('b2', '取引先名', 'text1')] }),
     design('d4', '受注管理', 'kintone', {
       items: [item('e1', '顧客コード', 'text1', { lookup: { db: { designId: 'd1', name: '顧客管理', free: false }, key: { itemId: 'i1', name: '顧客コード' }, copies: [] } })],
@@ -190,8 +190,8 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
       const f = pdfFacts(dest);
       if (f.tool) {
         const sizeOk = f.size.length === 2 && Math.abs(f.size[0] - want[0]) < 2 && Math.abs(f.size[1] - want[1]) < 2;
-        check(`PDF（${tag}）のページ数と用紙`, f.pages === 7 && sizeOk, `${f.pages} ページ・${f.size.join(' × ')} pt（表紙・つながりの図・項目の一覧表・ステータスの移り方・画面の移り方・画面 2 つ）`);
-        const words = ['画面設計書', '顧客管理', 'つながりの図', 'データベースの項目の一覧表', 'ステータスの移り方', '画面の移り方', '差し戻す', '書き直してほしいとき',
+        check(`PDF（${tag}）のページ数と用紙`, f.pages === 7 && sizeOk, `${f.pages} ページ・${f.size.join(' × ')} pt（表紙・関連図・項目一覧・ステータスの流れ・画面遷移図・画面 2 つ）`);
+        const words = ['画面設計書', '顧客管理', '関連図', '項目一覧', 'ステータスの流れ', '画面遷移図', '差し戻す', '書き直してほしいとき',
           '詳細', '新規登録', '取引先コードで取引先名を引く'];
         const missing = words.filter((w) => !f.text.replace(/\s+/g, '').includes(w.replace(/\s+/g, '')));
         check(`PDF（${tag}）の文字`, !missing.length, missing.length ? `見つからない: ${missing.join('・')}` : words.join('・'));
@@ -221,15 +221,15 @@ const pngSize = (file) => { const b = fs.readFileSync(file); return { w: b.readU
         await clickPaper('A4', 'landscape')(p);
         await p.click('[data-xbox="pdf"] [data-xdiff]');
       });
-      await waitFile(file, 'PDF（違いの印）');
-      const dest = path.join(OUT, '顧客管理_違いの印.pdf');
+      await waitFile(file, 'PDF（変更マーク）');
+      const dest = path.join(OUT, '顧客管理_変更マーク.pdf');
       fs.renameSync(file, dest);
       const f = pdfFacts(dest);
-      check('PDF（違いの印）のページ数', f.pages === 8, `${f.pages} ページ（変更内容のページで 1 ページ増える）`);
+      check('PDF（変更マーク）のページ数', f.pages === 8, `${f.pages} ページ（変更点のページで 1 ページ増える）`);
       if (f.tool) {
-        const words = ['第1版', 'からの変更内容', '削除', '取引先名'];
+        const words = ['第1版', 'からの変更点', '削除', '取引先名'];
         const missing = words.filter((w) => !f.text.replace(/\s+/g, '').includes(w));
-        check('PDF（違いの印）の文字', !missing.length, missing.length ? `見つからない: ${missing.join('・')}` : words.join('・'));
+        check('PDF（変更マーク）の文字', !missing.length, missing.length ? `見つからない: ${missing.join('・')}` : words.join('・'));
       }
     }
     // 3. PNG（画面ごとに 1 枚・2 倍）

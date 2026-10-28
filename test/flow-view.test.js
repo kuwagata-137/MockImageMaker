@@ -53,23 +53,23 @@ async function boot(t) {
   return { app, api, A, B, a1, a2, b1, d, put, entry, node, status };
 }
 
-test('左の一覧の「ステータスの移り方」「画面の移り方」: 操作の数と移る先の数を書き、押すと真ん中に図を出す', async (t) => {
+test('左の一覧の「ステータスの流れ」「画面遷移図」: 操作の数と移動先の数を書き、押すと真ん中に図を出す', async (t) => {
   const { app, api, A, B, a1, a2, b1, put, entry } = await boot(t);
-  assert.match(entry('open-process').textContent, /ステータスの移り方\s*ステータスなし/);
-  assert.match(entry('open-flow').textContent, /画面の移り方\s*移る先なし/);
+  assert.match(entry('open-process').textContent, /ステータスの流れ\s*ステータスなし/);
+  assert.match(entry('open-flow').textContent, /画面遷移図\s*移動先なし/);
   put(A, a2, 'status');
   put(A, a1, 'button', { to: 'screen', screenId: a2 }, '詳細を見る');
   put(A, a2, 'link', { to: 'screen', designId: B, screenId: b1 }, '精算する');
   put(A, a2, 'button', { to: 'screen', screenId: 's-nai' }, 'ない画面へ'); // ない画面を指す移る先は数えない
   assert.match(entry('open-process').textContent, /操作 4 つ/);
-  assert.match(entry('open-flow').textContent, /移る先 2 本/);
+  assert.match(entry('open-flow').textContent, /移動先 2 つ/);
   // ステータスの移り方
   click(entry('open-process'));
   assert.equal(api.ui.panel, 'process');
   assert.ok(entry('open-process').classList.contains('active'));
   assert.equal($(app, '#canvas-wrap').hidden, true);
   assert.equal($(app, '#db-view').hidden, false);
-  assert.match($(app, '#db-view h3').textContent, /ステータスの移り方（出張申請）/);
+  assert.match($(app, '#db-view h3').textContent, /ステータスの流れ（出張申請）/);
   assert.match($(app, '#db-view .map-head').textContent, /先へ進む操作.*前へ戻る操作/);
   assert.equal($$(app, '#db-view .map-inner[data-view="process"] .mnode').length, 4);
   assert.ok($(app, '#db-view .itable').classList.contains('wide'), '図の画面では表の幅の上限を外す');
@@ -83,17 +83,17 @@ test('左の一覧の「ステータスの移り方」「画面の移り方」: 
   click(entry('open-flow'));
   assert.equal(api.ui.panel, 'flow');
   assert.ok(entry('open-flow').classList.contains('active'));
-  assert.match($(app, '#db-view h3').textContent, /画面の移り方（出張申請）/);
-  assert.match($(app, '#db-view .map-head').textContent, /ボタン.*リンクの文字.*ほかの画面設計の画面/);
+  assert.match($(app, '#db-view h3').textContent, /画面遷移図（出張申請）/);
+  assert.match($(app, '#db-view .map-head').textContent, /ボタン.*リンク.*ほかの画面設計の画面/);
   assert.deepEqual(plain($$(app, '#db-view .map-inner[data-view="flow"] .mnode').map((n) => n.dataset.node)), ['s:' + a1, 's:' + a2, `x:${B}/${b1}`]);
   assert.ok($(app, '#db-view .itable').classList.contains('wide'));
-  assert.equal($(app, '#side-panel').hidden, true, '画面の移り方の図では、つながりの図と同じく右の欄を隠す');
+  assert.equal($(app, '#side-panel').hidden, true, '画面遷移図の図では、関連図と同じく右のパネルを隠す');
   // 画面の縮小画像を押すと、その画面に戻る
   click($(app, `#screen-list .sl-item[data-id="${a1}"]`));
   assert.equal(api.ui.panel, 'screen');
 });
 
-test('ステータスの移り方の図: ステータスの項目がまだないときは、図の所と右の欄に案内の文を出す', async (t) => {
+test('ステータスの流れの図: ステータスの項目がまだないときは、図の所と右のパネルに案内の文を出す', async (t) => {
   const { app, entry } = await boot(t);
   click(entry('open-process'));
   assert.match($(app, '#db-view .map-empty').textContent, /ステータスの項目がまだありません/);
@@ -108,11 +108,11 @@ test('命令 openProcess・openFlow とアプリのメニュー「項目」で�
   assert.equal(api.runCommand('openFlow'), true);
   assert.equal(api.ui.panel, 'flow');
   const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-  assert.match(main, /commandItem\('ステータスの移り方を開く', 'openProcess'\)/);
-  assert.match(main, /commandItem\('画面の移り方を開く', 'openFlow'\)/);
+  assert.match(main, /commandItem\('ステータスの流れを開く', 'openProcess'\)/);
+  assert.match(main, /commandItem\('画面遷移図を開く', 'openFlow'\)/);
 });
 
-test('右の欄でステータスの名前を直すと、ステータスの移り方の図の箱もすぐ変わる', async (t) => {
+test('右のパネルでステータスの名前を直すと、ステータスの流れの図の箱もすぐ変わる', async (t) => {
   const { app, A, a2, put, entry, node, status } = await boot(t);
   put(A, a2, 'status');
   click(entry('open-process'));
@@ -135,7 +135,7 @@ test('図の箱のドラッグ: ステータスの図は processPos、画面の�
   assert.deepEqual(plain(d(A).processPos[key]), { x: snap(x0 + 40), y: snap(y0 + 24) });
   assert.equal(parseFloat(node(key).style.top), snap(y0 + 24), '描き直しても覚えた位置');
   assert.deepEqual(plain(d(A).flowPos), {}, '画面の図の位置は変えない');
-  assert.deepEqual(plain(d(A).mapPos), {}, 'つながりの図の位置は変えない');
+  assert.deepEqual(plain(d(A).mapPos), {}, '関連図の位置は変えない');
   click($(app, '#db-view [data-action="view-reset"]'));
   assert.deepEqual(plain(d(A).processPos), {});
   // 画面の移り方の図（ほかの画面設計の画面の箱も動かせる）
@@ -169,7 +169,7 @@ test('図の箱を押す: 画面の図はその画面を開き、ほかの画面
   assert.equal(api.ui.screenId, b2);
 });
 
-test('前の版を見ている間: 2 つの図は見られるが、箱は動かせず、「自動で並べ直す」と右の欄は押せない', async (t) => {
+test('前の版を見ている間: 2 つの図は見られるが、箱は動かせず、「自動で並べ直す」と右のパネルは押せない', async (t) => {
   const { app, api, A, a1, a2, d, put, entry, node, status } = await boot(t);
   put(A, a2, 'status');
   put(A, a1, 'button', { to: 'screen', screenId: a2 }, '詳細を見る');
@@ -195,9 +195,9 @@ test('前の版を見ている間: 2 つの図は見られるが、箱は動か�
 });
 
 // ── 見直し（第 8 段階）で見つけた不具合 ──
-test('左の一覧の「画面の移り方」の数: 自分の画面を指す移る先は数えない（図にも描かず、出力の窓でも「移る先がない」と同じ）', async (t) => {
+test('左の一覧の「画面遷移図」の数: 自分の画面を指す移動先は数えない（図にも描かず、出力の窓でも「移動先がない」と同じ）', async (t) => {
   const { a1, A, put, entry, api, d } = await boot(t);
   put(A, a1, 'button', { to: 'screen', screenId: a1 }, '自分へ');
-  assert.match(entry('open-flow').textContent, /移る先なし/);
+  assert.match(entry('open-flow').textContent, /移動先なし/);
   assert.equal(api.hasFlowPage(d(A), api.store.state), false);
 });

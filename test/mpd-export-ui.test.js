@@ -105,12 +105,12 @@ const TRIP_PLAN = {
 // ── 入口 A: 資料の表の MPD の行 ──
 test('入口 A: MPD の行だけに「MPD に出力…」（「スイムレーン図にする」と「消す」の間）。資料の窓口に bdmExport がないときは出さない', async (t) => {
   const { ops, btn } = await boot(t);
-  assert.deepEqual(ops('m-bdm'), ['読む', 'スイムレーン図にする', 'MPD に出力…', '削除']);
-  assert.deepEqual(ops('m-old'), ['読む', 'スイムレーン図にする', 'MPD に出力…', '削除']);
-  assert.deepEqual(ops('m-xlsx'), ['読む', '削除']);
+  assert.deepEqual(ops('m-bdm'), ['この資料を読む', 'この図をスイムレーン図にする', 'スイムレーン図を MPD に出力…', 'この資料を削除する']);
+  assert.deepEqual(ops('m-old'), ['この資料を読む', 'この図をスイムレーン図にする', 'スイムレーン図を MPD に出力…', 'この資料を削除する']);
+  assert.deepEqual(ops('m-xlsx'), ['この資料を読む', 'この資料を削除する']);
   assert.match(btn('sys-mat-export', 'm-bdm').title, /元のファイルは書き換えません/);
   const old = await boot(t, { materials: fakeMaterialsAPI({ bdmExport: false }) });
-  assert.deepEqual(old.ops('m-bdm'), ['読む', 'スイムレーン図にする', '削除']);
+  assert.deepEqual(old.ops('m-bdm'), ['この資料を読む', 'この図をスイムレーン図にする', 'この資料を削除する']);
 });
 
 test('入口 A: 押した行の MPD を元に頼む（渡す形・<システムの名前>_スイムレーン.html）。その MPD の箱から読んだ作業だけ box を付ける。出力したら場所を知らせる', async (t) => {
@@ -129,9 +129,9 @@ test('入口 A: 押した行の MPD を元に頼む（渡す形・<システム�
 test('入口 A: 読み直しの食い違いは注意として添える。保存の窓の取りやめは知らせない。失敗は資料の窓口の文（文がないときは決まりの文）', async (t) => {
   const { $, btn, materials, toast } = await boot(t);
   const press = async () => { click(btn('sys-mat-export', 'm-bdm')); await ticks(); };
-  materials.reply(async () => ({ ok: true, path: 'C:\\出力\\a.html', warnings: ['作業「出張が決まる」は、MPD で読み直すと種類が「作業」になります（アプリでは「始まり」）。', '2 つ目'] }));
+  materials.reply(async () => ({ ok: true, path: 'C:\\出力\\a.html', warnings: ['工程「出張が決まる」は、MPD で読み直すと種類が「作業」になります（アプリでは「始まり」）。', '2 つ目'] }));
   await press();
-  assert.equal(toast(), 'MPD に出力しました（C:\\出力\\a.html）。注意: 作業「出張が決まる」は、MPD で読み直すと種類が「作業」になります（アプリでは「始まり」）。（ほか 1 件）');
+  assert.equal(toast(), 'MPD に出力しました（C:\\出力\\a.html）。注意: 工程「出張が決まる」は、MPD で読み直すと種類が「作業」になります（アプリでは「始まり」）。（ほか 1 件）');
   $('#toast').textContent = '';
   materials.reply(canceled);
   await press();
@@ -144,12 +144,12 @@ test('入口 A: 読み直しの食い違いは注意として添える。保存�
   assert.equal(toast(), '「出張申請の流れ.html」を元に、MPD に出力できませんでした。');
 });
 
-test('入口 A: 作業がないスイムレーン図は出力しない。役割の見つからない作業とその矢印は外し、外した数を知らせる', async (t) => {
+test('入口 A: 作業がないスイムレーン図は出力しない。役割の見つからない工程とその矢印は外し、外した数を知らせる', async (t) => {
   const exp = await boot(t, { sysId: 'y-exp' });
   click(exp.btn('sys-mat-export', 'm-flow'));
   await ticks();
   assert.equal(exp.calls.length, 0);
-  assert.equal(exp.toast(), 'スイムレーン図に作業がないので、MPD に出力しません。');
+  assert.equal(exp.toast(), 'スイムレーン図に工程がないので、MPD に出力しません。');
   const state = sampleState();
   state.systems[0].swimlane.steps[2].roleId = 'l-gone';
   const trip = await boot(t, { state });
@@ -157,7 +157,7 @@ test('入口 A: 作業がないスイムレーン図は出力しない。役割�
   await ticks();
   assert.deepEqual(trip.calls[0].plan.steps.map((s) => s.key), ['w-1', 'w-2']);
   assert.deepEqual(trip.calls[0].plan.edges, [{ from: 'w-1', to: 'w-2', label: '' }]);
-  assert.equal(trip.toast(), 'MPD に出力しました（C:\\出力\\出張申請システム_スイムレーン.html）。役割の見つからない作業 1 つは入れませんでした。');
+  assert.equal(trip.toast(), 'MPD に出力しました（C:\\出力\\出張申請システム_スイムレーン.html）。役割の見つからない工程 1 つは出力しませんでした。');
 });
 
 test('入口 A: 打ちかけのメモを頼む前に保存する。待つ間は、同じ資料の 2 回目の頼みを重ねない（待ちが終わると、また頼める）', async (t) => {
@@ -190,7 +190,7 @@ test('待つ間の印: 「MPD に出力…」は「出力しています…」�
   materials.reply(() => new Promise(() => {}));
   click(btn('sys-mat-export', 'm-bdm'));
   await tick();
-  assert.deepEqual(ops('m-bdm'), ['読む', 'スイムレーン図にする', '出力しています…', '削除']);
+  assert.deepEqual(ops('m-bdm'), ['この資料を読む', 'この図をスイムレーン図にする', '出力しています…', 'この資料を削除する']);
   assert.equal(btn('sys-mat-export', 'm-bdm').disabled, true);
   assert.equal(btn('sys-mat-export', 'm-old').disabled, false, 'ほかの行は押せる');
   tell({ open: true });
@@ -199,24 +199,24 @@ test('待つ間の印: 「MPD に出力…」は「出力しています…」�
   tell({ open: false });
   await waitFor(() => toast().includes('待つのをやめました'), { label: '時間切れのお知らせ' });
   assert.equal(toast(), '「出張申請の流れ.html」を元にした MPD への出力が 60 秒たっても終わらなかったため、待つのをやめました。出力したファイルができているかを確かめてから、もう一度「MPD に出力…」を押してください。何度も止まるときは、アプリを起動し直してください。');
-  assert.deepEqual(ops('m-bdm'), ['読む', 'スイムレーン図にする', 'MPD に出力…', '削除']);
+  assert.deepEqual(ops('m-bdm'), ['この資料を読む', 'この図をスイムレーン図にする', 'スイムレーン図を MPD に出力…', 'この資料を削除する']);
 });
 
 // ── 入口 B: メニューバーの「出力」の小さなメニューと、元にする MPD を選ぶ窓 ──
-test('入口 B: メニューバーの「出力」で小さなメニュー。「MPD に出力…」は押せないとき、理由を小さな字で出す', async (t) => {
+test('入口 B: ツールバーの「出力」で小さなメニュー。「MPD に出力…」は押せないとき、理由を小さな字で出す', async (t) => {
   const { api, $, menu, openExportMenu } = await boot(t, { panel: 'swimlane' });
   openExportMenu();
-  assert.deepEqual(menu(), [['説明書（PDF）を出力…', 'システム 1 つ分を、1 つの PDF にする', false], ['MPD に出力…', '資料の MPD を元にして、スイムレーン図を入れる', false]]);
+  assert.deepEqual(menu(), [['システム設計書（PDF）を出力…', 'システム 1 つ分を、1 つの PDF にする', false], ['スイムレーン図を MPD に出力…', '資料の MPD を元に、中の図をスイムレーン図に入れ替えて保存する', false]]);
   assert.equal($('.sys-pop').getAttribute('aria-label'), '出力');
   api.openSystem('y-exp');
   openExportMenu();
-  assert.deepEqual(menu()[1], ['MPD に出力…', 'スイムレーン図に作業がありません', true]);
+  assert.deepEqual(menu()[1], ['スイムレーン図を MPD に出力…', 'スイムレーン図に工程がありません', true]);
   api.openSystem('y-eq');
   openExportMenu();
-  assert.deepEqual(menu()[1], ['MPD に出力…', '資料に MPD がありません（左の「資料」から入れます）', true]);
+  assert.deepEqual(menu()[1], ['スイムレーン図を MPD に出力…', '資料に MPD がありません（左の「資料」から追加します）', true]);
   const old = await boot(t, { materials: fakeMaterialsAPI({ bdmExport: false }), panel: 'swimlane' });
   old.openExportMenu();
-  assert.deepEqual(old.menu()[1], ['MPD に出力…', 'デスクトップ版のアプリで使えます', true]);
+  assert.deepEqual(old.menu()[1], ['スイムレーン図を MPD に出力…', 'デスクトップ版のアプリで使えます', true]);
 });
 
 test('入口 B: 元にする MPD を選ぶ窓。題・ボタンの並び（「出力…」が左）・資料の MPD の行（最初の行を選ぶ）。キャンセルでは頼まない。選んだ MPD で頼む', async (t) => {
@@ -228,13 +228,13 @@ test('入口 B: 元にする MPD を選ぶ窓。題・ボタンの並び（「�
   };
   await openPicker();
   assert.equal($('.sys-pop'), null, '項目を押すとメニューは閉じる');
-  assert.equal($('.modal h2').textContent, '「出張申請システム」のスイムレーン図を MPD に出力');
-  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['出力…', 'キャンセル']);
-  assert.match($('.modal .xp-note').textContent, /^スイムレーン図（役割 2・作業 3・矢印 2）を、MultipurposeDiagramMaker で開いて直せる HTML ファイルに出力します。/);
+  assert.equal($('.modal h2').textContent, '「出張申請システム」のスイムレーン図を MPD に出力する');
+  assert.deepEqual($$('.modal-actions button').map((b) => b.textContent), ['スイムレーン図を MPD に出力…', 'キャンセル']);
+  assert.match($('.modal .xp-note').textContent, /^スイムレーン図（役割 2・工程 3・矢印 2）を、MultipurposeDiagramMaker で開いて編集できる HTML ファイルに出力します。/);
   assert.match($('.modal .xp-note').textContent, /元のファイルは書き換えません/);
   assert.deepEqual($$('.mpd-pick label').map((l) => [l.querySelector('b').textContent, l.querySelector('small').textContent, l.querySelector('input').checked]), [
-    ['出張申請の流れ.html', '総務が描いた今の流れ・2026-10-19 に入れた', true],
-    ['出張申請の流れ（前の版）.html', '2026-10-20 に入れた', false],
+    ['出張申請の流れ.html', '総務が描いた今の流れ・2026-10-19 に追加した', true],
+    ['出張申請の流れ（前の版）.html', '2026-10-20 に追加した', false],
   ]);
   click($('[data-dlg="cancel"]'));
   await ticks();
@@ -265,7 +265,7 @@ test('入口 B: 打ちかけの役割の名前を、メニューを開く前に�
 });
 
 // ── 見直し（T7）で足した場面 ──
-test('役割のある作業がない図（役割の見つからない作業だけ）は、押せない理由と断りの文に「役割のある作業」と書く。選ぶ窓の作業と矢印の数は、出力に入るものだけ数える', async (t) => {
+test('役割のある工程がない図（役割の見つからない工程だけ）は、押せない理由と断りの文に「役割のある工程」と書く。選ぶ窓の作業と矢印の数は、出力に入るものだけ数える', async (t) => {
   const state = sampleState();
   state.systems[1].roles = [];
   state.systems[1].swimlane = { steps: [step('w-8', 'l-gone', 0, 'task', '領収書を出す')], edges: [] };
@@ -273,16 +273,16 @@ test('役割のある作業がない図（役割の見つからない作業だ�
   click(exp.btn('sys-mat-export', 'm-flow'));
   await ticks();
   assert.equal(exp.calls.length, 0);
-  assert.equal(exp.toast(), 'スイムレーン図に役割のある作業がないので、MPD に出力しません。');
+  assert.equal(exp.toast(), 'スイムレーン図に役割のある工程がないので、MPD に出力しません。');
   exp.openExportMenu();
-  assert.deepEqual(exp.menu()[1], ['MPD に出力…', 'スイムレーン図に役割のある作業がありません', true]);
+  assert.deepEqual(exp.menu()[1], ['スイムレーン図を MPD に出力…', 'スイムレーン図に役割のある工程がありません', true]);
   const trip = sampleState();
   trip.systems[0].swimlane.steps[2].roleId = 'l-gone';
   const b = await boot(t, { state: trip, panel: 'swimlane' });
   b.openExportMenu();
   click(b.$('.sys-pop [data-action="sys-export-mpd"]'));
   await tick();
-  assert.match(b.$('.modal .xp-note').textContent, /^スイムレーン図（役割 2・作業 2・矢印 1）を/);
+  assert.match(b.$('.modal .xp-note').textContent, /^スイムレーン図（役割 2・工程 2・矢印 1）を/);
 });
 
 test('入口 B: 選んだ MPD の処理を待っている間（入口 A で出力している間など）は、窓で選んだ後に頼みを重ねず、終わってからもう一度押すよう知らせる', async (t) => {
@@ -303,7 +303,7 @@ test('入口 B: 選んだ MPD の処理を待っている間（入口 A で出�
   assert.equal(toast(), 'MPD に出力しました（C:\\出力\\a.html）。');
 });
 
-test('入口 B: 「出力」の aria-expanded は開け閉めで変わる。開くと最初の項目にフォーカスし、Esc で閉じるとメニューバーの「出力」へ戻す', async (t) => {
+test('入口 B: 「出力」の aria-expanded は開け閉めで変わる。開くと最初の項目にフォーカスし、Esc で閉じるとツールバーの「出力」へ戻す', async (t) => {
   const { app, $, openExportMenu } = await boot(t, { panel: 'swimlane' });
   const expBtn = () => $('#toolbar [data-action="export"]');
   assert.equal(expBtn().getAttribute('aria-expanded'), 'false');

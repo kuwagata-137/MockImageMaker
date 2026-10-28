@@ -61,12 +61,12 @@ function createBdmMaterials({ files, bdm, fileFailure, unavailableMessage, askSa
   }
 
   async function saveExport(e, req) {
-    if (!askSavePath) throw new MaterialError('unavailable', '保存の窓を使えません。アプリを起動し直してください。');
+    if (!askSavePath) throw new MaterialError('unavailable', '保存のウィンドウを使えません。アプリを起動し直してください。');
     const out = await build(req);
     tellSaveDialog(e, true);
     let file;
     try {
-      file = await askSavePath(e, { title: 'MPD に出力する', name: req.name, ext: 'html', label: 'HTML ファイル' });
+      file = await askSavePath(e, { title: 'MPD の保存先を選ぶ', name: req.name, ext: 'html', label: 'HTML ファイル' });
     } finally {
       tellSaveDialog(e, false);
     }

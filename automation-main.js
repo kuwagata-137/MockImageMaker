@@ -64,9 +64,9 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
       page.ready = false;
       failPending('page_reloaded', message);
     };
-    wc.on('did-start-loading', () => lost('アプリの画面が読み込み直されました。もう一度頼んでください。'));
-    wc.on('render-process-gone', () => lost('アプリの画面が止まりました。もう一度頼んでください。'));
-    wc.once('destroyed', () => lost('アプリの窓が閉じました。もう一度頼んでください。'));
+    wc.on('did-start-loading', () => lost('アプリの画面が読み込み直されました。もう一度依頼してください。'));
+    wc.on('render-process-gone', () => lost('アプリの画面が止まりました。もう一度依頼してください。'));
+    wc.once('destroyed', () => lost('アプリのウィンドウが閉じました。もう一度依頼してください。'));
   }
   function waitReady() {
     watch(currentWc());
@@ -88,10 +88,10 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
   });
 
   async function onRequest({ tool, args, session, client }) {
-    if (quitting) return fail('quitting', 'アプリを終わらせているところです。少し待ってから、もう一度頼んでください。');
-    if (!(await waitReady())) return fail('not_ready', 'アプリの画面の準備ができませんでした。もう一度頼んでください。');
+    if (quitting) return fail('quitting', 'アプリを終わらせているところです。少し待ってから、もう一度依頼してください。');
+    if (!(await waitReady())) return fail('not_ready', 'アプリの画面の準備ができませんでした。もう一度依頼してください。');
     const wc = page.wc;
-    if (!wc || wc.isDestroyed()) return fail('page_reloaded', 'アプリの窓が閉じました。もう一度頼んでください。');
+    if (!wc || wc.isDestroyed()) return fail('page_reloaded', 'アプリのウィンドウが閉じました。もう一度依頼してください。');
     const id = ++rid;
     const res = await new Promise((resolve) => {
       pending.set(id, resolve);

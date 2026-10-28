@@ -50,7 +50,7 @@ test('② ボタンの文字を直してはみ出すときは幅を広げ、短�
   app.close();
 });
 
-test('③ 場所を書かない吹き出しは、つなぐ部品の真ん中が画面の左半分なら左の外、右半分なら右の外に置く（重なるときは下へずらす）', async () => {
+test('③ 場所を書かない吹き出しは、つなぐアイテムの真ん中が画面の左半分なら左の外、右半分なら右の外に置く（重なるときは下へずらす）', async () => {
   const { app, call } = await boot();
   const r = await call('edit_callouts', { design: 'd1', screen: 's1', ops: [
     { op: 'add', text: '顧客コードの説明', target: 'p1' },

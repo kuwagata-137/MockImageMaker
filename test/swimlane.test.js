@@ -77,12 +77,12 @@ function dom(app, html) {
   return box;
 }
 
-test('モデル: 箱は役割のある作業だけ（帯の番号と列）。矢印は両端の箱があるものだけで、列が戻る矢印は back。指す先の名前を引く', async (t) => {
+test('モデル: 箱は役割のある工程だけ（帯の番号と列）。矢印は両端の箱があるものだけで、列が戻る矢印は back。指す先の名前を引く', async (t) => {
   const { api, S, sys } = await boot(t);
   const m = api.swimlaneModel(S(), sys('y-trip'));
   assert.deepEqual(plain(m.nodes.map((n) => [n.key, n.step.id, n.laneIndex, n.col])), [
     ['w:w-1', 'w-1', 0, 0], ['w:w-2', 'w-2', 0, 1], ['w:w-3', 'w-3', 1, 2], ['w:w-4', 'w-4', 1, 2], ['w:w-5', 'w-5', 0, 3], ['w:w-7', 'w-7', 0, 4],
-  ], '役割の見つからない作業 w-6 は外す');
+  ], '役割の見つからない工程 w-6 は外す');
   assert.deepEqual(plain(m.edges.map((e) => [e.from, e.to, e.kind, e.labels, e.edge.id])), [
     ['w:w-1', 'w:w-2', 'next', [], 'e-1'],
     ['w:w-2', 'w:w-3', 'next', [], 'e-2'],
@@ -174,7 +174,7 @@ test('HTML: 帯と名前の列は SVG の rect（diagramCrop が拾う）。箱�
   assert.ok(!/id="map-inner"|[#"]swim-arrow-/.test(xp) && /url\(#xi-swim-arrow-n\)/.test(xp));
 });
 
-test('HTML: 役割がないときは案内の文。作業がないときは帯だけ描く（帯の rect で切り出せる）', async (t) => {
+test('HTML: 役割がないときは案内の文。作業がないときはヘッダーだけ描く（帯の rect で切り出せる）', async (t) => {
   const { app, api, S, sys } = await boot(t);
   assert.match(api.swimlaneHtml(S(), sys('y-empty')), /^<p class="map-empty">役割がまだありません。/);
   const html = api.swimlaneHtml(S(), sys('y-lanes'));
@@ -186,7 +186,7 @@ test('HTML: 役割がないときは案内の文。作業がないときは帯�
   assert.deepEqual(plain(api.diagramCrop(html)), { x0: 0, y0: 0, cw: 600, ch: 224 });
 });
 
-test('ほかの図の矢印も、文字が全部空なら文字の下地を描かない（名前のない操作のステータスの移り方の図）', async (t) => {
+test('ほかの図の矢印も、文字が全部空なら文字の下地を描かない（名前のない操作のステータスの流れの図）', async (t) => {
   const { app, api, S } = await boot(t);
   const html = api.viewHtml('process', S(), S().designs.find((d) => d.id === 'd-trip'));
   const box = dom(app, html);

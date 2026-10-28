@@ -41,8 +41,8 @@ function summaryLines(plan) {
     `図の名前: ${plan.diagramName || '（なし）'}`,
     `向き: ${ORIENTATION_TEXT[plan.orientation]}`,
     `レーン（役割）: ${plan.roles.join('・') || '（なし）'}`,
-    `箱 ${plan.steps.length} 個・矢印 ${plan.edges.length} 本。列は 0 から数え、流れの進む向きの順です。`,
-    '', '箱:', ...numbered.map(boxLine),
+    `シェイプ ${plan.steps.length} 個・矢印 ${plan.edges.length} 本。列は 0 から数え、流れの進む向きの順です。`,
+    '', 'シェイプ:', ...numbered.map(boxLine),
     '', '矢印:', ...(plan.edges.length ? plan.edges.map((e) => `${ref(e.from)}→ ${ref(e.to)}${e.label ? `（矢印の文字: ${oneLine(e.label)}）` : ''}`) : ['なし']),
   ];
   if (plan.warnings.length) lines.push('', '読み取りの注意:', ...plan.warnings.map((w) => `- ${w}`));

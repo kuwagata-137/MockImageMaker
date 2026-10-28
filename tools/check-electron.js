@@ -340,7 +340,7 @@ const USER_DATA_SYS = path.join(ROOT, '.devdata', 'check-userData-sys');
 const STATE_FILE_SYS = path.join(USER_DATA_SYS, 'data', 'designs.json');
 const SYS_CONTENT_KEYS = ['name', 'description', 'roles', 'swimlane', 'designIds']; // ページの SYSTEM_CONTENT_KEYS と同じ（履歴の行の写しの中身）
 const STEP_IN = '出張申請を入力する'; // 9 で文字を打つ作業（出張申請システムのスイムレーンの作業）
-const AI_ROW_NOTE = 'Claude Code が直す前の状態';
+const AI_ROW_NOTE = 'Claude Code が変更する前の状態';
 
 // キーを並べ替えた JSON（読み込み直してキーの順が変わっても、同じ中身なら同じ文字になる）
 function canonical(v) {
@@ -484,18 +484,18 @@ function checkBuiltSystems(r) {
   const aiRows = A.revisions.filter((x) => x.kind === 'ai');
   const last = aiRows[aiRows.length - 1] || {};
   const roles = (y) => y.roles.map((x) => x.name + (x.memo ? `（${x.memo}）` : '')).join('・');
-  const swim = (y) => `作業 ${y.swimlane.steps.length} つ・矢印 ${y.swimlane.edges.length} 本（${y.swimlane.edges.map((e) => e.label).filter(Boolean).join('・')}）`;
+  const swim = (y) => `工程 ${y.swimlane.steps.length} つ・矢印 ${y.swimlane.edges.length} 本（${y.swimlane.edges.map((e) => e.label).filter(Boolean).join('・')}）`;
   console.log('システムの designs.json は閉じる前のページの中身と同じか:', canonical(S.systems) === canonical(r.inPage.systems), '／ 終了コード', r.code);
   [A, B, C].forEach((y) => console.log(`  ${y.name}${y.trashedAt ? '（ごみ箱）' : ''}: 役割 ${roles(y)} ／ 画面設計 ${y.designIds.map(dName).join('・')} ／ ${swim(y)}`,
-    `／ 履歴 ${y.revisions.map((x) => `${x.kind}（写し: 役割 ${x.snapshot ? x.snapshot.roles.length : 'なし'}・作業 ${x.snapshot ? x.snapshot.swimlane.steps.length : 'なし'}）`).join('、') || 'なし'}`));
+    `／ 履歴 ${y.revisions.map((x) => `${x.kind}（写し: 役割 ${x.snapshot ? x.snapshot.roles.length : 'なし'}・工程 ${x.snapshot ? x.snapshot.swimlane.steps.length : 'なし'}）`).join('、') || 'なし'}`));
   console.log(`  作業「${STEP_IN}」の指す先: ${JSON.stringify(win.ref)} ／ 作業「承認する」の指す先: ${JSON.stringify(wok.ref)}`);
   return canonical(S.systems) === canonical(r.inPage.systems) && r.code === 0 && S.systems.length === 3
-    && roles(A) === '申請者（出張する社員）・上長・経理' && A.designIds.map(dName).join() === '出張申請,社員マスタ' && swim(A) === '作業 4 つ・矢印 4 本（差し戻し・承認）'
+    && roles(A) === '申請者（出張する社員）・上長・経理' && A.designIds.map(dName).join() === '出張申請,社員マスタ' && swim(A) === '工程 4 つ・矢印 4 本（差し戻し・承認）'
     && win.ref.designId === trip.id && win.ref.screenId === trip.screens.find((s) => s.name === '新規申請').id && win.ref.stateId === stateId('申請中')
     && wok.ref.designId === trip.id && wok.ref.screenId === null && wok.ref.stateId === stateId('承認待ち') && wok.memo === '10 万円以上は部長も見る'
     && aiRows.length === 2 && aiRows.every((x) => x.snapshot && x.note === AI_ROW_NOTE)
     && last.snapshot.roles.map((x) => x.name).join() === '申請者,上長' && last.snapshot.swimlane.steps.length === 4 && last.snapshot.designIds.length === 2
-    && roles(B) === '申請者・経理（経理課）' && B.designIds.map(dName).join() === '社員マスタ,経費精算' && swim(B) === '作業 2 つ・矢印 1 本（確かめた後）'
+    && roles(B) === '申請者・経理（経理課）' && B.designIds.map(dName).join() === '社員マスタ,経費精算' && swim(B) === '工程 2 つ・矢印 1 本（確かめた後）'
     && dName(B.swimlane.steps[0].ref.designId) === '経費精算' && !!B.swimlane.steps[0].ref.screenId && B.revisions.length === 0
     && !!C.trashedAt && C.designIds.map(dName).join() === '出張申請';
 }
@@ -623,10 +623,10 @@ const checkManualScene = () => require('./check-electron-manual')({ launch, conn
   console.log('2 つ目の起動: 終了コード', r.secondCode, '／ そのとき 1 つ目は動いていたか:', r.firstAlive);
   console.log('1 つ目を閉じたときの終了コード:', r.code);
   const saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-  console.log('designs.json の画面設計:', saved.designs.map((d) => `${d.name}（${d.target}・画面 ${d.screens.length} つ・部品 ${d.screens[0].parts.length} つ）`).join('、'));
-  console.log('designs.json の画面の並び:', saved.designs[0].screens.map((s) => `${s.name}（部品 ${s.parts.length} つ）`).join('、'));
+  console.log('designs.json の画面設計:', saved.designs.map((d) => `${d.name}（${d.target}・画面 ${d.screens.length} つ・アイテム ${d.screens[0].parts.length} つ）`).join('、'));
+  console.log('designs.json の画面の並び:', saved.designs[0].screens.map((s) => `${s.name}（アイテム ${s.parts.length} つ）`).join('、'));
   const d0 = saved.designs[0];
-  console.log('designs.json の項目・吹き出し・つながりの図の箱の位置:', d0.items.map((it) => it.name).join('、'), '／ 吹き出し', d0.screens[0].callouts.length, 'つ ／', JSON.stringify(d0.mapPos));
+  console.log('designs.json の項目・吹き出し・関連図の箱の位置:', d0.items.map((it) => it.name).join('、'), '／ 吹き出し', d0.screens[0].callouts.length, 'つ ／', JSON.stringify(d0.mapPos));
   const rev = d0.revisions[0] || {};
   console.log('designs.json の改訂履歴:', d0.revisions.map((x) => `${x.kind}・第 ${x.no} 版・${x.note}・写しの画面 ${x.snapshot ? x.snapshot.screens.length : 'なし'} つ`).join('、'));
   const firstOk = r.firstAlive && saved.designs.length === 1 && d0.name === '顧客管理' && d0.screens[0].parts.length === 1
@@ -636,8 +636,8 @@ const checkManualScene = () => require('./check-electron-manual')({ launch, conn
   const typedOk = await checkTypingCases();
   const again = await secondRun();
   console.log('起動し直したときの一覧:', again.names.join('、'));
-  console.log(`起動し直したときの右の欄: 名前「${again.name}」／ 説明「${again.desc}」 ／ 画面の部品: ${again.parts} つ ／ 吹き出し: ${again.callouts} つ`,
-    `／ データベースの項目: ${again.items} ／ つながりの図の箱の位置: ${again.mapBox} ／ 画面の一覧: ${again.screens.join('・')}`);
+  console.log(`起動し直したときの右のパネル: 名前「${again.name}」／ 説明「${again.desc}」 ／ 画面のアイテム: ${again.parts} つ ／ 吹き出し: ${again.callouts} つ`,
+    `／ データベースの項目: ${again.items} ／ 関連図の箱の位置: ${again.mapBox} ／ 画面の一覧: ${again.screens.join('・')}`);
   console.log(`起動し直したときの改訂履歴: ${again.revs.join('、')} ／ 見たときの帯「${again.band}」 ／ 第 1 版の説明「${again.viewDesc}」`);
   const want = { name: '顧客管理', description: '' };
   TYPING_CASES.forEach((c) => { want[c.key] += c.text; });
@@ -647,9 +647,9 @@ const checkManualScene = () => require('./check-electron-manual')({ launch, conn
     && again.revs.join() === '第 1 版・最初の版。' && /第 1 版（.+）を見ています/.test(again.band) && again.viewDesc === '';
   const m = await migrateRun();
   const md = m.saved.designs[0];
-  console.log('v1 の形の designs.json: 一覧', m.names.join('、'), '／ 画面の部品の項目名', m.labels.join('・'), '／ 項目の一覧表', m.rows.join('・'));
+  console.log('v1 の形の designs.json: 一覧', m.names.join('、'), '／ 画面のアイテムの項目名', m.labels.join('・'), '／ 項目一覧', m.rows.join('・'));
   console.log('項目を 1 つ足して保存した後: 形の版', m.saved.schemaVersion, '／ 項目', md.items.map((it) => `${it.name}（${it.type}${it.required ? '・必須' : ''}）`).join('、'),
-    '／ 部品が指す項目', md.screens[0].parts.map((p) => (p.itemId ? md.items.find((it) => it.id === p.itemId).name : `なし（${p.label}）`)).join('・'), '／ .bak の形の版', m.bakVersion);
+    '／ アイテムが指す項目', md.screens[0].parts.map((p) => (p.itemId ? md.items.find((it) => it.id === p.itemId).name : `なし（${p.label}）`)).join('・'), '／ .bak の形の版', m.bakVersion);
   const migrateOk = m.labels.join() === '顧客名,区分' && m.rows.join() === '顧客名,区分' && m.saved.schemaVersion === 3 && md.items.length === 3
     && md.screens[0].parts[0].itemId === md.items[0].id && md.screens[0].parts[1].itemId === md.items[1].id && !md.screens[0].parts[2].itemId
     && md.items[0].required === true && md.items[1].props.options.join() === '法人,個人' && m.bakVersion === 1;
@@ -658,14 +658,14 @@ const checkManualScene = () => require('./check-electron-manual')({ launch, conn
   const st = od.items.find((it) => it.id === 'i-st');
   const part = (id) => od.screens.flatMap((s) => s.parts).find((p) => p.id === id);
   const idOf = (n) => (st.props.states.find((s) => s.name === n) || {}).id;
-  console.log('v2 の形の designs.json: ステータスの印', v.first.badge, '／ 左の一覧', v.first.notes.join('・'), '／ ステータス', v.first.states.join('・'), '／ 操作を足した後のカード', v.first.cards);
+  console.log('v2 の形の designs.json: ステータス表示', v.first.badge, '／ 左の一覧', v.first.notes.join('・'), '／ ステータス', v.first.states.join('・'), '／ 操作を追加した後のカード', v.first.cards);
   console.log('保存した後: 形の版', v.saved.schemaVersion, '／ ステータス', JSON.stringify(st.props.states), '／ 操作', st.props.actions.length,
-    '／ 見本で出すステータス', JSON.stringify(part('p-st1').view.current), '／ リンクの文字', JSON.stringify(part('p-l1').props), '／ ボタン', JSON.stringify(part('p-b1').props),
+    '／ 表示するステータス（サンプル）', JSON.stringify(part('p-st1').view.current), '／ リンク', JSON.stringify(part('p-l1').props), '／ ボタン', JSON.stringify(part('p-b1').props),
     '／ .bak の形の版', v.bakVersion);
-  console.log('起動し直したとき: ステータスの印', v.again.badge, '／ ステータス', v.again.states.join('・'), '／ 操作のカード', v.again.cards,
+  console.log('起動し直したとき: ステータス表示', v.again.badge, '／ ステータス', v.again.states.join('・'), '／ 操作のカード', v.again.cards,
     '／ 閉じた後の designs.json は同じか', JSON.stringify(v.after.designs) === JSON.stringify(v.saved.designs));
   const v2Ok = v.first.badge === '確認待ち' && v.first.states.join() === '受付,確認待ち,確認済み,完了' && v.first.cards === 1
-    && v.first.notes.includes('操作なし') && v.first.notes.includes('移る先 1 本')
+    && v.first.notes.includes('操作なし') && v.first.notes.includes('移動先 1 つ')
     && v.saved.schemaVersion === 3 && st.props.states.every((s) => /^t-/.test(s.id)) && st.props.actions.length === 1
     && part('p-st1').view.current === idOf('確認待ち') && part('p-l1').props.designId === '' && part('p-l1').props.screenId === 's-detail'
     && part('p-b1').props.to === '' && part('p-b1').props.action === '新規登録の画面を開く' && Array.isArray(v.saved.systems)
