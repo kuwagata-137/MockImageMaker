@@ -216,6 +216,7 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .screen-menu hr{border:none;border-top:1px solid #e2e8f0;margin:4px 0}
 /* 「画面を足す」の窓のひな形の札 */
 .tpl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tpl-grid.five{grid-template-columns:repeat(5,minmax(0,1fr))}
 .tpl{border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:6px;text-align:center;cursor:pointer}
 .tpl:hover{border-color:#94a3b8}
 .tpl.sel{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.35)}
@@ -1925,7 +1926,20 @@ const SCREEN_TEMPLATES = [
   { id: 'crmCase', name: '問い合わせ対応の 3 列', note: 'レコードの見出しと進捗バーの下に 3 列' },
   { id: 'crmKanban', name: '商談のかんばん', note: '検索欄・新規のボタン・かんばん' },
   { id: 'crmHome', name: 'ホームのダッシュボード', note: '大きな数字 4 つ・グラフ 3 つ・表' },
+  // 第 16 段階（画像 q131）。screen は新しい画面の名前（小さなウィンドウの見出しに出るので、ひな形の名前と分けた。ポータルはヘッダーのメニューに出る）
+  { id: 'winApproval', name: '承認申請のウィンドウ', note: '今の画面に重ねる・申請のボタン', screen: '承認申請' },
+  { id: 'portalTop', name: 'お客さまポータルのトップ', note: 'ヘッダー・大きな画像・タイル・記事', screen: 'ホーム' },
+  { id: 'winChat', name: 'AI のチャットのウィンドウ', note: '今の画面の右下に重ねる・チャット', screen: 'AI のアシスタント' },
 ];
+// ひな形から作る画面の名前（白紙は番号を付ける）
+const templateScreenName = (design, tpl) => (tpl.id === 'blank' ? blankScreenName(design) : uniqueScreenName(design, tpl.screen || tpl.name));
+// 小さなウィンドウのひな形の下に重ねる画面の id（afterId の画面。ないときは最後の画面。それが小さなウィンドウなら、その下の画面。q131）
+function templateUnderId(design, afterId) {
+  const s = design.screens.find((x) => x.id === afterId) || design.screens[design.screens.length - 1];
+  if (!s) return '';
+  const u = isWindowScreen(s) ? underScreenOf(design, s) : s;
+  return u ? u.id : '';
+}
 const TPL_LEFT = 32; // ひな形で部品を置く左の端
 const TPL_COL2 = 480; // 項目を 2 列で並べるときの右の列（幅 400 の部品の右に 48 空ける）
 const TPL_GAP = 24; // 項目の行の間
@@ -2173,8 +2187,9 @@ function placePartIn(sc, design, { type, x, y, w, h, itemId = null, tableKind = 
 }
 
 // ひな形から画面を作る（commit はしない）。戻り値 { screen, items（データベースの項目の一覧表に新しく足す項目）}。
-// 入力・詳細・進み具合には、データベースの項目の一覧表の項目を上から順に 2 列で並べ、テーブルの項目はその下に 1 つずつ置く
-function screenFromTemplate(design, templateId, name) {
+// 入力・詳細・進み具合には、データベースの項目の一覧表の項目を上から順に 2 列で並べ、テーブルの項目はその下に 1 つずつ置く。
+// underId は、小さなウィンドウのひな形で下に重ねる画面の id（templateUnderId）
+function screenFromTemplate(design, templateId, name, underId = '') {
   const sc = createScreenData(name);
   const items = [];
   const put = (type, x, y, opts = {}) => placePartIn(sc, design, { type, x, y, ...opts });
@@ -2247,6 +2262,8 @@ function screenFromTemplate(design, templateId, name) {
     }
     case 'crmDetail': case 'crmCase': crmTemplateInto(sc, design, templateId, { put, items, Y }); break;
     case 'crmKanban': case 'crmHome': dealTemplateInto(sc, design, templateId, { put, items, Y }); break;
+    case 'winApproval': case 'winChat': windowTemplateInto(sc, design, templateId, underId, { put, items }); break;
+    case 'portalTop': portalTemplateInto(sc, design, { put }); break;
     default: break; // 白紙は帯だけ
   }
   return { screen: sc, items };
@@ -2381,6 +2398,59 @@ function dealTemplateInto(sc, design, templateId, { put, items, Y }) {
   const near = DEALS.slice().sort((a, b) => a[3].localeCompare(b[3])).slice(0, 4);
   put('table', TPL_LEFT, Y(608), { tableKind: 'records', label: '完了予定日の近い商談', w: sc.width - TPL_LEFT * 2, h: tableHeight(4),
     props: tableProps({ sort: '完了予定日の近い順' }), view: view(4, near) });
+}
+
+// ひな形「承認申請のウィンドウ」と「AI のチャットのウィンドウ」（第 16 段階。画像 q131 の並び）。どちらも underId の画面を下に重ねる小さなウィンドウ。
+// 承認申請: 真ん中 640×432。説明文（番号なし）・承認者（ユーザー選択・必須）・コメント（テキスト（複数行））と、下のボタンの行の右に 申請・キャンセル
+// （キャンセルの移動先は下の画面）。承認者とコメントは、同じ名前と種類の項目があれば使い、なければ項目一覧に追加する。
+// AI のチャット: 右下 400×560（下のボタンの行なし）。見出しの行を出さないチャットを、ウィンドウの中いっぱいに置く。
+// 下に重ねる画面がないときは、同じ所にアイテムを置いたふつうの画面になる
+const WIN_TEMPLATES = {
+  winApproval: { pos: 'center', w: WIN_SIZE.w, h: WIN_SIZE.h, foot: true },
+  winChat: { pos: 'bottomRight', w: 400, h: 560, foot: false },
+};
+function windowTemplateInto(sc, design, templateId, underId, { put, items }) {
+  const overlay = WIN_TEMPLATES[templateId];
+  if (underId) Object.assign(sc, withOverlay(design, sc, { ...overlay, under: underId }));
+  const r = windowRect(isWindowScreen(sc) ? sc : { ...sc, overlay });
+  const top = r.y + WIN_HEAD;
+  if (templateId === 'winChat') {
+    put('chat', r.x, top, { w: r.w, h: r.h - WIN_HEAD, props: { head: false } });
+    return;
+  }
+  const itemOf = (type, name, required = false) => {
+    let it = design.items.find((x) => x.type === type && x.name === name) || items.find((x) => x.type === type && x.name === name);
+    if (it) return it;
+    it = createItemData(type, name);
+    if (required) it.required = true;
+    items.push(it);
+    return it;
+  };
+  put('desc', r.x + 32, top + 24, { w: r.w - 64, h: 48, label: 'このレコードの承認を申請します。' }).no = null;
+  put('user', r.x + 32, top + 88, { itemId: itemOf('user', '承認者', true).id, sample: '鈴木 一郎（課長）' });
+  put('text2', r.x + 32, top + 168, { itemId: itemOf('text2', 'コメント').id, w: r.w - 64, h: 120 });
+  const by = r.y + r.h - WIN_FOOT + 12;
+  const bw = PART_TYPES.button.w;
+  put('button', r.x + r.w - 24 - bw - 16 - bw, by, { label: '申請', props: { style: 'primary' } });
+  const back = isWindowScreen(sc) ? { to: 'screen', designId: '', screenId: sc.overlay.under } : {};
+  put('button', r.x + r.w - 24 - bw, by, { label: 'キャンセル', props: { style: 'normal', ...back } });
+}
+
+// ひな形「お客さまポータルのトップ」（第 16 段階。画像 q131 の並び）。ヘッダーの形をお客さまポータルにし、ヘッダーの下に、幅いっぱいの大きな画像と検索欄・
+// タイル 4 つ・記事の一覧 2 つ（よくある質問・お知らせ〔説明を出さない〕）を、間を 32 空けて縦に並べる。画面の高さは 1080
+const PORTAL_NEWS = '年末年始の受付の時間のお知らせ, , , 2026-10-22\n一部の機種のリモコンの交換のお知らせ, , , 2026-10-15\n'
+  + 'サポートサイトを新しくしました, , , 2026-10-01\n台風による訪問の日の変更について, , , 2026-09-20';
+const PORTAL_TOP_H = 1080;
+function portalTemplateInto(sc, design, { put }) {
+  const gap = 32;
+  sc.headerKind = 'portal';
+  const hero = put('hero', 0, bandHeight(design, sc));
+  const tiles = put('tileMenu', TPL_LEFT, hero.y + hero.h + gap, { w: sc.width - TPL_LEFT * 2 });
+  const y = tiles.y + tiles.h + gap;
+  const faq = put('articles', TPL_LEFT, y, { w: 784 });
+  const x = faq.x + faq.w + gap;
+  put('articles', x, y, { w: sc.width - TPL_LEFT - x, label: 'お知らせ', props: { rows: PORTAL_NEWS, desc: false } });
+  sc.height = Math.max(sc.height, snapHeight(PORTAL_TOP_H, sc.device));
 }
 
 // ── 項目と部品 ──
@@ -5347,13 +5417,13 @@ const actions = {
       if ('device' in patch) d.screens.forEach((w, k) => { if (isWindowScreen(w) && w.overlay.under === sc.id) d.screens[k] = withOverlay(d, w, {}); });
     });
   },
-  // ひな形から画面を足し、afterId の画面のすぐ後ろに入れる。名前はひな形の名前（白紙は「画面 3」のような番号）。戻り値は新しい画面の id
+  // ひな形から画面を足し、afterId の画面のすぐ後ろに入れる。名前はひな形の名前（白紙は「画面 3」のような番号。screen を書いたひな形はその名前）。
+  // 小さなウィンドウのひな形は、afterId の画面（小さなウィンドウなら、その下の画面）を下に重ねる。戻り値は新しい画面の id
   addScreen(designId, templateId, afterId = null) {
     const d = findDesign(store.state, designId);
     const tpl = SCREEN_TEMPLATES.find((t) => t.id === templateId);
     if (!d || !tpl) return null;
-    const name = tpl.id === 'blank' ? blankScreenName(d) : uniqueScreenName(d, tpl.name);
-    const { screen, items } = screenFromTemplate(d, tpl.id, name);
+    const { screen, items } = screenFromTemplate(d, tpl.id, templateScreenName(d, tpl), templateUnderId(d, afterId));
     mutateDesign(designId, (dd) => {
       dd.items.push(...items);
       insertScreenAfter(dd, screen, afterId);
@@ -10508,8 +10578,9 @@ function openScreen(id) {
 async function openAddScreenDialog() {
   const d = currentDesign();
   const cur = findScreen(d.id, ui.screenId) || d.screens[0];
+  const under = templateUnderId(d, cur.id);
   const cards = SCREEN_TEMPLATES.map((t, i) => {
-    const { screen, items } = screenFromTemplate(d, t.id, t.id === 'blank' ? blankScreenName(d) : t.name);
+    const { screen, items } = screenFromTemplate(d, t.id, templateScreenName(d, t), under);
     const preview = { ...d, items: [...d.items, ...items] }; // 見本の項目も名前を出すため
     return `<button type="button" class="tpl${i === 0 ? ' sel' : ''}" data-tpl="${t.id}" aria-pressed="${i === 0}">
       <div class="th">${thumbHtml(preview, screen, 150, 80)}</div><b>${esc(t.name)}</b><small>${esc(t.note)}</small></button>`;
@@ -10517,9 +10588,9 @@ async function openAddScreenDialog() {
   const r = await showDialog({
     title: '画面を追加する',
     okLabel: '画面を追加する',
-    wide: true,
+    width: 1100, // ひな形の札を 5 つずつ 3 段に並べる（15 個まで。1280×800 の窓で下のボタンまで見える幅。q131）
     body: `<p style="margin-bottom:12px;color:#475569">ひな形を選んでください。今開いている「${esc(cur.name)}」の画面のすぐ後ろに追加します。</p>
-      <div class="tpl-grid">${cards}</div>
+      <div class="tpl-grid five">${cards}</div>
       <div class="tpl-dup"><button type="button" class="btn" data-dup>❐ 今の画面（${esc(cur.name)}）を複製する</button><span>アイテムも吹き出しもそのままコピーします。</span></div>`,
     init: (m) => {
       const pick = (b) => m.querySelectorAll('.tpl').forEach((x) => {
@@ -18718,7 +18789,7 @@ function exposeForTest() {
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     KINTONE_TYPES, kintoneChoices, kintoneTypeOf, kintoneCodeOf, kintoneCodeOk, kintoneCodes, isKintoneDesign,
-    WINDOW_POS, windowRect, partBounds, clampGroupMove, HEADER_KINDS, PORTAL_BAND, portalOf, bandHeight,
+    WINDOW_POS, windowRect, partBounds, clampGroupMove, HEADER_KINDS, PORTAL_BAND, portalOf, bandHeight, templateUnderId,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     setMaterialWaitMs: (ms) => { materialWaitMs = ms; },
     ready: true,
