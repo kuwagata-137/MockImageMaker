@@ -238,7 +238,7 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <ul class="l0"><li>サイトの名前・メニュー・右上のボタンは、ヘッダーがお客さまポータルのすべての画面で同じです。画面ごとに選ぶのは、下線を付けるメニューだけです。</li></ul>
 <ul class="l0"><li>ヘッダーの形を変えると、ヘッダーの高さの差だけ、ヘッダーの下のアイテムと吹き出しが上下にずれます。</li></ul>
 <p>アイテム一覧の「ポータル画面用」の組には、次の 4 つのアイテムがあります。どれもデータベースの項目にはなりません。</p>
-<table class="tb"><tr><th>アイテム</th><th>右のパネルで書くこと</th></tr><tr><td><b>大きな画像と検索欄</b></td><td><p>見出し・説明・検索欄を出すか・検索欄の薄い字</p></td></tr><tr><td><b>タイル</b></td><td><p>1 行に「題名, 説明」を書く。書いた数だけタイルを並べる</p></td></tr><tr><td><b>記事の一覧</b></td><td><p>見出しの文字と、1 行に「題名, 説明, 分類, 日付」。説明を出すか・下に「すべて表示」を出すか</p></td></tr><tr><td><b>チャット</b></td><td><p>見出しの文字と、1 行に「話す人: 文」。右の吹き出しにする人・見出しの行を出すか・入力欄の薄い字</p></td></tr></table>
+<table class="tb"><tr><th>アイテム</th><th>右のパネルで書くこと</th></tr><tr><td><b>大きな画像と検索欄</b></td><td><p>見出し・説明・検索欄を出すか・検索欄の薄い字</p></td></tr><tr><td><b>タイル</b></td><td><p>1 行に「題名, 説明」を書く。書いた数だけタイルを並べる</p></td></tr><tr><td><b>記事の一覧</b></td><td><p>見出しの文字と、1 行に「題名, 説明, 分類, 日付」。説明を出すか・下に「すべて表示」を出すか。高さは記事の数に合わせて変わる</p></td></tr><tr><td><b>チャット</b></td><td><p>見出しの文字と、1 行に「話す人: 文」。右の吹き出しにする人・見出しの行を出すか・入力欄の薄い字</p></td></tr></table>
 <figure><img src="images/portal_chat.png" width="648" height="409" alt="" loading="lazy"><figcaption>図 37　ひな形「AI のチャットのウィンドウ」で追加した画面（右下の小さなウィンドウの中いっぱいにチャット）</figcaption></figure>
 <ul class="l0"><li>チャットは、右の吹き出しにする人の文を右に、ほかの人の文を左に描きます。話す人を書いていない行は、前の行と同じ人の文にします。</li></ul>
 <ul class="l0"><li>チャットは、ページの中にも、小さなウィンドウの中にも置けます。小さなウィンドウの中いっぱいに置くときは、見出しの行を出さない形にします（ウィンドウの見出しの行があるため）。</li></ul>
@@ -323,27 +323,34 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>システムは、いくつかの画面設計をまとめる入れ物です。出張申請システムなら、社員マスタ・出張申請・旅費精算の 3 つの画面設計を追加し、業務の流れ（スイムレーン図）と一緒に扱います。1 つの画面設計を 2 つ以上のシステムに追加することもでき、どのシステムから変更しても同じ画面設計が変わります。</p>
 <h3 id="s7-1">7.1 システムを作る・システムに画面設計を追加する</h3>
 <p>最初の画面の <b>＋ 新しいシステム</b> を押し、名前と説明を書いて <b>システムを作る</b> を押します。説明は後からでも書けます。</p>
-<figure><img src="images/sys_new.png" width="464" height="378" alt="" loading="lazy"><figcaption>図 53　新しいシステムのウィンドウ</figcaption></figure>
+<figure><img src="images/sys_new.png" width="464" height="550" alt="" loading="lazy"><figcaption>図 53　新しいシステムのウィンドウ</figcaption></figure>
+<p>ウィンドウのいちばん上の「作り方」は、最初は <b>白紙のシステム</b>（画面設計の入っていないシステム）を選んであります。<b>CRM の見本</b> を選ぶと、顧客管理（CRM）の見本の画面設計と画面・役割・スイムレーン図の入ったシステムを作ります。</p>
+<figure><img src="images/sys_sample.png" width="464" height="716" alt="" loading="lazy"><figcaption>図 54　新しいシステムのウィンドウ（CRM の見本を選んだとき）</figcaption></figure>
+<ul class="l0"><li>CRM の見本を選ぶと、構築先と見た目の欄が出ます（最初は Salesforce）。見本の画面設計は、みな選んだ構築先と見た目になります。名前と説明の欄が空なら、見本の名前と説明が入ります。</li></ul>
+<table class="tb"><tr><th>画面設計</th><th>画面</th></tr><tr><td><b>顧客</b></td><td><p>顧客の一覧・顧客の詳細</p></td></tr><tr><td><b>商談</b></td><td><p>商談のかんばん・商談の詳細・ホーム（ダッシュボード）</p></td></tr><tr><td><b>問い合わせ</b></td><td><p>問い合わせの詳細・無償修理の承認申請（小さなウィンドウ）</p></td></tr><tr><td><b>作業指示</b></td><td><p>作業指示の一覧・作業報告（右の端の小さなウィンドウ）</p></td></tr><tr><td><b>ナレッジ</b></td><td><p>ホーム（お客さまポータルのトップ）・AI のアシスタント（チャットのウィンドウ）</p></td></tr></table>
+<ul class="l0"><li>商談・問い合わせ・作業指示の画面設計には、ステータスと操作が入っています。画面設計どうしは、ルックアップ（商談の取引先名・問い合わせの顧客名・作業指示の問い合わせ番号）と関連レコード一覧で接続してあります。</li></ul>
+<ul class="l0"><li>役割（お客さま・システム・サポート・作業員・営業）と、問い合わせの受付から修理・クローズまでのスイムレーン図も入ります。見本の会社と人の名前は架空のものです。</li></ul>
+<div class="box tip"><b class="tag">ヒント</b><div>作った見本は、ふつうのシステムと同じように変更できます。元に戻す（Ctrl+Z）を 1 回押すと、システムと 5 つの画面設計がまとめて消えます。</div></div>
 <p>システムに画面設計を追加するときは、システムの見出しかシステムの画面の <b>＋ 画面設計を追加する</b> を押して、追加のしかたを選びます。</p>
-<figure><img src="images/sys_insert.png" width="280" height="187" alt="" loading="lazy"><figcaption>図 54　画面設計を追加するメニュー</figcaption></figure>
+<figure><img src="images/sys_insert.png" width="280" height="187" alt="" loading="lazy"><figcaption>図 55　画面設計を追加するメニュー</figcaption></figure>
 <table class="tb"><tr><th>追加のしかた</th><th>すること</th></tr><tr><td><b>新しい画面設計を作る</b></td><td><p>新しい画面設計を作って、このシステムに追加する</p></td></tr><tr><td><b>今ある画面設計を追加する</b></td><td><p>今ある画面設計を、そのまま追加する。ほかのシステムと同じものなので、どちらから変更しても変わる</p></td></tr><tr><td><b>今ある画面設計を複製して追加する</b></td><td><p>今ある画面設計を複製して追加する。元とは別のもので、片方を変更しても、もう片方は変わらない</p></td></tr></table>
 <p>システムから画面設計を外すときは、最初の画面の画面設計の「…」か、システムの画面の左の一覧の画面設計の「…」で、「画面設計をこのシステムから外す」を押します。外しても、画面設計は残ります。</p>
 <h3 id="s7-2">7.2 システムの画面</h3>
 <p>システムの見出しの <b>このシステムを開く</b> を押すと、システムの画面が開きます。</p>
-<figure><img src="images/sys_overview.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 55　システムの画面（概要）</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">ツールバー</td><td><p>ファイル（一覧へ戻る・システムを出力する）・履歴・編集・表示の組のボタン</p></td></tr><tr><td class="n">2</td><td class="nm">システムのトップ</td><td><p>概要・役割・スイムレーン図・資料・設計ノート・履歴のボタン。押すと、真ん中に中身が出る</p></td></tr><tr><td class="n">3</td><td class="nm">画面設計の一覧</td><td><p>このシステムの画面設計。押すと、その画面設計が開く。ドラッグで並べ替えられる</p></td></tr><tr><td class="n">4</td><td class="nm">中身</td><td><p>システムのトップで選んだものの中身。概要では名前と説明を変更する</p></td></tr><tr><td class="n">5</td><td class="nm">右のパネル</td><td><p>選んだものの設定と案内</p></td></tr></table>
+<figure><img src="images/sys_overview.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 56　システムの画面（概要）</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">ツールバー</td><td><p>ファイル（一覧へ戻る・システムを出力する）・履歴・編集・表示の組のボタン</p></td></tr><tr><td class="n">2</td><td class="nm">システムのトップ</td><td><p>概要・役割・スイムレーン図・資料・設計ノート・履歴のボタン。押すと、真ん中に中身が出る</p></td></tr><tr><td class="n">3</td><td class="nm">画面設計の一覧</td><td><p>このシステムの画面設計。押すと、その画面設計が開く。ドラッグで並べ替えられる</p></td></tr><tr><td class="n">4</td><td class="nm">中身</td><td><p>システムのトップで選んだものの中身。概要では名前と説明を変更する</p></td></tr><tr><td class="n">5</td><td class="nm">右のパネル</td><td><p>選んだものの設定と案内</p></td></tr></table>
 <p>システムの画面から開いた画面設計では、ツールバーの左のボタンが <b>システムへ戻る</b> になり、押すとシステムの画面に戻ります。名前と説明は、欄を離れると保存されます。</p>
 <h3 id="s7-3">7.3 役割</h3>
 <p>役割は、業務に出てくる人の役目（申請者・上長・経理など）です。役割の並びが、スイムレーン図のレーンの上からの順になります。</p>
-<figure><img src="images/sys_roles.png" width="772" height="232" alt="" loading="lazy"><figcaption>図 56　役割</figcaption></figure>
+<figure><img src="images/sys_roles.png" width="772" height="232" alt="" loading="lazy"><figcaption>図 57　役割</figcaption></figure>
 <p>名前とメモを書き、↑↓ で並べ替えます。<b>＋ 役割を追加する</b> で役割を追加し、✕ で役割を削除します。工程がある役割を削除すると、その工程と、工程に接続している矢印も一緒に消えます。</p>
 <h3 id="s7-4">7.4 スイムレーン図</h3>
 <p>スイムレーン図は、役割ごとの横のレーンに工程を左から順に並べ、矢印で接続した業務の流れの図です。工程は、始まり・作業・システムへの入力・判断・書類・終わりの 6 種類です。</p>
-<figure><img src="images/sys_swim.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 57　スイムレーン図</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">ツールバー</td><td><p>編集の組に選択・接続・選んだものを削除する、表示の組に拡大・縮小・全体を表示</p></td></tr><tr><td class="n">2</td><td class="nm">図</td><td><p>役割ごとのレーンに工程を並べる。流れは紺の実線、戻る流れ（差し戻しなど）は橙の点線</p></td></tr><tr><td class="n">3</td><td class="nm">工程の一覧</td><td><p>6 種類の工程のボタン。図へドラッグして置く</p></td></tr><tr><td class="n">4</td><td class="nm">工程の設定</td><td><p>文字・種類・役割（レーン）・この工程で使う画面とステータス・次の工程（矢印）</p></td></tr></table>
+<figure><img src="images/sys_swim.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 58　スイムレーン図</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">ツールバー</td><td><p>編集の組に選択・接続・選んだものを削除する、表示の組に拡大・縮小・全体を表示</p></td></tr><tr><td class="n">2</td><td class="nm">図</td><td><p>役割ごとのレーンに工程を並べる。流れは紺の実線、戻る流れ（差し戻しなど）は橙の点線</p></td></tr><tr><td class="n">3</td><td class="nm">工程の一覧</td><td><p>6 種類の工程のボタン。図へドラッグして置く</p></td></tr><tr><td class="n">4</td><td class="nm">工程の設定</td><td><p>文字・種類・役割（レーン）・この工程で使う画面とステータス・次の工程（矢印）</p></td></tr></table>
 <table class="tb"><tr><th>操作</th><th>すること</th></tr><tr><td><b>工程を置く</b></td><td><p>工程の一覧から、工程を図へドラッグする。一覧のボタンを押してから図を押しても置ける。何もない所をダブルクリックすると「作業」を置く</p></td></tr><tr><td><b>工程を接続する</b></td><td><p>工程にマウスを近づけると出る ○＋ を押してから、接続先の工程を押す。ツールバーの「接続」（C キー）にして 2 つの工程を順に押しても接続できる。「選択」（V キー）で戻る</p></td></tr><tr><td><b>工程を動かす</b></td><td><p>工程をドラッグする。レーンと列に吸い付く</p></td></tr><tr><td><b>文字を書く</b></td><td><p>工程か矢印をダブルクリックする</p></td></tr><tr><td><b>工程・矢印を削除する</b></td><td><p>選んで Delete を押すか、右クリックする。工程を削除すると、その工程に接続した矢印も消える</p></td></tr></table>
 <p>工程の設定の「この工程で使う画面とステータス」で、工程と画面設計・画面・ステータスを結び付けると、図の工程に「画面: 新規申請」のような字が出ます。どの工程でどの画面を使うかを、ベンダーに伝えられます。</p>
 <h3 id="s7-5">7.5 資料</h3>
 <p>資料は、業務の様式・規程・業務の流れの図など、システムを作るときに参考にするファイルです。資料に追加したファイルは、AI が読めます（第 8 章）。資料はデスクトップ版のアプリだけで使えます。</p>
-<figure><img src="images/sys_materials.png" width="772" height="474" alt="" loading="lazy"><figcaption>図 58　資料</figcaption></figure>
+<figure><img src="images/sys_materials.png" width="772" height="474" alt="" loading="lazy"><figcaption>図 59　資料</figcaption></figure>
 <ul class="l0"><li><b>＋ 資料を追加する…</b> を押すか、点線の枠へファイルをドラッグ＆ドロップします。1 つのファイルは 50 MB までです。元のファイルは変わりません。</li></ul>
 <ul class="l0"><li>読めるのは、文字・画像・PDF・Word・Excel・MPD のファイルです。古い形（.doc・.xls）は読めないので、新しい形（.docx・.xlsx）で保存し直して追加してください。</li></ul>
 <ul class="l0"><li><b>この資料を読む</b> を押すと、AI が読むのと同じ中身をウィンドウで見られます。読み終えるまでは、押したボタンに「読んでいます…」と出ます。60 秒たっても読み終えないときは、アプリが読むのを止めて、お知らせを出します。もう一度押してください。</li></ul>
@@ -354,7 +361,7 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <ul class="l0"><li>同じ名前の役割はそのまま使い、足りない役割を追加します。</li></ul>
 <h3 id="s7-7">7.7 設計ノート</h3>
 <p>設計ノートは、AI が資料からシステムを作るときの、段階ごとの記録です。AI は段階ごとに、読み取ったこと・決めたことと理由・まだ決まっていないことを書きます。書いた中身は、人も変更できます（欄を離れると保存されます）。</p>
-<figure><img src="images/sys_notes.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 59　設計ノート</figcaption></figure>
+<figure><img src="images/sys_notes.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 60　設計ノート</figcaption></figure>
 <p>上のタブは、① 資料から読み取る・② 業務の流れ・③ データベースの項目・④ 画面・⑤ システム設計書と出力の 5 つの段階です。タブのマークで進捗が分かります。</p>
 <table class="tb"><tr><th>マーク</th><th>進捗</th></tr><tr><td><b>✓（緑）</b></td><td><p>確認済み。人が案を見て「よい」と答えた</p></td></tr><tr><td><b>●（オレンジ）</b></td><td><p>確認待ち。AI が案を出して、人の答えを待っている</p></td></tr><tr><td><b>▶（青）</b></td><td><p>作業中</p></td></tr><tr><td><b>–（灰色）</b></td><td><p>未着手</p></td></tr><tr><td><b>⤼（灰色・点線の枠）</b></td><td><p>確認を飛ばした。人が確かめずに進めるよう依頼した</p></td></tr></table>
 <ul class="l0"><li>「この段階の進捗」のボタンで、人も進捗を変えられます。</li></ul>
@@ -362,31 +369,31 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <ul class="l0"><li>①〜④ の段階の、決めたことと理由・まだ決まっていないことは、システム設計書（PDF）の最後のページに入ります。</li></ul>
 <h3 id="s7-8">7.8 システム設計書（PDF）</h3>
 <p>システムの画面のツールバーの <b>システムを出力する</b> を押すと、小さなメニューが開きます。</p>
-<figure><img src="images/sys_exportmenu.png" width="417" height="192" alt="" loading="lazy"><figcaption>図 60　「システムを出力する」のメニュー</figcaption></figure>
+<figure><img src="images/sys_exportmenu.png" width="417" height="192" alt="" loading="lazy"><figcaption>図 61　「システムを出力する」のメニュー</figcaption></figure>
 <p><b>システム設計書（PDF）を出力…</b> を押すと、システム 1 つ分を 1 つの PDF にするウィンドウが開きます。入っている画面設計の画面のページは、全部入ります。</p>
-<figure><img src="images/sys_doc.png" width="704" height="410" alt="" loading="lazy"><figcaption>図 61　システム設計書を出力するウィンドウ</figcaption></figure>
+<figure><img src="images/sys_doc.png" width="704" height="410" alt="" loading="lazy"><figcaption>図 62　システム設計書を出力するウィンドウ</figcaption></figure>
 <p>ページは、システムの表紙 → スイムレーン図 → 画面設計ごとのページ（画面設計を 1 つ出力したときと同じページ）→ 設計ノートの順に並びます。ファイルの名前の案は「出張申請システム_システム設計書.pdf」です。</p>
 <h3 id="s7-9">7.9 スイムレーン図を MPD に出力する</h3>
 <p>スイムレーン図を MultipurposeDiagramMaker で開いて変更したいときは、ツールバーの「システムを出力する」のメニューの <b>スイムレーン図を MPD に出力…</b> を押します（資料の一覧の MPD の行の「スイムレーン図を MPD に出力…」でも）。デスクトップ版のアプリだけで使えます。</p>
-<figure><img src="images/sys_mpd.png" width="664" height="256" alt="" loading="lazy"><figcaption>図 62　MPD に出力するウィンドウ</figcaption></figure>
+<figure><img src="images/sys_mpd.png" width="664" height="256" alt="" loading="lazy"><figcaption>図 63　MPD に出力するウィンドウ</figcaption></figure>
 <ul class="l0"><li>元にする MPD を、資料から選びます。選んだ MPD の中の図だけを今のスイムレーン図に入れ替えて、別の名前で保存します。元のファイルは書き換えません。</li></ul>
 <ul class="l0"><li>ファイルの名前の案は「出張申請システム_スイムレーン.html」です。</li></ul>
 <ul class="l0"><li>役割のない工程は入りません。</li></ul>
 <h3 id="s7-10">7.10 履歴</h3>
 <p>AI がシステム（名前・説明・役割・スイムレーン図・画面設計の並び）を変更する前の中身は、システムの画面の「履歴」に自動で記録されます。資料と設計ノートは入りません。</p>
-<figure><img src="images/sys_history.png" width="772" height="224" alt="" loading="lazy"><figcaption>図 63　システムの履歴</figcaption></figure>
+<figure><img src="images/sys_history.png" width="772" height="224" alt="" loading="lazy"><figcaption>図 64　システムの履歴</figcaption></figure>
 <p><b>この状態に戻す…</b> を押すと、その行の中身に戻せます。戻す前の中身は「戻す前の状態」の行に残ります。行は、どちらも新しい方から 10 行までです。中の画面設計の履歴は、それぞれの画面設計の改訂履歴にあります。</p>
 <h2 id="s8">8. AI と連携</h2>
 <p>Claude Code などの AI から、このアプリの画面設計とシステムを読んだり、作ったり、変更したりできます。連携には MCP というしくみを使います。AI はファイルを直接書かず、保存はアプリが行うので、AI が作ったものも人が描いたものと同じように一覧に並びます。AI と連携できるのは、デスクトップ版のアプリだけです。</p>
 <h3 id="s8-1">8.1 AI に登録する</h3>
 <p>アプリのメニューの <b>ヘルプ &gt; AI と連携…</b> を押すと、登録のしかたのウィンドウが開きます。AI のアプリに、このアプリを 1 回だけ登録します。</p>
-<figure><img src="images/ai_connect.png" width="514" height="640" alt="" loading="lazy"><figcaption>図 64　「AI と連携」のウィンドウ</figcaption></figure>
+<figure><img src="images/ai_connect.png" width="514" height="640" alt="" loading="lazy"><figcaption>図 65　「AI と連携」のウィンドウ</figcaption></figure>
 <ul class="l0"><li>Claude Code: 「Claude Code に登録する」の <b>下の文をコピーする</b> を押し、PowerShell に貼り付けて 1 回だけ実行します。Claude Code を起動し直すと使えます。起動している Claude Code では、<kbd>/mcp</kbd> で接続し直します。</li></ul>
 <ul class="l0"><li>ほかの AI のアプリ（MCP に対応したもの）: 「ほかの AI のアプリ（MCP に対応したもの）に登録する」の <b>下の文をコピーする</b> を押し、それぞれのアプリの説明に従って、MCP の設定に貼り付けます。Claude のデスクトップアプリに登録したときは、Claude のデスクトップアプリを完全に終了して（ウィンドウを閉じても終わらないときは、タスクトレイのアイコンから終了して）、起動し直すと使えます。</li></ul>
 <p>登録した後は、アプリが動いていなくても、AI が依頼するとアプリがウィンドウを出さずに裏で起動します。</p>
 <div class="box warn"><b class="tag">注意</b><div>アプリを新しい版に入れ替えるときは、先にアプリを終了してください（タスクトレイのアイコンの「モックイメージメーカーを終了する」）。入れ替えた後は、Claude Code の <kbd>/mcp</kbd> で接続し直します。</div></div>
 <h3 id="s8-2">8.2 AI と連携しているときのマーク</h3>
-<figure><img src="images/ai_chip.png" width="880" height="30" alt="" loading="lazy"><figcaption>図 65　AI と連携しているときのマーク</figcaption></figure>
+<figure><img src="images/ai_chip.png" width="880" height="30" alt="" loading="lazy"><figcaption>図 66　AI と連携しているときのマーク</figcaption></figure>
 <p>AI と連携している間は、ウィンドウのいちばん上の、アプリの名前が出るバーの右に、紫のマーク「Claude Code と連携しています」が出ます。マークを押すと、「AI と連携」のウィンドウが開きます。</p>
 <p>AI と連携している間にウィンドウの × を押すと、ウィンドウは隠れ、アプリは裏で動き続けます（最初の 1 回だけ Windows の通知で知らせます）。タスクトレイのアイコンを押すと、ウィンドウが出ます。アプリを終了するときは、アイコンを右クリックして「モックイメージメーカーを終了する」を押します。</p>
 <h3 id="s8-3">8.3 AI に依頼できること・依頼できないこと</h3>
@@ -397,7 +404,8 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <ul class="l0"><li>AI は、表のサンプル値も書けます。値の数がサンプルの行数より多いときは、行を増やします。</li></ul>
 <ul class="l0"><li>AI は、グループ枠に項目を入れる並べ方・列ごとにアイテムを縦に重ねる並べ方・レコードの見出しにボタンを重ねる並べ方も使えます。左右の列で高さが違うレコードの画面（3.11）も、AI に並べてもらえます。</li></ul>
 <ul class="l0"><li>AI は、かんばんのレコード一覧・積み上げ棒・じょうご・メーター・大きな数字のグラフ・カレンダー・メールの作成欄も置けます（3.12）。</li></ul>
-<ul class="l0"><li>AI は、小さなウィンドウの画面とお客さまポータルの画面も作れます（3.13）。小さなウィンドウの画面では、アイテムをウィンドウの中に並べ、最後のボタンの行を下のボタンの行に置きます。</li></ul>
+<ul class="l0"><li>AI は、小さなウィンドウの画面とお客さまポータルの画面も作れます（3.13）。小さなウィンドウの画面では、アイテムをウィンドウの中に並べ、最後のボタンの行を下のボタンの行に置きます。1 列で並べたときは、説明文とテキスト（複数行）をウィンドウの中の幅に広げます。</li></ul>
+<ul class="l0"><li>AI に CRM（顧客・商談・問い合わせ・作業指示・ナレッジなど）のシステムを作ってもらうときは、AI が手引き「CRM のシステムを作るとき」を読み、CRM の見本（7.1）と同じ形の画面設計・画面・ステータス・スイムレーン図を、資料や依頼の業務の名前で作ります。</li></ul>
 <ul class="l0"><li>確認のウィンドウが開いている間と、前の版を見ている間は、AI が変更しようとしても断ります。ウィンドウを閉じてから、もう一度 AI に依頼してください。</li></ul>
 <h3 id="s8-4">8.4 資料からシステムを作る流れ</h3>
 <p>資料から AI にシステムを作ってもらうときは、5 つの段階ごとに、AI が案をチャットに出して止まり、人が「よい」と答えてから次の段階へ進みます。案がよくなければ、変更してほしい所をチャットで伝えると、AI が案を変更してもう一度出します。</p>
@@ -408,9 +416,9 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <div class="box tip"><b class="tag">ヒント</b><div>画面を 1 つ作ってもらうときは <kbd>/mcp__mockimagemaker__make_screen</kbd>、今ある画面設計を変更してもらうときは <kbd>/mcp__mockimagemaker__fix_design</kbd>（続けて画面設計の名前）でも始められます。</div></div>
 <h3 id="s8-5">8.5 AI が変更したものを確かめる・元に戻す</h3>
 <p>開いている画面設計を AI が変更すると、ツールバーの下に紫のバーが出て、変更したアイテムが紫の枠で強調されます。アイテムの上には「AI が追加した」「AI が変更した」のマークが付きます。</p>
-<figure><img src="images/ai_band.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 66　AI が変更したときの紫のバー</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">紫のバー</td><td><p>変更した画面設計と変更の数。<b>変更点を見る</b>・<b>元に戻す（Ctrl+Z）</b>・✕ のボタン</p></td></tr></table>
+<figure><img src="images/ai_band.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 67　AI が変更したときの紫のバー</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">紫のバー</td><td><p>変更した画面設計と変更の数。<b>変更点を見る</b>・<b>元に戻す（Ctrl+Z）</b>・✕ のボタン</p></td></tr></table>
 <p>最初の画面では、AI が作った・変更した画面設計が紫の枠で強調され、左上に「AI が作った」「AI が変更した」のマークが付きます。</p>
-<figure><img src="images/ai_cards.png" width="880" height="579" alt="" loading="lazy"><figcaption>図 67　最初の画面の、AI が作った画面設計</figcaption></figure>
+<figure><img src="images/ai_cards.png" width="880" height="579" alt="" loading="lazy"><figcaption>図 68　最初の画面の、AI が作った画面設計</figcaption></figure>
 <p>AI が変更する前の中身は、改訂履歴に「Claude Code が変更する前の状態」として自動で記録されます。元に戻す（Ctrl+Z）で戻せないときも、改訂履歴のその行の「この版に戻す…」で戻せます。</p>
 <div class="box warn"><b class="tag">注意</b><div>開いていない画面設計を AI が変更したときは、開いている画面設計の元に戻す（Ctrl+Z）の履歴が消えます。オレンジのバーで知らせるので、AI の変更を元に戻すときは、変更された画面設計の改訂履歴から戻してください。</div></div>
 <h3 id="s8-6">8.6 kintone のアプリにする</h3>
@@ -427,16 +435,16 @@ th{background:var(--navy);color:#fff;font-weight:600}
 <p>この章は、画面設計の HTML や PDF を受け取ったベンダーの方向けです。アプリをインストールしなくても、HTML はブラウザで開いて見る・変更することができます。</p>
 <h3 id="s9-1">9.1 受け取った HTML を開く・変更して返す</h3>
 <p>HTML ファイルを Chrome・Edge などのブラウザで開くと、その画面設計の編集の画面がすぐ開きます。アイテムの置き方や設定の見方は、第 3 章・第 4 章と同じです。</p>
-<figure><img src="images/vd_html.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 68　ブラウザで開いた HTML</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">保存の案内</td><td><p>どの画面設計かと、保存のしかた</p></td></tr><tr><td class="n">2</td><td class="nm">HTML を保存する</td><td><p>変更した中身を HTML ファイルに保存する（Ctrl+S でも）</p></td></tr></table>
+<figure><img src="images/vd_html.jpg" width="880" height="550" alt="" loading="lazy"><figcaption>図 69　ブラウザで開いた HTML</figcaption></figure><table class="co"><tr><td class="n">1</td><td class="nm">保存の案内</td><td><p>どの画面設計かと、保存のしかた</p></td></tr><tr><td class="n">2</td><td class="nm">HTML を保存する</td><td><p>変更した中身を HTML ファイルに保存する（Ctrl+S でも）</p></td></tr></table>
 <ul class="l0"><li>変更したら <b>HTML を保存する</b> を押します。Chrome・Edge では保存のウィンドウで場所と名前を選び、ほかのブラウザではダウンロードとして保存されます。</li></ul>
 <ul class="l0"><li>保存しないままブラウザのタブを閉じようとすると、ブラウザが止めます。</li></ul>
 <ul class="l0"><li>保存した HTML を送り返してください。受け取った側は、アプリに取り込みます（6.4）。</li></ul>
 <ul class="l0"><li>ブラウザでは、PDF・PNG の出力・一覧へ戻る・ほかの画面設計からの取り込みは使えません。ほかの画面設計から取り込まれた項目は、出力したときの中身で固定されていて変更できません。</li></ul>
 <h3 id="s9-2">9.2 PDF の読み方</h3>
 <p>PDF は 1 画面＝1 ページです。1 ページ目は表紙で、画面設計の名前・構築先・説明・画面の一覧（ページ番号つき）・改訂履歴が載っています。</p>
-<figure><img src="images/vd_pdf_cover.png" width="880" height="621" alt="" loading="lazy"><figcaption>図 69　PDF の表紙</figcaption></figure>
+<figure><img src="images/vd_pdf_cover.png" width="880" height="621" alt="" loading="lazy"><figcaption>図 70　PDF の表紙</figcaption></figure>
 <p>画面のページは、左に画面、右（または下）に設定一覧が並びます。画面の赤い番号は、設定一覧の「番号」の列と同じです。</p>
-<figure><img src="images/vd_pdf_screen.png" width="880" height="621" alt="" loading="lazy"><figcaption>図 70　PDF の画面のページ</figcaption></figure>
+<figure><img src="images/vd_pdf_screen.png" width="880" height="621" alt="" loading="lazy"><figcaption>図 71　PDF の画面のページ</figcaption></figure>
 <ul class="l0"><li>設定一覧の「設定」の列には、必須・文字数・選択肢・ルックアップ・移動先などの決まりが書かれています。</li></ul>
 <ul class="l0"><li>黄色などの吹き出しは、画面だけでは伝わらない決まりの説明です。</li></ul>
 <ul class="l0"><li>変更マークを付けた PDF では、追加したアイテムに「新」、変えたアイテムに「変」の変更マークが付き、削除したアイテムは設定一覧の下に並びます（5.4）。</li></ul>

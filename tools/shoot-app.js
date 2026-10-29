@@ -14,7 +14,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes・doc・looks・kintone・crm・dash・portal をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes・doc・looks・kintone・crm・dash・portal・sample をカンマで区切る）]
 // ai の場面（94〜100）は tools/shoot-app-ai.js、systems の場面（107〜133。システムとスイムレーン図）は tools/shoot-app-systems.js にある
 // toolbar の場面（134〜137）は、編集の画面のメニューバーを窓の幅ごとに撮る（q73・q74）
 // materials の場面（138〜149。システムの画面の「資料」の入口。第 9 段階の後半・画像 q67。164〜167 は MPD に出力・画像 q82。
@@ -30,6 +30,8 @@ const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
 // portal の場面（237〜256。ひな形「お客さまポータルのトップ」「承認申請のウィンドウ」「AI のチャットのウィンドウ」・右の端のウィンドウ・小さなウィンドウの編集の画面と PDF と縮小画像と画面遷移図・
 // 右のパネル・アイテム一覧の組・「画面を追加する」のウィンドウ・AI が並べた例。第 16 段階・画像 q128〜q131）は tools/shoot-app-portal.js にある。
 // parts2 の場面 236 は、ポータル画面用のアイテム（buildParts2 の「ポータル」の画面）
+// sample の場面（257〜277。「＋ 新しいシステム」のウィンドウの作り方・CRM の見本の最初の画面と関連図とシステムの画面とスイムレーン図・見本の 11 画面・
+// kintone と標準の見た目・PDF のページ。第 17 段階・画像 q132〜q135）は tools/shoot-app-sample.js にある
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -911,6 +913,7 @@ async function shootRevisions(browser) {
     if (wants('crm')) await require('./shoot-app-crm')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
     if (wants('dash')) await require('./shoot-app-dash')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
     if (wants('portal')) await require('./shoot-app-portal')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
+    if (wants('sample')) await require('./shoot-app-sample')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
   } finally {
     await browser.close();
   }
