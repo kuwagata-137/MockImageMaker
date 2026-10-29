@@ -23,6 +23,42 @@
   "h": 976,
   "dsf": 2
  },
+ "dash_cal_month": {
+  "file": "dash_cal_month.png",
+  "w": 672,
+  "h": 449,
+  "dsf": 2
+ },
+ "dash_cal_week": {
+  "file": "dash_cal_week.png",
+  "w": 672,
+  "h": 449,
+  "dsf": 2
+ },
+ "dash_home": {
+  "file": "dash_home.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "dash_kanban": {
+  "file": "dash_kanban.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "dash_kanban_set": {
+  "file": "dash_kanban_set.png",
+  "w": 257,
+  "h": 205,
+  "dsf": 2
+ },
+ "dash_mail": {
+  "file": "dash_mail.png",
+  "w": 480,
+  "h": 385,
+  "dsf": 2
+ },
  "ed_align": {
   "file": "ed_align.jpg",
   "w": 1280,
@@ -104,7 +140,7 @@
  "ed_table": {
   "file": "ed_table.png",
   "w": 279,
-  "h": 930,
+  "h": 992,
   "dsf": 2
  },
  "ex_button": {
@@ -266,7 +302,7 @@
  "sc_add": {
   "file": "sc_add.png",
   "w": 944,
-  "h": 762,
+  "h": 690,
   "dsf": 2
  },
  "sc_flow": {

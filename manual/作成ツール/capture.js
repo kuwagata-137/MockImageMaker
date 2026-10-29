@@ -883,6 +883,57 @@ const CHAPTERS = {
     await scrollCanvasTo(part(ids.tree), 24);
     await shot('rec_tree', { clip: part(ids.tree), pad: 24 }); // 左の外の上の赤い番号も入れる
   },
+  // 3.12 かんばんとダッシュボードを描く（第 15 段階）: ひな形「商談のかんばん」「ホームのダッシュボード」の画面と、かんばんの設定、カレンダー（月・週）、メールの作成欄
+  async dash() {
+    await open();
+    await call('create_design', { name: '営業管理', target: 'Salesforce', look: 'salesforce', description: '架空の会社の商談の管理' });
+    await call('add_screen', { design: '営業管理', template: 'crmKanban', name: '商談のかんばん' });
+    await call('add_screen', { design: '営業管理', template: 'crmHome', name: 'ホーム' });
+    await call('edit_screen', { design: '営業管理', ops: [{ op: 'delete', screen: '画面 1' }] });
+    // カレンダーとメールの作成欄は、別の画面に置いて撮る
+    await call('add_screen', { design: '営業管理', template: 'blank', name: '訪問の予定' });
+    await call('layout_screen', { design: '営業管理', screen: '訪問の予定', layout: { columns: 1, rows: [
+      [{ type: 'calendar', label: '訪問の予定' }], [{ type: 'calendar', label: '訪問の予定（週）', props: { mode: 'week' } }],
+    ] } });
+    await call('add_screen', { design: '営業管理', template: 'blank', name: 'メール' });
+    await call('layout_screen', { design: '営業管理', screen: 'メール', layout: { columns: 1, rows: [[{ type: 'mail' }]] } });
+    await clearAiMarks();
+    const ids = await T(() => {
+      const d = window.__test__.store.state.designs.find((x) => x.name === '営業管理');
+      const parts = (name) => d.screens.find((s) => s.name === name).parts;
+      const graph = (chart) => parts('ホーム').find((p) => p.type === 'graph' && p.props.chart === chart).id;
+      const [month, week] = parts('訪問の予定');
+      return { kanban: parts('商談のかんばん').find((p) => p.type === 'table').id, metric: graph('metric'), gauge: graph('gauge'), funnel: graph('funnel'), stacked: graph('stacked'),
+        month: month.id, week: week.id, mail: parts('メール')[0].id };
+    });
+    const part = (id) => `#stage .part[data-part-id="${id}"]`;
+    await openDesignAt('営業管理', '商談のかんばん', { zoom: 0.5 });
+    await scrollCanvasTo('#stage .screen', 16);
+    await shot('dash_kanban', { anno: [
+      { box: { sel: `${part(ids.kanban)} .pkb-h`, i: 0 }, n: 1 },
+      { box: { sel: `${part(ids.kanban)} .pkb-card`, i: 0 }, n: 2, at: 'r' },
+    ] });
+    await T((x) => window.__test__.selectPart(x), ids.kanban);
+    await sleep(250);
+    await shotTall('dash_kanban_set', { clip: [{ sel: '#side-settings .field', text: '表示のしかた' }, { sel: '#side-settings .field', text: '列ごとに合計する項目' }], pad: 12 });
+    await run('deselectPart');
+    await openDesignAt('営業管理', 'ホーム', { zoom: 0.5 });
+    await scrollCanvasTo('#stage .screen', 16);
+    await shot('dash_home', { anno: [
+      { box: part(ids.metric), n: 1 },
+      { box: part(ids.gauge), n: 2 },
+      { box: part(ids.funnel), n: 3 },
+      { box: part(ids.stacked), n: 4, at: 'tr' },
+    ] });
+    await openDesignAt('営業管理', '訪問の予定', { zoom: 0.8 });
+    for (const [name, id] of [['dash_cal_month', ids.month], ['dash_cal_week', ids.week]]) {
+      await scrollCanvasTo(part(id), 24);
+      await shot(name, { clip: part(id), pad: 16 });
+    }
+    await openDesignAt('営業管理', 'メール', { zoom: 0.8 });
+    await scrollCanvasTo(part(ids.mail), 24);
+    await shot('dash_mail', { clip: part(ids.mail), pad: 16 });
+  },
   async screens() {
     await open();
     await sampleAll({ notes: false, materials: false });
@@ -891,7 +942,7 @@ const CHAPTERS = {
     // 画面を足す窓
     await click('#screen-list .sl-add');
     await sleep(300);
-    await shotTall('sc_add', { clip: '.modal', pad: 12 }, 1100); // ひな形が 9 つになり、窓の高さ 800 には入らない（第 14 段階）
+    await shotTall('sc_add', { clip: '.modal', pad: 12 }, 1100); // ひな形が 9 つになり、窓の高さ 800 には入らなかった（第 14 段階）。第 15 段階で 11 個になり、小さな絵を縮めた
     await closeDlg();
     // 画面の一覧の「…」のメニュー
     await move({ sel: '#screen-list .sl-item', i: 1 });
