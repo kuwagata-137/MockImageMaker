@@ -38,7 +38,7 @@ test('get_catalog: 追加した 4 つのアイテム（組・中に入れる印�
   assert.deepEqual(Object.keys(by.recordHead.props), ['kind', 'name', 'color', 'items', 'values']);
   assert.deepEqual(Object.keys(by.activity.props), ['samples', 'buttons', 'months']);
   assert.deepEqual(Object.keys(by.tree.props), ['lines', 'current', 'folder']);
-  assert.match(by.table.props.display, /"tiles"（並べて表示）/);
+  assert.match(by.table.props.display, /"tiles"（並べて表示/);
   assert.match(by.frame.props.color, /"none"（なし）/);
   assert.deepEqual(c.templates.slice(-4, -2).map((t) => t.id), ['crmDetail', 'crmCase'], '第 15 段階のひな形 2 つの前');
   assert.deepEqual(c.layout.frame, { padding: 24, top: 64, emptyHeight: 160 });

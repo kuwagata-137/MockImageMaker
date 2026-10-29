@@ -184,7 +184,41 @@ const LAYOUT = `# アイテムの並べ方（layout）
   style を省くと、最初のボタンだけ "primary" になる。buttons はレコードの見出しのほかには書けない。
 - 項目を名前で書く設定の欄（レコードの見出しの props.items・検索欄と絞り込みの props.items・グラフの props.byItem と aggItem）は、同じ並べ方の後ろの行で作る項目も指せる。
 - グループ枠とレコードの見出しに入ったアイテムは、一緒に動く。get_screen は、入っているアイテムに inFrame（グループ枠か見出しの id と名前）を返す。
-  edit_parts の move・move_by でアイテムの真ん中をグループ枠の中へ動かすと入り、外へ動かすと出る（人がアプリでドラッグしたときと同じ）。グループ枠を動かすと、中のアイテムも同じだけ動く。`;
+  edit_parts の move・move_by でアイテムの真ん中をグループ枠の中へ動かすと入り、外へ動かすと出る（人がアプリでドラッグしたときと同じ）。グループ枠を動かすと、中のアイテムも同じだけ動く。
+
+## かんばんの書き方の例（商談の一覧の画面。4 列）
+段階ごとの列にカードを並べる一覧（Salesforce の商談のかんばんなど）は、レコード一覧の表を props.display "kanban" で置きます。
+laneItem（列に分ける項目）と sumItem（列ごとに合計する項目）は、columns に書いた項目の名前で書きます（同じ並べ方の後ろの行で作る項目も書けます）。
+この例の項目（商談名・金額〔数値〕・段階〔ステータス〕）は、先に edit_items で作るか、入力の画面に置いて作っておきます。
+{
+  "columns": 4,
+  "rows": [
+    [{ "type": "heading", "label": "すべての商談", "no": null }],
+    { "align": "right", "parts": [
+      { "type": "search", "props": { "items": ["商談名"] } },
+      { "type": "button", "label": "新規", "style": "normal" }
+    ] },
+    [{ "type": "table", "tableKind": "records", "label": "商談の一覧", "span": 4,
+       "props": { "display": "kanban", "columns": ["商談名", "金額", "段階"], "laneItem": "段階", "sumItem": "金額" },
+       "samples": { "商談名": ["空調の入れ替え", "照明の LED 化", "保守の契約の更新", "給湯器の交換"], "金額": [480, 220, 36, 85], "段階": ["提案", "見込み", "交渉", "受注"] } }]
+  ]
+}
+
+## ダッシュボードの書き方の例（ホームの画面。4 列）
+数字の並び・メーター・じょうご・積み上げ棒・表を並べるホームの画面は、グラフの chart を変えて並べます。グラフのサンプル値は samples に書きます（集計する項目は書かなくても描けます）。
+{
+  "columns": 4,
+  "rows": [
+    [{ "type": "graph", "label": "今月の受注額", "props": { "chart": "metric", "samples": "今月の受注額, 1280", "unit": "万円" } },
+     { "type": "graph", "label": "進行中の商談", "props": { "chart": "metric", "samples": "進行中の商談, 24", "unit": "件" } },
+     { "type": "graph", "label": "受注率", "props": { "chart": "metric", "samples": "受注率, 32", "unit": "%" } },
+     { "type": "graph", "label": "未対応の問い合わせ", "props": { "chart": "metric", "samples": "未対応の問い合わせ, 7", "unit": "件" } }],
+    [{ "type": "graph", "label": "今期の目標の達成", "props": { "chart": "gauge", "samples": "今期の受注額, 3840", "target": "5000", "unit": "万円" } },
+     { "type": "graph", "label": "段階ごとの商談の件数", "props": { "chart": "funnel", "samples": "見込み, 24\\n提案, 16\\n見積, 11\\n交渉, 7\\n受注, 4" } },
+     { "type": "graph", "label": "月ごとの受注額", "span": 2, "props": { "chart": "stacked", "samples": "8月, 210, 90\\n9月, 170, 130\\n10月, 240, 120", "series": "新規\\n既存", "unit": "万円" } }],
+    [{ "type": "table", "tableKind": "records", "label": "完了予定日の近い商談", "span": 4, "rows": 4, "props": { "columns": ["商談名", "金額", "段階"], "sort": "完了予定日の近い順" } }]
+  ]
+}`;
 
 const CATALOG = `# アイテムのカタログ
 
@@ -199,6 +233,15 @@ const CATALOG = `# アイテムのカタログ
   レコードの見出しの props.items は主な項目（項目名か id の配列）、props.values はそのサンプル値（items と同じ順）。
   活動履歴の props.samples は 1 行に「日付, 種類, 件名, 説明」（種類は 電話・メール・作業・予定・メモ）。ツリーの props.lines は 1 行に 1 つ（頭の空白 2 つで 1 段下げ、頭に「+」を書いた行は閉じた形）。
   templates の "crmDetail"（顧客の詳細）と "crmCase"（問い合わせ対応の 3 列）は、これらのアイテムで並べたレコードの画面のひな形。
+- レコード一覧（tableKind "records"）も、props.display で表示のしかたを選ぶ: "table"（表。省いたとき）・"kanban"（かんばん。props.laneItem の項目の選択肢ごとの列に、サンプルの行を 1 行ずつカードにして並べる）。
+  laneItem（列に分ける項目。ステータス・ドロップダウン・ラジオボタン）と sumItem（列ごとに合計する項目。数値・自動計算）は、表の列（props.columns）にある項目の名前か id で書く。かんばんの高さは中身から決まる。
+- グラフ（graph）の props.chart は、"bar"・"hbar"・"line"・"pie" のほかに、"stacked"（積み上げ棒。samples は 1 行に「分類, 値1, 値2…」、props.series に凡例の名前を 1 行に 1 つ）・
+  "funnel"（じょうご。段階ごとの件数）・"gauge"（メーター。samples の 1 行目の値を props.target の目標の値に対して描く）・"metric"（大きな数字。samples の 1 行目の値を大きく出す）。
+  ダッシュボードの数字の並びは、"metric" のグラフを横に並べる（並べ方で置くと高さは 136）。
+- 一覧画面用のカレンダー（calendar）: props.mode "month"（月）・"week"（週）、props.today（今日として描く日）、props.samples（1 行に「日付, 時刻, 件名」。時刻は "10:00-11:30"、空なら終日）、props.hours（週の表示で描く時刻）。
+- 詳細画面用のメールの作成欄（mail。container が true）: props.from・to・subject・body（差出人・宛先・件名・本文のサンプル値）・toolbar（書式のボタンの行）・color。カレンダーとメールの作成欄は、データベースの項目にならない。
+- templates の "crmKanban"（商談のかんばん）と "crmHome"（ホームのダッシュボード）は、かんばんとグラフで並べた一覧の画面とホームの画面のひな形。
+  データベースの項目がない画面設計では、サンプルの項目（商談名・取引先名・金額・完了予定日・段階〔ステータス〕）を追加する。
 - itemTypes: edit_items の add に書ける項目の種類。templates: add_screen の template に書けるひな形。devices: 機器。targets: 構築先。callout: 吹き出しの色（color）と線の先（tip）。layout: 並べ方の数（read_guide の "layout"）。
 - looks: 見た目（create_design・update_design の look）と、見た目ごとのヘッダーの高さ（bandHeight）・ヘッダーがある画面の並べ方の最初の行（firstRowY）。itemViews: 画面の項目の表示（edit_screen の itemView）。
 - kintoneTypes: 項目とテーブルの列の kintone の欄に書ける kintone の種類（type・名前・選べるアイテムの種類 parts・選ばないとその種類になるアイテムの種類 defaultFor・kintone が値を入れるか auto）。read_guide の "kintone"。
@@ -309,7 +352,10 @@ kintone の画面設計（構築先か見た目が kintone）は、項目とテ�
 - formScreen: フォームにした画面（screen を省くと、項目を置いたアイテムがいちばん多い画面）。layout は、この画面のアイテムの並び（縦に重なるアイテムを 1 行にまとめ、左から並べる）。
   見出し・説明文はラベル、区切り線は罫線、テーブルは SUBTABLE の行になる。この画面に置いていない項目と関連レコード一覧は、いちばん下に 1 行ずつ追加する。
   グループ枠は kintone のグループ（GROUP）になる。中にフィールドになるアイテムがあるグループ枠だけを、properties（type "GROUP"・openGroup true）と layout の GROUP の行にする（中は同じ決まりで ROW の行にする）。
-  kintone のグループにはテーブルを入れられないので、グループ枠の中のテーブルはグループの後ろに置き、warnings で知らせる。レコードの見出し・活動履歴・ツリーは kintone のフィールドにないので、フォームに入れず、warnings で知らせる。
+  kintone のグループにはテーブルを入れられないので、グループ枠の中のテーブルはグループの後ろに置き、warnings で知らせる。レコードの見出し・活動履歴・ツリー・メールの作成欄は kintone のフィールドにないので、フォームに入れず、warnings で知らせる。
+  カレンダーもフォームに入れない（kintone では一覧の表示形式「カレンダー形式」で作るので、manualSteps に書く）。
+- レコード一覧のかんばんと、kintone のグラフの種類にないグラフ（じょうご・メーター・大きな数字）は、フォームにした画面でなくても warnings で知らせる
+  （kintone では、表示形式「カスタマイズ」の一覧・近い種類のグラフ・JavaScript・プラグインのどれで作るかを人に確かめる）。積み上げ棒は、kintone の縦棒グラフの「積み上げ」で作る（manualSteps）。
 - properties: kintone-add-form-fields の properties（フィールドコード → 設定）。アイテムの設定（必須・最大文字数・初期値・選択肢・単位・小数点以下の桁数・テーブルの列）をコピーする。
 - systemFields: kintone のアプリに最初からあるフィールド（レコード番号など）。追加せずに、kintone-get-form-fields で今のフィールドコードを読んでから、code と label を変更する。
 - needsAppId・howTo・manualSteps・warnings: 上の進め方のとおりに使う。`;

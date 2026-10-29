@@ -1728,6 +1728,7 @@ const DEALS = [
 ];
 // ホームのダッシュボードの大きな数字（[グラフの名前, 値, 単位, 集計]。集計の 'amount' はサンプルの「金額」の合計）
 const DEAL_METRICS = [['今月の受注額', '1280', '万円', 'amount'], ['進行中の商談', '24', '件', 'count'], ['受注率', '32', '%', ''], ['未対応の問い合わせ', '7', '件', '']];
+const METRIC_GRAPH_H = 136; // 大きな数字のグラフの高さ（ひな形と AI の並べ方。Claude が決めた）
 const CRM_RELATED = {
   contacts: ['顧客の担当者', 'green', [['氏名', '山田 太郎', '鈴木 一郎'], ['役職', '総務部長', '施設の担当'], ['電話', '03-1234-5679', '03-1234-5680'], ['メール', 'yamada@example.com', 'suzuki@example.com']]],
   deals: ['商談', 'orange', [['商談名', '空調の入れ替え', '保守の契約の更新'], ['段階', '提案', '受注'], ['金額', '480 万円', '36 万円'], ['完了予定日', '2026-12-15', '2026-09-30']]],
@@ -2133,7 +2134,7 @@ function dealTemplateInto(sc, design, templateId, { put, items, Y }) {
   // グラフの集計は、サンプルの「金額」「完了予定日」と同じ名前の項目を指す（なければ書かない）
   const sum = dealItem('金額') ? { agg: 'sum', aggItem: dealItem('金額').id } : {};
   const g4 = layoutGrid(sc.width, 4);
-  DEAL_METRICS.forEach(([label, value, unit, agg], i) => put('graph', g4.columnsLeft[i], Y(104), { label, w: g4.columnWidth, h: 136,
+  DEAL_METRICS.forEach(([label, value, unit, agg], i) => put('graph', g4.columnsLeft[i], Y(104), { label, w: g4.columnWidth, h: METRIC_GRAPH_H,
     props: { chart: 'metric', samples: `${label}, ${value}`, unit, ...(agg === 'amount' ? sum : agg === 'count' ? { agg: 'count' } : {}) } }));
   const g3 = layoutGrid(sc.width, 3);
   const graph = (i, label, props) => put('graph', g3.columnsLeft[i], Y(264), { label, w: g3.columnWidth, h: 320, props });
@@ -15038,14 +15039,18 @@ const AI_PROP_NOTES = {
     columns: 'レコード一覧・関連レコード一覧の列（項目名の配列。関連レコード一覧は元のデータベースの項目名）',
     sort: '並び順（文）', perPage: '1 ページの件数（数字の文字。レコード一覧）', limit: '最大件数（数字の文字。関連レコード一覧）',
     db: '関連レコード一覧の元のデータベース（画面設計の名前か id）', cond: '関連レコード一覧の条件 { from: 元の項目名, to: この画面設計の項目名 }',
-    display: '関連レコード一覧の表示のしかた: "table"（表）・"tiles"（並べて表示）。並べて表示は Salesforce のレコードの画面の右の列の形で、1 件ごとに 1 列目をリンク、2 列目からは「列名: 値」を並べる',
+    display: '表示のしかた。関連レコード一覧は "table"（表）・"tiles"（並べて表示。Salesforce のレコードの画面の右の列の形で、1 件ごとに 1 列目をリンク、2 列目からは「列名: 値」を並べる）、'
+      + 'レコード一覧は "table"（表）・"kanban"（かんばん。laneItem の選択肢ごとの列に、サンプルの行を 1 行ずつカードにして並べる。高さは中身から決まる）',
     color: '関連レコード一覧の並べて表示の見出しのアイコンの色（frame の color と同じ値。最初は "orange"）',
+    laneItem: 'レコード一覧のかんばんの列に分ける項目（項目名か id。columns にあるステータス・ドロップダウン・ラジオボタン。書かなければ、その最初）。サンプル値がどの選択肢とも同じでない行は「（なし）」の列',
+    sumItem: 'レコード一覧のかんばんの列ごとに合計する項目（項目名か id。columns にある数値・自動計算。"" は合計しない）',
   },
   graph: {
-    chart: `グラフの種類: ${Object.keys(CHART_NAMES).map((k) => `"${k}"（${CHART_NAMES[k]}）`).join('・')}`,
+    chart: `グラフの種類: ${Object.keys(CHART_NAMES).map((k) => `"${k}"（${CHART_NAMES[k]}）`).join('・')}。ダッシュボードの数字は "metric"、目標に対する達成は "gauge"、段階ごとの件数は "funnel"`,
     byItem: '分類する項目（項目名か id）', byUnit: '分け方（例 "月ごと"）',
     agg: `集計方法: ${Object.keys(AGG_NAMES).map((k) => `"${k}"（${AGG_NAMES[k]}）`).join('・')}`, aggItem: '集計する項目（項目名か id）',
-    samples: 'サンプル値（1 行に「分類, 値」）', unit: '値の単位（例 "万円"）',
+    samples: 'サンプル値（1 行に「分類, 値」。"metric"・"gauge" は 1 行目の値だけを描く。"stacked" は 1 行に「分類, 値1, 値2…」で、値に桁の区切りのカンマを書かない）', unit: '値の単位（例 "万円"）',
+    target: 'メーター（"gauge"）の目標の値（数字の文字。右の端になり、「目標 N の P%」を出す）', series: '積み上げ棒（"stacked"）の凡例の名前（1 行に 1 つの文字。値1・値2 の順）',
   },
   search: { items: '検索する項目（項目名か id の配列）', button: '「検索」ボタンを表示する（true・false）' },
   filter: { items: '絞り込む項目（項目名か id の配列）', values: '項目ごとのサンプル値（items と同じ順の文字の配列）' },
@@ -15066,6 +15071,15 @@ const AI_PROP_NOTES = {
   tree: {
     lines: 'ツリーの行（1 行に 1 つ。行の頭の空白 2 つで 1 段下げる。頭に「+」を書いた行は閉じた形で、その下の段は描かない。行の終わりの「（数字）」は件数として薄く出す）',
     current: '選んでいる行（上の段からの道筋を " > " でつなぐ。例 "契約書 > 2026年度（5）"。"" はなし）', folder: 'フォルダのアイコンを出す（true・false）',
+  },
+  // 第 15 段階のアイテム
+  calendar: {
+    mode: '表示のしかた: "month"（月。日曜はじまりの 7 列）・"week"（週。左に時刻）', today: '今日として描く日（"YYYY-MM-DD"。その日のある月・週を描き、印を付ける）',
+    samples: '予定（1 行に「日付, 時刻, 件名」。時刻は "10:00-11:30"、空なら終日。日付や時刻の読めない行は描かない）', hours: '週の表示で描く時刻の範囲（例 "8:00-18:00"）',
+  },
+  mail: {
+    from: '差出人のサンプル値', to: '宛先のサンプル値（「、」で区切ると宛先を分けて出す）', subject: '件名のサンプル値', body: '本文のサンプル値（改行は \\n）',
+    toolbar: '書式のボタンの行を出す（true・false）', color: AI_FRAME_COLOR,
   },
 };
 // 項目の設定（edit_items の props）だけにある欄
@@ -15120,7 +15134,16 @@ const aiFirstRowY = (d, sc) => (sc.showHeader ? bandHeight(d, sc) + AI_FIRST_ROW
 // （入力の形は test/kintone-mcp-shapes.js に写して見比べる）。元のアプリの ID はモックイメージメーカーでは分からないので、空にして needsAppId に分ける
 const KT_UNIT_BEFORE = ['$', '¥', '￥', '€', '£']; // 数の前に付ける単位。ほかの単位（円・個・日など）は数の後ろ（Claude が決めた）
 const KT_REF_SIZES = ['1', '3', '5', '10', '20', '30', '40', '50']; // 関連レコード一覧の件数（kintone で選べる数）
-const KT_NO_FIELD_TYPES = ['recordHead', 'activity', 'tree']; // kintone のフィールドにないアイテム（get_kintone_app の warnings で知らせる。第 14 段階）
+const KT_NO_FIELD_TYPES = ['recordHead', 'activity', 'tree', 'calendar', 'mail']; // kintone のフィールドにないアイテム（get_kintone_app の warnings で知らせる。第 14・15 段階）
+// kintone のグラフで作るときの注意（第 15 段階）。kintone のグラフの種類は 横棒・縦棒（集合・積み上げ・100% 積み上げ）・円・折れ線・曲線・面・表・クロス集計表
+// （kintone のヘルプと kintone.app.getReports の chartType で確かめた。2026-10-29）。じょうご・メーター・大きな数字はない
+const KT_CHART_NOTES = {
+  stacked: 'kintone の縦棒グラフの表示モード「積み上げ」で作る。',
+  funnel: 'kintone にじょうごグラフはないので、横棒グラフで作るか、JavaScript かプラグインで作る。',
+  gauge: 'kintone にメーターはないので、表（集計の値だけ）で作るか、JavaScript かプラグインで作る。',
+  metric: 'kintone に大きな数字だけを出すグラフはないので、表（集計の値だけ）で作るか、JavaScript かプラグインで作る。',
+};
+const KT_NO_CHARTS = ['funnel', 'gauge', 'metric'];
 const ktText = (v) => str(v).trim();
 const ktUnit = (u) => (ktText(u) ? { unit: ktText(u), unitPosition: KT_UNIT_BEFORE.includes(ktText(u)) ? 'BEFORE' : 'AFTER' } : {});
 const ktOptions = (list) => Object.fromEntries((Array.isArray(list) ? list : []).map((o, i) => [o, { label: o, index: String(i) }]));
@@ -15294,9 +15317,12 @@ function kintoneManualSteps(S, d) {
     const setting = describePart(p, ctx).replace(/\n/g, '・');
     if (raw.type === 'table' && raw.tableKind === 'records') {
       const cols = tableColumns(p, ctx).map((c) => c.name).join('・');
-      out.push(`一覧: 画面「${sc.name}」のレコード一覧「${partTitle(raw)}」（${[cols && `列＝${cols}`, setting].filter(Boolean).join('・')}）を、kintone のアプリの設定の「一覧」で作る。`);
+      out.push(`一覧: 画面「${sc.name}」のレコード一覧「${partTitle(raw)}」（${[cols && `列＝${cols}`, setting].filter(Boolean).join('・')}）を、kintone のアプリの設定の「一覧」で作る。`
+        + (isKanbanPart(raw) ? 'かんばんは kintone の一覧の表示形式（表形式・カレンダー形式）にないので、表示形式「カスタマイズ」の一覧かプラグインで作る。' : ''));
     }
-    if (raw.type === 'graph') out.push(`グラフ: 画面「${sc.name}」のグラフ「${partTitle(raw)}」（${setting}）を、kintone のアプリの設定の「グラフ」で作る。`);
+    // カレンダーは、kintone の一覧の表示形式「カレンダー形式」（第 15 段階）
+    if (raw.type === 'calendar') out.push(`一覧: 画面「${sc.name}」のカレンダー「${partTitle(raw)}」を、kintone のアプリの設定の「一覧」で、表示形式「カレンダー形式」の一覧として作る（日付のフィールドとタイトルのフィールドを選ぶ）。`);
+    if (raw.type === 'graph') out.push(`グラフ: 画面「${sc.name}」のグラフ「${partTitle(raw)}」（${setting}）を、kintone のアプリの設定の「グラフ」で作る。${KT_CHART_NOTES[raw.props && raw.props.chart] || ''}`);
     if (raw.type === 'button') buttons.push(`「${partTitle(raw)}」（画面「${sc.name}」${ktText(raw.props && raw.props.action) ? `。押したとき＝${ktText(raw.props.action)}` : ''}）`);
   }));
   if (buttons.length) out.push(`ボタン: ${buttons.join('・')}。kintone の標準のボタン（保存・キャンセル・編集など）とプロセス管理の操作で足りないものは、JavaScript かプラグインで作る。`);
@@ -15334,8 +15360,16 @@ function aiGetKintoneApp(args) {
   const layout = kintoneFormLayout(d, sc, codes, related, warn, { groups, used: new Set([...Object.values(codes), ...related.map((r) => r.code)]) });
   groups.forEach((g) => { properties[g.code] = { type: 'GROUP', code: g.code, label: g.label, openGroup: true }; });
   // kintone のフィールドにないアイテム（第 14 段階）
-  sc.parts.filter((p) => KT_NO_FIELD_TYPES.includes(p.type)).forEach((p) => warn(
-    `「${partTitle(p)}」（${partTypeName(p.type)}）は kintone のフィールドにないので、フォームに入れていません。kintone で同じ見た目にするときは、JavaScript かプラグインで作ります（人に確かめてください）。`));
+  sc.parts.filter((p) => KT_NO_FIELD_TYPES.includes(p.type)).forEach((p) => warn(p.type === 'calendar'
+    ? `「${partTitle(p)}」（カレンダー）は kintone のフォームのフィールドにないので、フォームに入れていません。kintone では一覧の表示形式「カレンダー形式」で作ります（manualSteps）。`
+    : `「${partTitle(p)}」（${partTypeName(p.type)}）は kintone のフィールドにないので、フォームに入れていません。kintone で同じ見た目にするときは、JavaScript かプラグインで作ります（人に確かめてください）。`));
+  // かんばんと、kintone のグラフにない種類（第 15 段階）。一覧・グラフの画面は、フォームにした画面でなくても知らせる
+  d.screens.forEach((s) => s.parts.forEach((p) => {
+    if (isKanbanPart(p)) warn(`画面「${s.name}」の「${partTitle(p)}」（レコード一覧のかんばん）は、kintone の一覧の表示形式（表形式・カレンダー形式）にないので、表示形式「カスタマイズ」の一覧かプラグインで作ります（人に確かめてください）。`);
+    if (p.type === 'graph' && KT_NO_CHARTS.includes(p.props && p.props.chart)) {
+      warn(`画面「${s.name}」のグラフ「${partTitle(p)}」（${CHART_NAMES[p.props.chart]}）は、kintone のグラフの種類にないので、近い種類のグラフにするか、JavaScript かプラグインで作ります（人に確かめてください）。`);
+    }
+  }));
   if (d.name.length > 64) warn(`アプリの名前は 64 文字までなので、画面設計の名前の初めの 64 文字にしました。`);
   return {
     design: { id: d.id, name: d.name }, formScreen: { id: sc.id, name: sc.name },
@@ -15598,6 +15632,7 @@ const AI_PROP_ENUMS = {
   'graph.chart': Object.keys(CHART_NAMES), 'graph.agg': Object.keys(AGG_NAMES),
   'icon.icon': Object.keys(ICONS), 'icon.color': Object.keys(ICON_COLORS), 'link.to': ['', 'screen', 'url'], 'button.to': ['', 'screen', 'url'],
   'frame.color': Object.keys(FRAME_COLORS), 'recordHead.color': Object.keys(FRAME_COLORS),
+  'calendar.mode': ['month', 'week'], 'mail.color': Object.keys(FRAME_COLORS),
 };
 // 項目を名前か id で書く欄（id に直して入れる）
 const AI_ITEM_REF_PROPS = { 'graph.byItem': 'one', 'graph.aggItem': 'one', 'search.items': 'many', 'filter.items': 'many', 'recordHead.items': 'many' };
@@ -15735,14 +15770,15 @@ function aiItemProps(d, item, props, tx = null) {
 // レコード一覧・関連レコード一覧の部品の設定。列は項目名（関連レコード一覧は元のデータベースの項目名）で書く
 function aiTablePartProps(kind, cur, props, d) {
   if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
-  const allowed = kind === 'related' ? ['columns', 'sort', 'limit', 'db', 'cond', 'display', 'color'] : ['columns', 'sort', 'perPage'];
+  const allowed = kind === 'related' ? ['columns', 'sort', 'limit', 'db', 'cond', 'display', 'color'] : ['columns', 'sort', 'perPage', 'display', 'laneItem', 'sumItem'];
   Object.keys(props).forEach((k) => { if (!allowed.includes(k)) throw aiBad(`${TABLE_KINDS[kind]}の設定に「${k}」という欄はありません（使える欄: ${allowed.join('・')}）。`); });
   const S = store.state;
   const next = normalizeTablePartProps(clone(cur || {}));
   ['sort', 'perPage', 'limit'].forEach((k) => { if (k in props) next[k] = aiStrVal(props[k], k); });
-  // 関連レコード一覧の表示のしかたと、並べて表示のアイコンの色（第 14 段階）
+  // 表示のしかた。関連レコード一覧は表・並べて表示（第 14 段階）、レコード一覧は表・かんばん（第 15 段階）
   if ('display' in props) {
-    if (!['table', 'tiles'].includes(props.display)) throw aiBad('display に書ける値は "table"（表）・"tiles"（並べて表示）です。');
+    if (kind === 'related' && !['table', 'tiles'].includes(props.display)) throw aiBad('関連レコード一覧の display に書ける値は "table"（表）・"tiles"（並べて表示）です。');
+    if (kind !== 'related' && !['table', 'kanban'].includes(props.display)) throw aiBad('レコード一覧の display に書ける値は "table"（表）・"kanban"（かんばん）です。');
     next.display = props.display;
   }
   if ('color' in props) {
@@ -15774,7 +15810,24 @@ function aiTablePartProps(kind, cur, props, d) {
       return { id: old ? old.id : newId('c'), ref: r };
     });
   }
+  if (kind !== 'related') aiKanbanProps(next, props, d);
   return next;
+}
+// レコード一覧のかんばんの、列に分ける項目（laneItem）と列ごとに合計する項目（sumItem）。項目名か id で書き、表の列にある項目だけ（"" は外す。第 15 段階）。
+// かんばんにして列に分ける項目を書かなかったときは、選べる列の最初にする（右のパネルで切り替えたときと同じ）
+function aiKanbanProps(next, props, d) {
+  [['laneItem', KANBAN_LANE_TYPES, 'ステータス・ドロップダウン・ラジオボタン'], ['sumItem', KANBAN_SUM_TYPES, '数値・自動計算']].forEach(([k, types, what]) => {
+    if (!(k in props)) return;
+    if (props[k] == null || props[k] === '') { next[k] = ''; return; }
+    const it = aiResolveItem(d, aiStrVal(props[k], k));
+    if (!types.includes(it.type)) throw aiBad(`${k} に書けるのは、${what}の項目です（「${it.name}」は${itemTypeName(it.type)}）。`);
+    if (!next.columns.some((c) => c.ref.itemId === it.id)) throw aiBad(`${k} の「${it.name}」は、表の列にありません。columns に「${it.name}」を入れてください。`);
+    next[k] = it.id;
+  });
+  if (next.display === 'kanban' && !next.laneItem) {
+    const first = kanbanColumnItems(d, { props: next }, KANBAN_LANE_TYPES)[0];
+    if (first) next.laneItem = first.item.id;
+  }
 }
 // 表の見本の値（layout・edit_parts の samples。第 13 段階。q114 の ⑤）を、列の id ごとの値に直す。cols は表の列（{ id, name }）。
 // 列は名前か id で書き、値は文字か数（null は空）。1 つの列に 20 行まで（見本の行の数の上限と同じ）
@@ -16134,7 +16187,10 @@ function aiLayout(tx, designId, screenId, layout, mode) {
   const rows = layout.rows.map((row, ri) => aiLayoutRow(row, `rows[${ri}]`, (e, where) => aiLayoutEntry(tx, d, e, where, used, plan)));
   // 項目を名前で書く欄（レコードの見出しの主な項目など）は、全部の行を読んで項目を作った後に直す（後ろの行で作る項目も指せるように。第 14 段階）
   const withCreated = { ...d, items: [...d.items, ...plan.created] };
-  plan.late.forEach(({ spec, type, props, where }) => aiWhere(where, () => { spec.props = aiProps(type, props, withCreated) || undefined; }));
+  plan.late.forEach(({ spec, type, props, where, apply }) => aiWhere(where, () => {
+    if (apply) apply(withCreated);
+    else spec.props = aiProps(type, props, withCreated) || undefined;
+  }));
   const firstY = aiFirstRowY(findDesign(store.state, designId), sc);
   const startY = sc.parts.length ? Math.ceil((Math.max(...sc.parts.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : firstY;
   // グループ枠と縦に重ねる形は、列の幅に広げて中身を layoutStack で重ね、その高さを行の高さにする。置いた後に中身を置き直し、見出しのボタンを重ねる
@@ -16307,7 +16363,6 @@ function aiLayoutSpec(tx, d, e, used, plan, where) {
     if (type === 'table') {
       spec.tableKind = e.tableKind == null ? 'records' : str(e.tableKind);
       if (!['records', 'related'].includes(spec.tableKind)) throw aiBad('表の中身（tableKind）は "subtable"（テーブル）・"records"（レコード一覧）・"related"（関連レコード一覧）です。');
-      if (e.props != null) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), e.props, d);
     } else if (isObj(e.props) && Object.keys(e.props).some((k) => own(AI_ITEM_REF_PROPS, `${type}.${k}`))) lateProps = e.props;
     else spec.props = aiProps(type, e.props, d) || undefined;
     if (type === 'button') {
@@ -16324,29 +16379,36 @@ function aiLayoutSpec(tx, d, e, used, plan, where) {
   ['sample', 'placeholder'].forEach((k) => { if (e[k] != null) spec.fields[k] = aiStrVal(e[k], k); });
   const size = defaultPartSize(type);
   if (type === 'button') size.w = aiButtonWidth(spec.label == null ? partType('button').label : spec.label);
-  if (e.rows != null) {
-    if (type !== 'table') throw aiBad('rows（サンプルの行数）を書けるのは表だけです。');
-    const n = Math.round(aiNum(e.rows, 'rows'));
-    if (n < 1 || n > 20) throw aiBad('rows は 1〜20 です。');
-    spec.view = { rows: n };
-    size.h = tableHeight(n);
-  }
-  if (e.samples != null) {
-    if (type !== 'table') throw aiBad('samples（サンプル値）を書けるのは表だけです。');
-    // レコード一覧・関連レコード一覧の列の id を、置く前に決めておく（設定を書かないときは最初の列）
-    if (!spec.itemId && !spec.props) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), {}, d);
-    const samples = aiTableSamples(aiLayoutTableColumns(d, spec, plan), e.samples);
-    const rows = aiSampleRows(spec.view && spec.view.rows, samples);
-    spec.view = { ...(spec.view || {}), rows, samples };
-    size.h = tableHeight(rows);
-  }
-  // 関連レコード一覧の並べて表示の高さは、件数と列の数から（第 14 段階）
-  if (type === 'table' && spec.tableKind === 'related' && spec.props && spec.props.display === 'tiles') {
-    size.h = tilesHeight((spec.view && spec.view.rows) || 3, (spec.props.columns || []).length);
-  }
+  if (e.rows != null && type !== 'table') throw aiBad('rows（サンプルの行数）を書けるのは表だけです。');
+  if (e.samples != null && type !== 'table') throw aiBad('samples（サンプル値）を書けるのは表だけです。');
+  // 大きな数字のグラフは、数字の並びに合わせて低くする（第 15 段階）
+  if (type === 'graph' && isObj(e.props) && e.props.chart === 'metric') size.h = METRIC_GRAPH_H;
   const out = { ...spec, type, w0: size.w, h0: size.h };
+  // レコード一覧・関連レコード一覧の設定・サンプル値・高さは、全部の行を読んで項目を作った後に決める（後ろの行で作る項目も、列・列に分ける項目に書けるように。第 15 段階）
+  if (type === 'table' && !spec.itemId) plan.late.push({ where, apply: (dd) => aiLayoutTableView(out, e, d, dd, plan) });
+  else if (type === 'table') aiLayoutTableView(out, e, d, d, plan);
   if (lateProps) plan.late.push({ spec: out, type, props: lateProps, where });
   return out;
+}
+// 並べ方で置く表の設定（props）・サンプルの行数とサンプル値（view）・高さ（h0）を決める。d は今の画面設計、dd は同じ頼みで作る項目も入れた画面設計。
+// 高さは、サンプルの行数から（関連レコード一覧の並べて表示は件数と列の数から、レコード一覧のかんばんは中身から）
+function aiLayoutTableView(out, e, d, dd, plan) {
+  // レコード一覧・関連レコード一覧の列の id を、置く前に決めておく（設定を書かないときは最初の列）
+  if (!out.itemId && (e.props != null || e.samples != null)) out.props = aiTablePartProps(out.tableKind, defaultTablePartProps(d), e.props == null ? {} : e.props, dd);
+  if (e.rows != null) {
+    const n = Math.round(aiNum(e.rows, 'rows'));
+    if (n < 1 || n > 20) throw aiBad('rows は 1〜20 です。');
+    out.view = { rows: n };
+    out.h0 = tableHeight(n);
+  }
+  if (e.samples != null) {
+    const samples = aiTableSamples(aiLayoutTableColumns(dd, out, plan), e.samples);
+    const rows = aiSampleRows(out.view && out.view.rows, samples);
+    out.view = { ...(out.view || {}), rows, samples };
+    out.h0 = tableHeight(rows);
+  }
+  const shaped = { type: 'table', tableKind: out.tableKind, props: out.props || {}, view: normalizeTableView(out.view || {}) };
+  if (isTilesPart(shaped) || isKanbanPart(shaped)) out.h0 = partTableHeight(shaped, dd);
 }
 function aiLayoutNewItem(d, type, name, e, plan) {
   const itemType = type === 'steps' ? 'status' : type;
@@ -16410,8 +16472,12 @@ function aiPartOp(tx, sid, op) {
     case 'update': {
       const p = part(op.part);
       const patch = aiPartPatch(tx, d(), p, op);
-      // 表の見本の行を増やすと、下へはみ出す分だけ画面を伸ばす（上限まで）
-      if (patch.view && patch.view.rows && p.y + tableHeight(patch.view.rows) > sc().height) aiCheckBottom(p.y + tableHeight(patch.view.rows), '表の下の端');
+      // 表の見本の行を増やす・かんばんにするなどで、下へはみ出す分だけ画面を伸ばす（上限まで）
+      if (p.type === 'table' && (patch.view || patch.props)) {
+        const next = { ...p, props: { ...p.props, ...(patch.props || {}) }, view: normalizeTableView({ ...(p.view || {}), ...(patch.view || {}) }) };
+        const h = partTableHeight(next, d());
+        if (p.y + h > sc().height) aiCheckBottom(p.y + h, '表の下の端');
+      }
       actions.updatePart(id, sid, p.id, patch);
       // ボタンの文字を直してはみ出すときは、幅を広げる（狭めない。第 13 段階。q114 の ②）
       const need = p.type === 'button' && patch.label !== undefined ? aiButtonWidth(patch.label) : 0;
