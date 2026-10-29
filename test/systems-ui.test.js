@@ -219,6 +219,78 @@ test('「＋ 新しいシステム」の窓: 名前は要る・説明は書か�
   assert.equal($('.modal'), null);
 });
 
+// 第 17 段階（画像 q132・q134 の案A）
+test('「＋ 新しいシステム」の窓の作り方: 最初は白紙のシステム（構築先と見た目の欄は隠す）。CRM の見本を選ぶと欄を出し、空の名前と説明に見本の名前と説明を入れる。白紙に戻すと見本のままの欄は空に戻す', async (t) => {
+  const { api, $, $$ } = await boot(t);
+  const { CRM_SAMPLE } = api;
+  click($('.home-head [data-action="new-system"]'));
+  await waitFor(() => $('.modal'));
+  const kinds = () => $$('.modal [data-sys-kind]').map((b) => [b.dataset.sysKind, b.querySelector(':scope > b').textContent, b.getAttribute('aria-pressed')]);
+  assert.deepEqual(kinds(), [['blank', '白紙のシステム', 'true'], ['crm', 'CRM の見本', 'false']]);
+  assert.equal($('.modal [data-sys-kind="blank"] .sys-blank-th').textContent, '画面設計なし');
+  assert.ok($('.modal [data-sys-kind="crm"] .th .thumb'), 'CRM の見本の札には顧客の詳細の縮小画像');
+  assert.equal($('.modal [data-sys-sample]').hidden, true);
+  assert.match($('.modal [data-sys-hint]').textContent, /システムは、いくつかの画面設計をまとめる入れ物です/);
+  click($('.modal [data-sys-kind="crm"]'));
+  assert.deepEqual(kinds().map((k) => k[2]), ['false', 'true']);
+  assert.equal($('.modal [data-sys-sample]').hidden, false);
+  assert.equal($('.modal .target-select').value, 'b:salesforce');
+  assert.equal($('.modal [name=sys-look]:checked').value, 'salesforce');
+  assert.equal($('.modal [name=name]').value, CRM_SAMPLE.name);
+  assert.equal($('.modal [name=description]').value, CRM_SAMPLE.description);
+  assert.match($('.modal [data-sys-hint]').textContent, /画面設計 5 つ（顧客・商談・問い合わせ・作業指示・ナレッジ）と画面 11 個/);
+  click($('.modal [data-sys-kind="blank"]'));
+  assert.equal($('.modal [data-sys-sample]').hidden, true);
+  assert.deepEqual([$('.modal [name=name]').value, $('.modal [name=description]').value], ['', '']);
+  // 自分で書いた名前は、見本を選んでも白紙に戻しても消さない
+  setValue($('.modal [name=name]'), '空調サービス管理');
+  click($('.modal [data-sys-kind="crm"]'));
+  assert.equal($('.modal [name=name]').value, '空調サービス管理');
+  click($('.modal [data-sys-kind="blank"]'));
+  assert.equal($('.modal [name=name]').value, '空調サービス管理');
+  assert.equal($('.modal [name=description]').value, '');
+});
+
+test('「＋ 新しいシステム」の窓で CRM の見本を作る: 選んだ構築先と見た目で画面設計 5 つを 1 回の変更で作り、左の一覧でそのシステムを選んでお知らせ。白紙のシステムは今までどおり空で作る', async (t) => {
+  const { api, $, $$, S } = await boot(t);
+  const before = S().systems.length;
+  click($('.home-head [data-action="new-system"]'));
+  await waitFor(() => $('.modal'));
+  click($('.modal [data-sys-kind="crm"]'));
+  setValue($('.modal [name=name]'), '空調サービス管理');
+  // 構築先を kintone にすると見た目も kintone。「その他」で名前が空なら作らない
+  setValue($('.modal .target-select'), 'b:kintone', 'change');
+  assert.equal($('.modal [name=sys-look]:checked').value, 'kintone');
+  setValue($('.modal .target-select'), '__other__', 'change');
+  assert.equal($('.modal [name=sys-look]:checked').value, 'standard');
+  click($('[data-dlg="ok"]'));
+  assert.match($('.modal-error').textContent, /「その他」を選んだときは、構築先の名前を書いてください。/);
+  setValue($('.modal .target-select'), 'b:kintone', 'change');
+  click($('[data-dlg="ok"]'));
+  await waitFor(() => !$('.modal'), { label: '窓が閉じる' });
+  const y = S().systems.at(-1);
+  assert.equal(S().systems.length, before + 1);
+  assert.equal(y.name, '空調サービス管理');
+  const ds = y.designIds.map((id) => S().designs.find((x) => x.id === id));
+  assert.deepEqual(plain(ds.map((x) => [x.name, x.target, x.look])), ['顧客', '商談', '問い合わせ', '作業指示', 'ナレッジ'].map((n) => [n, 'kintone', 'kintone']));
+  assert.equal(ds.reduce((n, x) => n + x.screens.length, 0), 11);
+  assert.equal(api.ui.view, 'home');
+  assert.equal(api.ui.homeGroup, y.id);
+  assert.equal($('#toast').textContent, '「空調サービス管理」を作りました。画面設計 5 つ（顧客・商談・問い合わせ・作業指示・ナレッジ）が入っています。');
+  assert.equal($$('.sys-block .card-name').length, 5);
+  api.runCommand('undo');
+  assert.equal(S().systems.length, before, 'Ctrl+Z 1 回でシステムと画面設計 5 つが消える');
+  assert.equal(S().designs.filter((x) => y.designIds.includes(x.id)).length, 0);
+  // 白紙のシステム（札を押さないまま）は、画面設計なし
+  click($('.home-head [data-action="new-system"]'));
+  await waitFor(() => $('.modal'));
+  setValue($('.modal [name=name]'), '経費精算システム');
+  click($('[data-dlg="ok"]'));
+  await waitFor(() => !$('.modal'), { label: '窓が閉じる' });
+  assert.deepEqual(plain(S().systems.at(-1).designIds), []);
+  assert.match($('#toast').textContent, /「＋ 画面設計を追加する」から画面設計を追加します。/);
+});
+
 test('「…」のメニュー: 名前と説明を変える（元に戻すで戻る）・ごみ箱へ移す（確かめの窓は出さない）', async (t) => {
   const { app, api, $, $$, sys, rows } = await boot(t);
   click($('.sys-head [data-action="sys-menu"]'));
@@ -230,6 +302,7 @@ test('「…」のメニュー: 名前と説明を変える（元に戻すで戻
   await waitFor(() => $('.modal'));
   assert.equal($('.sys-pop'), null, 'メニューは閉じる');
   assert.equal($('.modal h2').textContent, 'このシステムの名前と説明を変更する');
+  assert.equal($('.modal [data-sys-kind]'), null, '作り方の札は「＋ 新しいシステム」の窓だけ');
   assert.deepEqual(dialogButtons($$), ['名前と説明を変更する', 'キャンセル']);
   assert.equal($('.modal [name=name]').value, '出張申請システム');
   assert.equal($('.modal [name=description]').value, '出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム');

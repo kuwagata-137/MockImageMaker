@@ -1106,6 +1106,14 @@ const CHAPTERS = {
     await page.keyboard.type('備品管理システム');
     await shot('sys_new', { clip: '.modal', pad: 12 });
     await closeDlg();
+    // 作り方の「CRM の見本」を選んだとき（第 17 段階。名前と説明の欄に見本の名前と説明が入る）
+    await run('newSystem');
+    await sleep(300);
+    await click('.modal [data-sys-kind="crm"]');
+    await sleep(200);
+    await T(() => { if (document.activeElement) document.activeElement.blur(); });
+    await shot('sys_sample', { clip: '.modal', pad: 12 });
+    await closeDlg();
     // システムの画面（概要）
     await T((id) => window.__test__.openSystem(id, { panel: 'overview' }), yid);
     await sleep(400);

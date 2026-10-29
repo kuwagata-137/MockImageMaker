@@ -44,7 +44,7 @@ test('アイテム一覧: 組「ポータル画面用」（詳細画面用の後
     assert.equal(T.currentScreen().parts.at(-1).type, type);
   }
   assert.equal(design().items.length, 0, 'どれも項目一覧には入らない');
-  assert.deepEqual(plain(T.currentScreen().parts.map((p) => [p.type, p.w, p.h])), [['hero', 1280, 320], ['tileMenu', 1216, 160], ['articles', 784, 416], ['chat', 400, 560]]);
+  assert.deepEqual(plain(T.currentScreen().parts.map((p) => [p.type, p.w, p.h])), [['hero', 1280, 320], ['tileMenu', 1216, 160], ['articles', 784, 408], ['chat', 400, 560]]);
 });
 
 test('大きな画像と検索欄: 置くと画面の幅いっぱい（左の端から）。色の付いた面に「画像」の印・見出し・説明・検索欄。番号は中の左上。検索欄は消せる', async (t) => {
@@ -115,6 +115,33 @@ test('チャット: 1 行に「話す人: 文」。右の吹き出しにする�
   assert.equal(rows()[0].querySelector('small').textContent, '担当者');
   assert.equal(el(id).querySelector('.pfr-head'), null, '見出しの行を出さない');
   assert.ok(el(id).querySelector('.pchat.bare .pno.pch-no'), '番号は左上に重ねる');
+});
+
+// 第 17 段階（画像 q137 の①）
+test('記事の一覧の高さ: 記事の数・「説明を出す」・「すべて表示」から決める（見出しの行 44・1 件 80〔説明を出さないときは 40〕・「すべて表示」40）。変えると合わせ直し、見出しの文字だけでは戻さない', async (t) => {
+  const { app, T, did, sid, add, part, el } = await bootSite(t);
+  const rows = (n) => Array.from({ length: n }, (_, i) => `記事 ${i + 1}, 説明, よくある質問, 2026-10-0${i + 1}`).join('\n');
+  assert.deepEqual([T.articlesHeight(T.PART_TYPES.articles.props), T.PART_TYPES.articles.h], [408, 408], '最初の中身（4 件）と最初の高さが同じ');
+  assert.deepEqual([T.articlesHeight({ rows: rows(5) }), T.articlesHeight({ rows: rows(5), desc: false }), T.articlesHeight({ rows: rows(5), more: false }), T.articlesHeight({ rows: '' })],
+    [488, 288, 448, 168], '記事がなければ 1 件分');
+  const id = add('articles');
+  assert.equal(part(id).h, 408);
+  T.actions.updatePart(did, sid, id, { props: { rows: rows(5) } });
+  assert.equal(part(id).h, 488);
+  assert.equal(el(id).querySelectorAll('.pat-i').length, 5);
+  T.actions.updatePart(did, sid, id, { props: { desc: false } });
+  assert.equal(part(id).h, 288);
+  // 人が伸ばした高さは、見出しの文字を変えても戻さない
+  T.actions.movePart(did, sid, id, { x: part(id).x, y: part(id).y, w: part(id).w, h: 400 });
+  T.actions.updatePart(did, sid, id, { label: 'お知らせ' });
+  assert.equal(part(id).h, 400);
+  // 右のパネルで記事を書き換えても合わせる。下の端が画面の外に出るときは、画面を伸ばす（アイテムを上へずらさない）
+  T.actions.movePart(did, sid, id, { x: 32, y: 640, w: part(id).w, h: 160 });
+  assert.deepEqual([part(id).y, T.currentScreen().height], [640, 800]);
+  T.selectPart(id);
+  setValue(app, $(app, '#side-settings [data-pf="props.rows"]'), rows(8));
+  assert.deepEqual([part(id).y, part(id).h], [640, T.articlesHeight({ rows: rows(8), desc: false })]);
+  assert.ok(T.currentScreen().height >= 640 + part(id).h);
 });
 
 test('右のパネル: 4 つのアイテムの欄（q129 の 2 枚目・q130）。欄を直すと描き直す', async (t) => {

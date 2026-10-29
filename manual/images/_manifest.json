@@ -386,7 +386,7 @@
  "sys_new": {
   "file": "sys_new.png",
   "w": 464,
-  "h": 378,
+  "h": 550,
   "dsf": 2
  },
  "sys_notes": {
@@ -405,6 +405,12 @@
   "file": "sys_roles.png",
   "w": 772,
   "h": 232,
+  "dsf": 2
+ },
+ "sys_sample": {
+  "file": "sys_sample.png",
+  "w": 464,
+  "h": 716,
   "dsf": 2
  },
  "sys_swim": {

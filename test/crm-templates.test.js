@@ -132,3 +132,15 @@ test('CRM のひな形: どの見た目でも選べ、帯の高い見た目で�
   assertNoOverlap(sc2);
   assert.ok(design());
 });
+
+// 第 17 段階（画像 q137 の③）: ひな形が新しく作るステータスの項目の操作は、申請と承認の流れの名前でなく、問い合わせの操作（操作する人つき）
+test('問い合わせ対応の 3 列: 新しく作るステータスの項目の操作は、受け付ける・エスカレーションする・担当に戻す・お客さまに確認する・回答を受け取る・クローズする', async (t) => {
+  const { add, design } = await boot(t, '問い合わせ管理');
+  add('crmCase');
+  const status = design().items.find((it) => it.type === 'status');
+  const name = (id) => status.props.states.find((s) => s.id === id).name;
+  assert.deepEqual(plain(status.props.actions.map((a) => [a.name, name(a.from), name(a.to), a.role, a.cond])), [
+    ['受け付ける', '新規', '対応中', 'サポート', ''], ['エスカレーションする', '対応中', 'エスカレーション', 'サポート', ''], ['担当に戻す', 'エスカレーション', '対応中', '上長', ''],
+    ['お客さまに確認する', '対応中', '回答待ち', 'サポート', ''], ['回答を受け取る', '回答待ち', '対応中', 'サポート', ''], ['クローズする', '対応中', 'クローズ', 'サポート', ''],
+  ]);
+});

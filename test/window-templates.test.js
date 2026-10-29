@@ -101,7 +101,7 @@ test('お客さまポータルのトップ: ヘッダーをお客さまポータ
       assert.equal(T.bandHeight(design(), p), 72);
       assert.equal(p.height, 1080);
       assert.deepEqual(plain(p.parts.map((x) => [x.type, x.no, ...rect(x)])), [
-        ['hero', 1, 0, 72, 1280, 320], ['tileMenu', 2, 32, 424, 1216, 160], ['articles', 3, 32, 616, 784, 416], ['articles', 4, 848, 616, 400, 416],
+        ['hero', 1, 0, 72, 1280, 320], ['tileMenu', 2, 32, 424, 1216, 160], ['articles', 3, 32, 616, 784, 408], ['articles', 4, 848, 616, 400, 248],
       ], '見た目によらず同じ位置（ポータルのヘッダーの高さは同じ）');
       const news = p.parts[3];
       assert.deepEqual(plain([news.label, news.props.desc, news.props.more]), ['お知らせ', false, true]);

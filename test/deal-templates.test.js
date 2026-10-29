@@ -156,3 +156,14 @@ test('「画面を追加する」のウィンドウ: ひな形の小さな絵の
   const [w, h] = th.getAttribute('style').match(/\d+/g).map(Number);
   assert.ok(w <= 150 && h <= 80, `小さな絵は 150×80 に収める（${w}×${h}）`);
 });
+
+// 第 17 段階（画像 q137 の③）: ひな形が新しく作る「段階」の操作は、申請と承認の流れの名前でなく、商談の操作（操作する人つき）
+test('商談のかんばん: 新しく作る「段階」の操作は、提案する・見積を出す・交渉に進む・受注にする（営業）', async (t) => {
+  const { add, design } = await boot(t, '商談管理');
+  add('crmKanban');
+  const lane = design().items.find((it) => it.type === 'status');
+  const name = (id) => lane.props.states.find((s) => s.id === id).name;
+  assert.deepEqual(plain(lane.props.actions.map((a) => [a.name, name(a.from), name(a.to), a.role])), [
+    ['提案する', '見込み', '提案', '営業'], ['見積を出す', '提案', '見積', '営業'], ['交渉に進む', '見積', '交渉', '営業'], ['受注にする', '交渉', '受注', '営業'],
+  ]);
+});
