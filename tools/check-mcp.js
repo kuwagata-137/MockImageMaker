@@ -19,7 +19,7 @@
 //     （7 つ同時に頼んでも読める・仕込んだ指示の文字・Excel の番地・PDF の日本語の文字と 3 ページ目の画像・古い形の old_format）・swimlane_from_bdm（replace なしは断られ、replace: true で入る）・get_system・
 //     export_bdm（第 11 段階。入れた図を元の MPD に入れて MIM_AI_EXPORT_DIR に書く。読み直すと同じで、元の資料は変わらない）
 //  E. 設計ノート（第 10 段階の前半。check-mcp-notes.js）と説明書（第 10 段階の後半。export_system_doc）: 起動の前に見本のシステムを置き、アプリを起動する前に、道具が 36 個・prompts が 3 つ（design_system・make_screen・fix_design。
-//     引数の必須と省略、文の中身）・resources が 6 つ（mim://guide/stages が読める）を確かめる。そのあと update_notes（set_findings・add_question・add_decision・set_memo）→ set_stage（read を doing → review → done。
+//     引数の必須と省略、文の中身）・resources が 7 つ（mim://guide/stages が読める）を確かめる。そのあと update_notes（set_findings・add_question・add_decision・set_memo）→ set_stage（read を doing → review → done。
 //     todo は断られる）→ get_notes・list_systems・get_system の stages で読め、入口を閉じた後の designs.json に残る
 //  最後に、窓を出さなかった起動では window-state.json を書き換えていない（人が最大化して使っていたことが残る）
 // 「アプリが終わる」は 2 つに分けて待つ（waitAppQuit）。終わり始める時（automation.json が消える。アプリが決める時）は決めた時間で確かめ、

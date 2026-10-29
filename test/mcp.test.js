@@ -122,7 +122,7 @@ test('アプリがなくても、道具の一覧・read_guide・resources は返
   const g = await call(client, 'read_guide', { topic: 'overview' });
   assert.match(textOf(g), /^# モックイメージメーカーの使い方/);
   const { resources } = await client.listResources();
-  assert.deepEqual(resources.map((r) => r.uri).sort(), ['mim://guide/catalog', 'mim://guide/kintone', 'mim://guide/layout', 'mim://guide/overview', 'mim://guide/rules', 'mim://guide/stages']);
+  assert.deepEqual(resources.map((r) => r.uri).sort(), ['mim://guide/catalog', 'mim://guide/crm', 'mim://guide/kintone', 'mim://guide/layout', 'mim://guide/overview', 'mim://guide/rules', 'mim://guide/stages']);
   const kg = await call(client, 'read_guide', { topic: 'kintone' });
   assert.match(textOf(kg), /^# kintone のアプリにするとき/);
   const rr = await client.readResource({ uri: 'mim://guide/rules' });

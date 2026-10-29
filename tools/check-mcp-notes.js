@@ -4,7 +4,7 @@
 //  0. アプリを起動する前に、入口だけで返る物を確かめる（アプリは起動しない）:
 //     道具は 36 個で、get_notes（読むだけ）・update_notes・set_stage（書く）がある ／ prompts は 3 つ（design_system・make_screen・fix_design）で引数の必須と省略が合う ／
 //     design_system（引数なし・system あり）は user の文 1 つで、read_guide の "stages" を読む指示がある ／ make_screen・fix_design は必須の引数がないと断られ、
-//     文に "stages" を読ませる文も set_stage もない ／ resources は 6 つで、mim://guide/stages が読めて read_guide の "stages" と同じ文
+//     文に "stages" を読ませる文も set_stage もない ／ resources は 7 つで、mim://guide/stages が読めて read_guide の "stages" と同じ文・read_guide の "crm" が読める
 //  1. 最初の get_notes（アプリを裏で起動する）: 段階 5 つが todo・読み取ったこと・メモ・決めたこと・まだ決まっていないことが空 ／ list_systems の行の stages も todo
 //  2. update_notes（set_findings・add_question 2 つ・add_decision・set_memo を 1 回で）→ added が足した 3 行の id・更新の印が変わる。古い expect は stale で断られ、何も変わらない
 //  3. set_stage: read を doing → review（確認の日時なし）→ done（確認の日時が入る。read にまだ決まっていないことが 1 つ残るので warnings）。answer_question で答えを書く。todo は bad_request で断られる
@@ -84,9 +84,14 @@ async function checkWithoutApp(client, env) {
   const resText = res.contents.map((c) => c.text).join('');
   const guide = await client.callTool({ name: 'read_guide', arguments: { topic: 'stages' } });
   const guideText = guide.content.map((c) => c.text).join('');
-  check('E. resources は 6 つ（第 13 段階で kintone が増えた）で mim://guide/stages が読め、read_guide の "stages" と同じ文（5 つの段階の表がある）',
-    uris.length === 6 && uris.includes('mim://guide/stages') && resText === guideText && /^# 資料からシステムを作るときの段階/.test(resText) && /## 5 つの段階/.test(resText),
+  check('E. resources は 7 つ（第 13 段階で kintone、第 17 段階で crm が増えた）で mim://guide/stages が読め、read_guide の "stages" と同じ文（5 つの段階の表がある）',
+    uris.length === 7 && uris.includes('mim://guide/stages') && resText === guideText && /^# 資料からシステムを作るときの段階/.test(resText) && /## 5 つの段階/.test(resText),
     `${uris.map((u) => u.replace('mim://guide/', '')).join('・')} ／ ${resText.length} 字`);
+  const crm = await client.callTool({ name: 'read_guide', arguments: { topic: 'crm' } });
+  const crmText = crm.content.map((c) => c.text).join('');
+  check('E. read_guide の "crm" が読め、画面設計の分け方・ひな形・つなぎ方・ステータス・スイムレーン図の節がある（第 17 段階）',
+    /^# CRM のシステムを作るとき/.test(crmText) && ['## 画面設計の分け方と画面', '## つなぎ方', '## ステータスと操作', '## 役割とスイムレーン図'].every((h) => crmText.includes(h)) && /"crmDetail"/.test(crmText),
+    `${crmText.length} 字`);
   check('E. 道具の一覧・prompts・resources・手引きを読むだけでは、アプリを起動しない', !appInfo(), appInfo() ? `起動していた（pid ${appInfo().pid}）` : '起動していない');
 }
 

@@ -18,7 +18,8 @@ const PDF_ORIENT = z.enum(['landscape', 'portrait']).optional().describe('PDF �
 const TOOLS = [
   read('read_guide', '手引きを読む',
     'モックイメージメーカーの使い方の手引きを読む。初めて使うときは "overview" を最初に読む。"layout" はアイテムの並べ方、"catalog" はアイテムのカタログの読み方、"rules" は守ること、' +
-    '"stages" は資料からシステムを作るときの段階（段階ごとに人に確かめる進め方）、"kintone" は kintone のアプリにするとき（kintone のフィールドの欄と get_kintone_app の使い方）。',
+    '"stages" は資料からシステムを作るときの段階（段階ごとに人に確かめる進め方）、"kintone" は kintone のアプリにするとき（kintone のフィールドの欄と get_kintone_app の使い方）、' +
+    '"crm" は CRM のシステムを作るとき（顧客・商談・問い合わせ・作業指示・ナレッジの画面設計の分け方・ひな形・つなぎ方・ステータス・スイムレーン図）。',
     { topic: z.enum(GUIDE_TOPICS).describe('手引きの名前') }, { local: true }),
   read('list_designs', '画面設計の一覧',
     '画面設計の一覧（id・名前・構築先・画面と項目の数・最新の版・更新日時 updatedAt）を返す。query で名前を検索できる。',
