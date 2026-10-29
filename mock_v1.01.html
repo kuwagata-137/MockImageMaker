@@ -246,6 +246,32 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .screen{position:relative;background:#fff;box-shadow:0 1px 6px rgba(15,23,42,.22);overflow:hidden}
 .screen.grid{background-image:linear-gradient(to right,rgba(148,163,184,.22) 1px,transparent 1px),linear-gradient(to bottom,rgba(148,163,184,.22) 1px,transparent 1px);background-size:8px 8px}
 .screen-band{height:40px;background:#1f2f4f;color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;padding:0 16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 小さなウィンドウ（第 16 段階。画像 q128 の案A）。下に重ねる画面（.sc-under）は描くだけで、押せない。真ん中のウィンドウは、枠の外側の大きな影で下の画面に灰色をかける
+   （別の要素の幕は、縮めた絵の中で写らないことがあった）。見出しの行の高さ 56 と下のボタンの行の高さ 64 は、WIN_HEAD・WIN_FOOT と同じ */
+.sc-under{position:absolute;left:0;top:0;background:#fff;overflow:hidden;pointer-events:none}
+.sc-win{position:absolute;background:#fff;border-radius:8px;box-shadow:0 10px 32px rgba(15,23,42,.38)}
+.sc-win.dim{box-shadow:0 0 0 3000px rgba(15,23,42,.58),0 10px 32px rgba(15,23,42,.38)}
+.screen.grid>.sc-win{background-image:linear-gradient(to right,rgba(148,163,184,.22) 1px,transparent 1px),linear-gradient(to bottom,rgba(148,163,184,.22) 1px,transparent 1px);background-size:8px 8px}
+.sc-win-h{height:56px;display:flex;align-items:center;gap:8px;padding:0 16px 0 20px;border-bottom:1px solid #e2e8f0;border-radius:8px 8px 0 0;background:#fff;font-size:17px;color:#0f172a;white-space:nowrap}
+.sc-win-h b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
+.sc-win-x{margin-left:auto;width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#64748b;font-size:16px;flex-shrink:0}
+.sc-win-f{position:absolute;left:0;right:0;bottom:0;height:64px;background:#f8fafc;border-top:1px solid #e2e8f0;border-radius:0 0 8px 8px}
+.sc-win-right,.sc-win-right .sc-win-h,.sc-win-right .sc-win-f{border-radius:0}
+.look-sf .sc-win{border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.28)}
+.look-sf .sc-win.dim{box-shadow:0 0 0 3000px rgba(8,7,7,.6),0 2px 12px rgba(0,0,0,.28)}
+.look-sf .sc-win-h{justify-content:center;font-size:19px;color:#181818;border-bottom-color:#e5e5e5;border-radius:4px 4px 0 0;position:relative;padding:0 20px}
+.look-sf .sc-win-h b{font-weight:400}
+/* Salesforce の真ん中のウィンドウの ✕ は、ウィンドウの右上の外に白で描く。右下と右の端は、見出しの行を青にする */
+.look-sf .sc-win-center .sc-win-x{position:absolute;right:-6px;top:-46px;color:#fff;font-size:20px}
+.look-sf .sc-win-bottomRight .sc-win-h,.look-sf .sc-win-right .sc-win-h{justify-content:flex-start;background:#0176d3;color:#fff}
+.look-sf .sc-win-bottomRight .sc-win-x,.look-sf .sc-win-right .sc-win-x{position:absolute;right:12px;top:13px;color:#fff}
+.look-sf .sc-win-f{background:#f3f3f3;border-top-color:#c9c9c9;border-radius:0 0 4px 4px}
+.look-sf .sc-win-right,.look-sf .sc-win-right .sc-win-h,.look-sf .sc-win-right .sc-win-f{border-radius:0}
+.look-kt .sc-win,.look-kt .sc-win-h,.look-kt .sc-win-f{border-radius:0}
+.look-kt .sc-win{box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.look-kt .sc-win.dim{box-shadow:0 0 0 3000px rgba(0,0,0,.52),0 4px 16px rgba(0,0,0,.3)}
+.look-kt .sc-win-h{background:#f7f9fa;border-bottom-color:#e3e7e8;font-size:16px;color:#333}
+.look-kt .sc-win-f{background:#f7f9fa;border-top-color:#e3e7e8}
 /* 見た目（第 12 段階。業務アプリの見た目とCRM_設計書.md の 5 章・画像 q106〜q108）。標準の見た目は上と下の CSS のまま。
    ここに書くのは、.screen に付けたクラス（look-sf・look-kt・view-show）の下で上書きするものだけ。色と形を似せるだけで、ロゴ・アイコン・字は写さない */
 .sfb-top,.ktb-top{height:48px;display:flex;align-items:center;gap:14px;padding:0 16px}
@@ -458,19 +484,19 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .ptr-row.on{background:#e8f4fc;box-shadow:inset 3px 0 0 #3498db}
 .look-kt .ptr-fd{color:#f39c12}
 /* 表示の形（画面の項目の出し方。q108）。入力欄の枠の代わりに、値・鉛筆の印・下の線。kintone の見た目は、枠も線もない値 */
-.view-show .pbox{border:none;border-radius:0;border-bottom:1px solid #e5e5e5;padding:0 26px 0 0;margin-top:0;background:transparent;box-shadow:none;position:relative}
-.view-show .pbox.calc{border:none;border-bottom:1px solid #e5e5e5;background:transparent}
-.view-show .pbox.area{padding-top:4px}
-.view-show .pbox .pr,.view-show .pbox .pget,.view-show .pbox .picon{display:none}
-.view-show .pbox::after{content:'';position:absolute;right:4px;top:50%;width:14px;height:14px;margin-top:-7px;opacity:.7;
+.view-show > :where(.part) .pbox{border:none;border-radius:0;border-bottom:1px solid #e5e5e5;padding:0 26px 0 0;margin-top:0;background:transparent;box-shadow:none;position:relative}
+.view-show > :where(.part) .pbox.calc{border:none;border-bottom:1px solid #e5e5e5;background:transparent}
+.view-show > :where(.part) .pbox.area{padding-top:4px}
+.view-show > :where(.part) .pbox .pr,.view-show > :where(.part) .pbox .pget,.view-show > :where(.part) .pbox .picon{display:none}
+.view-show > :where(.part) .pbox::after{content:'';position:absolute;right:4px;top:50%;width:14px;height:14px;margin-top:-7px;opacity:.7;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23747474' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20l1-4L16 5l3 3L8 19z'/%3E%3Cpath d='M14 7l3 3'/%3E%3C/svg%3E") no-repeat center/contain}
-.view-show .pbox.area::after{top:14px}
-.view-show .popt:not(:has(.on)){display:none}
-.view-show .pmark{display:none}
-.view-show .popts{margin-top:2px;border-bottom:1px solid #e5e5e5;padding-bottom:6px}
-.look-kt.view-show .pbox{border-bottom:none}
-.look-kt.view-show .pbox::after{display:none}
-.look-kt.view-show .popts{border-bottom:none}
+.view-show > :where(.part) .pbox.area::after{top:14px}
+.view-show > :where(.part) .popt:not(:has(.on)){display:none}
+.view-show > :where(.part) .pmark{display:none}
+.view-show > :where(.part) .popts{margin-top:2px;border-bottom:1px solid #e5e5e5;padding-bottom:6px}
+.look-kt.view-show > :where(.part) .pbox{border-bottom:none}
+.look-kt.view-show > :where(.part) .pbox::after{display:none}
+.look-kt.view-show > :where(.part) .popts{border-bottom:none}
 
 /* 部品（画面の中。見た目は画像 q15・仕上がりイメージ.png に合わせた） */
 .part{position:absolute;display:flex;flex-direction:column;font-size:14px;color:#1e293b;line-height:1.4}
@@ -487,9 +513,9 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .pbox.calc{background:#f1f5f9;border-style:dashed}
 /* kintone が値を入れる種類（第 13 段階。画像 q112 の案B）。見た目ごとの枠より強くし、表示の形では値だけ（鉛筆の印も出さない。直せないため） */
 .pbox.kt-auto,.look-sf .pbox.kt-auto,.look-kt .pbox.kt-auto{background:#f1f5f9;border:1px dashed #94a3b8;box-shadow:none}
-.screen.view-show .pbox.kt-auto{border:none;border-bottom:1px solid #e5e5e5;background:transparent}
-.screen.look-kt.view-show .pbox.kt-auto{border-bottom:none}
-.view-show .pbox.kt-auto::after{display:none}
+:is(.screen,.sc-under).view-show > :where(.part) .pbox.kt-auto{border:none;border-bottom:1px solid #e5e5e5;background:transparent}
+:is(.screen,.sc-under).look-kt.view-show > :where(.part) .pbox.kt-auto{border-bottom:none}
+.view-show > :where(.part) .pbox.kt-auto::after{display:none}
 .pval{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .pbox .pr{margin-left:auto;color:#475569;font-size:13px;flex-shrink:0}
 /* ルックアップの印（画像 q22）: 項目名の後ろの黄色い札、探す項目の「取得」、一緒に写される項目の灰色の入力欄。出力にも出す */
@@ -1483,8 +1509,93 @@ function changeDevice(screen, device) {
 const lookOf = (design) => LOOKS.find((l) => l.id === (design && design.look)) || LOOKS[0];
 // 作る先から決まる見た目（新しい画面設計の窓で、作る先を選んだときの最初の値。q105）。Salesforce・kintone 以外は標準
 const lookForTarget = (target) => (target !== 'standard' && LOOKS.some((l) => l.id === target) ? target : 'standard');
-// 画面の帯の高さ（帯を消した画面は 0）。部品を置くときは帯の下に置く
-const bandHeight = (design, sc) => (sc.showHeader ? lookOf(design).band : 0);
+// 画面の帯の高さ（帯を消した画面と、小さなウィンドウの画面は 0）。部品を置くときは帯の下に置く
+const bandHeight = (design, sc) => (sc.showHeader && !isWindowScreen(sc) ? lookOf(design).band : 0);
+
+// ── 小さなウィンドウ（第 16 段階。画像 q128 の案A。仕様_細かい決めごと.md の「小さなウィンドウとお客さまポータルの細かい決めごと」）──
+// 画面の overlay: { under: 下に重ねる画面の id, pos: WINDOW_POS のキー, w, h, foot: 下のボタンの行を出すか }。ない画面は今までの画面。
+// 下に重ねる画面は、同じ画面設計の、自分でなく、自分も小さなウィンドウでない画面だけ（1 段だけ描く。循環を作らないため）
+const WINDOW_POS = { center: '真ん中', bottomRight: '右下', right: '右の端' };
+const WIN_HEAD = 56; // ウィンドウの見出しの行（画面の名前と ✕）の高さ
+const WIN_FOOT = 64; // 下のボタンの行の高さ
+const WIN_SIZE = { w: 640, h: 432 }; // 最初の大きさ
+const WIN_MIN = { w: 240, h: 160 };
+const WIN_EDGE = 24; // 右下に置くときの、画面の右と下の端からの間
+const WIN_ROOM = 32; // 幅と高さの上限は、画面の幅（機器の 1 画面分の高さ）からこれだけ引いた大きさ
+const isWindowScreen = (sc) => !!(sc && sc.overlay && sc.overlay.under);
+const underScreenOf = (design, sc) => (isWindowScreen(sc) ? design.screens.find((s) => s.id === sc.overlay.under && s.id !== sc.id && !isWindowScreen(s)) || null : null);
+// ほかの画面（小さなウィンドウ）の下に重ねられている画面か。そういう画面は、小さなウィンドウにできない
+const windowsOver = (design, sc) => design.screens.filter((s) => s.id !== sc.id && isWindowScreen(s) && s.overlay.under === sc.id);
+function normalizeOverlay(o) {
+  if (!isObj(o) || !str(o.under)) return null;
+  return { ...o, under: str(o.under), pos: own(WINDOW_POS, o.pos) ? o.pos : 'center', w: numOr(o.w, WIN_SIZE.w), h: numOr(o.h, WIN_SIZE.h), foot: o.foot !== false };
+}
+// 下に重ねる画面に選べない理由（選べるときは ''）。右のパネル・actions.updateScreen・AI の edit_screen で同じものを使う
+function overlayProblem(design, sc, underId) {
+  const u = design.screens.find((s) => s.id === underId);
+  if (!u) return 'その画面は、この画面設計にありません。';
+  if (u.id === sc.id) return '自分の画面は、下に重ねる画面にできません。';
+  if (isWindowScreen(u)) return `「${u.name}」は小さなウィンドウの画面なので、下に重ねる画面にできません。`;
+  const over = windowsOver(design, sc);
+  if (over.length) return `この画面は「${over[0].name}」の下に重ねられているので、小さなウィンドウにできません。`;
+  return '';
+}
+// ウィンドウの位置と大きさ（画面の左上から）。画面の幅と機器の 1 画面分の高さから決める。右の端のときは上から下まで（高さの欄は使わない）
+function windowRect(sc) {
+  const o = sc.overlay;
+  const W = Math.floor(sc.width / GRID) * GRID;
+  const H = Math.floor(Math.min(sc.height, DEVICES[sc.device].height) / GRID) * GRID;
+  const fit = (v, d, lo, hi) => Math.min(Math.max(lo, snapGrid(numOr(v, d))), Math.floor(hi / GRID) * GRID);
+  const w = fit(o.w, WIN_SIZE.w, WIN_MIN.w, W - WIN_ROOM);
+  if (o.pos === 'right') return { x: W - w, y: 0, w, h: H };
+  const h = fit(o.h, WIN_SIZE.h, WIN_MIN.h, H - WIN_ROOM);
+  if (o.pos === 'bottomRight') return { x: W - WIN_EDGE - w, y: H - WIN_EDGE - h, w, h };
+  return { x: snapGrid((W - w) / 2), y: snapGrid((H - h) / 2), w, h };
+}
+// アイテムを置ける範囲 { x0, y0, x1, y1 }。ふつうの画面は画面の中、小さなウィンドウの画面はウィンドウの中（見出しの行の下から下の端まで）
+function partBounds(sc) {
+  if (isWindowScreen(sc)) {
+    const r = windowRect(sc);
+    return { x0: r.x, y0: r.y + WIN_HEAD, x1: r.x + r.w, y1: r.y + r.h };
+  }
+  return { x0: 0, y0: 0, x1: Math.floor(sc.width / GRID) * GRID, y1: Math.floor(sc.height / GRID) * GRID };
+}
+function withoutOverlay(sc) {
+  const { overlay, ...rest } = sc;
+  return rest;
+}
+// 下に重ねる画面・ウィンドウの位置と大きさを変えた画面（patch は overlay の欄の一部。under が '' なら、ふつうの画面に戻す。アイテムはそのまま）。
+// 下の画面を初めて選んだときは、今あるアイテムの並びをウィンドウの中の左上へ移す。位置と大きさを変えたときは、ウィンドウの左上が動いた分だけ一緒に動かす
+// （どちらも、はみ出すものは中へ寄せる）。機器の種類は下の画面に合わせる。選べない画面を渡したときは、変えない
+function withOverlay(design, sc, patch) {
+  const cur = isWindowScreen(sc) ? sc.overlay : null;
+  const under = 'under' in patch ? str(patch.under) : cur ? cur.under : '';
+  if (!under) return cur ? withoutOverlay(sc) : sc;
+  if (overlayProblem(design, sc, under)) return sc;
+  const u = design.screens.find((s) => s.id === under);
+  const next = u.device !== sc.device ? changeDevice(sc, u.device) : { ...sc };
+  next.overlay = normalizeOverlay({ ...(cur || { pos: 'center', w: WIN_SIZE.w, h: WIN_SIZE.h, foot: true }), ...patch, under });
+  const r1 = windowRect(next);
+  next.overlay = { ...next.overlay, w: r1.w, h: next.overlay.pos === 'right' ? next.overlay.h : r1.h };
+  const b = partBounds(next);
+  const items = sc.parts.filter((p) => partType(p.type));
+  let [dx, dy] = [0, 0];
+  if (cur) {
+    const r0 = windowRect(sc);
+    [dx, dy] = [r1.x - r0.x, r1.y - r0.y];
+  } else if (items.length) {
+    [dx, dy] = [b.x0 + WIN_EDGE - Math.min(...items.map((p) => p.x)), b.y0 + WIN_EDGE - Math.min(...items.map((p) => p.y))];
+  }
+  next.parts = sc.parts.map((p) => (partType(p.type) ? { ...p, ...fitRect({ ...p, x: p.x + dx, y: p.y + dy }, next) } : p));
+  next.height = Math.max(next.height, minScreenHeight(next));
+  return next;
+}
+// 読み込んだ画面設計の下に重ねる画面を確かめる。ない画面・自分・小さなウィンドウの画面を指すものは外す（循環していれば、どちらも外す）
+function dropBadOverlays(screens) {
+  const ids = new Set(screens.map((s) => s.id));
+  const wins = new Set(screens.filter((s) => isWindowScreen(s) && s.overlay.under !== s.id && ids.has(s.overlay.under)).map((s) => s.id));
+  return screens.map((s) => (isWindowScreen(s) && (!wins.has(s.id) || wins.has(s.overlay.under)) ? withoutOverlay(s) : s));
+}
 // Salesforce の帯のタブ（1 行に 1 つ。空の行は捨てる）。書いていないときは「ホーム」と画面設計の名前（q106）
 function normalizeBandTabs(list) {
   return (Array.isArray(list) ? list : []).filter((t) => typeof t === 'string').map((t) => cleanName(t, TARGET_MAX)).filter(Boolean).slice(0, BAND_TABS_MAX);
@@ -1566,6 +1677,11 @@ function copyScreenData(src, { name, id = newId('s'), screenIds = null, designId
     p.props.screenId = screenIds ? screenIds.get(to) || '' : to === src.id ? id : to;
     if (screenIds) p.props.designId = ''; // 画面設計の複製では、元の画面設計を名指ししていた移る先も「この画面設計」にする
   });
+  // 下に重ねる画面（第 16 段階）は、画面設計の複製では新しい id に付け直す（画面の複製では同じ画面に重ねたまま）
+  if (screenIds && isWindowScreen(copy)) {
+    const under = screenIds.get(copy.overlay.under);
+    return under ? { ...copy, overlay: { ...copy.overlay, under } } : withoutOverlay(copy);
+  }
   return copy;
 }
 
@@ -2583,29 +2699,27 @@ function changeItemType(design, item, type) {
   design.screens.forEach((s) => s.parts.forEach((p) => { if (p.itemId === item.id) p.type = type; }));
 }
 
-// 部品の位置と大きさを 8 ドットのマス目に吸い付け、画面の中に収める（大きさは変えずに位置をずらす）
+// 部品の位置と大きさを 8 ドットのマス目に吸い付け、置ける範囲（partBounds。小さなウィンドウの画面はウィンドウの中）に収める（大きさは変えずに位置をずらす）
 function fitRect(r, screen) {
-  const maxW = Math.floor(screen.width / GRID) * GRID;
-  const maxH = Math.floor(screen.height / GRID) * GRID;
-  const w = Math.min(Math.max(PART_MIN, snapGrid(r.w)), maxW);
-  const h = Math.min(Math.max(PART_MIN, snapGrid(r.h)), maxH);
-  const x = Math.min(Math.max(0, snapGrid(r.x)), maxW - w);
-  const y = Math.min(Math.max(0, snapGrid(r.y)), maxH - h);
+  const b = partBounds(screen);
+  const w = Math.min(Math.max(PART_MIN, snapGrid(r.w)), b.x1 - b.x0);
+  const h = Math.min(Math.max(PART_MIN, snapGrid(r.h)), b.y1 - b.y0);
+  const x = Math.min(Math.max(b.x0, snapGrid(r.x)), b.x1 - w);
+  const y = Math.min(Math.max(b.y0, snapGrid(r.y)), b.y1 - h);
   return { x, y, w, h };
 }
 
 // 縁のつまみ（grip: n・s・e・w と、その組み合わせ）を dx・dy だけ動かしたときの位置と大きさ。動かした辺だけをマス目に吸い付ける
 function resizedRect(r0, grip, dx, dy, screen) {
-  const maxX = Math.floor(screen.width / GRID) * GRID;
-  const maxY = Math.floor(screen.height / GRID) * GRID;
+  const B = partBounds(screen);
   let l = r0.x;
   let t = r0.y;
   let r = r0.x + r0.w;
   let b = r0.y + r0.h;
-  if (grip.includes('w')) l = Math.min(Math.max(0, snapGrid(l + dx)), r - PART_MIN);
-  if (grip.includes('e')) r = Math.max(Math.min(maxX, snapGrid(r + dx)), l + PART_MIN);
-  if (grip.includes('n')) t = Math.min(Math.max(0, snapGrid(t + dy)), b - PART_MIN);
-  if (grip.includes('s')) b = Math.max(Math.min(maxY, snapGrid(b + dy)), t + PART_MIN);
+  if (grip.includes('w')) l = Math.min(Math.max(B.x0, snapGrid(l + dx)), r - PART_MIN);
+  if (grip.includes('e')) r = Math.max(Math.min(B.x1, snapGrid(r + dx)), l + PART_MIN);
+  if (grip.includes('n')) t = Math.min(Math.max(B.y0, snapGrid(t + dy)), b - PART_MIN);
+  if (grip.includes('s')) b = Math.max(Math.min(B.y1, snapGrid(b + dy)), t + PART_MIN);
   return { x: l, y: t, w: r - l, h: b - t };
 }
 
@@ -2627,7 +2741,8 @@ function freeSpot(screen, at) {
 // itemId を渡すと、その項目を指す部品を作る（項目名と設定は項目が持つ）。表の部品は tableKind で中身を決める
 function createPartData(type, screen, at, itemId = null, { tableKind = 'subtable', design = null } = {}) {
   const t = partType(type);
-  const rect = fitRect({ x: at.x, y: at.y, w: t.fullWidth ? screen.width - 64 : t.w, h: t.h }, screen);
+  const fullW = (isWindowScreen(screen) ? windowRect(screen).w : screen.width) - 64; // 幅いっぱいの種類は、画面（ウィンドウ）の幅から左右の間を引いた幅
+  const rect = fitRect({ x: at.x, y: at.y, w: t.fullWidth ? fullW : t.w, h: t.h }, screen);
   const base = { id: newId('p'), type, ...rect, no: t.noNumber ? null : nextPartNo(screen), labelPos: 'top', sample: '', placeholder: '' };
   if (type === 'table') base.tableKind = itemId ? 'subtable' : tableKind === 'subtable' ? 'records' : tableKind;
   if (type === 'table') base.view = { rows: 3, samples: {}, widths: {} };
@@ -3068,6 +3183,18 @@ function calloutChanges(a, b, sa, sb, base, cur, state) {
 }
 const byNoThenPos = (a, b) => (a.no == null) - (b.no == null) || (a.no || 0) - (b.no || 0) || a.y - b.y || a.x - b.x;
 // 画面 1 つの違い（同じ id の画面どうし）
+// 小さなウィンドウの設定の違い（第 16 段階）。base・cur は前の版と今の画面設計、sa・sb はその中の画面
+function windowChanges(base, cur, sa, sb) {
+  const underName = (d, s) => { const u = underScreenOf(d, s); return u ? u.name : 'なし'; };
+  const size = (s) => { const r = windowRect(s); return s.overlay.pos === 'right' ? `幅 ${r.w}` : `${r.w} × ${r.h}`; };
+  const out = [];
+  if (underName(base, sa) !== underName(cur, sb)) out.push(fromTo('下に重ねる画面', underName(base, sa), underName(cur, sb)));
+  if (!isWindowScreen(sa) || !isWindowScreen(sb)) return out;
+  if (sa.overlay.pos !== sb.overlay.pos) out.push(fromTo('ウィンドウの位置', WINDOW_POS[sa.overlay.pos], WINDOW_POS[sb.overlay.pos]));
+  if (size(sa) !== size(sb)) out.push(fromTo('ウィンドウの大きさ', size(sa), size(sb)));
+  if (sa.overlay.foot !== sb.overlay.foot) out.push(fromTo('下のボタンの行', sa.overlay.foot ? 'あり' : 'なし', sb.overlay.foot ? 'あり' : 'なし'));
+  return out;
+}
 function screenDiff(base, cur, sa, sb, state, rows) {
   const info = { isNew: false, parts: {}, callouts: {}, deleted: [], counts: { new: 0, chg: 0, del: 0 } };
   const row = (no, name, k, change, text) => rows.push({ screen: sb.name, no: no == null ? '－' : String(no), name, k, change, text });
@@ -3078,6 +3205,7 @@ function screenDiff(base, cur, sa, sb, state, rows) {
   if (sa.showHeader !== sb.showHeader) set.push(fromTo('ヘッダー', sa.showHeader ? 'あり' : 'なし', sb.showHeader ? 'あり' : 'なし'));
   if (sa.tablePos !== sb.tablePos) set.push(fromTo('設定一覧の位置', sa.tablePos === 'bottom' ? '下' : '右', sb.tablePos === 'bottom' ? '下' : '右'));
   if (sa.itemView !== sb.itemView) set.push(fromTo('項目の表示', ITEM_VIEWS[sa.itemView], ITEM_VIEWS[sb.itemView]));
+  set.push(...windowChanges(base, cur, sa, sb));
   if (set.length) row(null, '－', 'chg', '画面の設定変更', set.join('\n'));
   [...sb.parts].sort(byNoThenPos).forEach((p) => {
     const fb = partFacts(cur, p, state);
@@ -3774,8 +3902,11 @@ function normalizeScreen(src, i, items = []) {
   const parts = [];
   order.forEach((k) => { parts[k] = normalizePart(raw[k], items); });
   dropBadFrameRefs(parts);
+  const { overlay, ...rest } = s;
+  const ov = normalizeOverlay(overlay); // 下に重ねる画面（第 16 段階）。ない・形の違うものは外す（指す先の画面は normalizeDesign で確かめる）
   return {
-    ...s,
+    ...rest,
+    ...(ov ? { overlay: ov } : {}),
     id: str(s.id) || newId('s'),
     name: typeof s.name === 'string' ? s.name : `画面 ${i + 1}`,
     device,
@@ -3809,7 +3940,7 @@ function normalizeDesign(src) {
   const createdAt = str(d.createdAt) || nowIso();
   const items = uniqueItemIds((Array.isArray(d.items) ? d.items : []).filter(isObj).map(normalizeItem));
   const screens = Array.isArray(d.screens) && d.screens.length
-    ? uniquePartIds(uniqueIds(d.screens.map((s, i) => normalizeScreen(s, i, items)), 's'))
+    ? dropBadOverlays(uniquePartIds(uniqueIds(d.screens.map((s, i) => normalizeScreen(s, i, items)), 's')))
     : [createScreenData(FIRST_SCREEN_NAME)];
   const id = str(d.id) || newId('d');
   // ボタン・リンクの文字の移る先がこの画面設計を指しているときは ''（この画面設計）に直す（複製・取り込みで id が変わっても、自分を指し続けるように）
@@ -4567,7 +4698,7 @@ function setDesignLook(d, look) {
   const dy = to.band - from.band;
   if (!dy) return;
   d.screens.forEach((sc) => {
-    if (!sc.showHeader) return;
+    if (!sc.showHeader || isWindowScreen(sc)) return; // 小さなウィンドウの位置は、帯の高さで変わらない（第 16 段階）
     const move = (x) => (x.y >= from.band ? { ...x, y: x.y + dy } : x);
     sc.parts = sc.parts.map(move);
     sc.callouts = sc.callouts.map(move);
@@ -4999,13 +5130,14 @@ const actions = {
     });
     return done;
   },
-  // patch は { name, device, height, showHeader, tablePos, itemView } のどれか
+  // patch は { name, device, height, showHeader, tablePos, itemView, overlay } のどれか。
+  // overlay は下に重ねる画面とウィンドウの位置と大きさ（{ under, pos, w, h, foot } の一部。第 16 段階）。小さなウィンドウの画面の機器の種類は、下の画面に合わせる（device は使わない）
   updateScreen(designId, screenId, patch) {
     return mutateDesign(designId, (d) => {
       const i = d.screens.findIndex((x) => x.id === screenId);
       if (i < 0) return;
       let sc = d.screens[i];
-      if ('device' in patch && own(DEVICES, patch.device)) {
+      if ('device' in patch && own(DEVICES, patch.device) && !isWindowScreen(sc)) {
         sc = changeDevice(sc, patch.device);
         // 縦は、いちばん下の部品が入るまで画面を伸ばす（部品を上へ寄せて重ねないため）。
         // 横は、幅が狭くなって画面からはみ出す部品を画面の中へ寄せる（知らない種類の部品はそのまま）
@@ -5021,7 +5153,10 @@ const actions = {
       if ('showHeader' in patch) sc = { ...sc, showHeader: !!patch.showHeader };
       if ('tablePos' in patch) sc = { ...sc, tablePos: patch.tablePos === 'bottom' ? 'bottom' : 'right' };
       if ('itemView' in patch) sc = { ...sc, itemView: patch.itemView === 'show' ? 'show' : 'input' };
+      if (isObj(patch.overlay)) sc = withOverlay(d, sc, patch.overlay);
       d.screens[i] = sc;
+      // 機器の種類を変えた画面に重ねている小さなウィンドウも、同じ機器にする（ウィンドウの中のアイテムも一緒に動かす）
+      if ('device' in patch) d.screens.forEach((w, k) => { if (isWindowScreen(w) && w.overlay.under === sc.id) d.screens[k] = withOverlay(d, w, {}); });
     });
   },
   // ひな形から画面を足し、afterId の画面のすぐ後ろに入れる。名前はひな形の名前（白紙は「画面 3」のような番号）。戻り値は新しい画面の id
@@ -5062,7 +5197,8 @@ const actions = {
     const d = findDesign(store.state, designId);
     if (!d || d.screens.length < 2 || !findScreen(designId, screenId)) return false;
     return mutateDesign(designId, (dd, s) => {
-      dd.screens = dd.screens.filter((x) => x.id !== screenId);
+      // この画面を下に重ねていた小さなウィンドウは、ふつうの画面に戻す（アイテムは残る。第 16 段階）
+      dd.screens = dd.screens.filter((x) => x.id !== screenId).map((x) => (isWindowScreen(x) && x.overlay.under === screenId ? withoutOverlay(x) : x));
       const now = nowIso();
       clearScreenRefs(s, designId, screenId).filter((id) => id !== designId).forEach((id) => { findDesign(s, id).updatedAt = now; });
       clearStepRefs(s, designId, { screenId });
@@ -5687,14 +5823,13 @@ function selRects(sc, sel) {
     return o ? { k: x.k, id: x.id, x: o.x, y: o.y, w: o.w, h: o.h } : null;
   }).filter(Boolean);
 }
-// まとめて動かす幅を、部品は画面の中、吹き出しは範囲の中に収まるところまでにする
+// まとめて動かす幅を、部品は置ける範囲（partBounds）の中、吹き出しは範囲の中に収まるところまでにする
 function clampGroupMove(sc, rects, dx, dy) {
-  const maxW = Math.floor(sc.width / GRID) * GRID;
-  const maxH = Math.floor(sc.height / GRID) * GRID;
+  const pb = partBounds(sc);
   const b = calloutBounds(sc);
   let [lo, hi, lo2, hi2] = [-Infinity, Infinity, -Infinity, Infinity];
   rects.forEach((r) => {
-    const [x0, y0, x1, y1] = r.k === 'p' ? [0, 0, maxW, maxH] : [b.x0, b.y0, b.x1, b.y1];
+    const [x0, y0, x1, y1] = r.k === 'p' ? [pb.x0, pb.y0, pb.x1, pb.y1] : [b.x0, b.y0, b.x1, b.y1];
     lo = Math.max(lo, x0 - r.x); hi = Math.min(hi, x1 - r.x - r.w);
     lo2 = Math.max(lo2, y0 - r.y); hi2 = Math.min(hi2, y1 - r.y - r.h);
   });
@@ -5888,8 +6023,10 @@ function targetChip(target) {
 // selected（部品の id の Set）を渡すと、それらに選んだ印を付ける。縁のつまみは gripId の部品だけ（1 つだけ選んだとき）
 // diff（designDiff の screens の 1 つ）を渡すと、前の版から足した・変えた部品の右上に「新」「変」の札を付ける
 // 見た目（第 12 段階）が標準でないときは .screen に見た目のクラス（look-sf・look-kt）を、表示の形の画面には view-show を付ける（色と枠は CSS で上書きする）
+// 小さなウィンドウの画面（第 16 段階）は、下に重ねる画面とウィンドウの枠を先に描き、この画面のアイテムをその上に重ねる（この画面の帯は描かない）
 function screenHtml(design, screen, { grid = false, height = screen.height, selectedId = null, selected = null, gripId = selectedId, marks = false, diff = null } = {}) {
-  const band = screen.showHeader ? bandHtml(design, screen) : '';
+  const win = isWindowScreen(screen) ? underHtml(design, screen, height) + windowFrameHtml(screen) : '';
+  const band = screen.showHeader && !win ? bandHtml(design, screen) : '';
   const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
   // 札は部品の右上の角から外へ出す。画面の上・右の端の部品では、画面の外へ出た分が切れるので内側に寄せる
   const edge = (p) => `${p.y < DF_OUT ? ' df-t' : ''}${p.x + p.w + DF_OUT > screen.width ? ' df-r' : ''}`;
@@ -5900,7 +6037,29 @@ function screenHtml(design, screen, { grid = false, height = screen.height, sele
   if (grid) cls.push('grid');
   if (lookOf(design).cls) cls.push(lookOf(design).cls);
   if (screen.itemView === 'show') cls.push('view-show');
-  return `<div class="${cls.join(' ')}" style="width:${screen.width}px;height:${height}px">${band}${parts}</div>`;
+  return `<div class="${cls.join(' ')}" style="width:${screen.width}px;height:${height}px">${win}${band}${parts}</div>`;
+}
+
+// 小さなウィンドウの下に重ねる画面。描くだけなので、アイテムに番号・違いの札・選ぶ印・data-part-id を付けない（押すと外の画面に当たり、選ばれない）。
+// 下の画面の見た目のクラスと項目の表示のクラスを持つ入れ子の要素で描く（.view-show の CSS は、その要素の直の子のアイテムにだけ効く）。高さはこの画面に合わせて切る
+function underHtml(design, sc, height) {
+  const u = underScreenOf(design, sc);
+  if (!u) return '';
+  const cls = ['sc-under'];
+  if (lookOf(design).cls) cls.push(lookOf(design).cls);
+  if (u.itemView === 'show') cls.push('view-show');
+  const order = [...u.parts.filter(isContainerPart), ...u.parts.filter((p) => !isContainerPart(p))];
+  const parts = order.map((p) => partHtml({ ...resolvePart(design, p), no: null }).replace(/ data-part-id="[^"]*"/, '')).join('');
+  return `<div class="${cls.join(' ')}" aria-hidden="true" style="width:${u.width}px;height:${height}px">${u.showHeader ? bandHtml(design, u) : ''}${parts}</div>`;
+}
+// ウィンドウの枠（見出しの行・✕・下のボタンの行）。真ん中のときだけ、枠の外側の大きな影で下の画面に灰色をかける
+// （別の要素の幕は、縮めた絵の中で写らないことがあったため。第 16 段階のモックで確かめた）
+function windowFrameHtml(sc) {
+  const r = windowRect(sc);
+  const o = sc.overlay;
+  const cls = `sc-win sc-win-${o.pos}${o.pos === 'center' ? ' dim' : ''}`;
+  return `<div class="${cls}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"><div class="sc-win-h"><b>${esc(sc.name)}</b><span class="sc-win-x">✕</span></div>`
+    + `${o.foot ? '<div class="sc-win-f"></div>' : ''}</div>`;
 }
 
 // 画面の帯（見た目ごとの形。q106）。Salesforce と kintone の帯は 2 行で、ロゴの所は点線の「ロゴ」の箱（ロゴ・アイコン・字は写さず、形を似せる）
@@ -10112,6 +10271,10 @@ function duplicateScreenAndOpen(screenId) {
   if (id) openScreen(id);
 }
 
+// 消す画面を下に重ねている小さなウィンドウの知らせ（第 16 段階）。ウィンドウの画面は、ふつうの画面に戻る
+const windowsOverNames = (d, s) => windowsOver(d, s).map((w) => `「${w.name}」`).join('・');
+const windowsWarnHtml = (d, s) => (windowsOver(d, s).length
+  ? `<p class="warn">小さなウィンドウの画面 ${esc(windowsOverNames(d, s))} が、この画面を下に重ねています。それらの画面は、ふつうの画面に戻ります（アイテムは残ります）。</p>` : '');
 // 画面を消す前の確かめの窓（画像 q32）。開いている画面を消したときは、すぐ下の画面（なければすぐ上）を開く
 async function deleteScreenWithConfirm(screenId) {
   const d = currentDesign();
@@ -10131,6 +10294,7 @@ async function deleteScreenWithConfirm(screenId) {
     body: `<p>${what ? `この画面の${what}が消えます。` : 'この画面には、アイテムも吹き出しもありません。'}</p>
       <p>データベースの項目は、項目一覧に残ります（ほかの画面に置いたアイテムもそのままです）。</p>
       ${links ? `<p class="warn">ボタンとリンク ${links} 個が、この画面を移動先にしています${by}。移動先は外れます。</p>` : ''}
+      ${windowsWarnHtml(d, s)}
       <p style="color:#64748b;font-size:12px;margin-top:6px">削除した後でも、元に戻す（Ctrl+Z）で戻せます。</p>`,
   });
   if (!ok) return;
@@ -10751,8 +10915,9 @@ function renderSettings(d) {
 
 function renderScreenSettings(d, el) {
   const s = currentScreen();
+  const win = isWindowScreen(s); // 小さなウィンドウの画面は、機器の種類を下の画面に合わせ、ヘッダーの欄を出さない（第 16 段階）
   const devices = Object.entries(DEVICES).map(([key, v]) => `
-    <label><input type="radio" name="device" value="${key}" data-field="device"${s.device === key ? ' checked' : ''}><span>${v.label}<small>幅 ${v.width}</small></span></label>`).join('');
+    <label><input type="radio" name="device" value="${key}" data-field="device"${s.device === key ? ' checked' : ''}${win ? ' disabled' : ''}><span>${v.label}<small>幅 ${v.width}</small></span></label>`).join('');
   const tablePos = [['right', '画面の右'], ['bottom', '画面の下']].map(([v, l]) => `
     <label><input type="radio" name="table-pos" value="${v}" data-field="table-pos"${s.tablePos === v ? ' checked' : ''}><span>${l}</span></label>`).join('');
   const itemViews = Object.entries(ITEM_VIEWS).map(([v, l]) => `
@@ -10775,15 +10940,39 @@ function renderScreenSettings(d, el) {
     <section>
       <div class="panel-title">画面の設定</div>
       <label class="field"><span>画面の名前</span><input type="text" data-field="screen-name" maxlength="${NAME_MAX}" value="${esc(s.name)}"></label>
-      <div class="field"><span>機器の種類</span><div class="seg">${devices}</div></div>
+      ${overlaySettingsHtml(d, s)}
+      <div class="field"><span>機器の種類</span><div class="seg">${devices}</div>${win ? '<span class="hint">下に重ねる画面と同じ機器にします。</span>' : ''}</div>
       <div class="field"><span>高さ</span><span class="height-value" id="side-height">${s.height} ドット</span>
         <span class="hint">画面の下の縁をドラッグすると、8 ドットずつ伸ばせます。</span></div>
       <div class="field"><span>項目の表示</span><div class="seg">${itemViews}</div>
         <span class="hint">この画面の入力欄のアイテムを、すべて選んだ表示で描きます（「値だけ表示」は詳細の画面に使います）。</span></div>
-      <label class="check"><input type="checkbox" data-field="screen-header"${s.showHeader ? ' checked' : ''}><span>ヘッダーを表示する<small class="sub">（${BAND_WORDS[lookOf(d).id]}）</small></span></label>
+      ${win ? '' : `<label class="check"><input type="checkbox" data-field="screen-header"${s.showHeader ? ' checked' : ''}><span>ヘッダーを表示する<small class="sub">（${BAND_WORDS[lookOf(d).id]}）</small></span></label>`}
       <div class="field" style="margin-top:10px"><span>設定一覧の位置</span><div class="seg">${tablePos}</div></div>
     </section>`;
   bindTargetPicker(el, (t) => actions.updateDesignInfo(d.id, { target: t }));
+}
+
+// 右のパネルの「下に重ねる画面」と、選んだときだけ出すウィンドウの欄（第 16 段階。画像 q128 の案A）。
+// 選べない画面（小さなウィンドウの画面）は灰色にする。ほかの画面の下に重ねられている画面は、選ぶ欄ごと灰色にして理由を書く
+function overlaySettingsHtml(d, s) {
+  const over = windowsOver(d, s);
+  const cur = isWindowScreen(s) ? s.overlay.under : '';
+  const opts = d.screens.filter((x) => x.id !== s.id).map((x) => `<option value="${esc(x.id)}"${x.id === cur ? ' selected' : ''}${isWindowScreen(x) ? ' disabled' : ''}>${esc(x.name)}${isWindowScreen(x) ? '（小さなウィンドウ）' : ''}</option>`).join('');
+  const hint = over.length
+    ? `この画面は「${esc(over[0].name)}」の下に重ねられているので、小さなウィンドウにできません。`
+    : '選ぶと、この画面は、選んだ画面の上に開く小さなウィンドウになります。ウィンドウの見出しは、この画面の名前です。下の画面は描くだけで、ここではアイテムを置けません。';
+  const pick = `<label class="field"><span>下に重ねる画面</span><select data-field="screen-under"${over.length ? ' disabled' : ''}><option value="">なし</option>${opts}</select><span class="hint">${hint}</span></label>`;
+  if (!cur) return pick;
+  const o = s.overlay;
+  const pos = Object.entries(WINDOW_POS).map(([v, l]) => `<label><input type="radio" name="win-pos" value="${v}" data-field="win-pos"${o.pos === v ? ' checked' : ''}><span>${l}</span></label>`).join('');
+  const r = windowRect(s);
+  const size = `<div class="row2"><label class="field"><span>ウィンドウの幅</span><input type="number" data-field="win-w" step="8" min="${WIN_MIN.w}" value="${r.w}"></label>`
+    + (o.pos === 'right' ? '' : `<label class="field"><span>ウィンドウの高さ</span><input type="number" data-field="win-h" step="8" min="${WIN_MIN.h}" value="${r.h}"></label>`) + '</div>';
+  return `${pick}
+      <div class="field"><span>ウィンドウの位置</span><div class="seg">${pos}</div>
+        <span class="hint">${o.pos === 'center' ? '真ん中のときは、下の画面に灰色をかけます。' : o.pos === 'right' ? '画面の右の端に、上から下まで開きます。' : '画面の右下に開きます。下の画面に灰色はかけません。'}</span></div>
+      ${size}
+      <label class="check"><input type="checkbox" data-field="win-foot"${o.foot ? ' checked' : ''}><span>下のボタンの行を表示する</span></label>`;
 }
 
 // ── 選んだ部品の設定の欄（画像 q16）──
@@ -11458,6 +11647,14 @@ function saveSideField(e) {
   if (field === 'device' && v !== s.device) actions.updateScreen(d.id, s.id, { device: v });
   if (field === 'screen-header') actions.updateScreen(d.id, s.id, { showHeader: e.target.checked });
   if (field === 'table-pos' && v !== s.tablePos) actions.updateScreen(d.id, s.id, { tablePos: v });
+  // 下に重ねる画面とウィンドウの欄（第 16 段階）。幅と高さは、収まる大きさに直して右のパネルに出し直す
+  if (field === 'screen-under') actions.updateScreen(d.id, s.id, { overlay: { under: v } });
+  if (field === 'win-pos') actions.updateScreen(d.id, s.id, { overlay: { pos: v } });
+  if (field === 'win-w' || field === 'win-h') {
+    actions.updateScreen(d.id, s.id, { overlay: { [field === 'win-w' ? 'w' : 'h']: Number(v) } });
+    renderSettings(currentDesign()); // 収まらない大きさを打ったときも、直した大きさを出す（中身が変わらないときは描き直されないため）
+  }
+  if (field === 'win-foot') actions.updateScreen(d.id, s.id, { overlay: { foot: e.target.checked } });
 }
 
 // 選んだ部品の設定の欄の変更。文字の欄は右の欄を描き直さずに保存し（打っている欄が作り直されないため）、
@@ -12028,7 +12225,7 @@ function onSelectModeMouseDown(ev) {
   const handle = ev.target.closest('[data-co-handle]');
   if (handle && !additive) { startCalloutLink(ev, handle.dataset.coHandle); return; }
   const coEl = ev.target.closest('#stage .callout');
-  const partEl = coEl ? null : ev.target.closest('#stage .screen .part');
+  const partEl = coEl ? null : ev.target.closest('#stage .screen .part[data-part-id]');
   const hit = coEl ? { k: 'c', id: coEl.dataset.calloutId } : partEl ? { k: 'p', id: partEl.dataset.partId } : null;
   if (hit) {
     if (additive) { startAdditive(ev, hit); return; }
@@ -12045,7 +12242,7 @@ function onSelectModeMouseDown(ev) {
 // 前の版を見ている間に画面の上を押したとき: 部品・吹き出しを選ぶだけ（右の欄で設定を見る。動かせない）
 function onViewModeMouseDown(ev) {
   const coEl = ev.target.closest('#stage .callout');
-  const partEl = coEl ? null : ev.target.closest('#stage .screen .part');
+  const partEl = coEl ? null : ev.target.closest('#stage .screen .part[data-part-id]');
   if (coEl || partEl) {
     ev.preventDefault();
     setSelection([coEl ? { k: 'c', id: coEl.dataset.calloutId } : { k: 'p', id: partEl.dataset.partId }]);
@@ -12244,7 +12441,7 @@ function dragCalloutLink(ev) {
   const x = (ev.clientX - r.left) / ui.zoom - CALLOUT_ZONE;
   const y = (ev.clientY - r.top) / ui.zoom - CALLOUT_ZONE;
   const hit = document.elementFromPoint ? document.elementFromPoint(ev.clientX, ev.clientY) : null;
-  const partEl = hit && hit.closest ? hit.closest('#stage .screen .part') : null;
+  const partEl = hit && hit.closest ? hit.closest('#stage .screen .part[data-part-id]') : null;
   drag.target = partEl ? partEl.dataset.partId : null;
   redrawCalloutLines({ temp: { x1: c.x + c.w / 2, y1: c.y + c.h / 2, x2: x, y2: y } });
 }
@@ -12377,7 +12574,7 @@ function dropPlace(done, ev) {
     const r = scr.getBoundingClientRect();
     const x = (ev.clientX - r.left) / ui.zoom;
     const y = (ev.clientY - r.top) / ui.zoom;
-    const partEl = hit.closest('#stage .screen .part');
+    const partEl = hit.closest('#stage .screen .part[data-part-id]');
     // 部品の上に落としたときは、部品と重ならないように右上へずらして置き、その部品につなぐ
     if (partEl) placeCalloutAt({ x: x + 40, y: y - 120 }, partEl.dataset.partId);
     else placeCalloutAt({ x: x - PLACE_GRAB / ui.zoom, y: y - PLACE_GRAB / ui.zoom }, null);
@@ -13271,7 +13468,8 @@ function exportScreenPages(d, L) {
     const info = df ? df.result.screens[s.id] : null;
     const body = screenPageBody(printScreenComposite(d, s, 'p' + page, measured, info && { info, label: df.label }, aw, ah), aw, ah, measured);
     const name = `${i + 1}　${esc(s.name)}`;
-    const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`;
+    const under = underScreenOf(d, s); // 小さなウィンドウの画面は、どの画面の上に開くかを書く（第 16 段階）
+    const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${under ? `・「${esc(under.name)}」の上に開く小さなウィンドウ` : ''}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`;
     return pageFrame({ P, title: name, sub, body: body.html, left: `${esc(d.name)} ／ ${name}`, right: `${page} / ${grand}`, headExtra: diffSumHtml(df, info) });
   });
 }
@@ -16168,6 +16366,8 @@ function aiScreenOp(tx, op) {
       // その画面設計にも「AI が直す前の状態」の行を残し（そこから戻せるように）、返事で知らせる
       const others = screenRefsInto(store.state, id, sc.id).filter((x) => x.design.id !== id);
       const befores = others.map((x) => aiBeforeRow(tx.ctx, x.design)).filter(Boolean);
+      const wins = windowsOverNames(d(), sc); // この画面を下に重ねている小さなウィンドウは、ふつうの画面に戻る（第 16 段階）
+      if (wins) tx.warnings.push(`小さなウィンドウの画面 ${wins} が、この画面を下に重ねていたので、ふつうの画面に戻しました（アイテムは残っています）。`);
       actions.deleteScreen(id, sc.id);
       befores.forEach(aiAddBeforeRow);
       if (others.length) {
@@ -18194,6 +18394,7 @@ function exposeForTest() {
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     KINTONE_TYPES, kintoneChoices, kintoneTypeOf, kintoneCodeOf, kintoneCodeOk, kintoneCodes, isKintoneDesign,
+    WINDOW_POS, windowRect, partBounds, clampGroupMove,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     setMaterialWaitMs: (ms) => { materialWaitMs = ms; },
     ready: true,
