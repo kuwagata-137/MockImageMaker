@@ -15893,6 +15893,8 @@ const aiFirstRowY = (d, sc) => (isWindowScreen(sc) ? partBounds(sc).y0 + AI_FIRS
   : sc.showHeader ? bandHeight(d, sc) + AI_FIRST_ROW_Y - LOOKS[0].band : AI_FIRST_ROW_Y_NOHEADER);
 // 並べる範囲（第 16 段階）。x と width は列を数える左の端と幅（ふつうの画面は画面、小さなウィンドウの画面はウィンドウ）。top は幅いっぱいの種類を最初に置く y
 // （ヘッダー・ウィンドウの見出しの行のすぐ下）。小さなウィンドウの画面では、bottom はアイテムを置ける下の端（下のボタンの行があれば、その上）、foot は下のボタンの行の上の端
+// 小さなウィンドウの画面に 1 列で並べるとき、ウィンドウの中の幅に広げる種類（説明文・テキスト〔複数行〕。第 17 段階。q137 の②）
+const WINDOW_WIDE_TYPES = ['desc', 'text2'];
 function aiLayoutArea(d, sc) {
   if (!isWindowScreen(sc)) return { x: 0, width: sc.width, top: sc.showHeader ? bandHeight(d, sc) : 0, bottom: null, foot: null };
   const r = windowRect(sc);
@@ -17054,8 +17056,11 @@ function aiLayout(tx, designId, screenId, layout, mode) {
   const above = sc.parts.filter((p) => area.foot == null || p.y < area.foot);
   if (footRow && above.length < sc.parts.length) throw aiBad('ウィンドウの下のボタンの行には、もうアイテムがあります。mode "replace" で置き直すか、edit_parts で変更してください。');
   const startY = above.length ? Math.ceil((Math.max(...above.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : aiFirstRowY(d, sc);
+  // 小さなウィンドウの画面に 1 列で並べるとき（columns 1 か、ウィンドウが狭くて 1 列になるとき）は、説明文とテキスト（複数行）をウィンドウの中の幅（ウィンドウの幅 − 64）に広げる
+  // （ひな形「承認申請のウィンドウ」と同じ幅。第 17 段階。画像 q137 の②）
+  const winWide = area.rect && layoutColumns(columns, area.width) === 1 ? Math.floor((area.width - TPL_LEFT * 2) / GRID) * GRID : 0;
   // グループ枠と縦に重ねる形は、列の幅に広げて中身を layoutStack で重ね、その高さを行の高さにする。置いた後に中身を置き直し、見出しのボタンを重ねる
-  const inner = (s) => ({ type: s.type, w: s.w0, h: s.h0 });
+  const inner = (s) => ({ type: s.type, w: winWide && WINDOW_WIDE_TYPES.includes(s.type) ? winWide : s.w0, h: s.h0 });
   const blocksOf = (s) => (s.stack ? s.stack : [s]);
   const sizeOf = (s) => (s.stack || s.frame != null
     ? { type: 'block', fill: true, heightAt: (w) => layoutStack(blocksOf(s), { x: 0, w, startY: 0, sizeOf: inner }).nextY - TPL_GAP }

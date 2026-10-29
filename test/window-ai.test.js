@@ -146,8 +146,8 @@ test('layout_screen: 手引きの小さなウィンドウの例は、そのま�
   const r = await call('layout_screen', { design: 'd1', screen: 's2', layout: example });
   const ps = sc('s2').parts;
   assert.deepEqual(ps.map((p) => [p.type, p.no, p.x, p.y, p.w]), [
-    ['desc', null, 352, 264, 400], ['user', 1, 352, 336, 320], ['text2', 2, 352, 424, 400], ['button', 3, 712, 568, 96], ['button', 4, 824, 568, 112],
-  ], '最初の行は見出しの行の下に 24（184＋56＋24）、左端はウィンドウの左から 32。ボタンは下のボタンの行に、右から 24・間 16（キャンセルの幅は文字に合わせて 112）');
+    ['desc', null, 352, 264, 576], ['user', 1, 352, 336, 320], ['text2', 2, 352, 424, 576], ['button', 3, 712, 568, 96], ['button', 4, 824, 568, 112],
+  ], '最初の行は見出しの行の下に 24（184＋56＋24）、左端はウィンドウの左から 32。説明文とテキスト（複数行）はウィンドウの中の幅 576（q137 の②）。ボタンは下のボタンの行に、右から 24・間 16（キャンセルの幅は文字に合わせて 112）');
   assert.deepEqual(r.createdItems.map((it) => it.name), ['承認者', 'コメント']);
   assert.equal(ps[4].props.screenId, 's1', 'キャンセルの移動先は下の画面');
   // 下のボタンの行にアイテムがあるときに、ボタンの行を書くと断る。ウィンドウの下の端を超える並べ方も断る（どちらも何も変わらない）
@@ -182,7 +182,20 @@ test('layout_screen: 小さなウィンドウの中の大きな画像と検索�
   await call('layout_screen', { design: 'd1', screen: 's2', layout: { rows: [[{ type: 'hero', props: { search: false } }], [{ type: 'desc', label: '説明' }]] } });
   const [hero, desc] = sc('s2').parts;
   assert.deepEqual([hero.x, hero.y, hero.w], [800, 56, 480], '右の端のウィンドウ（x 800・幅 480）の見出しの行の下');
-  assert.deepEqual([desc.x, desc.y], [832, 400]);
+  assert.deepEqual([desc.x, desc.y, desc.w], [832, 400, 416], '説明文はウィンドウの中の幅（480 − 64）');
+  app.close();
+});
+// 第 17 段階（画像 q137 の②）
+test('layout_screen: ウィンドウの中の幅に広げるのは、小さなウィンドウに 1 列で並べたときの説明文とテキスト（複数行）だけ。2 列のウィンドウとふつうの画面は今のまま', async () => {
+  const { app, call, sc, screenOp } = await boot();
+  const rows = [[{ type: 'desc', label: '説明' }], [{ item: 'メモ', type: 'text2' }], [{ item: '件名' }]];
+  await screenOp({ screen: 's2', overlay: { under: 's1', pos: 'center', width: 960, foot: false } });
+  await call('layout_screen', { design: 'd1', screen: 's2', layout: { columns: 2, rows } });
+  assert.deepEqual(sc('s2').parts.map((p) => [p.type, p.w]), [['desc', 400], ['text2', 400], ['text1', 320]], '幅 960 のウィンドウに 2 列');
+  await call('layout_screen', { design: 'd1', screen: 's2', layout: { columns: 1, rows }, mode: 'replace' });
+  assert.deepEqual(sc('s2').parts.map((p) => [p.type, p.w]), [['desc', 896], ['text2', 896], ['text1', 320]], '1 列なら 960 − 64。テキスト（1行）は今のまま');
+  await call('layout_screen', { design: 'd1', screen: 's3', layout: { rows } });
+  assert.deepEqual(sc('s3').parts.map((p) => [p.type, p.w]), [['desc', 400], ['text2', 400], ['text1', 320]], 'ふつうの画面は今のまま');
   app.close();
 });
 
