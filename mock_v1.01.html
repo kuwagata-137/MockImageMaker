@@ -739,9 +739,9 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .ptm{border-color:#e3e7e8;border-radius:0}.look-kt .ptm .ptm-ic{border-radius:0;display:inline-flex}.look-kt .ptm b{color:#333}.look-kt .ptm small{color:#666}
 /* 記事の一覧: 外の枠と見出しの行はグループ枠と同じ。説明を出さない形は 日付・題名 の 1 行 */
 .pat-list{flex:1;min-height:0;overflow:hidden;padding:0 16px}
-.pat-i{padding:11px 0;border-bottom:1px solid #e2e8f0}
+.pat-i{padding:9px 0;border-bottom:1px solid #e2e8f0}
 .pat-i a{display:block;color:#1d4ed8;font-size:14.5px;text-decoration:underline;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pat-i p{margin:3px 0 2px;font-size:13px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pat-i p{margin:2px 0 1px;font-size:13px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pat-i small{font-size:12px;color:#64748b}.pat-i small em{font-style:normal;margin-right:10px;padding:1px 8px;border-radius:10px;background:#f1f5f9;color:#475569}
 .pat-i.short{display:flex;gap:14px;align-items:baseline}.pat-i.short small{flex-shrink:0}
 .pat-more{height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13.5px;color:#1d4ed8;border-top:1px solid #e2e8f0}
@@ -2195,7 +2195,8 @@ function recordHeadButtons(head, buttons) {
 function placePartIn(sc, design, { type, x, y, w, h, itemId = null, tableKind = 'subtable', label, props, view, sample }) {
   const t = partType(type);
   const bottom = y + (h || t.h) + TPL_LEFT;
-  if (bottom > sc.height) sc.height = snapHeight(Math.ceil(bottom / GRID) * GRID, sc.device);
+  // 小さなウィンドウの画面は伸ばさない（アイテムはウィンドウの中に置き、ウィンドウは機器の 1 画面分の中にあるため。第 16 段階）
+  if (bottom > sc.height && !isWindowScreen(sc)) sc.height = snapHeight(Math.ceil(bottom / GRID) * GRID, sc.device);
   const p = createPartData(type, sc, { x, y }, itemId, { tableKind, design });
   if (label != null) p.label = label;
   if (sample) p.sample = sample;

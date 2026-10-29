@@ -14,7 +14,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const HTML_NAME = PKG.build.files.find((f) => f.endsWith('.html'));
 const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
-// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes・doc・looks・kintone・crm・dash をカンマで区切る）]
+// 引数: [出力先のフォルダ] [--only=場面の組の名前（home・editor・parts・db・parts2・callout・multi・map・flow・screens・export・revisions・ai・systems・toolbar・materials・notes・doc・looks・kintone・crm・dash・portal をカンマで区切る）]
 // ai の場面（94〜100）は tools/shoot-app-ai.js、systems の場面（107〜133。システムとスイムレーン図）は tools/shoot-app-systems.js にある
 // toolbar の場面（134〜137）は、編集の画面のメニューバーを窓の幅ごとに撮る（q73・q74）
 // materials の場面（138〜149。システムの画面の「資料」の入口。第 9 段階の後半・画像 q67。164〜167 は MPD に出力・画像 q82。
@@ -27,6 +27,9 @@ const VERSION = HTML_NAME.replace(/^mock_v|\.html$/g, '');
 // 第 14 段階・画像 q115〜q120）は tools/shoot-app-crm.js にある。parts2 の場面 211 は、詳細画面用のアイテム（buildParts2 の「詳細」の画面）
 // dash の場面（212〜234。ひな形「商談のかんばん」「ホームのダッシュボード」・カレンダー・メールの作成欄・右のパネル・アイテム一覧の組・「画面を追加する」のウィンドウ・
 // AI が並べたかんばんとダッシュボード。第 15 段階・画像 q123〜q127）は tools/shoot-app-dash.js にある。parts2 の場面 235 は、カレンダーとメールの作成欄（buildParts2 の「予定」の画面）
+// portal の場面（237〜256。ひな形「お客さまポータルのトップ」「承認申請のウィンドウ」「AI のチャットのウィンドウ」・右の端のウィンドウ・小さなウィンドウの編集の画面と PDF と縮小画像と画面遷移図・
+// 右のパネル・アイテム一覧の組・「画面を追加する」のウィンドウ・AI が並べた例。第 16 段階・画像 q128〜q131）は tools/shoot-app-portal.js にある。
+// parts2 の場面 236 は、ポータル画面用のアイテム（buildParts2 の「ポータル」の画面）
 const ARGS = process.argv.slice(2);
 const OUT = path.resolve(ARGS.find((a) => !a.startsWith('--')) || path.join(ROOT, 'screenshots'));
 const ONLY = (ARGS.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
@@ -359,7 +362,7 @@ async function buildParts2(page) {
       kind: item('radio', '区分', { options: ['法人', '個人'] }), staff: item('user', '担当者'), amount: item('number', '合計金額', { unit: '円' }),
     };
     const sc = (name) => ({ id: 's-' + name, name, device: 'pc', width: 1280, height: 800, showHeader: true, tablePos: 'right', parts: [], callouts: [] });
-    store.commit((s) => { const d = s.designs.find((x) => x.id === did); d.screens = [sc('一覧'), sc('新規登録'), sc('進捗'), sc('グラフ'), sc('詳細'), sc('予定')]; });
+    store.commit((s) => { const d = s.designs.find((x) => x.id === did); d.screens = [sc('一覧'), sc('新規登録'), sc('進捗'), sc('グラフ'), sc('詳細'), sc('予定'), { ...sc('ポータル'), height: 1160 }]; });
     const put = (sid, type, x, y, patch, w, h) => {
       const pid = a.addPart(did, sid, type, { x, y });
       if (patch) a.updatePart(did, sid, pid, patch);
@@ -404,6 +407,11 @@ async function buildParts2(page) {
     // 一覧画面用のカレンダーと、詳細画面用のメールの作成欄（第 15 段階）
     put('s-予定', 'calendar', 32, 64, null, 680, 520);
     put('s-予定', 'mail', 744, 64, null, 504, 440);
+    // ポータル画面用のアイテム（第 16 段階）。大きな画像と検索欄は、置くと画面の幅いっぱいになる
+    put('s-ポータル', 'hero', 0, 40);
+    put('s-ポータル', 'tileMenu', 32, 392);
+    put('s-ポータル', 'articles', 32, 584);
+    put('s-ポータル', 'chat', 848, 584);
     // 関連レコード一覧のために、顧客管理を作る
     const cid = a.createDesign('顧客管理', 'kintone');
     const ccode = a.addItem(cid, 'text1');
@@ -446,6 +454,9 @@ async function shootParts2(browser) {
   await page.click('.sl-item[data-id="s-予定"]');
   await page.evaluate(() => window.__test__.selectPart(null));
   await shot(page, '235_後半のアイテム_カレンダーとメールの作成欄_40%');
+  await page.click('.sl-item[data-id="s-ポータル"]');
+  await page.evaluate(() => window.__test__.selectPart(null));
+  await shot(page, '236_後半のアイテム_ポータル画面用のアイテム_40%');
   for (let i = 0; i < 2; i++) await page.click('[data-action="zoom-out"]');
   await page.evaluate((id) => window.__test__.openDesign(id), ids.cid);
   await page.click('#stage .part.pt-table');
@@ -899,6 +910,7 @@ async function shootRevisions(browser) {
     if (wants('kintone')) await require('./shoot-app-kintone')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
     if (wants('crm')) await require('./shoot-app-crm')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
     if (wants('dash')) await require('./shoot-app-dash')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
+    if (wants('portal')) await require('./shoot-app-portal')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
   } finally {
     await browser.close();
   }
