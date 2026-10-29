@@ -1472,6 +1472,7 @@ body.xp-doc .pg+.pg{break-before:page}
 //                              単体で開いて編集できる HTML（埋め込み・保存し直す）・HTML の取り込み（確かめの窓）
 //   9. 命令（runCommand）    … ボタン・キー・アプリのメニューからの命令を 1 か所で受ける
 //  10. AI の窓口            … AI（Claude Code など）の頼みを受けて実行する（第 7 段階。AI設計基盤_設計書.md の 8・9 章）
+//  10-2. CRM の見本         … 「＋ 新しいシステム」で選ぶ CRM の見本のシステムを組む（第 17 段階。AI の窓口の中身を使い回す）
 //  11. 起動
 //  12. テスト用の窓口（window.__test__。テストのときだけ埋まる）
 // 手本: 保存と元に戻すと一覧の画面は CheckListMaker の index.html、
@@ -18808,6 +18809,188 @@ async function copyAiText(btn, text) {
   setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('done'); }, 2000);
 }
 
+// ── 10-2. CRM の見本（第 17 段階。画像 q132〜q135）───────────────────────────────
+// 「＋ 新しいシステム」のウィンドウで「CRM の見本」を選んだときに作るシステム。顧客・商談・問い合わせ・作業指示・ナレッジの画面設計 5 つ（画面 11 個）・
+// 役割 5 つ・スイムレーン図（工程 12 個・矢印 12 本）。会社・人・商品の名前は架空のもの（ひな形のサンプル値と同じ）。
+// 並べ方・項目・ステータス・スイムレーン図は、AI の窓口の中身（aiLayout・aiItemOp・aiProcessOp・aiScreenOp・aiPartOp・aiSwimStep・aiSwimEdges）で組む
+// （AI のツールの入力と同じ形で書ける。手引き "crm" の例とそろう）。人の操作なので、AI の印と「AI が直す前の状態」の行は付けない。
+// 画面設計どうしのつながり（ルックアップ・関連レコード一覧の元）は id で指す（同じ名前の画面設計がほかにあっても、見本の中だけでつなぐ。Claude が決めた）
+const CRM_SAMPLE = {
+  name: '顧客管理システム',
+  description: '架空の会社（空調の販売と修理）の顧客・商談・問い合わせ・作業指示・ナレッジをまとめる CRM の見本',
+  roles: ['お客さま', 'システム', 'サポート', '作業員', '営業'],
+  designs: {
+    customer: ['顧客', '取引先の会社と、その担当者'],
+    deal: ['商談', '顧客との商談（見込みから受注まで）'],
+    case: ['問い合わせ', 'お客さまからの問い合わせ（受付からクローズまで）'],
+    work: ['作業指示', '修理・点検の作業の指示と報告'],
+    knowledge: ['ナレッジ', 'よくある質問・故障の直し方の記事と、お客さま向けのサポートサイト'],
+  },
+};
+const CRM_SAMPLE_COMPANIES = ['株式会社サンプル商事', '架空工業株式会社', '見本物産株式会社', '株式会社テスト商会', '例示不動産株式会社', '株式会社モデル電機'];
+
+// 見本のシステムを作る。戻り値はシステムの id（前の版を見ている間など、作れないときは null）。
+// 全体で 1 回の変更（Ctrl+Z 1 回で、システムと画面設計 5 つが消える）。途中で失敗したら、store.batch が始める前の中身に戻す
+function buildCrmSample({ name = CRM_SAMPLE.name, description = CRM_SAMPLE.description, target = 'salesforce', look = 'salesforce' } = {}) {
+  if (store.realState || store.isViewing) return null;
+  const { result } = store.batch(() => {
+    const sysId = actions.createSystem({ name, description });
+    if (!sysId) return null;
+    CRM_SAMPLE.roles.forEach((r) => actions.addRole(sysId, r));
+    const make = (key) => {
+      const [dname, desc] = CRM_SAMPLE.designs[key];
+      const id = actions.createDesign(dname, target, { systemId: sysId, look });
+      actions.updateDesignInfo(id, { description: desc });
+      return id;
+    };
+    const ids = {
+      customer: crmSampleCustomer(make('customer')),
+      deal: crmSampleDeal(make('deal')),
+      case: crmSampleCase(make('case')),
+      work: crmSampleWork(make('work')),
+      knowledge: crmSampleKnowledge(make('knowledge')),
+    };
+    crmSampleLinks(ids);
+    crmSampleSwimlane(sysId, ids);
+    return sysId;
+  });
+  return result;
+}
+// AI の窓口の中身を、人の操作として呼ぶための小さな入れ物と道具（tx は design と warnings だけを使う）
+const crmTx = (designId) => ({ ctx: null, design: findDesign(store.state, designId), system: null, warnings: [] });
+const crmFirstScreen = (designId) => findDesign(store.state, designId).screens[0].id;
+const crmLayout = (designId, screenId, layout) => aiLayout(crmTx(designId), designId, screenId, layout, 'append');
+const crmScreen = (designId, screenId, patch) => aiScreenOp(crmTx(designId), { op: 'update', screen: screenId, ...patch });
+const crmItems = (designId, ops) => ops.forEach((op) => aiItemOp(crmTx(designId), op));
+// ひな形の画面を after の後ろに追加し、名前を付ける（ウィンドウのひな形は after の画面を下に重ねる）
+function crmAddScreen(designId, templateId, name, after) {
+  const sid = actions.addScreen(designId, templateId, after);
+  actions.updateScreen(designId, sid, { name });
+  return sid;
+}
+
+// 顧客: 顧客の一覧（検索欄・絞り込み・レコード一覧）・顧客の詳細（ひな形「顧客の詳細」。項目 8 つもひな形が作る）
+function crmSampleCustomer(id) {
+  const list = crmFirstScreen(id);
+  actions.updateScreen(id, list, { name: '顧客の一覧' });
+  const detail = crmAddScreen(id, 'crmDetail', '顧客の詳細', list);
+  crmLayout(id, list, { columns: 2, rows: [
+    [{ type: 'search' }, { type: 'filter' }],
+    [{ type: 'table', tableKind: 'records', label: '顧客の一覧', span: 2, rows: 6, props: { columns: ['顧客名', '顧客番号', '電話', '業種', '担当者'] },
+      samples: { 顧客名: CRM_SAMPLE_COMPANIES, 顧客番号: ['C-00125', 'C-00126', 'C-00131', 'C-00140', 'C-00152', 'C-00158'],
+        電話: ['03-1234-5678', '03-2345-6789', '045-123-4567', '048-234-5678', '03-3456-7890', '043-345-6789'],
+        業種: ['卸売業', '製造業', '小売業', '卸売業', '不動産業', '製造業'], 担当者: ['佐藤 花子', '田中 健', '佐藤 花子', '高橋 誠', '田中 健', '高橋 誠'] } }],
+  ] });
+  return { id, list, detail };
+}
+// 商談: 商談のかんばん（ひな形。項目と「段階」もひな形が作る）・商談の詳細（レコードの見出し・進捗バー・グループ枠・活動履歴・関連レコード一覧）・ホーム（ひな形「ホームのダッシュボード」）
+function crmSampleDeal(id) {
+  const first = crmFirstScreen(id);
+  const kanban = crmAddScreen(id, 'crmKanban', '商談のかんばん', first);
+  actions.deleteScreen(id, first);
+  const detail = crmAddScreen(id, 'blank', '商談の詳細', kanban);
+  crmScreen(id, detail, { itemView: 'show' });
+  const related = (label, columns, samples) => ({ type: 'table', tableKind: 'related', label, rows: 2, props: { display: 'tiles', columns }, samples });
+  crmLayout(id, detail, { columns: 3, rows: [
+    [{ type: 'recordHead', span: 3, props: { kind: '商談', name: '空調の入れ替え', items: ['取引先名', '金額', '完了予定日'], values: [CRM_SAMPLE_COMPANIES[0], '480', '2026-12-15'] },
+      buttons: [{ type: 'button', label: '編集' }, { type: 'button', label: '削除' }] }],
+    [{ type: 'steps', span: 3, current: '提案' }],
+    [{ span: 2, stack: [
+      { frame: '商談の情報', columns: 2, rows: [
+        [{ item: '商談名', sample: '空調の入れ替え' }, { item: '取引先名', sample: CRM_SAMPLE_COMPANIES[0] }],
+        [{ item: '金額', sample: '480' }, { item: '完了予定日', sample: '2026-12-15' }]] },
+      { type: 'activity' }] },
+    { stack: [
+      related('見積', ['見積番号', '金額', '提出日'], { 見積番号: ['Q-2026-118', 'Q-2026-097'], 金額: ['480 万円', '520 万円'], 提出日: ['2026-10-18', '2026-09-30'] }),
+      related('問い合わせ', ['件名', '状況'], { 件名: ['エアコンが冷えない', 'リモコンの交換'], 状況: ['対応中', 'クローズ'] })] }],
+  ] });
+  const home = crmAddScreen(id, 'crmHome', 'ホーム', detail);
+  return { id, kanban, detail, home };
+}
+// 問い合わせ: 問い合わせの詳細（ひな形「問い合わせ対応の 3 列」。項目とステータスもひな形が作る）・無償修理の承認申請（ひな形「承認申請のウィンドウ」）。
+// 問い合わせ番号は、ひな形がサンプルの項目を作った後に追加する（先に項目があると、ひな形はサンプルの項目を作らないため）
+function crmSampleCase(id) {
+  const first = crmFirstScreen(id);
+  const detail = crmAddScreen(id, 'crmCase', '問い合わせの詳細', first);
+  actions.deleteScreen(id, first);
+  crmItems(id, [{ op: 'add', type: 'text1', name: '問い合わせ番号' }, { op: 'move', item: '問い合わせ番号', index: 0 }]);
+  const approval = crmAddScreen(id, 'winApproval', '無償修理の承認申請', detail);
+  return { id, detail, approval };
+}
+// 作業指示: 作業指示の一覧（レコード一覧）・作業報告（一覧の右の端に開く小さなウィンドウ）。ステータスは 指示 → 作業中 → 報告済み → 完了
+function crmSampleWork(id) {
+  const list = crmFirstScreen(id);
+  actions.updateScreen(id, list, { name: '作業指示の一覧' });
+  crmItems(id, [['text1', '作業指示番号'], ['text1', '問い合わせ番号'], ['text1', '顧客名'], ['date', '訪問日'], ['user', '作業員']].map(([type, name]) => ({ op: 'add', type, name })));
+  aiProcessOp(crmTx(id), { op: 'set_states', states: WORK_ORDER_STATES });
+  WORK_ORDER_ACTIONS.forEach(([name, f, t, role]) => aiProcessOp(crmTx(id), { op: 'add_action', name, from: WORK_ORDER_STATES[f], to: WORK_ORDER_STATES[t], role }));
+  crmLayout(id, list, { columns: 2, rows: [
+    [{ type: 'search' }, { type: 'filter' }],
+    [{ type: 'table', tableKind: 'records', label: '作業指示の一覧', span: 2, rows: 5, props: { columns: ['作業指示番号', '問い合わせ番号', '顧客名', '訪問日', '作業員', 'ステータス'] },
+      samples: { 作業指示番号: ['W-0412', 'W-0413', 'W-0415', 'W-0416', 'W-0418'], 問い合わせ番号: ['00002934', '00002936', '00002940', '00002941', '00002945'],
+        顧客名: CRM_SAMPLE_COMPANIES.slice(0, 5), 訪問日: ['2026-10-22', '2026-10-23', '2026-10-23', '2026-10-24', '2026-10-27'],
+        作業員: ['伊藤 翔', '渡辺 大輔', '伊藤 翔', '渡辺 大輔', '伊藤 翔'], ステータス: ['報告済み', '作業中', '指示', '指示', '指示'] } }],
+  ] });
+  const report = crmAddScreen(id, 'blank', '作業報告', list);
+  crmScreen(id, report, { overlay: { under: list, pos: 'right', width: 480 } });
+  crmLayout(id, report, { rows: [
+    [{ item: '作業の日', type: 'date', sample: '2026-10-22' }],
+    [{ item: '作業の内容', type: 'text2', sample: '室外機の温度の部品を交換した。運転して、冷房が効くことを確かめた。' }],
+    [{ item: '写真', type: 'file' }],
+    { align: 'right', parts: [{ type: 'button', label: '報告する' }, { type: 'button', label: 'キャンセル', to: list }] },
+  ] });
+  return { id, list, report };
+}
+// ナレッジ: ホーム（ひな形「お客さまポータルのトップ」）・AI のアシスタント（ひな形「AI のチャットのウィンドウ」）。記事の項目（記事名・種類・本文・公開日）
+function crmSampleKnowledge(id) {
+  const first = crmFirstScreen(id);
+  actions.updateDesignInfo(id, { portal: { site: 'サポートサイト', menu: ['ホーム', 'よくある質問', '修理の申し込み', 'お問い合わせ'] } });
+  const top = crmAddScreen(id, 'portalTop', 'ホーム', first);
+  actions.deleteScreen(id, first);
+  const chat = crmAddScreen(id, 'winChat', 'AI のアシスタント', top);
+  crmItems(id, [{ op: 'add', type: 'text1', name: '記事名' }, { op: 'add', type: 'dropdown', name: '種類', props: { options: ['よくある質問', '故障の直し方', '申し込み', '保証'] } },
+    { op: 'add', type: 'text2', name: '本文' }, { op: 'add', type: 'date', name: '公開日' }]);
+  return { id, top, chat };
+}
+// つながり: ルックアップ 3 つと、関連レコード一覧の元（ひな形が名前で書いた元を、見本の画面設計の id に直す）
+function crmSampleLinks(ids) {
+  crmItems(ids.deal.id, [{ op: 'lookup', item: '取引先名', lookup: { design: ids.customer.id, key: '顧客名' } }]);
+  crmItems(ids.case.id, [{ op: 'lookup', item: '顧客名', lookup: { design: ids.customer.id, key: '顧客名', copies: [{ from: '電話', to: '電話' }] } }]);
+  crmItems(ids.work.id, [{ op: 'lookup', item: '問い合わせ番号', lookup: { design: ids.case.id, key: '問い合わせ番号', copies: [{ from: '顧客名', to: '顧客名' }] } }]);
+  crmRelatedTo(ids.customer.id, ids.customer.detail, { 商談: ids.deal.id, 問い合わせ: ids.case.id });
+  crmRelatedTo(ids.deal.id, ids.deal.detail, { 問い合わせ: ids.case.id });
+  crmRelatedTo(ids.case.id, ids.case.detail, { ほかの問い合わせ: ids.case.id, ナレッジの記事: ids.knowledge.id });
+}
+// 画面の関連レコード一覧のうち、名前が map にあるものの元を、その画面設計にする
+function crmRelatedTo(designId, screenId, map) {
+  findScreen(designId, screenId).parts.filter((p) => p.type === 'table' && p.tableKind === 'related' && own(map, p.label))
+    .forEach((p) => aiPartOp(crmTx(designId), screenId, { op: 'update', part: p.id, props: { db: map[p.label] } }));
+}
+// スイムレーン図（画像 q135）。問い合わせの受付から、修理・作業報告・クローズまで。工程の指す先は見本の画面設計・画面・ステータス
+function crmSampleSwimlane(sysId, ids) {
+  const ref = (d, screen, state) => ({ design: d.id, ...(screen ? { screen } : {}), ...(state ? { state } : {}) });
+  const steps = [
+    { key: 's0', role: 'お客さま', kind: 'start', text: 'エアコンが冷えない', col: 0 },
+    { key: 's1', role: 'お客さま', kind: 'input', text: 'サポートサイトで調べ、問い合わせる', col: 1, ref: ref(ids.knowledge, ids.knowledge.top) },
+    { key: 's2', role: 'システム', kind: 'task', text: '問い合わせを登録し、受付のメールを送る', col: 2, ref: ref(ids.case, null, '新規') },
+    { key: 's3', role: 'サポート', kind: 'input', text: '問い合わせを受け付け、担当者を決める', col: 3, ref: ref(ids.case, ids.case.detail, '対応中') },
+    { key: 's4', role: 'サポート', kind: 'decision', text: '電話で直せるか', col: 4 },
+    { key: 's5', role: 'サポート', kind: 'task', text: 'ナレッジの記事で直し方を案内する', col: 5, ref: ref(ids.knowledge) },
+    { key: 's6', role: 'サポート', kind: 'input', text: '作業指示を出す', col: 5, ref: ref(ids.work, ids.work.list, '指示') },
+    { key: 's7', role: '作業員', kind: 'task', text: '訪問して修理する', col: 6, ref: ref(ids.work, null, '作業中') },
+    { key: 's8', role: '作業員', kind: 'input', text: '作業報告を書く', col: 7, ref: ref(ids.work, ids.work.report, '報告済み') },
+    { key: 's9', role: '営業', kind: 'input', text: '入れ替えの商談を作る', col: 8, ref: ref(ids.deal, ids.deal.kanban, '見込み') },
+    { key: 's10', role: 'サポート', kind: 'input', text: '結果を知らせて、クローズする', col: 8, ref: ref(ids.case, ids.case.detail, 'クローズ') },
+    { key: 's11', role: 'お客さま', kind: 'end', text: '直ったことを確認する', col: 9 },
+  ];
+  const edges = [['s0', 's1'], ['s1', 's2'], ['s2', 's3'], ['s3', 's4'], ['s4', 's5', '直せる'], ['s4', 's6', '直せない'], ['s5', 's10'], ['s6', 's7'], ['s7', 's8'],
+    ['s8', 's9', '入れ替えが要る'], ['s8', 's10'], ['s10', 's11']].map(([from, to, label]) => ({ from, to, ...(label ? { label } : {}) }));
+  const y = findSystem(store.state, sysId);
+  const specs = steps.map((w, i) => aiSwimStep(y, w, i));
+  const swimEdges = aiSwimEdges(y, specs, edges);
+  actions.setSwimlane(sysId, { steps: swimAutoCols(specs.map((s) => s.step), swimEdges), edges: swimEdges });
+}
+
 // ── 11. 起動 ──────────────────────────────────────────────────────────────────
 // 編集の画面で、押した時点で切り替えるもの（部品・画面・項目を選ぶ、左の一覧のいちばん上の入口）。前の版を見ている間も押せる
 const EDITOR_PICK_ACTIONS = ['select-part', 'select-screen', 'select-item', 'open-items', 'open-map', 'open-process', 'open-flow'].map((a) => `[data-action="${a}"]`).join(', ');
@@ -18972,6 +19155,7 @@ function exposeForTest() {
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     KINTONE_TYPES, kintoneChoices, kintoneTypeOf, kintoneCodeOf, kintoneCodeOk, kintoneCodes, isKintoneDesign,
     WINDOW_POS, windowRect, partBounds, clampGroupMove, HEADER_KINDS, PORTAL_BAND, portalOf, bandHeight, templateUnderId,
+    CRM_SAMPLE, buildCrmSample,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     setMaterialWaitMs: (ms) => { materialWaitMs = ms; },
     ready: true,
