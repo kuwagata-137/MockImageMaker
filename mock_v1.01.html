@@ -319,6 +319,10 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-sf .ptl-rec a{color:#0176d3;text-decoration:none}
 .look-sf .ptl-kv small{color:#444}
 .look-sf .ptl-foot{color:#0176d3;border-top-color:#e5e5e5}
+.look-sf .pkb-lane{background:#f3f3f3;border-radius:4px}
+.look-sf .pkb-h b,.look-sf .pkb-h span,.look-sf .pkb-h small{color:#181818}
+.look-sf .pkb-card{border-color:#dddbda;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.10);color:#181818}
+.look-sf .pkb-card a{color:#0176d3;text-decoration:none}
 .look-sf .prhead{background:#fff;border:1px solid #dddbda;border-radius:4px;box-shadow:0 2px 2px rgba(0,0,0,.10)}
 .look-sf .prh-top small{color:#444}
 .look-sf .prh-top b{color:#181818}
@@ -397,6 +401,10 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .ptl-rec a{color:#3498db;text-decoration:none}
 .look-kt .ptl-kv small{color:#666}
 .look-kt .ptl-foot{color:#3498db;border-top-color:#e3e7e8}
+.look-kt .pkb-lane{background:#f7f9fa;border:1px solid #e3e7e8;border-radius:0}
+.look-kt .pkb-h b{color:#333}.look-kt .pkb-h span,.look-kt .pkb-h small{color:#666}
+.look-kt .pkb-card{border-color:#e3e7e8;border-radius:0;color:#333}
+.look-kt .pkb-card a{color:#3498db;text-decoration:none}
 .look-kt .prhead{background:#fff;border:none;border-bottom:1px solid #e3e7e8;border-radius:0;padding:9px 4px}
 .look-kt .prh-ic{border-radius:4px}
 .look-kt .prh-top b{color:#333}
@@ -542,6 +550,19 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .ptl-kv{display:flex;gap:6px;height:20px;line-height:20px;font-size:12.5px;white-space:nowrap;overflow:hidden}
 .ptl-kv small{width:88px;flex-shrink:0;color:#64748b;font-size:12px;overflow:hidden;text-overflow:ellipsis}
 .ptl-foot{height:36px;flex-shrink:0;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;color:#1d4ed8;font-size:12.5px}
+/* レコード一覧のかんばん（第 15 段階。画像 q123 の案A）。項目名の行は表と同じ。高さは kanbanHeight と合わせる（見出し 36・合計ありは 54、カードは 16＋20×行の数、間 8） */
+.pkb-lanes{flex:1;min-height:0;display:flex;gap:8px;margin-top:4px;overflow:hidden}
+.pkb-lane{flex:1 1 0;min-width:0;background:#f1f5f9;border-radius:6px;padding:0 8px 8px;overflow:hidden}
+.pkb-h{height:36px;padding:9px 4px 0;line-height:18px;white-space:nowrap;overflow:hidden}
+.pkb-lanes.sum .pkb-h{height:54px}
+.pkb-h b{font-size:14px;color:#0f172a}
+.pkb-h span{font-size:13px;color:#475569}
+.pkb-h small{display:block;font-size:12px;color:#475569;overflow:hidden;text-overflow:ellipsis}
+.pkb-lane.none .pkb-h b{color:#64748b;font-weight:400}
+.pkb-card{background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:7px 10px;margin-bottom:8px;font-size:12.5px;line-height:20px;color:#334155}
+.pkb-card a{display:block;height:20px;color:#1d4ed8;text-decoration:underline;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pkb-card div{height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pkb-hint{margin:8px 4px;color:#94a3b8;font-size:12.5px}
 /* レコードの見出し（第 14 段階。画像 q116 の左の段）。上に重ねたボタンは、見出しの上に描く */
 .prhead{flex:1;min-width:0;min-height:0;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:9px 16px;overflow:hidden;line-height:1.25}
 .prh-top{display:flex;align-items:center;gap:12px;min-width:0}
@@ -2240,7 +2261,69 @@ const isTilesPart = (p) => !!(p && p.type === 'table' && p.tableKind === 'relate
 const TILE_HEAD = 44;
 const TILE_FOOT = 36;
 const tilesHeight = (rows, ncols) => Math.ceil((TILE_HEAD + rows * (16 + 20 * Math.max(1, ncols)) + TILE_FOOT + 2) / GRID) * GRID;
-const partTableHeight = (p) => (isTilesPart(p) ? tilesHeight(p.view.rows, (p.props.columns || []).length) : tableHeight(p.view.rows));
+// レコード一覧をかんばんで描くか（第 15 段階。画像 q123 の案A。props.display が 'kanban'）
+const isKanbanPart = (p) => !!(p && p.type === 'table' && p.tableKind === 'records' && p.props && p.props.display === 'kanban');
+// かんばんの列に分けられる項目の種類（選択肢のある項目）と、列ごとに合計できる項目の種類
+const KANBAN_LANE_TYPES = ['status', 'dropdown', 'radio'];
+const KANBAN_SUM_TYPES = ['number', 'calc'];
+// かんばんの高さ（項目名の行 28・列の見出し〔合計があれば 54、なければ 36〕・いちばん多い列のカードの枚数〔0 なら 1〕×（上下の余白と枠 16＋1 行 20×行の数＋間 8）・列の下の余白 8）。
+// 8 ドットのマス目に切り上げる。CSS の .pkb-h・.pkb-card の高さと合わせる
+const KANBAN_HEAD = 36;
+const KANBAN_HEAD_SUM = 54;
+const kanbanHeight = (m) => Math.ceil((TABLE_LABEL_H + (m.sum ? KANBAN_HEAD_SUM : KANBAN_HEAD) + Math.max(1, m.most) * (16 + 20 * m.lines + 8) + 8 + 2) / GRID) * GRID;
+// 表の部品の中身から決まる高さ。かんばんは、列に分ける項目を項目一覧から引くので design を渡す
+const partTableHeight = (p, design = null) => (isKanbanPart(p) ? kanbanHeight(kanbanModel(design, p))
+  : isTilesPart(p) ? tilesHeight(p.view.rows, (p.props.columns || []).length) : tableHeight(p.view.rows));
+// 表の部品の形の印（表示のしかたと、中身から決まる高さ）。変わったら高さを合わせ直す
+const tableShapeKey = (p, design) => `${isKanbanPart(p) ? 'kanban' : isTilesPart(p) ? 'tiles' : 'table'}:${partTableHeight(p, design)}`;
+// 表の部品の高さを中身に合わせる（表を上へずらさず、画面を伸ばす）
+function fitTablePart(p, sc, design) {
+  const h = partTableHeight(p, design);
+  if (p.y + h > sc.height) sc.height = heightToFit(p.y + h, sc.device);
+  Object.assign(p, fitRect({ ...p, h }, sc));
+}
+
+// 表の列のうち、指している項目の種類が types のもの（{ col: 表の列, item: 項目 } の並び。列の順）
+function kanbanColumnItems(design, p, types) {
+  return ((p.props || {}).columns || [])
+    .map((col) => ({ col, item: design && col.ref && col.ref.itemId ? findItem(design, col.ref.itemId) : null }))
+    .filter((x) => x.item && types.includes(x.item.type));
+}
+// かんばんの列の名前（ステータスは状態の名前、ドロップダウン・ラジオボタンは選択肢）。空と重なりは除く
+const kanbanLaneNames = (item) => [...new Set((item.type === 'status' ? (item.props.states || []).map((s) => s.name) : item.props.options || [])
+  .map((s) => String(s).trim()).filter(Boolean))];
+// 値の中の数（「1,200」の桁の区切りは数に含める。全角の数字は半角に直す）。数のない値は null
+function kanbanNumber(v) {
+  const m = String(v).normalize('NFKC').match(/[-+]?\d[\d,]*(?:\.\d+)?/);
+  return m ? Number(m[0].replace(/,/g, '')) : null;
+}
+// かんばんの中身（第 15 段階。画像 q123 の案A）。列に分ける項目（props.laneItem。使えないときは、選べる列の最初）の選択肢を列にし、
+// サンプルの行を 1 行ずつ 1 枚のカードにして、列に分ける項目の列の値と同じ名前の列に置く。どの選択肢とも同じでない行は、いちばん右の「（なし）」の列に置く。
+// cols はカードに出す列（列に分ける項目の列を除く。1 つ目がカードの 1 行目）。sum は列ごとに合計する項目（表の列の数値・自動計算の項目。選ばなければ null）。
+// most はいちばん多い列のカードの枚数、lines はカード 1 枚の行の数（高さを決める）
+function kanbanModel(design, p) {
+  const pr = p.props || {};
+  const view = p.view || { rows: 3, samples: {} };
+  const choices = kanbanColumnItems(design, p, KANBAN_LANE_TYPES);
+  const lane = choices.find((x) => x.item.id === pr.laneItem) || choices[0] || null;
+  const sum = kanbanColumnItems(design, p, KANBAN_SUM_TYPES).find((x) => x.item.id === pr.sumItem) || null;
+  const cols = (pr.columns || []).filter((c) => !lane || c.id !== lane.col.id).map((c) => {
+    const it = design && c.ref && c.ref.itemId ? findItem(design, c.ref.itemId) : null;
+    return { id: c.id, type: it ? it.type : 'text1', unit: it && it.props && it.props.unit ? String(it.props.unit) : '' };
+  });
+  const lines = Math.max(1, cols.length);
+  if (!lane) return { lane: null, sum, cols, lanes: [], most: 1, lines };
+  const val = (c, r) => String(((view.samples || {})[c.id] || [])[r] || '').trim();
+  const lanes = kanbanLaneNames(lane.item).map((name) => ({ name, rows: [], none: false }));
+  const none = { name: '（なし）', rows: [], none: true };
+  for (let r = 0; r < view.rows; r++) (lanes.find((l) => l.name === val(lane.col, r)) || none).rows.push(r);
+  if (none.rows.length || !lanes.length) lanes.push(none);
+  lanes.forEach((l) => {
+    const nums = sum ? l.rows.map((r) => kanbanNumber(val(sum.col, r))).filter((n) => n != null) : [];
+    l.total = nums.reduce((a, n) => a + n, 0);
+  });
+  return { lane, sum, cols, lanes, most: Math.max(0, ...lanes.map((l) => l.rows.length)), lines };
+}
 
 // 部品の中身を、指している項目と合わせた形にする（描く・一覧表の文を作る・設定の欄を出すときに使う）。
 // 項目を指していない部品（ボタン・見出しなど・項目を消した後に残った部品）は、そのまま返す
@@ -2262,7 +2345,10 @@ function withViewExtras(design, p) {
   if (p.type === 'table') {
     const state = store ? store.state : { designs: [] };
     const ctx = { design, state };
-    return { ...p, columns: tableColumns(p, ctx), relatedName: p.tableKind === 'related' && p.props && p.props.db ? dbLabel(state, p.props.db) : '' };
+    return {
+      ...p, columns: tableColumns(p, ctx), relatedName: p.tableKind === 'related' && p.props && p.props.db ? dbLabel(state, p.props.db) : '',
+      ...(isKanbanPart(p) ? { kanban: kanbanModel(design, p) } : {}),
+    };
   }
   if (p.type === 'filter') return { ...p, itemNames: Object.fromEntries(design.items.map((it) => [it.id, it.name])) };
   if (p.type === 'recordHead') return { ...p, itemNames: Object.fromEntries(design.items.map((it) => [it.id, it.name])), designName: design.name };
@@ -2475,6 +2561,13 @@ function describePartLines(p, ctx = null) {
         eqIf('並び順', v(pr.sort));
         if (v(pr.limit)) short.push(`最大 ${v(pr.limit)} 件`);
       } else {
+        // レコード一覧のかんばん（第 15 段階）。列に分ける項目と合計する項目は、かんばんが描いている項目の名前
+        if (pr.display === 'kanban') {
+          const m = kanbanModel(ctx && ctx.design, p);
+          eqIf('表示のしかた', 'かんばん');
+          eqIf('列に分ける項目', m.lane ? m.lane.item.name : '');
+          eqIf('合計する項目', m.sum ? m.sum.item.name : '');
+        }
         eqIf('並び順', v(pr.sort));
         if (v(pr.perPage)) short.push(`1 ページ ${v(pr.perPage)} 件`);
       }
@@ -4803,6 +4896,7 @@ const actions = {
   // 項目を一覧表から消した後に残った部品では、それらを書き換えない（消したときの中身で固定する）
   updatePart(designId, screenId, partId, patch) {
     return mutatePart(designId, screenId, partId, (p, sc, d) => {
+      const shape0 = p.type === 'table' ? tableShapeKey(p, d) : '';
       ['labelPos', 'sample', 'placeholder'].forEach((k) => { if (k in patch) p[k] = patch[k]; });
       if ('numbered' in patch) p.no = patch.numbered ? (p.no != null ? p.no : nextPartNo(sc)) : null;
       if (isObj(patch.view)) {
@@ -4812,12 +4906,14 @@ const actions = {
       const item = findItem(d, p.itemId);
       if (item) { if (!item.link) setItemFields(d, item, patch); } // 取り込んだ項目は直せない（元のモックで直す）
       else if (!p.itemId) applyFieldPatch(p, 'label', patch);
-      // 表の高さは、サンプルの行数と、関連レコード一覧の表示のしかた（表・並べて表示）を変えたときに合わせる
-      if (p.type === 'table' && (isObj(patch.view) || (isObj(patch.props) && 'display' in patch.props))) {
-        const h = partTableHeight(p);
-        if (p.y + h > sc.height) sc.height = heightToFit(p.y + h, sc.device); // 表を上へずらさず、画面を伸ばす
-        Object.assign(p, fitRect({ ...p, h }, sc));
+      // かんばんに切り替えたときは、列に分ける項目を、選べる列の最初にする（選べる列がなければ空のまま）
+      if (isKanbanPart(p) && !p.props.laneItem) {
+        const first = kanbanColumnItems(d, p, KANBAN_LANE_TYPES)[0];
+        if (first) p.props.laneItem = first.item.id;
       }
+      // 表の高さは、サンプルの行数を変えたときと、表示のしかた（表・並べて表示・かんばん）か中身から決まる高さが変わったときに合わせる。
+      // 表のまま列を変えても、人が伸ばした高さは戻さない
+      if (p.type === 'table' && (isObj(patch.view) || tableShapeKey(p, d) !== shape0)) fitTablePart(p, sc, d);
     });
   },
   // 位置と大きさを変える（マス目に吸い付け、画面の中に収める）。変わらないときは履歴に積まない。
@@ -5167,9 +5263,13 @@ const actions = {
     const imported = !!p0.itemId && store.state.designs.some((x) => x.id !== designId && x.items.some((it) => it.link && !it.link.lost && it.link.designId === designId && it.link.itemId === p0.itemId));
     return mutatePart(designId, screenId, partId, (p, sc, d) => {
       const old = p.itemId;
+      // かんばん・並べて表示の表の中身を変えて、表示のしかたが変わったときは、高さを合わせ直す（第 15 段階）
+      const shape0 = tableShapeKey(p, d);
+      const refit = () => { if (tableShapeKey(p, d) !== shape0) fitTablePart(p, sc, d); };
       if (item) {
         d.items.push(item);
         Object.assign(withoutItemFieldsInPlace(p), { tableKind: kind, itemId: item.id });
+        refit();
         return;
       }
       const defLabel = (k) => (k === 'related' ? '関連レコード一覧' : '一覧');
@@ -5183,6 +5283,7 @@ const actions = {
         if (oldItem && !imported && !d.screens.some((s) => s.parts.some((x) => x.itemId === old))) d.items = d.items.filter((it) => it.id !== old);
       } else if (p.label === defLabel(p.tableKind)) p.label = defLabel(kind); // 名前が最初のままなら、新しい中身の名前にする
       p.tableKind = kind;
+      refit();
     });
   },
   // ほかの画面設計（srcDesignId）の項目を取り込み、一覧表のいちばん下に足す。取り込んだ項目は元とつなげたままにする。
@@ -5661,7 +5762,7 @@ function partInnerHtml(p, t, marks = false) {
   // 項目名のない部品の番号は、ボタンと同じく左の外（左に入る幅がないときは左上の角に重ねる）
   const outNo = () => partNoHtml(p, p.x >= 28 ? ' pno-out' : ' pno-corner');
   switch (p.type) {
-    case 'table': return isTilesPart(p) ? tilesHtml(p) : `${partLabelHtml(p, marks)}${tableHtml(p)}`;
+    case 'table': return isTilesPart(p) ? tilesHtml(p) : `${partLabelHtml(p, marks)}${isKanbanPart(p) ? kanbanHtml(p) : tableHtml(p)}`;
     case 'graph': return `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span></div><div class="pgraph">${graphSvg(p)}</div>`;
     case 'search':
       return `${outNo()}<div class="psearch"><span class="pph">🔍 ${esc(p.placeholder || t.ph)}</span>${pr.button !== false ? '<b>検索</b>' : ''}</div>`;
@@ -5763,6 +5864,26 @@ function tilesHtml(p) {
     : '<span class="pph">（列がありません）</span>'}</div>`).join('');
   return `<div class="pframe ptiles"><div class="pfr-head">${partNoHtml(p)}${ic}<b>${esc(p.label)}</b><span class="ptl-cnt">（${view.rows}）</span><span class="ptl-new">新規</span></div>`
     + `<div class="ptl-body">${recs}</div><div class="ptl-foot">すべて表示</div></div>`;
+}
+
+// レコード一覧のかんばん（第 15 段階。画像 q123 の案A）。項目名の行の下に、列に分ける項目の選択肢ごとの列。
+// 列の見出しは名前・（件数）・合計（合計する項目を選んだとき）。カードの 1 行目はリンクの色、2 行目からは残りの列の値（数だけの値には単位を付ける）
+function kanbanHtml(p) {
+  const m = p.kanban || { lane: null, cols: [], lanes: [] };
+  if (!m.lane) return '<div class="pkb-lanes"><p class="pkb-hint">列に分ける項目（ステータス・ドロップダウン・ラジオボタン）を、表の列に追加してください。</p></div>';
+  const view = p.view || { rows: 3, samples: {} };
+  const val = (c, r) => {
+    const v = String(((view.samples || {})[c.id] || [])[r] || '').trim();
+    if (!v) return `<span class="pph">${esc(TABLE_PH[c.type] || '文字列')}</span>`;
+    return esc(v) + (c.unit && /^[-+]?[\d,]+(?:\.\d+)?$/.test(v.normalize('NFKC')) ? ` ${esc(c.unit)}` : '');
+  };
+  const card = (r) => `<div class="pkb-card">${m.cols.length
+    ? `<a>${val(m.cols[0], r)}</a>${m.cols.slice(1).map((c) => `<div>${val(c, r)}</div>`).join('')}`
+    : '<span class="pph">（列がありません）</span>'}</div>`;
+  const unit = m.sum && m.sum.item.props.unit ? ` ${esc(m.sum.item.props.unit)}` : '';
+  const lanes = m.lanes.map((l) => `<div class="pkb-lane${l.none ? ' none' : ''}"><div class="pkb-h"><b>${esc(l.name)}</b><span>（${l.rows.length}）</span>`
+    + `${m.sum ? `<small>合計 ${graphNum(l.total)}${unit}</small>` : ''}</div>${l.rows.map(card).join('')}</div>`).join('');
+  return `<div class="pkb-lanes${m.sum ? ' sum' : ''}">${lanes}</div>`;
 }
 
 // 表の部品の中身。列の名前・見本の値・幅は p.columns（resolvePart で付けた列）と、この画面だけの設定（view）から
@@ -10807,8 +10928,9 @@ function tableSettingsHtml(p, t) {
   const count = p.tableKind === 'related'
     ? pfRow(pfText('props.sort', '並び順', pr.sort, { placeholder: '例: 受注日の新しい順' }), pfText('props.limit', '最大件数', pr.limit, NUM))
     : pfRow(pfText('props.sort', '並び順', pr.sort, { placeholder: '例: 顧客コードの小さい順' }), pfText('props.perPage', '1 ページの件数', pr.perPage, NUM));
-  // 関連レコード一覧の表示のしかた（表・並べて表示。画像 q117 の案A）。元のデータベースの上に出し、並べて表示のときだけアイコンの色を出す
-  const display = p.tableKind !== 'related' ? ''
+  // 関連レコード一覧の表示のしかた（表・並べて表示。画像 q117 の案A）。元のデータベースの上に出し、並べて表示のときだけアイコンの色を出す。
+  // レコード一覧は表・かんばん（第 15 段階。画像 q123 の案A）
+  const display = p.tableKind !== 'related' ? kanbanSettingsHtml(p, d)
     : pfSeg('props.display', '表示のしかた', isTilesPart(p) ? 'tiles' : 'table', [['table', '表'], ['tiles', '並べて表示']])
       + (isTilesPart(p) ? pfSeg('props.color', 'アイコンの色', own(FRAME_COLORS, pr.color) ? pr.color : 'orange', Object.entries(FRAME_COLORS)) : '');
   return `${title}${kind}
@@ -10823,6 +10945,20 @@ function tableSettingsHtml(p, t) {
     </div></div>
     ${here}
     <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">このアイテムを削除する</button></div>`;
+}
+
+// レコード一覧の表示のしかた（表・かんばん）。かんばんのときだけ、列に分ける項目（表の列のステータス・ドロップダウン・ラジオボタン）と、
+// 列ごとに合計する項目（表の列の数値・自動計算）を選ぶ欄を出す。選べる列がないときは、列を追加するよう薄く出す
+function kanbanSettingsHtml(p, d) {
+  const seg = pfSeg('props.display', '表示のしかた', isKanbanPart(p) ? 'kanban' : 'table', [['table', '表'], ['kanban', 'かんばん']]);
+  if (!isKanbanPart(p)) return seg;
+  const m = kanbanModel(d, p);
+  if (!m.lane) return `${seg}<p class="hint" style="margin-bottom:8px">列に分ける項目（ステータス・ドロップダウン・ラジオボタン）を、下の「列」で表の列に追加してください。</p>`;
+  const names = (types) => kanbanColumnItems(d, p, types).map((x) => [x.item.id, x.item.name]);
+  const lane = m.lane.item;
+  return seg + pfSelect('props.laneItem', '列に分ける項目', lane.id, names(KANBAN_LANE_TYPES))
+    + pfSelect('props.sumItem', '列ごとに合計する項目', m.sum ? m.sum.item.id : '', [['', '（合計しない）'], ...names(KANBAN_SUM_TYPES)])
+    + `<p class="hint" style="margin-bottom:8px">列は「${esc(lane.name)}」の選択肢（${esc(kanbanLaneNames(lane).join('・') || 'なし')}）。カードは、サンプルの行を 1 行ずつ、${esc(lane.name)}の値と同じ名前の列に置きます。</p>`;
 }
 
 // 表の列の欄。押した列を選び（選んだ列の見本の値と幅を、この画面だけの設定で書く）、↑↓ で並べ替え、✕ で外す。
@@ -10854,7 +10990,7 @@ function tableColumnsEditorHtml(p, isItem) {
     const src = p.tableKind === 'related' ? (pr.db.designId ? findDesign(store.state, pr.db.designId) : null) : currentDesign();
     const used = new Set((pr.columns || []).map((c) => c.ref.itemId).filter(Boolean));
     add = src
-      ? `<label class="field"><span>列を追加する</span><select data-tb="addCol"><option value="">（${esc(src.name)}の項目から選ぶ）</option>${src.items.filter((it) => isInputType(it.type) && !used.has(it.id)).map((it) => `<option value="${esc(it.id)}">${esc(it.name)}</option>`).join('')}</select></label>`
+      ? `<label class="field"><span>列を追加する</span><select data-tb="addCol"><option value="">（${esc(src.name)}の項目から選ぶ）</option>${src.items.filter((it) => (isInputType(it.type) || it.type === 'status') && !used.has(it.id)).map((it) => `<option value="${esc(it.id)}">${esc(it.name)}</option>`).join('')}</select></label>`
       : '<label class="field"><span>列を追加する</span><input type="text" data-tb="addColName" placeholder="元の項目の名前を書く"></label>';
   }
   return `<div class="field" style="margin-bottom:4px">${pfLabel('列', '（押すと、その列の設定とサンプル値）')}</div>${rows || '<p class="hint" style="margin-bottom:6px">列がまだありません。</p>'}${add}`;
