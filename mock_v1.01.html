@@ -219,7 +219,7 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .tpl{border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:6px;text-align:center;cursor:pointer}
 .tpl:hover{border-color:#94a3b8}
 .tpl.sel{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.35)}
-.tpl .th{height:112px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.tpl .th{height:88px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border-radius:4px;overflow:hidden}
 .tpl b{display:block;margin-top:6px;font-size:13px}
 .tpl small{display:block;color:#64748b;font-size:11px;line-height:1.4}
 .tpl-dup{margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;font-size:13px;color:#475569}
@@ -1687,6 +1687,8 @@ const SCREEN_TEMPLATES = [
   { id: 'steps', name: '進捗', note: '進捗バー・承認のボタン' },
   { id: 'crmDetail', name: '顧客の詳細', note: 'レコードの見出しの下に 2 列' },
   { id: 'crmCase', name: '問い合わせ対応の 3 列', note: 'レコードの見出しと進捗バーの下に 3 列' },
+  { id: 'crmKanban', name: '商談のかんばん', note: '検索欄・新規のボタン・かんばん' },
+  { id: 'crmHome', name: 'ホームのダッシュボード', note: '大きな数字 4 つ・グラフ 3 つ・表' },
 ];
 const TPL_LEFT = 32; // ひな形で部品を置く左の端
 const TPL_COL2 = 480; // 項目を 2 列で並べるときの右の列（幅 400 の部品の右に 48 空ける）
@@ -1712,6 +1714,20 @@ const CRM_CASE_ITEMS = [
   { type: 'user', name: '担当者', sample: '佐藤 花子' }, { type: 'text2', name: '説明', sample: '冷房が効かないとの電話。リモコンにエラーの番号 E-11 が出ている。', span: 2 },
 ];
 const CRM_CASE_STATES = ['新規', '対応中', 'エスカレーション', '回答待ち', 'クローズ'];
+// 「商談のかんばん」「ホームのダッシュボード」（第 15 段階。画像 q127）のサンプルの項目と商談（[商談名, 取引先名, 金額, 完了予定日, 段階]）
+const DEAL_ITEMS = [
+  { type: 'text1', name: '商談名', required: true }, { type: 'text1', name: '取引先名' }, { type: 'number', name: '金額', props: { unit: '万円' } }, { type: 'date', name: '完了予定日' },
+];
+const DEAL_STATES = ['見込み', '提案', '見積', '交渉', '受注'];
+const DEALS = [
+  ['空調の入れ替え', '株式会社サンプル商事', '480', '2026-12-15', '提案'], ['保守の契約の更新', '架空工業株式会社', '36', '2026-11-30', '交渉'],
+  ['照明の LED 化', '見本物産株式会社', '220', '2026-12-20', '見込み'], ['防犯カメラの設置', '株式会社テスト商会', '150', '2027-01-15', '見積'],
+  ['給湯器の交換', '例示不動産株式会社', '85', '2026-11-10', '受注'], ['太陽光パネルの設置', '株式会社サンプル商事', '1,200', '2027-02-28', '見込み'],
+  ['換気設備の点検', '架空工業株式会社', '24', '2026-11-20', '提案'], ['床暖房の工事', '見本物産株式会社', '310', '2026-12-05', '見積'],
+  ['非常用の発電機の更新', '株式会社テスト商会', '640', '2027-03-10', '見込み'],
+];
+// ホームのダッシュボードの大きな数字（[グラフの名前, 値, 単位, 集計]。集計の 'amount' はサンプルの「金額」の合計）
+const DEAL_METRICS = [['今月の受注額', '1280', '万円', 'amount'], ['進行中の商談', '24', '件', 'count'], ['受注率', '32', '%', ''], ['未対応の問い合わせ', '7', '件', '']];
 const CRM_RELATED = {
   contacts: ['顧客の担当者', 'green', [['氏名', '山田 太郎', '鈴木 一郎'], ['役職', '総務部長', '施設の担当'], ['電話', '03-1234-5679', '03-1234-5680'], ['メール', 'yamada@example.com', 'suzuki@example.com']]],
   deals: ['商談', 'orange', [['商談名', '空調の入れ替え', '保守の契約の更新'], ['段階', '提案', '受注'], ['金額', '480 万円', '36 万円'], ['完了予定日', '2026-12-15', '2026-09-30']]],
@@ -1993,6 +2009,7 @@ function screenFromTemplate(design, templateId, name) {
       break;
     }
     case 'crmDetail': case 'crmCase': crmTemplateInto(sc, design, templateId, { put, items, Y }); break;
+    case 'crmKanban': case 'crmHome': dealTemplateInto(sc, design, templateId, { put, items, Y }); break;
     default: break; // 白紙は帯だけ
   }
   return { screen: sc, items };
@@ -2061,6 +2078,72 @@ function crmTemplateInto(sc, design, templateId, { put, items, Y }) {
   }
   sc.itemView = 'show';
   settleFrames(sc, sc.parts.map((p) => p.id));
+}
+
+// ひな形「商談のかんばん」と「ホームのダッシュボード」（第 15 段階。画像 q127 の並び）。どちらも、いちばん上に番号のない見出し。
+// 商談のかんばん: 右に検索欄と新規のボタン、その下に幅いっぱいのかんばん（レコード一覧をかんばんで表示したもの）。
+// ホームのダッシュボード: 大きな数字 4 つ（4 列）・メーター・じょうご・積み上げ棒（3 列。列は layoutGrid）・完了予定日の近い商談の表。
+// 項目は、データベースの項目がなければサンプル（商談名・取引先名・金額・完了予定日・段階）を項目一覧に追加し、表に商談のサンプル値を入れる。
+// 項目があるときは、入力の種類の最初の 4 つを表の列にし、列に分ける項目はステータスの項目（なければ最初のドロップダウン・ラジオボタン、
+// それもなければサンプルの「段階」を追加）。そのときのサンプル値は、サンプルの項目と同じ名前の列（前にこのひな形が追加した項目など）には商談の値、
+// 列に分ける列には選択肢を順に入れる（カードが列に分かれて見えるように）。ほかの列は空
+function dealTemplateInto(sc, design, templateId, { put, items, Y }) {
+  const own = design.items.filter((it) => isInputType(it.type));
+  const add = (it) => { items.push(it); return it; };
+  const inputs = own.length ? own.slice(0, 4) : DEAL_ITEMS.map((s) => {
+    const it = createItemData(s.type, s.name);
+    if (s.required) it.required = true;
+    if (s.props) it.props = { ...it.props, ...s.props };
+    return add(it);
+  });
+  // 列に分ける項目（ステータスは画面設計に 1 つだけなので、あればそれを使う）
+  let lane = design.items.find((it) => it.type === 'status') || (own.length ? own.find((it) => it.type === 'dropdown' || it.type === 'radio') : null);
+  if (!lane) {
+    lane = add(createItemData('status', '段階'));
+    const states = normalizeStates(DEAL_STATES);
+    lane.props = { states, actions: sampleActions(states) };
+  }
+  const cols = [...inputs, ...(inputs.includes(lane) ? [] : [lane])];
+  const columns = cols.map((it) => ({ id: newId('c'), ref: { itemId: it.id, name: it.name } }));
+  const amount = cols.find((it) => it.type === 'number' || it.type === 'calc');
+  // サンプルの項目と同じ名前の項目（前にこのひな形が追加した項目も、名前で見つける）
+  const dealItem = (name) => cols.find((it) => it.name === name && it.type === (DEAL_ITEMS.find((s) => s.name === name) || {}).type);
+  // サンプルの行（rows 件）。サンプルの項目と同じ名前の列には商談の値を入れる。列に分ける列は、商談の段階が選択肢にあればその値、なければ選択肢を順に
+  const laneNames = kanbanLaneNames(lane);
+  const view = (rows, deals) => ({ rows, samples: Object.fromEntries(columns.map((c, i) => {
+    const it = cols[i];
+    if (it === lane) return [c.id, deals.map((d, r) => (laneNames.includes(d[4]) ? d[4] : laneNames[r % Math.max(1, laneNames.length)] || ''))];
+    const k = DEAL_ITEMS.findIndex((s) => dealItem(s.name) === it);
+    return [c.id, k >= 0 ? deals.map((d) => d[k]) : []];
+  })) });
+  const heading = (label, w) => { const h = put('heading', TPL_LEFT, Y(56), { w, h: 32, label }); h.no = null; };
+  const tableProps = (extra) => ({ columns, sort: '', perPage: '', limit: '', ...extra });
+  if (templateId === 'crmKanban') {
+    heading('すべての商談', 400);
+    const search = put('search', sc.width - TPL_LEFT - 96 - 32 - 304, Y(56), { w: 304, props: { items: inputs.filter((it) => it.type === 'text1').slice(0, 2).map((it) => it.id), button: true } });
+    search.placeholder = `${inputs.filter((it) => it.type === 'text1').slice(0, 2).map((it) => it.name).join('・') || 'キーワード'}で検索`;
+    put('button', sc.width - TPL_LEFT - 96, Y(56), { label: '新規', w: 96, props: { style: 'normal' } });
+    const props = tableProps({ display: 'kanban', laneItem: lane.id, sumItem: amount ? amount.id : '' });
+    const v = view(DEALS.length, DEALS);
+    const h = kanbanHeight(kanbanModel({ ...design, items: [...design.items, ...items] }, { props, view: v }));
+    put('table', TPL_LEFT, Y(112), { tableKind: 'records', label: '商談の一覧', w: sc.width - TPL_LEFT * 2, h, props, view: v });
+    return;
+  }
+  heading('営業のダッシュボード', 560);
+  // グラフの集計は、サンプルの「金額」「完了予定日」と同じ名前の項目を指す（なければ書かない）
+  const sum = dealItem('金額') ? { agg: 'sum', aggItem: dealItem('金額').id } : {};
+  const g4 = layoutGrid(sc.width, 4);
+  DEAL_METRICS.forEach(([label, value, unit, agg], i) => put('graph', g4.columnsLeft[i], Y(104), { label, w: g4.columnWidth, h: 136,
+    props: { chart: 'metric', samples: `${label}, ${value}`, unit, ...(agg === 'amount' ? sum : agg === 'count' ? { agg: 'count' } : {}) } }));
+  const g3 = layoutGrid(sc.width, 3);
+  const graph = (i, label, props) => put('graph', g3.columnsLeft[i], Y(264), { label, w: g3.columnWidth, h: 320, props });
+  graph(0, '今期の目標の達成', { chart: 'gauge', samples: '今期の受注額, 3,840', target: '5,000', unit: '万円', ...sum });
+  graph(1, '段階ごとの商談の件数', { chart: 'funnel', samples: DEAL_STATES.map((s, i) => `${s}, ${[24, 16, 11, 7, 4][i]}`).join('\n'), byUnit: '段階ごと', agg: 'count' });
+  graph(2, '月ごとの受注額', { chart: 'stacked', samples: '5月, 120, 80\n6月, 180, 60\n7月, 150, 110\n8月, 210, 90\n9月, 170, 130\n10月, 240, 120', series: '新規\n既存', unit: '万円',
+    byUnit: '月ごと', ...(dealItem('完了予定日') ? { byItem: dealItem('完了予定日').id } : {}), ...sum });
+  const near = DEALS.slice().sort((a, b) => a[3].localeCompare(b[3])).slice(0, 4);
+  put('table', TPL_LEFT, Y(608), { tableKind: 'records', label: '完了予定日の近い商談', w: sc.width - TPL_LEFT * 2, h: tableHeight(4),
+    props: tableProps({ sort: '完了予定日の近い順' }), view: view(4, near) });
 }
 
 // ── 項目と部品 ──
@@ -9981,7 +10064,7 @@ async function openAddScreenDialog() {
     const { screen, items } = screenFromTemplate(d, t.id, t.id === 'blank' ? blankScreenName(d) : t.name);
     const preview = { ...d, items: [...d.items, ...items] }; // 見本の項目も名前を出すため
     return `<button type="button" class="tpl${i === 0 ? ' sel' : ''}" data-tpl="${t.id}" aria-pressed="${i === 0}">
-      <div class="th">${thumbHtml(preview, screen, 180, 104)}</div><b>${esc(t.name)}</b><small>${esc(t.note)}</small></button>`;
+      <div class="th">${thumbHtml(preview, screen, 150, 80)}</div><b>${esc(t.name)}</b><small>${esc(t.note)}</small></button>`;
   }).join('');
   const r = await showDialog({
     title: '画面を追加する',
