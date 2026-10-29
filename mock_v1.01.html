@@ -272,6 +272,23 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .sc-win.dim{box-shadow:0 0 0 3000px rgba(0,0,0,.52),0 4px 16px rgba(0,0,0,.3)}
 .look-kt .sc-win-h{background:#f7f9fa;border-bottom-color:#e3e7e8;font-size:16px;color:#333}
 .look-kt .sc-win-f{background:#f7f9fa;border-top-color:#e3e7e8}
+/* お客さまポータルのヘッダー（第 16 段階。画像 q129 の案A）。高さ 72 は PORTAL_BAND と同じで、3 つの見た目で同じ。ロゴは点線の「ロゴ」の箱 */
+.screen-band.ptb{height:72px;background:#fff;color:#1f2f4f;font-weight:400;font-size:15px;border-bottom:1px solid #e2e8f0;gap:18px;padding:0 32px;text-overflow:clip}
+.ptb-site{font-size:19px;font-weight:700;color:#1f2f4f;margin-right:18px;flex-shrink:0}
+.ptb-menu{display:flex;gap:28px;height:100%;min-width:0;overflow:hidden}
+.ptb-menu i{font-style:normal;font-size:15px;color:#334155;display:flex;align-items:center;border-bottom:3px solid transparent;padding-top:3px;white-space:nowrap}
+.ptb-menu i.on{color:#1d4ed8;border-bottom-color:#2563eb;font-weight:700}
+.ptb-r{margin-left:auto;display:flex;align-items:center;gap:18px;flex-shrink:0}
+.ptb-search{display:inline-flex;color:#475569}.ptb-search svg{width:22px;height:22px}
+.ptb-btn{flex:none;width:112px;height:40px}
+.look-sf .screen-band.ptb{border-bottom:none;box-shadow:0 2px 3px rgba(0,0,0,.12)}
+.look-sf .ptb-site{color:#181818;font-weight:400;font-size:20px}
+.look-sf .ptb-menu i{color:#181818}.look-sf .ptb-menu i.on{color:#0176d3;border-bottom-color:#0176d3;font-weight:400}
+.look-sf .ptb-search{color:#747474}
+.look-kt .screen-band.ptb{border-bottom-color:#e3e7e8}
+.look-kt .ptb-site{color:#333}
+.look-kt .ptb-menu i{color:#333}.look-kt .ptb-menu i.on{color:#3498db;border-bottom-color:#3498db}
+.look-kt .ptb-search{color:#666}
 /* 見た目（第 12 段階。業務アプリの見た目とCRM_設計書.md の 5 章・画像 q106〜q108）。標準の見た目は上と下の CSS のまま。
    ここに書くのは、.screen に付けたクラス（look-sf・look-kt・view-show）の下で上書きするものだけ。色と形を似せるだけで、ロゴ・アイコン・字は写さない */
 .sfb-top,.ktb-top{height:48px;display:flex;align-items:center;gap:14px;padding:0 16px}
@@ -1509,8 +1526,50 @@ function changeDevice(screen, device) {
 const lookOf = (design) => LOOKS.find((l) => l.id === (design && design.look)) || LOOKS[0];
 // 作る先から決まる見た目（新しい画面設計の窓で、作る先を選んだときの最初の値。q105）。Salesforce・kintone 以外は標準
 const lookForTarget = (target) => (target !== 'standard' && LOOKS.some((l) => l.id === target) ? target : 'standard');
-// 画面の帯の高さ（帯を消した画面と、小さなウィンドウの画面は 0）。部品を置くときは帯の下に置く
-const bandHeight = (design, sc) => (sc.showHeader && !isWindowScreen(sc) ? lookOf(design).band : 0);
+// 画面の帯の高さ（帯を消した画面と、小さなウィンドウの画面は 0。お客さまポータルのヘッダーは見た目によらず 72）。部品を置くときは帯の下に置く
+const bandHeight = (design, sc) => (!sc.showHeader || isWindowScreen(sc) ? 0 : isPortalScreen(sc) ? PORTAL_BAND : lookOf(design).band);
+
+// ── お客さまポータルのヘッダー（第 16 段階。画像 q129 の案A）──
+// 画面の headerKind（'portal' のときだけ持つ。ないときはアプリのヘッダー）と portalMenu（下線を付けるメニュー）。
+// 画面設計の portal: { site, menu, button }（書いたものだけ持つ）。書いていないときは、サイトの名前＝画面設計の名前・
+// メニュー＝ヘッダーがお客さまポータルの画面の名前を並びの順に・右上のボタン＝「ログイン」
+const HEADER_KINDS = { app: 'アプリ', portal: 'お客さまポータル' };
+const PORTAL_BAND = 72; // お客さまポータルのヘッダーの高さ（3 つの見た目で同じ）
+const PORTAL_BUTTON = 'ログイン';
+const isPortalScreen = (sc) => !!sc && sc.headerKind === 'portal';
+// 読み込んだ portal の形を直す。何も書いていなければ null（画面設計に欄を持たせない）
+function normalizePortal(p) {
+  if (!isObj(p)) return null;
+  const out = { site: cleanName(str(p.site)), menu: normalizeBandTabs(p.menu), button: cleanName(str(p.button), TARGET_MAX) };
+  return out.site || out.menu.length || out.button ? { ...p, ...out } : null;
+}
+// ヘッダーに描くサイトの名前・メニュー・右上のボタン（書いていないところは最初の値）
+function portalOf(design) {
+  const p = design.portal || {};
+  const menu = p.menu && p.menu.length ? p.menu : design.screens.filter(isPortalScreen).map((s) => s.name);
+  return { site: p.site || design.name, menu, button: p.button || PORTAL_BUTTON };
+}
+// その画面で下線を付けるメニュー。選んだものがメニューになければ、画面の名前と同じもの、それもなければ最初のメニュー
+function portalMenuOf(design, sc) {
+  const { menu } = portalOf(design);
+  return [sc.portalMenu, sc.name].find((m) => m && menu.includes(m)) || menu[0] || '';
+}
+// 帯の高さが from から dy だけ変わった画面の、帯の下（from より下）のアイテムと吹き出しを dy だけずらし、画面の高さも同じだけ変える（sc を書き換える）
+function shiftBelowBand(sc, from, dy) {
+  const move = (x) => (x.y >= from ? { ...x, y: x.y + dy } : x);
+  sc.parts = sc.parts.map(move);
+  sc.callouts = sc.callouts.map(move);
+  sc.height = Math.max(snapHeight(sc.height + dy, sc.device), minScreenHeight(sc));
+}
+// ヘッダーの形を変えた画面（kind は HEADER_KINDS のキー）。帯の高さの差だけ、帯の下のアイテムと吹き出しをずらす。小さなウィンドウの画面は変えない
+function withHeaderKind(design, sc, kind) {
+  if (isWindowScreen(sc) || (kind === 'portal') === isPortalScreen(sc)) return sc;
+  const from = bandHeight(design, sc);
+  const next = kind === 'portal' ? { ...sc, headerKind: 'portal' } : (({ headerKind, ...rest }) => rest)(sc);
+  const dy = bandHeight(design, next) - from;
+  if (dy) shiftBelowBand(next, from, dy);
+  return next;
+}
 
 // ── 小さなウィンドウ（第 16 段階。画像 q128 の案A。仕様_細かい決めごと.md の「小さなウィンドウとお客さまポータルの細かい決めごと」）──
 // 画面の overlay: { under: 下に重ねる画面の id, pos: WINDOW_POS のキー, w, h, foot: 下のボタンの行を出すか }。ない画面は今までの画面。
@@ -2089,8 +2148,8 @@ function screenFromTemplate(design, templateId, name) {
     placed.forEach((pl) => put(pl.type, pl.x, pl.y, { itemId: pl.entry.item ? pl.entry.item.id : null, w: pl.w, h: pl.h, label: pl.entry.label, props: pl.entry.props }));
   };
   const right = (w) => sc.width - TPL_LEFT - w;
-  // 下の y は、標準の見た目の帯（高さ 40）の下から数えた値。帯の高い見た目（Salesforce・kintone）では、高さの差だけ下へずらす（q106）
-  const Y = (y) => y + lookOf(design).band - LOOKS[0].band;
+  // 下の y は、標準の見た目の帯（高さ 40）の下から数えた値。帯の高い見た目（Salesforce・kintone）とお客さまポータルのヘッダーでは、高さの差だけ下へずらす（q106・q129）
+  const Y = (y) => y + bandHeight(design, sc) - LOOKS[0].band;
   switch (templateId) {
     case 'input':
       flowItems(Y(64), [['保存', 'primary'], ['キャンセル', 'normal']]);
@@ -3061,7 +3120,7 @@ function revisionDate(day) {
 
 // 画面設計の中身（前の版に戻す・取り込んで置き換える・中身を比べるところ）。画面設計に中身の項目を足したら、ここに足す
 // （restoreRevision・replaceWithImported・designContent がこれを使う。3 か所に並べていると、足すときに漏れるため。第 7 段階）
-const DESIGN_CONTENT_KEYS = ['name', 'target', 'look', 'bandTabs', 'description', 'items', 'screens', 'mapPos', 'processPos', 'flowPos'];
+const DESIGN_CONTENT_KEYS = ['name', 'target', 'look', 'bandTabs', 'portal', 'description', 'items', 'screens', 'mapPos', 'processPos', 'flowPos'];
 // 画面設計の中身だけを抜き出す。copy のときは中身を写す
 function designContentOf(d, copy = false) {
   const out = {};
@@ -3183,11 +3242,14 @@ function calloutChanges(a, b, sa, sb, base, cur, state) {
 }
 const byNoThenPos = (a, b) => (a.no == null) - (b.no == null) || (a.no || 0) - (b.no || 0) || a.y - b.y || a.x - b.x;
 // 画面 1 つの違い（同じ id の画面どうし）
-// 小さなウィンドウの設定の違い（第 16 段階）。base・cur は前の版と今の画面設計、sa・sb はその中の画面
+// ヘッダーの形と小さなウィンドウの設定の違い（第 16 段階）。base・cur は前の版と今の画面設計、sa・sb はその中の画面
 function windowChanges(base, cur, sa, sb) {
   const underName = (d, s) => { const u = underScreenOf(d, s); return u ? u.name : 'なし'; };
   const size = (s) => { const r = windowRect(s); return s.overlay.pos === 'right' ? `幅 ${r.w}` : `${r.w} × ${r.h}`; };
+  const kind = (s) => HEADER_KINDS[isPortalScreen(s) ? 'portal' : 'app'];
   const out = [];
+  if (kind(sa) !== kind(sb)) out.push(fromTo('ヘッダーの形', kind(sa), kind(sb)));
+  if (isPortalScreen(sa) && isPortalScreen(sb) && portalMenuOf(base, sa) !== portalMenuOf(cur, sb)) out.push(fromTo('下線を付けるメニュー', portalMenuOf(base, sa), portalMenuOf(cur, sb)));
   if (underName(base, sa) !== underName(cur, sb)) out.push(fromTo('下に重ねる画面', underName(base, sa), underName(cur, sb)));
   if (!isWindowScreen(sa) || !isWindowScreen(sb)) return out;
   if (sa.overlay.pos !== sb.overlay.pos) out.push(fromTo('ウィンドウの位置', WINDOW_POS[sa.overlay.pos], WINDOW_POS[sb.overlay.pos]));
@@ -3261,6 +3323,11 @@ function designDiff(base0, cur0, state) {
   if (base.target !== cur.target) design.push(fromTo('構築先', targetLabel(base.target), targetLabel(cur.target)));
   if (base.look !== cur.look) design.push(fromTo('見た目', lookOf(base).label, lookOf(cur).label));
   if (base.bandTabs.join('\n') !== cur.bandTabs.join('\n')) design.push(fromTo('ヘッダーのタブ', bandTabsOf(base).join('・'), bandTabsOf(cur).join('・')));
+  // お客さまポータルのヘッダー（第 16 段階）。書いた欄が変わったときだけ（書いていないときの値が、画面の名前を変えて変わったときは出さない）
+  const [pa, pb] = [base.portal || {}, cur.portal || {}];
+  if ((pa.site || '') !== (pb.site || '')) design.push(fromTo('ポータルのサイトの名前', portalOf(base).site, portalOf(cur).site));
+  if ((pa.menu || []).join('\n') !== (pb.menu || []).join('\n')) design.push(fromTo('ポータルのメニュー', portalOf(base).menu.join('・'), portalOf(cur).menu.join('・')));
+  if ((pa.button || '') !== (pb.button || '')) design.push(fromTo('ポータルの右上のボタン', portalOf(base).button, portalOf(cur).button));
   if (base.description !== cur.description) design.push(fromTo('説明', base.description, cur.description));
   if (design.length) rows.push({ screen: '画面設計', no: '－', name: '－', k: 'chg', change: '設定変更', text: design.join('\n') });
   // 画面の順番は、両方にある画面どうしの並びで比べる（足した・消した画面は、画面の追加・削除の行に出る）
@@ -3902,11 +3969,16 @@ function normalizeScreen(src, i, items = []) {
   const parts = [];
   order.forEach((k) => { parts[k] = normalizePart(raw[k], items); });
   dropBadFrameRefs(parts);
-  const { overlay, ...rest } = s;
-  const ov = normalizeOverlay(overlay); // 下に重ねる画面（第 16 段階）。ない・形の違うものは外す（指す先の画面は normalizeDesign で確かめる）
+  // 第 16 段階の欄は、ふつうの値でないときだけ持つ: 下に重ねる画面（ない・形の違うものは外す。指す先の画面は normalizeDesign で確かめる）・
+  // ヘッダーの形（お客さまポータルのときだけ）・下線を付けるメニュー
+  const { overlay, headerKind, portalMenu, ...rest } = s;
+  const ov = normalizeOverlay(overlay);
+  const menu = cleanName(str(portalMenu), TARGET_MAX);
   return {
     ...rest,
     ...(ov ? { overlay: ov } : {}),
+    ...(headerKind === 'portal' ? { headerKind } : {}),
+    ...(menu ? { portalMenu: menu } : {}),
     id: str(s.id) || newId('s'),
     name: typeof s.name === 'string' ? s.name : `画面 ${i + 1}`,
     device,
@@ -3947,13 +4019,16 @@ function normalizeDesign(src) {
   screens.forEach((s) => s.parts.forEach((p) => {
     if ((p.type === 'button' || p.type === 'link') && isObj(p.props) && p.props.designId === id) p.props.designId = '';
   }));
+  const { portal: portal0, ...rest } = d;
+  const portal = normalizePortal(portal0); // お客さまポータルのヘッダーのサイトの名前・メニュー・右上のボタン（書いたときだけ持つ。第 16 段階）
   return {
-    ...d,
+    ...rest,
     id,
     name: cleanName(d.name) || '名前なし',
     target: str(d.target),
     look: lookOf(d).id,
     bandTabs: normalizeBandTabs(d.bandTabs),
+    ...(portal ? { portal } : {}),
     description: str(d.description),
     createdAt,
     updatedAt: str(d.updatedAt) || createdAt,
@@ -4698,11 +4773,8 @@ function setDesignLook(d, look) {
   const dy = to.band - from.band;
   if (!dy) return;
   d.screens.forEach((sc) => {
-    if (!sc.showHeader || isWindowScreen(sc)) return; // 小さなウィンドウの位置は、帯の高さで変わらない（第 16 段階）
-    const move = (x) => (x.y >= from.band ? { ...x, y: x.y + dy } : x);
-    sc.parts = sc.parts.map(move);
-    sc.callouts = sc.callouts.map(move);
-    sc.height = Math.max(snapHeight(sc.height + dy, sc.device), minScreenHeight(sc));
+    // 小さなウィンドウの位置と、お客さまポータルのヘッダーの高さは、見た目で変わらない（第 16 段階）
+    if (sc.showHeader && !isWindowScreen(sc) && !isPortalScreen(sc)) shiftBelowBand(sc, from.band, dy);
   });
 }
 
@@ -4737,6 +4809,11 @@ const actions = {
       }
       if ('look' in patch) setDesignLook(d, patch.look);
       if ('bandTabs' in patch) d.bandTabs = normalizeBandTabs(patch.bandTabs);
+      // お客さまポータルのヘッダーのサイトの名前・メニュー・右上のボタン（{ site, menu, button } の一部。第 16 段階）。何も書いていなければ欄を外す
+      if (isObj(patch.portal)) {
+        const p = normalizePortal({ ...(d.portal || {}), ...patch.portal });
+        if (p) d.portal = p; else delete d.portal;
+      }
       if ('description' in patch) d.description = String(patch.description);
     });
   },
@@ -5130,7 +5207,7 @@ const actions = {
     });
     return done;
   },
-  // patch は { name, device, height, showHeader, tablePos, itemView, overlay } のどれか。
+  // patch は { name, device, height, showHeader, tablePos, itemView, overlay, headerKind, portalMenu } のどれか。
   // overlay は下に重ねる画面とウィンドウの位置と大きさ（{ under, pos, w, h, foot } の一部。第 16 段階）。小さなウィンドウの画面の機器の種類は、下の画面に合わせる（device は使わない）
   updateScreen(designId, screenId, patch) {
     return mutateDesign(designId, (d) => {
@@ -5154,6 +5231,13 @@ const actions = {
       if ('tablePos' in patch) sc = { ...sc, tablePos: patch.tablePos === 'bottom' ? 'bottom' : 'right' };
       if ('itemView' in patch) sc = { ...sc, itemView: patch.itemView === 'show' ? 'show' : 'input' };
       if (isObj(patch.overlay)) sc = withOverlay(d, sc, patch.overlay);
+      // ヘッダーの形（第 16 段階）。帯の高さが変わる分だけ、帯の下のアイテムと吹き出しをずらす。下線を付けるメニューは、空なら外す（画面の名前と同じメニューに付く）
+      if ('headerKind' in patch) sc = withHeaderKind(d, sc, patch.headerKind === 'portal' ? 'portal' : 'app');
+      if ('portalMenu' in patch) {
+        const { portalMenu, ...rest } = sc;
+        const m = cleanName(str(patch.portalMenu), TARGET_MAX);
+        sc = m ? { ...rest, portalMenu: m } : rest;
+      }
       d.screens[i] = sc;
       // 機器の種類を変えた画面に重ねている小さなウィンドウも、同じ機器にする（ウィンドウの中のアイテムも一緒に動かす）
       if ('device' in patch) d.screens.forEach((w, k) => { if (isWindowScreen(w) && w.overlay.under === sc.id) d.screens[k] = withOverlay(d, w, {}); });
@@ -6074,6 +6158,7 @@ const BAND_ICONS = {
   waffle: `<svg viewBox="0 0 24 24" fill="#747474" aria-hidden="true">${[4, 12, 20].flatMap((x) => [4, 12, 20].map((y) => `<circle cx="${x}" cy="${y}" r="2.3"/>`)).join('')}</svg>`,
 };
 function bandHtml(design, screen) {
+  if (isPortalScreen(screen)) return portalBandHtml(design, screen);
   const look = lookOf(design).id;
   const I = BAND_ICONS;
   if (look === 'salesforce') {
@@ -6090,6 +6175,14 @@ function bandHtml(design, screen) {
       + `<div class="ktb-app"><span class="ktb-appicon"></span><span class="ktb-appname">${esc(design.name)}</span><span class="ktb-view">${esc(screen.name)}</span></div></div>`;
   }
   return `<div class="screen-band">${esc(design.name)} ／ ${esc(screen.name)}</div>`;
+}
+// お客さまポータルのヘッダー（第 16 段階。画像 q129 の案A）。ロゴの箱・サイトの名前・メニュー（この画面のメニューに下線）・検索のアイコン・右上のボタン。番号は付けない
+function portalBandHtml(design, screen) {
+  const P = portalOf(design);
+  const on = portalMenuOf(design, screen);
+  const menu = P.menu.map((m) => `<i${m === on ? ' class="on"' : ''}>${esc(m)}</i>`).join('');
+  return `<div class="screen-band ptb"><span class="sfb-logo ptb-logo">ロゴ</span><b class="ptb-site">${esc(P.site)}</b><span class="ptb-menu">${menu}</span>`
+    + `<span class="ptb-r"><span class="ptb-search">${BAND_ICONS.search}</span><span class="pbtn primary ptb-btn">${esc(P.button)}</span></span></div>`;
 }
 
 // ── 部品の見た目（画像 q15・仕上がりイメージ.png に合わせた）──
@@ -10926,7 +11019,7 @@ function renderScreenSettings(d, el) {
   const tabs = d.look === 'salesforce' ? `
       <label class="field"><span>ヘッダーのタブ <small>1 行に 1 つ</small></span><textarea data-field="design-tabs" rows="3" placeholder="${esc(bandTabsOf({ name: d.name }).join('\n'))}">${esc(d.bandTabs.join('\n'))}</textarea>
         <span class="hint">画面設計の名前と同じタブに下線が付きます。</span></label>` : '';
-  const BAND_WORDS = { standard: '業務アプリ名 ／ 画面の名前', salesforce: 'ロゴ・検索・アプリ名・タブ', kintone: 'ロゴ・場所・アプリ名・画面の名前' };
+  const BAND_WORDS = { standard: '業務アプリ名 ／ 画面の名前', salesforce: 'ロゴ・検索・アプリ名・タブ', kintone: 'ロゴ・場所・アプリ名・画面の名前', portal: 'ロゴ・サイトの名前・メニュー・ボタン' };
   el.innerHTML = `
     <section>
       <div class="panel-title">画面設計の情報</div>
@@ -10946,10 +11039,28 @@ function renderScreenSettings(d, el) {
         <span class="hint">画面の下の縁をドラッグすると、8 ドットずつ伸ばせます。</span></div>
       <div class="field"><span>項目の表示</span><div class="seg">${itemViews}</div>
         <span class="hint">この画面の入力欄のアイテムを、すべて選んだ表示で描きます（「値だけ表示」は詳細の画面に使います）。</span></div>
-      ${win ? '' : `<label class="check"><input type="checkbox" data-field="screen-header"${s.showHeader ? ' checked' : ''}><span>ヘッダーを表示する<small class="sub">（${BAND_WORDS[lookOf(d).id]}）</small></span></label>`}
+      ${win ? '' : `${headerKindSettingsHtml(d, s)}<label class="check"><input type="checkbox" data-field="screen-header"${s.showHeader ? ' checked' : ''}><span>ヘッダーを表示する<small class="sub">（${BAND_WORDS[isPortalScreen(s) ? 'portal' : lookOf(d).id]}）</small></span></label>`}
       <div class="field" style="margin-top:10px"><span>設定一覧の位置</span><div class="seg">${tablePos}</div></div>
     </section>`;
   bindTargetPicker(el, (t) => actions.updateDesignInfo(d.id, { target: t }));
+}
+
+// 右のパネルの「ヘッダーの形」と、お客さまポータルのときだけ出す欄（第 16 段階。画像 q129 の案A）。サイトの名前・メニュー・右上のボタンは画面設計に 1 か所、
+// 下線を付けるメニューは画面ごと。書いていない欄は、最初の値を薄い字で見せる
+function headerKindSettingsHtml(d, s) {
+  const kinds = Object.entries(HEADER_KINDS).map(([v, l]) => `<label><input type="radio" name="header-kind" value="${v}" data-field="header-kind"${(isPortalScreen(s) ? 'portal' : 'app') === v ? ' checked' : ''}><span>${l}</span></label>`).join('');
+  const pick = `<div class="field"><span>ヘッダーの形</span><div class="seg">${kinds}</div></div>`;
+  if (!isPortalScreen(s)) return pick;
+  const p = d.portal || {};
+  const P = portalOf({ ...d, portal: {} });
+  const on = portalMenuOf(d, s);
+  const menus = portalOf(d).menu.map((m) => `<option value="${esc(m)}"${m === on ? ' selected' : ''}>${esc(m)}</option>`).join('');
+  return `${pick}
+      <label class="field"><span>サイトの名前</span><input type="text" data-field="portal-site" maxlength="${NAME_MAX}" value="${esc(p.site || '')}" placeholder="${esc(P.site)}"></label>
+      <label class="field"><span>メニュー <small>1 行に 1 つ</small></span><textarea data-field="portal-menu" rows="4" placeholder="${esc(P.menu.join('\n'))}">${esc((p.menu || []).join('\n'))}</textarea>
+        <span class="hint">サイトの名前・メニュー・右上のボタンは、ヘッダーがお客さまポータルのすべての画面で同じです。メニューを書かないときは、それらの画面の名前を並べます。</span></label>
+      <label class="field"><span>この画面で下線を付けるメニュー</span><select data-field="portal-on">${menus}</select></label>
+      <label class="field"><span>右上のボタン</span><input type="text" data-field="portal-button" maxlength="${TARGET_MAX}" value="${esc(p.button || '')}" placeholder="${esc(P.button)}"></label>`;
 }
 
 // 右のパネルの「下に重ねる画面」と、選んだときだけ出すウィンドウの欄（第 16 段階。画像 q128 の案A）。
@@ -11647,6 +11758,16 @@ function saveSideField(e) {
   if (field === 'device' && v !== s.device) actions.updateScreen(d.id, s.id, { device: v });
   if (field === 'screen-header') actions.updateScreen(d.id, s.id, { showHeader: e.target.checked });
   if (field === 'table-pos' && v !== s.tablePos) actions.updateScreen(d.id, s.id, { tablePos: v });
+  // ヘッダーの形とお客さまポータルの欄（第 16 段階）。文字の欄は右のパネルを描き直さずに保存する（打っている欄が作り直されないため）
+  if (field === 'header-kind') actions.updateScreen(d.id, s.id, { headerKind: v });
+  if (field === 'portal-on') actions.updateScreen(d.id, s.id, { portalMenu: v });
+  const portal = d.portal || {};
+  if (field === 'portal-site' && cleanName(v) !== (portal.site || '')) commitKeepSide(() => actions.updateDesignInfo(d.id, { portal: { site: v } }));
+  if (field === 'portal-button' && cleanName(v, TARGET_MAX) !== (portal.button || '')) commitKeepSide(() => actions.updateDesignInfo(d.id, { portal: { button: v } }));
+  if (field === 'portal-menu') {
+    const list = normalizeBandTabs(v.split('\n'));
+    if (list.join('\n') !== (portal.menu || []).join('\n')) actions.updateDesignInfo(d.id, { portal: { menu: list } }); // 下線を付けるメニューの選ぶ欄も描き直す
+  }
   // 下に重ねる画面とウィンドウの欄（第 16 段階）。幅と高さは、収まる大きさに直して右のパネルに出し直す
   if (field === 'screen-under') actions.updateScreen(d.id, s.id, { overlay: { under: v } });
   if (field === 'win-pos') actions.updateScreen(d.id, s.id, { overlay: { pos: v } });
@@ -14329,6 +14450,7 @@ function contentWithoutLookDefaults(c) {
   const out = designContentOf(c);
   if (out.look === 'standard') delete out.look;
   if (Array.isArray(out.bandTabs) && !out.bandTabs.length) delete out.bandTabs;
+  if (out.portal == null) delete out.portal; // v1.01 の第 16 段階で足した欄（書いていないときは持たない）
   out.screens.forEach((s) => { if (s.itemView === 'input') delete s.itemView; });
   return out;
 }
@@ -18394,7 +18516,7 @@ function exposeForTest() {
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     KINTONE_TYPES, kintoneChoices, kintoneTypeOf, kintoneCodeOf, kintoneCodeOk, kintoneCodes, isKintoneDesign,
-    WINDOW_POS, windowRect, partBounds, clampGroupMove,
+    WINDOW_POS, windowRect, partBounds, clampGroupMove, HEADER_KINDS, PORTAL_BAND, portalOf, bandHeight,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     setMaterialWaitMs: (ms) => { materialWaitMs = ms; },
     ready: true,
