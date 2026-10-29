@@ -40,18 +40,19 @@ async function bootEditor(t) {
   return { app, api, id, screen, parts, add, partEl };
 }
 
-test('アイテム一覧: 6 つの組に 32 種類のアイテムと吹き出し（第 15 段階でカレンダーとメールの作成欄を追加した）。組の見出しで閉じたり開いたりできる', async (t) => {
+test('アイテム一覧: 7 つの組に 36 種類のアイテムと吹き出し（第 16 段階で組「ポータル画面用」と 4 つのアイテムを追加した）。組の見出しで閉じたり開いたりできる', async (t) => {
   const { app, api } = await bootEditor(t);
-  assert.deepEqual($$(app, '.pal-head').map((e) => e.textContent.replace(/\s+/g, ' ').trim()), ['▼ データベースの項目0', '▼ 基本14', '▼ 入力画面用4', '▼ 一覧画面用5', '▼ 詳細画面用4', '▼ 進捗画面用3', '▼ その他3']);
-  assert.equal($$(app, '.pal-btn').length, 33);
+  assert.deepEqual($$(app, '.pal-head').map((e) => e.textContent.replace(/\s+/g, ' ').trim()),
+    ['▼ データベースの項目0', '▼ 基本14', '▼ 入力画面用4', '▼ 一覧画面用5', '▼ 詳細画面用4', '▼ ポータル画面用4', '▼ 進捗画面用3', '▼ その他3']);
+  assert.equal($$(app, '.pal-btn').length, 37);
   click($(app, '.pal-head[data-id="basic"]'));
-  assert.equal($$(app, '.pal-btn').length, 19, '基本を閉じた');
+  assert.equal($$(app, '.pal-btn').length, 23, '基本を閉じた');
   assert.equal(api.ui.paletteClosed.basic, true);
   api.goHome();
   api.openDesign(api.store.state.designs[0].id);
-  assert.equal($$(app, '.pal-btn').length, 19, '画面設計を開き直しても閉じたまま');
+  assert.equal($$(app, '.pal-btn').length, 23, '画面設計を開き直しても閉じたまま');
   click($(app, '.pal-head[data-id="basic"]'));
-  assert.equal($$(app, '.pal-btn').length, 33);
+  assert.equal($$(app, '.pal-btn').length, 37);
 });
 
 test('アイテムを置く: 押すと帯の下に置き、番号が付き、選んだ状態になる。続けて押すとずらして置く', async (t) => {

@@ -709,6 +709,63 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .pml-clip{color:#64748b;display:inline-flex}
 .pml-clip svg{width:18px;height:18px}
 .pml-send{flex:none;margin-left:auto;width:88px;height:34px;font-size:14px}
+/* お客さまポータルとチャットのアイテム（第 16 段階。画像 q129・q130）。Salesforce と kintone の色と形も、ここにまとめた */
+/* 大きな画像と検索欄: 色の付いた面に「画像」の印。番号は中の左上 */
+.phero{position:relative;flex:1;min-height:0;overflow:hidden}
+.phero-bg{position:absolute;inset:0;background:linear-gradient(135deg,#334155,#64748b 60%,#94a3b8)}
+.phero-tag{position:absolute;right:20px;bottom:16px;display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.75);font-size:13px}
+.phero-tag svg{width:34px;height:26px}
+.phero-no{position:absolute;left:12px;top:12px;z-index:1}
+.phero-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;text-align:center;padding:0 24px}
+.phero-c b{font-size:34px;font-weight:700;letter-spacing:.5px;text-shadow:0 1px 4px rgba(0,0,0,.25);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phero-c small{font-size:16px;opacity:.92;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phero-s{margin-top:14px;width:640px;max-width:100%;height:52px;background:#fff;border-radius:8px;display:flex;align-items:center;padding:0 6px 0 16px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.phero-s span{flex:1;min-width:0;display:flex;align-items:center;gap:10px;color:#94a3b8;font-size:15px;text-align:left;white-space:nowrap;overflow:hidden}
+.phero-s span svg{width:20px;height:20px;color:#64748b;flex-shrink:0}
+.phero-s i{font-style:normal;flex:none;width:96px;height:40px}
+.look-sf .phero-bg{background:linear-gradient(135deg,#032d60,#0b5cab 60%,#1b96ff)}
+.look-kt .phero-bg{background:linear-gradient(135deg,#1b4f72,#2e86c1 60%,#85c1e9)}
+.look-sf .phero-s{border-radius:4px}.look-kt .phero-s{border-radius:0}
+/* タイル: アイコンの色は左から 青・橙・緑・紫。kintone はグループ枠のアイコンを消しているが、タイルのアイコンは出す */
+.ptm-no{position:absolute;left:-28px;top:0}
+.ptm-row{flex:1;min-height:0;display:flex;gap:24px}
+.ptm{flex:1 1 0;min-width:0;background:#fff;border:1px solid #cbd5e1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:0 12px;overflow:hidden}
+.ptm .ptm-ic{width:48px;height:48px;border-radius:24px;margin-bottom:6px}.ptm .ptm-ic svg{width:26px;height:26px}
+.ptm b{font-size:16px;color:#0f172a;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptm small{font-size:13px;color:#475569;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.look-sf .ptm{border-color:#dddbda;border-radius:4px;box-shadow:0 2px 2px rgba(0,0,0,.10)}
+.look-sf .ptm .ptm-ic{border-radius:6px}.look-sf .ptm b{color:#0176d3;font-weight:400}.look-sf .ptm small{color:#444}
+.look-kt .ptm{border-color:#e3e7e8;border-radius:0}.look-kt .ptm .ptm-ic{border-radius:0;display:inline-flex}.look-kt .ptm b{color:#333}.look-kt .ptm small{color:#666}
+/* 記事の一覧: 外の枠と見出しの行はグループ枠と同じ。説明を出さない形は 日付・題名 の 1 行 */
+.pat-list{flex:1;min-height:0;overflow:hidden;padding:0 16px}
+.pat-i{padding:11px 0;border-bottom:1px solid #e2e8f0}
+.pat-i a{display:block;color:#1d4ed8;font-size:14.5px;text-decoration:underline;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pat-i p{margin:3px 0 2px;font-size:13px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pat-i small{font-size:12px;color:#64748b}.pat-i small em{font-style:normal;margin-right:10px;padding:1px 8px;border-radius:10px;background:#f1f5f9;color:#475569}
+.pat-i.short{display:flex;gap:14px;align-items:baseline}.pat-i.short small{flex-shrink:0}
+.pat-more{height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13.5px;color:#1d4ed8;border-top:1px solid #e2e8f0}
+.look-sf .pat-i{border-bottom-color:#e5e5e5}.look-sf .pat-i a{color:#0176d3;text-decoration:none}.look-sf .pat-i p{color:#181818}
+.look-sf .pat-i small em{background:#f3f3f3;color:#444;border-radius:4px}.look-sf .pat-more{color:#0176d3;border-top-color:#e5e5e5}
+.look-kt .pat-i{border-bottom-color:#e3e7e8}.look-kt .pat-i a{color:#3498db;text-decoration:none}.look-kt .pat-i p{color:#333}
+.look-kt .pat-i small em{background:#f7f9fa;color:#666;border-radius:0}.look-kt .pat-more{color:#3498db;border-top-color:#e3e7e8}
+/* チャット: 右の吹き出しにする人の文は右の青い吹き出し、ほかの人の文は左の灰色の吹き出し。見出しの行を出さない形（bare）は白い面だけ */
+.pchat{flex:1;min-height:0;display:flex;flex-direction:column}
+.pchat.bare{background:#fff;position:relative}
+.pch-no{position:absolute;left:8px;top:8px;z-index:1}
+.pch-msgs{flex:1;min-height:0;overflow:hidden;padding:14px 14px 6px;display:flex;flex-direction:column;gap:12px;background:#fff}
+.pch-row{display:flex;gap:8px;align-items:flex-start}
+.pch-row.r{justify-content:flex-end}
+.pch-av{width:30px;height:30px;border-radius:15px;background:#475569;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.pch-row small{display:block;font-size:11.5px;color:#64748b;margin-bottom:2px}
+.pch-b{margin:0;max-width:260px;padding:8px 12px;border-radius:14px 14px 14px 4px;background:#f1f5f9;color:#0f172a;font-size:13px;line-height:1.55;white-space:pre-wrap}
+.pch-b.me{border-radius:14px 14px 4px 14px;background:#2563eb;color:#fff}
+.pch-in{height:56px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 12px;border-top:1px solid #e2e8f0;background:#fff}
+.pch-in span{flex:1;min-width:0;height:36px;border:1px solid #cbd5e1;border-radius:18px;display:flex;align-items:center;padding:0 14px;color:#94a3b8;font-size:13px;white-space:nowrap;overflow:hidden}
+.pch-in i{font-style:normal;flex:none;width:64px;height:36px;font-size:13.5px}
+.look-sf .pch-av{background:#0176d3}.look-sf .pch-b{background:#f3f3f3;color:#181818;border-radius:8px 8px 8px 0}
+.look-sf .pch-b.me{background:#0176d3;color:#fff;border-radius:8px 8px 0 8px}.look-sf .pch-in{border-top-color:#e5e5e5}.look-sf .pch-in span{border-color:#c9c9c9;border-radius:4px}
+.look-kt .pch-av{background:#3498db;border-radius:0}.look-kt .pch-b{background:#f7f9fa;border:1px solid #e3e7e8;color:#333;border-radius:0}
+.look-kt .pch-b.me{background:#3498db;border-color:#3498db;color:#fff;border-radius:0}.look-kt .pch-in{border-top-color:#e3e7e8}.look-kt .pch-in span{border-color:#e3e7e8;border-radius:0}
 /* レコードの見出し（第 14 段階。画像 q116 の左の段）。上に重ねたボタンは、見出しの上に描く */
 .prhead{flex:1;min-width:0;min-height:0;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:9px 16px;overflow:hidden;line-height:1.25}
 .prh-top{display:flex;align-items:center;gap:12px;min-width:0}
@@ -2028,7 +2085,7 @@ const FRAME_TOP = 64; // グループ枠の上の端から、中の 1 行目の�
 const FRAME_EMPTY_H = 160; // 中に何も並べないグループ枠の高さ
 const isFrameBlock = (b) => isObj(b) && typeof b.frame === 'string';
 // 列の幅いっぱいに広げる種類（入力の項目・表・グラフ・説明文・見出し・区切り線・第 14 段階のアイテム）。ほかは最初の幅（列より広ければ列の幅）
-const STRETCH_TYPES = ['table', 'graph', 'desc', 'heading', 'divider', 'frame', 'recordHead', 'activity', 'tree', 'calendar', 'mail'];
+const STRETCH_TYPES = ['table', 'graph', 'desc', 'heading', 'divider', 'frame', 'recordHead', 'activity', 'tree', 'calendar', 'mail', 'tileMenu', 'articles', 'chat'];
 const stretchType = (type) => !!partType(type) && (!!partType(type).input || STRETCH_TYPES.includes(type));
 // blocks を、x から幅 w の 1 つの列に、startY から上から順に重ねる。block はアイテム 1 つか、グループ枠 { frame: 'グループ名', color, columns（1〜2）, rows }。
 // sizeOf(entry) は { type, w, h }。戻り値 { placed: [{ entry, type, x, y, w, h }]（置く順。グループ枠は中のアイテムより前）, nextY }
@@ -2403,6 +2460,27 @@ const PART_TYPES = {
   mail: { name: 'メールの作成欄', pal: 'メールの\n作成欄', icon: '✉', w: 560, h: 440, label: 'メールを作成', container: true, props: {
     color: 'blue', from: '佐藤 花子 <sato@example.com>', to: '山田 太郎', subject: '点検の日の連絡',
     body: '山田 太郎 様\n\nいつもお世話になっております。\n点検の日を 10 月 22 日（木）10 時でお願いできますでしょうか。\n\n佐藤 花子', toolbar: true } },
+  // ── 第 16 段階で追加したアイテム（お客さまポータルとチャット。見た目と最初の大きさは画像 q129・q130 のとおり。どれも項目一覧には入れない）──
+  // 大きな画像と検索欄: fullBleed は、置くと画面（小さなウィンドウの画面はウィンドウ）の幅いっぱいにする印。番号は中の左上に描く（左の外は画面の外になるため）
+  hero: { name: '大きな画像と検索欄', pal: '大きな画像と\n検索欄', icon: '🏞', w: 1280, h: 320, label: '', fullBleed: true, props: {
+    title: 'お困りごとは、ここで調べられます', sub: 'よくある質問・取扱説明書・修理の申し込み', search: true, ph: 'キーワードを入力（例: エラー E-11）' } },
+  // タイル: tiles は 1 行に「題名, 説明」（parseTiles）。アイコンの色は左から 青・橙・緑・紫 の順
+  tileMenu: { name: 'タイル', icon: '⊞', w: 1216, h: 160, label: '', props: {
+    tiles: 'よくある質問, 困ったときの直し方\n修理を申し込む, 訪問の日を選んで申し込む\n問い合わせの状況, 申し込んだ修理の進み具合\n取扱説明書, 機種ごとの説明書を見る' } },
+  // 記事の一覧: rows は 1 行に「題名, 説明, 分類, 日付」（parseArticles）。desc は説明を出すか、more は下の「すべて表示」を出すか。外の枠と見出しの行はグループ枠と同じ形
+  articles: { name: '記事の一覧', pal: '記事の一覧', icon: '📰', w: 784, h: 416, label: 'よくある質問', props: {
+    rows: 'エラー E-11 が出たとき, 室外機の温度の部品のエラーです。電源を入れ直す手順を説明します。, 故障の直し方, 2026-10-20\n'
+      + '冷房が効かないとき, フィルターの掃除と、設定の温度の確かめ方を説明します。, よくある質問, 2026-10-12\n'
+      + 'リモコンの電池の替え方, 電池の種類と、替えた後の時刻の合わせ方を説明します。, よくある質問, 2026-09-28\n'
+      + '修理の申し込みのしかた, 訪問の日の選び方と、申し込んだ後の流れを説明します。, 申し込み, 2026-09-15',
+    desc: true, more: true } },
+  // チャット（画像 q130 の案A）: lines は 1 行に「話す人: 文」（parseChatLines）。me の人の文を右の吹き出し、ほかの人の文を左の吹き出しで描く。
+  // head は見出しの行を出すか、ph は入力欄の薄い字。ページの中にも、小さなウィンドウ（右下）の中にも置ける
+  chat: { name: 'チャット', icon: '🗨', w: 400, h: 560, label: 'AI のアシスタント', props: {
+    lines: 'AI: こんにちは。サポートの AI です。ご用件をお書きください。\nお客さま: エアコンから、エラー E-11 が出ています。\n'
+      + 'AI: E-11 は、室外機の温度の部品のエラーです。電源を切り、10 分たってから入れ直してください。\nお客さま: 入れ直しても直りません。\n'
+      + 'AI: 修理を申し込めます。「修理を申し込む」のページで、訪問の日を選んでください。',
+    me: 'お客さま', head: true, ph: 'メッセージを入力' } },
 };
 // グループ枠の見出しの左のアイコンの色（右のパネルの選択肢の順。'none' はアイコンを出さない）と、アイコンの絵（白い線。Salesforce のアイコンは写さない）
 const FRAME_COLORS = { blue: '青', green: '緑', orange: '橙', red: '赤', purple: '紫', gray: '灰', none: 'なし' };
@@ -2419,6 +2497,7 @@ const PALETTE_GROUPS = [
   { id: 'input', name: '入力画面用', types: ['file', 'user', 'datetime', 'calc'] },
   { id: 'list', name: '一覧画面用', types: ['search', 'filter', 'pager', 'tree', 'calendar'] },
   { id: 'detail', name: '詳細画面用', types: ['frame', 'recordHead', 'activity', 'mail'] },
+  { id: 'portal', name: 'ポータル画面用', types: ['hero', 'tileMenu', 'articles', 'chat'] }, // 第 16 段階（画像 q129 の 2 枚目）
   { id: 'progress', name: '進捗画面用', types: ['status', 'steps', 'tabs'] },
   { id: 'look', name: 'その他', types: ['image', 'link', 'icon'] },
 ];
@@ -2800,8 +2879,11 @@ function freeSpot(screen, at) {
 // itemId を渡すと、その項目を指す部品を作る（項目名と設定は項目が持つ）。表の部品は tableKind で中身を決める
 function createPartData(type, screen, at, itemId = null, { tableKind = 'subtable', design = null } = {}) {
   const t = partType(type);
-  const fullW = (isWindowScreen(screen) ? windowRect(screen).w : screen.width) - 64; // 幅いっぱいの種類は、画面（ウィンドウ）の幅から左右の間を引いた幅
-  const rect = fitRect({ x: at.x, y: at.y, w: t.fullWidth ? fullW : t.w, h: t.h }, screen);
+  // 幅いっぱいの種類（fullWidth）は、画面（ウィンドウ）の幅から左右の間を引いた幅。fullBleed の種類は、左の端から画面（ウィンドウ）の幅いっぱい（第 16 段階）
+  const b = partBounds(screen);
+  const fullW = (isWindowScreen(screen) ? windowRect(screen).w : screen.width) - 64;
+  const rect = t.fullBleed ? fitRect({ x: b.x0, y: at.y, w: b.x1 - b.x0, h: t.h }, screen)
+    : fitRect({ x: at.x, y: at.y, w: t.fullWidth ? fullW : t.w, h: t.h }, screen);
   const base = { id: newId('p'), type, ...rect, no: t.noNumber ? null : nextPartNo(screen), labelPos: 'top', sample: '', placeholder: '' };
   if (type === 'table') base.tableKind = itemId ? 'subtable' : tableKind === 'subtable' ? 'records' : tableKind;
   if (type === 'table') base.view = { rows: 3, samples: {}, widths: {} };
@@ -2935,6 +3017,28 @@ function describePartLines(p, ctx = null) {
       eqIf('件名', v(pr.subject));
       eqIf('中のアイテム', frameKidNosText(ctx, p));
       break;
+    // 第 16 段階のアイテム（画像 q129・q130）
+    case 'hero':
+      eqIf('見出し', v(pr.title));
+      eqIf('検索欄', pr.search === false ? 'なし' : 'あり');
+      break;
+    case 'tileMenu': {
+      const tiles = parseTiles(pr.tiles);
+      if (tiles.length) eqIf('タイル', tiles.map((x) => x.title).join('・'));
+      break;
+    }
+    case 'articles': {
+      const rows = parseArticles(pr.rows);
+      if (rows.length) eqIf('記事', `${rows.length} 件`);
+      eqIf('説明', pr.desc === false ? '出さない' : '出す');
+      break;
+    }
+    case 'chat': {
+      const lines = parseChatLines(pr.lines);
+      if (lines.length) eqIf('会話', `${lines.length} 行`);
+      eqIf('右の吹き出し', v(pr.me));
+      break;
+    }
     case 'table':
       if (p.tableKind === 'subtable') { if (p.required) short.push('必須（1 行以上）'); }
       else if (p.tableKind === 'related') {
@@ -6298,6 +6402,10 @@ function partInnerHtml(p, t, marks = false) {
     case 'tree': return treeHtml(p);
     case 'calendar': return calendarHtml(p);
     case 'mail': return mailHtml(p);
+    case 'hero': return heroHtml(p);
+    case 'tileMenu': return tileMenuHtml(p);
+    case 'articles': return articlesHtml(p);
+    case 'chat': return chatHtml(p);
   }
   return partLabelHtml(p, marks) + partFieldHtml(p, t);
 }
@@ -6820,6 +6928,79 @@ function mailHtml(p) {
     + line('差出人', `<span>${esc(pr.from || '')}</span>`) + line('宛先', `${chips}<em>Cc　Bcc</em>`) + line('件名', `<span>${pr.subject ? esc(pr.subject) : '<span class="pph">件名</span>'}</span>`)
     + `${tb}<div class="pml-body">${esc(pr.body || '').replace(/\n/g, '<br>')}</div>`
     + `<div class="pml-foot"><span class="pml-clip">${MAIL_CLIP}</span><span class="pbtn primary pml-send">送信</span></div></div>`;
+}
+
+// ── お客さまポータルとチャットのアイテム（第 16 段階。画像 q129・q130。仕様_細かい決めごと.md の「小さなウィンドウとお客さまポータルの細かい決めごと」）──
+// 「1 行に 1 つ」の文の 1 行を、区切り（, ， タブ）で n 個の欄に分ける（最後の欄に残りを入れる。活動履歴・カレンダーの予定と同じ区切り）
+function splitFields(line, n) {
+  const f = [];
+  let rest = String(line);
+  for (let i = 0; i < n - 1; i++) {
+    const m = rest.match(/[,，\t]/);
+    if (!m) break;
+    f.push(rest.slice(0, m.index).trim());
+    rest = rest.slice(m.index + 1);
+  }
+  f.push(rest.trim());
+  return f;
+}
+const splitLines = (text, n) => String(text || '').split('\n').map((l) => splitFields(l, n)).filter((f) => f.some(Boolean));
+// タイル（1 行に「題名, 説明」）と記事（1 行に「題名, 説明, 分類, 日付」）
+const parseTiles = (text) => splitLines(text, 2).map(([title = '', desc = '']) => ({ title, desc }));
+const parseArticles = (text) => splitLines(text, 4).map(([title = '', desc = '', kind = '', date = '']) => ({ title, desc, kind, date }));
+// チャットの会話（1 行に「話す人: 文」。「：」でもよい）。話す人を書いていない行は、前の行と同じ人の文にする
+function parseChatLines(text) {
+  let who = '';
+  return String(text || '').split('\n').map((line) => {
+    const m = line.match(/^\s*([^:：\n]{1,20}?)\s*[:：]\s*(.*)$/);
+    if (m) who = m[1];
+    const t = (m ? m[2] : line).trim();
+    return t ? { who, text: t } : null;
+  }).filter(Boolean);
+}
+const PHOTO_ICON = '<svg viewBox="0 0 48 36" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="44" height="32" rx="3"/><circle cx="15" cy="12" r="4"/><path d="M4 31l13-13 9 9 6-6 13 11"/></svg>';
+// 大きな画像と検索欄。色の付いた面に「画像」の印を置き、真ん中に見出し・説明・検索欄
+function heroHtml(p) {
+  const pr = p.props || {};
+  const search = pr.search === false ? '' : `<div class="phero-s"><span>${BAND_ICONS.search}${esc(pr.ph || '')}</span><i class="pbtn primary">検索</i></div>`;
+  return `<div class="phero"><div class="phero-bg"><span class="phero-tag">${PHOTO_ICON}画像</span></div>${partNoHtml(p, ' phero-no')}`
+    + `<div class="phero-c"><b>${esc(pr.title || '')}</b>${pr.sub ? `<small>${esc(pr.sub)}</small>` : ''}${search}</div></div>`;
+}
+// タイル。左から 青・橙・緑・紫 の丸いアイコン（Salesforce のアイコンは写さない）・題名・説明
+const TILE_COLORS = ['blue', 'orange', 'green', 'purple'];
+const TILE_ICONS = [
+  '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 5 .5c0 1.5-2.5 2-2.5 3.5M12 17v.5"/>',
+  '<path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/>',
+  '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+  '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/>',
+];
+function tileMenuHtml(p) {
+  const tiles = parseTiles((p.props || {}).tiles).map((t, i) => `<div class="ptm"><span class="pfr-ic fc-${TILE_COLORS[i % 4]} ptm-ic">`
+    + `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TILE_ICONS[i % 4]}</svg></span>`
+    + `<b>${esc(t.title)}</b>${t.desc ? `<small>${esc(t.desc)}</small>` : ''}</div>`).join('');
+  return `${partNoHtml(p, p.x >= 28 ? ' ptm-no' : ' pno-corner')}<div class="ptm-row">${tiles || '<span class="pph">タイルは右のパネルで書きます</span>'}</div>`;
+}
+// 記事の一覧。外の枠と見出しの行はグループ枠と同じ形。説明を出す形は 題名（リンクの色）・説明・分類の札と日付、出さない形は 日付・題名 の 1 行
+function articlesHtml(p) {
+  const pr = p.props || {};
+  const list = parseArticles(pr.rows).map((r) => (pr.desc === false
+    ? `<div class="pat-i short"><small>${esc(r.date)}</small><a>${esc(r.title)}</a></div>`
+    : `<div class="pat-i"><a>${esc(r.title)}</a>${r.desc ? `<p>${esc(r.desc)}</p>` : ''}<small>${r.kind ? `<em>${esc(r.kind)}</em>` : ''}${esc(r.date)}</small></div>`)).join('');
+  return `<div class="pframe pat"><div class="pfr-head">${partNoHtml(p)}<b>${esc(p.label)}</b></div>`
+    + `<div class="pat-list">${list || '<span class="pph">記事は右のパネルで書きます</span>'}</div>${pr.more === false ? '' : '<div class="pat-more">すべて表示</div>'}</div>`;
+}
+// チャット（画像 q130 の案A）。右の吹き出しにする人（props.me）の文は右の青い吹き出し、ほかの人の文は丸い印（話す人の名前の頭の 2 字）と名前の付いた左の吹き出し。
+// 下に入力欄と「送信」。見出しの行を出さない形（小さなウィンドウの中いっぱいに置くとき）は、番号を左上に重ねる
+const CHAT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>';
+function chatHtml(p) {
+  const pr = p.props || {};
+  const me = String(pr.me || '').trim();
+  const msgs = parseChatLines(pr.lines).map((m) => (me && m.who === me
+    ? `<div class="pch-row r"><p class="pch-b me">${esc(m.text)}</p></div>`
+    : `<div class="pch-row"><span class="pch-av">${esc([...m.who].slice(0, 2).join(''))}</span><div>${m.who ? `<small>${esc(m.who)}</small>` : ''}<p class="pch-b">${esc(m.text)}</p></div></div>`)).join('');
+  const head = pr.head === false ? partNoHtml(p, ' pch-no') : `<div class="pfr-head">${partNoHtml(p)}<span class="pfr-ic fc-blue">${CHAT_ICON}</span><b>${esc(p.label)}</b></div>`;
+  return `<div class="${pr.head === false ? 'pchat bare' : 'pframe pchat'}">${head}<div class="pch-msgs">${msgs}</div>`
+    + `<div class="pch-in"><span>${esc(pr.ph || '')}</span><i class="pbtn primary">送信</i></div></div>`;
 }
 
 // 入力欄の部品の、項目名より下（入力欄・選択肢・添付の枠）
@@ -11150,6 +11331,7 @@ function partCommonFieldsHtml(p) {
   if (p.type === 'frame') return pfText('label', 'グループ名', p.label) + numbered;
   if (p.type === 'activity' || p.type === 'mail') return pfText('label', '見出しの文字', p.label) + numbered;
   if (p.type === 'calendar') return pfText('label', 'カレンダーの名前', p.label) + numbered;
+  if (p.type === 'articles' || p.type === 'chat') return pfText('label', '見出しの文字', p.label) + numbered; // 第 16 段階
   return numbered;
 }
 
@@ -11487,6 +11669,26 @@ function partTypeFieldsHtml(p) {
         + pfCheck('props.toolbar', '書式のボタンの行を出す', pr.toolbar !== false)
         + pfSeg('props.color', 'アイコンの色', pr.color, Object.entries(FRAME_COLORS))
         + '<p class="hint">メールの作成欄は、項目一覧には入りません。送信のボタンを押した後の画面を描くときは、ボタンのアイテムをメールの作成欄の上に重ねて置きます。メールの作成欄を動かすと、ボタンも一緒に動きます。</p>';
+    // 第 16 段階のアイテム（画像 q129 の 2 枚目・q130）。どれも項目一覧には入らない
+    case 'hero':
+      return pfText('props.title', '見出し', pr.title) + pfText('props.sub', '説明', pr.sub)
+        + pfCheck('props.search', '検索欄を出す', pr.search !== false)
+        + (pr.search === false ? '' : pfText('props.ph', '検索欄の薄い字', pr.ph))
+        + '<p class="hint">置くと、画面の幅いっぱいになります。画像は描かず、色の付いた面に「画像」と書きます。</p>';
+    case 'tileMenu':
+      return pfArea('props.tiles', 'タイル', pr.tiles, { hint: '（1 行に 1 つ。題名, 説明）', rows: 5 })
+        + '<p class="hint">アイコンの色は、左から 青・橙・緑・紫 の順です。タイルの数に合わせて、同じ幅に並べます。</p>';
+    case 'articles':
+      return pfArea('props.rows', '記事', pr.rows, { hint: '（1 行に 1 つ。題名, 説明, 分類, 日付）', rows: 6 })
+        + pfCheck('props.desc', '説明を出す', pr.desc !== false)
+        + pfCheck('props.more', '下に「すべて表示」を出す', pr.more !== false)
+        + '<p class="hint">説明を出さないときは、日付と題名を 1 行に並べます（お知らせの一覧などに使います）。</p>';
+    case 'chat':
+      return pfArea('props.lines', '会話', pr.lines, { hint: '（1 行に「話す人: 文」）', rows: 7 })
+        + pfText('props.me', '右の吹き出しにする人', pr.me, { placeholder: '例: お客さま' })
+        + pfCheck('props.head', '見出しの行を出す', pr.head !== false)
+        + pfText('props.ph', '入力欄の薄い字', pr.ph)
+        + '<p class="hint">右の吹き出しにする人の文を右に、ほかの人の文を左に描きます。小さなウィンドウの中いっぱいに置くときは、見出しの行を出さない形にします。</p>';
   }
   return '';
 }
