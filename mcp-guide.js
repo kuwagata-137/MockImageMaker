@@ -29,6 +29,13 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
 - 画面: 画面設計の中の 1 枚。機器（pc パソコン 幅 1280・tablet タブレット 幅 768・phone スマホ 幅 375）と高さを持つ。いちばん上にヘッダーが付く（表示しないこともできる）。
   ヘッダーは、標準の見た目では紺色の 1 行（業務アプリ名 ／ 画面の名前。高さ 40）、Salesforce と kintone の見た目では白い 2 行（高さ 88）。
   項目の表示（itemView）は "input"（入力欄で表示。入力欄の枠）か "show"（値だけ表示。値と下の線。詳細の画面に使う）で、edit_screen で画面ごとに選ぶ。
+- ヘッダーの形（headerKind）: "app"（アプリのヘッダー。見た目で決まる）か "portal"（お客さまポータル。お客さま向けの Web サイトのヘッダー。見た目によらず高さ 72）。edit_screen で画面ごとに選ぶ。
+  お客さまポータルのヘッダーのサイト名・メニュー・右上のボタンは、update_design の portal で画面設計に 1 か所だけ書き、画面ごとには下線を付けるメニュー（portalMenu）を選ぶ。
+  メニューを書かないときは、ヘッダーの形が "portal" の画面の名前を並び順に並べる。
+- 小さなウィンドウ: ほかの画面の上に開くウィンドウ（承認申請・作業報告・チャットなど。Salesforce と kintone では「ダイアログ」）。画面 1 つを、edit_screen の overlay で
+  下に重ねる画面（under）を選んで小さなウィンドウにする（画面 1 つ＝ウィンドウ 1 つ）。ウィンドウの見出しは画面の名前。下に重ねる画面は描くだけで、アイテムはウィンドウの中にだけ置ける。
+  位置（pos）は "center"（真ん中。下の画面に灰色をかける）・"bottomRight"（右下）・"right"（右の端。上から下まで）。下に重ねる画面にできるのは、同じ画面設計の、小さなウィンドウでない画面だけ。
+  小さなウィンドウの画面の機器は下に重ねる画面と同じで、ヘッダーはない（下に重ねる画面のヘッダーが描かれる）。下に重ねる画面を消すと、ふつうの画面に戻る。
 - アイテム: 画面に置くもの（入力欄・表・ボタン・グラフ・見出しなど）。種類は get_catalog の parts。位置と大きさは 8 ドットのマス目にそろう。
 - データベースの項目: 画面設計に 1 か所だけある項目一覧（kintone のアプリのフィールドに当たる）。入力欄のアイテムは項目を指し、項目名・必須・設定は項目が持つ（どの画面に置いても同じ）。
 - 赤い番号: アイテムに付く番号。画面の右か下の「設定一覧」に、番号の順に設定の文が並ぶ。
@@ -80,6 +87,8 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
    返事の files（書いたファイルの場所）と warnings（読み直しの食い違い）を人に伝える。MPD の資料が 2 つ以上あるときは、どれを元にするかを人に聞く。
 8. kintone のアプリにする（人に依頼されたとき）: read_guide の "kintone" を読む → 項目とテーブルの列の kintone の欄（kintone の種類・フィールドコード・kintone の計算式）を edit_items で埋める →
    get_kintone_app を読み、返事の howTo の順に kintone の MCP サーバーのツールへ渡す。
+9. お客さまポータルと小さなウィンドウを作る: お客さまポータルのトップは add_screen の template "portalTop"、承認申請とチャットのウィンドウは "winApproval"・"winChat"（after の画面を下に重ねる）で作り、
+   ほかは edit_screen の headerKind・overlay と layout_screen で作る（read_guide の "layout" の例）。サイト名とメニューは update_design の portal で書く。
 
 ## 書き込むときの決まり
 - ツールの 1 回の呼び出し＝1 回の変更です。ops に操作を並べると、まとめて 1 回で行います。途中の操作で断られたら、何も変わりません。
@@ -125,7 +134,8 @@ const LAYOUT = `# アイテムの並べ方（layout）
 }
 
 ## アプリが位置と大きさを決める決まり
-- 行は上から順に置く。最初の行はヘッダーの下に 24 ドット空けた所（標準の見た目は y=64、Salesforce と kintone の見た目は y=112、ヘッダーを表示しない画面は y=24。get_catalog の looks[].firstRowY）。
+- 行は上から順に置く。最初の行はヘッダーの下に 24 ドット空けた所（標準の見た目は y=64、Salesforce と kintone の見た目は y=112、お客さまポータルのヘッダーは y=96、ヘッダーを表示しない画面は y=24。
+  get_catalog の looks[].firstRowY・headerKinds[].firstRowY）。
   次の行は、前の行のいちばん下のアイテムの下に 24 ドット空けて置く。
 - 列は 4 つまで（columns: 1〜4）。1・2 列は、列の左の端が 32 と 480、列の幅が 400。2 列に並ぶのはパソコン（幅 912 以上）だけで、タブレットとスマホは 1 列で置く。
 - アイテムの幅と高さは、その種類の最初の大きさ（get_catalog の parts[].w・h）。1・2 列で、列の幅 400 に入らないアイテム（表 640・グラフ 480 など）は、span を書かなくても 2 列をまたぐ。
@@ -136,6 +146,7 @@ const LAYOUT = `# アイテムの並べ方（layout）
 - アイテムが画面の下からはみ出すときは、画面を下へ伸ばす（画面の高さは 20000 ドットまで。超える並べ方は断られる。get_catalog の maxScreenHeight）。
   赤い番号は、置いた順に次の番号が付く（no: null で番号を外す）。
 - mode（layout_screen）: "append" は今あるいちばん下のアイテムの下に追加する。"replace" は、その画面のアイテムと吹き出しを全部消してから置く。
+- 大きな画像と検索欄（type "hero"）は、1 行を 1 つで使い、画面（小さなウィンドウではウィンドウ）の左端から幅いっぱいに置く。いちばん初めに置くときは、ヘッダーのすぐ下に置く（24 ドット空けない）。
 
 ## アイテムに書けること
 - item: データベースの項目（項目名か id）。その名前の項目がなく type を書いたときは、項目を新しく作って置く（required・memo・props・allowSameName も書ける）。
@@ -219,7 +230,42 @@ laneItem（列に分ける項目）と sumItem（列ごとに合計する項目�
     [{ "type": "table", "tableKind": "records", "label": "完了予定日の近い商談", "span": 4, "props": { "columns": ["商談名", "金額", "段階"], "sort": "完了予定日の近い順" },
        "samples": { "商談名": ["給湯器の交換", "換気設備の点検", "保守の契約の更新", "床暖房の工事"], "金額": [85, 24, 36, 310], "段階": ["受注", "提案", "交渉", "見積"] } }]
   ]
-}`;
+}
+
+## お客さまポータルの書き方の例（サポートサイトのトップの画面。3 列）
+先に edit_screen で、その画面の headerKind を "portal" にします（サイト名とメニューは update_design の portal）。大きな画像と検索欄・タイル・記事の一覧は、データベースの項目になりません。
+{
+  "columns": 3,
+  "rows": [
+    [{ "type": "hero", "props": { "title": "お困りごとは、ここで調べられます", "sub": "よくある質問・取扱説明書・修理の申し込み" } }],
+    [{ "type": "tileMenu", "span": 3, "props": { "tiles": "よくある質問, 困ったときの直し方\\n修理を申し込む, 訪問の日を選んで申し込む\\n問い合わせの状況, 申し込んだ修理の進み具合" } }],
+    [{ "type": "articles", "label": "よくある質問", "span": 2 },
+     { "type": "articles", "label": "お知らせ", "props": { "desc": false, "rows": "年末年始の受付時間のお知らせ, , , 2026-10-22\\nサポートサイトを新しくしました, , , 2026-10-01" } }]
+  ]
+}
+
+## 小さなウィンドウの書き方の例（承認申請のウィンドウ）
+先に add_screen で画面を作り、edit_screen の update の overlay（under に下に重ねる画面「問い合わせの詳細」、pos に "center"）で小さなウィンドウにします。
+そのあと layout_screen で、ウィンドウの中に並べます。最後のボタンの行は、ウィンドウの下のボタンの行に入ります。
+{
+  "rows": [
+    [{ "type": "desc", "label": "このレコードの承認を申請します。", "no": null }],
+    [{ "item": "承認者", "type": "user", "required": true }],
+    [{ "item": "コメント", "type": "text2" }],
+    { "align": "right", "parts": [
+      { "type": "button", "label": "申請" },
+      { "type": "button", "label": "キャンセル", "to": "問い合わせの詳細" }
+    ] }
+  ]
+}
+
+## 小さなウィンドウの中の並べ方の決まり
+- 小さなウィンドウの画面では、ウィンドウの中に並べる。最初の行は、ウィンドウの見出しの行（高さ 56）の下に 24 ドット空けた所。列の左端と幅は、ウィンドウの左端と幅から数える
+  （1・2 列の左端はウィンドウの左端から 32。幅 640 のウィンドウは 1 列）。
+- 下のボタンの行（高さ 64）があるウィンドウ（overlay.foot が true）では、rows の最後の行がボタンの行（align）なら、それを下のボタンの行に置く（ボタンの間は 16、ウィンドウの端から 24）。
+  下のボタンの行にアイテムがもうあるときは、ボタンの行を書くと断られる（mode "replace" で置き直す）。
+- アイテムがウィンドウの中の下端（下のボタンの行があれば、その上）を超えるときは断られる。edit_screen の overlay.height でウィンドウを高くするか、アイテムを減らす。
+- チャット（type "chat"）をウィンドウの中いっぱいに置くときは、add_screen の template "winChat" を使う（右下 400×560。見出しの行を出さないチャット）。`;
 
 const CATALOG = `# アイテムのカタログ
 
@@ -243,6 +289,14 @@ const CATALOG = `# アイテムのカタログ
 - 詳細画面用のメールの作成欄（mail。container が true）: props.from・to・subject・body（差出人・宛先・件名・本文のサンプル値）・toolbar（書式のボタンの行）・color。カレンダーとメールの作成欄は、データベースの項目にならない。
 - templates の "crmKanban"（商談のかんばん）と "crmHome"（ホームのダッシュボード）は、かんばんとグラフで並べた一覧の画面とホームの画面のひな形。
   データベースの項目がない画面設計では、サンプルの項目（商談名・取引先名・金額・完了予定日・段階〔ステータス〕）を追加する。
+- ポータル画面用のアイテム（どれもデータベースの項目にならない）: 大きな画像と検索欄（hero。画面の幅いっぱいに置く。props.title・sub・search・ph）・
+  タイル（tileMenu。props.tiles は 1 行に「題名, 説明」）・記事の一覧（articles。props.rows は 1 行に「題名, 説明, 分類, 日付」、props.desc が false なら日付と題名だけの短い形）・
+  チャット（chat。props.lines は 1 行に「話す人: 文」、props.me の人の文を右の吹き出し、ほかの人の文を左の吹き出しで描く。ページにも、小さなウィンドウの中にも置ける）。
+- templates の "winApproval"（承認申請のウィンドウ）と "winChat"（AI のチャットのウィンドウ）は、add_screen の after の画面（書かないときは最後の画面。小さなウィンドウの画面なら、その下の画面）を
+  下に重ねる小さなウィンドウのひな形。承認申請のウィンドウは、承認者とコメントの項目がなければ項目一覧に追加する。"portalTop"（お客さまポータルのトップ）は、ヘッダーの形をお客さまポータルにした画面のひな形。
+  templates[].screenName があるひな形は、新しい画面の名前がひな形の名前と違う（承認申請・ホーム・AI のアシスタント。add_screen の name で変えられる）。
+- headerKinds: ヘッダーの形（edit_screen の headerKind）と、お客さまポータルのヘッダーの高さ（bandHeight）・最初の行（firstRowY）。window: 小さなウィンドウの位置（positions）・見出しの行と下のボタンの行の高さ・
+  最初の大きさ（size）・最小の大きさ（minSize）・幅と高さの上限の計算に使う数（room）。
 - itemTypes: edit_items の add に書ける項目の種類。templates: add_screen の template に書けるひな形。devices: 機器。targets: 構築先。callout: 吹き出しの色（color）と線の先（tip）。layout: 並べ方の数（read_guide の "layout"）。
 - looks: 見た目（create_design・update_design の look）と、見た目ごとのヘッダーの高さ（bandHeight）・ヘッダーがある画面の並べ方の最初の行（firstRowY）。itemViews: 画面の項目の表示（edit_screen の itemView）。
 - kintoneTypes: 項目とテーブルの列の kintone の欄に書ける kintone の種類（type・名前・選べるアイテムの種類 parts・選ばないとその種類になるアイテムの種類 defaultFor・kintone が値を入れるか auto）。read_guide の "kintone"。
@@ -347,13 +401,14 @@ kintone の画面設計（構築先か見た目が kintone）は、項目とテ�
    - properties は kintone-add-form-fields、systemFields は kintone-update-form-fields、layout は kintone-update-form-layout、generalSettings は kintone-update-general-settings に渡す。
    - needsAppId（ルックアップ・関連レコード一覧）は、元のアプリの ID（relatedApp.app）を入れてから追加する。ID はモックイメージメーカーでは分からないので、元のアプリを先に作るか、人に聞く。
    - 本番の環境への反映（kintone-deploy-app）は、人に確かめてから行う。
-5. manualSteps（プロセス管理・一覧・グラフ・ボタンの動き・アクセス権）は kintone の MCP サーバーでは作れないので、人に伝える。
+5. manualSteps（プロセス管理・一覧・グラフ・ボタンの動き・小さなウィンドウ・お客さまポータル・アクセス権）は kintone の MCP サーバーでは作れないので、人に伝える。
+   小さなウィンドウの画面は kintone の標準の機能にない（カスタマイズの JavaScript かプラグインで作る）。お客さまポータルの画面は kintone のアプリの画面ではない（kintone の外の仕組みで作る）。
 
 ## get_kintone_app の返事
 - formScreen: フォームにした画面（screen を省くと、項目を置いたアイテムがいちばん多い画面）。layout は、この画面のアイテムの並び（縦に重なるアイテムを 1 行にまとめ、左から並べる）。
   見出し・説明文はラベル、区切り線は罫線、テーブルは SUBTABLE の行になる。この画面に置いていない項目と関連レコード一覧は、いちばん下に 1 行ずつ追加する。
   グループ枠は kintone のグループ（GROUP）になる。中にフィールドになるアイテムがあるグループ枠だけを、properties（type "GROUP"・openGroup true）と layout の GROUP の行にする（中は同じ決まりで ROW の行にする）。
-  kintone のグループにはテーブルを入れられないので、グループ枠の中のテーブルはグループの後ろに置き、warnings で知らせる。レコードの見出し・活動履歴・ツリー・メールの作成欄は kintone のフィールドにないので、フォームに入れず、warnings で知らせる。
+  kintone のグループにはテーブルを入れられないので、グループ枠の中のテーブルはグループの後ろに置き、warnings で知らせる。レコードの見出し・活動履歴・ツリー・メールの作成欄・大きな画像と検索欄・タイル・記事の一覧・チャットは kintone のフィールドにないので、フォームに入れず、warnings で知らせる。
   カレンダーもフォームに入れない（kintone では一覧の表示形式「カレンダー形式」で作るので、manualSteps に書く）。
 - レコード一覧のかんばんと、kintone のグラフの種類にないグラフ（じょうご・メーター・大きな数字）は、フォームにした画面でなくても warnings で知らせる
   （kintone では、表示形式「カスタマイズ」の一覧・近い種類のグラフ・JavaScript・プラグインのどれで作るかを人に確かめる）。積み上げ棒は、kintone の縦棒グラフの「積み上げ」で作る（manualSteps）。

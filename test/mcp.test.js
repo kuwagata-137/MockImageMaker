@@ -94,6 +94,8 @@ test('入口の選べる値（機器・見た目・項目の表示・表の中�
   assert.deepEqual(Object.keys(cat.devices), SC.DEVICES);
   assert.deepEqual(cat.looks.map((l) => l.id), SC.LOOKS);
   assert.deepEqual(Object.keys(cat.itemViews), SC.ITEM_VIEWS);
+  assert.deepEqual(Object.keys(cat.window.positions), SC.WINDOW_POS, '小さなウィンドウの位置（第 16 段階）');
+  assert.deepEqual(cat.headerKinds.map((k) => k.id), SC.HEADER_KINDS, 'ヘッダーの形（第 16 段階）');
   assert.deepEqual(Object.keys(cat.tableKinds), SC.TABLE_KINDS);
   assert.deepEqual(Object.keys(cat.callout.colors), SC.CALLOUT_COLORS);
   assert.deepEqual(Object.keys(cat.callout.tips), SC.CALLOUT_TIPS);

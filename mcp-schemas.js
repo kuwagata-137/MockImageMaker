@@ -15,6 +15,9 @@ const DEVICES = ['pc', 'tablet', 'phone'];
 const LOOKS = ['standard', 'salesforce', 'kintone'];
 const ITEM_VIEWS = ['input', 'show'];
 const BAND_TABS_MAX = 12;
+// 小さなウィンドウの位置とヘッダーの形（第 16 段階）。ページの WINDOW_POS・HEADER_KINDS（get_catalog の window.positions・headerKinds）と同じ
+const WINDOW_POS = ['center', 'bottomRight', 'right'];
+const HEADER_KINDS = ['app', 'portal'];
 const TABLE_KINDS = ['subtable', 'records', 'related'];
 // グループ枠・レコードの見出し・関連レコード一覧の並べて表示のアイコンの色（第 14 段階）。ページの FRAME_COLORS と同じ
 const FRAME_COLORS = ['blue', 'green', 'orange', 'red', 'purple', 'gray', 'none'];
@@ -49,6 +52,20 @@ const S = {
     .describe('表のサンプル値 { 列名か列の id: [上の行からの値, …] }（20 行まで）。書いた列だけを変更し、値の数がサンプルの行数より多いときは行を増やす'),
   look: z.enum(LOOKS).describe('見た目: "standard"（標準）・"salesforce"（Salesforce に似せる）・"kintone"（kintone に似せる）。ヘッダーの形と高さ、アイテムの色と枠が変わる'),
   bandTabs: z.array(z.string()).max(BAND_TABS_MAX).describe(`Salesforce の見た目のヘッダーに並べるタブ（文字の配列。${BAND_TABS_MAX} 個まで。空なら「ホーム」と画面設計の名前）`),
+  // お客さまポータルのヘッダー（第 16 段階）
+  portal: obj({
+    site: opt(z.string().nullable().describe('サイトの名前（null・"" なら画面設計の名前）')),
+    menu: opt(z.array(z.string()).max(BAND_TABS_MAX).nullable().describe(`メニュー（文字の配列。${BAND_TABS_MAX} 個まで。null・[] ならヘッダーの形が "portal" の画面の名前を並びの順に）`)),
+    button: opt(z.string().nullable().describe('右上のボタンの文字（null・"" なら「ログイン」）')),
+  }).describe('お客さまポータルのヘッダー（ヘッダーの形が "portal" の画面に描く）。書いた欄だけを変更する'),
+  // 小さなウィンドウ（第 16 段階）
+  overlay: obj({
+    under: opt(z.union([z.string(), z.number(), z.null()]).describe('下に重ねる画面の id か名前（同じ画面設計の、自分でなく、小さなウィンドウでない画面。null・"" でふつうの画面に戻す）')),
+    pos: opt(z.enum(WINDOW_POS).describe('ウィンドウの位置: "center"（真ん中。下の画面に灰色をかける）・"bottomRight"（右下）・"right"（右の端。上から下まで）')),
+    width: opt(z.number().describe('ウィンドウの幅（240〜画面の幅−32。最初は 640）')),
+    height: opt(z.number().describe('ウィンドウの高さ（160〜機器の 1 画面分の高さ−32。最初は 432。右の端のときは使わない）')),
+    foot: opt(z.boolean().describe('下のボタンの行（高さ 64）を出す（最初は true）')),
+  }),
   style: z.enum(['primary', 'normal']).describe('ボタンの色: "primary"（強調・青）・"normal"（通常・白）'),
   no: z.null().describe('null で赤い番号を外す'),
   // kintone のフィールドの情報（第 13 段階）。テーブルの列は props.columns[].kintone に同じ形で書く
@@ -144,7 +161,11 @@ const screenOps = z.discriminatedUnion('op', [
     screen: S.screen, name: opt(z.string()), device: opt(z.enum(DEVICES).describe('機器: "pc"・"tablet"・"phone"')), height: opt(z.number().max(MAX_SCREEN_HEIGHT).describe(`画面の高さ（ドット。${MAX_SCREEN_HEIGHT} まで）`)),
     showHeader: opt(z.boolean().describe('ヘッダーを表示する')), tablePos: opt(z.enum(['right', 'bottom']).describe('設定一覧の位置')),
     itemView: opt(z.enum(ITEM_VIEWS).describe('項目の表示: "input"（入力欄で表示。入力欄の枠）・"show"（値だけ表示。値と下の線。詳細の画面に使う）')),
-  }, '画面の名前・機器・高さ・ヘッダー・設定一覧の位置・項目の表示を変更する'),
+    overlay: opt(z.union([S.overlay, z.null()]).describe('小さなウィンドウ（ほかの画面の上に開くウィンドウ）にする・位置と大きさを変更する。null でふつうの画面に戻す（アイテムはそのまま）。'
+      + '初めて下に重ねる画面を選ぶと、今のアイテムをウィンドウの中の左上へ移す。ウィンドウの画面の機器は、下に重ねる画面と同じ')),
+    headerKind: opt(z.enum(HEADER_KINDS).describe('ヘッダーの形: "app"（アプリ。見た目で決まる）・"portal"（お客さまポータル。高さ 72）。高さが変わると、ヘッダーの下のアイテムと吹き出しをずらす')),
+    portalMenu: opt(z.string().describe('お客さまポータルのヘッダーで下線を付けるメニュー（"" なら画面の名前と同じメニュー）')),
+  }, '画面の名前・機器・高さ・ヘッダー・ヘッダーの形・設定一覧の位置・項目の表示・小さなウィンドウを変更する'),
   op('move', { screen: S.screen, ...where }, '画面を並べ替える'),
   op('delete', { screen: S.screen }, '画面を消す（最後の 1 つは消せない）'),
 ]);
@@ -291,4 +312,5 @@ module.exports = {
   roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('工程の並び（今のスイムレーン図の工程を全部置き換える。空の並びで工程を全部消す）'),
   swimEdges: z.array(swimEdge).describe('矢印の並び（今の矢印を全部置き換える。省くと、今の矢印のうち両端の工程が残っているものを残す。[] で全部消す）'),
   materialInputs, noteInputs, promptArgs, DEVICES, LOOKS, ITEM_VIEWS, TABLE_KINDS, FRAME_COLORS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, NOTE_STAGES, NOTE_STATES,
+  WINDOW_POS, HEADER_KINDS,
 };

@@ -1639,6 +1639,8 @@ const WIN_SIZE = { w: 640, h: 432 }; // 最初の大きさ
 const WIN_MIN = { w: 240, h: 160 };
 const WIN_EDGE = 24; // 右下に置くときの、画面の右と下の端からの間
 const WIN_ROOM = 32; // 幅と高さの上限は、画面の幅（機器の 1 画面分の高さ）からこれだけ引いた大きさ
+const WIN_FOOT_PAD = 24; // 下のボタンの行の、ボタンとウィンドウの左右の端の間（ひな形と AI の並べ方。q131）
+const WIN_FOOT_GAP = 16; // 下のボタンの行のボタンの間
 const isWindowScreen = (sc) => !!(sc && sc.overlay && sc.overlay.under);
 const underScreenOf = (design, sc) => (isWindowScreen(sc) ? design.screens.find((s) => s.id === sc.overlay.under && s.id !== sc.id && !isWindowScreen(s)) || null : null);
 // ほかの画面（小さなウィンドウ）の下に重ねられている画面か。そういう画面は、小さなウィンドウにできない
@@ -2012,12 +2014,19 @@ function layoutColumns(columns, width) {
 // sizeOf(entry) は、その部品の種類と最初の大きさ { type, w, h } を返す。entry.span（2〜4）は、その数の列をまたいで広げる（1・2 列では 2 列の幅いっぱい）。
 // 中身に合わせて高さが決まる入れ物（AI の並べ方のグループ枠と縦に重ねる形。第 14 段階）は、sizeOf が { type, fill: true, heightAt(w) } を返す。
 // 入れ物は列の幅に広げ（2 列の並べ方では 1 つの列、1 列の並べ方と span では 2 列の幅、3・4 列では列の幅）、高さは heightAt(幅) で決める。
+// 幅いっぱいの種類（fullBleed。大きな画像と検索欄。第 16 段階）は、行の中のどこに書いても 1 行を 1 つで使い、x 0 から幅 width いっぱいに置く。
+// いちばん初めに置くときは、top（ヘッダーのすぐ下など。書かなければ startY）に置く。
 // 戻り値 { placed: [{ entry, type, x, y, w, h }]（置く順）, nextY（次に置ける y。最後の行のいちばん下＋24）}
-function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
+function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf, top = null }) {
   const cols = layoutColumns(columns, width);
   const maxW = Math.floor((width - TPL_LEFT * 2) / GRID) * GRID; // 画面の幅から左右 32 ずつ引いた幅
   const placed = [];
   let y = startY;
+  const isBleed = (entry) => !!(partType(sizeOf(entry).type) || {}).fullBleed;
+  const putBleed = (entry) => {
+    if (top != null && !placed.length) y = top;
+    putLine([{ entry, type: sizeOf(entry).type, x: 0, w: width, h: sizeOf(entry).h }]);
+  };
   const sized = (entry) => {
     const s = sizeOf(entry);
     const span = !!(entry && entry.span >= 2);
@@ -2034,6 +2043,19 @@ function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
     line.forEach((p) => placed.push({ ...p, y }));
     y += Math.max(...line.map((p) => p.h)) + TPL_GAP;
   };
+  // アイテムの並び 1 行分（幅いっぱいの種類のない並び）を置く
+  const putRow = (row) => {
+    if (cols > 2) { layoutGridLines(row, width, cols, sizeOf).forEach(putLine); return; }
+    let line = [];
+    row.forEach((entry) => {
+      const p = sized(entry);
+      // 1 列のとき・列の幅に入らない部品は、1 行を 1 つで使う
+      if (cols === 1 || p.w > LAYOUT_COL_W) { putLine(line); putLine([{ ...p, x: TPL_LEFT }]); line = []; return; }
+      if (line.length >= cols) { putLine(line); line = []; }
+      line.push({ ...p, x: line.length ? TPL_COL2 : TPL_LEFT });
+    });
+    putLine(line);
+  };
   rows.forEach((row) => {
     if (isAlignRow(row)) {
       if (y !== startY) y += LAYOUT_ALIGN_GAP - TPL_GAP;
@@ -2045,16 +2067,15 @@ function layoutPlacements({ rows, columns = 1 }, { width, startY, sizeOf }) {
       });
       return;
     }
-    if (cols > 2) { layoutGridLines(Array.isArray(row) ? row : [], width, cols, sizeOf).forEach(putLine); return; }
-    let line = [];
+    // 幅いっぱいの種類の前と後ろで並びを分ける
+    let rest = [];
     (Array.isArray(row) ? row : []).forEach((entry) => {
-      const p = sized(entry);
-      // 1 列のとき・列の幅に入らない部品は、1 行を 1 つで使う
-      if (cols === 1 || p.w > LAYOUT_COL_W) { putLine(line); putLine([{ ...p, x: TPL_LEFT }]); line = []; return; }
-      if (line.length >= cols) { putLine(line); line = []; }
-      line.push({ ...p, x: line.length ? TPL_COL2 : TPL_LEFT });
+      if (!isBleed(entry)) { rest.push(entry); return; }
+      putRow(rest);
+      rest = [];
+      putBleed(entry);
     });
-    putLine(line);
+    putRow(rest);
   });
   return { placed, nextY: y };
 }
@@ -2429,11 +2450,20 @@ function windowTemplateInto(sc, design, templateId, underId, { put, items }) {
   put('desc', r.x + 32, top + 24, { w: r.w - 64, h: 48, label: 'このレコードの承認を申請します。' }).no = null;
   put('user', r.x + 32, top + 88, { itemId: itemOf('user', '承認者', true).id, sample: '鈴木 一郎（課長）' });
   put('text2', r.x + 32, top + 168, { itemId: itemOf('text2', 'コメント').id, w: r.w - 64, h: 120 });
-  const by = r.y + r.h - WIN_FOOT + 12;
-  const bw = PART_TYPES.button.w;
-  put('button', r.x + r.w - 24 - bw - 16 - bw, by, { label: '申請', props: { style: 'primary' } });
   const back = isWindowScreen(sc) ? { to: 'screen', designId: '', screenId: sc.overlay.under } : {};
-  put('button', r.x + r.w - 24 - bw, by, { label: 'キャンセル', props: { style: 'normal', ...back } });
+  const buttons = [['申請', { style: 'primary' }], ['キャンセル', { style: 'normal', ...back }]];
+  windowFootPlaces(r, 'right', buttons.map(() => PART_TYPES.button)).forEach((at, i) => put('button', at.x, at.y, { label: buttons[i][0], props: buttons[i][1] }));
+}
+// 小さなウィンドウの下のボタンの行に、sizes（{ w, h } の並び。左から）を置く位置。align は 'left'・'center'・'right'。
+// ボタンの間は 16、ウィンドウの左右の端から 24、上下は行の真ん中（置くときに 8 ドットのマス目に合わせる）。ひな形と AI の並べ方で同じ
+function windowFootPlaces(r, align, sizes) {
+  const total = sizes.reduce((n, s) => n + s.w, 0) + WIN_FOOT_GAP * Math.max(0, sizes.length - 1);
+  let x = align === 'right' ? r.x + r.w - WIN_FOOT_PAD - total : align === 'center' ? r.x + snapGrid((r.w - total) / 2) : r.x + WIN_FOOT_PAD;
+  return sizes.map((s) => {
+    const at = { x, y: r.y + r.h - WIN_FOOT + Math.floor((WIN_FOOT - s.h) / 2) };
+    x += s.w + WIN_FOOT_GAP;
+    return at;
+  });
 }
 
 // ひな形「お客さまポータルのトップ」（第 16 段階。画像 q131 の並び）。ヘッダーの形をお客さまポータルにし、ヘッダーの下に、幅いっぱいの大きな画像と検索欄・
@@ -15504,10 +15534,22 @@ function aiGetDesign(args) {
     id: d.id, name: d.name, target: targetLabel(d.target), look: lookOf(d).id, ...(lookOf(d).id === 'salesforce' ? { bandTabs: bandTabsOf(d) } : {}),
     description: d.description, updatedAt: d.updatedAt, ...(d.trashedAt ? { trashed: true } : {}),
     items: page, itemsTotal: d.items.length, nextCursor,
-    screens: d.screens.map((s) => ({ id: s.id, name: s.name, device: s.device, width: s.width, height: s.height, showHeader: s.showHeader, tablePos: s.tablePos, itemView: s.itemView, parts: s.parts.length, callouts: (s.callouts || []).length })),
+    ...(d.portal || d.screens.some(isPortalScreen) ? { portal: portalOf(d) } : {}),
+    screens: d.screens.map((s) => ({ id: s.id, name: s.name, device: s.device, width: s.width, height: s.height, showHeader: s.showHeader, tablePos: s.tablePos, itemView: s.itemView,
+      ...aiScreenExtras(d, s), parts: s.parts.length, callouts: (s.callouts || []).length })),
     revisions: d.revisions.filter(isObj).map((r) => ({ id: r.id, kind: r.kind, title: revisionTitle(r), date: revisionDay(r), note: str(r.note), canRestore: hasSnapshot(r) })),
     importedBy,
   };
+}
+// 画面の小さなウィンドウとヘッダーの形（get_design・get_screen・edit_screen の返事。第 16 段階）。ふつうの画面には欄を出さない。
+// overlay は { under: 下に重ねる画面の名前, underId, pos, width, height, foot, x, y }（width・height・x・y は描くウィンドウの位置と大きさ）
+function aiScreenExtras(d, s) {
+  if (isWindowScreen(s)) {
+    const u = underScreenOf(d, s);
+    const r = windowRect(s);
+    return { overlay: { under: u ? u.name : null, underId: s.overlay.under, pos: s.overlay.pos, width: r.w, height: r.h, foot: s.overlay.foot, x: r.x, y: r.y } };
+  }
+  return isPortalScreen(s) ? { headerKind: 'portal', portalMenu: portalMenuOf(d, s) } : {};
 }
 function aiPartSummary(d, sc, raw, ctx) {
   const p = resolvePart(d, raw);
@@ -15550,7 +15592,7 @@ function aiGetScreen(args) {
   const out = {
     design: { id: d.id, name: d.name, updatedAt: d.updatedAt },
     id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height, showHeader: sc.showHeader, tablePos: sc.tablePos, itemView: sc.itemView,
-    parts: [], partsTotal: parts.length, callouts: [], calloutsTotal: callouts.length, table: [], tableTotal: table.length, nextCursor: null,
+    ...aiScreenExtras(d, sc), parts: [], partsTotal: parts.length, callouts: [], calloutsTotal: callouts.length, table: [], tableTotal: table.length, nextCursor: null,
   };
   return aiPageInto(out, [['parts', parts], ['callouts', callouts], ['table', table]], args.cursor);
 }
@@ -15688,6 +15730,17 @@ const AI_PROP_NOTES = {
     from: '差出人のサンプル値', to: '宛先のサンプル値（「、」で区切ると宛先を分けて出す）', subject: '件名のサンプル値', body: '本文のサンプル値（改行は \\n）',
     toolbar: '書式のボタンの行を出す（true・false）', color: AI_FRAME_COLOR,
   },
+  // 第 16 段階のアイテム（お客さまポータルとチャット。どれも項目にならない）
+  hero: { title: '大きな見出しの文字', sub: '見出しの下の小さな文字（"" は出さない）', search: '検索欄を出す（true・false）', ph: '検索欄の薄い字' },
+  tileMenu: { tiles: 'タイル（1 行に「題名, 説明」。区切りはカンマかタブ。左から並べ、アイコンの色は左から 青・橙・緑・紫 の順）' },
+  articles: {
+    rows: '記事（1 行に「題名, 説明, 分類, 日付」。区切りはカンマかタブ。空の欄は描かない）',
+    desc: '記事の説明を出す（true・false。false は日付と題名だけの短い形で、お知らせに使う）', more: '下に「すべて表示」を出す（true・false）',
+  },
+  chat: {
+    lines: '会話（1 行に「話す人: 文」。話す人を書いていない行は、前の行と同じ人の文）', me: '右の吹き出しにする人（lines の話す人の名前。ほかの人は左の吹き出し）',
+    head: '見出しの行（label の文字と ✕）を出す（true・false。小さなウィンドウの中いっぱいに置くときは false）', ph: '入力欄の薄い字',
+  },
 };
 // 項目の設定（edit_items の props）だけにある欄
 const AI_ITEM_PROP_NOTES = {
@@ -15706,7 +15759,7 @@ function aiGetCatalog() {
     })),
     itemTypes: [...Object.keys(PART_TYPES).filter(isInputType), 'table', 'status'],
     tableKinds: { ...TABLE_KINDS },
-    templates: SCREEN_TEMPLATES.map((t) => ({ id: t.id, name: t.name, note: t.note })),
+    templates: SCREEN_TEMPLATES.map((t) => ({ id: t.id, name: t.name, note: t.note, ...(t.screen ? { screenName: t.screen } : {}) })),
     devices: Object.fromEntries(Object.entries(DEVICES).map(([k, v]) => [k, { ...v }])),
     maxScreenHeight: AI_SCREEN_H_MAX, // AI の頼みで伸ばせる画面の高さの上限（ドット）
     targets: [...BUILTIN_TARGETS.map((t) => t.label), 'その他（名前を書く）', ...S.settings.customTargets],
@@ -15721,6 +15774,15 @@ function aiGetCatalog() {
     },
     // 見た目（第 12 段階）。帯の高さと、帯がある画面の並べ方の最初の行（firstRowY）は見た目で変わる
     looks: LOOKS.map((l) => ({ id: l.id, name: l.label, bandHeight: l.band, firstRowY: l.band + AI_FIRST_ROW_Y - LOOKS[0].band })),
+    // ヘッダーの形（第 16 段階）。アプリのヘッダーの高さは見た目で決まり（looks）、お客さまポータルのヘッダーは見た目によらず同じ高さ
+    headerKinds: Object.entries(HEADER_KINDS).map(([id, name]) => ({ id, name,
+      ...(id === 'portal' ? { bandHeight: PORTAL_BAND, firstRowY: PORTAL_BAND + AI_FIRST_ROW_Y - LOOKS[0].band } : { bandHeight: null, firstRowY: null }) })),
+    // 小さなウィンドウ（第 16 段階）: 位置・見出しの行と下のボタンの行の高さ・最初の大きさ・いちばん小さい大きさ・右下の端からの間・
+    // 幅と高さの上限（画面の幅と機器の 1 画面分の高さから room を引いた大きさ）・並べ方の最初の行（見出しの行の下からの間）
+    window: {
+      positions: { ...WINDOW_POS }, headHeight: WIN_HEAD, footHeight: WIN_FOOT, size: { ...WIN_SIZE }, minSize: { ...WIN_MIN }, edge: WIN_EDGE, room: WIN_ROOM,
+      firstRowGap: AI_FIRST_ROW_Y_NOHEADER, footPadding: WIN_FOOT_PAD, footGap: WIN_FOOT_GAP,
+    },
     itemViews: { ...ITEM_VIEWS },
     // kintone の種類（第 13 段階）。parts はその種類を選べる部品の種類、defaultFor は選ばないときにその種類になる部品の種類。
     // auto は kintone が値を入れる種類（テーブルの列では選べない）
@@ -15733,15 +15795,25 @@ function aiGetCatalog() {
 }
 const AI_FIRST_ROW_Y = 64; // 帯がある画面の並べ方の最初の行（標準の見た目の高さ 40 の帯の下に 24 空ける）
 const AI_FIRST_ROW_Y_NOHEADER = 24; // 帯を消した画面の最初の行（Claude が決めた）
-// 並べ方の最初の行。帯の下に 24 空ける（帯の高さは見た目で変わる。第 12 段階）
-const aiFirstRowY = (d, sc) => (sc.showHeader ? bandHeight(d, sc) + AI_FIRST_ROW_Y - LOOKS[0].band : AI_FIRST_ROW_Y_NOHEADER);
+// 並べ方の最初の行。帯の下に 24 空ける（帯の高さは見た目で変わる。第 12 段階）。小さなウィンドウの画面は、ウィンドウの見出しの行の下に 24 空ける（第 16 段階）
+const aiFirstRowY = (d, sc) => (isWindowScreen(sc) ? partBounds(sc).y0 + AI_FIRST_ROW_Y_NOHEADER
+  : sc.showHeader ? bandHeight(d, sc) + AI_FIRST_ROW_Y - LOOKS[0].band : AI_FIRST_ROW_Y_NOHEADER);
+// 並べる範囲（第 16 段階）。x と width は列を数える左の端と幅（ふつうの画面は画面、小さなウィンドウの画面はウィンドウ）。top は幅いっぱいの種類を最初に置く y
+// （ヘッダー・ウィンドウの見出しの行のすぐ下）。小さなウィンドウの画面では、bottom はアイテムを置ける下の端（下のボタンの行があれば、その上）、foot は下のボタンの行の上の端
+function aiLayoutArea(d, sc) {
+  if (!isWindowScreen(sc)) return { x: 0, width: sc.width, top: sc.showHeader ? bandHeight(d, sc) : 0, bottom: null, foot: null };
+  const r = windowRect(sc);
+  const foot = sc.overlay.foot ? r.y + r.h - WIN_FOOT : null;
+  return { x: r.x, width: r.w, top: r.y + WIN_HEAD, bottom: foot == null ? r.y + r.h : foot, foot, rect: r };
+}
 
 // ── kintone のアプリの形（get_kintone_app。第 13 段階・q113 の案A）──
 // 画面設計を、kintone の MCP サーバー（GitHub の kintone/mcp-server）の道具にそのまま渡せる形にする。kintone の MCP サーバーにはつながない
 // （入力の形は test/kintone-mcp-shapes.js に写して見比べる）。元のアプリの ID はモックイメージメーカーでは分からないので、空にして needsAppId に分ける
 const KT_UNIT_BEFORE = ['$', '¥', '￥', '€', '£']; // 数の前に付ける単位。ほかの単位（円・個・日など）は数の後ろ（Claude が決めた）
 const KT_REF_SIZES = ['1', '3', '5', '10', '20', '30', '40', '50']; // 関連レコード一覧の件数（kintone で選べる数）
-const KT_NO_FIELD_TYPES = ['recordHead', 'activity', 'tree', 'calendar', 'mail']; // kintone のフィールドにないアイテム（get_kintone_app の warnings で知らせる。第 14・15 段階）
+// kintone のフィールドにないアイテム（get_kintone_app の warnings で知らせる。第 14〜16 段階）
+const KT_NO_FIELD_TYPES = ['recordHead', 'activity', 'tree', 'calendar', 'mail', 'hero', 'tileMenu', 'articles', 'chat'];
 // kintone のグラフで作るときの注意（第 15 段階）。kintone のグラフの種類は 横棒・縦棒（集合・積み上げ・100% 積み上げ）・円・折れ線・曲線・面・表・クロス集計表
 // （kintone のヘルプと kintone.app.getReports の chartType で確かめた。2026-10-29）。じょうご・メーター・大きな数字はない
 const KT_CHART_NOTES = {
@@ -15933,6 +16005,11 @@ function kintoneManualSteps(S, d) {
     if (raw.type === 'button') buttons.push(`「${partTitle(raw)}」（画面「${sc.name}」${ktText(raw.props && raw.props.action) ? `。押したとき＝${ktText(raw.props.action)}` : ''}）`);
   }));
   if (buttons.length) out.push(`ボタン: ${buttons.join('・')}。kintone の標準のボタン（保存・キャンセル・編集など）とプロセス管理の操作で足りないものは、JavaScript かプラグインで作る。`);
+  // 小さなウィンドウの画面とお客さまポータルの画面（第 16 段階）
+  d.screens.filter(isWindowScreen).forEach((sc) => out.push(`小さなウィンドウ: 画面「${sc.name}」は、画面「${(underScreenOf(d, sc) || { name: '' }).name}」の上に開く小さなウィンドウ。`
+    + 'kintone の標準の機能にないので、カスタマイズ（JavaScript）かプラグインで作る。'));
+  const portal = d.screens.filter((sc) => isPortalScreen(sc) && !isWindowScreen(sc));
+  if (portal.length) out.push(`お客さまポータル: 画面 ${portal.map((sc) => `「${sc.name}」`).join('・')} は、お客さま向けの Web のサイトの画面で、kintone のアプリの画面ではないので、kintone の外の仕組みで作る。`);
   out.push('アクセス権: 画面設計には書く欄がないので、誰がアプリ・レコード・フィールドを見る・変更するかを人に確かめて、kintone のアプリの設定の「アクセス権」で設定する。');
   return out;
 }
@@ -16515,25 +16592,38 @@ async function aiUpdateDesign(args, ctx) {
     if (args.target !== undefined) patch.target = resolveTargetName(str(args.target));
     if (args.look !== undefined) patch.look = aiLook(args.look);
     if (args.bandTabs !== undefined) patch.bandTabs = args.bandTabs == null ? [] : aiBandTabs(args.bandTabs);
+    if (args.portal !== undefined) patch.portal = aiPortal(args.portal);
     if (args.description !== undefined) patch.description = aiStrVal(args.description == null ? '' : args.description, 'description');
-    if (!Object.keys(patch).length) throw aiBad('変更する欄（name・target・look・bandTabs・description）を 1 つ以上書いてください。');
+    if (!Object.keys(patch).length) throw aiBad('変更する欄（name・target・look・bandTabs・portal・description）を 1 つ以上書いてください。');
     const from = lookOf(tx.design);
     actions.updateDesignInfo(tx.design.id, patch);
     const d = findDesign(store.state, tx.design.id);
     // 見た目を変えて帯の高さが変わったときは、帯の下の部品と吹き出しを上下にずらしたことを知らせる（get_screen で位置を読み直してもらうため）
     const dy = lookOf(d).band - from.band;
-    if (dy) tx.warnings.push(`見た目を変えてヘッダーの高さが ${from.band} から ${lookOf(d).band} になったので、ヘッダーのある画面の、ヘッダーの下のアイテムと吹き出しを ${dy} ドットずらしました。`);
-    return { id: d.id, look: d.look };
+    if (dy) tx.warnings.push(`見た目を変えてヘッダーの高さが ${from.band} から ${lookOf(d).band} になったので、ヘッダーのある画面の、ヘッダーの下のアイテムと吹き出しを ${dy} ドットずらしました（お客さまポータルのヘッダーの画面と、小さなウィンドウの画面は、ずらしていません）。`);
+    return { id: d.id, look: d.look, ...(patch.portal ? { portal: portalOf(d) } : {}) };
   });
+}
+// お客さまポータルのヘッダー（update_design の portal。第 16 段階）。書いた欄だけを変える。null はどれも消す（サイトの名前・メニュー・右上のボタンを、書いていないときの値に戻す）
+function aiPortal(v) {
+  if (v == null) return { site: '', menu: [], button: '' };
+  if (!isObj(v)) throw aiBad('portal は { site, menu, button } か null で書いてください。');
+  const bad = Object.keys(v).find((k) => !['site', 'menu', 'button'].includes(k));
+  if (bad) throw aiBad(`portal に「${bad}」という欄はありません（使える欄: site・menu・button）。`);
+  const out = {};
+  if (v.site !== undefined) out.site = aiStrVal(v.site == null ? '' : v.site, 'portal.site');
+  if (v.menu !== undefined) out.menu = v.menu == null ? [] : aiBandTabs(v.menu, 'portal.menu');
+  if (v.button !== undefined) out.button = aiStrVal(v.button == null ? '' : v.button, 'portal.button');
+  return out;
 }
 // 見た目（look）と Salesforce の帯のタブ（bandTabs）を読む。知らない見た目・文字の並びでないものは断る
 function aiLook(v) {
   if (!LOOKS.some((l) => l.id === v)) throw aiBad(`look は ${LOOKS.map((l) => `"${l.id}"（${l.label}）`).join('・')} です。`);
   return v;
 }
-function aiBandTabs(v) {
-  if (!Array.isArray(v) || v.some((t) => typeof t !== 'string')) throw aiBad('bandTabs は文字の配列で書いてください（例 ["ホーム", "問い合わせ"]）。');
-  if (v.length > BAND_TABS_MAX) throw aiBad(`bandTabs は ${BAND_TABS_MAX} 個までです。`);
+function aiBandTabs(v, name = 'bandTabs') {
+  if (!Array.isArray(v) || v.some((t) => typeof t !== 'string')) throw aiBad(`${name} は文字の配列で書いてください（例 ["ホーム", "問い合わせ"]）。`);
+  if (v.length > BAND_TABS_MAX) throw aiBad(`${name} は ${BAND_TABS_MAX} 個までです。`);
   return normalizeBandTabs(v);
 }
 
@@ -16707,16 +16797,18 @@ async function aiAddScreen(args, ctx) {
     } else {
       const tpl = args.template == null ? 'blank' : str(args.template);
       if (!SCREEN_TEMPLATES.some((t) => t.id === tpl)) throw aiBad(`ひな形（template）は ${SCREEN_TEMPLATES.map((t) => `"${t.id}"（${t.name}）`).join('・')} から選んでください。`);
-      if (device !== 'pc' && tpl !== 'blank') throw aiBad('ひな形の画面はパソコン用です。パソコン以外の機器の画面は、template を "blank" にして、layout でアイテムを並べてください。');
+      // 小さなウィンドウのひな形（第 16 段階）は、after の画面（小さなウィンドウなら、その下の画面）を下に重ね、機器はその画面と同じになる
+      if (own(WIN_TEMPLATES, tpl) && args.device != null) throw aiBad('小さなウィンドウのひな形の画面の機器は、下に重ねる画面と同じになります。device は書かないでください。');
+      if (device !== 'pc' && tpl !== 'blank' && !own(WIN_TEMPLATES, tpl)) throw aiBad('ひな形の画面はパソコン用です。パソコン以外の機器の画面は、template を "blank" にして、layout でアイテムを並べてください。');
       sid = actions.addScreen(id, tpl, after);
     }
     const patch = {};
     if (args.name != null) patch.name = aiScreenName(tx, d(), args.name, sid);
-    if (device && device !== findScreen(id, sid).device) patch.device = device;
+    if (device && device !== findScreen(id, sid).device && !isWindowScreen(findScreen(id, sid))) patch.device = device;
     if (Object.keys(patch).length) actions.updateScreen(id, sid, patch);
     const placed = args.layout != null ? aiLayout(tx, id, sid, args.layout, 'append') : { parts: [], createdItems: [] };
     const sc = findScreen(id, sid);
-    return { screen: { id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height }, ...placed };
+    return { screen: { id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height, ...aiScreenExtras(d(), sc) }, ...placed };
   });
 }
 async function aiEditScreen(args, ctx) {
@@ -16747,10 +16839,12 @@ function aiScreenOp(tx, op) {
         if (!own(ITEM_VIEWS, op.itemView)) throw aiBad('itemView は "input"（入力欄で表示）か "show"（値だけ表示。詳細の画面に使う）です。');
         patch.itemView = op.itemView;
       }
-      if (!Object.keys(patch).length) throw aiBad('変更する欄（name・device・height・showHeader・tablePos・itemView）を 1 つ以上書いてください。');
+      Object.assign(patch, aiWindowAndHeader(d(), sc, op));
+      if (!Object.keys(patch).length) throw aiBad('変更する欄（name・device・height・showHeader・tablePos・itemView・overlay・headerKind・portalMenu）を 1 つ以上書いてください。');
       actions.updateScreen(id, sc.id, patch);
       const s = findScreen(id, sc.id);
-      return { op: 'update', id: s.id, name: s.name, device: s.device, width: s.width, height: s.height, itemView: s.itemView };
+      aiWindowWarnings(tx, d(), s, patch);
+      return { op: 'update', id: s.id, name: s.name, device: s.device, width: s.width, height: s.height, itemView: s.itemView, ...aiScreenExtras(d(), s) };
     }
     case 'move':
       actions.moveScreen(id, sc.id, aiMoveIndex(d().screens, sc.id, op, (ref) => aiResolveScreen(d(), ref)));
@@ -16773,6 +16867,67 @@ function aiScreenOp(tx, op) {
       return { op: 'delete', id: sc.id, name: sc.name };
     }
     default: throw aiUnknownOp(op, AI_SCREEN_OPS);
+  }
+}
+// edit_screen の update の、小さなウィンドウ（overlay）とヘッダーの形（headerKind・portalMenu）の欄を、actions.updateScreen の patch に直す（第 16 段階）。
+// overlay は { under: 下に重ねる画面の名前か id（null・"" でふつうの画面に戻す）, pos, width, height, foot } か null（ふつうの画面に戻す）。
+// 小さなウィンドウの画面の機器は下の画面と同じなので、device は断る。ヘッダーがないので、headerKind・portalMenu も断る
+function aiWindowAndHeader(d, sc, op) {
+  const patch = {};
+  if (op.overlay !== undefined) patch.overlay = aiOverlayPatch(d, sc, op.overlay);
+  const win = patch.overlay ? !!patch.overlay.under || (!('under' in patch.overlay) && isWindowScreen(sc)) : isWindowScreen(sc);
+  if (win && op.device !== undefined) {
+    const u = patch.overlay && patch.overlay.under ? d.screens.find((s) => s.id === patch.overlay.under) : underScreenOf(d, sc);
+    throw aiBad(`小さなウィンドウの画面の機器は、下に重ねる画面（「${u ? u.name : ''}」）と同じです。機器を変えるときは、下に重ねる画面の device を変えてください。`);
+  }
+  if (op.headerKind !== undefined) {
+    if (!own(HEADER_KINDS, op.headerKind)) throw aiBad(`headerKind は ${Object.entries(HEADER_KINDS).map(([k, n]) => `"${k}"（${n}）`).join('・')} です。`);
+    if (win) throw aiBad('小さなウィンドウの画面にはヘッダーがないので、headerKind は書けません（下に重ねる画面のヘッダーが描かれます）。');
+    patch.headerKind = op.headerKind;
+  }
+  if (op.portalMenu !== undefined) {
+    const portal = !win && (patch.headerKind ? patch.headerKind === 'portal' : isPortalScreen(sc));
+    if (!portal) throw aiBad('portalMenu を書けるのは、ヘッダーの形が "portal"（お客さまポータル）の画面だけです。');
+    patch.portalMenu = aiStrVal(op.portalMenu == null ? '' : op.portalMenu, 'portalMenu');
+  }
+  return patch;
+}
+function aiOverlayPatch(d, sc, v) {
+  if (v === null) return { under: '' };
+  if (!isObj(v)) throw aiBad('overlay は { under, pos, width, height, foot } か null で書いてください。');
+  const bad = Object.keys(v).find((k) => !['under', 'pos', 'width', 'height', 'foot'].includes(k));
+  if (bad) throw aiBad(`overlay に「${bad}」という欄はありません（使える欄: under・pos・width・height・foot）。`);
+  if (v.under === null || v.under === '') return { under: '' };
+  const patch = {};
+  if (v.under !== undefined) {
+    const u = aiResolveScreen(d, v.under);
+    const problem = overlayProblem(d, sc, u.id);
+    if (problem) throw aiBad(problem);
+    patch.under = u.id;
+  } else if (!isWindowScreen(sc)) throw aiBad('小さなウィンドウにするときは、overlay.under に下に重ねる画面（名前か id）を書いてください。');
+  if (v.pos !== undefined) {
+    if (!own(WINDOW_POS, v.pos)) throw aiBad(`overlay.pos は ${Object.entries(WINDOW_POS).map(([k, n]) => `"${k}"（${n}）`).join('・')} です。`);
+    patch.pos = v.pos;
+  }
+  if (v.width !== undefined) patch.w = aiNum(v.width, 'overlay.width');
+  if (v.height !== undefined) patch.h = aiNum(v.height, 'overlay.height');
+  if (v.foot !== undefined) {
+    if (typeof v.foot !== 'boolean') throw aiBad('overlay.foot は true か false で書いてください。');
+    patch.foot = v.foot;
+  }
+  return patch;
+}
+// 書いた大きさが範囲の外で直したとき・書いた下線のメニューがメニューにないときに知らせる
+function aiWindowWarnings(tx, d, s, patch) {
+  const o = patch.overlay;
+  if (o && isWindowScreen(s)) {
+    const r = windowRect(s);
+    if (o.w != null && snapGrid(o.w) !== r.w) tx.warnings.push(`ウィンドウの幅は ${WIN_MIN.w}〜（画面の幅−${WIN_ROOM}）なので、${r.w} にしました。`);
+    if (o.h != null && snapGrid(o.h) !== r.h && s.overlay.pos !== 'right') tx.warnings.push(`ウィンドウの高さは ${WIN_MIN.h}〜（機器の 1 画面分の高さ−${WIN_ROOM}）なので、${r.h} にしました。`);
+    if (o.h != null && s.overlay.pos === 'right') tx.warnings.push('右の端のウィンドウは、上から下まで（高さは機器の 1 画面分）なので、height は使いません。');
+  }
+  if (patch.portalMenu && portalMenuOf(d, s) !== cleanName(patch.portalMenu, TARGET_MAX)) {
+    tx.warnings.push(`「${patch.portalMenu}」はお客さまポータルのメニュー（${portalOf(d).menu.join('・') || 'なし'}）にないので、下線は「${portalMenuOf(d, s)}」に付きます。メニューは update_design の portal.menu で書けます。`);
   }
 }
 
@@ -16800,8 +16955,12 @@ function aiLayout(tx, designId, screenId, layout, mode) {
     if (apply) apply(withCreated);
     else spec.props = aiProps(type, props, withCreated) || undefined;
   }));
-  const firstY = aiFirstRowY(findDesign(store.state, designId), sc);
-  const startY = sc.parts.length ? Math.ceil((Math.max(...sc.parts.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : firstY;
+  // 小さなウィンドウの画面は、ウィンドウの中に並べる。下のボタンの行のあるウィンドウでは、最後の行がボタンの行（align）なら、下のボタンの行に置く（第 16 段階）
+  const area = aiLayoutArea(d, sc);
+  const footRow = area.foot != null && isAlignRow(rows[rows.length - 1]) ? rows[rows.length - 1] : null;
+  const above = sc.parts.filter((p) => area.foot == null || p.y < area.foot);
+  if (footRow && above.length < sc.parts.length) throw aiBad('ウィンドウの下のボタンの行には、もうアイテムがあります。mode "replace" で置き直すか、edit_parts で変更してください。');
+  const startY = above.length ? Math.ceil((Math.max(...above.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : aiFirstRowY(d, sc);
   // グループ枠と縦に重ねる形は、列の幅に広げて中身を layoutStack で重ね、その高さを行の高さにする。置いた後に中身を置き直し、見出しのボタンを重ねる
   const inner = (s) => ({ type: s.type, w: s.w0, h: s.h0 });
   const blocksOf = (s) => (s.stack ? s.stack : [s]);
@@ -16813,10 +16972,24 @@ function aiLayout(tx, designId, screenId, layout, mode) {
     if (pl.type !== 'recordHead' || !pl.entry.buttons) return [pl];
     return [pl, ...recordHeadButtons(pl, pl.entry.buttons.map((b) => ({ entry: b, type: 'button', w: b.w0, h: b.h0 })))];
   });
-  const placed = expand(layoutPlacements({ rows, columns }, { width: sc.width, startY, sizeOf }).placed);
-  // 置くと画面が伸びる（placePartIn と同じく、下に TPL_LEFT 空ける）ときは、上限を超えないか見る
-  const bottom = placed.reduce((m, pl) => Math.max(m, pl.y + pl.h + TPL_LEFT), 0);
-  if (bottom > sc.height) aiCheckBottom(bottom, '並べたアイテムの下の端');
+  const body = footRow ? rows.slice(0, -1) : rows;
+  const placed = expand(layoutPlacements({ rows: body, columns }, { width: area.width, startY, sizeOf, top: above.length ? null : area.top }).placed
+    .map((pl) => ({ ...pl, x: pl.x + area.x })));
+  if (area.bottom != null) {
+    const low = placed.reduce((m, pl) => Math.max(m, pl.y + pl.h), 0);
+    if (low > area.bottom) {
+      throw aiBad(`並べたアイテムの下の端（y ${low}）が、ウィンドウの中の下の端（y ${area.bottom}${area.foot != null ? '。下のボタンの行の上' : ''}）を超えます。`
+        + 'edit_screen の overlay.height でウィンドウを高くするか、並べるアイテムを減らしてください。');
+    }
+  } else {
+    // 置くと画面が伸びる（placePartIn と同じく、下に TPL_LEFT 空ける）ときは、上限を超えないか見る
+    const bottom = placed.reduce((m, pl) => Math.max(m, pl.y + pl.h + TPL_LEFT), 0);
+    if (bottom > sc.height) aiCheckBottom(bottom, '並べたアイテムの下の端');
+  }
+  if (footRow) {
+    windowFootPlaces(area.rect, footRow.align, footRow.parts.map((s) => ({ w: s.w0, h: s.h0 })))
+      .forEach((at, i) => placed.push({ entry: footRow.parts[i], type: footRow.parts[i].type, x: at.x, y: at.y, w: footRow.parts[i].w0, h: footRow.parts[i].h0 }));
+  }
   const ids = [];
   mutateDesign(designId, (dd) => {
     dd.items.push(...plan.created);

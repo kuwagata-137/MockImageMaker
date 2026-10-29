@@ -9,6 +9,7 @@
 //     edit_items で kintone の欄を書くと、get_kintone_app が kintone の MCP サーバーに渡す形を返す（第 13 段階）。
 //     グループ枠・縦に重ねる形・レコードの見出しのボタンで画面を並べると、get_screen が inFrame を返し、get_kintone_app がグループ（GROUP）を返す（第 14 段階）。
 //     レコード一覧のかんばんと大きな数字・メーターのグラフを並べると、get_screen で読め、get_kintone_app の warnings で知らせる（第 15 段階）。
+//     お客さまポータルのトップと承認申請のウィンドウのひな形で画面を追加すると、get_screen がヘッダーの形と overlay を返し、get_kintone_app の manualSteps に作り方が出る（第 16 段階）。
 //     status で、窓が見えていない・裏の起動・ページの準備ができている。2 つ目の起動（--background）では窓を出す印が付かない。
 //     前に人が窓を最大化して閉じていても（window-state.json の isMaximized）、裏の起動では窓が画面に出ない（status の onScreen）。
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり始め（automation.json が消える）、プロセスも消える
@@ -256,6 +257,7 @@ async function phaseA() {
     const [vw, vh] = vb.length > 24 ? [vb.readUInt32BE(16), vb.readUInt32BE(20)] : [0, 0];
     check(`A. get_view_image（${view}）は PNG で、長い辺が 1568 以下`, !vi.isError && vb.subarray(1, 4).toString() === 'PNG' && Math.max(vw, vh) <= 1568 && vw >= 400, `${vw} × ${vh}`);
   }
+  await checkWindowPortal(client, made);
   await checkSystemTools(client, made);
   const st = await status();
   check('A. 窓は見えていない・裏の起動・ページの準備ができている', st.visible === false && st.background === true && st.pageReady === true && st.clients >= 1, JSON.stringify(st));
@@ -273,6 +275,26 @@ async function phaseA() {
   await client.close();
   const q = await waitAppQuit(info.pid, IDLE_MS + 15000, 'A. 入口を閉じた後にアプリが終わる');
   check('A. 入口を閉じると、5 秒たってアプリが終わり始め（automation.json が消え）、プロセスも消える', q.begin >= IDLE_MS - 500, quitDetail(q));
+}
+
+// 第 16 段階: 入口の形のまま、お客さまポータルのトップと承認申請のウィンドウのひな形で画面を追加し、get_screen・get_screen_image・get_kintone_app で読む
+// （画面遷移図の確認の後ろで呼ぶ。承認申請のウィンドウのキャンセルのボタンは、下に重ねる画面へ移動する）
+async function checkWindowPortal(client, made) {
+  const top = await tool(client, 'add_screen', { design: made.id, template: 'portalTop' });
+  await tool(client, 'update_design', { design: made.id, portal: { site: 'サポートサイト', menu: ['ホーム', 'よくある質問'] } });
+  const win = await tool(client, 'add_screen', { design: made.id, template: 'winApproval', after: '詳細' });
+  const ps = await tool(client, 'get_screen', { design: made.id, screen: top.screen.id });
+  const ws = await tool(client, 'get_screen', { design: made.id, screen: win.screen.id });
+  const img = await client.callTool({ name: 'get_screen_image', arguments: { design: made.id, screen: win.screen.id } });
+  const im = img.content.find((c) => c.type === 'image');
+  const buf = im ? Buffer.from(im.data, 'base64') : Buffer.alloc(0);
+  const kw = await tool(client, 'get_kintone_app', { design: made.id });
+  const steps = kw.manualSteps.join('\n');
+  check('A. お客さまポータルのトップと承認申請のウィンドウのひな形で画面を追加し、get_screen・get_screen_image・get_kintone_app で読める（第 16 段階）',
+    ps.headerKind === 'portal' && ps.portalMenu === 'ホーム' && ps.parts[0].type === 'hero' && !!ws.overlay && ws.overlay.under === '詳細' && ws.overlay.pos === 'center'
+      && ws.parts.length === 5 && !img.isError && buf.subarray(1, 4).toString() === 'PNG'
+      && /小さなウィンドウ: 画面「承認申請」/.test(steps) && /お客さまポータル: 画面 「ホーム」/.test(steps),
+    `ポータル ${ps.parts.map((p) => p.type).join('・')}・下線 ${ps.portalMenu} ／ ウィンドウ ${ws.overlay ? `${ws.overlay.under}・${ws.overlay.pos}` : 'なし'}・アイテム ${ws.parts.length} 個 ／ manualSteps ${kw.manualSteps.length} 行`);
 }
 
 // 第 9 段階の道具（システム）を 1 回ずつ呼ぶ: 作る・役割を足す・画面設計を入れる・スイムレーンを書く・読む・図の画像・外す
