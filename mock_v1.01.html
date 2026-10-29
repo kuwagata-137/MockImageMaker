@@ -2342,7 +2342,7 @@ function crmTemplateInto(sc, design, templateId, { put, items, Y }) {
     if (!status) {
       status = createItemData('status');
       const states = normalizeStates(CRM_CASE_STATES);
-      status.props = { states, actions: sampleActions(states) };
+      status.props = { states, actions: actionsFrom(states, CRM_CASE_ACTIONS) };
       current = states[1].id;
       items.push(status);
     }
@@ -2377,7 +2377,7 @@ function dealTemplateInto(sc, design, templateId, { put, items, Y }) {
   if (!lane) {
     lane = add(createItemData('status', '段階'));
     const states = normalizeStates(DEAL_STATES);
-    lane.props = { states, actions: sampleActions(states) };
+    lane.props = { states, actions: actionsFrom(states, DEAL_ACTIONS) };
   }
   const cols = [...inputs, ...(inputs.includes(lane) ? [] : [lane])];
   const columns = cols.map((it) => ({ id: newId('c'), ref: { itemId: it.id, name: it.name } }));
@@ -2797,8 +2797,16 @@ function createColumnData(type, name) {
 
 // 新しくステータスの項目を作るときの見本の操作（画像 q57。ユーザーが決めた）。[名前, 前, 次] は DEFAULT_STATES の並びの番号。操作する人と条件は空
 const SAMPLE_ACTIONS = [['申請する', 0, 1], ['承認する', 1, 2], ['差し戻す', 1, 0], ['完了にする', 2, 3]];
-const sampleActions = (states) => SAMPLE_ACTIONS.filter(([, f, t]) => states[f] && states[t])
-  .map(([name, f, t]) => ({ id: newId('a'), name, from: states[f].id, to: states[t].id, role: '', cond: '' }));
+// CRM のひな形と見本の操作（第 17 段階。画像 q135・q137 の③）。[名前, 前, 次, 操作する人] は CRM_CASE_STATES・DEAL_STATES・WORK_ORDER_STATES の並びの番号
+const CRM_CASE_ACTIONS = [['受け付ける', 0, 1, 'サポート'], ['エスカレーションする', 1, 2, 'サポート'], ['担当に戻す', 2, 1, '上長'],
+  ['お客さまに確認する', 1, 3, 'サポート'], ['回答を受け取る', 3, 1, 'サポート'], ['クローズする', 1, 4, 'サポート']];
+const DEAL_ACTIONS = [['提案する', 0, 1, '営業'], ['見積を出す', 1, 2, '営業'], ['交渉に進む', 2, 3, '営業'], ['受注にする', 3, 4, '営業']];
+const WORK_ORDER_STATES = ['指示', '作業中', '報告済み', '完了'];
+const WORK_ORDER_ACTIONS = [['作業を始める', 0, 1, '作業員'], ['報告する', 1, 2, '作業員'], ['完了にする', 2, 3, 'サポート']];
+// 操作の並び（[名前, 前, 次, 操作する人]）を、ステータスの並び states の id で指す操作にする。条件は空
+const actionsFrom = (states, list) => list.filter(([, f, t]) => states[f] && states[t])
+  .map(([name, f, t, role = '']) => ({ id: newId('a'), name, from: states[f].id, to: states[t].id, role, cond: '' }));
+const sampleActions = (states) => actionsFrom(states, SAMPLE_ACTIONS);
 function createItemData(type, name) {
   const t = partType(type);
   const states = type === 'status' ? normalizeStates(DEFAULT_STATES) : null;
