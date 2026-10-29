@@ -162,10 +162,10 @@ module.exports = async function shootCrm(browser, env) {
   });
   await shot(page, '208_crm_アイテム一覧の詳細画面用の組');
 
-  // 209: 「画面を追加する」のウィンドウ（ひな形 9 つ。CRM のひな形 2 つは進捗の後ろ）
+  // 209: 「画面を追加する」のウィンドウ（ひな形 11 個。CRM のひな形 2 つは進捗の後ろ、第 15 段階のひな形 2 つはその後ろ）
   await page.evaluate(() => window.__test__.runCommand('addScreen'));
   await page.waitForSelector('.modal .tpl');
-  await shot(page, '209_crm_画面を追加するのウィンドウ_ひな形9つ');
+  await shot(page, '209_crm_画面を追加するのウィンドウ_ひな形11個');
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.__test__.goHome());
 

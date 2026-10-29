@@ -8,6 +8,7 @@
 //     システムを作って役割・画面設計・スイムレーンを書くと、get_system・list_systems で読め、designs.json に残り、スイムレーン図の画像は PNG（第 9 段階）。
 //     edit_items で kintone の欄を書くと、get_kintone_app が kintone の MCP サーバーに渡す形を返す（第 13 段階）。
 //     グループ枠・縦に重ねる形・レコードの見出しのボタンで画面を並べると、get_screen が inFrame を返し、get_kintone_app がグループ（GROUP）を返す（第 14 段階）。
+//     レコード一覧のかんばんと大きな数字・メーターのグラフを並べると、get_screen で読め、get_kintone_app の warnings で知らせる（第 15 段階）。
 //     status で、窓が見えていない・裏の起動・ページの準備ができている。2 つ目の起動（--background）では窓を出す印が付かない。
 //     前に人が窓を最大化して閉じていても（window-state.json の isMaximized）、裏の起動では窓が画面に出ない（status の onScreen）。
 //     AI がつながっている間の窓の ×（BrowserWindow.close()）では、窓を隠して動き続ける。入口を閉じると、5 秒（MIM_IDLE_QUIT_MS）たって終わり始め（automation.json が消える）、プロセスも消える
@@ -214,6 +215,22 @@ async function phaseA() {
   check('A. グループ枠・縦に重ねる形・見出しのボタンで並べ、get_screen の inFrame と get_kintone_app のグループ（GROUP）を読める（第 14 段階）',
     rs.parts.length === 7 && inFrame.join('・') === 'レコードの見出し・申請の情報・申請の情報' && kg.properties['申請の情報'] && kg.properties['申請の情報'].type === 'GROUP' && kg.layout[0].type === 'GROUP',
     `アイテム ${rs.parts.map((p) => p.type).join('・')} ／ inFrame ${inFrame.join('・')} ／ layout ${kg.layout.map((r) => r.type).join('・')}`);
+  // 第 15 段階: 入口の形のまま、レコード一覧のかんばん（後ろの行で作る項目を列に分ける項目に書く）と大きな数字・メーターのグラフを並べ、get_screen と get_kintone_app で読む
+  const kb = await tool(client, 'add_screen', { design: made.id, name: '経費の一覧', layout: { columns: 4, rows: [
+    [{ type: 'table', tableKind: 'records', label: '経費のかんばん', span: 4, props: { display: 'kanban', columns: ['目的', '金額', '区分'], laneItem: '区分', sumItem: '金額' },
+       samples: { 目的: ['展示会の下見', '研修'], 金額: [1200, 800], 区分: ['交通費', '宿泊費'] } }],
+    [{ type: 'graph', label: '今月の経費', props: { chart: 'metric', samples: '今月の経費, 2000', unit: '円' } },
+     { type: 'graph', label: '予算の消化', props: { chart: 'gauge', samples: '消化, 60', target: '100', unit: '%' } }],
+    [{ item: '金額', type: 'number' }, { item: '区分', type: 'dropdown', props: { options: ['交通費', '宿泊費'] } }],
+  ] } });
+  const ks = await tool(client, 'get_screen', { design: made.id, screen: kb.screen.id });
+  const ksTable = ks.parts.find((p) => p.type === 'table');
+  const kk = await tool(client, 'get_kintone_app', { design: made.id });
+  const kWarn = kk.warnings.join('\n');
+  check('A. レコード一覧のかんばんと大きな数字・メーターのグラフを並べ、get_screen と get_kintone_app の warnings で読める（第 15 段階）',
+    !!ksTable && /かんばん/.test(JSON.stringify(ksTable)) && ks.parts.filter((p) => p.type === 'graph').length === 2
+      && /レコード一覧のかんばん/.test(kWarn) && /（大きな数字）は、kintone のグラフの種類にない/.test(kWarn) && /（メーター）は、kintone のグラフの種類にない/.test(kWarn),
+    `アイテム ${ks.parts.map((p) => p.type).join('・')} ／ warnings ${kk.warnings.length} 件`);
   // 第 8 段階の道具（ステータスの移り方と画面の移り方）
   const tl = await client.listTools();
   const NEW_TOOLS = ['edit_process', 'get_flow', 'get_view_image', 'list_systems', 'get_system', 'create_system', 'update_system', 'add_to_system', 'remove_from_system', 'set_swimlane',

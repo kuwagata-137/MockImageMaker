@@ -219,7 +219,7 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .tpl{border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:6px;text-align:center;cursor:pointer}
 .tpl:hover{border-color:#94a3b8}
 .tpl.sel{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.35)}
-.tpl .th{height:112px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.tpl .th{height:88px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border-radius:4px;overflow:hidden}
 .tpl b{display:block;margin-top:6px;font-size:13px}
 .tpl small{display:block;color:#64748b;font-size:11px;line-height:1.4}
 .tpl-dup{margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;font-size:13px;color:#475569}
@@ -319,6 +319,32 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-sf .ptl-rec a{color:#0176d3;text-decoration:none}
 .look-sf .ptl-kv small{color:#444}
 .look-sf .ptl-foot{color:#0176d3;border-top-color:#e5e5e5}
+.look-sf .pkb-lane{background:#f3f3f3;border-radius:4px}
+.look-sf .pkb-h b,.look-sf .pkb-h span,.look-sf .pkb-h small{color:#181818}
+.look-sf .pkb-card{border-color:#dddbda;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.10);color:#181818}
+.look-sf .pkb-card a{color:#0176d3;text-decoration:none}
+.look-sf .pcal-top{border-bottom-color:#e5e5e5}
+.look-sf .pcal-top b{color:#181818}
+.look-sf .pcal-nav i,.look-sf .pcal-mode i{border-color:#c9c9c9;border-radius:4px;color:#0176d3}
+.look-sf .pcal-mode i{border-radius:0}
+.look-sf .pcal-mode i:first-child{border-radius:4px 0 0 4px}
+.look-sf .pcal-mode i:last-child{border-radius:0 4px 4px 0}
+.look-sf .pcal-mode i.on{background:#0176d3;border-color:#0176d3;color:#fff}
+.look-sf .pcal-wd span,.look-sf .pcal-wk-head span{color:#444}
+.look-sf .w0 .pcal-d,.look-sf .pcal-wd .w0,.look-sf .pcal-wk-head .w0,.look-sf .w6 .pcal-d,.look-sf .pcal-wd .w6,.look-sf .pcal-wk-head .w6{color:#444}
+.look-sf .pcal-c.out .pcal-d{color:#aeaeae}
+.look-sf .pcal-c,.look-sf .pcal-wd,.look-sf .pcal-wk-head,.look-sf .pcal-wk-all,.look-sf .pcal-wk-all>div,.look-sf .pcal-wk-slot,.look-sf .pcal-wk-col{border-color:#e5e5e5}
+.look-sf .pcal-d.today,.look-sf .pcal-wk-head span.today b{background:#0176d3;color:#fff}
+.look-sf .pcal-ev{background:#d8e6fe;color:#014486}
+.look-sf .pcal-ev.allday{background:#0176d3;color:#fff}
+.look-sf .pcal-more{background:none;color:#444}
+.look-sf .pcal-wev{background:#d8e6fe;border-left-color:#0176d3;color:#014486}
+.look-sf .pml-row{border-bottom-color:#e5e5e5}
+.look-sf .pml-row small{color:#444}
+.look-sf .pml-row em{color:#0176d3}
+.look-sf .pml-chip{border-color:#c9c9c9;border-radius:4px;background:#f3f3f3}
+.look-sf .pml-tb{border-color:#c9c9c9;border-radius:4px 4px 0 0;background:#fafaf9}
+.look-sf .pml-body{border-color:#c9c9c9}
 .look-sf .prhead{background:#fff;border:1px solid #dddbda;border-radius:4px;box-shadow:0 2px 2px rgba(0,0,0,.10)}
 .look-sf .prh-top small{color:#444}
 .look-sf .prh-top b{color:#181818}
@@ -339,6 +365,11 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-sf .pgraph [fill="#f59e0b"]{fill:#ff9a3c}.look-sf .pgraph [fill="#10b981"]{fill:#3ba755}
 .look-kt .pgraph [fill="#3b82f6"]{fill:#3498db}.look-kt .pgraph [stroke="#3b82f6"]{stroke:#3498db}
 .look-kt .pgraph [fill="#f59e0b"]{fill:#f39c12}.look-kt .pgraph [fill="#10b981"]{fill:#2ecc71}
+/* 第 15 段階のグラフ（積み上げ棒・じょうご・メーター）で使う赤・紫と、メーターの値・大きな数字の字の色 */
+.look-sf .pgraph [fill="#ef4444"]{fill:#fe5c4c}.look-sf .pgraph [fill="#8b5cf6"]{fill:#9050e9}
+.look-kt .pgraph [fill="#ef4444"]{fill:#e74c3c}.look-kt .pgraph [fill="#8b5cf6"]{fill:#9b59b6}
+.look-sf .pgraph .pg-value{fill:#181818}.look-kt .pgraph .pg-value{fill:#333}
+.look-sf .pmetric{color:#181818}.look-sf .pmetric span{color:#444}.look-kt .pmetric{color:#333}.look-kt .pmetric span{color:#666}
 .look-kt{font-family:'Segoe UI','Yu Gothic UI','Meiryo',sans-serif}
 .look-kt .screen-band.ktb{height:88px;padding:0;display:block;background:#fff;color:#333;font-weight:400;font-size:13px}
 .ktb-top{background:#fff;border-bottom:1px solid #e3e7e8}
@@ -392,6 +423,27 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .ptl-rec a{color:#3498db;text-decoration:none}
 .look-kt .ptl-kv small{color:#666}
 .look-kt .ptl-foot{color:#3498db;border-top-color:#e3e7e8}
+.look-kt .pkb-lane{background:#f7f9fa;border:1px solid #e3e7e8;border-radius:0}
+.look-kt .pkb-h b{color:#333}.look-kt .pkb-h span,.look-kt .pkb-h small{color:#666}
+.look-kt .pkb-card{border-color:#e3e7e8;border-radius:0;color:#333}
+.look-kt .pkb-card a{color:#3498db;text-decoration:none}
+.look-kt .pcal-top{border-bottom-color:#e3e7e8}
+.look-kt .pcal-top b{color:#333}
+.look-kt .pcal-nav i,.look-kt .pcal-mode i{border-color:#e3e7e8;border-radius:0;color:#3498db;background:#f7f9fa}
+.look-kt .pcal-mode i.on{background:#3498db;border-color:#3498db;color:#fff}
+.look-kt .pcal-wd{background:#f5f5f5}
+.look-kt .pcal-c,.look-kt .pcal-wd,.look-kt .pcal-wk-head,.look-kt .pcal-wk-all,.look-kt .pcal-wk-all>div,.look-kt .pcal-wk-slot,.look-kt .pcal-wk-col{border-color:#e3e7e8}
+.look-kt .pcal-d.today,.look-kt .pcal-wk-head span.today b{background:#3498db}
+.look-kt .pcal-ev{background:#e5f3fd;color:#21618c;border-radius:0}
+.look-kt .pcal-ev.allday{background:#3498db;color:#fff}
+.look-kt .pcal-more{background:none;color:#666}
+.look-kt .pcal-wev{background:#e5f3fd;border-left-color:#3498db;color:#21618c;border-radius:0}
+.look-kt .pml-row{border-bottom-color:#e3e7e8}
+.look-kt .pml-row small{color:#666}
+.look-kt .pml-row em{color:#3498db}
+.look-kt .pml-chip{border-color:#e3e7e8;border-radius:0;background:#f7f9fa}
+.look-kt .pml-tb{border-color:#e3e7e8;border-radius:0;background:#f7f9fa}
+.look-kt .pml-body{border-color:#e3e7e8}
 .look-kt .prhead{background:#fff;border:none;border-bottom:1px solid #e3e7e8;border-radius:0;padding:9px 4px}
 .look-kt .prh-ic{border-radius:4px}
 .look-kt .prh-top b{color:#333}
@@ -482,6 +534,9 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 /* グラフの部品（画像 q25） */
 .pgraph{flex:1;min-height:0;margin-top:4px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;overflow:hidden}
 .pgraph svg{display:block}
+/* 大きな数字（第 15 段階。画像 q124） */
+.pmetric{height:100%;display:flex;align-items:center;justify-content:center;gap:6px;color:#0f172a;white-space:nowrap;overflow:hidden}
+.pmetric b{font-size:44px;font-weight:700;letter-spacing:.5px}.pmetric span{font-size:16px;color:#475569;padding-top:16px}
 /* 一覧の画面用・進み具合の画面用・見た目用（画像 q26） */
 .psearch{flex:1;display:flex;align-items:center;border:1px solid #94a3b8;border-radius:6px;background:#fff;overflow:hidden;min-width:0}
 .psearch .pph{flex:1;padding:0 10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
@@ -534,6 +589,83 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .ptl-kv{display:flex;gap:6px;height:20px;line-height:20px;font-size:12.5px;white-space:nowrap;overflow:hidden}
 .ptl-kv small{width:88px;flex-shrink:0;color:#64748b;font-size:12px;overflow:hidden;text-overflow:ellipsis}
 .ptl-foot{height:36px;flex-shrink:0;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;color:#1d4ed8;font-size:12.5px}
+/* レコード一覧のかんばん（第 15 段階。画像 q123 の案A）。項目名の行は表と同じ。高さは kanbanHeight と合わせる（見出し 36・合計ありは 54、カードは 16＋20×行の数、間 8） */
+.pkb-lanes{flex:1;min-height:0;display:flex;gap:8px;margin-top:4px;overflow:hidden}
+.pkb-lane{flex:1 1 0;min-width:0;background:#f1f5f9;border-radius:6px;padding:0 8px 8px;overflow:hidden}
+.pkb-h{height:36px;padding:9px 4px 0;line-height:18px;white-space:nowrap;overflow:hidden}
+.pkb-lanes.sum .pkb-h{height:54px}
+.pkb-h b{font-size:14px;color:#0f172a}
+.pkb-h span{font-size:13px;color:#475569}
+.pkb-h small{display:block;font-size:12px;color:#475569;overflow:hidden;text-overflow:ellipsis}
+.pkb-lane.none .pkb-h b{color:#64748b;font-weight:400}
+.pkb-card{background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:7px 10px;margin-bottom:8px;font-size:12.5px;line-height:20px;color:#334155}
+.pkb-card a{display:block;height:20px;color:#1d4ed8;text-decoration:underline;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pkb-card div{height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pkb-hint{margin:8px 4px;color:#94a3b8;font-size:12.5px}
+/* カレンダー（第 15 段階。画像 q125）。外の枠はグラフと同じ（.pgraph）。月の表示のマスの高さは calendarMonthHtml と合わせる（上の行 45・曜日の行 27） */
+.pcal{display:flex;flex-direction:column;font-size:12px;color:#1e293b}
+.pcal-top{height:45px;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 12px;border-bottom:1px solid #e2e8f0}
+.pcal-top b{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcal-nav{display:flex;gap:4px;flex-shrink:0}
+.pcal-nav i,.pcal-mode i{font-style:normal;height:26px;min-width:26px;padding:0 8px;border:1px solid #cbd5e1;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;background:#fff;font-size:12.5px;color:#334155}
+.pcal-mode{margin-left:auto;display:flex;flex-shrink:0}
+.pcal-mode i{border-radius:0;min-width:40px}
+.pcal-mode i:first-child{border-radius:5px 0 0 5px}
+.pcal-mode i:last-child{border-radius:0 5px 5px 0;border-left:none}
+.pcal-mode i.on{background:#eff6ff;border-color:#2563eb;color:#1d4ed8;font-weight:700}
+.pcal-wd{display:grid;grid-template-columns:repeat(7,1fr);flex-shrink:0;border-bottom:1px solid #e2e8f0}
+.pcal-wd span{height:26px;line-height:26px;text-align:center;font-size:12px;color:#475569}
+.pcal-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,1fr)}
+.pcal-c{border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:3px 4px;overflow:hidden;min-width:0}
+.pcal-c:nth-child(7n){border-right:none}
+.pcal-c:nth-last-child(-n+7){border-bottom:none}
+.pcal-c.out{background:#f8fafc}
+.pcal-c.out .pcal-d{color:#94a3b8}
+.pcal-d{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;font-size:12px;margin-bottom:2px}
+.pcal-d.today{background:#2563eb;color:#fff;font-weight:700}
+.pcal-ev,.pcal-more{display:block;font-style:normal;font-size:11px;line-height:18px;padding:0 4px;margin-bottom:2px;border-radius:3px;background:#dbeafe;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcal-ev em{font-style:normal;margin-right:4px;font-weight:700}
+.pcal-ev.allday{background:#2563eb;color:#fff}
+.pcal-more{background:none;color:#475569}
+.w0 .pcal-d,.pcal-wd .w0,.pcal-wk-head .w0{color:#dc2626}
+.w6 .pcal-d,.pcal-wd .w6,.pcal-wk-head .w6{color:#2563eb}
+.pcal-c.out.w0 .pcal-d,.pcal-c.out.w6 .pcal-d{color:#cbd5e1}
+.pcal-wk-head,.pcal-wk-all{display:grid;grid-template-columns:52px repeat(7,1fr);flex-shrink:0;border-bottom:1px solid #e2e8f0}
+.pcal-wk-head span{text-align:center;padding:4px 0;font-size:12px;color:#475569;white-space:nowrap}
+.pcal-wk-head b{font-size:16px;margin-right:3px;font-weight:600}
+.pcal-wk-head span.today b{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:13px;background:#2563eb;color:#fff}
+.pcal-wk-all>span{font-size:11px;color:#64748b;text-align:right;padding:4px 6px 0 0}
+.pcal-wk-all>div{border-left:1px solid #e2e8f0;padding:2px 2px 0;min-width:0}
+.pcal-wk-body{flex:1;min-height:0;display:grid;grid-template-columns:52px repeat(7,1fr)}
+.pcal-wk-times{display:flex;flex-direction:column}
+.pcal-wk-times span{flex:1;font-size:11px;color:#64748b;text-align:right;padding-right:6px;margin-top:-7px}
+.pcal-wk-times span:first-child{margin-top:0}
+.pcal-wk-col{position:relative;display:flex;flex-direction:column;border-left:1px solid #e2e8f0;min-width:0}
+.pcal-wk-col.today{background:#f8fbff}
+.pcal-wk-slot{flex:1;border-top:1px solid #e2e8f0}
+.pcal-wk-slot:first-child{border-top:none}
+.pcal-wev{position:absolute;font-style:normal;font-size:11px;line-height:15px;padding:2px 4px;border-radius:4px;background:#dbeafe;border-left:3px solid #2563eb;color:#1e3a8a;overflow:hidden}
+.pcal-wev em{display:block;font-style:normal;font-weight:700;white-space:nowrap}
+.pcal-wev span{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+.pcal-wev.short{white-space:nowrap;text-overflow:ellipsis;padding-top:0;padding-bottom:0}
+.pcal-wev.short em{display:inline;margin-right:4px}
+.pcal-wev.short span.one{display:inline}
+/* メールの作成欄（第 15 段階。画像 q126 の案A）。外の枠と見出しの行はグループ枠と同じ */
+.pml-row{display:flex;align-items:center;gap:10px;min-height:38px;flex-shrink:0;margin:0 14px;border-bottom:1px solid #e2e8f0;font-size:13px;white-space:nowrap;overflow:hidden}
+.pml-row small{width:52px;flex-shrink:0;color:#64748b;font-size:12.5px}
+.pml-row>span{overflow:hidden;text-overflow:ellipsis}
+.pml-row em{margin-left:auto;font-style:normal;color:#1d4ed8;font-size:12.5px;flex-shrink:0}
+.pml-chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 6px 0 10px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;font-size:12.5px;flex-shrink:0}
+.pml-chip i{font-style:normal;font-size:11px;color:#64748b}
+.pml-tb{display:flex;align-items:center;gap:12px;height:34px;flex-shrink:0;margin:8px 14px 0;padding:0 10px;border:1px solid #e2e8f0;border-bottom:none;border-radius:6px 6px 0 0;background:#f8fafc;font-size:13px;color:#334155}
+.pml-tb i{font-style:italic;font-family:Georgia,serif}
+.pml-tb s{width:1px;height:16px;background:#cbd5e1}
+.pml-body{flex:1;min-height:0;margin:0 14px;padding:10px 12px;border:1px solid #e2e8f0;font-size:13px;line-height:1.7;overflow:hidden;color:#1e293b}
+.pml-row+.pml-body{margin-top:8px;border-radius:6px}
+.pml-foot{height:52px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 14px}
+.pml-clip{color:#64748b;display:inline-flex}
+.pml-clip svg{width:18px;height:18px}
+.pml-send{flex:none;margin-left:auto;width:88px;height:34px;font-size:14px}
 /* レコードの見出し（第 14 段階。画像 q116 の左の段）。上に重ねたボタンは、見出しの上に描く */
 .prhead{flex:1;min-width:0;min-height:0;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:9px 16px;overflow:hidden;line-height:1.25}
 .prh-top{display:flex;align-items:center;gap:12px;min-width:0}
@@ -679,6 +811,7 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 .seg span{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid #cbd5e1;border-radius:6px;padding:6px 6px;font-size:12px;background:#fff}
 .seg small{font-size:10px;color:#64748b}
 .seg input:checked+span{border-color:#2563eb;background:#eff6ff;color:#1d4ed8;font-weight:600}
+.seg.grid3{display:grid;grid-template-columns:repeat(3,minmax(max-content,1fr))}
 .seg input:focus-visible+span{box-shadow:0 0 0 2px rgba(59,130,246,.35)}
 .height-value{font-size:13px;font-weight:600}
 .check{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;cursor:pointer}
@@ -1558,6 +1691,8 @@ const SCREEN_TEMPLATES = [
   { id: 'steps', name: '進捗', note: '進捗バー・承認のボタン' },
   { id: 'crmDetail', name: '顧客の詳細', note: 'レコードの見出しの下に 2 列' },
   { id: 'crmCase', name: '問い合わせ対応の 3 列', note: 'レコードの見出しと進捗バーの下に 3 列' },
+  { id: 'crmKanban', name: '商談のかんばん', note: '検索欄・新規のボタン・かんばん' },
+  { id: 'crmHome', name: 'ホームのダッシュボード', note: '大きな数字 4 つ・グラフ 3 つ・表' },
 ];
 const TPL_LEFT = 32; // ひな形で部品を置く左の端
 const TPL_COL2 = 480; // 項目を 2 列で並べるときの右の列（幅 400 の部品の右に 48 空ける）
@@ -1583,6 +1718,21 @@ const CRM_CASE_ITEMS = [
   { type: 'user', name: '担当者', sample: '佐藤 花子' }, { type: 'text2', name: '説明', sample: '冷房が効かないとの電話。リモコンにエラーの番号 E-11 が出ている。', span: 2 },
 ];
 const CRM_CASE_STATES = ['新規', '対応中', 'エスカレーション', '回答待ち', 'クローズ'];
+// 「商談のかんばん」「ホームのダッシュボード」（第 15 段階。画像 q127）のサンプルの項目と商談（[商談名, 取引先名, 金額, 完了予定日, 段階]）
+const DEAL_ITEMS = [
+  { type: 'text1', name: '商談名', required: true }, { type: 'text1', name: '取引先名' }, { type: 'number', name: '金額', props: { unit: '万円' } }, { type: 'date', name: '完了予定日' },
+];
+const DEAL_STATES = ['見込み', '提案', '見積', '交渉', '受注'];
+const DEALS = [
+  ['空調の入れ替え', '株式会社サンプル商事', '480', '2026-12-15', '提案'], ['保守の契約の更新', '架空工業株式会社', '36', '2026-11-30', '交渉'],
+  ['照明の LED 化', '見本物産株式会社', '220', '2026-12-20', '見込み'], ['防犯カメラの設置', '株式会社テスト商会', '150', '2027-01-15', '見積'],
+  ['給湯器の交換', '例示不動産株式会社', '85', '2026-11-10', '受注'], ['太陽光パネルの設置', '株式会社サンプル商事', '1,200', '2027-02-28', '見込み'],
+  ['換気設備の点検', '架空工業株式会社', '24', '2026-11-20', '提案'], ['床暖房の工事', '見本物産株式会社', '310', '2026-12-05', '見積'],
+  ['非常用の発電機の更新', '株式会社テスト商会', '640', '2027-03-10', '見込み'],
+];
+// ホームのダッシュボードの大きな数字（[グラフの名前, 値, 単位, 集計]。集計の 'amount' はサンプルの「金額」の合計）
+const DEAL_METRICS = [['今月の受注額', '1280', '万円', 'amount'], ['進行中の商談', '24', '件', 'count'], ['受注率', '32', '%', ''], ['未対応の問い合わせ', '7', '件', '']];
+const METRIC_GRAPH_H = 136; // 大きな数字のグラフの高さ（ひな形と AI の並べ方。Claude が決めた）
 const CRM_RELATED = {
   contacts: ['顧客の担当者', 'green', [['氏名', '山田 太郎', '鈴木 一郎'], ['役職', '総務部長', '施設の担当'], ['電話', '03-1234-5679', '03-1234-5680'], ['メール', 'yamada@example.com', 'suzuki@example.com']]],
   deals: ['商談', 'orange', [['商談名', '空調の入れ替え', '保守の契約の更新'], ['段階', '提案', '受注'], ['金額', '480 万円', '36 万円'], ['完了予定日', '2026-12-15', '2026-09-30']]],
@@ -1703,7 +1853,7 @@ const FRAME_TOP = 64; // グループ枠の上の端から、中の 1 行目の�
 const FRAME_EMPTY_H = 160; // 中に何も並べないグループ枠の高さ
 const isFrameBlock = (b) => isObj(b) && typeof b.frame === 'string';
 // 列の幅いっぱいに広げる種類（入力の項目・表・グラフ・説明文・見出し・区切り線・第 14 段階のアイテム）。ほかは最初の幅（列より広ければ列の幅）
-const STRETCH_TYPES = ['table', 'graph', 'desc', 'heading', 'divider', 'frame', 'recordHead', 'activity', 'tree'];
+const STRETCH_TYPES = ['table', 'graph', 'desc', 'heading', 'divider', 'frame', 'recordHead', 'activity', 'tree', 'calendar', 'mail'];
 const stretchType = (type) => !!partType(type) && (!!partType(type).input || STRETCH_TYPES.includes(type));
 // blocks を、x から幅 w の 1 つの列に、startY から上から順に重ねる。block はアイテム 1 つか、グループ枠 { frame: 'グループ名', color, columns（1〜2）, rows }。
 // sizeOf(entry) は { type, w, h }。戻り値 { placed: [{ entry, type, x, y, w, h }]（置く順。グループ枠は中のアイテムより前）, nextY }
@@ -1864,6 +2014,7 @@ function screenFromTemplate(design, templateId, name) {
       break;
     }
     case 'crmDetail': case 'crmCase': crmTemplateInto(sc, design, templateId, { put, items, Y }); break;
+    case 'crmKanban': case 'crmHome': dealTemplateInto(sc, design, templateId, { put, items, Y }); break;
     default: break; // 白紙は帯だけ
   }
   return { screen: sc, items };
@@ -1934,6 +2085,72 @@ function crmTemplateInto(sc, design, templateId, { put, items, Y }) {
   settleFrames(sc, sc.parts.map((p) => p.id));
 }
 
+// ひな形「商談のかんばん」と「ホームのダッシュボード」（第 15 段階。画像 q127 の並び）。どちらも、いちばん上に番号のない見出し。
+// 商談のかんばん: 右に検索欄と新規のボタン、その下に幅いっぱいのかんばん（レコード一覧をかんばんで表示したもの）。
+// ホームのダッシュボード: 大きな数字 4 つ（4 列）・メーター・じょうご・積み上げ棒（3 列。列は layoutGrid）・完了予定日の近い商談の表。
+// 項目は、データベースの項目がなければサンプル（商談名・取引先名・金額・完了予定日・段階）を項目一覧に追加し、表に商談のサンプル値を入れる。
+// 項目があるときは、入力の種類の最初の 4 つを表の列にし、列に分ける項目はステータスの項目（なければ最初のドロップダウン・ラジオボタン、
+// それもなければサンプルの「段階」を追加）。そのときのサンプル値は、サンプルの項目と同じ名前の列（前にこのひな形が追加した項目など）には商談の値、
+// 列に分ける列には選択肢を順に入れる（カードが列に分かれて見えるように）。ほかの列は空
+function dealTemplateInto(sc, design, templateId, { put, items, Y }) {
+  const own = design.items.filter((it) => isInputType(it.type));
+  const add = (it) => { items.push(it); return it; };
+  const inputs = own.length ? own.slice(0, 4) : DEAL_ITEMS.map((s) => {
+    const it = createItemData(s.type, s.name);
+    if (s.required) it.required = true;
+    if (s.props) it.props = { ...it.props, ...s.props };
+    return add(it);
+  });
+  // 列に分ける項目（ステータスは画面設計に 1 つだけなので、あればそれを使う）
+  let lane = design.items.find((it) => it.type === 'status') || (own.length ? own.find((it) => it.type === 'dropdown' || it.type === 'radio') : null);
+  if (!lane) {
+    lane = add(createItemData('status', '段階'));
+    const states = normalizeStates(DEAL_STATES);
+    lane.props = { states, actions: sampleActions(states) };
+  }
+  const cols = [...inputs, ...(inputs.includes(lane) ? [] : [lane])];
+  const columns = cols.map((it) => ({ id: newId('c'), ref: { itemId: it.id, name: it.name } }));
+  const amount = cols.find((it) => it.type === 'number' || it.type === 'calc');
+  // サンプルの項目と同じ名前の項目（前にこのひな形が追加した項目も、名前で見つける）
+  const dealItem = (name) => cols.find((it) => it.name === name && it.type === (DEAL_ITEMS.find((s) => s.name === name) || {}).type);
+  // サンプルの行（rows 件）。サンプルの項目と同じ名前の列には商談の値を入れる。列に分ける列は、商談の段階が選択肢にあればその値、なければ選択肢を順に
+  const laneNames = kanbanLaneNames(lane);
+  const view = (rows, deals) => ({ rows, samples: Object.fromEntries(columns.map((c, i) => {
+    const it = cols[i];
+    if (it === lane) return [c.id, deals.map((d, r) => (laneNames.includes(d[4]) ? d[4] : laneNames[r % Math.max(1, laneNames.length)] || ''))];
+    const k = DEAL_ITEMS.findIndex((s) => dealItem(s.name) === it);
+    return [c.id, k >= 0 ? deals.map((d) => d[k]) : []];
+  })) });
+  const heading = (label, w) => { const h = put('heading', TPL_LEFT, Y(56), { w, h: 32, label }); h.no = null; };
+  const tableProps = (extra) => ({ columns, sort: '', perPage: '', limit: '', ...extra });
+  if (templateId === 'crmKanban') {
+    heading('すべての商談', 400);
+    const search = put('search', sc.width - TPL_LEFT - 96 - 32 - 304, Y(56), { w: 304, props: { items: inputs.filter((it) => it.type === 'text1').slice(0, 2).map((it) => it.id), button: true } });
+    search.placeholder = `${inputs.filter((it) => it.type === 'text1').slice(0, 2).map((it) => it.name).join('・') || 'キーワード'}で検索`;
+    put('button', sc.width - TPL_LEFT - 96, Y(56), { label: '新規', w: 96, props: { style: 'normal' } });
+    const props = tableProps({ display: 'kanban', laneItem: lane.id, sumItem: amount ? amount.id : '' });
+    const v = view(DEALS.length, DEALS);
+    const h = kanbanHeight(kanbanModel({ ...design, items: [...design.items, ...items] }, { props, view: v }));
+    put('table', TPL_LEFT, Y(112), { tableKind: 'records', label: '商談の一覧', w: sc.width - TPL_LEFT * 2, h, props, view: v });
+    return;
+  }
+  heading('営業のダッシュボード', 560);
+  // グラフの集計は、サンプルの「金額」「完了予定日」と同じ名前の項目を指す（なければ書かない）
+  const sum = dealItem('金額') ? { agg: 'sum', aggItem: dealItem('金額').id } : {};
+  const g4 = layoutGrid(sc.width, 4);
+  DEAL_METRICS.forEach(([label, value, unit, agg], i) => put('graph', g4.columnsLeft[i], Y(104), { label, w: g4.columnWidth, h: METRIC_GRAPH_H,
+    props: { chart: 'metric', samples: `${label}, ${value}`, unit, ...(agg === 'amount' ? sum : agg === 'count' ? { agg: 'count' } : {}) } }));
+  const g3 = layoutGrid(sc.width, 3);
+  const graph = (i, label, props) => put('graph', g3.columnsLeft[i], Y(264), { label, w: g3.columnWidth, h: 320, props });
+  graph(0, '今期の目標の達成', { chart: 'gauge', samples: '今期の受注額, 3,840', target: '5,000', unit: '万円', ...sum });
+  graph(1, '段階ごとの商談の件数', { chart: 'funnel', samples: DEAL_STATES.map((s, i) => `${s}, ${[24, 16, 11, 7, 4][i]}`).join('\n'), byUnit: '段階ごと', agg: 'count' });
+  graph(2, '月ごとの受注額', { chart: 'stacked', samples: '5月, 120, 80\n6月, 180, 60\n7月, 150, 110\n8月, 210, 90\n9月, 170, 130\n10月, 240, 120', series: '新規\n既存', unit: '万円',
+    byUnit: '月ごと', ...(dealItem('完了予定日') ? { byItem: dealItem('完了予定日').id } : {}), ...sum });
+  const near = DEALS.slice().sort((a, b) => a[3].localeCompare(b[3])).slice(0, 4);
+  put('table', TPL_LEFT, Y(608), { tableKind: 'records', label: '完了予定日の近い商談', w: sc.width - TPL_LEFT * 2, h: tableHeight(4),
+    props: tableProps({ sort: '完了予定日の近い順' }), view: view(4, near) });
+}
+
 // ── 項目と部品 ──
 // 項目 { id, name, type, required, memo, props, lookup, link }（画面設計の items。データベースの項目の一覧表の 1 行）
 //   type は入力欄の部品の種類（text1 など）。name は項目名。props は種類ごとの設定（PART_TYPES の props が最初の値）。
@@ -1970,7 +2187,8 @@ const PART_TYPES = {
   // ── 第 3 段階の後半で足した部品（見た目と最初の大きさは画像 q24・q25・q26 のとおり）──
   // 表: 中身（tableKind）は テーブル（subtable。項目になる）・レコード一覧（records）・関連レコード一覧（related）。props はレコード一覧・関連レコード一覧の設定
   table: { name: '表', icon: '▦', w: 640, h: 168, label: '一覧', props: {} },
-  graph: { name: 'グラフ', icon: '📊', w: 480, h: 320, label: 'グラフ', props: { chart: 'bar', byItem: '', byUnit: '', agg: 'sum', aggItem: '', samples: '4月, 120\n5月, 180\n6月, 150\n7月, 210\n8月, 170\n9月, 240', unit: '' } },
+  // target はメーターの目標の値、series は積み上げ棒グラフの凡例の名前（1 行に 1 つ。第 15 段階）
+  graph: { name: 'グラフ', icon: '📊', w: 480, h: 320, label: 'グラフ', props: { chart: 'bar', byItem: '', byUnit: '', agg: 'sum', aggItem: '', samples: '4月, 120\n5月, 180\n6月, 150\n7月, 210\n8月, 170\n9月, 240', unit: '', target: '', series: '' } },
   search: { name: '検索欄', icon: '🔍', w: 320, h: 40, ph: 'キーワードで検索', label: '', props: { items: [], button: true } },
   filter: { name: '絞り込み欄', pal: '絞り込み', icon: '⏷', w: 480, h: 40, label: '', props: { items: [], values: [] } },
   pager: { name: 'ページ送り', icon: '⋯', w: 360, h: 32, label: '', props: { perPage: '20', total: '200', showCount: true } },
@@ -1998,6 +2216,18 @@ const PART_TYPES = {
   tree: { name: 'ツリー', icon: '🗂', w: 240, h: 320, label: '', props: {
     lines: '契約書\n  2026年度（5）\n  2025年度（12）\n  2024年度（9）\n+規程\n議事録\n  2026年度（14）\n  2025年度（31）\n+申請書の控え',
     current: '契約書 > 2026年度（5）', folder: true } },
+  // カレンダー（第 15 段階。画像 q125）: mode は 'month'（月の表示）・'week'（週の表示）、today は今日として描く日（その日のある月・週を描き、印を付ける）。
+  // samples は 1 行に「日付, 時刻, 件名」（時刻は「10:00-11:30」。空なら終日。parseCalendarSamples）、hours は週の表示で描く時刻の範囲
+  calendar: { name: 'カレンダー', icon: '📆', w: 800, h: 520, label: '予定', props: {
+    mode: 'month', today: '2026-10-22', hours: '8:00-18:00',
+    samples: '2026-10-06, 10:00-11:00, 展示会の下見\n2026-10-09, , 創立記念日\n2026-10-14, 13:00-14:00, 新しい取引先を訪問\n2026-10-19, 10:00-11:00, 週の定例の打ち合わせ\n'
+      + '2026-10-20, 13:00-14:30, 山田様を訪問（点検）\n2026-10-21, 09:30-10:30, 見積書の確認\n2026-10-22, 10:00-12:00, 株式会社サンプル商事を訪問\n2026-10-22, 15:00-16:00, 社内の勉強会\n'
+      + '2026-10-23, 14:00-15:00, 保守の契約の打ち合わせ\n2026-10-28, 10:00-11:30, 空調の入れ替えの提案\n2026-10-30, 16:00-17:00, 月末の締めの確認' } },
+  // メールの作成欄（第 15 段階。画像 q126 の案A）: 差出人・宛先・件名・本文はサンプル値（宛先は「、」で区切ると札を分ける）。toolbar は書式のボタンの行、color は見出しの左のアイコンの色。
+  // 項目一覧には入れない。送信のボタンの先の画面を描くときは、ボタンのアイテムを上に重ねて置く（container。グループ枠と同じく一緒に動く）
+  mail: { name: 'メールの作成欄', pal: 'メールの\n作成欄', icon: '✉', w: 560, h: 440, label: 'メールを作成', container: true, props: {
+    color: 'blue', from: '佐藤 花子 <sato@example.com>', to: '山田 太郎', subject: '点検の日の連絡',
+    body: '山田 太郎 様\n\nいつもお世話になっております。\n点検の日を 10 月 22 日（木）10 時でお願いできますでしょうか。\n\n佐藤 花子', toolbar: true } },
 };
 // グループ枠の見出しの左のアイコンの色（右のパネルの選択肢の順。'none' はアイコンを出さない）と、アイコンの絵（白い線。Salesforce のアイコンは写さない）
 const FRAME_COLORS = { blue: '青', green: '緑', orange: '橙', red: '赤', purple: '紫', gray: '灰', none: 'なし' };
@@ -2012,8 +2242,8 @@ const paletteEntry = (type) => (own(PALETTE_EXTRA, type) ? PALETTE_EXTRA[type] :
 const PALETTE_GROUPS = [
   { id: 'basic', name: '基本', types: ['text1', 'text2', 'number', 'date', 'dropdown', 'radio', 'checkbox', 'table', 'button', 'graph', 'heading', 'desc', 'divider', 'callout'] },
   { id: 'input', name: '入力画面用', types: ['file', 'user', 'datetime', 'calc'] },
-  { id: 'list', name: '一覧画面用', types: ['search', 'filter', 'pager', 'tree'] },
-  { id: 'detail', name: '詳細画面用', types: ['frame', 'recordHead', 'activity'] },
+  { id: 'list', name: '一覧画面用', types: ['search', 'filter', 'pager', 'tree', 'calendar'] },
+  { id: 'detail', name: '詳細画面用', types: ['frame', 'recordHead', 'activity', 'mail'] },
   { id: 'progress', name: '進捗画面用', types: ['status', 'steps', 'tabs'] },
   { id: 'look', name: 'その他', types: ['image', 'link', 'icon'] },
 ];
@@ -2093,7 +2323,8 @@ function calloutLine(c, part) {
 const TABLE_LABEL_H = 28; // 表の部品の項目名の行の高さ
 const TABLE_ROW_H = 34; // 表の部品の見出しの行と、見本の行の高さ
 const DEFAULT_STATES = ['申請', '承認待ち', '承認済み', '完了'];
-const CHART_NAMES = { bar: '棒グラフ', hbar: '横棒グラフ', line: '折れ線グラフ', pie: '円グラフ' };
+// 後ろの 4 つは第 15 段階で追加した（画像 q124。ダッシュボードのグラフ）
+const CHART_NAMES = { bar: '棒グラフ', hbar: '横棒グラフ', line: '折れ線グラフ', pie: '円グラフ', stacked: '積み上げ棒グラフ', funnel: 'じょうごグラフ', gauge: 'メーター', metric: '大きな数字' };
 const AGG_NAMES = { count: 'レコードの件数', sum: '合計', avg: '平均', max: '最大値', min: '最小値' };
 
 // 種類の引き当ては、PART_TYPES 自身の項目だけを見る（読み込んだデータの type が constructor などでも、継承した値を拾わないため）
@@ -2229,7 +2460,69 @@ const isTilesPart = (p) => !!(p && p.type === 'table' && p.tableKind === 'relate
 const TILE_HEAD = 44;
 const TILE_FOOT = 36;
 const tilesHeight = (rows, ncols) => Math.ceil((TILE_HEAD + rows * (16 + 20 * Math.max(1, ncols)) + TILE_FOOT + 2) / GRID) * GRID;
-const partTableHeight = (p) => (isTilesPart(p) ? tilesHeight(p.view.rows, (p.props.columns || []).length) : tableHeight(p.view.rows));
+// レコード一覧をかんばんで描くか（第 15 段階。画像 q123 の案A。props.display が 'kanban'）
+const isKanbanPart = (p) => !!(p && p.type === 'table' && p.tableKind === 'records' && p.props && p.props.display === 'kanban');
+// かんばんの列に分けられる項目の種類（選択肢のある項目）と、列ごとに合計できる項目の種類
+const KANBAN_LANE_TYPES = ['status', 'dropdown', 'radio'];
+const KANBAN_SUM_TYPES = ['number', 'calc'];
+// かんばんの高さ（項目名の行 28・列の見出し〔合計があれば 54、なければ 36〕・いちばん多い列のカードの枚数〔0 なら 1〕×（上下の余白と枠 16＋1 行 20×行の数＋間 8）・列の下の余白 8）。
+// 8 ドットのマス目に切り上げる。CSS の .pkb-h・.pkb-card の高さと合わせる
+const KANBAN_HEAD = 36;
+const KANBAN_HEAD_SUM = 54;
+const kanbanHeight = (m) => Math.ceil((TABLE_LABEL_H + (m.sum ? KANBAN_HEAD_SUM : KANBAN_HEAD) + Math.max(1, m.most) * (16 + 20 * m.lines + 8) + 8 + 2) / GRID) * GRID;
+// 表の部品の中身から決まる高さ。かんばんは、列に分ける項目を項目一覧から引くので design を渡す
+const partTableHeight = (p, design = null) => (isKanbanPart(p) ? kanbanHeight(kanbanModel(design, p))
+  : isTilesPart(p) ? tilesHeight(p.view.rows, (p.props.columns || []).length) : tableHeight(p.view.rows));
+// 表の部品の形の印（表示のしかたと、中身から決まる高さ）。変わったら高さを合わせ直す
+const tableShapeKey = (p, design) => `${isKanbanPart(p) ? 'kanban' : isTilesPart(p) ? 'tiles' : 'table'}:${partTableHeight(p, design)}`;
+// 表の部品の高さを中身に合わせる（表を上へずらさず、画面を伸ばす）
+function fitTablePart(p, sc, design) {
+  const h = partTableHeight(p, design);
+  if (p.y + h > sc.height) sc.height = heightToFit(p.y + h, sc.device);
+  Object.assign(p, fitRect({ ...p, h }, sc));
+}
+
+// 表の列のうち、指している項目の種類が types のもの（{ col: 表の列, item: 項目 } の並び。列の順）
+function kanbanColumnItems(design, p, types) {
+  return ((p.props || {}).columns || [])
+    .map((col) => ({ col, item: design && col.ref && col.ref.itemId ? findItem(design, col.ref.itemId) : null }))
+    .filter((x) => x.item && types.includes(x.item.type));
+}
+// かんばんの列の名前（ステータスは状態の名前、ドロップダウン・ラジオボタンは選択肢）。空と重なりは除く
+const kanbanLaneNames = (item) => [...new Set((item.type === 'status' ? (item.props.states || []).map((s) => s.name) : item.props.options || [])
+  .map((s) => String(s).trim()).filter(Boolean))];
+// 値の中の数（「1,200」の桁の区切りは数に含める。全角の数字は半角に直す）。数のない値は null
+function kanbanNumber(v) {
+  const m = String(v).normalize('NFKC').match(/[-+]?\d[\d,]*(?:\.\d+)?/);
+  return m ? Number(m[0].replace(/,/g, '')) : null;
+}
+// かんばんの中身（第 15 段階。画像 q123 の案A）。列に分ける項目（props.laneItem。使えないときは、選べる列の最初）の選択肢を列にし、
+// サンプルの行を 1 行ずつ 1 枚のカードにして、列に分ける項目の列の値と同じ名前の列に置く。どの選択肢とも同じでない行は、いちばん右の「（なし）」の列に置く。
+// cols はカードに出す列（列に分ける項目の列を除く。1 つ目がカードの 1 行目）。sum は列ごとに合計する項目（表の列の数値・自動計算の項目。選ばなければ null）。
+// most はいちばん多い列のカードの枚数、lines はカード 1 枚の行の数（高さを決める）
+function kanbanModel(design, p) {
+  const pr = p.props || {};
+  const view = p.view || { rows: 3, samples: {} };
+  const choices = kanbanColumnItems(design, p, KANBAN_LANE_TYPES);
+  const lane = choices.find((x) => x.item.id === pr.laneItem) || choices[0] || null;
+  const sum = kanbanColumnItems(design, p, KANBAN_SUM_TYPES).find((x) => x.item.id === pr.sumItem) || null;
+  const cols = (pr.columns || []).filter((c) => !lane || c.id !== lane.col.id).map((c) => {
+    const it = design && c.ref && c.ref.itemId ? findItem(design, c.ref.itemId) : null;
+    return { id: c.id, type: it ? it.type : 'text1', unit: it && it.props && it.props.unit ? String(it.props.unit) : '' };
+  });
+  const lines = Math.max(1, cols.length);
+  if (!lane) return { lane: null, sum, cols, lanes: [], most: 1, lines };
+  const val = (c, r) => String(((view.samples || {})[c.id] || [])[r] || '').trim();
+  const lanes = kanbanLaneNames(lane.item).map((name) => ({ name, rows: [], none: false }));
+  const none = { name: '（なし）', rows: [], none: true };
+  for (let r = 0; r < view.rows; r++) (lanes.find((l) => l.name === val(lane.col, r)) || none).rows.push(r);
+  if (none.rows.length || !lanes.length) lanes.push(none);
+  lanes.forEach((l) => {
+    const nums = sum ? l.rows.map((r) => kanbanNumber(val(sum.col, r))).filter((n) => n != null) : [];
+    l.total = nums.reduce((a, n) => a + n, 0);
+  });
+  return { lane, sum, cols, lanes, most: Math.max(0, ...lanes.map((l) => l.rows.length)), lines };
+}
 
 // 部品の中身を、指している項目と合わせた形にする（描く・一覧表の文を作る・設定の欄を出すときに使う）。
 // 項目を指していない部品（ボタン・見出しなど・項目を消した後に残った部品）は、そのまま返す
@@ -2251,7 +2544,10 @@ function withViewExtras(design, p) {
   if (p.type === 'table') {
     const state = store ? store.state : { designs: [] };
     const ctx = { design, state };
-    return { ...p, columns: tableColumns(p, ctx), relatedName: p.tableKind === 'related' && p.props && p.props.db ? dbLabel(state, p.props.db) : '' };
+    return {
+      ...p, columns: tableColumns(p, ctx), relatedName: p.tableKind === 'related' && p.props && p.props.db ? dbLabel(state, p.props.db) : '',
+      ...(isKanbanPart(p) ? { kanban: kanbanModel(design, p) } : {}),
+    };
   }
   if (p.type === 'filter') return { ...p, itemNames: Object.fromEntries(design.items.map((it) => [it.id, it.name])) };
   if (p.type === 'recordHead') return { ...p, itemNames: Object.fromEntries(design.items.map((it) => [it.id, it.name])), designName: design.name };
@@ -2453,6 +2749,18 @@ function describePartLines(p, ctx = null) {
       if (rows.length) eqIf('ツリー', `${rows.filter((r) => !r.depth).map((r) => r.name).join('／')}（${rows.length} 行）`);
       break;
     }
+    case 'calendar': {
+      const evs = parseCalendarSamples(pr.samples);
+      eqIf('表示のしかた', pr.mode === 'week' ? '週' : '月');
+      eqIf('今日', v(pr.today));
+      if (evs.length) eqIf('予定', `${evs.length} 件`);
+      break;
+    }
+    case 'mail':
+      eqIf('宛先', v(pr.to));
+      eqIf('件名', v(pr.subject));
+      eqIf('中のアイテム', frameKidNosText(ctx, p));
+      break;
     case 'table':
       if (p.tableKind === 'subtable') { if (p.required) short.push('必須（1 行以上）'); }
       else if (p.tableKind === 'related') {
@@ -2464,6 +2772,13 @@ function describePartLines(p, ctx = null) {
         eqIf('並び順', v(pr.sort));
         if (v(pr.limit)) short.push(`最大 ${v(pr.limit)} 件`);
       } else {
+        // レコード一覧のかんばん（第 15 段階）。列に分ける項目と合計する項目は、かんばんが描いている項目の名前
+        if (pr.display === 'kanban') {
+          const m = kanbanModel(ctx && ctx.design, p);
+          eqIf('表示のしかた', 'かんばん');
+          eqIf('列に分ける項目', m.lane ? m.lane.item.name : '');
+          eqIf('合計する項目', m.sum ? m.sum.item.name : '');
+        }
         eqIf('並び順', v(pr.sort));
         if (v(pr.perPage)) short.push(`1 ページ ${v(pr.perPage)} 件`);
       }
@@ -2474,6 +2789,8 @@ function describePartLines(p, ctx = null) {
       eqIf('分類', by ? by + (v(pr.byUnit) ? `（${v(pr.byUnit)}）` : '') : v(pr.byUnit));
       const agg = pr.agg === 'count' ? AGG_NAMES.count : itemNameIn(ctx, pr.aggItem) ? `${itemNameIn(ctx, pr.aggItem)}の${AGG_NAMES[pr.agg] || '合計'}` : '';
       eqIf('集計', agg && agg + (v(pr.unit) ? `（${v(pr.unit)}）` : ''));
+      if (pr.chart === 'gauge') eqIf('目標の値', v(pr.target));
+      if (pr.chart === 'stacked') eqIf('凡例', String(pr.series || '').split('\n').map((s) => s.trim()).filter(Boolean).join('・'));
       break;
     }
     case 'search':
@@ -4790,6 +5107,7 @@ const actions = {
   // 項目を一覧表から消した後に残った部品では、それらを書き換えない（消したときの中身で固定する）
   updatePart(designId, screenId, partId, patch) {
     return mutatePart(designId, screenId, partId, (p, sc, d) => {
+      const shape0 = p.type === 'table' ? tableShapeKey(p, d) : '';
       ['labelPos', 'sample', 'placeholder'].forEach((k) => { if (k in patch) p[k] = patch[k]; });
       if ('numbered' in patch) p.no = patch.numbered ? (p.no != null ? p.no : nextPartNo(sc)) : null;
       if (isObj(patch.view)) {
@@ -4799,12 +5117,14 @@ const actions = {
       const item = findItem(d, p.itemId);
       if (item) { if (!item.link) setItemFields(d, item, patch); } // 取り込んだ項目は直せない（元のモックで直す）
       else if (!p.itemId) applyFieldPatch(p, 'label', patch);
-      // 表の高さは、サンプルの行数と、関連レコード一覧の表示のしかた（表・並べて表示）を変えたときに合わせる
-      if (p.type === 'table' && (isObj(patch.view) || (isObj(patch.props) && 'display' in patch.props))) {
-        const h = partTableHeight(p);
-        if (p.y + h > sc.height) sc.height = heightToFit(p.y + h, sc.device); // 表を上へずらさず、画面を伸ばす
-        Object.assign(p, fitRect({ ...p, h }, sc));
+      // かんばんに切り替えたときは、列に分ける項目を、選べる列の最初にする（選べる列がなければ空のまま）
+      if (isKanbanPart(p) && !p.props.laneItem) {
+        const first = kanbanColumnItems(d, p, KANBAN_LANE_TYPES)[0];
+        if (first) p.props.laneItem = first.item.id;
       }
+      // 表の高さは、サンプルの行数を変えたときと、表示のしかた（表・並べて表示・かんばん）か中身から決まる高さが変わったときに合わせる。
+      // 表のまま列を変えても、人が伸ばした高さは戻さない
+      if (p.type === 'table' && (isObj(patch.view) || tableShapeKey(p, d) !== shape0)) fitTablePart(p, sc, d);
     });
   },
   // 位置と大きさを変える（マス目に吸い付け、画面の中に収める）。変わらないときは履歴に積まない。
@@ -5154,9 +5474,13 @@ const actions = {
     const imported = !!p0.itemId && store.state.designs.some((x) => x.id !== designId && x.items.some((it) => it.link && !it.link.lost && it.link.designId === designId && it.link.itemId === p0.itemId));
     return mutatePart(designId, screenId, partId, (p, sc, d) => {
       const old = p.itemId;
+      // かんばん・並べて表示の表の中身を変えて、表示のしかたが変わったときは、高さを合わせ直す（第 15 段階）
+      const shape0 = tableShapeKey(p, d);
+      const refit = () => { if (tableShapeKey(p, d) !== shape0) fitTablePart(p, sc, d); };
       if (item) {
         d.items.push(item);
         Object.assign(withoutItemFieldsInPlace(p), { tableKind: kind, itemId: item.id });
+        refit();
         return;
       }
       const defLabel = (k) => (k === 'related' ? '関連レコード一覧' : '一覧');
@@ -5170,6 +5494,7 @@ const actions = {
         if (oldItem && !imported && !d.screens.some((s) => s.parts.some((x) => x.itemId === old))) d.items = d.items.filter((it) => it.id !== old);
       } else if (p.label === defLabel(p.tableKind)) p.label = defLabel(kind); // 名前が最初のままなら、新しい中身の名前にする
       p.tableKind = kind;
+      refit();
     });
   },
   // ほかの画面設計（srcDesignId）の項目を取り込み、一覧表のいちばん下に足す。取り込んだ項目は元とつなげたままにする。
@@ -5648,7 +5973,7 @@ function partInnerHtml(p, t, marks = false) {
   // 項目名のない部品の番号は、ボタンと同じく左の外（左に入る幅がないときは左上の角に重ねる）
   const outNo = () => partNoHtml(p, p.x >= 28 ? ' pno-out' : ' pno-corner');
   switch (p.type) {
-    case 'table': return isTilesPart(p) ? tilesHtml(p) : `${partLabelHtml(p, marks)}${tableHtml(p)}`;
+    case 'table': return isTilesPart(p) ? tilesHtml(p) : `${partLabelHtml(p, marks)}${isKanbanPart(p) ? kanbanHtml(p) : tableHtml(p)}`;
     case 'graph': return `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span></div><div class="pgraph">${graphSvg(p)}</div>`;
     case 'search':
       return `${outNo()}<div class="psearch"><span class="pph">🔍 ${esc(p.placeholder || t.ph)}</span>${pr.button !== false ? '<b>検索</b>' : ''}</div>`;
@@ -5719,6 +6044,8 @@ function partInnerHtml(p, t, marks = false) {
     }
     case 'activity': return activityHtml(p);
     case 'tree': return treeHtml(p);
+    case 'calendar': return calendarHtml(p);
+    case 'mail': return mailHtml(p);
   }
   return partLabelHtml(p, marks) + partFieldHtml(p, t);
 }
@@ -5750,6 +6077,26 @@ function tilesHtml(p) {
     : '<span class="pph">（列がありません）</span>'}</div>`).join('');
   return `<div class="pframe ptiles"><div class="pfr-head">${partNoHtml(p)}${ic}<b>${esc(p.label)}</b><span class="ptl-cnt">（${view.rows}）</span><span class="ptl-new">新規</span></div>`
     + `<div class="ptl-body">${recs}</div><div class="ptl-foot">すべて表示</div></div>`;
+}
+
+// レコード一覧のかんばん（第 15 段階。画像 q123 の案A）。項目名の行の下に、列に分ける項目の選択肢ごとの列。
+// 列の見出しは名前・（件数）・合計（合計する項目を選んだとき）。カードの 1 行目はリンクの色、2 行目からは残りの列の値（数だけの値には単位を付ける）
+function kanbanHtml(p) {
+  const m = p.kanban || { lane: null, cols: [], lanes: [] };
+  if (!m.lane) return '<div class="pkb-lanes"><p class="pkb-hint">列に分ける項目（ステータス・ドロップダウン・ラジオボタン）を、表の列に追加してください。</p></div>';
+  const view = p.view || { rows: 3, samples: {} };
+  const val = (c, r) => {
+    const v = String(((view.samples || {})[c.id] || [])[r] || '').trim();
+    if (!v) return `<span class="pph">${esc(TABLE_PH[c.type] || '文字列')}</span>`;
+    return esc(v) + (c.unit && /^[-+]?[\d,]+(?:\.\d+)?$/.test(v.normalize('NFKC')) ? ` ${esc(c.unit)}` : '');
+  };
+  const card = (r) => `<div class="pkb-card">${m.cols.length
+    ? `<a>${val(m.cols[0], r)}</a>${m.cols.slice(1).map((c) => `<div>${val(c, r)}</div>`).join('')}`
+    : '<span class="pph">（列がありません）</span>'}</div>`;
+  const unit = m.sum && m.sum.item.props.unit ? ` ${esc(m.sum.item.props.unit)}` : '';
+  const lanes = m.lanes.map((l) => `<div class="pkb-lane${l.none ? ' none' : ''}"><div class="pkb-h"><b>${esc(l.name)}</b><span>（${l.rows.length}）</span>`
+    + `${m.sum ? `<small>合計 ${graphNum(l.total)}${unit}</small>` : ''}</div>${l.rows.map(card).join('')}</div>`).join('');
+  return `<div class="pkb-lanes${m.sum ? ' sum' : ''}">${lanes}</div>`;
 }
 
 // 表の部品の中身。列の名前・見本の値・幅は p.columns（resolvePart で付けた列）と、この画面だけの設定（view）から
@@ -5793,15 +6140,22 @@ function niceMax(v) {
   const p = 10 ** Math.floor(Math.log10(raw));
   return [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map((k) => k * p).find((x) => x >= raw - 1e-9) * 4;
 }
+const graphSvgOf = (w, h, inner) => `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true">${inner}</svg>`;
+const graphText = (x, y, s, attrs = '') => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="11" fill="#475569" ${attrs}>${esc(s)}</text>`;
+const graphNum = (v) => v.toLocaleString('ja-JP', { maximumFractionDigits: 2 });
 function graphSvg(p) {
   const w = Math.max(40, p.w - 2);
   const h = Math.max(40, p.h - TABLE_LABEL_H - 6);
-  const data = parseGraphSamples(p.props.samples);
-  const svg = (inner) => `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true">${inner}</svg>`;
-  const text = (x, y, s, attrs = '') => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="11" fill="#475569" ${attrs}>${esc(s)}</text>`;
-  if (!data.length) return svg(text(w / 2, h / 2, 'サンプル値を書くと、グラフが出ます', 'text-anchor="middle"'));
-  const max = niceMax(Math.max(...data.map((d) => d.value)));
   const chart = p.props.chart;
+  if (chart === 'stacked') return stackedGraphSvg(p, w, h);
+  const data = parseGraphSamples(p.props.samples);
+  const svg = (inner) => graphSvgOf(w, h, inner);
+  const text = graphText;
+  if (!data.length) return svg(text(w / 2, h / 2, 'サンプル値を書くと、グラフが出ます', 'text-anchor="middle"'));
+  if (chart === 'metric') return metricGraphHtml(p, data[0]);
+  if (chart === 'gauge') return gaugeGraphSvg(p, w, h, data[0]);
+  if (chart === 'funnel') return funnelGraphSvg(w, h, data);
+  const max = niceMax(Math.max(...data.map((d) => d.value)));
   if (chart === 'pie') {
     const total = data.reduce((s, d) => s + d.value, 0) || 1;
     const r = Math.max(10, Math.min(h / 2 - 10, w * 0.28));
@@ -5846,6 +6200,96 @@ function graphSvg(p) {
     ? `<polyline points="${cxs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ')}" fill="none" stroke="#3b82f6" stroke-width="2.5"/>${cxs.map((x, i) => `<circle cx="${x.toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4" fill="#fff" stroke="#3b82f6" stroke-width="2"/>`).join('')}`
     : cxs.map((x, i) => `<rect x="${(x - step * 0.32).toFixed(1)}" y="${ys[i].toFixed(1)}" width="${(step * 0.64).toFixed(1)}" height="${Math.max(0, T + ph - ys[i]).toFixed(1)}" fill="#3b82f6"/>`).join('');
   return svg(`${ticks}<line x1="${L}" y1="${T}" x2="${L}" y2="${T + ph}" stroke="#64748b"/>${marks}${labels}${unit ? text(L, 12, `（${unit}）`, 'font-size="10.5"') : ''}`);
+}
+
+// ── ダッシュボードのグラフ（第 15 段階。画像 q124）──
+// 大きな数字: サンプル値の 1 行目の値を大きく出す（分類の名前は出さない。グラフの名前が見出し）
+function metricGraphHtml(p, d) {
+  const unit = String(p.props.unit || '').trim();
+  return `<div class="pmetric"><b>${esc(graphNum(d.value))}</b>${unit ? `<span>${esc(unit)}</span>` : ''}</div>`;
+}
+// 数として読める目標の値（全角の数字と桁の区切りを直す）。読めないときは null
+function graphTarget(text) {
+  const v = Number(String(text || '').normalize('NFKC').replace(/,/g, '').trim());
+  return String(text || '').trim() && Number.isFinite(v) && v > 0 ? v : null;
+}
+// メーター: 0〜目標の値の半円を、目標の 50% まで赤・80% まで黄・それより上は緑の帯にし、針で 1 行目の値を指す（帯の分け方は Claude が決めた）。
+// 目標の値が数でないときは、右の端を niceMax(値) にし、目標の文を出さない
+const GAUGE_BANDS = [[0, 0.5, '#ef4444'], [0.5, 0.8, '#f59e0b'], [0.8, 1, '#10b981']];
+function gaugeGraphSvg(p, w, h, d) {
+  const target = graphTarget(p.props.target);
+  const max = target || niceMax(d.value);
+  const unit = String(p.props.unit || '').trim();
+  const r = Math.max(16, Math.min(w * 0.36, (h - 64) * 0.95));
+  const cx = w / 2;
+  const cy = 14 + r;
+  const th = r * 0.3;
+  const pt = (rr, a) => [cx + rr * Math.cos(Math.PI * (1 + a)), cy + rr * Math.sin(Math.PI * (1 + a))];
+  const xy = (q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`;
+  const band = ([a0, a1, c]) => `<path d="M${xy(pt(r, a0))} A${r.toFixed(1)},${r.toFixed(1)} 0 0,1 ${xy(pt(r, a1))} L${xy(pt(r - th, a1))} A${(r - th).toFixed(1)},${(r - th).toFixed(1)} 0 0,0 ${xy(pt(r - th, a0))} Z" fill="${c}"/>`;
+  const f = Math.min(1, d.value / max);
+  const tip = pt(r - th / 2, f);
+  return graphSvgOf(w, h, GAUGE_BANDS.map(band).join('')
+    + `<line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${tip[0].toFixed(1)}" y2="${tip[1].toFixed(1)}" stroke="#334155" stroke-width="3" stroke-linecap="round"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#334155"/>`
+    + graphText(cx - r + th / 2, cy + 16, '0', 'text-anchor="middle"') + graphText(cx + r - th / 2, cy + 16, graphNum(max), 'text-anchor="middle"')
+    + `<text class="pg-value" x="${cx.toFixed(1)}" y="${(cy + 40).toFixed(1)}" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">${esc(graphNum(d.value))}${unit ? `<tspan font-size="13" font-weight="400"> ${esc(unit)}</tspan>` : ''}</text>`
+    + (target ? graphText(cx, cy + 58, `目標 ${graphNum(target)}${unit ? ` ${unit}` : ''} の ${Math.round((d.value / target) * 100)}%`, 'text-anchor="middle" font-size="11.5"') : ''));
+}
+// じょうご: 1 行ごとに 1 段。帯の幅は値に合わせ（いちばん大きい値が幅いっぱい）、次の段の幅へ細くなる台形。左に分類、帯の中に値
+function funnelGraphSvg(w, h, data) {
+  const L = Math.min(Math.round(w * 0.3), Math.max(48, Math.max(...data.map((d) => d.label.length)) * 12 + 12));
+  const fw = Math.max(10, w - L - 16);
+  const bh = (h - 16) / data.length;
+  const max = Math.max(...data.map((d) => d.value)) || 1;
+  const cx = L + fw / 2;
+  return graphSvgOf(w, h, data.map((d, i) => {
+    const wt = (fw * d.value) / max;
+    const wb = i < data.length - 1 ? (fw * data[i + 1].value) / max : wt * 0.85;
+    const [y0, y1] = [8 + i * bh, 8 + (i + 1) * bh - 3];
+    return `<path d="M${(cx - wt / 2).toFixed(1)},${y0.toFixed(1)} L${(cx + wt / 2).toFixed(1)},${y0.toFixed(1)} L${(cx + wb / 2).toFixed(1)},${y1.toFixed(1)} L${(cx - wb / 2).toFixed(1)},${y1.toFixed(1)} Z" fill="${GRAPH_COLORS[i % 8]}"/>`
+      + graphText(L - 8, y0 + bh / 2 + 3, d.label, 'text-anchor="end" font-size="12"')
+      + `<text x="${cx.toFixed(1)}" y="${(y0 + bh / 2 + 4).toFixed(1)}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">${esc(graphNum(d.value))}</text>`;
+  }).join(''));
+}
+// 積み上げ棒グラフのサンプル値。1 行に「分類, 値1, 値2…」。区切りは半角・全角のカンマ・「、」・タブ（積み上げ棒では値に桁の区切りの , を書けない。Claude が決めた）。
+// 値の後ろの単位は読み飛ばし、数字のない値は 0。値が 1 つもない行は描かない。24 行・8 つの値まで
+function parseStackedSamples(text) {
+  return String(text || '').normalize('NFKC').split('\n').map((line) => {
+    const [label, ...rest] = line.split(/[,、\t]/);
+    const values = rest.map((s) => { const m = s.match(/[-+]?\d+(?:\.\d+)?/); return m ? Math.max(0, Number(m[0])) : null; }).slice(0, 8);
+    return values.some((v) => v != null) ? { label: label.trim(), values: values.map((v) => v || 0) } : null;
+  }).filter(Boolean).slice(0, 24);
+}
+// 積み上げ棒グラフ。凡例は右上に、値1 から順に（名前が足りない値は「値 N」）
+function stackedGraphSvg(p, w, h) {
+  const rows = parseStackedSamples(p.props.samples);
+  if (!rows.length) return graphSvgOf(w, h, graphText(w / 2, h / 2, 'サンプル値を書くと、グラフが出ます', 'text-anchor="middle"'));
+  const unit = String(p.props.unit || '').trim();
+  const names = String(p.props.series || '').split('\n').map((s) => s.trim());
+  const n = Math.max(...rows.map((r) => r.values.length));
+  const [L, R, T, B] = [44, 12, 30, 24];
+  const [pw, ph] = [Math.max(0, w - L - R), Math.max(0, h - T - B)];
+  const max = niceMax(Math.max(...rows.map((r) => r.values.reduce((a, b) => a + b, 0))));
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((k) => {
+    const y = T + ph * (1 - k);
+    return `<line x1="${L}" y1="${y.toFixed(1)}" x2="${w - R}" y2="${y.toFixed(1)}" stroke="${k ? '#e2e8f0' : '#64748b'}"/>${graphText(L - 5, y + 4, String(Math.round(max * k * 100) / 100), 'text-anchor="end" font-size="10.5"')}`;
+  }).join('');
+  const step = pw / rows.length;
+  const bars = rows.map((r, i) => {
+    const x = L + step * (i + 0.5);
+    let y = T + ph;
+    return r.values.map((v, j) => {
+      const bh = (ph * v) / max;
+      y -= bh;
+      return `<rect x="${(x - step * 0.32).toFixed(1)}" y="${y.toFixed(1)}" width="${(step * 0.64).toFixed(1)}" height="${bh.toFixed(1)}" fill="${GRAPH_COLORS[j % 8]}"/>`;
+    }).join('') + graphText(x, h - 8, r.label, 'text-anchor="middle"');
+  }).join('');
+  let lx = w - R;
+  const legend = Array.from({ length: n }, (_, j) => names[j] || `値 ${j + 1}`).map((s, j) => ({ s, j })).reverse().map(({ s, j }) => {
+    lx -= s.length * 12 + 26;
+    return `<rect x="${lx}" y="6" width="11" height="11" fill="${GRAPH_COLORS[j % 8]}"/>${graphText(lx + 15, 15.5, s, 'font-size="11.5"')}`;
+  }).join('');
+  return graphSvgOf(w, h, `${ticks}<line x1="${L}" y1="${T}" x2="${L}" y2="${T + ph}" stroke="#64748b"/>${bars}${legend}${unit ? graphText(L, 18, `（${unit}）`, 'font-size="10.5"') : ''}`);
 }
 
 // アイコンの部品の絵（16 種類。どれも 24 × 24 の線の絵で、Claude が描いた）
@@ -5962,6 +6406,168 @@ function treeHtml(p) {
       + `${pr.folder === false ? '' : `<span class="ptr-fd">${TREE_FOLDER}</span>`}<span class="ptr-name">${esc(c ? c[1] : r.name)}</span>${c ? `<small>（${c[2]}）</small>` : ''}</div>`;
   }).join('');
   return `${partNoHtml(p, p.x >= 28 ? ' pno-out pno-top' : ' pno-corner')}<div class="ptree">${rows || '<span class="pph">右のパネルにツリーの行を書きます</span>'}</div>`;
+}
+
+// カレンダー（第 15 段階。画像 q125）の日付。2026-10-22・2026/10/22・2026年10月22日 を、その日の 0 時（UTC）にする。ない日付（2 月 30 日）は null
+function calendarDay(s) {
+  const m = String(s || '').normalize('NFKC').trim().match(/^(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.getUTCMonth() === Number(m[2]) - 1 ? d : null;
+}
+const calendarKey = (d) => d.toISOString().slice(0, 10);
+const calendarAddDays = (d, n) => new Date(d.getTime() + n * 864e5);
+const CAL_WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+// 「10:00」を 0 時からの分にする。読めないときは null
+function calendarMinutes(s) {
+  const m = String(s).match(/^(\d{1,2}):(\d{2})$/);
+  return m && Number(m[1]) <= 24 && Number(m[2]) < 60 ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+// 時刻の範囲「10:00-11:30」（区切りは - 〜 ～）。終わりがないか、始まりより前なら 1 時間。読めないときは null
+function calendarRange(s) {
+  const m = String(s || '').normalize('NFKC').replace(/\s/g, '').match(/^(\d{1,2}:\d{2})(?:[-〜~](\d{1,2}:\d{2}))?$/);
+  const start = m ? calendarMinutes(m[1]) : null;
+  if (start == null) return null;
+  const end = m[2] ? calendarMinutes(m[2]) : null;
+  return { start, end: end != null && end > start ? end : start + 60 };
+}
+// 1 行に「日付, 時刻, 件名」。区切りは半角・全角のカンマとタブ（件名の中の「、」では切らない。活動履歴と同じ）。
+// 時刻が空なら終日。「日付, 件名」の 2 つだけの行も終日にする。日付か時刻の読めない行は描かない
+function parseCalendarSamples(text) {
+  return String(text || '').split('\n').map((line) => {
+    const f = [];
+    let rest = line;
+    for (let i = 0; i < 2; i++) {
+      const m = rest.match(/[,，\t]/);
+      if (!m) break;
+      f.push(rest.slice(0, m.index).trim());
+      rest = rest.slice(m.index + 1);
+    }
+    f.push(rest.trim());
+    const day = calendarDay(f[0]);
+    if (!day || f.length < 2) return null;
+    let [time, title = ''] = f.slice(1);
+    if (f.length === 2 && !calendarRange(time)) [time, title] = ['', time];
+    const range = time ? calendarRange(time) : null;
+    if (time && !range) return null;
+    return { key: calendarKey(day), day, title, allDay: !range, start: range ? range.start : 0, end: range ? range.end : 0 };
+  }).filter(Boolean).slice(0, 60);
+}
+const calendarTime = (min) => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
+// 終日の予定を先に、時刻のある予定は始まりの早い順
+const calendarSort = (a, b) => (b.allDay - a.allDay) || a.start - b.start;
+// 上の行（年月か週の範囲・‹ › 今日 のボタン・右に「月 | 週」）
+function calendarTopHtml(title, mode) {
+  return `<div class="pcal-top"><b>${esc(title)}</b><span class="pcal-nav"><i>‹</i><i>›</i><i>今日</i></span>`
+    + `<span class="pcal-mode"><i${mode === 'month' ? ' class="on"' : ''}>月</i><i${mode === 'week' ? ' class="on"' : ''}>週</i></span></div>`;
+}
+// 月の表示: 今日のある月を、日曜はじまりの 7 列で 5 段か 6 段。マスに入りきらない予定は「ほか N 件」（マスの高さは描く高さから決める）
+function calendarMonthHtml(p, today, events) {
+  const first = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+  const days = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0)).getUTCDate();
+  const weeks = Math.ceil((first.getUTCDay() + days) / 7);
+  const start = calendarAddDays(first, -first.getUTCDay());
+  const cellH = (p.h - TABLE_LABEL_H - 45 - 27 - 2) / weeks; // 上の行 45・曜日の行 27・枠 2（CSS の .pcal-top・.pcal-wd と合わせる）
+  const fit = Math.max(0, Math.floor((cellH - 30) / 20)); // 日付の行 30・予定 1 つ 20
+  const cells = Array.from({ length: weeks * 7 }, (_, i) => {
+    const d = calendarAddDays(start, i);
+    const k = calendarKey(d);
+    const evs = events.filter((e) => e.key === k).sort(calendarSort);
+    const shown = evs.length > fit ? evs.slice(0, Math.max(0, fit - 1)) : evs;
+    const more = evs.length - shown.length;
+    return `<div class="pcal-c${d.getUTCMonth() !== today.getUTCMonth() ? ' out' : ''} w${d.getUTCDay()}"><span class="pcal-d${k === calendarKey(today) ? ' today' : ''}">${d.getUTCDate()}</span>`
+      + shown.map((e) => `<i class="pcal-ev${e.allDay ? ' allday' : ''}">${e.allDay ? '' : `<em>${calendarTime(e.start)}</em>`}${esc(e.title)}</i>`).join('')
+      + `${more ? `<i class="pcal-more">ほか ${more} 件</i>` : ''}</div>`;
+  }).join('');
+  return calendarTopHtml(`${today.getUTCFullYear()}年${today.getUTCMonth() + 1}月`, 'month')
+    + `<div class="pcal-wd">${CAL_WEEKDAYS.map((w, i) => `<span class="w${i}">${w}</span>`).join('')}</div>`
+    + `<div class="pcal-grid" style="grid-template-rows:repeat(${weeks},1fr)">${cells}</div>`;
+}
+// 週の表示の時刻の範囲（props.hours「8:00-18:00」。1 時間ごとに切り下げ・切り上げ）。読めないときは 8 時から 18 時
+function calendarHours(s) {
+  const r = calendarRange(s);
+  const h0 = r ? Math.floor(r.start / 60) : 8;
+  const h1 = r ? Math.min(24, Math.ceil(r.end / 60)) : 18;
+  return h1 > h0 ? [h0, h1] : [8, 18];
+}
+// 週の範囲の文（2026年10月18日〜24日。月や年をまたぐときは、またいだ所から書く）
+function calendarWeekTitle(a, b) {
+  const head = `${a.getUTCFullYear()}年${a.getUTCMonth() + 1}月${a.getUTCDate()}日`;
+  if (a.getUTCFullYear() !== b.getUTCFullYear()) return `${head}〜${b.getUTCFullYear()}年${b.getUTCMonth() + 1}月${b.getUTCDate()}日`;
+  return `${head}〜${a.getUTCMonth() !== b.getUTCMonth() ? `${b.getUTCMonth() + 1}月` : ''}${b.getUTCDate()}日`;
+}
+// 同じ日に時刻の重なる予定は、横に並べる（重なる予定の組ごとに幅を分ける）
+function calendarLanes(evs) {
+  const out = [];
+  let group = [];
+  let groupEnd = -1;
+  const flush = () => { const n = Math.max(1, ...group.map((g) => g.lane + 1)); group.forEach((g) => out.push({ ...g, of: n })); group = []; };
+  evs.slice().sort((a, b) => a.start - b.start || a.end - b.end).forEach((e) => {
+    if (group.length && e.start >= groupEnd) flush();
+    const used = new Set(group.filter((g) => g.e.end > e.start).map((g) => g.lane));
+    let lane = 0;
+    while (used.has(lane)) lane++;
+    group.push({ e, lane });
+    groupEnd = Math.max(groupEnd, e.end);
+  });
+  if (group.length) flush();
+  return out;
+}
+// 週の表示: 今日のある週（日〜土）。左に時刻、予定は時刻の位置と長さの箱。終日の予定があるときだけ、日付の見出しの下に終日の行を出す
+// 週の表示の時刻の所のほかの高さ（項目名の行 24・枠の上の空き 4・枠の線 2・上の行 46・日付の見出しの行 35）と、終日の行の高さ（予定 1 つのとき）
+const CAL_WEEK_CHROME_H = 24 + 4 + 2 + 46 + 35;
+const CAL_WEEK_ALLDAY_H = 25;
+function calendarWeekHtml(p, today, events) {
+  const start = calendarAddDays(today, -today.getUTCDay());
+  const days = Array.from({ length: 7 }, (_, i) => calendarAddDays(start, i));
+  const [h0, h1] = calendarHours(p.props.hours);
+  const span = (h1 - h0) * 60;
+  const pct = (m) => (Math.min(Math.max(m - h0 * 60, 0), span) / span) * 100;
+  const isToday = (d) => calendarKey(d) === calendarKey(today);
+  const head = `<div class="pcal-wk-head"><span></span>${days.map((d) => `<span class="w${d.getUTCDay()}${isToday(d) ? ' today' : ''}"><b>${d.getUTCDate()}</b>${CAL_WEEKDAYS[d.getUTCDay()]}</span>`).join('')}</div>`;
+  const allDay = events.filter((e) => e.allDay && days.some((d) => calendarKey(d) === e.key));
+  const allRow = allDay.length ? `<div class="pcal-wk-all"><span>終日</span>${days.map((d) => `<div>${allDay.filter((e) => e.key === calendarKey(d))
+    .map((e) => `<i class="pcal-ev allday">${esc(e.title)}</i>`).join('')}</div>`).join('')}</div>` : '';
+  // 予定の箱に入る件名の行の数（箱の高さは時刻の割合で決まるので、アイテムの高さからおよそのドット数を出す）。行の途中で切れて見えないように、入らない分は「…」にする
+  const bodyPx = Math.max(60, (p.h || 0) - CAL_WEEK_CHROME_H - (allDay.length ? CAL_WEEK_ALLDAY_H : 0));
+  const cols = days.map((d) => {
+    const evs = events.filter((e) => !e.allDay && e.key === calendarKey(d) && e.end > h0 * 60 && e.start < h1 * 60);
+    const boxes = calendarLanes(evs).map(({ e, lane, of }) => {
+      const boxPx = ((pct(e.end) - pct(e.start)) / 100) * bodyPx - 3;
+      const lines = Math.floor((boxPx - 4 - 15) / 15);
+      const title = lines < 1 ? `<span class="one">${esc(e.title)}</span>` : `<span style="-webkit-line-clamp:${lines}">${esc(e.title)}</span>`;
+      return `<i class="pcal-wev${lines < 1 ? ' short' : ''}" style="top:calc(${pct(e.start).toFixed(2)}% + 1px);height:calc(${(pct(e.end) - pct(e.start)).toFixed(2)}% - 3px);`
+        + `left:calc(${((lane / of) * 100).toFixed(2)}% + 2px);width:calc(${(100 / of).toFixed(2)}% - 5px)"><em>${calendarTime(e.start)}〜${calendarTime(e.end)}</em>${title}</i>`;
+    }).join('');
+    return `<div class="pcal-wk-col${isToday(d) ? ' today' : ''}">${'<div class="pcal-wk-slot"></div>'.repeat(h1 - h0)}${boxes}</div>`;
+  }).join('');
+  const times = Array.from({ length: h1 - h0 }, (_, i) => `<span>${h0 + i}:00</span>`).join('');
+  return calendarTopHtml(calendarWeekTitle(days[0], days[6]), 'week') + head + allRow + `<div class="pcal-wk-body"><div class="pcal-wk-times">${times}</div>${cols}</div>`;
+}
+// 項目名の行（番号・カレンダーの名前）の下に、月か週の表示。今日として描く日が読めないときは、最初の予定の日（それもなければ最初に置いたときの日）
+function calendarHtml(p) {
+  const pr = p.props || {};
+  const events = parseCalendarSamples(pr.samples);
+  const today = calendarDay(pr.today) || (events[0] && events[0].day) || calendarDay(PART_TYPES.calendar.props.today);
+  const body = pr.mode === 'week' ? calendarWeekHtml(p, today, events) : calendarMonthHtml(p, today, events);
+  return `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span></div><div class="pgraph pcal">${body}</div>`;
+}
+
+// メールの作成欄（第 15 段階。画像 q126 の案A）。外の枠と見出しの行はグループ枠と同じ形。差出人・宛先（丸い札と Cc Bcc）・件名・書式のボタンの行・本文・添付と「送信」
+const MAIL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
+const MAIL_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7"/></svg>';
+function mailHtml(p) {
+  const pr = p.props || {};
+  const color = own(FRAME_COLORS, pr.color) ? pr.color : 'blue';
+  const ic = color === 'none' ? '' : `<span class="pfr-ic fc-${color}">${MAIL_ICON}</span>`;
+  const to = String(pr.to || '').split(/[,，、;；]/).map((s) => s.trim()).filter(Boolean);
+  const chips = to.map((s) => `<span class="pml-chip">${esc(s)}<i>✕</i></span>`).join('') || '<span class="pph">宛先</span>';
+  const line = (label, html) => `<div class="pml-row"><small>${label}</small>${html}</div>`;
+  const tb = pr.toolbar === false ? '' : '<div class="pml-tb"><b>B</b><i>I</i><u>U</u><s></s><span>≡</span><span>⁝≡</span><s></s><span>リンク</span></div>';
+  return `<div class="pframe pmail"><div class="pfr-head">${partNoHtml(p)}${ic}<b>${esc(p.label)}</b></div>`
+    + line('差出人', `<span>${esc(pr.from || '')}</span>`) + line('宛先', `${chips}<em>Cc　Bcc</em>`) + line('件名', `<span>${pr.subject ? esc(pr.subject) : '<span class="pph">件名</span>'}</span>`)
+    + `${tb}<div class="pml-body">${esc(pr.body || '').replace(/\n/g, '<br>')}</div>`
+    + `<div class="pml-foot"><span class="pml-clip">${MAIL_CLIP}</span><span class="pbtn primary pml-send">送信</span></div></div>`;
 }
 
 // 入力欄の部品の、項目名より下（入力欄・選択肢・添付の枠）
@@ -9473,7 +10079,7 @@ async function openAddScreenDialog() {
     const { screen, items } = screenFromTemplate(d, t.id, t.id === 'blank' ? blankScreenName(d) : t.name);
     const preview = { ...d, items: [...d.items, ...items] }; // 見本の項目も名前を出すため
     return `<button type="button" class="tpl${i === 0 ? ' sel' : ''}" data-tpl="${t.id}" aria-pressed="${i === 0}">
-      <div class="th">${thumbHtml(preview, screen, 180, 104)}</div><b>${esc(t.name)}</b><small>${esc(t.note)}</small></button>`;
+      <div class="th">${thumbHtml(preview, screen, 150, 80)}</div><b>${esc(t.name)}</b><small>${esc(t.note)}</small></button>`;
   }).join('');
   const r = await showDialog({
     title: '画面を追加する',
@@ -10188,7 +10794,7 @@ const pfText = (key, label, value, { hint = '', placeholder = '', type = 'text' 
 const pfArea = (key, label, value, { hint = '', rows = 3 } = {}) =>
   `<label class="field">${pfLabel(label, hint)}<textarea data-pf="${key}" rows="${rows}">${esc(value)}</textarea></label>`;
 const pfCheck = (key, label, on) => `<label class="check"><input type="checkbox" data-pf="${key}"${on ? ' checked' : ''}>${label}</label>`;
-const pfSeg = (key, label, value, choices) => `<div class="field">${pfLabel(label)}<div class="seg">${choices.map(([v, l]) =>
+const pfSeg = (key, label, value, choices, cls = '') => `<div class="field">${pfLabel(label)}<div class="seg${cls ? ` ${cls}` : ''}">${choices.map(([v, l]) =>
   `<label><input type="radio" name="pf-${key}" value="${v}" data-pf="${key}"${value === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div></div>`;
 const pfSelect = (key, label, value, choices) => `<label class="field">${pfLabel(label)}<select data-pf="${key}">${choices.map(([v, l]) =>
   `<option value="${esc(v)}"${value === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
@@ -10242,7 +10848,8 @@ function partCommonFieldsHtml(p) {
   if (p.type === 'image') return pfText('label', '画像の説明', p.label, { placeholder: '例: 会社のロゴ' }) + numbered;
   if (p.type === 'link') return pfText('label', '文字', p.label) + numbered;
   if (p.type === 'frame') return pfText('label', 'グループ名', p.label) + numbered;
-  if (p.type === 'activity') return pfText('label', '見出しの文字', p.label) + numbered;
+  if (p.type === 'activity' || p.type === 'mail') return pfText('label', '見出しの文字', p.label) + numbered;
+  if (p.type === 'calendar') return pfText('label', 'カレンダーの名前', p.label) + numbered;
   return numbered;
 }
 
@@ -10471,6 +11078,25 @@ function itemsHintHtml(d) {
     <p class="hint" style="margin-top:8px">表の行を押すと、ここにその項目の設定が出ます。画面に置くときは、左の一覧で画面を選び、右のアイテム一覧のいちばん上の「データベースの項目」から画面へドラッグします。</p>`;
 }
 
+// グラフの欄。グラフの種類のボタンは 3 つずつの段（右のパネルの幅に 4 つは入らないため）。大きな数字とメーターは 1 つの値なので「分類する項目」「分け方」を出さず、
+// メーターだけ「目標の値」、積み上げ棒グラフだけ「凡例の名前」を出す（第 15 段階。画像 q124）
+const GRAPH_SAMPLE_HINTS = {
+  stacked: '（1 行に「分類, 値1, 値2…」。値に桁の区切りの , は書かない）', funnel: '（1 行に「分類, 値」。上から順に描く）',
+  gauge: '（1 行目の「名前, 値」が今の値）', metric: '（1 行目の「名前, 値」の値を大きく出す）',
+};
+function graphFieldsHtml(p) {
+  const pr = p.props;
+  const items = (currentDesign() || { items: [] }).items.filter((it) => isInputType(it.type)).map((it) => [it.id, it.name]);
+  const single = pr.chart === 'gauge' || pr.chart === 'metric';
+  return pfSeg('props.chart', 'グラフの種類', pr.chart, Object.entries(CHART_NAMES).map(([k, n]) => [k, n.replace('グラフ', '')]), 'grid3')
+    + (single ? '' : pfRow(pfSelect('props.byItem', '分類する項目', pr.byItem, [['', '（なし）'], ...items]), pfText('props.byUnit', '分け方', pr.byUnit, { placeholder: '例: 月ごと' })))
+    + pfRow(pfSelect('props.agg', '集計方法', pr.agg, Object.entries(AGG_NAMES).map(([k, n]) => [k, k === 'count' ? '件数' : n])), pfSelect('props.aggItem', '集計する項目', pr.aggItem, [['', '（なし）'], ...items]))
+    + pfArea('props.samples', 'サンプル値', pr.samples, { hint: GRAPH_SAMPLE_HINTS[pr.chart] || '（1 行に「分類, 値」を 1 組）', rows: 6 })
+    + (pr.chart === 'gauge' ? pfText('props.target', '目標の値', pr.target, { hint: '（メーターの右の端）', placeholder: '例: 5,000' }) : '')
+    + (pr.chart === 'stacked' ? pfArea('props.series', '凡例の名前', pr.series, { hint: '（色ごとの名前。1 行に 1 つ。値1・値2 の順）', rows: 3 }) : '')
+    + pfText('props.unit', '値の単位', pr.unit, { placeholder: '例: 万円' });
+}
+
 // 部品の種類ごとの欄（仕様_細かい決めごと.md の「部品の細かい決めごと」）
 function partTypeFieldsHtml(p) {
   const pr = p.props;
@@ -10508,14 +11134,7 @@ function partTypeFieldsHtml(p) {
         + pfArea('props.action', '押したとき', pr.action, { hint: '（移動のほかにすること）' });
     case 'status': case 'steps':
       return processFieldsHtml(p);
-    case 'graph': {
-      const items = (currentDesign() || { items: [] }).items.filter((it) => isInputType(it.type)).map((it) => [it.id, it.name]);
-      return pfSeg('props.chart', 'グラフの種類', pr.chart, Object.entries(CHART_NAMES).map(([k, n]) => [k, n.replace('グラフ', '')]))
-        + pfRow(pfSelect('props.byItem', '分類する項目', pr.byItem, [['', '（なし）'], ...items]), pfText('props.byUnit', '分け方', pr.byUnit, { placeholder: '例: 月ごと' }))
-        + pfRow(pfSelect('props.agg', '集計方法', pr.agg, Object.entries(AGG_NAMES).map(([k, n]) => [k, k === 'count' ? '件数' : n])), pfSelect('props.aggItem', '集計する項目', pr.aggItem, [['', '（なし）'], ...items]))
-        + pfArea('props.samples', 'サンプル値', pr.samples, { hint: '（1 行に「分類, 値」を 1 組）', rows: 6 })
-        + pfText('props.unit', '値の単位', pr.unit, { placeholder: '例: 万円' });
-    }
+    case 'graph': return graphFieldsHtml(p);
     case 'search': {
       const on = pr.items || [];
       const boxes = (currentDesign() || { items: [] }).items.filter((it) => isInputType(it.type)).map((it) =>
@@ -10554,6 +11173,20 @@ function partTypeFieldsHtml(p) {
         + '<p class="hint">行の頭の空白 2 つで 1 段下げます。頭に「+」を書いた行は、閉じた形（▸）で描きます。行の終わりの「（数字）」は件数として薄く出します。</p>'
         + `<div id="pf-tree-current">${treeCurrentHtml(p)}</div>`
         + pfCheck('props.folder', 'フォルダのアイコンを出す', pr.folder !== false);
+    case 'calendar':
+      return pfSeg('props.mode', '表示のしかた', pr.mode === 'week' ? 'week' : 'month', [['month', '月'], ['week', '週']])
+        + pfText('props.today', '今日として描く日', pr.today, { hint: '（この日のある月・週を描く）', placeholder: '例: 2026-10-22' })
+        + pfArea('props.samples', '予定', pr.samples, { hint: '（1 行に「日付, 時刻, 件名」。時刻が空なら終日）', rows: 8 })
+        + (pr.mode === 'week' ? pfText('props.hours', '描く時刻', pr.hours, { hint: '（週の表示。例: 8:00-18:00）' }) : '')
+        + '<p class="hint">時刻は「10:00-11:30」のように書きます。日付や時刻の読めない行は描きません。月の表示のマスに入りきらない予定は「ほか N 件」にまとめます。</p>';
+    case 'mail':
+      return pfText('props.from', '差出人', pr.from, { hint: '（サンプル値）' })
+        + pfText('props.to', '宛先', pr.to, { hint: '（サンプル値。「、」で区切ると宛先を分けて出す）' })
+        + pfText('props.subject', '件名', pr.subject, { hint: '（サンプル値）' })
+        + pfArea('props.body', '本文', pr.body, { hint: '（サンプル値）', rows: 6 })
+        + pfCheck('props.toolbar', '書式のボタンの行を出す', pr.toolbar !== false)
+        + pfSeg('props.color', 'アイコンの色', pr.color, Object.entries(FRAME_COLORS))
+        + '<p class="hint">メールの作成欄は、項目一覧には入りません。送信のボタンを押した後の画面を描くときは、ボタンのアイテムをメールの作成欄の上に重ねて置きます。メールの作成欄を動かすと、ボタンも一緒に動きます。</p>';
   }
   return '';
 }
@@ -10685,8 +11318,9 @@ function tableSettingsHtml(p, t) {
   const count = p.tableKind === 'related'
     ? pfRow(pfText('props.sort', '並び順', pr.sort, { placeholder: '例: 受注日の新しい順' }), pfText('props.limit', '最大件数', pr.limit, NUM))
     : pfRow(pfText('props.sort', '並び順', pr.sort, { placeholder: '例: 顧客コードの小さい順' }), pfText('props.perPage', '1 ページの件数', pr.perPage, NUM));
-  // 関連レコード一覧の表示のしかた（表・並べて表示。画像 q117 の案A）。元のデータベースの上に出し、並べて表示のときだけアイコンの色を出す
-  const display = p.tableKind !== 'related' ? ''
+  // 関連レコード一覧の表示のしかた（表・並べて表示。画像 q117 の案A）。元のデータベースの上に出し、並べて表示のときだけアイコンの色を出す。
+  // レコード一覧は表・かんばん（第 15 段階。画像 q123 の案A）
+  const display = p.tableKind !== 'related' ? kanbanSettingsHtml(p, d)
     : pfSeg('props.display', '表示のしかた', isTilesPart(p) ? 'tiles' : 'table', [['table', '表'], ['tiles', '並べて表示']])
       + (isTilesPart(p) ? pfSeg('props.color', 'アイコンの色', own(FRAME_COLORS, pr.color) ? pr.color : 'orange', Object.entries(FRAME_COLORS)) : '');
   return `${title}${kind}
@@ -10701,6 +11335,20 @@ function tableSettingsHtml(p, t) {
     </div></div>
     ${here}
     <div class="pf-del"><button class="btn small danger-text" data-action="delete-part">このアイテムを削除する</button></div>`;
+}
+
+// レコード一覧の表示のしかた（表・かんばん）。かんばんのときだけ、列に分ける項目（表の列のステータス・ドロップダウン・ラジオボタン）と、
+// 列ごとに合計する項目（表の列の数値・自動計算）を選ぶ欄を出す。選べる列がないときは、列を追加するよう薄く出す
+function kanbanSettingsHtml(p, d) {
+  const seg = pfSeg('props.display', '表示のしかた', isKanbanPart(p) ? 'kanban' : 'table', [['table', '表'], ['kanban', 'かんばん']]);
+  if (!isKanbanPart(p)) return seg;
+  const m = kanbanModel(d, p);
+  if (!m.lane) return `${seg}<p class="hint" style="margin-bottom:8px">列に分ける項目（ステータス・ドロップダウン・ラジオボタン）を、下の「列」で表の列に追加してください。</p>`;
+  const names = (types) => kanbanColumnItems(d, p, types).map((x) => [x.item.id, x.item.name]);
+  const lane = m.lane.item;
+  return seg + pfSelect('props.laneItem', '列に分ける項目', lane.id, names(KANBAN_LANE_TYPES))
+    + pfSelect('props.sumItem', '列ごとに合計する項目', m.sum ? m.sum.item.id : '', [['', '（合計しない）'], ...names(KANBAN_SUM_TYPES)])
+    + `<p class="hint" style="margin-bottom:8px">列は「${esc(lane.name)}」の選択肢（${esc(kanbanLaneNames(lane).join('・') || 'なし')}）。カードは、サンプルの行を 1 行ずつ、${esc(lane.name)}の値と同じ名前の列に置きます。</p>`;
 }
 
 // 表の列の欄。押した列を選び（選んだ列の見本の値と幅を、この画面だけの設定で書く）、↑↓ で並べ替え、✕ で外す。
@@ -10732,7 +11380,7 @@ function tableColumnsEditorHtml(p, isItem) {
     const src = p.tableKind === 'related' ? (pr.db.designId ? findDesign(store.state, pr.db.designId) : null) : currentDesign();
     const used = new Set((pr.columns || []).map((c) => c.ref.itemId).filter(Boolean));
     add = src
-      ? `<label class="field"><span>列を追加する</span><select data-tb="addCol"><option value="">（${esc(src.name)}の項目から選ぶ）</option>${src.items.filter((it) => isInputType(it.type) && !used.has(it.id)).map((it) => `<option value="${esc(it.id)}">${esc(it.name)}</option>`).join('')}</select></label>`
+      ? `<label class="field"><span>列を追加する</span><select data-tb="addCol"><option value="">（${esc(src.name)}の項目から選ぶ）</option>${src.items.filter((it) => (isInputType(it.type) || it.type === 'status') && !used.has(it.id)).map((it) => `<option value="${esc(it.id)}">${esc(it.name)}</option>`).join('')}</select></label>`
       : '<label class="field"><span>列を追加する</span><input type="text" data-tb="addColName" placeholder="元の項目の名前を書く"></label>';
   }
   return `<div class="field" style="margin-bottom:4px">${pfLabel('列', '（押すと、その列の設定とサンプル値）')}</div>${rows || '<p class="hint" style="margin-bottom:6px">列がまだありません。</p>'}${add}`;
@@ -14405,14 +15053,18 @@ const AI_PROP_NOTES = {
     columns: 'レコード一覧・関連レコード一覧の列（項目名の配列。関連レコード一覧は元のデータベースの項目名）',
     sort: '並び順（文）', perPage: '1 ページの件数（数字の文字。レコード一覧）', limit: '最大件数（数字の文字。関連レコード一覧）',
     db: '関連レコード一覧の元のデータベース（画面設計の名前か id）', cond: '関連レコード一覧の条件 { from: 元の項目名, to: この画面設計の項目名 }',
-    display: '関連レコード一覧の表示のしかた: "table"（表）・"tiles"（並べて表示）。並べて表示は Salesforce のレコードの画面の右の列の形で、1 件ごとに 1 列目をリンク、2 列目からは「列名: 値」を並べる',
+    display: '表示のしかた。関連レコード一覧は "table"（表）・"tiles"（並べて表示。Salesforce のレコードの画面の右の列の形で、1 件ごとに 1 列目をリンク、2 列目からは「列名: 値」を並べる）、'
+      + 'レコード一覧は "table"（表）・"kanban"（かんばん。laneItem の選択肢ごとの列に、サンプルの行を 1 行ずつカードにして並べる。高さは中身から決まる）',
     color: '関連レコード一覧の並べて表示の見出しのアイコンの色（frame の color と同じ値。最初は "orange"）',
+    laneItem: 'レコード一覧のかんばんの列に分ける項目（項目名か id。columns にあるステータス・ドロップダウン・ラジオボタン。書かなければ、その最初）。サンプル値がどの選択肢とも同じでない行は「（なし）」の列',
+    sumItem: 'レコード一覧のかんばんの列ごとに合計する項目（項目名か id。columns にある数値・自動計算。"" は合計しない）',
   },
   graph: {
-    chart: `グラフの種類: ${Object.keys(CHART_NAMES).map((k) => `"${k}"（${CHART_NAMES[k]}）`).join('・')}`,
+    chart: `グラフの種類: ${Object.keys(CHART_NAMES).map((k) => `"${k}"（${CHART_NAMES[k]}）`).join('・')}。ダッシュボードの数字は "metric"、目標に対する達成は "gauge"、段階ごとの件数は "funnel"`,
     byItem: '分類する項目（項目名か id）', byUnit: '分け方（例 "月ごと"）',
     agg: `集計方法: ${Object.keys(AGG_NAMES).map((k) => `"${k}"（${AGG_NAMES[k]}）`).join('・')}`, aggItem: '集計する項目（項目名か id）',
-    samples: 'サンプル値（1 行に「分類, 値」）', unit: '値の単位（例 "万円"）',
+    samples: 'サンプル値（1 行に「分類, 値」。"metric"・"gauge" は 1 行目の値だけを描く。"stacked" は 1 行に「分類, 値1, 値2…」で、値に桁の区切りのカンマを書かない）', unit: '値の単位（例 "万円"）',
+    target: 'メーター（"gauge"）の目標の値（数字の文字。右の端になり、「目標 N の P%」を出す）', series: '積み上げ棒（"stacked"）の凡例の名前（1 行に 1 つの文字。値1・値2 の順）',
   },
   search: { items: '検索する項目（項目名か id の配列）', button: '「検索」ボタンを表示する（true・false）' },
   filter: { items: '絞り込む項目（項目名か id の配列）', values: '項目ごとのサンプル値（items と同じ順の文字の配列）' },
@@ -14433,6 +15085,15 @@ const AI_PROP_NOTES = {
   tree: {
     lines: 'ツリーの行（1 行に 1 つ。行の頭の空白 2 つで 1 段下げる。頭に「+」を書いた行は閉じた形で、その下の段は描かない。行の終わりの「（数字）」は件数として薄く出す）',
     current: '選んでいる行（上の段からの道筋を " > " でつなぐ。例 "契約書 > 2026年度（5）"。"" はなし）', folder: 'フォルダのアイコンを出す（true・false）',
+  },
+  // 第 15 段階のアイテム
+  calendar: {
+    mode: '表示のしかた: "month"（月。日曜はじまりの 7 列）・"week"（週。左に時刻）', today: '今日として描く日（"YYYY-MM-DD"。その日のある月・週を描き、印を付ける）',
+    samples: '予定（1 行に「日付, 時刻, 件名」。時刻は "10:00-11:30"、空なら終日。日付や時刻の読めない行は描かない）', hours: '週の表示で描く時刻の範囲（例 "8:00-18:00"）',
+  },
+  mail: {
+    from: '差出人のサンプル値', to: '宛先のサンプル値（「、」で区切ると宛先を分けて出す）', subject: '件名のサンプル値', body: '本文のサンプル値（改行は \\n）',
+    toolbar: '書式のボタンの行を出す（true・false）', color: AI_FRAME_COLOR,
   },
 };
 // 項目の設定（edit_items の props）だけにある欄
@@ -14487,7 +15148,16 @@ const aiFirstRowY = (d, sc) => (sc.showHeader ? bandHeight(d, sc) + AI_FIRST_ROW
 // （入力の形は test/kintone-mcp-shapes.js に写して見比べる）。元のアプリの ID はモックイメージメーカーでは分からないので、空にして needsAppId に分ける
 const KT_UNIT_BEFORE = ['$', '¥', '￥', '€', '£']; // 数の前に付ける単位。ほかの単位（円・個・日など）は数の後ろ（Claude が決めた）
 const KT_REF_SIZES = ['1', '3', '5', '10', '20', '30', '40', '50']; // 関連レコード一覧の件数（kintone で選べる数）
-const KT_NO_FIELD_TYPES = ['recordHead', 'activity', 'tree']; // kintone のフィールドにないアイテム（get_kintone_app の warnings で知らせる。第 14 段階）
+const KT_NO_FIELD_TYPES = ['recordHead', 'activity', 'tree', 'calendar', 'mail']; // kintone のフィールドにないアイテム（get_kintone_app の warnings で知らせる。第 14・15 段階）
+// kintone のグラフで作るときの注意（第 15 段階）。kintone のグラフの種類は 横棒・縦棒（集合・積み上げ・100% 積み上げ）・円・折れ線・曲線・面・表・クロス集計表
+// （kintone のヘルプと kintone.app.getReports の chartType で確かめた。2026-10-29）。じょうご・メーター・大きな数字はない
+const KT_CHART_NOTES = {
+  stacked: 'kintone の縦棒グラフの表示モード「積み上げ」で作る。',
+  funnel: 'kintone にじょうごグラフはないので、横棒グラフで作るか、JavaScript かプラグインで作る。',
+  gauge: 'kintone にメーターはないので、表（集計の値だけ）で作るか、JavaScript かプラグインで作る。',
+  metric: 'kintone に大きな数字だけを出すグラフはないので、表（集計の値だけ）で作るか、JavaScript かプラグインで作る。',
+};
+const KT_NO_CHARTS = ['funnel', 'gauge', 'metric'];
 const ktText = (v) => str(v).trim();
 const ktUnit = (u) => (ktText(u) ? { unit: ktText(u), unitPosition: KT_UNIT_BEFORE.includes(ktText(u)) ? 'BEFORE' : 'AFTER' } : {});
 const ktOptions = (list) => Object.fromEntries((Array.isArray(list) ? list : []).map((o, i) => [o, { label: o, index: String(i) }]));
@@ -14661,9 +15331,12 @@ function kintoneManualSteps(S, d) {
     const setting = describePart(p, ctx).replace(/\n/g, '・');
     if (raw.type === 'table' && raw.tableKind === 'records') {
       const cols = tableColumns(p, ctx).map((c) => c.name).join('・');
-      out.push(`一覧: 画面「${sc.name}」のレコード一覧「${partTitle(raw)}」（${[cols && `列＝${cols}`, setting].filter(Boolean).join('・')}）を、kintone のアプリの設定の「一覧」で作る。`);
+      out.push(`一覧: 画面「${sc.name}」のレコード一覧「${partTitle(raw)}」（${[cols && `列＝${cols}`, setting].filter(Boolean).join('・')}）を、kintone のアプリの設定の「一覧」で作る。`
+        + (isKanbanPart(raw) ? 'かんばんは kintone の一覧の表示形式（表形式・カレンダー形式）にないので、表示形式「カスタマイズ」の一覧かプラグインで作る。' : ''));
     }
-    if (raw.type === 'graph') out.push(`グラフ: 画面「${sc.name}」のグラフ「${partTitle(raw)}」（${setting}）を、kintone のアプリの設定の「グラフ」で作る。`);
+    // カレンダーは、kintone の一覧の表示形式「カレンダー形式」（第 15 段階）
+    if (raw.type === 'calendar') out.push(`一覧: 画面「${sc.name}」のカレンダー「${partTitle(raw)}」を、kintone のアプリの設定の「一覧」で、表示形式「カレンダー形式」の一覧として作る（日付のフィールドとタイトルのフィールドを選ぶ）。`);
+    if (raw.type === 'graph') out.push(`グラフ: 画面「${sc.name}」のグラフ「${partTitle(raw)}」（${setting}）を、kintone のアプリの設定の「グラフ」で作る。${KT_CHART_NOTES[raw.props && raw.props.chart] || ''}`);
     if (raw.type === 'button') buttons.push(`「${partTitle(raw)}」（画面「${sc.name}」${ktText(raw.props && raw.props.action) ? `。押したとき＝${ktText(raw.props.action)}` : ''}）`);
   }));
   if (buttons.length) out.push(`ボタン: ${buttons.join('・')}。kintone の標準のボタン（保存・キャンセル・編集など）とプロセス管理の操作で足りないものは、JavaScript かプラグインで作る。`);
@@ -14701,8 +15374,16 @@ function aiGetKintoneApp(args) {
   const layout = kintoneFormLayout(d, sc, codes, related, warn, { groups, used: new Set([...Object.values(codes), ...related.map((r) => r.code)]) });
   groups.forEach((g) => { properties[g.code] = { type: 'GROUP', code: g.code, label: g.label, openGroup: true }; });
   // kintone のフィールドにないアイテム（第 14 段階）
-  sc.parts.filter((p) => KT_NO_FIELD_TYPES.includes(p.type)).forEach((p) => warn(
-    `「${partTitle(p)}」（${partTypeName(p.type)}）は kintone のフィールドにないので、フォームに入れていません。kintone で同じ見た目にするときは、JavaScript かプラグインで作ります（人に確かめてください）。`));
+  sc.parts.filter((p) => KT_NO_FIELD_TYPES.includes(p.type)).forEach((p) => warn(p.type === 'calendar'
+    ? `「${partTitle(p)}」（カレンダー）は kintone のフォームのフィールドにないので、フォームに入れていません。kintone では一覧の表示形式「カレンダー形式」で作ります（manualSteps）。`
+    : `「${partTitle(p)}」（${partTypeName(p.type)}）は kintone のフィールドにないので、フォームに入れていません。kintone で同じ見た目にするときは、JavaScript かプラグインで作ります（人に確かめてください）。`));
+  // かんばんと、kintone のグラフにない種類（第 15 段階）。一覧・グラフの画面は、フォームにした画面でなくても知らせる
+  d.screens.forEach((s) => s.parts.forEach((p) => {
+    if (isKanbanPart(p)) warn(`画面「${s.name}」の「${partTitle(p)}」（レコード一覧のかんばん）は、kintone の一覧の表示形式（表形式・カレンダー形式）にないので、表示形式「カスタマイズ」の一覧かプラグインで作ります（人に確かめてください）。`);
+    if (p.type === 'graph' && KT_NO_CHARTS.includes(p.props && p.props.chart)) {
+      warn(`画面「${s.name}」のグラフ「${partTitle(p)}」（${CHART_NAMES[p.props.chart]}）は、kintone のグラフの種類にないので、近い種類のグラフにするか、JavaScript かプラグインで作ります（人に確かめてください）。`);
+    }
+  }));
   if (d.name.length > 64) warn(`アプリの名前は 64 文字までなので、画面設計の名前の初めの 64 文字にしました。`);
   return {
     design: { id: d.id, name: d.name }, formScreen: { id: sc.id, name: sc.name },
@@ -14965,6 +15646,7 @@ const AI_PROP_ENUMS = {
   'graph.chart': Object.keys(CHART_NAMES), 'graph.agg': Object.keys(AGG_NAMES),
   'icon.icon': Object.keys(ICONS), 'icon.color': Object.keys(ICON_COLORS), 'link.to': ['', 'screen', 'url'], 'button.to': ['', 'screen', 'url'],
   'frame.color': Object.keys(FRAME_COLORS), 'recordHead.color': Object.keys(FRAME_COLORS),
+  'calendar.mode': ['month', 'week'], 'mail.color': Object.keys(FRAME_COLORS),
 };
 // 項目を名前か id で書く欄（id に直して入れる）
 const AI_ITEM_REF_PROPS = { 'graph.byItem': 'one', 'graph.aggItem': 'one', 'search.items': 'many', 'filter.items': 'many', 'recordHead.items': 'many' };
@@ -15102,14 +15784,15 @@ function aiItemProps(d, item, props, tx = null) {
 // レコード一覧・関連レコード一覧の部品の設定。列は項目名（関連レコード一覧は元のデータベースの項目名）で書く
 function aiTablePartProps(kind, cur, props, d) {
   if (!isObj(props)) throw aiBad('props は { 欄の名前: 値 } の形で書いてください。');
-  const allowed = kind === 'related' ? ['columns', 'sort', 'limit', 'db', 'cond', 'display', 'color'] : ['columns', 'sort', 'perPage'];
+  const allowed = kind === 'related' ? ['columns', 'sort', 'limit', 'db', 'cond', 'display', 'color'] : ['columns', 'sort', 'perPage', 'display', 'laneItem', 'sumItem'];
   Object.keys(props).forEach((k) => { if (!allowed.includes(k)) throw aiBad(`${TABLE_KINDS[kind]}の設定に「${k}」という欄はありません（使える欄: ${allowed.join('・')}）。`); });
   const S = store.state;
   const next = normalizeTablePartProps(clone(cur || {}));
   ['sort', 'perPage', 'limit'].forEach((k) => { if (k in props) next[k] = aiStrVal(props[k], k); });
-  // 関連レコード一覧の表示のしかたと、並べて表示のアイコンの色（第 14 段階）
+  // 表示のしかた。関連レコード一覧は表・並べて表示（第 14 段階）、レコード一覧は表・かんばん（第 15 段階）
   if ('display' in props) {
-    if (!['table', 'tiles'].includes(props.display)) throw aiBad('display に書ける値は "table"（表）・"tiles"（並べて表示）です。');
+    if (kind === 'related' && !['table', 'tiles'].includes(props.display)) throw aiBad('関連レコード一覧の display に書ける値は "table"（表）・"tiles"（並べて表示）です。');
+    if (kind !== 'related' && !['table', 'kanban'].includes(props.display)) throw aiBad('レコード一覧の display に書ける値は "table"（表）・"kanban"（かんばん）です。');
     next.display = props.display;
   }
   if ('color' in props) {
@@ -15141,7 +15824,24 @@ function aiTablePartProps(kind, cur, props, d) {
       return { id: old ? old.id : newId('c'), ref: r };
     });
   }
+  if (kind !== 'related') aiKanbanProps(next, props, d);
   return next;
+}
+// レコード一覧のかんばんの、列に分ける項目（laneItem）と列ごとに合計する項目（sumItem）。項目名か id で書き、表の列にある項目だけ（"" は外す。第 15 段階）。
+// かんばんにして列に分ける項目を書かなかったときは、選べる列の最初にする（右のパネルで切り替えたときと同じ）
+function aiKanbanProps(next, props, d) {
+  [['laneItem', KANBAN_LANE_TYPES, 'ステータス・ドロップダウン・ラジオボタン'], ['sumItem', KANBAN_SUM_TYPES, '数値・自動計算']].forEach(([k, types, what]) => {
+    if (!(k in props)) return;
+    if (props[k] == null || props[k] === '') { next[k] = ''; return; }
+    const it = aiResolveItem(d, aiStrVal(props[k], k));
+    if (!types.includes(it.type)) throw aiBad(`${k} に書けるのは、${what}の項目です（「${it.name}」は${itemTypeName(it.type)}）。`);
+    if (!next.columns.some((c) => c.ref.itemId === it.id)) throw aiBad(`${k} の「${it.name}」は、表の列にありません。columns に「${it.name}」を入れてください。`);
+    next[k] = it.id;
+  });
+  if (next.display === 'kanban' && !next.laneItem) {
+    const first = kanbanColumnItems(d, { props: next }, KANBAN_LANE_TYPES)[0];
+    if (first) next.laneItem = first.item.id;
+  }
 }
 // 表の見本の値（layout・edit_parts の samples。第 13 段階。q114 の ⑤）を、列の id ごとの値に直す。cols は表の列（{ id, name }）。
 // 列は名前か id で書き、値は文字か数（null は空）。1 つの列に 20 行まで（見本の行の数の上限と同じ）
@@ -15501,7 +16201,10 @@ function aiLayout(tx, designId, screenId, layout, mode) {
   const rows = layout.rows.map((row, ri) => aiLayoutRow(row, `rows[${ri}]`, (e, where) => aiLayoutEntry(tx, d, e, where, used, plan)));
   // 項目を名前で書く欄（レコードの見出しの主な項目など）は、全部の行を読んで項目を作った後に直す（後ろの行で作る項目も指せるように。第 14 段階）
   const withCreated = { ...d, items: [...d.items, ...plan.created] };
-  plan.late.forEach(({ spec, type, props, where }) => aiWhere(where, () => { spec.props = aiProps(type, props, withCreated) || undefined; }));
+  plan.late.forEach(({ spec, type, props, where, apply }) => aiWhere(where, () => {
+    if (apply) apply(withCreated);
+    else spec.props = aiProps(type, props, withCreated) || undefined;
+  }));
   const firstY = aiFirstRowY(findDesign(store.state, designId), sc);
   const startY = sc.parts.length ? Math.ceil((Math.max(...sc.parts.map((p) => p.y + p.h)) + TPL_GAP) / GRID) * GRID : firstY;
   // グループ枠と縦に重ねる形は、列の幅に広げて中身を layoutStack で重ね、その高さを行の高さにする。置いた後に中身を置き直し、見出しのボタンを重ねる
@@ -15674,7 +16377,6 @@ function aiLayoutSpec(tx, d, e, used, plan, where) {
     if (type === 'table') {
       spec.tableKind = e.tableKind == null ? 'records' : str(e.tableKind);
       if (!['records', 'related'].includes(spec.tableKind)) throw aiBad('表の中身（tableKind）は "subtable"（テーブル）・"records"（レコード一覧）・"related"（関連レコード一覧）です。');
-      if (e.props != null) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), e.props, d);
     } else if (isObj(e.props) && Object.keys(e.props).some((k) => own(AI_ITEM_REF_PROPS, `${type}.${k}`))) lateProps = e.props;
     else spec.props = aiProps(type, e.props, d) || undefined;
     if (type === 'button') {
@@ -15691,29 +16393,36 @@ function aiLayoutSpec(tx, d, e, used, plan, where) {
   ['sample', 'placeholder'].forEach((k) => { if (e[k] != null) spec.fields[k] = aiStrVal(e[k], k); });
   const size = defaultPartSize(type);
   if (type === 'button') size.w = aiButtonWidth(spec.label == null ? partType('button').label : spec.label);
-  if (e.rows != null) {
-    if (type !== 'table') throw aiBad('rows（サンプルの行数）を書けるのは表だけです。');
-    const n = Math.round(aiNum(e.rows, 'rows'));
-    if (n < 1 || n > 20) throw aiBad('rows は 1〜20 です。');
-    spec.view = { rows: n };
-    size.h = tableHeight(n);
-  }
-  if (e.samples != null) {
-    if (type !== 'table') throw aiBad('samples（サンプル値）を書けるのは表だけです。');
-    // レコード一覧・関連レコード一覧の列の id を、置く前に決めておく（設定を書かないときは最初の列）
-    if (!spec.itemId && !spec.props) spec.props = aiTablePartProps(spec.tableKind, defaultTablePartProps(d), {}, d);
-    const samples = aiTableSamples(aiLayoutTableColumns(d, spec, plan), e.samples);
-    const rows = aiSampleRows(spec.view && spec.view.rows, samples);
-    spec.view = { ...(spec.view || {}), rows, samples };
-    size.h = tableHeight(rows);
-  }
-  // 関連レコード一覧の並べて表示の高さは、件数と列の数から（第 14 段階）
-  if (type === 'table' && spec.tableKind === 'related' && spec.props && spec.props.display === 'tiles') {
-    size.h = tilesHeight((spec.view && spec.view.rows) || 3, (spec.props.columns || []).length);
-  }
+  if (e.rows != null && type !== 'table') throw aiBad('rows（サンプルの行数）を書けるのは表だけです。');
+  if (e.samples != null && type !== 'table') throw aiBad('samples（サンプル値）を書けるのは表だけです。');
+  // 大きな数字のグラフは、数字の並びに合わせて低くする（第 15 段階）
+  if (type === 'graph' && isObj(e.props) && e.props.chart === 'metric') size.h = METRIC_GRAPH_H;
   const out = { ...spec, type, w0: size.w, h0: size.h };
+  // レコード一覧・関連レコード一覧の設定・サンプル値・高さは、全部の行を読んで項目を作った後に決める（後ろの行で作る項目も、列・列に分ける項目に書けるように。第 15 段階）
+  if (type === 'table' && !spec.itemId) plan.late.push({ where, apply: (dd) => aiLayoutTableView(out, e, d, dd, plan) });
+  else if (type === 'table') aiLayoutTableView(out, e, d, d, plan);
   if (lateProps) plan.late.push({ spec: out, type, props: lateProps, where });
   return out;
+}
+// 並べ方で置く表の設定（props）・サンプルの行数とサンプル値（view）・高さ（h0）を決める。d は今の画面設計、dd は同じ頼みで作る項目も入れた画面設計。
+// 高さは、サンプルの行数から（関連レコード一覧の並べて表示は件数と列の数から、レコード一覧のかんばんは中身から）
+function aiLayoutTableView(out, e, d, dd, plan) {
+  // レコード一覧・関連レコード一覧の列の id を、置く前に決めておく（設定を書かないときは最初の列）
+  if (!out.itemId && (e.props != null || e.samples != null)) out.props = aiTablePartProps(out.tableKind, defaultTablePartProps(d), e.props == null ? {} : e.props, dd);
+  if (e.rows != null) {
+    const n = Math.round(aiNum(e.rows, 'rows'));
+    if (n < 1 || n > 20) throw aiBad('rows は 1〜20 です。');
+    out.view = { rows: n };
+    out.h0 = tableHeight(n);
+  }
+  if (e.samples != null) {
+    const samples = aiTableSamples(aiLayoutTableColumns(dd, out, plan), e.samples);
+    const rows = aiSampleRows(out.view && out.view.rows, samples);
+    out.view = { ...(out.view || {}), rows, samples };
+    out.h0 = tableHeight(rows);
+  }
+  const shaped = { type: 'table', tableKind: out.tableKind, props: out.props || {}, view: normalizeTableView(out.view || {}) };
+  if (isTilesPart(shaped) || isKanbanPart(shaped)) out.h0 = partTableHeight(shaped, dd);
 }
 function aiLayoutNewItem(d, type, name, e, plan) {
   const itemType = type === 'steps' ? 'status' : type;
@@ -15777,8 +16486,12 @@ function aiPartOp(tx, sid, op) {
     case 'update': {
       const p = part(op.part);
       const patch = aiPartPatch(tx, d(), p, op);
-      // 表の見本の行を増やすと、下へはみ出す分だけ画面を伸ばす（上限まで）
-      if (patch.view && patch.view.rows && p.y + tableHeight(patch.view.rows) > sc().height) aiCheckBottom(p.y + tableHeight(patch.view.rows), '表の下の端');
+      // 表の見本の行を増やす・かんばんにするなどで、下へはみ出す分だけ画面を伸ばす（上限まで）
+      if (p.type === 'table' && (patch.view || patch.props)) {
+        const next = { ...p, props: { ...p.props, ...(patch.props || {}) }, view: normalizeTableView({ ...(p.view || {}), ...(patch.view || {}) }) };
+        const h = partTableHeight(next, d());
+        if (p.y + h > sc().height) aiCheckBottom(p.y + h, '表の下の端');
+      }
       actions.updatePart(id, sid, p.id, patch);
       // ボタンの文字を直してはみ出すときは、幅を広げる（狭めない。第 13 段階。q114 の ②）
       const need = p.type === 'button' && patch.label !== undefined ? aiButtonWidth(patch.label) : 0;

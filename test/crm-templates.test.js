@@ -35,8 +35,8 @@ function assertNoOverlap(sc) {
 
 test('ひな形: 「顧客の詳細」と「問い合わせ対応の 3 列」を、進捗の後ろに追加した', async (t) => {
   const { api } = await boot(t, '顧客管理');
-  assert.deepEqual(plain(api.SCREEN_TEMPLATES.map((x) => x.id)), ['blank', 'input', 'detail', 'list', 'graph', 'agg', 'steps', 'crmDetail', 'crmCase']);
-  assert.deepEqual(plain(api.SCREEN_TEMPLATES.slice(-2).map((x) => x.name)), ['顧客の詳細', '問い合わせ対応の 3 列']);
+  assert.deepEqual(plain(api.SCREEN_TEMPLATES.map((x) => x.id)), ['blank', 'input', 'detail', 'list', 'graph', 'agg', 'steps', 'crmDetail', 'crmCase', 'crmKanban', 'crmHome']);
+  assert.deepEqual(plain(api.SCREEN_TEMPLATES.slice(-4, -2).map((x) => x.name)), ['顧客の詳細', '問い合わせ対応の 3 列'], '第 15 段階のひな形 2 つの前');
 });
 
 test('顧客の詳細: 項目がなければサンプルの項目を 8 つ追加し、見出し・ボタン・グループ枠・活動履歴・関連レコード一覧の並べて表示 3 つを、画像の番号の順に置く', async (t) => {

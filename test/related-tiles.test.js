@@ -93,8 +93,10 @@ test('関連レコード一覧の右のパネル: 「表示のしかた」を元
   api.actions.setTableKind(did, sid, id, 'records');
   api.selectPart(null);
   api.selectPart(id);
-  assert.equal(radios().length, 0, 'レコード一覧には表示のしかたを出さない');
+  // 第 15 段階から、レコード一覧の表示のしかたは 表・かんばん（並べて表示は選べない）
+  assert.deepEqual(radios().map((e) => [e.value, e.checked]), [['table', true], ['kanban', false]]);
   assert.ok(partEl(app, id).querySelector('table.ptbl'), 'レコード一覧は表で描く');
+  assert.equal(part().h, 168, '並べて表示から表に変わったので、表の高さ（サンプルの行 3 つ）に戻す');
 });
 
 test('関連レコード一覧の並べて表示の見た目: Salesforce と kintone の形', async (t) => {

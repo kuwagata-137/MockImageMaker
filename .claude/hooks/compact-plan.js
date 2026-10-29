@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 // 会話の圧縮の段取りのフック（2026-10-13 ユーザー指示。CLAUDE.md の「コンテキストの圧縮の段取り」）。
-//   node compact-plan.js pre  … PreCompact（圧縮の前）: いちばん新しいプランファイル（~/.claude/plans/*.md）の場所・行数・大きさ・ハッシュと、
+//   node compact-plan.js pre  … PreCompact（圧縮の前）: このセッションのプランファイル（~/.claude/plans/*.md）の場所・行数・大きさ・ハッシュと、
 //                               Git の状態（ブランチ・最後のコミット・まだコミットしていないファイル）を控える。圧縮は止めない
 //   node compact-plan.js post … SessionStart の compact（圧縮の後）: 控えと今のプランを比べた結果と、プランを読み直して再開する手順を出す。
 //                               SessionStart の stdout はモデルの文脈に入る（https://code.claude.com/docs/en/hooks#sessionstart）
 // どちらも、うまくいかなくても圧縮と作業を止めないように、いつも終了コード 0 で終わる。
+// 2026-10-29 から、同じファイルをユーザーの設定（~/.claude/hooks）にも置き、全リポジトリで働かせる（ユーザー指示）。そのため、控えはセッションごとと
+// リポジトリごとに分け、プランは会話の記録（transcript_path）に出てくるプランファイルから選ぶ（前はいちばん新しく書き換えたプランを選び、控えも 1 つだったので、
+// 別のリポジトリで同時に作業すると、そちらのプランを選んだり控えを上書きしたりした）。
+// リポジトリが自分の写しを .claude/settings.json に登録しているとき（クラウドのセッションのため。このリポジトリなど）は、ユーザーの設定から動いた方は何もしない
+// （同じ知らせを 2 回出さないため）。
 'use strict';
 
 const fs = require('fs');
@@ -13,9 +18,37 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 
-const PLANS_DIR = path.join(os.homedir(), '.claude', 'plans');
-const STATE_FILE = path.join(PLANS_DIR, '.compact-state.json');
+// COMPACT_PLAN_DIR は確かめ用（プランと控えを、本物の ~/.claude/plans の代わりにそのフォルダに置く）
+const PLANS_DIR = process.env.COMPACT_PLAN_DIR || path.join(os.homedir(), '.claude', 'plans');
+const STATE_DIR = path.join(PLANS_DIR, '.compact-state');
 const STALE_MIN = 30; // プランがこれより前から書き換えられていなければ、知らせる
+// 会話の記録の中のプランファイルの場所（Windows の記録では \ が \\ と書かれる）
+const PLAN_REF = /\.claude(?:\\\\|\\|\/)+plans(?:\\\\|\\|\/)+([A-Za-z0-9_.-]+?)\.md/g;
+
+const projectDir = () => process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const keyOf = (s) => crypto.createHash('sha256').update(String(s)).digest('hex').slice(0, 16);
+const samePath = (a, b) => (process.platform === 'win32' ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase() : path.resolve(a) === path.resolve(b));
+
+// このファイルがリポジトリの写しでなく、リポジトリが自分の写しをプロジェクトの設定に登録していれば true（そのときは写しに任せる）
+function projectHasOwn() {
+  const own = path.join(projectDir(), '.claude', 'hooks', 'compact-plan.js');
+  if (samePath(own, __filename) || !fs.existsSync(own)) return false;
+  return ['settings.json', 'settings.local.json'].some((f) => {
+    try {
+      return fs.readFileSync(path.join(projectDir(), '.claude', f), 'utf8').includes('compact-plan.js');
+    } catch (_) {
+      return false;
+    }
+  });
+}
+
+// 控えのファイル。セッションの id で引けるものを先に、リポジトリで引けるものを後に（圧縮の後に id が変わっても読めるように）
+function stateFiles(input) {
+  const files = [];
+  if (input.session_id) files.push(path.join(STATE_DIR, `session-${keyOf(input.session_id)}.json`));
+  files.push(path.join(STATE_DIR, `project-${keyOf(projectDir())}.json`));
+  return files;
+}
 
 function latestPlan() {
   try {
@@ -27,6 +60,31 @@ function latestPlan() {
   } catch (_) {
     return null;
   }
+}
+
+// 会話の記録に最後に出てきた、今もあるプランファイル。見つからなければ null
+function planFromTranscript(file) {
+  if (!file) return null;
+  let text;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch (_) {
+    return null;
+  }
+  const names = [...text.matchAll(PLAN_REF)].map((m) => m[1]);
+  for (let i = names.length - 1; i >= 0; i--) {
+    const f = path.join(PLANS_DIR, names[i] + '.md');
+    if (fs.existsSync(f)) return f;
+  }
+  return null;
+}
+
+// このセッションのプラン。how は選び方（'transcript'＝会話の記録から・'latest'＝いちばん新しく書き換えたもの）
+function findPlan(input) {
+  const f = planFromTranscript(input.transcript_path);
+  if (f) return { file: f, how: 'transcript' };
+  const g = latestPlan();
+  return g ? { file: g, how: 'latest' } : null;
 }
 
 function planInfo(file) {
@@ -47,7 +105,7 @@ function planInfo(file) {
 function git(args) {
   try {
     return execFileSync('git', args, {
-      cwd: process.env.CLAUDE_PROJECT_DIR || process.cwd(),
+      cwd: projectDir(),
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
       timeout: 5000,
@@ -72,22 +130,32 @@ function readStdin() {
 
 function pre() {
   const input = readStdin();
-  const file = latestPlan();
-  const state = { time: new Date().toISOString(), trigger: input.trigger || '', plan: file ? planInfo(file) : null, git: gitState() };
-  fs.mkdirSync(PLANS_DIR, { recursive: true });
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  const found = findPlan(input);
+  const state = {
+    time: new Date().toISOString(), trigger: input.trigger || '', project: projectDir(),
+    plan: found ? planInfo(found.file) : null, how: found ? found.how : '', git: gitState(),
+  };
+  fs.mkdirSync(STATE_DIR, { recursive: true });
+  stateFiles(input).forEach((f) => fs.writeFileSync(f, JSON.stringify(state, null, 2)));
+}
+
+function readSaved(input) {
+  for (const f of stateFiles(input)) {
+    try {
+      return JSON.parse(fs.readFileSync(f, 'utf8'));
+    } catch (_) { /* 次の控えを見る */ }
+  }
+  return null; // 控えがない（圧縮の前のフックが動かなかった）
 }
 
 function post() {
-  let saved = null;
-  try {
-    saved = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-  } catch (_) { /* 控えがない（圧縮の前のフックが動かなかった） */ }
-  const file = (saved && saved.plan && saved.plan.file) || latestPlan();
-  const now = file ? planInfo(file) : null;
-  const out = ['【圧縮の後の段取り（自動のフック）】会話が圧縮されました。開発を続ける前に、次のとおりにしてください（CLAUDE.md の「コンテキストの圧縮の段取り」）。'];
+  const input = readStdin();
+  const saved = readSaved(input);
+  const found = saved && saved.plan ? { file: saved.plan.file, how: saved.how } : findPlan(input);
+  const now = found ? planInfo(found.file) : null;
+  const out = ['【圧縮の後の段取り（自動のフック）】会話が圧縮されました。作業を続ける前に、次のとおりにしてください（CLAUDE.md の「コンテキストの圧縮の段取り」）。'];
   if (!now) {
-    out.push('1. プランファイルが見つかりません。CLAUDE.md・開発ロードマップ.txt・Git の記録（git log）から今の状態を確かめ、ユーザーに知らせてから続けてください。');
+    out.push('1. プランファイルが見つかりません。CLAUDE.md と Git の記録（git log）から今の状態を確かめ、ユーザーに知らせてから続けてください。');
   } else {
     let check;
     if (saved && saved.plan) {
@@ -99,8 +167,12 @@ function post() {
       check = `圧縮の前の控えがありません（今は ${now.lines} 行・${now.bytes} バイト）`;
     }
     out.push(`1. プランファイル ${now.file} を Read で全部読み、圧縮されていない（全文が残っている）ことを確かめる。ファイルの確かめ: ${check}。`);
-    out.push('2. プランの「開発の進み具合」「次にやること」と Git の記録から、どこまで済んだかを確かめる（要約にある、プランに書いていない直近の作業も合わせる）。');
-    out.push('3. プランの「進め方の約束」に従い、プランのとおりに開発を再開する（作業の説明は日本語で書く）。');
+    if (found.how === 'latest') {
+      out.push('  （会話の記録にプランファイルの場所がなかったので、いちばん新しく書き換えたプランを選びました。このセッションのプランでなければ、正しいプランを探して読んでください。）');
+    }
+    out.push('2. プランの「開発の進み具合」「次にやること」と Git の記録から、どこまで済んだかを確かめる（要約にある、プランに書いていない直近の作業も合わせる）。'
+      + '「次にやること」が今の状態と合っていなければ（済んだ手順が残っている・次の手順がない）、再開の前に今の状態に書き直す。');
+    out.push('3. プランのとおりに作業を再開する（作業の説明は日本語で書く）。');
     const age = (Date.now() - Date.parse(now.mtime)) / 60000;
     if (age > STALE_MIN) out.push(`（このプランは約 ${Math.round(age)} 分前から書き換えられていません。最後に書いた後の作業は、要約と Git の記録で補ってください。）`);
   }
@@ -113,7 +185,8 @@ function post() {
 }
 
 try {
-  if (process.argv[2] === 'pre') pre();
+  if (projectHasOwn()) { /* リポジトリの写しが動くので、何もしない */ }
+  else if (process.argv[2] === 'pre') pre();
   else if (process.argv[2] === 'post') post();
 } catch (e) {
   process.stderr.write('compact-plan.js: ' + ((e && e.message) || e) + '\n');
