@@ -239,6 +239,24 @@
   "h": 800,
   "dsf": 2
  },
+ "portal_chat": {
+  "file": "portal_chat.png",
+  "w": 648,
+  "h": 409,
+  "dsf": 2
+ },
+ "portal_page": {
+  "file": "portal_page.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
+ "portal_set": {
+  "file": "portal_set.png",
+  "w": 279,
+  "h": 448,
+  "dsf": 2
+ },
  "rec_frame_set": {
   "file": "rec_frame_set.png",
   "w": 279,
@@ -301,7 +319,7 @@
  },
  "sc_add": {
   "file": "sc_add.png",
-  "w": 944,
+  "w": 1124,
   "h": 690,
   "dsf": 2
  },
@@ -314,7 +332,7 @@
  "sc_menu": {
   "file": "sc_menu.png",
   "w": 323,
-  "h": 664,
+  "h": 668,
   "dsf": 2
  },
  "sc_process": {
@@ -411,6 +429,12 @@
   "file": "vd_pdf_screen.png",
   "w": 1122,
   "h": 792,
+  "dsf": 2
+ },
+ "win_page": {
+  "file": "win_page.jpg",
+  "w": 1280,
+  "h": 800,
   "dsf": 2
  }
 }

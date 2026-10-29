@@ -934,6 +934,55 @@ const CHAPTERS = {
     await scrollCanvasTo(part(ids.mail), 24);
     await shot('dash_mail', { clip: part(ids.mail), pad: 16 });
   },
+  // 3.13 小さなウィンドウとお客さまポータルを描く（第 16 段階）: ひな形「承認申請のウィンドウ」「お客さまポータルのトップ」「AI のチャットのウィンドウ」の画面と、
+  // 右のパネルの「下に重ねる画面」「ヘッダーの形」の欄
+  async portal() {
+    await open();
+    await call('create_design', { name: '問い合わせ管理', target: 'Salesforce', look: 'salesforce', description: '架空の会社の、お客さまからの問い合わせの管理' });
+    await call('add_screen', { design: '問い合わせ管理', template: 'crmCase', name: '問い合わせの詳細' });
+    await call('edit_screen', { design: '問い合わせ管理', ops: [{ op: 'delete', screen: '画面 1' }] });
+    await call('add_screen', { design: '問い合わせ管理', template: 'winApproval', after: '問い合わせの詳細' });
+    await call('create_design', { name: 'サポートサイト', target: 'Claude で作るアプリ', look: 'standard', description: '架空の会社の、お客さま向けのサポートサイト' });
+    await call('add_screen', { design: 'サポートサイト', template: 'portalTop' });
+    await call('edit_screen', { design: 'サポートサイト', ops: [{ op: 'delete', screen: '画面 1' }] });
+    await call('update_design', { design: 'サポートサイト', portal: { menu: ['ホーム', 'よくある質問', '修理の申し込み', 'お問い合わせ'] } });
+    await call('add_screen', { design: 'サポートサイト', template: 'winChat', after: 'ホーム' });
+    await clearAiMarks();
+    const ids = await T(() => {
+      const d = window.__test__.store.state.designs.find((x) => x.name === 'サポートサイト');
+      const top = d.screens.find((s) => s.name === 'ホーム').parts;
+      const of = (type) => top.find((p) => p.type === type).id;
+      return { hero: of('hero'), tiles: of('tileMenu'), faq: of('articles') };
+    });
+    const part = (id) => `#stage .part[data-part-id="${id}"]`;
+    // 小さなウィンドウ（承認申請。真ん中）と、右のパネルの「下に重ねる画面」
+    await openDesignAt('問い合わせ管理', '承認申請', { zoom: 0.5 });
+    await scrollCanvasTo('#stage .screen', 16);
+    await scrollInBox('#side-settings .field', '下に重ねる画面', 8);
+    await shot('win_page', { anno: [
+      { box: '#stage .sc-under', n: 1 },
+      { box: '#stage .sc-win-h', n: 2, pad: 2 },
+      { box: '#stage .sc-win-f', n: 3, pad: 2, at: 'b' },
+      // 「機器の種類」の欄の説明にも「下に重ねる画面」が入るので、選択肢の文字まで続けて探す。番号は欄の見出しに重ならないよう右上に置く
+      { box: { sel: '#side-settings .field', text: '下に重ねる画面なし' }, n: 4, pad: 2, at: 'tr' },
+      { box: { sel: '#side-settings .field', text: 'ウィンドウの位置真ん中' }, n: 5, pad: 2, at: 'tr' },
+    ] });
+    // お客さまポータルのトップと、右のパネルの「ヘッダーの形」
+    await openDesignAt('サポートサイト', 'ホーム', { zoom: 0.5 });
+    await scrollCanvasTo('#stage .screen', 16);
+    await shot('portal_page', { anno: [
+      { box: '#stage .screen-band', n: 1 },
+      { box: part(ids.hero), n: 2, at: 'tr' },
+      { box: part(ids.tiles), n: 3, at: 'tr' },
+      { box: part(ids.faq), n: 4, at: 'tr' },
+    ] });
+    // 「見た目」の欄の説明にも「ヘッダーの形」が入るので、選択肢の文字まで続けて探す
+    await shotTall('portal_set', { clip: [{ sel: '#side-settings .field', text: 'ヘッダーの形アプリ' }, { sel: '#side-settings .field', text: '右上のボタン' }], pad: 12 });
+    // AI のチャットのウィンドウ（右下）
+    await openDesignAt('サポートサイト', 'AI のアシスタント', { zoom: 0.5 });
+    await scrollCanvasTo('#stage .screen', 16);
+    await shot('portal_chat', { clip: '#stage .screen', pad: 4 });
+  },
   async screens() {
     await open();
     await sampleAll({ notes: false, materials: false });
@@ -942,7 +991,7 @@ const CHAPTERS = {
     // 画面を足す窓
     await click('#screen-list .sl-add');
     await sleep(300);
-    await shotTall('sc_add', { clip: '.modal', pad: 12 }, 1100); // ひな形が 9 つになり、窓の高さ 800 には入らなかった（第 14 段階）。第 15 段階で 11 個になり、小さな絵を縮めた
+    await shotTall('sc_add', { clip: '.modal', pad: 12 }, 1100); // ひな形が 9 つになり、窓の高さ 800 には入らなかった（第 14 段階）。第 15 段階で 11 個になり、小さな絵を縮めた。第 16 段階で 14 個になり、ウィンドウを広げて 5 つずつ並べた
     await closeDlg();
     // 画面の一覧の「…」のメニュー
     await move({ sel: '#screen-list .sl-item', i: 1 });

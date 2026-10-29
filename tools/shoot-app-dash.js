@@ -142,12 +142,12 @@ module.exports = async function shootDash(browser, env) {
   await shot(page, '231_dash_アイテム一覧の一覧画面用の組');
   await page.evaluate(() => window.__test__.goHome());
 
-  // 232: 「画面を追加する」のウィンドウ（ひな形 11 個。アプリを初めて開いたときの中の大きさ 1280×750 で、ウィンドウの下まで見える）
+  // 232: 「画面を追加する」のウィンドウ（ひな形 14 個。アプリを初めて開いたときの中の大きさ 1280×750 で、ウィンドウの下まで見える）
   await page.setViewport({ width: 1280, height: 750 });
   await openEditor(ids.kanban, 0);
   await page.evaluate(() => window.__test__.runCommand('addScreen'));
   await page.waitForSelector('.modal .tpl');
-  await shot(page, '232_dash_画面を追加するのウィンドウ_ひな形11個_1280x750');
+  await shot(page, '232_dash_画面を追加するのウィンドウ_ひな形14個_1280x750');
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.__test__.goHome());
   await page.setViewport({ width: 1400, height: 860 });

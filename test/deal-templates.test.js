@@ -39,7 +39,7 @@ const samplesOf = (p, i) => p.view.samples[p.props.columns[i].id] || [];
 
 test('ひな形: 「商談のかんばん」「ホームのダッシュボード」を、問い合わせ対応の 3 列の後ろに追加した', async (t) => {
   const { api } = await boot(t, '営業管理');
-  assert.deepEqual(plain(api.SCREEN_TEMPLATES.slice(-2).map((x) => [x.id, x.name, x.note])), [
+  assert.deepEqual(plain(api.SCREEN_TEMPLATES.filter((x) => ['crmKanban', 'crmHome'].includes(x.id)).map((x) => [x.id, x.name, x.note])), [
     ['crmKanban', '商談のかんばん', '検索欄・新規のボタン・かんばん'], ['crmHome', 'ホームのダッシュボード', '大きな数字 4 つ・グラフ 3 つ・表']]);
 });
 
@@ -150,8 +150,8 @@ test('「画面を追加する」のウィンドウ: ひな形の小さな絵の
   assert.match(api.appStyle(), /\.tpl \.th\{height:88px;/);
   api.runCommand('addScreen');
   const cards = $$(app, '.modal .tpl');
-  assert.equal(cards.length, 11);
-  const th = cards[9].querySelector('.thumb');
+  assert.equal(cards.length, 14);
+  const th = cards.find((c) => c.dataset.tpl === 'crmKanban').querySelector('.thumb');
   assert.match(th.getAttribute('style'), /width:\d+px;height:\d+px/);
   const [w, h] = th.getAttribute('style').match(/\d+/g).map(Number);
   assert.ok(w <= 150 && h <= 80, `小さな絵は 150×80 に収める（${w}×${h}）`);

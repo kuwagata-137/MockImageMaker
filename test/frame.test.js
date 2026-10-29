@@ -285,7 +285,7 @@ test('グループ枠をドラッグで動かしている間は、中のアイ�
 
 test('アイテム一覧の組: 「詳細画面用」の組にグループ枠がある', async (t) => {
   const { app, api } = await bootScreen(t);
-  assert.deepEqual(plain(api.PALETTE_GROUPS.map((g) => g.name)), ['基本', '入力画面用', '一覧画面用', '詳細画面用', '進捗画面用', 'その他']);
+  assert.deepEqual(plain(api.PALETTE_GROUPS.map((g) => g.name)), ['基本', '入力画面用', '一覧画面用', '詳細画面用', 'ポータル画面用', '進捗画面用', 'その他']);
   assert.ok($(app, '.pal-btn[data-type="frame"]'));
   click($(app, '.pal-btn[data-type="frame"]'));
   assert.equal(api.currentScreen().parts.at(-1).type, 'frame');

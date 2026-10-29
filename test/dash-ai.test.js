@@ -62,7 +62,7 @@ test('get_catalog: グラフの種類 8 つ・カレンダーとメールの作�
   assert.match(by.calendar.props.mode, /"month"（月/);
   assert.match(by.table.props.display, /"kanban"（かんばん/);
   assert.ok(by.table.props.laneItem && by.table.props.sumItem);
-  assert.deepEqual(c.templates.slice(-2).map((t) => t.id), ['crmKanban', 'crmHome']);
+  assert.deepEqual(c.templates.filter((t) => ['crmKanban', 'crmHome'].includes(t.id)).map((t) => t.id), ['crmKanban', 'crmHome']);
   app.close();
 });
 
