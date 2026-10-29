@@ -166,13 +166,13 @@ test('layout_screen: 手引きのお客さまポータルの例は、そのま�
   await call('layout_screen', { design: 'd1', screen: 's3', layout: example });
   const ps = sc('s3').parts;
   assert.deepEqual(ps.map((p) => [p.type, p.x, p.y, p.w, p.h]), [
-    ['hero', 0, 72, 1280, 320], ['tileMenu', 32, 416, 1200, 160], ['articles', 32, 600, 784, 416], ['articles', 864, 600, 368, 416],
+    ['hero', 0, 72, 1280, 320], ['tileMenu', 32, 416, 1200, 160], ['articles', 32, 600, 784, 408], ['articles', 864, 600, 368, 168],
   ]);
   assert.equal(ps[3].props.desc, false);
   // ふつうの並べ方の途中に書いても、1 行を 1 つで使う。今のアイテムの下に追加するときは、ヘッダーのすぐ下には置かない
   await call('layout_screen', { design: 'd1', screen: 's3', layout: { columns: 2, rows: [[{ type: 'heading', label: 'A' }, { type: 'hero' }, { type: 'heading', label: 'B' }]] } });
   const added = sc('s3').parts.slice(4);
-  assert.deepEqual(added.map((p) => [p.type, p.x, p.y, p.w]), [['heading', 32, 1040, 400], ['hero', 0, 1096, 1280], ['heading', 32, 1440, 400]]);
+  assert.deepEqual(added.map((p) => [p.type, p.x, p.y, p.w]), [['heading', 32, 1032, 400], ['hero', 0, 1088, 1280], ['heading', 32, 1432, 400]]);
   app.close();
 });
 

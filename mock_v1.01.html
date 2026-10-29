@@ -741,11 +741,11 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .ptm{border-color:#e3e7e8;border-radius:0}.look-kt .ptm .ptm-ic{border-radius:0;display:inline-flex}.look-kt .ptm b{color:#333}.look-kt .ptm small{color:#666}
 /* 記事の一覧: 外の枠と見出しの行はグループ枠と同じ。説明を出さない形は 日付・題名 の 1 行 */
 .pat-list{flex:1;min-height:0;overflow:hidden;padding:0 16px}
-.pat-i{padding:9px 0;border-bottom:1px solid #e2e8f0}
+.pat-i{height:80px;overflow:hidden;padding:9px 0;border-bottom:1px solid #e2e8f0}
 .pat-i a{display:block;color:#1d4ed8;font-size:14.5px;text-decoration:underline;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pat-i p{margin:2px 0 1px;font-size:13px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pat-i small{font-size:12px;color:#64748b}.pat-i small em{font-style:normal;margin-right:10px;padding:1px 8px;border-radius:10px;background:#f1f5f9;color:#475569}
-.pat-i.short{display:flex;gap:14px;align-items:baseline}.pat-i.short small{flex-shrink:0}
+.pat-i.short{height:40px;display:flex;gap:14px;align-items:baseline}.pat-i.short small{flex-shrink:0}
 .pat-more{height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13.5px;color:#1d4ed8;border-top:1px solid #e2e8f0}
 .look-sf .pat-i{border-bottom-color:#e5e5e5}.look-sf .pat-i a{color:#0176d3;text-decoration:none}.look-sf .pat-i p{color:#181818}
 .look-sf .pat-i small em{background:#f3f3f3;color:#444;border-radius:4px}.look-sf .pat-more{color:#0176d3;border-top-color:#e5e5e5}
@@ -2481,9 +2481,11 @@ function portalTemplateInto(sc, design, { put }) {
   const hero = put('hero', 0, bandHeight(design, sc));
   const tiles = put('tileMenu', TPL_LEFT, hero.y + hero.h + gap, { w: sc.width - TPL_LEFT * 2 });
   const y = tiles.y + tiles.h + gap;
-  const faq = put('articles', TPL_LEFT, y, { w: 784 });
+  // 記事の一覧の高さは、記事の数から決める（第 17 段階。q137 の①）
+  const faq = put('articles', TPL_LEFT, y, { w: 784, h: articlesHeight(partType('articles').props) });
   const x = faq.x + faq.w + gap;
-  put('articles', x, y, { w: sc.width - TPL_LEFT - x, label: 'お知らせ', props: { rows: PORTAL_NEWS, desc: false } });
+  const news = { rows: PORTAL_NEWS, desc: false };
+  put('articles', x, y, { w: sc.width - TPL_LEFT - x, h: articlesHeight(news), label: 'お知らせ', props: news });
   sc.height = Math.max(sc.height, snapHeight(PORTAL_TOP_H, sc.device));
 }
 
@@ -2571,8 +2573,9 @@ const PART_TYPES = {
   // タイル: tiles は 1 行に「題名, 説明」（parseTiles）。アイコンの色は左から 青・橙・緑・紫 の順
   tileMenu: { name: 'タイル', icon: '⊞', w: 1216, h: 160, label: '', props: {
     tiles: 'よくある質問, 困ったときの直し方\n修理を申し込む, 訪問の日を選んで申し込む\n問い合わせの状況, 申し込んだ修理の進み具合\n取扱説明書, 機種ごとの説明書を見る' } },
-  // 記事の一覧: rows は 1 行に「題名, 説明, 分類, 日付」（parseArticles）。desc は説明を出すか、more は下の「すべて表示」を出すか。外の枠と見出しの行はグループ枠と同じ形
-  articles: { name: '記事の一覧', pal: '記事の一覧', icon: '📰', w: 784, h: 416, label: 'よくある質問', props: {
+  // 記事の一覧: rows は 1 行に「題名, 説明, 分類, 日付」（parseArticles）。desc は説明を出すか、more は下の「すべて表示」を出すか。外の枠と見出しの行はグループ枠と同じ形。
+  // 高さ 408 は、最初の中身（4 件・説明を出す・すべて表示）の articlesHeight（第 17 段階。q137 の①）
+  articles: { name: '記事の一覧', pal: '記事の一覧', icon: '📰', w: 784, h: 408, label: 'よくある質問', props: {
     rows: 'エラー E-11 が出たとき, 室外機の温度の部品のエラーです。電源を入れ直す手順を説明します。, 故障の直し方, 2026-10-20\n'
       + '冷房が効かないとき, フィルターの掃除と、設定の温度の確かめ方を説明します。, よくある質問, 2026-10-12\n'
       + 'リモコンの電池の替え方, 電池の種類と、替えた後の時刻の合わせ方を説明します。, よくある質問, 2026-09-28\n'
@@ -2841,12 +2844,19 @@ const partTableHeight = (p, design = null) => (isKanbanPart(p) ? kanbanHeight(ka
   : isTilesPart(p) ? tilesHeight(p.view.rows, (p.props.columns || []).length) : tableHeight(p.view.rows));
 // 表の部品の形の印（表示のしかたと、中身から決まる高さ）。変わったら高さを合わせ直す
 const tableShapeKey = (p, design) => `${isKanbanPart(p) ? 'kanban' : isTilesPart(p) ? 'tiles' : 'table'}:${partTableHeight(p, design)}`;
-// 表の部品の高さを中身に合わせる（表を上へずらさず、画面を伸ばす）
-function fitTablePart(p, sc, design) {
-  const h = partTableHeight(p, design);
+// アイテムの高さを h にする（アイテムを上へずらさず、画面を伸ばす）
+function fitPartHeight(p, sc, h) {
   if (p.y + h > sc.height) sc.height = heightToFit(p.y + h, sc.device);
   Object.assign(p, fitRect({ ...p, h }, sc));
 }
+// 表の部品の高さを中身に合わせる
+const fitTablePart = (p, sc, design) => fitPartHeight(p, sc, partTableHeight(p, design));
+// 記事の一覧の高さ（第 17 段階。画像 q137 の①。関連レコード一覧の並べて表示と同じく、中身から決める）: 枠 2・見出しの行 44・
+// 記事 1 件ごとに 80（説明を出さないときは 40。記事がなければ 1 件分）・下の「すべて表示」40。8 ドットのマス目に切り上げる。CSS の .pfr-head・.pat-i・.pat-more の高さと合わせる
+const ARTICLE_H = 80;
+const ARTICLE_SHORT_H = 40;
+const articlesHeight = (props = {}) => Math.ceil((2 + 44 + Math.max(1, parseArticles(props.rows).length) * (props.desc === false ? ARTICLE_SHORT_H : ARTICLE_H)
+  + (props.more === false ? 0 : 40)) / GRID) * GRID;
 
 // 表の列のうち、指している項目の種類が types のもの（{ col: 表の列, item: 項目 } の並び。列の順）
 function kanbanColumnItems(design, p, types) {
@@ -5544,6 +5554,7 @@ const actions = {
   updatePart(designId, screenId, partId, patch) {
     return mutatePart(designId, screenId, partId, (p, sc, d) => {
       const shape0 = p.type === 'table' ? tableShapeKey(p, d) : '';
+      const articles0 = p.type === 'articles' ? articlesHeight(p.props) : 0;
       ['labelPos', 'sample', 'placeholder'].forEach((k) => { if (k in patch) p[k] = patch[k]; });
       if ('numbered' in patch) p.no = patch.numbered ? (p.no != null ? p.no : nextPartNo(sc)) : null;
       if (isObj(patch.view)) {
@@ -5561,6 +5572,9 @@ const actions = {
       // 表の高さは、サンプルの行数を変えたときと、表示のしかた（表・並べて表示・かんばん）か中身から決まる高さが変わったときに合わせる。
       // 表のまま列を変えても、人が伸ばした高さは戻さない
       if (p.type === 'table' && (isObj(patch.view) || tableShapeKey(p, d) !== shape0)) fitTablePart(p, sc, d);
+      // 記事の一覧の高さは、記事の数・「説明を出す」・「すべて表示」を変えて中身から決まる高さが変わったときに合わせる（第 17 段階。q137 の①。
+      // 見出しの文字だけを変えても、人が伸ばした高さは戻さない）
+      if (p.type === 'articles' && articlesHeight(p.props) !== articles0) fitPartHeight(p, sc, articlesHeight(p.props));
     });
   },
   // 位置と大きさを変える（マス目に吸い付け、画面の中に収める）。変わらないときは履歴に積まない。
@@ -17244,6 +17258,8 @@ function aiLayoutSpec(tx, d, e, used, plan, where) {
   if (e.samples != null && type !== 'table') throw aiBad('samples（サンプル値）を書けるのは表だけです。');
   // 大きな数字のグラフは、数字の並びに合わせて低くする（第 15 段階）
   if (type === 'graph' && isObj(e.props) && e.props.chart === 'metric') size.h = METRIC_GRAPH_H;
+  // 記事の一覧は、記事の数・「説明を出す」・「すべて表示」から高さを決める（第 17 段階。q137 の①）
+  if (type === 'articles') size.h = articlesHeight({ ...partType('articles').props, ...(spec.props || {}) });
   const out = { ...spec, type, w0: size.w, h0: size.h };
   // レコード一覧・関連レコード一覧の設定・サンプル値・高さは、全部の行を読んで項目を作った後に決める（後ろの行で作る項目も、列・列に分ける項目に書けるように。第 15 段階）
   if (type === 'table' && !spec.itemId) plan.late.push({ where, apply: (dd) => aiLayoutTableView(out, e, d, dd, plan) });
@@ -19224,7 +19240,7 @@ function exposeForTest() {
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     KINTONE_TYPES, kintoneChoices, kintoneTypeOf, kintoneCodeOf, kintoneCodeOk, kintoneCodes, isKintoneDesign,
     WINDOW_POS, windowRect, partBounds, clampGroupMove, HEADER_KINDS, PORTAL_BAND, portalOf, bandHeight, templateUnderId,
-    CRM_SAMPLE, buildCrmSample,
+    CRM_SAMPLE, buildCrmSample, articlesHeight,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
     setMaterialWaitMs: (ms) => { materialWaitMs = ms; },
     ready: true,
