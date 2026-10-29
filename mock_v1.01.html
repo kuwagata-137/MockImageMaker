@@ -646,6 +646,10 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .pcal-wk-slot:first-child{border-top:none}
 .pcal-wev{position:absolute;font-style:normal;font-size:11px;line-height:15px;padding:2px 4px;border-radius:4px;background:#dbeafe;border-left:3px solid #2563eb;color:#1e3a8a;overflow:hidden}
 .pcal-wev em{display:block;font-style:normal;font-weight:700;white-space:nowrap}
+.pcal-wev span{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+.pcal-wev.short{white-space:nowrap;text-overflow:ellipsis;padding-top:0;padding-bottom:0}
+.pcal-wev.short em{display:inline;margin-right:4px}
+.pcal-wev.short span.one{display:inline}
 /* メールの作成欄（第 15 段階。画像 q126 の案A）。外の枠と見出しの行はグループ枠と同じ */
 .pml-row{display:flex;align-items:center;gap:10px;min-height:38px;flex-shrink:0;margin:0 14px;border-bottom:1px solid #e2e8f0;font-size:13px;white-space:nowrap;overflow:hidden}
 .pml-row small{width:52px;flex-shrink:0;color:#64748b;font-size:12.5px}
@@ -6510,6 +6514,9 @@ function calendarLanes(evs) {
   return out;
 }
 // 週の表示: 今日のある週（日〜土）。左に時刻、予定は時刻の位置と長さの箱。終日の予定があるときだけ、日付の見出しの下に終日の行を出す
+// 週の表示の時刻の所のほかの高さ（項目名の行 24・枠の上の空き 4・枠の線 2・上の行 46・日付の見出しの行 35）と、終日の行の高さ（予定 1 つのとき）
+const CAL_WEEK_CHROME_H = 24 + 4 + 2 + 46 + 35;
+const CAL_WEEK_ALLDAY_H = 25;
 function calendarWeekHtml(p, today, events) {
   const start = calendarAddDays(today, -today.getUTCDay());
   const days = Array.from({ length: 7 }, (_, i) => calendarAddDays(start, i));
@@ -6521,10 +6528,17 @@ function calendarWeekHtml(p, today, events) {
   const allDay = events.filter((e) => e.allDay && days.some((d) => calendarKey(d) === e.key));
   const allRow = allDay.length ? `<div class="pcal-wk-all"><span>終日</span>${days.map((d) => `<div>${allDay.filter((e) => e.key === calendarKey(d))
     .map((e) => `<i class="pcal-ev allday">${esc(e.title)}</i>`).join('')}</div>`).join('')}</div>` : '';
+  // 予定の箱に入る件名の行の数（箱の高さは時刻の割合で決まるので、アイテムの高さからおよそのドット数を出す）。行の途中で切れて見えないように、入らない分は「…」にする
+  const bodyPx = Math.max(60, (p.h || 0) - CAL_WEEK_CHROME_H - (allDay.length ? CAL_WEEK_ALLDAY_H : 0));
   const cols = days.map((d) => {
     const evs = events.filter((e) => !e.allDay && e.key === calendarKey(d) && e.end > h0 * 60 && e.start < h1 * 60);
-    const boxes = calendarLanes(evs).map(({ e, lane, of }) => `<i class="pcal-wev" style="top:calc(${pct(e.start).toFixed(2)}% + 1px);height:calc(${(pct(e.end) - pct(e.start)).toFixed(2)}% - 3px);`
-      + `left:calc(${((lane / of) * 100).toFixed(2)}% + 2px);width:calc(${(100 / of).toFixed(2)}% - 5px)"><em>${calendarTime(e.start)}〜${calendarTime(e.end)}</em>${esc(e.title)}</i>`).join('');
+    const boxes = calendarLanes(evs).map(({ e, lane, of }) => {
+      const boxPx = ((pct(e.end) - pct(e.start)) / 100) * bodyPx - 3;
+      const lines = Math.floor((boxPx - 4 - 15) / 15);
+      const title = lines < 1 ? `<span class="one">${esc(e.title)}</span>` : `<span style="-webkit-line-clamp:${lines}">${esc(e.title)}</span>`;
+      return `<i class="pcal-wev${lines < 1 ? ' short' : ''}" style="top:calc(${pct(e.start).toFixed(2)}% + 1px);height:calc(${(pct(e.end) - pct(e.start)).toFixed(2)}% - 3px);`
+        + `left:calc(${((lane / of) * 100).toFixed(2)}% + 2px);width:calc(${(100 / of).toFixed(2)}% - 5px)"><em>${calendarTime(e.start)}〜${calendarTime(e.end)}</em>${title}</i>`;
+    }).join('');
     return `<div class="pcal-wk-col${isToday(d) ? ' today' : ''}">${'<div class="pcal-wk-slot"></div>'.repeat(h1 - h0)}${boxes}</div>`;
   }).join('');
   const times = Array.from({ length: h1 - h0 }, (_, i) => `<span>${h0 + i}:00</span>`).join('');

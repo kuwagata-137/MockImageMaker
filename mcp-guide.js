@@ -216,7 +216,8 @@ laneItem（列に分ける項目）と sumItem（列ごとに合計する項目�
     [{ "type": "graph", "label": "今期の目標の達成", "props": { "chart": "gauge", "samples": "今期の受注額, 3840", "target": "5000", "unit": "万円" } },
      { "type": "graph", "label": "段階ごとの商談の件数", "props": { "chart": "funnel", "samples": "見込み, 24\\n提案, 16\\n見積, 11\\n交渉, 7\\n受注, 4" } },
      { "type": "graph", "label": "月ごとの受注額", "span": 2, "props": { "chart": "stacked", "samples": "8月, 210, 90\\n9月, 170, 130\\n10月, 240, 120", "series": "新規\\n既存", "unit": "万円" } }],
-    [{ "type": "table", "tableKind": "records", "label": "完了予定日の近い商談", "span": 4, "rows": 4, "props": { "columns": ["商談名", "金額", "段階"], "sort": "完了予定日の近い順" } }]
+    [{ "type": "table", "tableKind": "records", "label": "完了予定日の近い商談", "span": 4, "props": { "columns": ["商談名", "金額", "段階"], "sort": "完了予定日の近い順" },
+       "samples": { "商談名": ["給湯器の交換", "換気設備の点検", "保守の契約の更新", "床暖房の工事"], "金額": [85, 24, 36, 310], "段階": ["受注", "提案", "交渉", "見積"] } }]
   ]
 }`;
 
