@@ -323,6 +323,28 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-sf .pkb-h b,.look-sf .pkb-h span,.look-sf .pkb-h small{color:#181818}
 .look-sf .pkb-card{border-color:#dddbda;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.10);color:#181818}
 .look-sf .pkb-card a{color:#0176d3;text-decoration:none}
+.look-sf .pcal-top{border-bottom-color:#e5e5e5}
+.look-sf .pcal-top b{color:#181818}
+.look-sf .pcal-nav i,.look-sf .pcal-mode i{border-color:#c9c9c9;border-radius:4px;color:#0176d3}
+.look-sf .pcal-mode i{border-radius:0}
+.look-sf .pcal-mode i:first-child{border-radius:4px 0 0 4px}
+.look-sf .pcal-mode i:last-child{border-radius:0 4px 4px 0}
+.look-sf .pcal-mode i.on{background:#0176d3;border-color:#0176d3;color:#fff}
+.look-sf .pcal-wd span,.look-sf .pcal-wk-head span{color:#444}
+.look-sf .w0 .pcal-d,.look-sf .pcal-wd .w0,.look-sf .pcal-wk-head .w0,.look-sf .w6 .pcal-d,.look-sf .pcal-wd .w6,.look-sf .pcal-wk-head .w6{color:#444}
+.look-sf .pcal-c.out .pcal-d{color:#aeaeae}
+.look-sf .pcal-c,.look-sf .pcal-wd,.look-sf .pcal-wk-head,.look-sf .pcal-wk-all,.look-sf .pcal-wk-all>div,.look-sf .pcal-wk-slot,.look-sf .pcal-wk-col{border-color:#e5e5e5}
+.look-sf .pcal-d.today,.look-sf .pcal-wk-head span.today b{background:#0176d3;color:#fff}
+.look-sf .pcal-ev{background:#d8e6fe;color:#014486}
+.look-sf .pcal-ev.allday{background:#0176d3;color:#fff}
+.look-sf .pcal-more{background:none;color:#444}
+.look-sf .pcal-wev{background:#d8e6fe;border-left-color:#0176d3;color:#014486}
+.look-sf .pml-row{border-bottom-color:#e5e5e5}
+.look-sf .pml-row small{color:#444}
+.look-sf .pml-row em{color:#0176d3}
+.look-sf .pml-chip{border-color:#c9c9c9;border-radius:4px;background:#f3f3f3}
+.look-sf .pml-tb{border-color:#c9c9c9;border-radius:4px 4px 0 0;background:#fafaf9}
+.look-sf .pml-body{border-color:#c9c9c9}
 .look-sf .prhead{background:#fff;border:1px solid #dddbda;border-radius:4px;box-shadow:0 2px 2px rgba(0,0,0,.10)}
 .look-sf .prh-top small{color:#444}
 .look-sf .prh-top b{color:#181818}
@@ -405,6 +427,23 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-kt .pkb-h b{color:#333}.look-kt .pkb-h span,.look-kt .pkb-h small{color:#666}
 .look-kt .pkb-card{border-color:#e3e7e8;border-radius:0;color:#333}
 .look-kt .pkb-card a{color:#3498db;text-decoration:none}
+.look-kt .pcal-top{border-bottom-color:#e3e7e8}
+.look-kt .pcal-top b{color:#333}
+.look-kt .pcal-nav i,.look-kt .pcal-mode i{border-color:#e3e7e8;border-radius:0;color:#3498db;background:#f7f9fa}
+.look-kt .pcal-mode i.on{background:#3498db;border-color:#3498db;color:#fff}
+.look-kt .pcal-wd{background:#f5f5f5}
+.look-kt .pcal-c,.look-kt .pcal-wd,.look-kt .pcal-wk-head,.look-kt .pcal-wk-all,.look-kt .pcal-wk-all>div,.look-kt .pcal-wk-slot,.look-kt .pcal-wk-col{border-color:#e3e7e8}
+.look-kt .pcal-d.today,.look-kt .pcal-wk-head span.today b{background:#3498db}
+.look-kt .pcal-ev{background:#e5f3fd;color:#21618c;border-radius:0}
+.look-kt .pcal-ev.allday{background:#3498db;color:#fff}
+.look-kt .pcal-more{background:none;color:#666}
+.look-kt .pcal-wev{background:#e5f3fd;border-left-color:#3498db;color:#21618c;border-radius:0}
+.look-kt .pml-row{border-bottom-color:#e3e7e8}
+.look-kt .pml-row small{color:#666}
+.look-kt .pml-row em{color:#3498db}
+.look-kt .pml-chip{border-color:#e3e7e8;border-radius:0;background:#f7f9fa}
+.look-kt .pml-tb{border-color:#e3e7e8;border-radius:0;background:#f7f9fa}
+.look-kt .pml-body{border-color:#e3e7e8}
 .look-kt .prhead{background:#fff;border:none;border-bottom:1px solid #e3e7e8;border-radius:0;padding:9px 4px}
 .look-kt .prh-ic{border-radius:4px}
 .look-kt .prh-top b{color:#333}
@@ -563,6 +602,66 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .pkb-card a{display:block;height:20px;color:#1d4ed8;text-decoration:underline;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pkb-card div{height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pkb-hint{margin:8px 4px;color:#94a3b8;font-size:12.5px}
+/* カレンダー（第 15 段階。画像 q125）。外の枠はグラフと同じ（.pgraph）。月の表示のマスの高さは calendarMonthHtml と合わせる（上の行 45・曜日の行 27） */
+.pcal{display:flex;flex-direction:column;font-size:12px;color:#1e293b}
+.pcal-top{height:45px;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 12px;border-bottom:1px solid #e2e8f0}
+.pcal-top b{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcal-nav{display:flex;gap:4px;flex-shrink:0}
+.pcal-nav i,.pcal-mode i{font-style:normal;height:26px;min-width:26px;padding:0 8px;border:1px solid #cbd5e1;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;background:#fff;font-size:12.5px;color:#334155}
+.pcal-mode{margin-left:auto;display:flex;flex-shrink:0}
+.pcal-mode i{border-radius:0;min-width:40px}
+.pcal-mode i:first-child{border-radius:5px 0 0 5px}
+.pcal-mode i:last-child{border-radius:0 5px 5px 0;border-left:none}
+.pcal-mode i.on{background:#eff6ff;border-color:#2563eb;color:#1d4ed8;font-weight:700}
+.pcal-wd{display:grid;grid-template-columns:repeat(7,1fr);flex-shrink:0;border-bottom:1px solid #e2e8f0}
+.pcal-wd span{height:26px;line-height:26px;text-align:center;font-size:12px;color:#475569}
+.pcal-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,1fr)}
+.pcal-c{border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:3px 4px;overflow:hidden;min-width:0}
+.pcal-c:nth-child(7n){border-right:none}
+.pcal-c:nth-last-child(-n+7){border-bottom:none}
+.pcal-c.out{background:#f8fafc}
+.pcal-c.out .pcal-d{color:#94a3b8}
+.pcal-d{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;font-size:12px;margin-bottom:2px}
+.pcal-d.today{background:#2563eb;color:#fff;font-weight:700}
+.pcal-ev,.pcal-more{display:block;font-style:normal;font-size:11px;line-height:18px;padding:0 4px;margin-bottom:2px;border-radius:3px;background:#dbeafe;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcal-ev em{font-style:normal;margin-right:4px;font-weight:700}
+.pcal-ev.allday{background:#2563eb;color:#fff}
+.pcal-more{background:none;color:#475569}
+.w0 .pcal-d,.pcal-wd .w0,.pcal-wk-head .w0{color:#dc2626}
+.w6 .pcal-d,.pcal-wd .w6,.pcal-wk-head .w6{color:#2563eb}
+.pcal-c.out.w0 .pcal-d,.pcal-c.out.w6 .pcal-d{color:#cbd5e1}
+.pcal-wk-head,.pcal-wk-all{display:grid;grid-template-columns:52px repeat(7,1fr);flex-shrink:0;border-bottom:1px solid #e2e8f0}
+.pcal-wk-head span{text-align:center;padding:4px 0;font-size:12px;color:#475569;white-space:nowrap}
+.pcal-wk-head b{font-size:16px;margin-right:3px;font-weight:600}
+.pcal-wk-head span.today b{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:13px;background:#2563eb;color:#fff}
+.pcal-wk-all>span{font-size:11px;color:#64748b;text-align:right;padding:4px 6px 0 0}
+.pcal-wk-all>div{border-left:1px solid #e2e8f0;padding:2px 2px 0;min-width:0}
+.pcal-wk-body{flex:1;min-height:0;display:grid;grid-template-columns:52px repeat(7,1fr)}
+.pcal-wk-times{display:flex;flex-direction:column}
+.pcal-wk-times span{flex:1;font-size:11px;color:#64748b;text-align:right;padding-right:6px;margin-top:-7px}
+.pcal-wk-times span:first-child{margin-top:0}
+.pcal-wk-col{position:relative;display:flex;flex-direction:column;border-left:1px solid #e2e8f0;min-width:0}
+.pcal-wk-col.today{background:#f8fbff}
+.pcal-wk-slot{flex:1;border-top:1px solid #e2e8f0}
+.pcal-wk-slot:first-child{border-top:none}
+.pcal-wev{position:absolute;font-style:normal;font-size:11px;line-height:15px;padding:2px 4px;border-radius:4px;background:#dbeafe;border-left:3px solid #2563eb;color:#1e3a8a;overflow:hidden}
+.pcal-wev em{display:block;font-style:normal;font-weight:700;white-space:nowrap}
+/* メールの作成欄（第 15 段階。画像 q126 の案A）。外の枠と見出しの行はグループ枠と同じ */
+.pml-row{display:flex;align-items:center;gap:10px;min-height:38px;flex-shrink:0;margin:0 14px;border-bottom:1px solid #e2e8f0;font-size:13px;white-space:nowrap;overflow:hidden}
+.pml-row small{width:52px;flex-shrink:0;color:#64748b;font-size:12.5px}
+.pml-row>span{overflow:hidden;text-overflow:ellipsis}
+.pml-row em{margin-left:auto;font-style:normal;color:#1d4ed8;font-size:12.5px;flex-shrink:0}
+.pml-chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 6px 0 10px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;font-size:12.5px;flex-shrink:0}
+.pml-chip i{font-style:normal;font-size:11px;color:#64748b}
+.pml-tb{display:flex;align-items:center;gap:12px;height:34px;flex-shrink:0;margin:8px 14px 0;padding:0 10px;border:1px solid #e2e8f0;border-bottom:none;border-radius:6px 6px 0 0;background:#f8fafc;font-size:13px;color:#334155}
+.pml-tb i{font-style:italic;font-family:Georgia,serif}
+.pml-tb s{width:1px;height:16px;background:#cbd5e1}
+.pml-body{flex:1;min-height:0;margin:0 14px;padding:10px 12px;border:1px solid #e2e8f0;font-size:13px;line-height:1.7;overflow:hidden;color:#1e293b}
+.pml-row+.pml-body{margin-top:8px;border-radius:6px}
+.pml-foot{height:52px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 14px}
+.pml-clip{color:#64748b;display:inline-flex}
+.pml-clip svg{width:18px;height:18px}
+.pml-send{flex:none;margin-left:auto;width:88px;height:34px;font-size:14px}
 /* レコードの見出し（第 14 段階。画像 q116 の左の段）。上に重ねたボタンは、見出しの上に描く */
 .prhead{flex:1;min-width:0;min-height:0;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:9px 16px;overflow:hidden;line-height:1.25}
 .prh-top{display:flex;align-items:center;gap:12px;min-width:0}
@@ -1733,7 +1832,7 @@ const FRAME_TOP = 64; // グループ枠の上の端から、中の 1 行目の�
 const FRAME_EMPTY_H = 160; // 中に何も並べないグループ枠の高さ
 const isFrameBlock = (b) => isObj(b) && typeof b.frame === 'string';
 // 列の幅いっぱいに広げる種類（入力の項目・表・グラフ・説明文・見出し・区切り線・第 14 段階のアイテム）。ほかは最初の幅（列より広ければ列の幅）
-const STRETCH_TYPES = ['table', 'graph', 'desc', 'heading', 'divider', 'frame', 'recordHead', 'activity', 'tree'];
+const STRETCH_TYPES = ['table', 'graph', 'desc', 'heading', 'divider', 'frame', 'recordHead', 'activity', 'tree', 'calendar', 'mail'];
 const stretchType = (type) => !!partType(type) && (!!partType(type).input || STRETCH_TYPES.includes(type));
 // blocks を、x から幅 w の 1 つの列に、startY から上から順に重ねる。block はアイテム 1 つか、グループ枠 { frame: 'グループ名', color, columns（1〜2）, rows }。
 // sizeOf(entry) は { type, w, h }。戻り値 { placed: [{ entry, type, x, y, w, h }]（置く順。グループ枠は中のアイテムより前）, nextY }
@@ -2029,6 +2128,18 @@ const PART_TYPES = {
   tree: { name: 'ツリー', icon: '🗂', w: 240, h: 320, label: '', props: {
     lines: '契約書\n  2026年度（5）\n  2025年度（12）\n  2024年度（9）\n+規程\n議事録\n  2026年度（14）\n  2025年度（31）\n+申請書の控え',
     current: '契約書 > 2026年度（5）', folder: true } },
+  // カレンダー（第 15 段階。画像 q125）: mode は 'month'（月の表示）・'week'（週の表示）、today は今日として描く日（その日のある月・週を描き、印を付ける）。
+  // samples は 1 行に「日付, 時刻, 件名」（時刻は「10:00-11:30」。空なら終日。parseCalendarSamples）、hours は週の表示で描く時刻の範囲
+  calendar: { name: 'カレンダー', icon: '📆', w: 800, h: 520, label: '予定', props: {
+    mode: 'month', today: '2026-10-22', hours: '8:00-18:00',
+    samples: '2026-10-06, 10:00-11:00, 展示会の下見\n2026-10-09, , 創立記念日\n2026-10-14, 13:00-14:00, 新しい取引先を訪問\n2026-10-19, 10:00-11:00, 週の定例の打ち合わせ\n'
+      + '2026-10-20, 13:00-14:30, 山田様を訪問（点検）\n2026-10-21, 09:30-10:30, 見積書の確認\n2026-10-22, 10:00-12:00, 株式会社サンプル商事を訪問\n2026-10-22, 15:00-16:00, 社内の勉強会\n'
+      + '2026-10-23, 14:00-15:00, 保守の契約の打ち合わせ\n2026-10-28, 10:00-11:30, 空調の入れ替えの提案\n2026-10-30, 16:00-17:00, 月末の締めの確認' } },
+  // メールの作成欄（第 15 段階。画像 q126 の案A）: 差出人・宛先・件名・本文はサンプル値（宛先は「、」で区切ると札を分ける）。toolbar は書式のボタンの行、color は見出しの左のアイコンの色。
+  // 項目一覧には入れない。送信のボタンの先の画面を描くときは、ボタンのアイテムを上に重ねて置く（container。グループ枠と同じく一緒に動く）
+  mail: { name: 'メールの作成欄', pal: 'メールの\n作成欄', icon: '✉', w: 560, h: 440, label: 'メールを作成', container: true, props: {
+    color: 'blue', from: '佐藤 花子 <sato@example.com>', to: '山田 太郎', subject: '点検の日の連絡',
+    body: '山田 太郎 様\n\nいつもお世話になっております。\n点検の日を 10 月 22 日（木）10 時でお願いできますでしょうか。\n\n佐藤 花子', toolbar: true } },
 };
 // グループ枠の見出しの左のアイコンの色（右のパネルの選択肢の順。'none' はアイコンを出さない）と、アイコンの絵（白い線。Salesforce のアイコンは写さない）
 const FRAME_COLORS = { blue: '青', green: '緑', orange: '橙', red: '赤', purple: '紫', gray: '灰', none: 'なし' };
@@ -2043,8 +2154,8 @@ const paletteEntry = (type) => (own(PALETTE_EXTRA, type) ? PALETTE_EXTRA[type] :
 const PALETTE_GROUPS = [
   { id: 'basic', name: '基本', types: ['text1', 'text2', 'number', 'date', 'dropdown', 'radio', 'checkbox', 'table', 'button', 'graph', 'heading', 'desc', 'divider', 'callout'] },
   { id: 'input', name: '入力画面用', types: ['file', 'user', 'datetime', 'calc'] },
-  { id: 'list', name: '一覧画面用', types: ['search', 'filter', 'pager', 'tree'] },
-  { id: 'detail', name: '詳細画面用', types: ['frame', 'recordHead', 'activity'] },
+  { id: 'list', name: '一覧画面用', types: ['search', 'filter', 'pager', 'tree', 'calendar'] },
+  { id: 'detail', name: '詳細画面用', types: ['frame', 'recordHead', 'activity', 'mail'] },
   { id: 'progress', name: '進捗画面用', types: ['status', 'steps', 'tabs'] },
   { id: 'look', name: 'その他', types: ['image', 'link', 'icon'] },
 ];
@@ -2550,6 +2661,18 @@ function describePartLines(p, ctx = null) {
       if (rows.length) eqIf('ツリー', `${rows.filter((r) => !r.depth).map((r) => r.name).join('／')}（${rows.length} 行）`);
       break;
     }
+    case 'calendar': {
+      const evs = parseCalendarSamples(pr.samples);
+      eqIf('表示のしかた', pr.mode === 'week' ? '週' : '月');
+      eqIf('今日', v(pr.today));
+      if (evs.length) eqIf('予定', `${evs.length} 件`);
+      break;
+    }
+    case 'mail':
+      eqIf('宛先', v(pr.to));
+      eqIf('件名', v(pr.subject));
+      eqIf('中のアイテム', frameKidNosText(ctx, p));
+      break;
     case 'table':
       if (p.tableKind === 'subtable') { if (p.required) short.push('必須（1 行以上）'); }
       else if (p.tableKind === 'related') {
@@ -5833,6 +5956,8 @@ function partInnerHtml(p, t, marks = false) {
     }
     case 'activity': return activityHtml(p);
     case 'tree': return treeHtml(p);
+    case 'calendar': return calendarHtml(p);
+    case 'mail': return mailHtml(p);
   }
   return partLabelHtml(p, marks) + partFieldHtml(p, t);
 }
@@ -6193,6 +6318,158 @@ function treeHtml(p) {
       + `${pr.folder === false ? '' : `<span class="ptr-fd">${TREE_FOLDER}</span>`}<span class="ptr-name">${esc(c ? c[1] : r.name)}</span>${c ? `<small>（${c[2]}）</small>` : ''}</div>`;
   }).join('');
   return `${partNoHtml(p, p.x >= 28 ? ' pno-out pno-top' : ' pno-corner')}<div class="ptree">${rows || '<span class="pph">右のパネルにツリーの行を書きます</span>'}</div>`;
+}
+
+// カレンダー（第 15 段階。画像 q125）の日付。2026-10-22・2026/10/22・2026年10月22日 を、その日の 0 時（UTC）にする。ない日付（2 月 30 日）は null
+function calendarDay(s) {
+  const m = String(s || '').normalize('NFKC').trim().match(/^(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.getUTCMonth() === Number(m[2]) - 1 ? d : null;
+}
+const calendarKey = (d) => d.toISOString().slice(0, 10);
+const calendarAddDays = (d, n) => new Date(d.getTime() + n * 864e5);
+const CAL_WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+// 「10:00」を 0 時からの分にする。読めないときは null
+function calendarMinutes(s) {
+  const m = String(s).match(/^(\d{1,2}):(\d{2})$/);
+  return m && Number(m[1]) <= 24 && Number(m[2]) < 60 ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+// 時刻の範囲「10:00-11:30」（区切りは - 〜 ～）。終わりがないか、始まりより前なら 1 時間。読めないときは null
+function calendarRange(s) {
+  const m = String(s || '').normalize('NFKC').replace(/\s/g, '').match(/^(\d{1,2}:\d{2})(?:[-〜~](\d{1,2}:\d{2}))?$/);
+  const start = m ? calendarMinutes(m[1]) : null;
+  if (start == null) return null;
+  const end = m[2] ? calendarMinutes(m[2]) : null;
+  return { start, end: end != null && end > start ? end : start + 60 };
+}
+// 1 行に「日付, 時刻, 件名」。区切りは半角・全角のカンマとタブ（件名の中の「、」では切らない。活動履歴と同じ）。
+// 時刻が空なら終日。「日付, 件名」の 2 つだけの行も終日にする。日付か時刻の読めない行は描かない
+function parseCalendarSamples(text) {
+  return String(text || '').split('\n').map((line) => {
+    const f = [];
+    let rest = line;
+    for (let i = 0; i < 2; i++) {
+      const m = rest.match(/[,，\t]/);
+      if (!m) break;
+      f.push(rest.slice(0, m.index).trim());
+      rest = rest.slice(m.index + 1);
+    }
+    f.push(rest.trim());
+    const day = calendarDay(f[0]);
+    if (!day || f.length < 2) return null;
+    let [time, title = ''] = f.slice(1);
+    if (f.length === 2 && !calendarRange(time)) [time, title] = ['', time];
+    const range = time ? calendarRange(time) : null;
+    if (time && !range) return null;
+    return { key: calendarKey(day), day, title, allDay: !range, start: range ? range.start : 0, end: range ? range.end : 0 };
+  }).filter(Boolean).slice(0, 60);
+}
+const calendarTime = (min) => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
+// 終日の予定を先に、時刻のある予定は始まりの早い順
+const calendarSort = (a, b) => (b.allDay - a.allDay) || a.start - b.start;
+// 上の行（年月か週の範囲・‹ › 今日 のボタン・右に「月 | 週」）
+function calendarTopHtml(title, mode) {
+  return `<div class="pcal-top"><b>${esc(title)}</b><span class="pcal-nav"><i>‹</i><i>›</i><i>今日</i></span>`
+    + `<span class="pcal-mode"><i${mode === 'month' ? ' class="on"' : ''}>月</i><i${mode === 'week' ? ' class="on"' : ''}>週</i></span></div>`;
+}
+// 月の表示: 今日のある月を、日曜はじまりの 7 列で 5 段か 6 段。マスに入りきらない予定は「ほか N 件」（マスの高さは描く高さから決める）
+function calendarMonthHtml(p, today, events) {
+  const first = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+  const days = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0)).getUTCDate();
+  const weeks = Math.ceil((first.getUTCDay() + days) / 7);
+  const start = calendarAddDays(first, -first.getUTCDay());
+  const cellH = (p.h - TABLE_LABEL_H - 45 - 27 - 2) / weeks; // 上の行 45・曜日の行 27・枠 2（CSS の .pcal-top・.pcal-wd と合わせる）
+  const fit = Math.max(0, Math.floor((cellH - 30) / 20)); // 日付の行 30・予定 1 つ 20
+  const cells = Array.from({ length: weeks * 7 }, (_, i) => {
+    const d = calendarAddDays(start, i);
+    const k = calendarKey(d);
+    const evs = events.filter((e) => e.key === k).sort(calendarSort);
+    const shown = evs.length > fit ? evs.slice(0, Math.max(0, fit - 1)) : evs;
+    const more = evs.length - shown.length;
+    return `<div class="pcal-c${d.getUTCMonth() !== today.getUTCMonth() ? ' out' : ''} w${d.getUTCDay()}"><span class="pcal-d${k === calendarKey(today) ? ' today' : ''}">${d.getUTCDate()}</span>`
+      + shown.map((e) => `<i class="pcal-ev${e.allDay ? ' allday' : ''}">${e.allDay ? '' : `<em>${calendarTime(e.start)}</em>`}${esc(e.title)}</i>`).join('')
+      + `${more ? `<i class="pcal-more">ほか ${more} 件</i>` : ''}</div>`;
+  }).join('');
+  return calendarTopHtml(`${today.getUTCFullYear()}年${today.getUTCMonth() + 1}月`, 'month')
+    + `<div class="pcal-wd">${CAL_WEEKDAYS.map((w, i) => `<span class="w${i}">${w}</span>`).join('')}</div>`
+    + `<div class="pcal-grid" style="grid-template-rows:repeat(${weeks},1fr)">${cells}</div>`;
+}
+// 週の表示の時刻の範囲（props.hours「8:00-18:00」。1 時間ごとに切り下げ・切り上げ）。読めないときは 8 時から 18 時
+function calendarHours(s) {
+  const r = calendarRange(s);
+  const h0 = r ? Math.floor(r.start / 60) : 8;
+  const h1 = r ? Math.min(24, Math.ceil(r.end / 60)) : 18;
+  return h1 > h0 ? [h0, h1] : [8, 18];
+}
+// 週の範囲の文（2026年10月18日〜24日。月や年をまたぐときは、またいだ所から書く）
+function calendarWeekTitle(a, b) {
+  const head = `${a.getUTCFullYear()}年${a.getUTCMonth() + 1}月${a.getUTCDate()}日`;
+  if (a.getUTCFullYear() !== b.getUTCFullYear()) return `${head}〜${b.getUTCFullYear()}年${b.getUTCMonth() + 1}月${b.getUTCDate()}日`;
+  return `${head}〜${a.getUTCMonth() !== b.getUTCMonth() ? `${b.getUTCMonth() + 1}月` : ''}${b.getUTCDate()}日`;
+}
+// 同じ日に時刻の重なる予定は、横に並べる（重なる予定の組ごとに幅を分ける）
+function calendarLanes(evs) {
+  const out = [];
+  let group = [];
+  let groupEnd = -1;
+  const flush = () => { const n = Math.max(1, ...group.map((g) => g.lane + 1)); group.forEach((g) => out.push({ ...g, of: n })); group = []; };
+  evs.slice().sort((a, b) => a.start - b.start || a.end - b.end).forEach((e) => {
+    if (group.length && e.start >= groupEnd) flush();
+    const used = new Set(group.filter((g) => g.e.end > e.start).map((g) => g.lane));
+    let lane = 0;
+    while (used.has(lane)) lane++;
+    group.push({ e, lane });
+    groupEnd = Math.max(groupEnd, e.end);
+  });
+  if (group.length) flush();
+  return out;
+}
+// 週の表示: 今日のある週（日〜土）。左に時刻、予定は時刻の位置と長さの箱。終日の予定があるときだけ、日付の見出しの下に終日の行を出す
+function calendarWeekHtml(p, today, events) {
+  const start = calendarAddDays(today, -today.getUTCDay());
+  const days = Array.from({ length: 7 }, (_, i) => calendarAddDays(start, i));
+  const [h0, h1] = calendarHours(p.props.hours);
+  const span = (h1 - h0) * 60;
+  const pct = (m) => (Math.min(Math.max(m - h0 * 60, 0), span) / span) * 100;
+  const isToday = (d) => calendarKey(d) === calendarKey(today);
+  const head = `<div class="pcal-wk-head"><span></span>${days.map((d) => `<span class="w${d.getUTCDay()}${isToday(d) ? ' today' : ''}"><b>${d.getUTCDate()}</b>${CAL_WEEKDAYS[d.getUTCDay()]}</span>`).join('')}</div>`;
+  const allDay = events.filter((e) => e.allDay && days.some((d) => calendarKey(d) === e.key));
+  const allRow = allDay.length ? `<div class="pcal-wk-all"><span>終日</span>${days.map((d) => `<div>${allDay.filter((e) => e.key === calendarKey(d))
+    .map((e) => `<i class="pcal-ev allday">${esc(e.title)}</i>`).join('')}</div>`).join('')}</div>` : '';
+  const cols = days.map((d) => {
+    const evs = events.filter((e) => !e.allDay && e.key === calendarKey(d) && e.end > h0 * 60 && e.start < h1 * 60);
+    const boxes = calendarLanes(evs).map(({ e, lane, of }) => `<i class="pcal-wev" style="top:calc(${pct(e.start).toFixed(2)}% + 1px);height:calc(${(pct(e.end) - pct(e.start)).toFixed(2)}% - 3px);`
+      + `left:calc(${((lane / of) * 100).toFixed(2)}% + 2px);width:calc(${(100 / of).toFixed(2)}% - 5px)"><em>${calendarTime(e.start)}〜${calendarTime(e.end)}</em>${esc(e.title)}</i>`).join('');
+    return `<div class="pcal-wk-col${isToday(d) ? ' today' : ''}">${'<div class="pcal-wk-slot"></div>'.repeat(h1 - h0)}${boxes}</div>`;
+  }).join('');
+  const times = Array.from({ length: h1 - h0 }, (_, i) => `<span>${h0 + i}:00</span>`).join('');
+  return calendarTopHtml(calendarWeekTitle(days[0], days[6]), 'week') + head + allRow + `<div class="pcal-wk-body"><div class="pcal-wk-times">${times}</div>${cols}</div>`;
+}
+// 項目名の行（番号・カレンダーの名前）の下に、月か週の表示。今日として描く日が読めないときは、最初の予定の日（それもなければ最初に置いたときの日）
+function calendarHtml(p) {
+  const pr = p.props || {};
+  const events = parseCalendarSamples(pr.samples);
+  const today = calendarDay(pr.today) || (events[0] && events[0].day) || calendarDay(PART_TYPES.calendar.props.today);
+  const body = pr.mode === 'week' ? calendarWeekHtml(p, today, events) : calendarMonthHtml(p, today, events);
+  return `<div class="plabel">${partNoHtml(p)}<span class="plabel-text">${esc(p.label)}</span></div><div class="pgraph pcal">${body}</div>`;
+}
+
+// メールの作成欄（第 15 段階。画像 q126 の案A）。外の枠と見出しの行はグループ枠と同じ形。差出人・宛先（丸い札と Cc Bcc）・件名・書式のボタンの行・本文・添付と「送信」
+const MAIL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
+const MAIL_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7"/></svg>';
+function mailHtml(p) {
+  const pr = p.props || {};
+  const color = own(FRAME_COLORS, pr.color) ? pr.color : 'blue';
+  const ic = color === 'none' ? '' : `<span class="pfr-ic fc-${color}">${MAIL_ICON}</span>`;
+  const to = String(pr.to || '').split(/[,，、;；]/).map((s) => s.trim()).filter(Boolean);
+  const chips = to.map((s) => `<span class="pml-chip">${esc(s)}<i>✕</i></span>`).join('') || '<span class="pph">宛先</span>';
+  const line = (label, html) => `<div class="pml-row"><small>${label}</small>${html}</div>`;
+  const tb = pr.toolbar === false ? '' : '<div class="pml-tb"><b>B</b><i>I</i><u>U</u><s></s><span>≡</span><span>⁝≡</span><s></s><span>リンク</span></div>';
+  return `<div class="pframe pmail"><div class="pfr-head">${partNoHtml(p)}${ic}<b>${esc(p.label)}</b></div>`
+    + line('差出人', `<span>${esc(pr.from || '')}</span>`) + line('宛先', `${chips}<em>Cc　Bcc</em>`) + line('件名', `<span>${pr.subject ? esc(pr.subject) : '<span class="pph">件名</span>'}</span>`)
+    + `${tb}<div class="pml-body">${esc(pr.body || '').replace(/\n/g, '<br>')}</div>`
+    + `<div class="pml-foot"><span class="pml-clip">${MAIL_CLIP}</span><span class="pbtn primary pml-send">送信</span></div></div>`;
 }
 
 // 入力欄の部品の、項目名より下（入力欄・選択肢・添付の枠）
@@ -10473,7 +10750,8 @@ function partCommonFieldsHtml(p) {
   if (p.type === 'image') return pfText('label', '画像の説明', p.label, { placeholder: '例: 会社のロゴ' }) + numbered;
   if (p.type === 'link') return pfText('label', '文字', p.label) + numbered;
   if (p.type === 'frame') return pfText('label', 'グループ名', p.label) + numbered;
-  if (p.type === 'activity') return pfText('label', '見出しの文字', p.label) + numbered;
+  if (p.type === 'activity' || p.type === 'mail') return pfText('label', '見出しの文字', p.label) + numbered;
+  if (p.type === 'calendar') return pfText('label', 'カレンダーの名前', p.label) + numbered;
   return numbered;
 }
 
@@ -10797,6 +11075,20 @@ function partTypeFieldsHtml(p) {
         + '<p class="hint">行の頭の空白 2 つで 1 段下げます。頭に「+」を書いた行は、閉じた形（▸）で描きます。行の終わりの「（数字）」は件数として薄く出します。</p>'
         + `<div id="pf-tree-current">${treeCurrentHtml(p)}</div>`
         + pfCheck('props.folder', 'フォルダのアイコンを出す', pr.folder !== false);
+    case 'calendar':
+      return pfSeg('props.mode', '表示のしかた', pr.mode === 'week' ? 'week' : 'month', [['month', '月'], ['week', '週']])
+        + pfText('props.today', '今日として描く日', pr.today, { hint: '（この日のある月・週を描く）', placeholder: '例: 2026-10-22' })
+        + pfArea('props.samples', '予定', pr.samples, { hint: '（1 行に「日付, 時刻, 件名」。時刻が空なら終日）', rows: 8 })
+        + (pr.mode === 'week' ? pfText('props.hours', '描く時刻', pr.hours, { hint: '（週の表示。例: 8:00-18:00）' }) : '')
+        + '<p class="hint">時刻は「10:00-11:30」のように書きます。日付や時刻の読めない行は描きません。月の表示のマスに入りきらない予定は「ほか N 件」にまとめます。</p>';
+    case 'mail':
+      return pfText('props.from', '差出人', pr.from, { hint: '（サンプル値）' })
+        + pfText('props.to', '宛先', pr.to, { hint: '（サンプル値。「、」で区切ると宛先を分けて出す）' })
+        + pfText('props.subject', '件名', pr.subject, { hint: '（サンプル値）' })
+        + pfArea('props.body', '本文', pr.body, { hint: '（サンプル値）', rows: 6 })
+        + pfCheck('props.toolbar', '書式のボタンの行を出す', pr.toolbar !== false)
+        + pfSeg('props.color', 'アイコンの色', pr.color, Object.entries(FRAME_COLORS))
+        + '<p class="hint">メールの作成欄は、項目一覧には入りません。送信のボタンを押した後の画面を描くときは、ボタンのアイテムをメールの作成欄の上に重ねて置きます。メールの作成欄を動かすと、ボタンも一緒に動きます。</p>';
   }
   return '';
 }
