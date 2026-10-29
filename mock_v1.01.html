@@ -223,6 +223,8 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .tpl .th{height:88px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border-radius:4px;overflow:hidden}
 .tpl b{display:block;margin-top:6px;font-size:13px}
 .tpl small{display:block;color:#64748b;font-size:11px;line-height:1.4}
+.tpl-grid.sys-kinds{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sys-blank-th{width:150px;height:80px;box-sizing:border-box;border:2px dashed #cbd5e1;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px}
 .tpl-dup{margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;font-size:13px;color:#475569}
 /* 左の一覧のいちばん上の「データベースの項目」（画像 q19 の案A） */
 .db-entry{display:flex;align-items:center;gap:8px;width:100%;border:2px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin-bottom:8px;background:#f8fafc;cursor:pointer;text-align:left}
@@ -8083,15 +8085,19 @@ async function newDesignWithDialog(systemId) {
 
 // システムの名前と説明の窓（「＋ 新しいシステム」と「名前と説明の変更」）。戻り値 { name, description } か null。
 // 名前は前後の空白を削り、説明は削らない（actions・AI の道具と同じ。何も変えずに「変える」を押したときに、中身が変わらないように）
-function openSystemDialog({ title, okLabel, name = '', description = '', hint = '' }) {
+// kinds（「＋ 新しいシステム」のときだけ）を渡すと、いちばん上に「作り方」の札（白紙のシステム・CRM の見本。第 17 段階。画像 q132 の案A）を並べ、
+// CRM の見本を選んだときだけ構築先と見た目の欄を出す（q134 の案A。新しい画面設計の窓と同じ欄と決まり）。戻り値に kind（'blank'・'crm'）・target・look が入る
+function openSystemDialog({ title, okLabel, name = '', description = '', hint = '', kinds = false }) {
   return showDialog({
     title,
     okLabel,
-    body: `
+    body: `${kinds ? systemKindsHtml() : ''}
       <label class="field"><span>名前（システムの名前）</span><input type="text" name="name" maxlength="${NAME_MAX}" value="${esc(name)}" placeholder="例: 出張申請システム"></label>
       <label class="field"><span>説明</span><textarea name="description" rows="4" placeholder="例: 出張の事前申請と、上長の承認、旅費の精算までをまとめるシステム">${esc(description)}</textarea></label>
-      ${hint ? `<p class="hint">${esc(hint)}</p>` : ''}`,
+      ${kinds ? systemSampleFieldsHtml() : ''}
+      ${hint ? `<p class="hint" data-sys-hint>${esc(hint)}</p>` : ''}`,
     init: (m) => {
+      if (kinds) bindSystemKinds(m, hint);
       const input = $('[name=name]', m);
       input.focus();
       input.select();
@@ -8099,20 +8105,83 @@ function openSystemDialog({ title, okLabel, name = '', description = '', hint = 
     collect: (m) => {
       const n = cleanName($('[name=name]', m).value);
       if (!n) return { error: '名前を書いてください。' };
-      return { name: n, description: $('[name=description]', m).value };
+      const out = { name: n, description: $('[name=description]', m).value };
+      if (!kinds || systemKindOf(m) !== 'crm') return kinds ? { ...out, kind: 'blank' } : out;
+      const target = readTargetPicker(m);
+      if (!target) return { error: '「その他」を選んだときは、構築先の名前を書いてください。' };
+      return { ...out, kind: 'crm', target, look: ($('[name=sys-look]:checked', m) || {}).value || 'standard' };
     },
   });
 }
+const SYSTEM_SAMPLE_HINT = 'CRM の見本では、画面設計 5 つ（顧客・商談・問い合わせ・作業指示・ナレッジ）と画面 11 個、役割 5 つ、スイムレーン図を入れて作ります。';
+// 作り方の札（白紙のシステムを選んでおく。白紙で作る人の操作は今と同じ）。CRM の見本の札には、見本の「顧客の詳細」の縮小画像（選んだ見た目で描く）
+function systemKindsHtml() {
+  const card = (kind, label, note, th, sel) => `<button type="button" class="tpl${sel ? ' sel' : ''}" data-sys-kind="${kind}" aria-pressed="${sel}">`
+    + `<div class="th">${th}</div><b>${esc(label)}</b><small>${esc(note)}</small></button>`;
+  return `<div class="field"><span>作り方</span><div class="tpl-grid sys-kinds">`
+    + card('blank', '白紙のシステム', '画面設計を入れずに作る', '<div class="sys-blank-th">画面設計なし</div>', true)
+    + card('crm', 'CRM の見本', '画面設計 5 つと画面 11 個', crmSampleThumb('salesforce'), false) + '</div></div>';
+}
+// 見本の「顧客の詳細」の縮小画像（ひな形で作るだけで、保存の中身には入れない）
+function crmSampleThumb(look) {
+  const d = createDesignData(CRM_SAMPLE.designs.customer[0], 'salesforce', undefined, look);
+  const { screen, items } = screenFromTemplate(d, 'crmDetail', '顧客の詳細');
+  return thumbHtml({ ...d, items }, screen, 150, 80);
+}
+function systemSampleFieldsHtml() {
+  return `<div data-sys-sample hidden>
+      <div class="field"><span>構築先</span>${targetPickerHtml(store.state, 'salesforce')}</div>
+      <div class="field"><span>見た目</span>${lookSegHtml('salesforce', 'sys-look')}
+        <span class="hint">構築先に Salesforce か kintone を選ぶと、見た目もその構築先に合わせます（ほかの構築先では標準）。5 つの画面設計がみな、この構築先と見た目になります。</span></div>
+    </div>`;
+}
+const systemKindOf = (m) => ($('[data-sys-kind].sel', m) || {}).dataset?.sysKind || 'blank';
+// 札を押すと選び直す。CRM の見本を選ぶと、構築先と見た目の欄を出し、名前と説明の欄が空なら見本の名前と説明を入れる（Claude が決めた）。
+// 白紙のシステムに戻すと、欄を隠し、見本の名前と説明のままの欄は空に戻す
+function bindSystemKinds(m, blankHint) {
+  const name = $('[name=name]', m);
+  const desc = $('[name=description]', m);
+  const hint = $('[data-sys-hint]', m);
+  const pick = (kind) => {
+    m.querySelectorAll('[data-sys-kind]').forEach((b) => {
+      b.classList.toggle('sel', b.dataset.sysKind === kind);
+      b.setAttribute('aria-pressed', String(b.dataset.sysKind === kind));
+    });
+    const crm = kind === 'crm';
+    $('[data-sys-sample]', m).hidden = !crm;
+    if (hint) hint.textContent = crm ? SYSTEM_SAMPLE_HINT : blankHint;
+    if (crm) {
+      if (!name.value.trim()) name.value = CRM_SAMPLE.name;
+      if (!desc.value) desc.value = CRM_SAMPLE.description;
+      return;
+    }
+    if (name.value === CRM_SAMPLE.name) name.value = '';
+    if (desc.value === CRM_SAMPLE.description) desc.value = '';
+  };
+  m.querySelectorAll('[data-sys-kind]').forEach((b) => b.addEventListener('click', () => pick(b.dataset.sysKind)));
+  // 構築先を選び直したら、見た目をその構築先の見た目に合わせる（新しい画面設計の窓と同じ。「その他」を選んだときは標準）。札の縮小画像も選んだ見た目で描き直す
+  const setLook = (t) => {
+    const look = lookForTarget(t);
+    $(`[name=sys-look][value="${look}"]`, m).checked = true;
+    redrawThumb(look);
+  };
+  const redrawThumb = (look) => { $('[data-sys-kind="crm"] .th', m).innerHTML = crmSampleThumb(look); };
+  bindTargetPicker(m, setLook);
+  $('.target-select', m).addEventListener('change', (e) => { if (e.target.value === OTHER_TARGET) setLook(''); });
+  m.querySelectorAll('[name=sys-look]').forEach((r) => r.addEventListener('change', () => redrawThumb(r.value)));
+}
 // 「＋ 新しいシステム」。同じ名前のシステムがあっても作れる（画面設計と同じ）。作ったら、最初の画面の左の一覧でそのシステムを選ぶ
-// （探している文字とつながりの図は外す。作ったシステムが見えるように）
+// （探している文字とつながりの図は外す。作ったシステムが見えるように）。CRM の見本は buildCrmSample で、1 回の変更で作る（第 17 段階）
 async function newSystemWithDialog() {
-  const r = await openSystemDialog({ title: '新しいシステム', okLabel: 'システムを作る', hint: 'システムは、いくつかの画面設計をまとめる入れ物です。説明は後からでも書けます。' });
+  const r = await openSystemDialog({ title: '新しいシステム', okLabel: 'システムを作る', hint: 'システムは、いくつかの画面設計をまとめる入れ物です。説明は後からでも書けます。', kinds: true });
   if (!r) return;
-  const id = actions.createSystem(r);
+  const crm = r.kind === 'crm';
+  const id = crm ? buildCrmSample(r) : actions.createSystem(r);
   if (!id) return;
   Object.assign(ui, { homeGroup: id, query: '', homeMap: false, menuFor: null, sysMenu: null });
   if (ui.view === 'home') renderHome();
-  toast(`「${r.name}」を作りました。「＋ 画面設計を追加する」から画面設計を追加します。`);
+  toast(crm ? `「${r.name}」を作りました。画面設計 5 つ（顧客・商談・問い合わせ・作業指示・ナレッジ）が入っています。`
+    : `「${r.name}」を作りました。「＋ 画面設計を追加する」から画面設計を追加します。`);
 }
 
 // 「今ある画面設計を入れる」「今ある画面設計を複製して入れる」の窓（画像 q47。手本は「画面を足す」の窓と、ほかのモックから項目を取り込む窓）。
