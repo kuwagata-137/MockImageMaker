@@ -339,6 +339,11 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 .look-sf .pgraph [fill="#f59e0b"]{fill:#ff9a3c}.look-sf .pgraph [fill="#10b981"]{fill:#3ba755}
 .look-kt .pgraph [fill="#3b82f6"]{fill:#3498db}.look-kt .pgraph [stroke="#3b82f6"]{stroke:#3498db}
 .look-kt .pgraph [fill="#f59e0b"]{fill:#f39c12}.look-kt .pgraph [fill="#10b981"]{fill:#2ecc71}
+/* 第 15 段階のグラフ（積み上げ棒・じょうご・メーター）で使う赤・紫と、メーターの値・大きな数字の字の色 */
+.look-sf .pgraph [fill="#ef4444"]{fill:#fe5c4c}.look-sf .pgraph [fill="#8b5cf6"]{fill:#9050e9}
+.look-kt .pgraph [fill="#ef4444"]{fill:#e74c3c}.look-kt .pgraph [fill="#8b5cf6"]{fill:#9b59b6}
+.look-sf .pgraph .pg-value{fill:#181818}.look-kt .pgraph .pg-value{fill:#333}
+.look-sf .pmetric{color:#181818}.look-sf .pmetric span{color:#444}.look-kt .pmetric{color:#333}.look-kt .pmetric span{color:#666}
 .look-kt{font-family:'Segoe UI','Yu Gothic UI','Meiryo',sans-serif}
 .look-kt .screen-band.ktb{height:88px;padding:0;display:block;background:#fff;color:#333;font-weight:400;font-size:13px}
 .ktb-top{background:#fff;border-bottom:1px solid #e3e7e8}
@@ -482,6 +487,9 @@ body.screen-sorting .sl-item.dragging{opacity:.4}
 /* グラフの部品（画像 q25） */
 .pgraph{flex:1;min-height:0;margin-top:4px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;overflow:hidden}
 .pgraph svg{display:block}
+/* 大きな数字（第 15 段階。画像 q124） */
+.pmetric{height:100%;display:flex;align-items:center;justify-content:center;gap:6px;color:#0f172a;white-space:nowrap;overflow:hidden}
+.pmetric b{font-size:44px;font-weight:700;letter-spacing:.5px}.pmetric span{font-size:16px;color:#475569;padding-top:16px}
 /* 一覧の画面用・進み具合の画面用・見た目用（画像 q26） */
 .psearch{flex:1;display:flex;align-items:center;border:1px solid #94a3b8;border-radius:6px;background:#fff;overflow:hidden;min-width:0}
 .psearch .pph{flex:1;padding:0 10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
@@ -679,6 +687,7 @@ body.resizing,body.resizing *{cursor:ns-resize!important}
 .seg span{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid #cbd5e1;border-radius:6px;padding:6px 6px;font-size:12px;background:#fff}
 .seg small{font-size:10px;color:#64748b}
 .seg input:checked+span{border-color:#2563eb;background:#eff6ff;color:#1d4ed8;font-weight:600}
+.seg.grid3{display:grid;grid-template-columns:repeat(3,minmax(max-content,1fr))}
 .seg input:focus-visible+span{box-shadow:0 0 0 2px rgba(59,130,246,.35)}
 .height-value{font-size:13px;font-weight:600}
 .check{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;cursor:pointer}
@@ -1970,7 +1979,8 @@ const PART_TYPES = {
   // ── 第 3 段階の後半で足した部品（見た目と最初の大きさは画像 q24・q25・q26 のとおり）──
   // 表: 中身（tableKind）は テーブル（subtable。項目になる）・レコード一覧（records）・関連レコード一覧（related）。props はレコード一覧・関連レコード一覧の設定
   table: { name: '表', icon: '▦', w: 640, h: 168, label: '一覧', props: {} },
-  graph: { name: 'グラフ', icon: '📊', w: 480, h: 320, label: 'グラフ', props: { chart: 'bar', byItem: '', byUnit: '', agg: 'sum', aggItem: '', samples: '4月, 120\n5月, 180\n6月, 150\n7月, 210\n8月, 170\n9月, 240', unit: '' } },
+  // target はメーターの目標の値、series は積み上げ棒グラフの凡例の名前（1 行に 1 つ。第 15 段階）
+  graph: { name: 'グラフ', icon: '📊', w: 480, h: 320, label: 'グラフ', props: { chart: 'bar', byItem: '', byUnit: '', agg: 'sum', aggItem: '', samples: '4月, 120\n5月, 180\n6月, 150\n7月, 210\n8月, 170\n9月, 240', unit: '', target: '', series: '' } },
   search: { name: '検索欄', icon: '🔍', w: 320, h: 40, ph: 'キーワードで検索', label: '', props: { items: [], button: true } },
   filter: { name: '絞り込み欄', pal: '絞り込み', icon: '⏷', w: 480, h: 40, label: '', props: { items: [], values: [] } },
   pager: { name: 'ページ送り', icon: '⋯', w: 360, h: 32, label: '', props: { perPage: '20', total: '200', showCount: true } },
@@ -2093,7 +2103,8 @@ function calloutLine(c, part) {
 const TABLE_LABEL_H = 28; // 表の部品の項目名の行の高さ
 const TABLE_ROW_H = 34; // 表の部品の見出しの行と、見本の行の高さ
 const DEFAULT_STATES = ['申請', '承認待ち', '承認済み', '完了'];
-const CHART_NAMES = { bar: '棒グラフ', hbar: '横棒グラフ', line: '折れ線グラフ', pie: '円グラフ' };
+// 後ろの 4 つは第 15 段階で追加した（画像 q124。ダッシュボードのグラフ）
+const CHART_NAMES = { bar: '棒グラフ', hbar: '横棒グラフ', line: '折れ線グラフ', pie: '円グラフ', stacked: '積み上げ棒グラフ', funnel: 'じょうごグラフ', gauge: 'メーター', metric: '大きな数字' };
 const AGG_NAMES = { count: 'レコードの件数', sum: '合計', avg: '平均', max: '最大値', min: '最小値' };
 
 // 種類の引き当ては、PART_TYPES 自身の項目だけを見る（読み込んだデータの type が constructor などでも、継承した値を拾わないため）
@@ -2474,6 +2485,8 @@ function describePartLines(p, ctx = null) {
       eqIf('分類', by ? by + (v(pr.byUnit) ? `（${v(pr.byUnit)}）` : '') : v(pr.byUnit));
       const agg = pr.agg === 'count' ? AGG_NAMES.count : itemNameIn(ctx, pr.aggItem) ? `${itemNameIn(ctx, pr.aggItem)}の${AGG_NAMES[pr.agg] || '合計'}` : '';
       eqIf('集計', agg && agg + (v(pr.unit) ? `（${v(pr.unit)}）` : ''));
+      if (pr.chart === 'gauge') eqIf('目標の値', v(pr.target));
+      if (pr.chart === 'stacked') eqIf('凡例', String(pr.series || '').split('\n').map((s) => s.trim()).filter(Boolean).join('・'));
       break;
     }
     case 'search':
@@ -5793,15 +5806,22 @@ function niceMax(v) {
   const p = 10 ** Math.floor(Math.log10(raw));
   return [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map((k) => k * p).find((x) => x >= raw - 1e-9) * 4;
 }
+const graphSvgOf = (w, h, inner) => `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true">${inner}</svg>`;
+const graphText = (x, y, s, attrs = '') => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="11" fill="#475569" ${attrs}>${esc(s)}</text>`;
+const graphNum = (v) => v.toLocaleString('ja-JP', { maximumFractionDigits: 2 });
 function graphSvg(p) {
   const w = Math.max(40, p.w - 2);
   const h = Math.max(40, p.h - TABLE_LABEL_H - 6);
-  const data = parseGraphSamples(p.props.samples);
-  const svg = (inner) => `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true">${inner}</svg>`;
-  const text = (x, y, s, attrs = '') => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="11" fill="#475569" ${attrs}>${esc(s)}</text>`;
-  if (!data.length) return svg(text(w / 2, h / 2, 'サンプル値を書くと、グラフが出ます', 'text-anchor="middle"'));
-  const max = niceMax(Math.max(...data.map((d) => d.value)));
   const chart = p.props.chart;
+  if (chart === 'stacked') return stackedGraphSvg(p, w, h);
+  const data = parseGraphSamples(p.props.samples);
+  const svg = (inner) => graphSvgOf(w, h, inner);
+  const text = graphText;
+  if (!data.length) return svg(text(w / 2, h / 2, 'サンプル値を書くと、グラフが出ます', 'text-anchor="middle"'));
+  if (chart === 'metric') return metricGraphHtml(p, data[0]);
+  if (chart === 'gauge') return gaugeGraphSvg(p, w, h, data[0]);
+  if (chart === 'funnel') return funnelGraphSvg(w, h, data);
+  const max = niceMax(Math.max(...data.map((d) => d.value)));
   if (chart === 'pie') {
     const total = data.reduce((s, d) => s + d.value, 0) || 1;
     const r = Math.max(10, Math.min(h / 2 - 10, w * 0.28));
@@ -5846,6 +5866,96 @@ function graphSvg(p) {
     ? `<polyline points="${cxs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ')}" fill="none" stroke="#3b82f6" stroke-width="2.5"/>${cxs.map((x, i) => `<circle cx="${x.toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4" fill="#fff" stroke="#3b82f6" stroke-width="2"/>`).join('')}`
     : cxs.map((x, i) => `<rect x="${(x - step * 0.32).toFixed(1)}" y="${ys[i].toFixed(1)}" width="${(step * 0.64).toFixed(1)}" height="${Math.max(0, T + ph - ys[i]).toFixed(1)}" fill="#3b82f6"/>`).join('');
   return svg(`${ticks}<line x1="${L}" y1="${T}" x2="${L}" y2="${T + ph}" stroke="#64748b"/>${marks}${labels}${unit ? text(L, 12, `（${unit}）`, 'font-size="10.5"') : ''}`);
+}
+
+// ── ダッシュボードのグラフ（第 15 段階。画像 q124）──
+// 大きな数字: サンプル値の 1 行目の値を大きく出す（分類の名前は出さない。グラフの名前が見出し）
+function metricGraphHtml(p, d) {
+  const unit = String(p.props.unit || '').trim();
+  return `<div class="pmetric"><b>${esc(graphNum(d.value))}</b>${unit ? `<span>${esc(unit)}</span>` : ''}</div>`;
+}
+// 数として読める目標の値（全角の数字と桁の区切りを直す）。読めないときは null
+function graphTarget(text) {
+  const v = Number(String(text || '').normalize('NFKC').replace(/,/g, '').trim());
+  return String(text || '').trim() && Number.isFinite(v) && v > 0 ? v : null;
+}
+// メーター: 0〜目標の値の半円を、目標の 50% まで赤・80% まで黄・それより上は緑の帯にし、針で 1 行目の値を指す（帯の分け方は Claude が決めた）。
+// 目標の値が数でないときは、右の端を niceMax(値) にし、目標の文を出さない
+const GAUGE_BANDS = [[0, 0.5, '#ef4444'], [0.5, 0.8, '#f59e0b'], [0.8, 1, '#10b981']];
+function gaugeGraphSvg(p, w, h, d) {
+  const target = graphTarget(p.props.target);
+  const max = target || niceMax(d.value);
+  const unit = String(p.props.unit || '').trim();
+  const r = Math.max(16, Math.min(w * 0.36, (h - 64) * 0.95));
+  const cx = w / 2;
+  const cy = 14 + r;
+  const th = r * 0.3;
+  const pt = (rr, a) => [cx + rr * Math.cos(Math.PI * (1 + a)), cy + rr * Math.sin(Math.PI * (1 + a))];
+  const xy = (q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`;
+  const band = ([a0, a1, c]) => `<path d="M${xy(pt(r, a0))} A${r.toFixed(1)},${r.toFixed(1)} 0 0,1 ${xy(pt(r, a1))} L${xy(pt(r - th, a1))} A${(r - th).toFixed(1)},${(r - th).toFixed(1)} 0 0,0 ${xy(pt(r - th, a0))} Z" fill="${c}"/>`;
+  const f = Math.min(1, d.value / max);
+  const tip = pt(r - th / 2, f);
+  return graphSvgOf(w, h, GAUGE_BANDS.map(band).join('')
+    + `<line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${tip[0].toFixed(1)}" y2="${tip[1].toFixed(1)}" stroke="#334155" stroke-width="3" stroke-linecap="round"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#334155"/>`
+    + graphText(cx - r + th / 2, cy + 16, '0', 'text-anchor="middle"') + graphText(cx + r - th / 2, cy + 16, graphNum(max), 'text-anchor="middle"')
+    + `<text class="pg-value" x="${cx.toFixed(1)}" y="${(cy + 40).toFixed(1)}" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">${esc(graphNum(d.value))}${unit ? `<tspan font-size="13" font-weight="400"> ${esc(unit)}</tspan>` : ''}</text>`
+    + (target ? graphText(cx, cy + 58, `目標 ${graphNum(target)}${unit ? ` ${unit}` : ''} の ${Math.round((d.value / target) * 100)}%`, 'text-anchor="middle" font-size="11.5"') : ''));
+}
+// じょうご: 1 行ごとに 1 段。帯の幅は値に合わせ（いちばん大きい値が幅いっぱい）、次の段の幅へ細くなる台形。左に分類、帯の中に値
+function funnelGraphSvg(w, h, data) {
+  const L = Math.min(Math.round(w * 0.3), Math.max(48, Math.max(...data.map((d) => d.label.length)) * 12 + 12));
+  const fw = Math.max(10, w - L - 16);
+  const bh = (h - 16) / data.length;
+  const max = Math.max(...data.map((d) => d.value)) || 1;
+  const cx = L + fw / 2;
+  return graphSvgOf(w, h, data.map((d, i) => {
+    const wt = (fw * d.value) / max;
+    const wb = i < data.length - 1 ? (fw * data[i + 1].value) / max : wt * 0.85;
+    const [y0, y1] = [8 + i * bh, 8 + (i + 1) * bh - 3];
+    return `<path d="M${(cx - wt / 2).toFixed(1)},${y0.toFixed(1)} L${(cx + wt / 2).toFixed(1)},${y0.toFixed(1)} L${(cx + wb / 2).toFixed(1)},${y1.toFixed(1)} L${(cx - wb / 2).toFixed(1)},${y1.toFixed(1)} Z" fill="${GRAPH_COLORS[i % 8]}"/>`
+      + graphText(L - 8, y0 + bh / 2 + 3, d.label, 'text-anchor="end" font-size="12"')
+      + `<text x="${cx.toFixed(1)}" y="${(y0 + bh / 2 + 4).toFixed(1)}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">${esc(graphNum(d.value))}</text>`;
+  }).join(''));
+}
+// 積み上げ棒グラフのサンプル値。1 行に「分類, 値1, 値2…」。区切りは半角・全角のカンマ・「、」・タブ（積み上げ棒では値に桁の区切りの , を書けない。Claude が決めた）。
+// 値の後ろの単位は読み飛ばし、数字のない値は 0。値が 1 つもない行は描かない。24 行・8 つの値まで
+function parseStackedSamples(text) {
+  return String(text || '').normalize('NFKC').split('\n').map((line) => {
+    const [label, ...rest] = line.split(/[,、\t]/);
+    const values = rest.map((s) => { const m = s.match(/[-+]?\d+(?:\.\d+)?/); return m ? Math.max(0, Number(m[0])) : null; }).slice(0, 8);
+    return values.some((v) => v != null) ? { label: label.trim(), values: values.map((v) => v || 0) } : null;
+  }).filter(Boolean).slice(0, 24);
+}
+// 積み上げ棒グラフ。凡例は右上に、値1 から順に（名前が足りない値は「値 N」）
+function stackedGraphSvg(p, w, h) {
+  const rows = parseStackedSamples(p.props.samples);
+  if (!rows.length) return graphSvgOf(w, h, graphText(w / 2, h / 2, 'サンプル値を書くと、グラフが出ます', 'text-anchor="middle"'));
+  const unit = String(p.props.unit || '').trim();
+  const names = String(p.props.series || '').split('\n').map((s) => s.trim());
+  const n = Math.max(...rows.map((r) => r.values.length));
+  const [L, R, T, B] = [44, 12, 30, 24];
+  const [pw, ph] = [Math.max(0, w - L - R), Math.max(0, h - T - B)];
+  const max = niceMax(Math.max(...rows.map((r) => r.values.reduce((a, b) => a + b, 0))));
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((k) => {
+    const y = T + ph * (1 - k);
+    return `<line x1="${L}" y1="${y.toFixed(1)}" x2="${w - R}" y2="${y.toFixed(1)}" stroke="${k ? '#e2e8f0' : '#64748b'}"/>${graphText(L - 5, y + 4, String(Math.round(max * k * 100) / 100), 'text-anchor="end" font-size="10.5"')}`;
+  }).join('');
+  const step = pw / rows.length;
+  const bars = rows.map((r, i) => {
+    const x = L + step * (i + 0.5);
+    let y = T + ph;
+    return r.values.map((v, j) => {
+      const bh = (ph * v) / max;
+      y -= bh;
+      return `<rect x="${(x - step * 0.32).toFixed(1)}" y="${y.toFixed(1)}" width="${(step * 0.64).toFixed(1)}" height="${bh.toFixed(1)}" fill="${GRAPH_COLORS[j % 8]}"/>`;
+    }).join('') + graphText(x, h - 8, r.label, 'text-anchor="middle"');
+  }).join('');
+  let lx = w - R;
+  const legend = Array.from({ length: n }, (_, j) => names[j] || `値 ${j + 1}`).map((s, j) => ({ s, j })).reverse().map(({ s, j }) => {
+    lx -= s.length * 12 + 26;
+    return `<rect x="${lx}" y="6" width="11" height="11" fill="${GRAPH_COLORS[j % 8]}"/>${graphText(lx + 15, 15.5, s, 'font-size="11.5"')}`;
+  }).join('');
+  return graphSvgOf(w, h, `${ticks}<line x1="${L}" y1="${T}" x2="${L}" y2="${T + ph}" stroke="#64748b"/>${bars}${legend}${unit ? graphText(L, 18, `（${unit}）`, 'font-size="10.5"') : ''}`);
 }
 
 // アイコンの部品の絵（16 種類。どれも 24 × 24 の線の絵で、Claude が描いた）
@@ -10188,7 +10298,7 @@ const pfText = (key, label, value, { hint = '', placeholder = '', type = 'text' 
 const pfArea = (key, label, value, { hint = '', rows = 3 } = {}) =>
   `<label class="field">${pfLabel(label, hint)}<textarea data-pf="${key}" rows="${rows}">${esc(value)}</textarea></label>`;
 const pfCheck = (key, label, on) => `<label class="check"><input type="checkbox" data-pf="${key}"${on ? ' checked' : ''}>${label}</label>`;
-const pfSeg = (key, label, value, choices) => `<div class="field">${pfLabel(label)}<div class="seg">${choices.map(([v, l]) =>
+const pfSeg = (key, label, value, choices, cls = '') => `<div class="field">${pfLabel(label)}<div class="seg${cls ? ` ${cls}` : ''}">${choices.map(([v, l]) =>
   `<label><input type="radio" name="pf-${key}" value="${v}" data-pf="${key}"${value === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div></div>`;
 const pfSelect = (key, label, value, choices) => `<label class="field">${pfLabel(label)}<select data-pf="${key}">${choices.map(([v, l]) =>
   `<option value="${esc(v)}"${value === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
@@ -10471,6 +10581,25 @@ function itemsHintHtml(d) {
     <p class="hint" style="margin-top:8px">表の行を押すと、ここにその項目の設定が出ます。画面に置くときは、左の一覧で画面を選び、右のアイテム一覧のいちばん上の「データベースの項目」から画面へドラッグします。</p>`;
 }
 
+// グラフの欄。グラフの種類のボタンは 3 つずつの段（右のパネルの幅に 4 つは入らないため）。大きな数字とメーターは 1 つの値なので「分類する項目」「分け方」を出さず、
+// メーターだけ「目標の値」、積み上げ棒グラフだけ「凡例の名前」を出す（第 15 段階。画像 q124）
+const GRAPH_SAMPLE_HINTS = {
+  stacked: '（1 行に「分類, 値1, 値2…」。値に桁の区切りの , は書かない）', funnel: '（1 行に「分類, 値」。上から順に描く）',
+  gauge: '（1 行目の「名前, 値」が今の値）', metric: '（1 行目の「名前, 値」の値を大きく出す）',
+};
+function graphFieldsHtml(p) {
+  const pr = p.props;
+  const items = (currentDesign() || { items: [] }).items.filter((it) => isInputType(it.type)).map((it) => [it.id, it.name]);
+  const single = pr.chart === 'gauge' || pr.chart === 'metric';
+  return pfSeg('props.chart', 'グラフの種類', pr.chart, Object.entries(CHART_NAMES).map(([k, n]) => [k, n.replace('グラフ', '')]), 'grid3')
+    + (single ? '' : pfRow(pfSelect('props.byItem', '分類する項目', pr.byItem, [['', '（なし）'], ...items]), pfText('props.byUnit', '分け方', pr.byUnit, { placeholder: '例: 月ごと' })))
+    + pfRow(pfSelect('props.agg', '集計方法', pr.agg, Object.entries(AGG_NAMES).map(([k, n]) => [k, k === 'count' ? '件数' : n])), pfSelect('props.aggItem', '集計する項目', pr.aggItem, [['', '（なし）'], ...items]))
+    + pfArea('props.samples', 'サンプル値', pr.samples, { hint: GRAPH_SAMPLE_HINTS[pr.chart] || '（1 行に「分類, 値」を 1 組）', rows: 6 })
+    + (pr.chart === 'gauge' ? pfText('props.target', '目標の値', pr.target, { hint: '（メーターの右の端）', placeholder: '例: 5,000' }) : '')
+    + (pr.chart === 'stacked' ? pfArea('props.series', '凡例の名前', pr.series, { hint: '（色ごとの名前。1 行に 1 つ。値1・値2 の順）', rows: 3 }) : '')
+    + pfText('props.unit', '値の単位', pr.unit, { placeholder: '例: 万円' });
+}
+
 // 部品の種類ごとの欄（仕様_細かい決めごと.md の「部品の細かい決めごと」）
 function partTypeFieldsHtml(p) {
   const pr = p.props;
@@ -10508,14 +10637,7 @@ function partTypeFieldsHtml(p) {
         + pfArea('props.action', '押したとき', pr.action, { hint: '（移動のほかにすること）' });
     case 'status': case 'steps':
       return processFieldsHtml(p);
-    case 'graph': {
-      const items = (currentDesign() || { items: [] }).items.filter((it) => isInputType(it.type)).map((it) => [it.id, it.name]);
-      return pfSeg('props.chart', 'グラフの種類', pr.chart, Object.entries(CHART_NAMES).map(([k, n]) => [k, n.replace('グラフ', '')]))
-        + pfRow(pfSelect('props.byItem', '分類する項目', pr.byItem, [['', '（なし）'], ...items]), pfText('props.byUnit', '分け方', pr.byUnit, { placeholder: '例: 月ごと' }))
-        + pfRow(pfSelect('props.agg', '集計方法', pr.agg, Object.entries(AGG_NAMES).map(([k, n]) => [k, k === 'count' ? '件数' : n])), pfSelect('props.aggItem', '集計する項目', pr.aggItem, [['', '（なし）'], ...items]))
-        + pfArea('props.samples', 'サンプル値', pr.samples, { hint: '（1 行に「分類, 値」を 1 組）', rows: 6 })
-        + pfText('props.unit', '値の単位', pr.unit, { placeholder: '例: 万円' });
-    }
+    case 'graph': return graphFieldsHtml(p);
     case 'search': {
       const on = pr.items || [];
       const boxes = (currentDesign() || { items: [] }).items.filter((it) => isInputType(it.type)).map((it) =>

@@ -22,8 +22,9 @@ const ITEM_SETS = {
 const TEMPLATE_IDS = ['blank', 'input', 'detail', 'list', 'graph', 'agg', 'steps'];
 
 // 足した画面と項目を、id を項目名に置き換えた比べる形にする（乱数の id は消す）。
-// 見本はデータの形の版 2 で作ったので、版 3 で足した欄は版 2 の形に戻して比べる（見本で出すステータスは id → 名前、ボタンとリンクの文字の空の移る先の欄は外す）
-const V3_EMPTY_PROPS = { button: ['to', 'designId', 'screenId', 'url'], link: ['designId'] };
+// 見本はデータの形の版 2 で作ったので、版 3 で足した欄は版 2 の形に戻して比べる（見本で出すステータスは id → 名前、ボタンとリンクの文字の空の移る先の欄は外す）。
+// グラフの目標の値と凡例の名前（第 15 段階で足した欄）も、空なら外す
+const V3_EMPTY_PROPS = { button: ['to', 'designId', 'screenId', 'url'], link: ['designId'], graph: ['target', 'series'] };
 function layoutSnapshot(design, screen, itemsBefore) {
   const nameOf = (id) => {
     const it = design.items.find((x) => x.id === id);
