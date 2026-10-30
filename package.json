@@ -1,7 +1,7 @@
 {
   "name": "mockimagemaker",
   "productName": "MockImageMaker",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "モックイメージメーカー — 業務アプリの画面設計（モック）を描いてベンダーと共有するデスクトップアプリ",
   "main": "main.js",
@@ -40,7 +40,7 @@
       "output": "dist"
     },
     "files": [
-      "mock_v1.01.html",
+      "mock_v1.02.html",
       "main.js",
       "preload.js",
       "storage.js",
