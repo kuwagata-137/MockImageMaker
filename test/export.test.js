@@ -381,21 +381,29 @@ function fakeMeasure(app) {
   };
 }
 
-test('PDF の画面のページ: アイテムの設定の表が縦に長くて画面ごと小さく縮むときは、表を広げて低くし、いちばん大きく出せる幅にする（PNG は 560 のまま）', async (t) => {
+// q138 で、q99 の「表を広げる」を「表の高さで画面が縮む画面だけ、設定一覧を次のページへ分ける」に改めた
+test('PDF の画面のページ: 設定一覧の高さで画面が縮む画面だけ、画面のページは画面と吹き出しだけにし、次のページに設定一覧を本文の幅の表で載せる（PNG は 560 のまま）', async (t) => {
   const { app, api } = await bootSample(t);
   fakeMeasure(app);
   const d = api.store.state.designs.find((x) => x.id === 'd1');
   const doc = api.exportDocument(d, api.store.state, { paper: 'A4', orient: 'landscape', cover: false, map: false, items: false });
   const pages = doc.pages.map((h) => new app.window.DOMParser().parseFromString(h, 'text/html'));
-  const tableW = (p) => parseFloat(p.querySelector('.ptable').style.width);
-  const shrink = (p) => Number((p.querySelector('.pg-head span').textContent.match(/(\d+)% に縮小/) || [])[1]);
-  // 詳細（行 4 つ）: 幅 560 では表の高さ 2040 で 29% に縮む。広げると、画面と表の横の長さで決まる倍率と釣り合う所まで大きくなる
-  assert.equal(pages[0].querySelector('.pg-head h2').textContent, '1　詳細');
-  assert.ok(tableW(pages[0]) > 560, `表の幅 ${tableW(pages[0])}`);
-  assert.ok(shrink(pages[0]) >= 35, pages[0].querySelector('.pg-head span').textContent);
-  // 新規登録（行 1 つ）: 表は低く、横の長さで縮むので、広げると小さくなる。560 のまま
-  assert.equal(tableW(pages[1]), 560);
-  // PNG は縮めないので、表は 560 のまま
+  const head = (p) => [p.querySelector('.pg-head h2').textContent, p.querySelector('.pg-head span').textContent];
+  const right = (p) => p.querySelector('.pg-foot span:last-child').textContent;
+  assert.equal(doc.total, pages.length);
+  // 詳細（行 4 つ）: 幅 560 の表の高さ 2040 で画面ごと縮むので分ける。画面のページに表はなく、次のページに表
+  assert.equal(head(pages[0])[0], '1　詳細');
+  assert.match(head(pages[0])[1], /・設定一覧は次のページ$/);
+  assert.equal(pages[0].querySelector('.ptable'), null);
+  assert.ok(pages[0].querySelector('.xp-zone'));
+  assert.deepEqual(head(pages[1]), ['1　詳細　設定一覧', `番号 1〜${pages[1].querySelectorAll('tbody tr').length}`]);
+  assert.ok(pages[1].querySelector('table.xp-itable'));
+  assert.equal(pages[1].querySelector('[data-action]'), null, '出力の表は押せない');
+  assert.deepEqual([right(pages[0]), right(pages[1])], [`1 / ${doc.total}`, `2 / ${doc.total}`]);
+  // 新規登録（行 1 つ）: 表は低く、画面は縮まないので、今までどおり同じページに幅 560 で置く
+  assert.equal(head(pages[2])[0], '2　新規登録');
+  assert.equal(parseFloat(pages[2].querySelector('.ptable').style.width), 560);
+  // PNG は縮めないので、表は 560 のまま同じ画像に入れる
   assert.deepEqual(plain(api.exportPngDocs(d, api.store.state).map((f) => Number(f.html.match(/class="ptable" style="width:(\d+)px"/)[1]))), [560, 560]);
 });
 

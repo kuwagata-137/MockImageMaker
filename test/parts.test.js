@@ -152,8 +152,10 @@ test('設定の欄: 書いた設定が画面と一覧表の「設定」の文に
   assert.equal(parts()[0].label, '顧客名', '1 行の欄は前後の空白を取る');
   assert.equal(partEl(p.id).querySelector('.plabel-text').textContent, '顧客名');
   const row = $(app, '.ptable tbody tr');
-  assert.deepEqual([...row.cells].map((c) => c.textContent), ['1', '顧客名', 'テキスト（1行）', '必須・最大 50 文字\n同じ名前があるときは警告を出す']);
-  assert.equal($(app, '#pf-out').textContent, '必須・最大 50 文字\n同じ名前があるときは警告を出す', '設定の欄の中にも同じ文');
+  // 項目のメモは項目一覧にも載るので、設定一覧では載っている所を書く（q138）
+  assert.deepEqual([...row.cells].map((c) => c.textContent), ['1', '顧客名', 'テキスト（1行）', '必須・最大 50 文字\nメモは項目一覧に載っています']);
+  assert.equal($(app, '#pf-out').textContent, '必須・最大 50 文字\nメモは項目一覧に載っています', '設定の欄の中にも同じ文');
+  assert.match(api.describeItem(api.currentDesign().items[0]), /同じ名前があるときは警告を出す$/, '項目一覧の文はメモのまま');
 
   check(field('numbered'), false);
   assert.equal(parts()[0].no, null);
@@ -750,9 +752,13 @@ test('ステータス: 並びは項目に 1 つ。並びを直すと、ステー
   assert.equal(partEl(st.id).querySelector('.pstatus').textContent.trim(), '対応中');
   const rows = $$(app, '.ptable tbody tr').map((r) => r.children[3].textContent);
   assert.equal(rows.length, 2);
-  assert.match(rows[0], /^ステータス＝受付／対応中／完了/);
-  assert.match(rows[1], /^ステータス＝受付 → 対応中 → 完了/);
-  assert.match(rows[0], /操作「承認する」＝対応中から完了へ/, '見本の操作も、名前を変えたステータスで書く');
+  // 設定一覧には見せるステータスだけを書き、全部のステータスと操作は「ステータスの流れ」に載っていると書く（q138）
+  assert.match(rows[0], /^ステータス＝対応中（この画面で見せるステータス）\n全部のステータス 3 個と操作 \d+ 個は「ステータスの流れ」に載っています$/);
+  assert.match(rows[1], /^ステータス＝完了（この画面で見せるステータス）\n全部のステータス 3 個/);
+  const full = api.tableRows(api.currentScreen(), api.currentDesign(), api.store.state).map((r) => r.setting);
+  assert.match(full[0], /^ステータス＝受付／対応中／完了/);
+  assert.match(full[1], /^ステータス＝受付 → 対応中 → 完了/);
+  assert.match(full[0], /操作「承認する」＝対応中から完了へ/, '見本の操作も、名前を変えたステータスで書く');
   assert.equal(api.currentDesign().items.length, 1);
 });
 

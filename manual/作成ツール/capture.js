@@ -593,7 +593,9 @@ async function shootDocPages(html, list) {
   await sleep(300);
   for (const [i, name] of list) {
     const els = await p2.$$('body > *');
-    const el = els[i < 0 ? els.length + i : i];
+    // 'screen' は、画面の入った最後のページ（設定一覧を次のページへ分けた画面では、最後のページが設定一覧になるため。q138）
+    let el = typeof i === 'number' ? els[i < 0 ? els.length + i : i] : null;
+    if (i === 'screen') for (const e of els) if (await e.$('.xp-zone')) el = e;
     const out = path.join(OUT, name + '.png');
     await el.screenshot({ path: out });
     const bb = await el.boundingBox();
@@ -1064,7 +1066,7 @@ const CHAPTERS = {
       const sc = d.screens.find((x) => x.name === '新規申請');
       return t.exportDocument(d, t.store.state, { ...t.exportOpts, cover: false, map: false, items: false, process: false, flow: false, screenIds: [sc.id], diffRevId: r }).html;
     }, [did, rev1]);
-    await shootDocPages(doc, [[-1, 'rv_diffpage']]);
+    await shootDocPages(doc, [['screen', 'rv_diffpage']]);
   },
 
   // 6 章 出力と受け渡し
@@ -1224,7 +1226,7 @@ const CHAPTERS = {
       const sc = d.screens.find((x) => x.name === '新規申請');
       return t.exportDocument(d, t.store.state, { ...t.exportOpts, map: false, items: false, process: false, flow: false, screenIds: [sc.id] }).html;
     }, did);
-    await shootDocPages(doc, [[0, 'vd_pdf_cover'], [-1, 'vd_pdf_screen']]);
+    await shootDocPages(doc, [[0, 'vd_pdf_cover'], ['screen', 'vd_pdf_screen']]);
     // 単体で開いた HTML（ブラウザ）
     await openStandalone('出張申請');
     // 50% にして、画面の全体が見えるようにする（縮小のボタンを押す。テスト用の窓口はないので、倍率の札の文字で確かめる）

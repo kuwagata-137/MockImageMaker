@@ -1364,9 +1364,12 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .df-new{background:#16a34a}
 .df-chg{background:#ea580c}
 .df-in{display:inline-block;min-width:18px;height:18px;padding:0 4px;border-radius:4px;font-size:11px;font-weight:700;line-height:18px;color:#fff;text-align:center;margin-right:4px;vertical-align:1px}
-.ptable .df-del h4{font-size:14px;margin:16px 0 6px;color:#991b1b}
-.ptable .df-del th{background:#fef2f2;color:#7f1d1d}
-.ptable .df-del td{color:#64748b;text-decoration:line-through}
+.ptable .df-del h4,.xp-pfoot .df-del h4{font-size:14px;margin:16px 0 6px;color:#991b1b}
+.ptable .df-del th,.xp-pfoot .df-del th{background:#fef2f2;color:#7f1d1d}
+.ptable .df-del td,.xp-pfoot .df-del td{color:#64748b;text-decoration:line-through}
+.xp-pfoot table{border-collapse:collapse;width:100%;font-size:12px;table-layout:fixed}
+.xp-pfoot th,.xp-pfoot td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;line-height:1.5;overflow-wrap:anywhere}
+.xp-pfoot .c-no{width:7%}.xp-pfoot .c-label{width:18%}.xp-pfoot .c-kind{width:15%}.xp-pfoot .c-set{white-space:pre-line}
 .df-legend{font-size:12px;color:#475569;margin-top:8px}
 .pg-head .df-sum{margin-left:auto;flex:0 0 auto;color:#334155}
 .df-sum b.n{color:#16a34a}.df-sum b.c{color:#ea580c}.df-sum b.d{color:#991b1b}
@@ -1392,7 +1395,7 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .cv-table{width:100%;border-collapse:collapse;font-size:12.5px}
 .cv-table th{background:#f1f5f9;color:#334155;font-weight:600;text-align:left;padding:5px 8px;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;white-space:nowrap}
 .cv-table td{padding:5px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;overflow-wrap:anywhere}
-.cv-table td.no,.cv-table th.no{text-align:right;width:52px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cv-table td.no,.cv-table th.no{text-align:right;width:72px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .cv-table td.dev{color:#64748b;white-space:nowrap;width:88px}
 .cv-table tr.lead td.nm{color:#1d3f6e}
 .cv-table td.empty{color:#94a3b8;text-align:center;padding:14px 8px}
@@ -1413,6 +1416,7 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .xp-itable .none{color:#94a3b8}
 .xp-itable small{color:#64748b;font-size:11px}
 .xp-itable td.nw{white-space:nowrap}
+.xp-itable tr.br td:nth-child(2){padding-left:18px}
 /* システムの説明書の設計ノートのページ（q80 案C）と、システムの表紙の札（q81） */
 .xp-itable tr.done td{color:#94a3b8;background:#f8fafc}
 .xp-nt-key{font-size:11.5px;color:#64748b;margin:0 0 10px}
@@ -1482,7 +1486,7 @@ body.xp-doc .pg+.pg{break-before:page}
 // =============================================================================
 
 // ── 1. 版 ─────────────────────────────────────────────────────────────────────
-const APP_VERSION = '1.01';
+const APP_VERSION = '1.02';
 // 出力する HTML（単体で開いて編集できる HTML）の材料にする、このアプリの script の文字。
 // document.currentScript は script を実行している間しか取れないので、いちばん初めに取っておく（style の文字は起動のときに取る）
 const APP_SCRIPT = document.currentScript ? document.currentScript.textContent : '';
@@ -3054,12 +3058,14 @@ function frameKidNosText(ctx, f) {
 // 一覧表の「設定」の列の文。1 行目に「必須・最大 50 文字」のような短い条件を「・」でつなぎ、
 // 「選択肢＝…」のように「＝」で書く項目は 1 つずつ行を分け、最後の行にメモを足す。何も書いていない欄は出さない
 // ctx（{ design, state }）を渡すと、ルックアップの文も足す（ルックアップ元の名前を引くため）
-function describePart(p, ctx = null) {
-  const x = describePartLines(p, ctx);
+function describePart(p, ctx = null, refs = null) {
+  const x = describePartLines(p, ctx, refs);
   return [x.short, ...x.eq, x.memo].filter(Boolean).join('\n');
 }
-// 設定の文を組む前の形 { short（「必須・最大 50 文字」）, eq（「選択肢＝…」の行）, memo }。改訂履歴の変更内容の一覧で、行ごとに比べるためにも使う
-function describePartLines(p, ctx = null) {
+// 設定の文を組む前の形 { short（「必須・最大 50 文字」）, eq（「選択肢＝…」の行）, memo }。改訂履歴の変更内容の一覧で、行ごとに比べるためにも使う。
+// refs（設定一覧の文だけ。q138）を渡すと、項目一覧・ステータスの流れにも載る文（項目のメモ・全部のステータスと操作）を、載っている所を書いた 1 行に置き換える。
+// refs は { memo: (項目の id) => 「項目一覧（2 ページ）」| null, process: { itemId, at: 「「ステータスの流れ」（3 ページ）」} | null }。作るのは editorSettingRefs と exportSettingRefs
+function describePartLines(p, ctx = null, refs = null) {
   const pr = p.props || {};
   const v = (s) => String(s == null ? '' : s).trim();
   const list = (a) => (Array.isArray(a) ? a.map(v).filter(Boolean).join('／') : '');
@@ -3203,10 +3209,21 @@ function describePartLines(p, ctx = null) {
     case 'pager':
       if (v(pr.perPage)) short.push(`1 ページ ${v(pr.perPage)} 件`);
       break;
-    case 'status': case 'steps':
-      eqIf('ステータス', stateNames(pr.states).join(p.type === 'steps' ? ' → ' : '／'));
-      eq.push(...actionLines(pr));
+    case 'status': case 'steps': {
+      const at = refs && refs.process && p.item && p.item.id === refs.process.itemId ? refs.process.at : '';
+      if (!at) {
+        eqIf('ステータス', stateNames(pr.states).join(p.type === 'steps' ? ' → ' : '／'));
+        eq.push(...actionLines(pr));
+        break;
+      }
+      // 見せるステータスは描くときと同じ（ステータスの印は、ないとき並びの 1 つ目。進捗バーは、ないとき出さない）。項目一覧の列の行（view がない）では出さない
+      const states = Array.isArray(pr.states) ? pr.states : [];
+      const id = p.view ? resolveStateRef(states, p.view.current) : '';
+      const shown = !p.view ? null : states.find((s) => s.id === id) || (p.type === 'status' ? states[0] : null);
+      eqIf('ステータス', shown ? `${shown.name}（この画面で見せるステータス）` : '');
+      eq.push(`全部のステータス ${states.length} 個と操作 ${(Array.isArray(pr.actions) ? pr.actions : []).filter(isObj).length} 個は${at}`);
       break;
+    }
     case 'tabs':
       eqIf('タブ', list(pr.tabs));
       break;
@@ -3217,7 +3234,10 @@ function describePartLines(p, ctx = null) {
   // kintone のフィールドの情報（kintone の画面設計で書いてあるときだけ。テーブルの列は tableColumns が ktLines で渡す）
   eq.push(...(p.ktLines || (ctx && p.item && isKintoneDesign(ctx.design) ? kintoneLines(p.item) : [])));
   if (ctx) eq.push(...lookupLines(ctx, p));
-  return { short: short.join('・'), eq, memo: v(p.memo) };
+  // 項目のメモは項目一覧にも載る。項目のないアイテム（ボタンなど）・項目を消した後に残ったアイテム・テーブルの列のメモは、ほかに載らないので残す
+  const memo = v(p.memo);
+  const memoAt = memo && refs && refs.memo && p.item ? refs.memo(p.item.id) : null;
+  return { short: short.join('・'), eq, memo: memoAt ? `メモは${memoAt}` : memo };
 }
 // 一覧表の「設定」に足す kintone の行（選んだ種類・書いたフィールドコード・自動計算の値の kintone の計算式）。column はテーブルの列
 function kintoneLines(entry, column = false) {
@@ -3263,15 +3283,16 @@ function actionLines(pr) {
 const itemNameIn = (ctx, id) => { const it = ctx && id ? findItem(ctx.design, id) : null; return it ? it.name : ''; };
 
 // データベースの項目の一覧表の「設定」の列の文（部品の設定の一覧表と同じ書き方）。表（テーブル）は列の名前も書く
-function describeItem(item, ctx = null) {
-  const text = describePart({ type: item.type, tableKind: 'subtable', required: item.required, memo: item.memo, props: item.props, item }, ctx);
+function describeItem(item, ctx = null, refs = null) {
+  const text = describePart({ type: item.type, tableKind: 'subtable', required: item.required, memo: item.memo, props: item.props, item }, ctx, refs);
   if (item.type !== 'table') return text;
   const cols = (item.props.columns || []).map((c) => c.name).filter(Boolean).join('・');
   return [cols && `列＝${cols}`, text].filter(Boolean).join('\n');
 }
 
-// 表の部品の列（描くときと、一覧表の枝番の行に使う）。{ id, name, type, kind（部品の種類の名前）, setting（設定の文） }
-function tableColumns(p, ctx = null) {
+// 表の部品の列（描くときと、一覧表の枝番の行に使う）。{ id, name, type, kind（部品の種類の名前）, setting（設定の文） }。
+// refs は設定一覧の文（describePartLines）。レコード一覧の列が指す項目にだけ効く（テーブルの列のメモは項目一覧に載らないので残す）
+function tableColumns(p, ctx = null, refs = null) {
   const pr = p.props || {};
   if (p.tableKind === 'subtable') {
     const kt = ctx && isKintoneDesign(ctx.design);
@@ -3284,7 +3305,7 @@ function tableColumns(p, ctx = null) {
   const src = p.tableKind === 'related' ? (ctx && pr.db && pr.db.designId ? findDesign(ctx.state, pr.db.designId) : null) : design;
   return (pr.columns || []).map((c) => {
     const it = src && c.ref.itemId ? findItem(src, c.ref.itemId) : null;
-    const setting = p.tableKind === 'related' ? `${ctx ? dbLabel(ctx.state, pr.db) : ''}の項目` : it ? describeItem(it, ctx) : '';
+    const setting = p.tableKind === 'related' ? `${ctx ? dbLabel(ctx.state, pr.db) : ''}の項目` : it ? describeItem(it, ctx, refs) : '';
     return { id: c.id, name: it ? it.name : c.ref.name || '（項目を選んでいません）', type: it ? it.type : 'text1', kind: it ? itemTypeName(it.type) : '－', setting };
   });
 }
@@ -3296,8 +3317,15 @@ function partTitle(p) {
   return p.type === 'desc' && first.length > 20 ? first.slice(0, 20) + '…' : first;
 }
 
-// 部品の設定の一覧表の行（番号の付いた部品だけを番号の順に）。design を渡すと、部品が指す項目の中身で書く
-function tableRows(screen, design = null, state = null) {
+// 編集の画面（と右のパネル）の設定一覧の文の refs（q138。describePartLines）。ページ番号はなく、載っている所の名前だけを書く。
+// ステータスの流れは、操作があって図と表を描けるときだけ（hasProcessPage）
+function editorSettingRefs(d) {
+  const st = d && hasProcessPage(d) ? d.items.find((x) => x.type === 'status') : null;
+  return { memo: () => '項目一覧に載っています', process: st ? { itemId: st.id, at: '「ステータスの流れ」に載っています' } : null };
+}
+// 部品の設定の一覧表の行（番号の付いた部品だけを番号の順に）。design を渡すと、部品が指す項目の中身で書く。
+// refs を渡すと、項目一覧・ステータスの流れにも載る文を置き換える（describePartLines。AI の get_screen は渡さないので全文）
+function tableRows(screen, design = null, state = null, refs = null) {
   const ctx = design && state ? { design, state } : null;
   // 表の部品は、表の行の下に、列ごとの行を枝番（3-1・3-2）で並べる（仕様_細かい決めごと.md の「部品の細かい決めごと（後半）」）
   return screen.parts
@@ -3306,9 +3334,9 @@ function tableRows(screen, design = null, state = null) {
     .flatMap((raw) => {
       const p = design ? resolvePart(design, raw) : raw;
       const kind = p.type === 'table' ? `表（${TABLE_KINDS[p.tableKind] || 'テーブル'}）` : partTypeName(p.type);
-      const row = { id: p.id, no: p.no, label: partTitle(p), kind, setting: describePart(p, ctx) };
+      const row = { id: p.id, no: p.no, label: partTitle(p), kind, setting: describePart(p, ctx, refs) };
       if (p.type !== 'table') return [row];
-      return [row, ...tableColumns(p, ctx).map((c, i) => ({ id: p.id, no: `${p.no}-${i + 1}`, label: c.name, kind: c.kind, setting: c.setting, branch: true }))];
+      return [row, ...tableColumns(p, ctx, refs).map((c, i) => ({ id: p.id, no: `${p.no}-${i + 1}`, label: c.name, kind: c.kind, setting: c.setting, branch: true }))];
     });
 }
 
@@ -7158,12 +7186,13 @@ function partFieldHtml(p, t) {
 // 部品の設定の一覧表。editor のときは、行を押すとその部品を選べるようにし、番号の付いた部品がなければ案内を出す。
 // 出力（editor でないとき）では、番号の付いた部品がなければ表を出さない
 // diff（{ info: designDiff の screens の 1 つ, label: 「第 2 版」 }）を渡すと、番号の前に「新」「変」の札を付け、表の下に「削除した部品」を並べる
-function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null, diff = null, width: tableWidth = null } = {}) {
+// refs（q138）は設定一覧の文の置き換え（describePartLines）。編集の画面はいつも editorSettingRefs、出力は呼ぶ側が渡す（PNG は渡さないので全文）
+function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null, diff = null, refs = null } = {}) {
   const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
-  const rows = tableRows(screen, design, store.state);
+  const rows = tableRows(screen, design, store.state, editor ? editorSettingRefs(design) : refs);
   const info = diff && !diff.info.isNew ? diff.info : null;
   if (!rows.length && !editor && !(info && info.deleted.length)) return '';
-  const width = tableWidth || (screen.tablePos === 'bottom' ? screen.width : TABLE_W);
+  const width = screen.tablePos === 'bottom' ? screen.width : TABLE_W;
   const head = '<thead><tr><th class="c-no">番号</th><th class="c-label">項目名</th><th class="c-kind">アイテムの種類</th><th>設定</th></tr></thead>';
   const mark = (r) => (info && !r.branch ? diffBadgeInline(info.parts[r.id]) : '');
   const body = rows.length
@@ -11488,7 +11517,8 @@ function pfOutHtml(p, { forItem = false } = {}) {
 // 右の欄に出す「設定」の文。データベースの項目の一覧表で選んだ項目は、一覧表と同じ describeItem で作る（表の項目もテーブルとして書くため）
 function subjectSettingText(p) {
   if (!p) return '';
-  return itemOnSide() && p.item ? describeItem(p.item, fieldCtx()) : describePart(p, fieldCtx());
+  // 画面のアイテムは、設定一覧と同じ短い文（q138。項目のメモ・全部のステータスと操作は、載っている所を書く）
+  return itemOnSide() && p.item ? describeItem(p.item, fieldCtx()) : describePart(p, fieldCtx(), editorSettingRefs(fieldCtx().design));
 }
 
 // 選んだ部品の設定の欄。入力欄の部品は、上に「項目の設定（どの画面でも同じ）」、下に「この画面だけの設定」を出す（画像 q20）。
@@ -13557,7 +13587,8 @@ function coverListRows(plan) {
   if (plan.itemsPage) rows.push(`<tr class="lead"><td class="nm">項目一覧</td><td class="dev"></td><td class="no">${plan.itemsPage}</td></tr>`);
   if (plan.processPage) rows.push(`<tr class="lead"><td class="nm">ステータスの流れ</td><td class="dev"></td><td class="no">${plan.processPage}</td></tr>`);
   if (plan.flowPage) rows.push(`<tr class="lead"><td class="nm">画面遷移図</td><td class="dev"></td><td class="no">${plan.flowPage}</td></tr>`);
-  plan.screens.forEach(({ s, i, page }) => rows.push(`<tr><td class="nm">${i + 1}　${esc(s.name)}</td><td class="dev">${DEVICES[s.device].label}</td><td class="no">${page}</td></tr>`));
+  // 設定一覧を次のページへ分けた画面（q138）は、ページを「7〜9」と範囲で書く
+  plan.screens.forEach(({ s, i, page, pages }) => rows.push(`<tr><td class="nm">${i + 1}　${esc(s.name)}</td><td class="dev">${DEVICES[s.device].label}</td><td class="no">${pages > 1 ? `${page}〜${page + pages - 1}` : page}</td></tr>`));
   return rows;
 }
 const coverListTable = (rows) => `<table class="cv-table"><thead><tr><th>画面の名前</th><th>機器</th><th class="no">ページ</th></tr></thead><tbody>${rows.join('') || '<tr><td class="empty" colspan="3">（出力する画面はありません）</td></tr>'}</tbody></table>`;
@@ -13784,8 +13815,9 @@ function flowPageBody(d, state, aw, ah, idTag = '') {
 // 画面と吹き出しを囲む範囲で切り取り、一覧表をその外側に 32 ドット空けて置く（右なら上の端を画面の上の端に、下なら左の端を画面の左の端にそろえる）。
 // 戻り値 { html, cw, ch }（縮める前の大きさ）。key は矢印の印の id の頭（ページごとに変える。同じ id が編集の画面にもあると矢印が消えるため）
 // diff（{ info: designDiff の screens の 1 つ, label }）を渡すと、部品・吹き出しの札と、一覧表の札・削除した部品を入れる（第 6 段階）
-// table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）。tableWidth は一覧表の幅（PDF の画面のページ。q99）
-function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true, tableWidth = null } = {}) {
+// table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）。
+// refs は設定一覧の文の置き換え（PDF の画面のページ。q138。PNG・AI は渡さないので全文）。戻り値の ch0 は、表の高さを 0 とみなした高さ（screenSplitPlan が比べる）
+function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true, refs = null } = {}) {
   const Z = CALLOUT_ZONE;
   const zoneW = s.width + Z * 2;
   const zoneH = s.height + Z * 2;
@@ -13803,7 +13835,7 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
   const zone = `<div class="xp-zone" style="position:absolute;left:0;top:0;width:${cropW}px;height:${cropH}px;overflow:hidden">`
     + `<div style="position:absolute;left:${-x0}px;top:${-y0}px;width:${zoneW}px;height:${zoneH}px">`
     + `<div style="position:absolute;left:${Z}px;top:${Z}px">${screenHtml(d, s, { grid: false, marks: false, diff: info })}</div>${lines}${boxes}</div></div>`;
-  const table = withTable ? partTableHtml(d, s, { editor: false, diff: info && diff, width: tableWidth }) : '';
+  const table = withTable ? partTableHtml(d, s, { editor: false, diff: info && diff, refs }) : '';
   let [tw, th] = [0, 0];
   if (table && measured) {
     const probe = measureBox(table);
@@ -13811,29 +13843,60 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
     [tw, th] = [Math.ceil(r.width), Math.ceil(r.height)];
     probe.remove();
   } else if (table) {
-    tw = tableWidth || (s.tablePos === 'bottom' ? s.width : TABLE_W);
+    tw = s.tablePos === 'bottom' ? s.width : TABLE_W;
   }
   const right = s.tablePos !== 'bottom';
   const tx = right ? cropW + TABLE_GAP : Z - x0;
   const ty = right ? Z - y0 : cropH + TABLE_GAP;
   const cw = table ? Math.max(cropW, tx + tw) : cropW;
   const ch = table ? Math.max(cropH, ty + th) : cropH;
-  return { cw, ch, html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
+  const ch0 = table ? Math.max(cropH, ty) : cropH;
+  return { cw, ch, ch0, html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
 }
-// PDF の画面のページで、右に置く部品の設定の一覧表の幅の候補（q99）。表が縦に長くて画面ごと小さく縮むときは、表を広げて低くし、
-// 画面をいちばん大きく出せる幅を選ぶ（倍率がほとんど同じなら狭い方）。表を下に置く画面と、測れないときは今の幅のまま。PNG は縮めないので広げない
-const PRINT_TABLE_WIDTHS = [TABLE_W, 720, 880, 1040, 1200, 1360];
-function printScreenComposite(d, s, key, measured, diff, aw, ah) {
-  const make = (w) => screenComposite(d, s, key, measured, diff, { tableWidth: w });
-  if (!measured || s.tablePos === 'bottom') return make(null);
-  let best = null;
-  for (const w of PRINT_TABLE_WIDTHS) {
-    const c = make(w);
-    const k = Math.min(1, aw / c.cw, ah / c.ch);
-    if (!best || k > best.k + 0.005) best = { c, k };
-    if (best.k >= 1) break;
+
+// ── PDF の画面のページの設定一覧（q138。仕様_細かい決めごと.md の「設定一覧の載せ方の細かい決めごと」）──
+// 設定一覧の文の refs（describePartLines）。項目一覧・ステータスの流れのページを入れたときだけ、その文を載っているページを書いた 1 行に置き換える。
+// メモは、その項目の行がある項目一覧のページを書く（itemChunks は d.items の順に分けてある）。
+// plan が null のときは仮の番号 9999 で書く（分けるかどうかを、番号が決まる前に測るため。本当の番号は 4 桁を超えないので、行は仮の番号より高くならない）
+function exportSettingRefs(d, itemChunks, proc, plan) {
+  const at = itemChunks.flatMap((rows, k) => rows.map(() => k));
+  const chunkOf = new Map(d.items.map((it, i) => [it.id, at[i]]));
+  const no = (n) => (plan ? n : 9999);
+  const st = proc ? d.items.find((x) => x.type === 'status') : null;
+  return {
+    memo: (id) => (chunkOf.get(id) == null ? null : `項目一覧（${no(plan && plan.itemsPage + chunkOf.get(id))} ページ）`),
+    process: st ? { itemId: st.id, at: `「ステータスの流れ」（${no(plan && plan.processPage)} ページ）` } : null,
+  };
+}
+// 分けた画面の設定一覧のページの表（本文の幅いっぱい。項目一覧と同じ形）。行は tableRows の行
+const PART_COLS = '<colgroup><col style="width:7%"><col style="width:18%"><col style="width:15%"><col style="width:60%"></colgroup>';
+const partPrintRows = (rows, info) => rows.map((r) => `<tr${r.branch ? ' class="br"' : ''}><td class="nw">${info && !r.branch ? diffBadgeInline(info.parts[r.id]) : ''}${esc(r.no)}</td>`
+  + `<td>${esc(r.label)}</td><td>${esc(r.kind)}</td><td class="set">${esc(r.setting)}</td></tr>`);
+const printPartTable = (rows) => `<table class="xp-itable">${PART_COLS}<thead><tr><th>番号</th><th>項目名</th><th>アイテムの種類</th><th>設定</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+// 削除したアイテムの表と変更マークの説明（分けた画面の、最後の設定一覧のページの下）
+const printDiffFoot = (info, label) => { const h = diffTableFoot(info, label); return h ? `<div class="xp-pfoot">${h}</div>` : ''; };
+// 設定一覧を同じページに置くと、表の高さのせいで画面が縮む（表の高さを 0 とみなした倍率の SPLIT_KEEP 倍より小さくなる）画面だけ、
+// 画面のページには画面と吹き出しだけを置き、次のページから設定一覧を本文の幅の表で載せる。境目の 0.9 は Claude が決めた。
+// 戻り値 { pages（この画面のページ数）, split, counts（設定一覧のページごとの行の数）, cuts（1 行が入らないページか）, footAlone（削除したアイテムの欄を、さらに次のページに置くか） }。
+// 測れないとき・表がないときは分けない。行の数は仮の番号の文（exportSettingRefs の plan なし）で測り、本当の番号の文はこの数で切る
+const SPLIT_KEEP = 0.9;
+function screenSplitPlan(d, s, state, measured, diff, aw, ah, refs) {
+  const one = { pages: 1, split: false };
+  if (!measured) return one;
+  const c = screenComposite(d, s, 'probe', measured, diff, { refs });
+  if (Math.min(1, aw / c.cw, ah / c.ch) >= Math.min(1, aw / c.cw, ah / c.ch0) * SPLIT_KEEP) return one;
+  const rows = tableRows(s, d, state, refs);
+  if (!rows.length) return one;
+  const info = diff && !diff.info.isNew ? diff.info : null;
+  const chunks = splitItemRows(partPrintRows(rows, info), aw, ah, true, printPartTable);
+  const foot = info ? printDiffFoot(info, diff.label) : '';
+  let footAlone = false;
+  if (foot) {
+    const probe = measureBox(printPartTable(chunks[chunks.length - 1]) + foot, aw);
+    footAlone = probe.getBoundingClientRect().height > ah;
+    probe.remove();
   }
-  return best.c;
+  return { pages: 1 + chunks.length + (footAlone ? 1 : 0), split: true, counts: chunks.map((x) => x.length), cuts: chunks.map((x) => !!x.cut), footAlone };
 }
 // 画面のページの本文。本文に収まるように縮め（拡大しない）、左右・上下の真ん中に置く。測れないときは縮めない。
 // 縮めるのは transform でなく zoom にする（transform だと、縮める前の幅が残り、画面のページが 2 つ以上あると、
@@ -13912,6 +13975,11 @@ function exportLayout(d, state, opts, exportedAt) {
   const proc = opts.process && hasProcessPage(d) ? processPagePlan(d, state, aw, ah, measured, idTag) : null;
   const withFlow = !!opts.flow && hasFlowPage(d, state);
   const base = (opts.pageStart || 1) - 1;
+  // 画面ごとに、設定一覧を次のページへ分けるか（q138）。番号が決まる前に、仮の番号の文で 1 回だけ測る（countOnly でも同じなので、説明書の数がそろう）
+  const splits = screens.map(({ s }) => {
+    const info = df ? df.result.screens[s.id] : null;
+    return screenSplitPlan(d, s, state, measured, info && { info, label: df.label }, aw, ah, exportSettingRefs(d, itemChunks, proc, null));
+  });
   // ページ番号は、表紙が何ページになるかで変わる。番号の桁で行の高さは変わらないので、仮の番号で 1 回分けてから決め直す
   const numbering = (coverPages) => {
     let n = base + coverPages;
@@ -13923,7 +13991,8 @@ function exportLayout(d, state, opts, exportedAt) {
     const processPage = proc ? n + 1 : 0;
     n += proc ? 1 + proc.rest.length : 0;
     const flowPage = withFlow ? ++n : 0;
-    return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: screens.map((x) => ({ ...x, page: ++n })), total: n - base };
+    const shots = screens.map((x, k) => { const page = n + 1; n += splits[k].pages; return { ...x, page, pages: splits[k].pages, split: splits[k] }; });
+    return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: shots, total: n - base };
   };
   let coverChunks = [];
   // 表紙の説明が、決めた高さに入りきるか（入りきらなければ、省略したと書く）
@@ -13941,7 +14010,8 @@ function exportLayout(d, state, opts, exportedAt) {
       coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     }
   }
-  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, revChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag };
+  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, revChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag,
+    refs: exportSettingRefs(d, itemChunks, proc, plan) };
 }
 // 表紙と「画面の一覧（続き）」「改訂履歴（続き）」のページ
 function exportCoverPages(d, L, exportedAt) {
@@ -13978,16 +14048,37 @@ function exportViewPages(d, state, L) {
   }
   return pages;
 }
-// 画面のページ（吹き出しの矢印の印の id の頭 'p' + ページの番号は、通し番号なので、説明書の中でも重ならない）
+// 画面のページ（吹き出しの矢印の印の id の頭 'p' + ページの番号は、通し番号なので、説明書の中でも重ならない）。
+// 設定一覧を分けた画面（q138）は、画面と吹き出しだけのページの後に「設定一覧」「設定一覧（続き）」のページを続け、最後に削除したアイテムの欄を置く
 function exportScreenPages(d, L) {
   const { P, aw, ah, df, measured, grand } = L;
-  return L.plan.screens.map(({ s, i, page }) => {
+  return L.plan.screens.flatMap(({ s, i, page, split }) => {
     const info = df ? df.result.screens[s.id] : null;
-    const body = screenPageBody(printScreenComposite(d, s, 'p' + page, measured, info && { info, label: df.label }, aw, ah), aw, ah, measured);
+    const diff = info && { info, label: df.label };
+    const comp = screenComposite(d, s, 'p' + page, measured, diff, split.split ? { table: false } : { refs: L.refs });
+    const body = screenPageBody(comp, aw, ah, measured);
     const name = `${i + 1}　${esc(s.name)}`;
+    const left = `${esc(d.name)} ／ ${name}`;
     const under = underScreenOf(d, s); // 小さなウィンドウの画面は、どの画面の上に開くかを書く（第 16 段階）
-    const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${under ? `・「${esc(under.name)}」の上に開く小さなウィンドウ` : ''}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`;
-    return pageFrame({ P, title: name, sub, body: body.html, left: `${esc(d.name)} ／ ${name}`, right: `${page} / ${grand}`, headExtra: diffSumHtml(df, info) });
+    const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${under ? `・「${esc(under.name)}」の上に開く小さなウィンドウ` : ''}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`
+      + (split.split ? '・設定一覧は次のページ' : '');
+    const pages = [pageFrame({ P, title: name, sub, body: body.html, left, right: `${page} / ${grand}`, headExtra: diffSumHtml(df, info) })];
+    if (!split.split) return pages;
+    const mark = info && !info.isNew ? info : null;
+    // 行は本当の番号の文で組み、仮の番号の文で測った行の数で切る（exportLayout）
+    const list = tableRows(s, d, store.state, L.refs);
+    const rows = partPrintRows(list, mark);
+    const foot = mark ? printDiffFoot(mark, df.label) : '';
+    let from = 0;
+    split.counts.forEach((n, k) => {
+      const last = k === split.counts.length - 1;
+      const sub = `番号 ${esc(String(list[from].no))}〜${esc(String(list[from + n - 1].no))}${split.cuts[k] ? '・' + LONG_ROW_NOTE : ''}`;
+      pages.push(pageFrame({ P, title: `${name}　設定一覧${k ? '（続き）' : ''}`, sub,
+        body: printPartTable(rows.slice(from, from + n)) + (last && !split.footAlone ? foot : ''), left, right: `${page + 1 + k} / ${grand}` }));
+      from += n;
+    });
+    if (split.footAlone) pages.push(pageFrame({ P, title: `${name}　設定一覧（続き）`, sub: '削除したアイテム', body: foot, left, right: `${page + split.pages - 1} / ${grand}` }));
+    return pages;
   });
 }
 
