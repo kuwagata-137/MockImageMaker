@@ -55,7 +55,9 @@ test('説明書のページの並び: システムの表紙 → スイムレー�
 test('説明書の中の画面設計のページは、その画面設計を 1 つ出力したときのページと、番号と矢印の印の id の頭のほかは同じ', async (t) => {
   const { doc, d, api } = await boot(t);
   const x = doc();
-  const norm = (h) => h.replace(/\d+ \/ \d+/g, 'n / N').replace(/全 \d+ ページ/g, '全 N ページ').replace(/<td class="no">\d+<\/td>/g, '<td class="no">n</td>')
+  // 設定一覧の「メモは項目一覧（n ページ）」「「ステータスの流れ」（n ページ）」と、表紙の範囲「7〜9」も通し番号（q138）
+  const norm = (h) => h.replace(/\d+ \/ \d+/g, 'n / N').replace(/全 \d+ ページ/g, '全 N ページ').replace(/<td class="no">\d+(〜\d+)?<\/td>/g, '<td class="no">n</td>')
+    .replace(/（\d+ ページ）/g, '（n ページ）')
     .replace(/\bp\d+-/g, 'pN-').replace(/xp-(map|proc|flow)-d\d+-/g, 'xp-$1-');
   for (const r of x.designs) {
     const single = api.exportDocument(d(r.name), api.store.state, PER, AT).pages;
