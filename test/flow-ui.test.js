@@ -75,7 +75,9 @@ test('操作のカード: 名前・前と次のステータス・操作できる
   setValue(f('cond'), '出張の 3 日前まで');
   setValue(f('to'), idOf('承認済み'));
   assert.deepEqual(plain([a().name, a().from, a().to, a().role, a().cond]), ['申請を出す', idOf('申請'), idOf('承認済み'), '申請者', '出張の 3 日前まで']);
-  assert.match(side('#pf-out').textContent, /操作「申請を出す」＝申請から承認済みへ（申請者）・出張の 3 日前まで/);
+  // 画面のアイテムの「設定一覧に出る文」は、操作を「ステータスの流れ」に載っていると書く（q138）。操作の文は項目一覧の文で確かめる
+  assert.match(side('#pf-out').textContent, /全部のステータス \d+ 個と操作 \d+ 個は「ステータスの流れ」に載っています/);
+  assert.match(api.describeItem(item()), /操作「申請を出す」＝申請から承認済みへ（申請者）・出張の 3 日前まで/);
   setValue(f('from'), idOf('承認済み'));
   assert.equal(a().from, idOf('申請'), '前と次が同じになる変更はしない');
   assert.equal(f('from').value, idOf('申請'), '選ぶ欄も元に戻す');

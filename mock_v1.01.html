@@ -3054,12 +3054,14 @@ function frameKidNosText(ctx, f) {
 // 一覧表の「設定」の列の文。1 行目に「必須・最大 50 文字」のような短い条件を「・」でつなぎ、
 // 「選択肢＝…」のように「＝」で書く項目は 1 つずつ行を分け、最後の行にメモを足す。何も書いていない欄は出さない
 // ctx（{ design, state }）を渡すと、ルックアップの文も足す（ルックアップ元の名前を引くため）
-function describePart(p, ctx = null) {
-  const x = describePartLines(p, ctx);
+function describePart(p, ctx = null, refs = null) {
+  const x = describePartLines(p, ctx, refs);
   return [x.short, ...x.eq, x.memo].filter(Boolean).join('\n');
 }
-// 設定の文を組む前の形 { short（「必須・最大 50 文字」）, eq（「選択肢＝…」の行）, memo }。改訂履歴の変更内容の一覧で、行ごとに比べるためにも使う
-function describePartLines(p, ctx = null) {
+// 設定の文を組む前の形 { short（「必須・最大 50 文字」）, eq（「選択肢＝…」の行）, memo }。改訂履歴の変更内容の一覧で、行ごとに比べるためにも使う。
+// refs（設定一覧の文だけ。q138）を渡すと、項目一覧・ステータスの流れにも載る文（項目のメモ・全部のステータスと操作）を、載っている所を書いた 1 行に置き換える。
+// refs は { memo: (項目の id) => 「項目一覧（2 ページ）」| null, process: { itemId, at: 「「ステータスの流れ」（3 ページ）」} | null }。作るのは editorSettingRefs と exportSettingRefs
+function describePartLines(p, ctx = null, refs = null) {
   const pr = p.props || {};
   const v = (s) => String(s == null ? '' : s).trim();
   const list = (a) => (Array.isArray(a) ? a.map(v).filter(Boolean).join('／') : '');
@@ -3203,10 +3205,21 @@ function describePartLines(p, ctx = null) {
     case 'pager':
       if (v(pr.perPage)) short.push(`1 ページ ${v(pr.perPage)} 件`);
       break;
-    case 'status': case 'steps':
-      eqIf('ステータス', stateNames(pr.states).join(p.type === 'steps' ? ' → ' : '／'));
-      eq.push(...actionLines(pr));
+    case 'status': case 'steps': {
+      const at = refs && refs.process && p.item && p.item.id === refs.process.itemId ? refs.process.at : '';
+      if (!at) {
+        eqIf('ステータス', stateNames(pr.states).join(p.type === 'steps' ? ' → ' : '／'));
+        eq.push(...actionLines(pr));
+        break;
+      }
+      // 見せるステータスは描くときと同じ（ステータスの印は、ないとき並びの 1 つ目。進捗バーは、ないとき出さない）。項目一覧の列の行（view がない）では出さない
+      const states = Array.isArray(pr.states) ? pr.states : [];
+      const id = p.view ? resolveStateRef(states, p.view.current) : '';
+      const shown = !p.view ? null : states.find((s) => s.id === id) || (p.type === 'status' ? states[0] : null);
+      eqIf('ステータス', shown ? `${shown.name}（この画面で見せるステータス）` : '');
+      eq.push(`全部のステータス ${states.length} 個と操作 ${(Array.isArray(pr.actions) ? pr.actions : []).filter(isObj).length} 個は${at}`);
       break;
+    }
     case 'tabs':
       eqIf('タブ', list(pr.tabs));
       break;
@@ -3217,7 +3230,10 @@ function describePartLines(p, ctx = null) {
   // kintone のフィールドの情報（kintone の画面設計で書いてあるときだけ。テーブルの列は tableColumns が ktLines で渡す）
   eq.push(...(p.ktLines || (ctx && p.item && isKintoneDesign(ctx.design) ? kintoneLines(p.item) : [])));
   if (ctx) eq.push(...lookupLines(ctx, p));
-  return { short: short.join('・'), eq, memo: v(p.memo) };
+  // 項目のメモは項目一覧にも載る。項目のないアイテム（ボタンなど）・項目を消した後に残ったアイテム・テーブルの列のメモは、ほかに載らないので残す
+  const memo = v(p.memo);
+  const memoAt = memo && refs && refs.memo && p.item ? refs.memo(p.item.id) : null;
+  return { short: short.join('・'), eq, memo: memoAt ? `メモは${memoAt}` : memo };
 }
 // 一覧表の「設定」に足す kintone の行（選んだ種類・書いたフィールドコード・自動計算の値の kintone の計算式）。column はテーブルの列
 function kintoneLines(entry, column = false) {
@@ -3263,15 +3279,16 @@ function actionLines(pr) {
 const itemNameIn = (ctx, id) => { const it = ctx && id ? findItem(ctx.design, id) : null; return it ? it.name : ''; };
 
 // データベースの項目の一覧表の「設定」の列の文（部品の設定の一覧表と同じ書き方）。表（テーブル）は列の名前も書く
-function describeItem(item, ctx = null) {
-  const text = describePart({ type: item.type, tableKind: 'subtable', required: item.required, memo: item.memo, props: item.props, item }, ctx);
+function describeItem(item, ctx = null, refs = null) {
+  const text = describePart({ type: item.type, tableKind: 'subtable', required: item.required, memo: item.memo, props: item.props, item }, ctx, refs);
   if (item.type !== 'table') return text;
   const cols = (item.props.columns || []).map((c) => c.name).filter(Boolean).join('・');
   return [cols && `列＝${cols}`, text].filter(Boolean).join('\n');
 }
 
-// 表の部品の列（描くときと、一覧表の枝番の行に使う）。{ id, name, type, kind（部品の種類の名前）, setting（設定の文） }
-function tableColumns(p, ctx = null) {
+// 表の部品の列（描くときと、一覧表の枝番の行に使う）。{ id, name, type, kind（部品の種類の名前）, setting（設定の文） }。
+// refs は設定一覧の文（describePartLines）。レコード一覧の列が指す項目にだけ効く（テーブルの列のメモは項目一覧に載らないので残す）
+function tableColumns(p, ctx = null, refs = null) {
   const pr = p.props || {};
   if (p.tableKind === 'subtable') {
     const kt = ctx && isKintoneDesign(ctx.design);
@@ -3284,7 +3301,7 @@ function tableColumns(p, ctx = null) {
   const src = p.tableKind === 'related' ? (ctx && pr.db && pr.db.designId ? findDesign(ctx.state, pr.db.designId) : null) : design;
   return (pr.columns || []).map((c) => {
     const it = src && c.ref.itemId ? findItem(src, c.ref.itemId) : null;
-    const setting = p.tableKind === 'related' ? `${ctx ? dbLabel(ctx.state, pr.db) : ''}の項目` : it ? describeItem(it, ctx) : '';
+    const setting = p.tableKind === 'related' ? `${ctx ? dbLabel(ctx.state, pr.db) : ''}の項目` : it ? describeItem(it, ctx, refs) : '';
     return { id: c.id, name: it ? it.name : c.ref.name || '（項目を選んでいません）', type: it ? it.type : 'text1', kind: it ? itemTypeName(it.type) : '－', setting };
   });
 }
@@ -3296,8 +3313,15 @@ function partTitle(p) {
   return p.type === 'desc' && first.length > 20 ? first.slice(0, 20) + '…' : first;
 }
 
-// 部品の設定の一覧表の行（番号の付いた部品だけを番号の順に）。design を渡すと、部品が指す項目の中身で書く
-function tableRows(screen, design = null, state = null) {
+// 編集の画面（と右のパネル）の設定一覧の文の refs（q138。describePartLines）。ページ番号はなく、載っている所の名前だけを書く。
+// ステータスの流れは、操作があって図と表を描けるときだけ（hasProcessPage）
+function editorSettingRefs(d) {
+  const st = d && hasProcessPage(d) ? d.items.find((x) => x.type === 'status') : null;
+  return { memo: () => '項目一覧に載っています', process: st ? { itemId: st.id, at: '「ステータスの流れ」に載っています' } : null };
+}
+// 部品の設定の一覧表の行（番号の付いた部品だけを番号の順に）。design を渡すと、部品が指す項目の中身で書く。
+// refs を渡すと、項目一覧・ステータスの流れにも載る文を置き換える（describePartLines。AI の get_screen は渡さないので全文）
+function tableRows(screen, design = null, state = null, refs = null) {
   const ctx = design && state ? { design, state } : null;
   // 表の部品は、表の行の下に、列ごとの行を枝番（3-1・3-2）で並べる（仕様_細かい決めごと.md の「部品の細かい決めごと（後半）」）
   return screen.parts
@@ -3306,9 +3330,9 @@ function tableRows(screen, design = null, state = null) {
     .flatMap((raw) => {
       const p = design ? resolvePart(design, raw) : raw;
       const kind = p.type === 'table' ? `表（${TABLE_KINDS[p.tableKind] || 'テーブル'}）` : partTypeName(p.type);
-      const row = { id: p.id, no: p.no, label: partTitle(p), kind, setting: describePart(p, ctx) };
+      const row = { id: p.id, no: p.no, label: partTitle(p), kind, setting: describePart(p, ctx, refs) };
       if (p.type !== 'table') return [row];
-      return [row, ...tableColumns(p, ctx).map((c, i) => ({ id: p.id, no: `${p.no}-${i + 1}`, label: c.name, kind: c.kind, setting: c.setting, branch: true }))];
+      return [row, ...tableColumns(p, ctx, refs).map((c, i) => ({ id: p.id, no: `${p.no}-${i + 1}`, label: c.name, kind: c.kind, setting: c.setting, branch: true }))];
     });
 }
 
@@ -7158,9 +7182,10 @@ function partFieldHtml(p, t) {
 // 部品の設定の一覧表。editor のときは、行を押すとその部品を選べるようにし、番号の付いた部品がなければ案内を出す。
 // 出力（editor でないとき）では、番号の付いた部品がなければ表を出さない
 // diff（{ info: designDiff の screens の 1 つ, label: 「第 2 版」 }）を渡すと、番号の前に「新」「変」の札を付け、表の下に「削除した部品」を並べる
-function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null, diff = null, width: tableWidth = null } = {}) {
+// refs（q138）は設定一覧の文の置き換え（describePartLines）。編集の画面はいつも editorSettingRefs、出力は呼ぶ側が渡す（PNG は渡さないので全文）
+function partTableHtml(design, screen, { editor = false, selectedId = null, selected = null, diff = null, width: tableWidth = null, refs = null } = {}) {
   const isSel = (id) => (selected ? selected.has(id) : id === selectedId);
-  const rows = tableRows(screen, design, store.state);
+  const rows = tableRows(screen, design, store.state, editor ? editorSettingRefs(design) : refs);
   const info = diff && !diff.info.isNew ? diff.info : null;
   if (!rows.length && !editor && !(info && info.deleted.length)) return '';
   const width = tableWidth || (screen.tablePos === 'bottom' ? screen.width : TABLE_W);
@@ -11488,7 +11513,8 @@ function pfOutHtml(p, { forItem = false } = {}) {
 // 右の欄に出す「設定」の文。データベースの項目の一覧表で選んだ項目は、一覧表と同じ describeItem で作る（表の項目もテーブルとして書くため）
 function subjectSettingText(p) {
   if (!p) return '';
-  return itemOnSide() && p.item ? describeItem(p.item, fieldCtx()) : describePart(p, fieldCtx());
+  // 画面のアイテムは、設定一覧と同じ短い文（q138。項目のメモ・全部のステータスと操作は、載っている所を書く）
+  return itemOnSide() && p.item ? describeItem(p.item, fieldCtx()) : describePart(p, fieldCtx(), editorSettingRefs(fieldCtx().design));
 }
 
 // 選んだ部品の設定の欄。入力欄の部品は、上に「項目の設定（どの画面でも同じ）」、下に「この画面だけの設定」を出す（画像 q20）。
