@@ -238,7 +238,7 @@ test('swimlaneFromPlan: 同じ名前の役割は使い回し、ない役割は�
   const { api, sys } = await boot(t);
   const undo0 = api.store.undoStack.length;
   const res = plain(api.actions.swimlaneFromPlan('y-trip', plain(PLAN), { materialId: BDM }));
-  assert.deepEqual(res, { addedRoles: ['総務'], reusedRoles: ['上長', '申請者'], steps: 4, edges: 4, changed: true });
+  assert.deepEqual(res, { addedRoles: ['総務'], reusedRoles: ['上長', '申請者'], steps: 4, edges: 4, orientation: 'horizontal', orientChanged: false, changed: true });
   const y = plain(sys('y-trip'));
   assert.deepEqual(y.roles.map((r) => r.name), ['申請者', '上長', '経理', '総務'], '今の役割の並びは変えず、後ろに足す');
   assert.deepEqual(y.roles.slice(0, 3).map((r) => r.id), ['l-app', 'l-boss', 'l-acc']);
@@ -267,7 +267,7 @@ test('swimlaneFromPlan: 同じ案を 2 回入れると 2 回目は changed:false
   const after1 = plain(sys('y-trip'));
   const undo1 = api.store.undoStack.length;
   const res = plain(api.actions.swimlaneFromPlan('y-trip', plain(PLAN), { materialId: BDM }));
-  assert.deepEqual(res, { addedRoles: [], reusedRoles: ['上長', '総務', '申請者'], steps: 4, edges: 4, changed: false });
+  assert.deepEqual(res, { addedRoles: [], reusedRoles: ['上長', '総務', '申請者'], steps: 4, edges: 4, orientation: 'horizontal', orientChanged: false, changed: false });
   assert.deepEqual(plain(sys('y-trip')), after1, '中身も更新日時も同じ');
   assert.equal(api.store.undoStack.length, undo1, '2 回目は履歴に積まない');
   api.store.undo();

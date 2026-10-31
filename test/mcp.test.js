@@ -100,6 +100,7 @@ test('入口の選べる値（機器・見た目・項目の表示・表の中�
   assert.deepEqual(Object.keys(cat.callout.colors), SC.CALLOUT_COLORS);
   assert.deepEqual(Object.keys(cat.callout.tips), SC.CALLOUT_TIPS);
   assert.deepEqual(JSON.parse(JSON.stringify(T.SWIM_KINDS)), SC.SWIM_KINDS);
+  assert.deepEqual(JSON.parse(JSON.stringify(T.SWIM_ORIENTS)), SC.SWIM_ORIENTS, 'スイムレーン図の向き（v1.03）');
   assert.deepEqual(JSON.parse(JSON.stringify(T.NOTE_STAGES)), SC.NOTE_STAGES);
   assert.deepEqual(JSON.parse(JSON.stringify(T.NOTE_STATES)), SC.NOTE_STATES);
   app.close();

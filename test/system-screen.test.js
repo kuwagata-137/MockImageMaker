@@ -104,7 +104,7 @@ test('配置: いちばん上の帯（システムの名前と小さく「（シ
   assert.equal($('#sys-title').textContent, '出張申請システム（システム）');
   assert.equal($('#sys-title small').textContent, '（システム）');
   // メニューバーは編集の画面と同じ見た目（組と、組の名前）
-  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', '編集', '表示']);
+  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', '編集', '図の向き', '配置', '表示']);
   assert.match($('#toolbar [data-action="home"]').textContent, /一覧へ/);
   assert.equal($('#toolbar [data-action="home"]').title, 'システムと画面設計の一覧へ戻ります');
   assert.deepEqual($$('#toolbar .tbtn').map((b) => b.textContent), ['↶ 元に戻す', '↷ やり直す', '＋ 拡大', '－ 縮小', '⊡ 全体を表示', '100%']);
@@ -702,9 +702,11 @@ test('命令: 編集の画面だけの命令は、この画面で来ても何も
 
 // ── 見直しで見つけたもの（第 9 段階の T9）──
 test('役割の入口の説明: まだない動き（ステータスの操作の「操作できる人」と同じ名前を同じ役割として扱う）は書かない', async (t) => {
-  const { $, entry } = await boot(t);
+  const { api, $, entry } = await boot(t);
   click(entry('roles'));
-  assert.equal($('#sys-view .map-note').textContent, '役割は、スイムレーン図のレーンになります。上から順にレーンを並べます。');
+  assert.equal($('#sys-view .map-note').textContent, '役割は、スイムレーン図のレーンになります。この順に、上からレーンを並べます。');
+  api.actions.setSwimOrient('y-trip', 'vertical');
+  assert.equal($('#sys-view .map-note').textContent, '役割は、スイムレーン図のレーンになります。この順に、左からレーンを並べます。', '縦向きの図は左から（v1.03）');
 });
 
 test('履歴の「この状態に戻す…」: 今と同じ中身の行では、確かめの窓を出さず何もしない（行も更新日時も元に戻すの履歴も変えない）。お知らせで知らせる', async (t) => {

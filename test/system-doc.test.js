@@ -97,14 +97,19 @@ test('システムの表紙: 小見出し・名前・説明・数・役割とメ
   assert.ok(c.querySelector('.cv-foot').textContent.includes(`モックイメージメーカー v${api.APP_VERSION} で出力`));
 });
 
-test('スイムレーン図のページ: 凡例と図（矢印の印の id の頭は xp-swim）。左の端はシステムの名前', async (t) => {
-  const { parse, doc } = await boot(t);
+test('スイムレーン図のページ: 凡例と図（矢印の印の id の頭は xp-swim）。左の端はシステムの名前。縦向きの図は「上から順に」（v1.03）', async (t) => {
+  const { parse, doc, api, sysId } = await boot(t);
   const p = parse(doc().pages[1]);
   assert.equal(p.querySelector('.pg-head span').textContent, '役割ごとのレーンに、工程を左から順に並べた業務の流れ');
   assert.match(p.querySelector('.xp-legend').textContent, /戻る流れ/);
   assert.ok(p.querySelector('.pg-body').innerHTML.includes('xp-swim-arrow'));
   assert.equal(p.querySelectorAll('.mnode').length, 7);
   assert.equal(p.querySelector('.pg-foot span').textContent, '出張申請システム ／ スイムレーン図');
+  assert.equal(api.actions.setSwimOrient(sysId, 'vertical'), true);
+  const v = parse(doc().pages[1]);
+  assert.equal(v.querySelector('.pg-head span').textContent, '役割ごとのレーンに、工程を上から順に並べた業務の流れ');
+  assert.ok(v.querySelector('.swim-inner').classList.contains('down'), '図も縦向き');
+  assert.equal(v.querySelectorAll('.mnode').length, 7);
 });
 
 test('設計ノートのページ（q80 案C）: 決めたことと理由（段階の順）→ まだ決まっていないこと（答えのない行 → 答えのある行を灰色で）。空の行と ⑤ の行は入れない', async (t) => {

@@ -1034,17 +1034,19 @@ body.sorting,body.sorting *{cursor:grabbing!important}
 .mnode.ext b{color:#475569}
 .mnode.cur{background:#eff6ff;border:2.5px solid #2563eb}
 .mnode.cur b{color:#1d4ed8}
-/* スイムレーン図（第 9 段階。画像 q62・q63）: 左に役割の名前の列、作業の箱は文字を真ん中に 2 行まで。箱の形は種類で変える
-   （始まり・終わり＝角の丸い箱、システムへの入力＝左右が二重線、判断＝ひし形、書類＝下が波） */
+/* スイムレーン図（第 9 段階。画像 q62・q63。v1.03 で箱を MPD の大きさにした〔q144〕）: 左に役割の名前の列（縦向きは上の行）。作業の箱は、swimBoxSize が
+   折り返した文字の行（字 12・行の高さ 15）を真ん中に書き、画面の札は 2 行目（字 10・高さ 14）。箱の形は種類で変える
+   （始まり・終わり＝両端の丸い箱、システムへの入力＝左右が二重線、判断＝ひし形、書類＝下が波）。色は v1.02 までのまま（q144 の答え「白基調」） */
 .swim-lab{position:absolute;left:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 10px;font-weight:700;font-size:13px;line-height:1.4;color:#0f172a;overflow:hidden}
-.mnode.sw{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:4px 12px}
-.mnode.sw b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;max-width:100%;font-size:13px;line-height:17px;white-space:normal}
-.mnode.sw .ref{display:block;max-width:100%;font-size:10.5px;line-height:15px;color:#1d4ed8;background:#eff6ff;border-radius:4px;padding:0 5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mnode.k-start,.mnode.k-end{border-radius:32px;background:#f0fdf4;border-color:#15803d}
+.mnode.sw{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0;border-radius:6px}
+.mnode.sw b{display:block;max-width:100%;font-size:12px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.mnode.sw .ref{display:block;max-width:calc(100% - 8px);height:14px;font-size:10px;line-height:12px;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:3px;padding:0 5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mnode.k-start,.mnode.k-end{border-radius:999px;background:#f0fdf4;border-color:#15803d}
 .mnode.k-input{border-left:6px double #1d3f6e;border-right:6px double #1d3f6e}
-.mnode.k-decision{padding:4px 32px;border:none;box-shadow:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 64' preserveAspectRatio='none'%3E%3Cpolygon points='100,2 198,32 100,62 2,32' fill='%23fffbeb' stroke='%23b45309' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") no-repeat center/100% 100%}
-.mnode.k-doc{padding-bottom:12px;border:none;box-shadow:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 64' preserveAspectRatio='none'%3E%3Cpath d='M2,2 H198 V52 C150,40 120,66 100,56 C70,44 40,66 2,54 Z' fill='%23fff' stroke='%231d3f6e' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") no-repeat center/100% 100%}
+.mnode.k-decision{padding:0;border:none;box-shadow:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 64' preserveAspectRatio='none'%3E%3Cpolygon points='100,2 198,32 100,62 2,32' fill='%23fffbeb' stroke='%23b45309' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") no-repeat center/100% 100%}
+.mnode.k-doc{padding:0 0 10px;border:none;box-shadow:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 64' preserveAspectRatio='none'%3E%3Cpath d='M2,2 H198 V52 C150,40 120,66 100,56 C70,44 40,66 2,54 Z' fill='%23fff' stroke='%231d3f6e' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") no-repeat center/100% 100%}
 body.map-dragging,body.map-dragging *{cursor:grabbing!important}
+body.map-dragging .swim-over{display:none}
 .tb-pick{display:flex;flex-wrap:wrap;gap:4px}
 .tb-pick .pal-item{width:auto;flex:0 0 auto;cursor:pointer}
 .map-note{color:#64748b;font-size:12px;line-height:1.7;margin:-4px 0 4px}
@@ -1122,10 +1124,13 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .swim-inner svg .sw-edge:hover .sw-mid,.swim-inner svg .sw-edge.sel .sw-mid{opacity:1}
 .swim-inner svg .sw-end{fill:#f97316;stroke:#fff;stroke-width:1.5px;display:none;pointer-events:all;cursor:move}
 .swim-inner svg .sw-ends.sel .sw-end{display:inline}
-.swim-inner svg .sw-line.sel{stroke:#2563eb;stroke-width:3.5px;marker-end:url(#swim-arrow-s)}
+.swim-inner svg .sw-line.sel{stroke:#2563eb;stroke-width:2px;marker-end:url(#swim-arrow-s)}
+.swim-inner svg .sw-arc-c.sel{stroke:#2563eb;stroke-width:2px}
+.swim-inner svg .sw-lab.sel{stroke:#2563eb}
+.swim-inner svg.swim-guides{z-index:4;overflow:visible;pointer-events:none}
 .swim-inner svg.swim-prev{z-index:4;overflow:visible}
 .swim-edit{position:absolute;z-index:5;height:30px;border:2px solid #2563eb;border-radius:6px;padding:0 8px;font-size:13px;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.18);outline:none}
-.swim-cell{position:absolute;z-index:2;border:2px dashed #2563eb;border-radius:8px;background:rgba(37,99,235,.06);pointer-events:none}
+.swim-cell{position:absolute;z-index:2;border:2px dashed #2563eb;border-radius:6px;background:rgba(37,99,235,.06);pointer-events:none}
 .swim-ghost{position:fixed;z-index:9999;width:64px;height:36px;display:flex;align-items:center;justify-content:center;border:2px dashed #2563eb;border-radius:4px;background:#eff6ff;font-size:11px;color:#1e293b;opacity:.88;pointer-events:none;white-space:nowrap}
 /* 右の欄の置き場（部品の箱と同じ .side-box・.pal-btn）と、作業の設定（種類のボタン 3 列・使う画面とステータスの青い枠・次の作業の行） */
 #sys-box .pal-btn i{display:flex;height:16px}
@@ -1430,6 +1435,8 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .xp-legend i.d{border-top:2.5px dashed #16a34a}
 .xp-legend i.x{width:16px;height:12px;border:1.5px dashed #94a3b8;border-radius:3px}
 .map-head i.b,.xp-legend i.b{border-top:2px dashed #ea580c}
+.map-head i.s,.xp-legend i.s{border-top:1.5px solid #475569}
+.map-head i.sb,.xp-legend i.sb{border-top:1.5px dashed #ea580c}
 .map-head i.g,.xp-legend i.g{border-top:2.5px dotted #16a34a}
 .xp-fit{display:flex;justify-content:center;align-items:flex-start}
 .xp-fit .mnode,.xp-png .mnode{cursor:default}
@@ -1486,7 +1493,7 @@ body.xp-doc .pg+.pg{break-before:page}
 // =============================================================================
 
 // ── 1. 版 ─────────────────────────────────────────────────────────────────────
-const APP_VERSION = '1.02';
+const APP_VERSION = '1.03';
 // 出力する HTML（単体で開いて編集できる HTML）の材料にする、このアプリの script の文字。
 // document.currentScript は script を実行している間しか取れないので、いちばん初めに取っておく（style の文字は起動のときに取る）
 const APP_SCRIPT = document.currentScript ? document.currentScript.textContent : '';
@@ -4312,6 +4319,12 @@ function normalizeMapPos(src) {
 // 画面設計をごみ箱へ移しても designIds からは外さない（戻したときに元のシステムに戻るように）。完全に削除したときに、全部のシステムから外す
 const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end']; // 始まり・作業・システムへの入力・判断・書類・終わり
 const SWIM_KIND_NAMES = { start: '始まり', task: '作業', input: 'システムへの入力', decision: '判断', doc: '書類', end: '終わり' };
+// スイムレーン図の向き（2026-10-31・q141。v1.03）。'horizontal'＝横向き（役割のレーンを上から下へ並べ、工程を左から右へ進める。v1.02 までの形）・
+// 'vertical'＝縦向き（レーンを左から右へ並べ、工程を上から下へ進める）。データには縦向きのときだけ swimlane.orientation: 'vertical' を持つ
+// （ないときは横向き。データの形の版は上げない。v1.02 までのアプリで開いても、知らない欄として残る）。作業の col は、どちらの向きでも流れの何番目か
+const SWIM_ORIENTS = ['horizontal', 'vertical'];
+const SWIM_ORIENT_NAMES = { horizontal: '横向き', vertical: '縦向き' };
+const swimOrientOf = (sys) => (isObj(sys) && isObj(sys.swimlane) && sys.swimlane.orientation === 'vertical' ? 'vertical' : 'horizontal');
 // 資料（第 9 段階の後半）の種類。資料のファイルの見分け（material-kind.js の MATERIAL_KINDS）と同じ並び
 const MATERIAL_KINDS = ['text', 'image', 'pdf', 'word', 'excel', 'bdm', 'other'];
 const MATERIAL_KIND_NAMES = { text: '文字', image: '画像', pdf: 'PDF', word: 'Word', excel: 'Excel', bdm: 'MPD', other: 'そのほか' }; // bdm は MultipurposeDiagramMaker（旧名 ビジネスダイアグラムメーカー・BDM）で保存した図の HTML。画面の文では MPD（2026-10-21 q84）
@@ -4337,10 +4350,24 @@ function swimCol(v) {
   const n = typeof v === 'number' || (typeof v === 'string' && v.trim()) ? Math.round(Number(v)) : NaN;
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
+// 作業の、向きごとの覚えた位置 { horizontal?, vertical?: { flow, cross, roleId, col } }（v1.03・q145・q146。スイムレーン図の swimlaneLayout）。
+// 向きの位置は flow・cross が数のものだけ残す（roleId・col は覚えたときの役割と列。直して残す）。知らない鍵は残す。何も残らなければ null（欄を付けない）
+function normalizeStepPos(src) {
+  if (!isObj(src)) return null;
+  const out = {};
+  Object.entries(src).forEach(([k, p]) => {
+    if (!SWIM_ORIENTS.includes(k)) { out[k] = p; return; }
+    if (isObj(p) && Number.isFinite(p.flow) && Number.isFinite(p.cross)) out[k] = { ...p, roleId: str(p.roleId), col: swimCol(p.col) };
+  });
+  return Object.keys(out).length ? out : null;
+}
 // 作業。役割が見つからない作業も消さずに残す（描くときに外す）。知らない種類は「作業」
-function normalizeStep(src) {
+function normalizeStep(raw) {
+  const { pos, ...src } = raw;
+  const p = normalizeStepPos(pos);
   return {
     ...src,
+    ...(p ? { pos: p } : {}),
     id: str(src.id) || newId('w'),
     roleId: str(src.roleId),
     col: swimCol(src.col) ?? 0,
@@ -4353,9 +4380,10 @@ function normalizeStep(src) {
     src: isObj(src.src) ? src.src : null,
   };
 }
-// スイムレーン。作業の id の重なりを直してから、端の作業がない矢印と、自分への矢印と、同じ向きの 2 本目の矢印（1 本目を残す）を外す
+// スイムレーン。作業の id の重なりを直してから、端の作業がない矢印と、自分への矢印と、同じ向きの 2 本目の矢印（1 本目を残す）を外す。
+// 向きは縦向きのときだけ orientation: 'vertical' を残す（横向きと知らない値は欄を外す。横向きのデータを v1.02 までと同じ形にするため）
 function normalizeSwimlane(src) {
-  const sw = isObj(src) ? src : {};
+  const { orientation, ...sw } = isObj(src) ? src : {};
   const steps = uniqueIds((Array.isArray(sw.steps) ? sw.steps : []).filter(isObj).map(normalizeStep), 'w');
   const stepIds = new Set(steps.map((w) => w.id));
   const pairs = new Set();
@@ -4368,7 +4396,7 @@ function normalizeSwimlane(src) {
   const edges = uniqueIds((Array.isArray(sw.edges) ? sw.edges : []).filter(isObj)
     .map((e) => ({ ...e, id: str(e.id) || newId('e'), from: str(e.from), to: str(e.to), label: str(e.label) }))
     .filter((e) => stepIds.has(e.from) && stepIds.has(e.to) && e.from !== e.to && firstOfPair(e)), 'e');
-  return { ...sw, steps, edges };
+  return { ...sw, ...(orientation === 'vertical' ? { orientation } : {}), steps, edges };
 }
 // 資料の行 { id（m-）, name（入れたときのファイルの名前）, kind, size（バイト）, addedAt, memo, file（<userData>/data/files/<システムの id>/ の中の
 // ファイルの名前）}（設計書の 5-3。ファイルの中身は designs.json に入れない）。知らない種類は「そのほか」、大きさが 0 以上の整数でなければ 0。知らない欄は残す
@@ -4969,6 +4997,8 @@ function removeNoteRow(sysId, listKey, rowId) {
 // 案（plan）は資料の窓口の bdmPlan の返事 { roles: [名前], steps: [{ key, role, col, kind, text, memo, src }], edges: [{ from, to, label }] }。
 // 役割の名前は、名前と同じく前後の空白を取り、続く空白を 1 つにして比べる（cleanName）。名前のない役割は「名前なし」（読み込むときと同じ）
 const planRoleName = (v) => cleanName(v) || '名前なし';
+// 案から作るスイムレーン図の向き（q142）: 案の向き（MPD の向き）。案に向きがない・知らない向きなら、システムの今の向き
+const planOrientOf = (y, plan) => (SWIM_ORIENTS.includes(plan.orientation) ? plan.orientation : swimOrientOf(y));
 // 案の役割（roles の順。作業の役割で roles にない名前は後ろに足す）を、システムの役割に当てる。同じ名前の役割は使い回し、ない名前は新しい役割にする
 // （今の役割の並びは変えず、後ろに足す。形は addRole と同じ）。戻り値 { added（足す役割）, reused（使い回す名前）, idOf（案の名前 → 役割の id）}
 function rolesFromPlan(y, plan) {
@@ -5232,25 +5262,39 @@ const actions = {
     const next = normalizeSwimlane(clone({ steps: Array.isArray(sw.steps) ? sw.steps : [], edges: Array.isArray(sw.edges) ? sw.edges : [] }));
     return mutateSystem(sysId, (yy) => { yy.swimlane = { ...yy.swimlane, steps: next.steps, edges: next.edges }; });
   },
+  // スイムレーン図の向きを変える（q141。orient は SWIM_ORIENTS の 1 つ）。作業の役割と列はそのまま。今と同じ向き・知らない向き・直せないときは false
+  setSwimOrient(sysId, orient) {
+    const y = editableSystem(sysId);
+    if (!y || !SWIM_ORIENTS.includes(orient) || swimOrientOf(y) === orient) return false;
+    return mutateSystem(sysId, (yy) => {
+      const { orientation, ...rest } = yy.swimlane;
+      yy.swimlane = orient === 'vertical' ? { ...rest, orientation: 'vertical' } : rest;
+    });
+  },
   // BDM の案（資料の窓口の bdmPlan の返事の plan）でスイムレーン図を置き換える（第 9 段階の後半。AI の swimlane_from_bdm から呼ぶ）。
   // materialId は案を作った BDM の資料の id（作業の src.material に入れる。同じ資料の同じ箱の作業だけ、id と指す先を残す）。
   // 役割は同じ名前を使い回し、ない名前を後ろに足す（rolesFromPlan）。作業と矢印は案で置き換える（swimlaneFromPlanSteps。案にない作業・矢印は消える）。
   // 役割とスイムレーンを 1 回の変更で直すので、元に戻す 1 回で全部戻る。中身が同じなら履歴に積まず、更新日時も変えない（changed: false）。
-  // 戻り値 { addedRoles, reusedRoles（役割の名前の並び）, steps, edges（置き換えた後の数）, changed }。直せないシステム・案の形が違うときは null
+  // 図の向きは、案の向き（plan.orientation。MPD の向き）に合わせる（q142。案に向きがなければ今のまま）。
+  // 戻り値 { addedRoles, reusedRoles（役割の名前の並び）, steps, edges（置き換えた後の数）, orientation（置き換えた後の向き）, orientChanged, changed }。
+  // 直せないシステム・案の形が違うときは null
   swimlaneFromPlan(sysId, plan, opts = {}) {
     const y = editableSystem(sysId);
     if (!y || !isObj(plan) || !Array.isArray(plan.steps)) return null;
     const roles = rolesFromPlan(y, plan);
     const sw = swimlaneFromPlanSteps(y, plan, roles.idOf, (isObj(opts) && str(opts.materialId)) || null);
+    const orient = planOrientOf(y, plan);
     const before = systemJsonWithRefs(y);
     mutateSystem(sysId, (yy) => {
       yy.roles.push(...roles.added);
-      yy.swimlane = { ...yy.swimlane, steps: sw.steps, edges: sw.edges };
+      const { orientation, ...rest } = yy.swimlane;
+      yy.swimlane = { ...rest, ...(orient === 'vertical' ? { orientation: 'vertical' } : {}), steps: sw.steps, edges: sw.edges };
     });
     const now = findSystem(store.state, sysId);
     return {
       addedRoles: roles.added.map((r) => r.name), reusedRoles: roles.reused,
-      steps: now.swimlane.steps.length, edges: now.swimlane.edges.length, changed: systemJsonWithRefs(now) !== before,
+      steps: now.swimlane.steps.length, edges: now.swimlane.edges.length,
+      orientation: orient, orientChanged: swimOrientOf(y) !== orient, changed: systemJsonWithRefs(now) !== before,
     };
   },
   // 作業を足す。spec は { roleId, col, kind, text, memo, ref }。役割はこのシステムにあるもの。列を書かなければ、いちばん右の作業の次の列。
@@ -5288,6 +5332,55 @@ const actions = {
       const w = findStep(yy, stepId);
       if ('roleId' in to) w.roleId = to.roleId;
       if ('col' in to) w.col = to.col;
+    });
+  },
+  // 作業を図の上の位置に置く（v1.03・q146。箱のドラッグを放したとき）。to は { roleId, flow, cross }（今の向きの、箱の真ん中の流れの向きの位置と、
+  // レーンの縁からの横切る向きの位置。swimSnap の戻り値）。今の向きの位置を全部の作業について覚え（ほかの箱が動かないように）、列を位置から付け直す
+  // （swimFreezePos・swimRenumber）。1 回の変更なので、元に戻す 1 回で戻る。中身が変わらないとき・直せないときは false
+  placeStep(sysId, stepId, to = {}) {
+    const y = editableSystem(sysId);
+    if (!y || !isObj(to) || !findStep(y, stepId) || !y.roles.some((r) => r.id === to.roleId) || !Number.isFinite(to.flow) || !Number.isFinite(to.cross)) return false;
+    const orient = swimOrientOf(y);
+    const L = swimlaneLayout(swimlaneModel(store.state, y), y);
+    const before = JSON.stringify(y.swimlane);
+    mutateSystem(sysId, (yy) => {
+      swimFreezePos(yy, L, orient);
+      const w = findStep(yy, stepId);
+      w.roleId = to.roleId;
+      w.pos = { ...(isObj(w.pos) ? w.pos : {}), [orient]: { flow: swimRound(to.flow), cross: swimRound(to.cross), roleId: to.roleId, col: w.col } };
+      swimRenumber(yy, orient, stepId);
+    });
+    return JSON.stringify(findSystem(store.state, sysId).swimlane) !== before;
+  },
+  // 作業を図の上の位置に足す（v1.03。置き場からのドラッグ・置き場を押してから図を押す・何もない所のダブルクリック）。spec は { roleId, kind, flow, cross }（placeStep と同じ位置）。
+  // 列は位置から付け直す。戻り値は作業の id（直せないときは null）
+  addStepAt(sysId, spec = {}) {
+    const y = editableSystem(sysId);
+    if (!y || !isObj(spec) || !y.roles.some((r) => r.id === spec.roleId) || !SWIM_KINDS.includes(spec.kind) || !Number.isFinite(spec.flow) || !Number.isFinite(spec.cross)) return null;
+    const orient = swimOrientOf(y);
+    const L = swimlaneLayout(swimlaneModel(store.state, y), y);
+    const w = normalizeStep({ roleId: spec.roleId, col: 0, kind: spec.kind, text: '', memo: '', ref: {} });
+    mutateSystem(sysId, (yy) => {
+      swimFreezePos(yy, L, orient);
+      yy.swimlane.steps.push({ ...w, pos: { [orient]: { flow: swimRound(spec.flow), cross: swimRound(spec.cross), roleId: spec.roleId, col: 0 } } });
+      swimRenumber(yy, orient, w.id);
+    });
+    return w.id;
+  },
+  // ⊞ 整列（v1.03。MPD の autoLayout）: 今の向きの覚えた位置を全部消し、列から置き直す（swimlaneLayout。何度押しても同じ。元に戻す 1 回で戻る）。
+  // ほかの向きの覚えた位置は残す。覚えた位置がないときは false
+  arrangeSwimlane(sysId) {
+    const y = editableSystem(sysId);
+    if (!y) return false;
+    const orient = swimOrientOf(y);
+    if (!y.swimlane.steps.some((w) => isObj(w.pos) && orient in w.pos)) return false;
+    return mutateSystem(sysId, (yy) => {
+      yy.swimlane.steps.forEach((w) => {
+        if (!isObj(w.pos) || !(orient in w.pos)) return;
+        const { [orient]: gone, ...rest } = w.pos;
+        if (Object.keys(rest).length) w.pos = rest;
+        else delete w.pos;
+      });
     });
   },
   // 作業を消す。つながる矢印も消す
@@ -7446,9 +7539,8 @@ function mapEdgesSvg(model, pos, w, h, o = {}) {
     }
     const lh = 16 + (label.length - 1) * 15;
     const tw = labelWidth(label);
-    const [mx, my] = o.normalOutside && outside && !vert && g.tx != null ? edgeLabelOutside(g, outside, tw, lh)
-      : !vert ? [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)]
-        : g.detour ? [outer + 8 + tw / 2, g.my] : [g.mx + (outside || 1) * (tw / 2 + 12), g.my];
+    const [mx, my] = !vert ? [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)]
+      : g.detour ? [outer + 8 + tw / 2, g.my] : [g.mx + (outside || 1) * (tw / 2 + 12), g.my];
     const text = label.map((s, j) => `<text x="${(mx - tw / 2 + 6).toFixed(1)}" y="${(my + 4 + j * 15 - (label.length - 1) * 7.5).toFixed(1)}" font-size="${j ? 11 : 12}" font-weight="${(j && !o.flat) || st.light ? 400 : 700}" fill="${j && !o.flat ? '#475569' : st.col}">${esc(s)}</text>`).join('');
     const tag = `
       <rect x="${(mx - tw / 2).toFixed(1)}" y="${(my - 9 - (label.length - 1) * 7.5).toFixed(1)}" width="${tw}" height="${16 + (label.length - 1) * 15}" rx="4" fill="#fff" opacity=".92"/>${text}`;
@@ -7463,16 +7555,6 @@ function mapEdgesSvg(model, pos, w, h, o = {}) {
     : mapMarker(`${idp}-arrow-n`, '#1d3f6e') + mapMarker(`${idp}-arrow-g`, '#16a34a');
   return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>${defs}
     </defs>${o.under || ''}${paths}</svg>`;
-}
-// 同じ 2 つの箱の間に 2 本並んだ線の文字の真ん中（スイムレーン図。VIEW_DRAW の normalOutside）。線の真ん中の向きに直角に、外側（outside。
-// -1 は上〔縦の線では左〕の線、1 は下〔右〕の線）へ、下地が自分の線から 8 離れるまで離す。横の線は今までどおり上と下（8 ＋ 高さの半分）。帯をまたぐ急な線では横へ離す
-// （上と下へ離すと、下地が、すぐそばを通るもう 1 本の線〔行きと差し戻し〕を途切れさせていた。T9 の見直し）
-function edgeLabelOutside(g, outside, tw, lh) {
-  const len = Math.hypot(g.tx, g.ty) || 1;
-  let [nx, ny] = [-g.ty / len, g.tx / len];
-  if (ny < 0 || (ny === 0 && nx < 0)) [nx, ny] = [-nx, -ny]; // 下向きの法線（上の線の外側は、その逆）
-  const d = (Math.abs(nx) * tw) / 2 + (Math.abs(ny) * lh) / 2 + 8;
-  return [g.mx + outside * d * nx, g.my + outside * d * ny];
 }
 // 箱のどちらの縁（l・r・t・b）から線を出すか
 function mapSides(a, b) {
@@ -7519,8 +7601,7 @@ function mapEdgeGeometry(a, b, port, others, shift = 0) {
   const c2 = horiz ? [x2 - s * off, y2] : [x2, y2 - s * off];
   const way = horiz ? mapDetour([x1, y1], c1, c2, [x2, y2], others) : null;
   if (!way) {
-    const tan = (k) => 0.75 * (c1[k] - [x1, y1][k]) + 1.5 * (c2[k] - c1[k]) + 0.75 * ([x2, y2][k] - c2[k]);
-    return { detour: false, mx: (x1 + x2) / 2, my: (y1 + y2) / 2, tx: tan(0), ty: tan(1),
+    return { detour: false, mx: (x1 + x2) / 2, my: (y1 + y2) / 2,
       d: `M${f(x1)},${f(y1)} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(x2)},${f(y2)}` };
   }
   const { xa, xb } = way;
@@ -7559,9 +7640,7 @@ const VIEW_POS = { map: 'mapPos', process: 'processPos', flow: 'flowPos' };
 const VIEW_DRAW = {
   process: { style: (e) => (e.kind === 'back' ? { col: '#ea580c', w: 2, dash: '6 4', mark: 'o' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels.slice(0, 2), vertical: true },
   flow: { style: (e) => (e.kind === 'link' ? { col: '#16a34a', w: 2, dash: '3 4', mark: 'g' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels.slice(0, 3), flat: true, lanes: true },
-  // スイムレーン図（第 9 段階）: 流れは紺の実線、戻る流れ（差し戻しなど。列が左へ戻る矢印）は橙の点線
-  // 2 本並んだ線（行きと差し戻し）の文字は、線の向きに直角に離す（normalOutside。T9 の見直し）
-  swimlane: { style: (e) => (e.kind === 'back' ? { col: '#ea580c', w: 2, dash: '6 4', mark: 'o' } : { col: '#1d3f6e', w: 2.5, mark: 'n' }), label: (e) => e.labels, flat: true, normalOutside: true },
+  // スイムレーン図は v1.03 から MPD と同じ線（swimRoutes・swimSvg）で描く（ここは使わない）
 };
 // ステータスの移り方の図。箱＝ステータス（並びの順。order）、矢印＝操作（前と次の両方があるものだけ。並びで前へ戻る操作は kind 'back'）。
 // 矢印の文字は「操作の名前（操作する人）」と、2 行目に条件。outs は、そのステータスから出ていく操作の数
@@ -7681,15 +7760,1423 @@ function mapLegendHtml() {
     <span class="spacer"></span><button class="btn small" data-action="map-reset" title="ドラッグで動かしたボックスを、自動で並べた位置に戻します">ボックスを自動で並べ直す</button></div>`;
 }
 
-// ── スイムレーン図（第 9 段階。AI設計基盤_設計書.md の 5-4。画像 q62・q63）──
-// 役割（申請者・上長など）ごとの横の帯（レーン）に、作業の箱を左から列で並べ、矢印でつないだ業務の流れの図。帯の並びは役割の並び。
-// 作業の位置は、作業が持つ役割（帯）と列だけで決まる（ドラッグで動かした位置は覚えない。帯と列に吸い付く）。
-// 箱の大きさは、ほかの図と同じ 200 × 64（mapEdgesSvg が箱の大きさを決め打ちしているため）。帯は SVG の rect で描く（diagramCrop が拾うように）
-const SWIM_LABEL_W = 136; // 左の、役割の名前の列の幅
-const SWIM_COL = 280; // 列の幅（箱 200 ＋ 矢印の間 80。第 9 段階の T6b で 240 から広げた。間が 40 だと、隣の列の行きと帰りの矢印〔差し戻しなど〕が重なって読めない）
-const SWIM_X0 = SWIM_LABEL_W + 24; // 列 0 の箱の左の端
-const SWIM_PAD = 24; // 帯の上と下の余白
-const SWIM_GAP = 16; // 同じ帯の同じ列に積んだ箱の間
+// ── スイムレーン図の線（MultipurposeDiagramMaker〔MPD〕v8.33 から写した。2026-10-31・v1.03。要望「接続線の出方やデザインは MPD と同じに」）──
+// MPD の線の流れ（renderEdges。v8.33 の 9634 行）をそのまま使う: 出入りの辺と位置の割り振り（allocatePorts）→ 端の点（connPts）→
+// 箱を避けて直角に折れる道（routeWaypoints → orthoRoute の A*）→ 迂回する線を空いた所の中ほどへ（centerDetourRoutes）→
+// 重なる線をずらす（separateOverlaps）→ 交わる所の飛び越え（bridgeCollect・bridgeCollectSelf・findCrossingsRaw・wpPathBridge・bridgeArcPaths）。
+// 写した関数は下の「MPD v8.33 の〇〇（行）」の所に、MPD の文字のまま置いた（直したら MPD と食い違うので、手を入れない。MPD が直ったら写し直す）。
+// MPD の図の状態 S は、swimRoutes を呼ぶたびに、スイムレーン図の箱とレーンから作り直す（関数の外へは出さない）。
+// 位置はスイムレーン図の図の中の位置（MPD と同じく、レーンは交わる向きの 0 から並び、流れの向きの 0 から見出しの幅〔横向き 136・縦向き 44〕がある）。
+// MPD の種類の名前（type）: 作業 rect・システムへの入力 sys_input・判断 diamond・始まりと終わり terminal・書類 doc
+const swimRoutes = (() => {
+  let S = { diagramType: 'swimlane', orientation: 'horizontal', lanes: [], nodes: [], edges: [] };
+  const usesLanes = () => true; // スイムレーン図はいつもレーンがある
+  const hexInset = () => 0; // 六角形（判断〔説明有〕）は、このアプリにない
+  // MPD v8.33 の VIRTUAL_LANE（1667 行）
+  const VIRTUAL_LANE={id:'__virtual__',name:'',bg:'#f8fafc',hd:'#e2e8f0',w:800};
+  // MPD v8.33 の _portSideCount（1879 行）
+  let _portSideCount={};
+  // MPD v8.33 の _portAssign（1880 行）
+  let _portAssign=null;
+  // MPD v8.33 の isV（1938 行）
+  function isV(){return S.orientation==='vertical'}
+  // MPD v8.33 の isFreeShape（2054 行）
+  function isFreeShape(type){return type==='org_group'||type==='group_box'||type==='lifeline'||type==='activation'||type==='gantt_task'||type==='gantt_milestone'||type==='gantt_summary'||type==='mind_root'||type==='mind_topic'||type==='uml_class'||type==='uml_interface'||type==='step_num'}
+  // MPD v8.33 の isOverlayShape（2060 行）
+  function isOverlayShape(type){return type==='doc'||type==='parallelogram'||type==='supplement'}
+  // MPD v8.33 の CROSSLANE_TYPES（2065 行）
+  const CROSSLANE_TYPES=new Set(['crosslane','crosslane_sys_input']);
+  // MPD v8.33 の isCrosslaneType（2066 行）
+  function isCrosslaneType(t){return CROSSLANE_TYPES.has(t)}
+  // MPD v8.33 の nodeLaneIdx（2070 行）
+  function nodeLaneIdx(n){
+    if(!usesLanes()||!n||n.x==null) return -1;
+    const i=S.lanes.findIndex(l=>l.id===n.lid);
+    if(i>=0) return i;
+    const l=laneAt(isV()?(n.x+n.w/2):(n.y+n.h/2));
+    return l?S.lanes.indexOf(l):-1;
+  }
+  // MPD v8.33 の SVG_W・SVG_H（3240 行）
+  let SVG_W=800, SVG_H=1200;
+  // MPD v8.33 の totalLaneSpan（3309 行）
+  function totalLaneSpan(){return S.lanes.reduce((s,l)=>s+l.w,0)}
+  // MPD v8.33 の laneX（3461 行）
+  function laneX(id){
+    let x=0;
+    for(const l of S.lanes){if(l.id===id)return x;x+=l.w}
+    return 0;
+  }
+  // MPD v8.33 の laneBoundaries（3469 行）
+  function laneBoundaries(){
+    if(!usesLanes()) return [];
+    const out=[0]; let a=0;
+    for(const l of S.lanes){ a+=l.w; out.push(a); }
+    return out;
+  }
+  // MPD v8.33 の LANE_EDGE_CLR（3475 行）
+  const LANE_EDGE_CLR=10;
+  // MPD v8.33 の laneAt（3477 行）
+  function laneAt(crossPos){
+    if(!usesLanes())return VIRTUAL_LANE;
+    let c=0;
+    for(const l of S.lanes){if(crossPos>=c&&crossPos<c+l.w)return l;c+=l.w}
+    return crossPos<0?S.lanes[0]:S.lanes[S.lanes.length-1];
+  }
+  // MPD v8.33 の nc（4759 行）
+  function nc(n){return[n.x+n.w/2,n.y+n.h/2]}
+  // MPD v8.33 の isDiamondShape（4762 行）
+  function isDiamondShape(t){ return t==='diamond'||t==='er_relation'||t==='gateway_xor'||t==='gateway_par'; }
+  // MPD v8.33 の exitPt（4763 行）
+  function exitPt(n,side,frac,loose){
+    // v6.17: loose=true（接続位置ピン）は辺のほぼ端まで許可。自動（扇状分散）は従来の 0.12〜0.88。
+    const lo=loose?0.02:0.12, hi=loose?0.98:0.88;
+    let f=(frac==null?0.5:Math.max(lo,Math.min(hi,frac)));
+    if(n&&isDiamondShape(n.type)) f=0.5;   // ひし形は各頂点(辺の中央)のみに接続＝frac無効化
+    if(n&&n.type==='diamond_desc'){   // v8.30: 六角形＝頂点のある辺（縦モード左右／横モード上下）は頂点だけ・平らな辺は尖りの内側で割り付け
+      const k=hexInset(n);
+      if(isV()){
+        if(side==='left')  return[n.x,     n.y+n.h/2];
+        if(side==='right') return[n.x+n.w, n.y+n.h/2];
+        const px=n.x+k+(n.w-2*k)*f; return side==='top'?[px,n.y]:[px,n.y+n.h];
+      }
+      if(side==='top')    return[n.x+n.w/2, n.y];
+      if(side==='bottom') return[n.x+n.w/2, n.y+n.h];
+      const py=n.y+k+(n.h-2*k)*f; return side==='left'?[n.x,py]:[n.x+n.w,py];
+    }
+    if(side==='top')    return[n.x+n.w*f, n.y];
+    if(side==='bottom') return[n.x+n.w*f, n.y+n.h];
+    if(side==='left')   return[n.x,        n.y+n.h*f];
+    if(side==='right')  return[n.x+n.w,    n.y+n.h*f];
+  }
+  // MPD v8.33 の facingSide（4784 行）
+  function facingSide(from,to){
+    const dx=(to.x+to.w/2)-(from.x+from.w/2),dy=(to.y+to.h/2)-(from.y+from.h/2);
+    if(isV()){
+      // 縦モード: Y方向(main)優先 — 15°閾値
+      return Math.abs(dy)>=Math.abs(dx)*0.27?(dy>=0?'bottom':'top'):(dx>=0?'right':'left');
+    } else {
+      // 横モード: X方向(main)優先 — 15°閾値
+      return Math.abs(dx)>=Math.abs(dy)*0.27?(dx>=0?'right':'left'):(dy>=0?'bottom':'top');
+    }
+  }
+  // MPD v8.33 の nodeRef（4803 行）
+  function nodeRef(n, ed, dir){
+    if(!isCrosslaneType(n.type)) return n;
+    let lid=dir==='from'?ed?.fromLid:ed?.toLid;
+    if(!lid&&ed&&usesLanes()){   // lid 無し: 相手端点のシェイプの位置からレーンを推定
+      const otherId=dir==='from'?ed.to:ed.from;
+      const other=S.nodes.find(x=>x.id===otherId&&x.id!==n.id);
+      if(other&&other.x!=null){ const oi=nodeLaneIdx(other); if(oi>=0) lid=S.lanes[oi].id; }
+    }
+    if(!lid) return n;
+    const ln=S.lanes.find(l=>l.id===lid);
+    if(!ln) return n;
+    const MINW=24, lx=laneX(lid);
+    if(isV()){
+      let lo=Math.max(lx,n.x), hi=Math.min(lx+ln.w,n.x+n.w);
+      if(hi-lo<MINW){   // 帯がこのレーンをほぼ／全く覆っていない → 帯の近い側の端24px
+        if(lx+ln.w/2<n.x+n.w/2){ lo=n.x; hi=Math.min(n.x+n.w,n.x+MINW); }
+        else { hi=n.x+n.w; lo=Math.max(n.x,hi-MINW); }
+      }
+      return{...n,x:lo,w:hi-lo,type:'rect'};
+    } else {
+      let lo=Math.max(lx,n.y), hi=Math.min(lx+ln.w,n.y+n.h);
+      if(hi-lo<MINW){
+        if(lx+ln.w/2<n.y+n.h/2){ lo=n.y; hi=Math.min(n.y+n.h,n.y+MINW); }
+        else { hi=n.y+n.h; lo=Math.max(n.y,hi-MINW); }
+      }
+      return{...n,y:lo,h:hi-lo,type:'rect'};
+    }
+  }
+  // MPD v8.33 の assignDiamondPorts（4844 行）
+  function assignDiamondPorts(asgn){
+    const SIDES=['right','bottom','left','top'];
+    const SA={right:0,bottom:90,left:180,top:-90};
+    const dev=(ang,s)=>{ let d=Math.abs(ang-SA[s]); return d>180?360-d:d; };
+    const PERP={left:'top',right:'bottom',top:'left',bottom:'right'};
+    const cen=r=>[r.x+r.w/2, r.y+r.h/2];
+    const byNode={};
+    S.edges.forEach(ed=>{
+      const a=asgn[ed.id]; if(!a) return;
+      const fn=S.nodes.find(n=>n.id===a.fromId), tn=S.nodes.find(n=>n.id===a.toId);
+      if(fn&&isDiamondShape(fn.type)){
+        const o=cen(a.bRef),c=cen(fn);
+        (byNode[fn.id]=byNode[fn.id]||{node:fn,ends:[]}).ends.push({a,end:'exit',otherId:a.toId,otherRef:a.bRef,otherType:a.bRef.type||'',angle:Math.atan2(o[1]-c[1],o[0]-c[0])*180/Math.PI,pinned:!!ed.fromPin,primary:a.exitSide});
+      }
+      if(tn&&isDiamondShape(tn.type)){
+        const o=cen(a.aRef),c=cen(tn);
+        (byNode[tn.id]=byNode[tn.id]||{node:tn,ends:[]}).ends.push({a,end:'entry',otherId:a.fromId,otherRef:a.aRef,otherType:a.aRef.type||'',angle:Math.atan2(o[1]-c[1],o[0]-c[0])*180/Math.PI,pinned:!!ed.toPin,primary:a.entrySide});
+      }
+    });
+    Object.keys(byNode).forEach(nid=>{
+      const D=byNode[nid].node, ends=byNode[nid].ends;
+      if(ends.length<2) return;
+      const taken={}; ends.forEach(e=>{ if(e.pinned) taken[e.primary]=true; });   // ピンは辺を固定占有
+      const handled=new Set();
+      // (1) フィードバックループ＝往き(A→D)と戻り(D→A)を1組で割当。往きは対向頂点・戻りはAのある側へ外回り（交差/本体貫通を回避）。
+      ends.forEach(e=>{
+        if(e.pinned||handled.has(e)||e.end!=='exit'||isDiamondShape(e.otherType)) return;
+        const f=ends.find(x=>x.end==='entry'&&x.otherId===e.otherId&&!x.pinned&&!handled.has(x));
+        if(!f) return;
+        const A=e.otherRef, Dc=cen(D), Ac=cen(A);
+        const fwdAside=facingSide(A,D), fwdDside=facingSide(D,A);
+        const vert=(fwdAside==='top'||fwdAside==='bottom');
+        let P = vert ? ((Ac[0]-Dc[0])<0?'left':'right') : ((Ac[1]-Dc[1])<0?'top':'bottom');
+        if(P===fwdDside) P=PERP[P];
+        if(taken[fwdDside]||taken[P]||fwdDside===P||fwdAside===P) return;   // 競合時は通常割当へフォールバック
+        f.a.entrySide=fwdDside; taken[fwdDside]=true; handled.add(f);
+        e.a.exitSide=P;         taken[P]=true;        handled.add(e);
+        e.a.entrySide=P;        // A側の戻り入口も外回り辺Pへ（往きのA辺 fwdAside とは別＝重ならない）
+      });
+      // (2) 残りの端：衝突があるときだけ角度コスト最小で重複なく再割当（無ければ facingSide のまま不変）
+      const autos=ends.filter(e=>!e.pinned&&!handled.has(e));
+      if(!autos.length) return;
+      const cnt={}; let collide=false;
+      autos.forEach(e=>{ if(taken[e.primary])collide=true; cnt[e.primary]=(cnt[e.primary]||0)+1; if(cnt[e.primary]>1)collide=true; });
+      if(!collide) return;
+      const free=SIDES.filter(s=>!taken[s]);
+      const Wt=e=> e.end==='entry'?1:0.999;
+      const res=new Array(autos.length).fill(null);
+      if(autos.length<=free.length){
+        let best=null,bc=Infinity; const idx=new Array(autos.length);
+        const rec=(i,used,c)=>{ if(c>=bc)return; if(i===autos.length){bc=c;best=idx.slice();return;}
+          for(let k=0;k<free.length;k++){ if(used&(1<<k))continue; idx[i]=k; rec(i+1,used|(1<<k),c+dev(autos[i].angle,free[k])*Wt(autos[i])); } };
+        rec(0,0,0);
+        if(best) best.forEach((k,i)=>res[i]=free[k]);
+      } else {
+        const usedE={}; free.forEach(s=>{ let bi=-1,bd=Infinity; autos.forEach((e,i)=>{ if(usedE[i])return; const d=dev(e.angle,s); if(d<bd){bd=d;bi=i;} }); if(bi>=0){usedE[bi]=true;res[bi]=s;} });
+      }
+      autos.forEach((e,i)=>{ const side=res[i]; if(!side) return; if(e.end==='exit') e.a.exitSide=side; else e.a.entrySide=side; });
+    });
+  }
+  // MPD v8.33 の L_MIN_GAP（4905 行）
+  const L_MIN_GAP=24;
+  // MPD v8.33 の PORT_MIN_GAP（4908 行）
+  const PORT_MIN_GAP=10;
+  // MPD v8.33 の lShapeClear（4912 行）
+  function lShapeClear(aRef,bRef,exitSide,entrySide,fromId,toId){
+    const sp=exitPt(aRef,exitSide,0.5,false), ep=exitPt(bRef,entrySide,0.5,false);
+    if(!sp||!ep) return false;
+    // v8.14: 障害物の条件を orthoRoute と同じにそろえる（余白9px・始終点を内包する箱は除く）。
+    //   従来は routeObs（余白12px・内包の除外なし）で判定していたため、実際には通せるL字を
+    //   判定側だけが先に却下し、L字が成立しないケースがあった。
+    const _p=9, _fn=S.nodes.find(n=>n.id===fromId), _tn=S.nodes.find(n=>n.id===toId);
+    const _cont=(b,s)=> b.x<=s.x+2&&b.y<=s.y+2&&b.x+b.w>=s.x+s.w-2&&b.y+b.h>=s.y+s.h-2;
+    const obs=S.nodes.filter(n=>n.id!==fromId&&n.id!==toId&&!isFreeShape(n.type)&&!isOverlayShape(n.type)&&!(_fn&&_cont(n,_fn))&&!(_tn&&_cont(n,_tn)))
+      .map(n=>({l:n.x-_p,t:n.y-_p,r:n.x+n.w+_p,b:n.y+n.h+_p}));
+    const exV=(exitSide==='top'||exitSide==='bottom');
+    const cx=exV?sp[0]:ep[0], cy=exV?ep[1]:sp[1];        // 角
+    if(exV) return !vHit(sp[0],sp[1],cy,obs) && !hHit(cy,cx,ep[0],obs);
+    return         !hHit(sp[1],sp[0],cx,obs) && !vHit(cx,cy,ep[1],obs);
+  }
+  // MPD v8.33 の manualRouteFitsSides（4931 行）
+  function manualRouteFitsSides(ed,exitSide,entrySide){
+    const w=ed.orthoWps; if(!w||!w.length) return true;
+    const eV=exitSide==='top'||exitSide==='bottom', nV=entrySide==='top'||entrySide==='bottom';
+    if(w.length===1) return eV!==nV;
+    const horiz=(a,b)=>Math.abs(a.y-b.y)<0.5&&Math.abs(a.x-b.x)>=0.5, vert=(a,b)=>Math.abs(a.x-b.x)<0.5&&Math.abs(a.y-b.y)>=0.5;
+    const f0=w[0],f1=w[1],l0=w[w.length-2],l1=w[w.length-1];
+    if((horiz(f0,f1)&&!eV)||(vert(f0,f1)&&eV)) return false;
+    if((horiz(l0,l1)&&!nV)||(vert(l0,l1)&&nV)) return false;
+    return true;
+  }
+  // MPD v8.33 の pinFixed（4949 行）
+  const pinFixed=p=>!!(p&&p.frac!=null);
+  // MPD v8.33 の allocatePorts（4970 行）
+  function allocatePorts(){
+    // v6.11 修正: 接続線は必ず「対面の辺」に出入りさせる。
+    //   旧実装は同一辺が重複すると非対面の辺へ追い出していたため、経路がノード内部を貫通し
+    //   『目的のシェイプへ直進せず変に曲がる』『矢印が箱の下に隠れて表示されない』不具合が出ていた。
+    //   新実装は辺を変えず、同一辺に集まる線を辺上の位置(frac)で均等に扇状分散する。
+    const asgn={}; // edgeId -> {exitSide, entrySide, aRef, bRef, exitFrac, entryFrac}
+    // crosslaneは接続先レーンごとに別キーで管理（異なるレーンへの接続が競合しない）
+    function pKey(nodeId,ed,dir){
+      const n=S.nodes.find(nd=>nd.id===nodeId);
+      if(!n||!isCrosslaneType(n.type))return nodeId;
+      const lid=dir==='from'?ed?.fromLid:ed?.toLid;
+      return lid?nodeId+':'+lid:nodeId;
+    }
+    // 1st pass: 対面の辺を決める（追い出しはしない）
+    // v6.17: 接続位置ピン（ed.fromPin/toPin={side,frac}）がある端は、その辺・位置を最優先で使う。
+    S.edges.forEach(ed=>{
+      const fn=S.nodes.find(n=>n.id===ed.from), tn=S.nodes.find(n=>n.id===ed.to);
+      if(!fn||!tn) return;
+      const aRef=nodeRef(fn,ed,'from'), bRef=nodeRef(tn,ed,'to');
+      let exitSide=ed.fromPin?ed.fromPin.side:facingSide(aRef,bRef);
+      let entrySide=ed.toPin?ed.toPin.side:facingSide(bRef,aRef);
+      // v8.02追補: スイムレーン/フローチャート/BPMN で、相手が主軸方向に完全に離れている(縦モード=下/上、
+      //   横モード=右/左)非ピンの線は、入口を主軸の辺(上/下辺、横モードは左/右辺)に揃える。始点(exit)は従来のまま。
+      //   遠い相手が横辺から入って途中の箱を貫通する事態を防ぐ。真横・重なる相手・ひし形は対象外。
+      //   ※上向きの流れ(下→上)も対象。isReturnEdge(上向き=戻り線)で弾くと下→上が整形されないため除外しない。
+      // v8.13追補: 上の規則だと、別レーンの相手（＝交差軸にずれている）へは「出口も入口も主軸の辺」になり、
+      //   直交経路は必ず2回曲がる（Z字）。参考PDF（業務フロー図）の形は「主軸の辺から出て、
+      //   相手の横辺へ入る」＝1回曲げ。そこで、交差軸で箱どうしが離れていて、かつL字の2本が
+      //   他の箱を貫通しないときだけ「出口＝主軸の辺／入口＝源のある側の横辺」にする。
+      //   貫通する場合と、交差軸で重なっている（ほぼ真下・真上）場合は従来どおり主軸の辺から入れる。
+      // v8.28: 始点ピン（○＋の辺指定）があっても、その辺が主軸の辺（ex2）ならピン無しと同じ L 字規則を通す。
+      //   従来は「!ed.fromPin」が条件で、ピン付きは別の分岐（入口＝主軸の辺に固定）へ落ちていたため、下辺の○＋から
+      //   引いた線だけ Z 字になり、接続モードで引いた同じ2つのシェイプの線（L 字）と形が違っていた（ユーザー指摘 2026-09-14）。
+      //   横辺のピン（右辺の○＋など）・ピン無し・終点ピン付きの線は結果不変（分岐を1つにまとめただけ）
+      if(!ed.toPin && ['swimlane','flowchart','bpmn'].includes(S.diagramType)
+         && !isDiamondShape(aRef.type) && !isDiamondShape(bRef.type)){
+        const V=isV();
+        const mLo=a=>V?a.y:a.x, mHi=a=>V?a.y+a.h:a.x+a.w;      // 主軸の範囲
+        const cLo=a=>V?a.x:a.y, cHi=a=>V?a.x+a.w:a.y+a.h;      // 交差軸の範囲
+        const below=mLo(bRef)>=mHi(aRef), above=mHi(bRef)<=mLo(aRef);
+        if(below||above){
+          const gap=Math.max(cLo(bRef)-cHi(aRef), cLo(aRef)-cHi(bRef));   // 交差軸の空き（重なりなら負）
+          const ex2=V?(below?'bottom':'top'):(below?'right':'left');
+          let done=false;
+          if(gap>=L_MIN_GAP && (!ed.fromPin || exitSide===ex2)){
+            const aMid=(cLo(aRef)+cHi(aRef))/2, bMid=(cLo(bRef)+cHi(bRef))/2;
+            const en2=V?(aMid<bMid?'left':'right'):(aMid<bMid?'top':'bottom');
+            // v8.31追補⑤: 手で直した経路が L 字の辺の組で描けないなら L 字にしない（主軸の辺のまま＝手動経路を残す）。v8.28 で○＋の線も
+            //   L 字の対象にしたため、v8.27 以前に○＋の線を手で Z 字に直したファイルをインポートすると入口の辺が変わり、手動経路が捨てられていた
+            if(manualRouteFitsSides(ed,ex2,en2)&&lShapeClear(aRef,bRef,ex2,en2,fn.id,tn.id)){ exitSide=ex2; entrySide=en2; done=true; }
+          }
+          if(!done) entrySide=V?(below?'top':'bottom'):(below?'left':'right');
+        }
+      }
+      // v8.29: aBand/bBand＝その端が複数レーン系の帯（接続矩形＝帯∩レーン。nodeRef が別オブジェクトを返したとき）。
+      //   帯の端は「相手の端の位置に合わせて動く側」＝processFan の hub にしない・restraighten でも相手に合わせる（下の「帯は相手に合わせる」参照）
+      asgn[ed.id]={exitSide,entrySide,aRef,bRef,fromId:fn.id,toId:tn.id,aBand:aRef!==fn,bBand:bRef!==tn};
+      if(pinFixed(ed.fromPin))asgn[ed.id].exitFrac=ed.fromPin.frac;   // v8.26: 辺だけのピンは frac を持たない＝2nd pass が割り当てる
+      if(pinFixed(ed.toPin))asgn[ed.id].entryFrac=ed.toPin.frac;
+    });
+    assignDiamondPorts(asgn);   // v7.11追補: 判断(ひし形)は各線を別々の頂点へ（同じ頂点から複数線を出さない）
+    // 2nd pass: (ノード,辺) ごとにポートを集約し、相手の位置順に並べて frac を均等割当（扇状分散）
+    const ports={}; // key = pKey|side -> [{edgeId,dir,ocx,ocy,side}]
+    function addPort(key,side,edgeId,dir,otherRef,pinned,pfrac,hubRef){
+      const k=key+'|'+side;
+      (ports[k]=ports[k]||[]).push({edgeId,dir,ocx:otherRef.x+otherRef.w/2,ocy:otherRef.y+otherRef.h/2,side,pinned:!!pinned,pfrac,
+        hcx:hubRef.x+hubRef.w/2,hcy:hubRef.y+hubRef.h/2,   // v8.29: 自分（hub）の中心＝往復の並び順の決定に使う
+        hub:hubRef});                                        // v8.31追補㉒: 辺の真ん中から見た相手の向き（portAngle）に使う
+    }
+    // v8.31追補㉒: 辺の真ん中から見た相手の中心の向き（辺の外向きを 0・辺に沿って frac が増える向きを正の角度）。同じ辺の端はこの角度の
+    //   順に並べる＝線どうしが交差しにくい並び。従来は相手の中心の座標（上下辺は x・左右辺は y）の順だったため、相手が低い所から横に来る線と
+    //   上から下りてくる線が同じ辺に入ると、上から来る線が辺の左を取って交差した（ユーザー報告 2026-10-06）。相手が同じ高さに並ぶ扇では
+    //   角度の順と座標の順は同じ＝並びは変わらない
+    function portAngle(p){
+      const h=p.hub, dx=p.ocx, dy=p.ocy;
+      if(p.side==='top')    return Math.atan2(dx-(h.x+h.w/2), -(dy-h.y));
+      if(p.side==='bottom') return Math.atan2(dx-(h.x+h.w/2),   dy-(h.y+h.h));
+      if(p.side==='left')   return Math.atan2(dy-(h.y+h.h/2), -(dx-h.x));
+      return                       Math.atan2(dy-(h.y+h.h/2),   dx-(h.x+h.w));
+    }
+    S.edges.forEach(ed=>{
+      const a=asgn[ed.id]; if(!a) return;
+      // v8.19: ピン留めの端も pinned フラグ付きで母数に含める（frac は上書きしない）。
+      //   従来（v6.17）は母数から除外していたため、同じ辺に2本あって1本を1/3へピン留めすると
+      //   残りが「1本扱い」で中央(0.5)に置かれ、ピンの位置と噛み合わなかった。
+      addPort(pKey(a.fromId,ed,'from'), a.exitSide,  ed.id, 'exit',  a.bRef, pinFixed(ed.fromPin), pinFixed(ed.fromPin)?ed.fromPin.frac:null, a.aRef);   // v8.26: 位置固定のピンだけ
+      addPort(pKey(a.toId,ed,'to'),     a.entrySide, ed.id, 'entry', a.aRef, pinFixed(ed.toPin),   pinFixed(ed.toPin)?ed.toPin.frac:null, a.bRef);
+    });
+    _portSideCount={};
+    Object.keys(ports).forEach(k=>{
+      const list=ports[k], side=list[0].side;
+      const horiz=(side==='top'||side==='bottom'); // 上下辺は相手のXで、左右辺は相手のYで並べる
+      // v8.29: 同じ相手との往復（出口と入口が同じ辺・相手も同じ）は「出口＝相手のある側・入口＝その反対側」に並べる
+      //   （相手の位置の同値を 0.01px だけずらす＝相手が違う端の順は不変・真上／真下の相手は従来どおり登録順）。
+      //   斜めの往復は両端とも Z 字になるので、この並びにしないと2本が必ず交差する
+      // v8.31追補㉒: 並びの基準を相手の座標から「辺の真ん中から見た相手の向き」（portAngle）に。往復の決め方（同じ値を出口・入口でわずかに
+      //   ずらす）は従来どおり
+      const sortKey=p=>{ const o=horiz?p.ocx:p.ocy, h=horiz?p.hcx:p.hcy; return portAngle(p)+(p.dir==='exit'?1:-1)*Math.sign(o-h)*1e-6; };
+      list.sort((p,q)=>sortKey(p)-sortKey(q));
+      const c=list.length;
+      _portSideCount[k]=c;                 // v8.19: ピンドラッグの既定位置スナップ用（ピン含む総数）
+      // v8.19: スロット (i+1)/(c+1) を作り、ピンは自分の frac に最も近いスロットを消費（frac は不変）、
+      //   自動の端は残りのスロットへ相手位置順に割り当てる。ピンが無ければ従来と同一の割当になる。
+      const slots=[]; for(let i=0;i<c;i++) slots.push({f:(i+1)/(c+1),used:false});
+      list.forEach(p=>{
+        if(!p.pinned) return;
+        let bi=-1,bd=Infinity;
+        slots.forEach((s,i)=>{ if(!s.used){ const d=Math.abs(s.f-p.pfrac); if(d<bd){bd=d;bi=i;} } });
+        if(bi>=0) slots[bi].used=true;
+      });
+      const free=slots.filter(s=>!s.used);
+      let j=0;
+      list.forEach(p=>{
+        if(p.pinned) return;               // ピンの frac は 1st pass で設定済み（ユーザー指定のまま）
+        const frac=free[j]?free[j].f:0.5; j++;
+        if(p.dir==='exit') asgn[p.edgeId].exitFrac=frac;
+        else               asgn[p.edgeId].entryFrac=frac;
+      });
+    });
+    // ── v8.02: 接続線の終点整形＆段違いトラック（スイムレーン/フローチャート/BPMN） ──
+    //   出口(始点)は等間隔のまま。終点は「一直線にできる線は一直線優先／できない線は辺の中央」に。
+    //   同じ出口辺を共有する曲がる線は、近い相手＝相手寄り／遠い相手＝始点寄りの段違いトラックへ置き、
+    //   横線の重なり・交差を防ぐ（角丸などの描き方は不変。ここでは経路の座標＝frac と段違い位置だけを決める）。
+    if(['swimlane','flowchart','bpmn'].includes(S.diagramType)){
+      // v8.02追補2: 扇状の接続を「始点側/終点側どちらが束ねる中心(hub)でも」「上下左右どの向きでも」対称に整える。
+      //   hub=扇の中心のシェイプ辺、spoke=各相手。処理は role(exit/entry)・向きに依らず共通化する。
+      const okEdge=ed=>{ const a=asgn[ed.id]; if(!a) return false;
+        if(a.exitSide===a.entrySide) return false;                    // 同一辺Uターンは対象外
+        if(isDiamondShape(a.aRef.type)||isDiamondShape(a.bRef.type)) return false;  // ひし形は頂点固定
+        return true; };   // 上向き(戻り線)も整形対象。ブリッジ描画は renderEdges 側の別フラグで独立に処理される
+      // 各(シェイプ,辺)の接続本数（始点側=exitN／終点側=entryN）
+      // v8.19: ピンも本数に含める。従来はピンを除外していたため、同じ辺に「ピン1本＋自動1本」が
+      //   あると自動の線が「単独」扱いになり、processFan の一直線判定→不成立で辺の中央(0.5)へ
+      //   上書きされ、2nd pass のスロット配置（ピンの残り位置）が壊れていた。ピンを数えることで
+      //   sMulti が真になり扇状分散の位置がそのまま保たれる（srcFan/tgtFan の判定も同様）。
+      const exitN={}, entryN={};
+      S.edges.forEach(ed=>{ const a=asgn[ed.id]; if(!a) return;
+        { const k=pKey(a.fromId,ed,'from')+'|'+a.exitSide; exitN[k]=(exitN[k]||0)+1; }
+        { const k=pKey(a.toId,ed,'to')+'|'+a.entrySide; entryN[k]=(entryN[k]||0)+1; } });
+      // 役割アクセサ（role='exit':hub=始点／role='entry':hub=終点）
+      const hSide=(a,r)=> r==='exit'?a.exitSide:a.entrySide;
+      const hRef =(a,r)=> r==='exit'?a.aRef:a.bRef;
+      const sRef =(a,r)=> r==='exit'?a.bRef:a.aRef;
+      const sSide=(a,r)=> r==='exit'?a.entrySide:a.exitSide;
+      const hFrac=(a,r)=> r==='exit'?a.exitFrac:a.entryFrac;
+      const setH =(a,r,v)=>{ if(r==='exit')a.exitFrac=v; else a.entryFrac=v; };
+      const setS =(a,r,v)=>{ if(r==='exit')a.entryFrac=v; else a.exitFrac=v; };
+      const hPin =(ed,r)=> r==='exit'?pinFixed(ed.fromPin):pinFixed(ed.toPin);   // v8.26: 位置固定のピンだけ（辺だけのピンは扇状分散の対象）
+      const sPin =(ed,r)=> r==='exit'?pinFixed(ed.toPin):pinFixed(ed.fromPin);
+      // v8.29: 「相手側の辺に複数の端が来ている」は出口・入口を合わせた総数で見る（2nd pass のスロット割当と同じ母数）。
+      //   従来は同じ向きの端だけを数えていたため、往復（出口1本＋入口1本）や「出1本＋別のシェイプからの戻り1本」で、
+      //   2nd pass が 1/3・2/3 に分けた端の片方を processFan が「単独」扱いで辺の中央(0.5)へ上書きし、片方が中央・
+      //   もう片方が 1/3 という不均等（同じ位置に重なることもある）になっていた（ユーザー報告 2026-09-15）
+      const sideN=k=>(exitN[k]||0)+(entryN[k]||0);
+      const sMulti=(ed,a,r)=> r==='exit' ? (sideN(pKey(a.toId,ed,'to')+'|'+a.entrySide)>1)
+                                         : (sideN(pKey(a.fromId,ed,'from')+'|'+a.exitSide)>1);
+      // v8.29: 帯（複数レーン系）の端は相手の端の位置に合わせる（ユーザー要望 2026-09-15「複数レーンシェイプの接続線は接続先ベース＝
+      //   通常のシェイプどうしと同じ仕組みで、相手の辺に線が無ければその辺の中央へ真っすぐ」）。
+      //   帯は交差軸に長く「中心」に意味が無いのに、帯∩レーンの矩形を普通の箱として扱うと帯側の端がレーン中央（2nd pass のスロット）に
+      //   固定され、相手（通常シェイプ）の入口がそれに合わせて中央から外れる（v8.23 の一直線化は相手側を動かす向き）か Z 字になっていた。
+      //   規則: 帯と通常シェイプを平行な辺（上下どうし／左右どうし）で結ぶ線は、通常シェイプ側を hub（1本なら辺の中央 0.5・複数なら
+      //   2nd pass の等間隔スロット・ピンならその位置）にし、帯側の端をその位置へ動かす。帯側の辺の本数（sMulti）は見ない＝相手ごとに動く。
+      //   相手の位置が帯∩レーンの 0.12〜0.88 の外なら最寄り（exitPt が丸める）で Z 字。同じ帯の同じレーン区間で端が PORT_MIN_GAP 未満に
+      //   詰まれば 3rd pass が従来どおり等間隔に分け直し、相手側を一直線に合わせる（従来の形へ退避）。
+      //   L 字（直交する辺）・帯どうし・位置固定のピンが付いた帯の端・レーンの無い図種の帯（普通の箱）は従来どおり
+      const bandEnd=(a,dir)=> dir==='exit'?a.aBand:a.bBand;
+      const parSides=a=> a.exitSide!==a.entrySide && ((a.exitSide==='left'||a.exitSide==='right')===(a.entrySide==='left'||a.entrySide==='right'));
+      const bandFollows=(ed,a,dir)=> bandEnd(a,dir)&&!bandEnd(a,dir==='exit'?'entry':'exit')&&parSides(a)&&!(dir==='exit'?pinFixed(ed.fromPin):pinFixed(ed.toPin));   // dir＝帯の端
+      const alignBandTo=(ed,a,dir)=>{   // 帯の端（dir）を相手の端の実位置へ。戻り値＝帯∩レーンの 0.12〜0.88 に収まる（一直線になる）か
+        const oDir=dir==='exit'?'entry':'exit';
+        const oRef=oDir==='exit'?a.aRef:a.bRef, oSide=oDir==='exit'?a.exitSide:a.entrySide, oF=oDir==='exit'?a.exitFrac:a.entryFrac;
+        const oPin=oDir==='exit'?pinFixed(ed.fromPin):pinFixed(ed.toPin);
+        const bRef=dir==='exit'?a.aRef:a.bRef, bSide=dir==='exit'?a.exitSide:a.entrySide;
+        const p=exitPt(oRef,oSide,oF,oPin), vert=(bSide==='left'||bSide==='right');
+        const f=vert?(p[1]-bRef.y)/bRef.h:(p[0]-bRef.x)/bRef.w;
+        if(dir==='exit') a.exitFrac=f; else a.entryFrac=f;
+        return f>=0.12&&f<=0.88;
+      };
+      function processFan(eds, role){
+        const hs=hSide(asgn[eds[0].id],role), hubV=(hs==='top'||hs==='bottom');
+        eds.forEach(ed=>{ const a=asgn[ed.id]; const hp=exitPt(hRef(a,role),hs,hFrac(a,role),false); a._hx=hp[0]; a._hy=hp[1]; });
+        const perp=eds.every(ed=>{ const ss=sSide(asgn[ed.id],role); return (ss==='top'||ss==='bottom')!==hubV; });
+        if(perp){
+          // 直交群（例: 右辺hub → 相手は上/下辺入り）＝遠い相手ほど hub 辺の外側(脚の向きと逆側)へ並べ替え交差回避。
+          //   spoke端は主軸辺の中央。段違い(midPos)は不要＝自然なL字。
+          const g2=eds.filter(ed=>!hPin(ed,role));
+          if(!g2.length) return;   // v8.23追補: 全部が始点ピン（○＋やピンドラッグ）の直交群＝並べ替える端が無い（v8.23 でピン線を群に入れたことで到達するようになった。旧ファイルのインポートが TypeError で落ちていた）
+          g2.forEach(ed=>{ const a=asgn[ed.id]; const sc=nc(sRef(a,role));
+            if(hubV){ a._far=Math.abs(sc[1]-a._hy); a._leg=Math.sign(sc[0]-a._hx); }   // hub上下辺: 走りY・脚X・fracX
+            else    { a._far=Math.abs(sc[0]-a._hx); a._leg=Math.sign(sc[1]-a._hy); } });// hub左右辺: 走りX・脚Y・fracY
+          g2.sort((p,q)=>asgn[p.id]._far-asgn[q.id]._far);              // 近い→遠い
+          const c=g2.length, leg=asgn[g2[0].id]._leg||1;
+          // v8.29: hub 辺の位置は 2nd pass のスロット（辺の全部の端＝出入り合計で等間隔）をこの群の中で並べ替えるだけ。
+          //   従来は群の本数 c だけで (c-i)/(c+1) を計算し直していたため、同じ辺に別の端（入口など）があるとその端の
+          //   スロットと重なる／不均等になった。群が辺の全部の端なら従来と同じ値になる
+          const fr=g2.map(ed=>{ const f=hFrac(asgn[ed.id],role); return f==null?0.5:f; }).sort((p,q)=>p-q);
+          g2.forEach((ed,i)=>{ const a=asgn[ed.id];
+            setH(a,role, leg>0?fr[c-1-i]:fr[i]);                        // 近い=脚方向側／遠い=逆側(外周)
+            if(!sPin(ed,role)&&!sMulti(ed,a,role)) setS(a,role,0.5); });
+          return;
+        }
+        // 平行群：spoke端を「一直線にできれば一直線／できなければ中央」に。曲がる線は段違いトラックへ。
+        const bends=[];
+        eds.forEach(ed=>{ const a=asgn[ed.id];
+          if(sPin(ed,role)) return;                                     // 相手側がピン → 従来の分散を維持
+          if(bandFollows(ed,a,role==='exit'?'entry':'exit')){ if(!alignBandTo(ed,a,role==='exit'?'entry':'exit')) bends.push(ed); return; }   // v8.29: 帯の端は相手側の本数に関わらず hub（通常シェイプ）へ合わせる
+          if(sMulti(ed,a,role)) return;                                 // 相手側が複数扇 → 従来の分散を維持
+          const ss=sSide(a,role); if((ss==='top'||ss==='bottom')!==hubV) return;   // 軸が直交する線は対象外
+          const sp=sRef(a,role); let straight=false;
+          if(hubV){ const lo=sp.x+sp.w*0.12, hi=sp.x+sp.w*0.88;
+            if(a._hx>=lo&&a._hx<=hi){ setS(a,role,(a._hx-sp.x)/sp.w); straight=true; } else setS(a,role,0.5); }
+          else { const lo=sp.y+sp.h*0.12, hi=sp.y+sp.h*0.88;
+            if(a._hy>=lo&&a._hy<=hi){ setS(a,role,(a._hy-sp.y)/sp.h); straight=true; } else setS(a,role,0.5); }
+          if(!straight) bends.push(ed); });
+        if(bends.length>=2){
+          bends.forEach(ed=>{ const a=asgn[ed.id]; const sc=nc(sRef(a,role));
+            a._far=hubV?Math.abs(sc[0]-a._hx):Math.abs(sc[1]-a._hy); });
+          bends.sort((p,q)=>asgn[p.id]._far-asgn[q.id]._far);          // 近い→遠い
+          const n=bends.length;
+          bends.forEach((ed,i)=>{ const a=asgn[ed.id];
+            const spk=exitPt(sRef(a,role),sSide(a,role),(role==='exit'?a.entryFrac:a.exitFrac),false), f=(n-i)/(n+1);
+            a.autoMid=hubV?(a._hy+(spk[1]-a._hy)*f):(a._hx+(spk[0]-a._hx)*f); }); }   // 近い相手ほど相手寄りの棚
+      }
+      // 各辺をどちらの端で束ねるか決めてグループ化（終点側が扇＝多対1 も対称に処理）
+      const groups={};
+      S.edges.forEach(ed=>{ if(!okEdge(ed)) return; const a=asgn[ed.id];
+        const sk=pKey(a.fromId,ed,'from')+'|'+a.exitSide, tk=pKey(a.toId,ed,'to')+'|'+a.entrySide;
+        // v8.29: 束ねる中心（hub）は「端の多い辺」（出入り合計 sideN）。従来は同じ向きの本数だけで見ていたため、
+        //   「出1本＋入1本」の辺は hub にならず、その辺のスロットを持つ端が相手側の中央寄せで上書きされていた
+        const srcFan=!pinFixed(ed.fromPin)&&sideN(sk)>=2, tgtFan=!pinFixed(ed.toPin)&&sideN(tk)>=2;
+        let role,key;
+        if(bandFollows(ed,a,'exit')){ role='entry'; key='E|'+tk; }        // v8.29: 帯→通常シェイプ（平行な辺）: hub＝相手＝帯の出口が相手に合わせて動く
+        else if(bandFollows(ed,a,'entry')){ role='exit'; key='X|'+sk; }   // v8.29: 通常シェイプ→帯（平行な辺）: hub＝始点＝帯の入口が始点に合わせて動く
+        else if(tgtFan&&(!srcFan||sideN(tk)>sideN(sk))){ role='entry'; key='E|'+tk; }   // 多対1（終点が扇の中心）。両側とも複数なら端の多い側・同数なら始点側
+        // v8.23: 始点ピン（クイック接続○＋が付ける fromPin）の線も exit 群に入れて相手側（入口）を一直線に寄せる。
+        //   従来はここで除外していたため入口 frac が 2nd pass の既定(0.5)のまま＝相手の中心と始点がずれていると
+        //   必ず段差が出た。複数レーンプロセスは接続矩形（帯∩レーン）の中心がレーン中心から外れるため顕著だった。
+        //   processFan は hub 側 frac を hFrac で個別に読む（ピン値は不変）・直交群の setH も !hPin で除外済み
+        else { role='exit'; key='X|'+sk; }
+        (groups[key]=groups[key]||{role,eds:[]}).eds.push(ed); });
+      Object.keys(groups).forEach(k=> processFan(groups[k].eds, groups[k].role));
+      // v8.29: 相手がひし形（processFan の対象外＝頂点固定）の帯の端も、ひし形の頂点（辺の中央）に合わせる
+      S.edges.forEach(ed=>{ const a=asgn[ed.id]; if(!a) return;
+        if(isDiamondShape(a.bRef.type)&&bandFollows(ed,a,'exit')) alignBandTo(ed,a,'exit');
+        else if(isDiamondShape(a.aRef.type)&&bandFollows(ed,a,'entry')) alignBandTo(ed,a,'entry'); });
+      // ── v8.13追補: 同じ辺に集まる端を「均等・10px以上」にそろえる（3rd pass）──
+      //   processFan は直交群で入口を「辺の中央(0.5)」に上書きし（:3311）、平行群の「一直線優先」も
+      //   中央付近に端を置く。この2つが同じ辺に同居すると端がほぼ同じ位置に並び、そこから伸びる
+      //   横（縦）の区間が長く重なって1本に見える＝参考PDF②の「見積受領」の右辺。
+      //   すでに PORT_MIN_GAP 以上離れている辺は processFan の配置をそのまま尊重し（一直線優先・
+      //   段違いトラックを壊さない）、詰まっている辺だけを 1st pass と同じ「相手の位置順に等間隔」へ
+      //   戻す。等間隔にしても間隔が足りない辺は、render() 手前の growForPorts が箱を広げてある。
+      //   端を動かした線は、相手側が1本だけならもう一度「一直線」に整え直す（v8.02 の狙いを保つ）。
+      const sideAxis=sd=>(sd==='left'||sd==='right');
+      const posOf=(ref,sd,f)=>{ const p=exitPt(ref,sd,f,false); return sideAxis(sd)?p[1]:p[0]; };
+      const restraighten=(a,movedDir)=>{
+        // movedDir='exit' なら相手は入口側。相手が同じ軸の辺で、その辺に1本しか来ておらず、
+        // ピン留めでもなければ、線がまっすぐになる位置へ相手の frac を合わせ直す。
+        const oDir=movedDir==='exit'?'entry':'exit';
+        const oSide=oDir==='exit'?a.exitSide:a.entrySide, mSide=movedDir==='exit'?a.exitSide:a.entrySide;
+        if(sideAxis(oSide)!==sideAxis(mSide)) return;                 // 軸が直交＝一直線にはならない
+        const ed=S.edges.find(x=>asgn[x.id]===a); if(!ed) return;
+        if(oDir==='exit'?pinFixed(ed.fromPin):pinFixed(ed.toPin)) return;
+        if(bandFollows(ed,a,oDir)){ alignBandTo(ed,a,oDir); return; }   // v8.29: 相手が帯なら本数に関わらず動かした端に合わせる
+        const oKey=pKey(oDir==='exit'?a.fromId:a.toId, ed, oDir==='exit'?'from':'to')+'|'+oSide;
+        if(sideN(oKey)>1) return;                                      // 相手の辺に複数来ている（出入り合計・v8.29）＝扇のまま
+        const oRef=oDir==='exit'?a.aRef:a.bRef;
+        const m=posOf(movedDir==='exit'?a.aRef:a.bRef, mSide, movedDir==='exit'?a.exitFrac:a.entryFrac);
+        const base=sideAxis(oSide)?oRef.y:oRef.x, span=sideAxis(oSide)?oRef.h:oRef.w;
+        const f=(m-base)/span, nf=(f>=0.12&&f<=0.88)?f:0.5;
+        if(oDir==='exit') a.exitFrac=nf; else a.entryFrac=nf;
+      };
+      const gp={};
+      S.edges.forEach(ed=>{ const a=asgn[ed.id]; if(!a) return;
+        if(isDiamondShape(a.aRef.type)||isDiamondShape(a.bRef.type)) return;   // ひし形は頂点固定
+        const ek=pKey(a.fromId,ed,'from')+'|'+a.exitSide, tk=pKey(a.toId,ed,'to')+'|'+a.entrySide;
+        (gp[ek]=gp[ek]||[]).push({a,dir:'exit', side:a.exitSide, ref:a.aRef,pinned:pinFixed(ed.fromPin),other:a.bRef});
+        (gp[tk]=gp[tk]||[]).push({a,dir:'entry',side:a.entrySide,ref:a.bRef,pinned:pinFixed(ed.toPin), other:a.aRef});
+      });
+      Object.keys(gp).forEach(k=>{
+        const list=gp[k]; if(list.length<2) return;
+        const side=list[0].side, ref=list[0].ref, vert=sideAxis(side);
+        const base=vert?ref.y:ref.x, span=vert?ref.h:ref.w;
+        const getF=it=> it.dir==='exit'?(it.a.exitFrac==null?0.5:it.a.exitFrac):(it.a.entryFrac==null?0.5:it.a.entryFrac);
+        list.forEach(it=>{ it.pos=base+span*getF(it); });
+        const sorted=list.slice().sort((p,q)=>p.pos-q.pos);
+        let crowded=false;
+        for(let i=1;i<sorted.length;i++) if(sorted[i].pos-sorted[i-1].pos<PORT_MIN_GAP) crowded=true;
+        if(!crowded) return;                       // 既に十分離れている＝processFan の配置を尊重
+        if(list.some(it=>it.pinned)) return;       // ピン留めはユーザー指定の位置なので触らない
+        // 1st pass と同じ並び（上下辺は相手のX順／左右辺は相手のY順）で等間隔に振り直す
+        const n=list.length;
+        list.sort((p,q)=> vert ? ((p.other.y+p.other.h/2)-(q.other.y+q.other.h/2))
+                               : ((p.other.x+p.other.w/2)-(q.other.x+q.other.w/2)));
+        list.forEach((it,i)=>{
+          const f=(i+1)/(n+1);
+          if(it.dir==='exit') it.a.exitFrac=f; else it.a.entryFrac=f;
+        });
+        list.forEach(it=>restraighten(it.a,it.dir));
+      });
+    }
+    _portAssign=asgn;   // v8.19: ピンドラッグの既定位置スナップが「自エッジの現在の辺」を引くために控える
+    return asgn;
+  }
+  // MPD v8.33 の connPts（5274 行）
+  function connPts(a,b,ed,portAssign){
+    let aRef=a,bRef=b,exitSide,entrySide,exitFrac,entryFrac;
+    if(portAssign&&portAssign[ed.id]){
+      const pa=portAssign[ed.id];
+      aRef=pa.aRef; bRef=pa.bRef;
+      exitSide=pa.exitSide; entrySide=pa.entrySide;
+      exitFrac=pa.exitFrac; entryFrac=pa.entryFrac;   // v6.11: 同一辺の扇状分散位置
+    } else {
+      aRef=nodeRef(a,ed,'from'); bRef=nodeRef(b,ed,'to');
+      exitSide=(ed&&ed.fromPin)?ed.fromPin.side:facingSide(aRef,bRef);
+      entrySide=(ed&&ed.toPin)?ed.toPin.side:facingSide(bRef,aRef);
+      if(ed&&ed.fromPin)exitFrac=ed.fromPin.frac;
+      if(ed&&ed.toPin)entryFrac=ed.toPin.frac;
+    }
+    const[sx,sy]=exitPt(aRef,exitSide,exitFrac,!!(ed&&pinFixed(ed.fromPin))),[ex,ey]=exitPt(bRef,entrySide,entryFrac,!!(ed&&pinFixed(ed.toPin)));
+    return[sx,sy,ex,ey,exitSide,entrySide];
+  }
+  // MPD v8.33 の ROUTE_PAD（5540 行）
+  const ROUTE_PAD=12;
+  // MPD v8.33 の MIN_CRANK_LEAD（5541 行）
+  const MIN_CRANK_LEAD=40;
+  // MPD v8.33 の routeObs（5542 行）
+  function routeObs(fid,tid){
+    const p=ROUTE_PAD;
+    return S.nodes.filter(n=>n.id!==fid&&n.id!==tid&&!isFreeShape(n.type)&&!isOverlayShape(n.type))
+      .map(n=>({l:n.x-p,t:n.y-p,r:n.x+n.w+p,b:n.y+n.h+p}));
+  }
+  // MPD v8.33 の vHit（5547 行）
+  function vHit(x,y1,y2,obs){
+    const t=Math.min(y1,y2),b=Math.max(y1,y2);
+    return obs.find(o=>x>o.l&&x<o.r&&b>o.t&&t<o.b)||null;
+  }
+  // MPD v8.33 の hHit（5551 行）
+  function hHit(y,x1,x2,obs){
+    const l=Math.min(x1,x2),r=Math.max(x1,x2);
+    return obs.find(o=>y>o.t&&y<o.b&&r>o.l&&l<o.r)||null;
+  }
+  // MPD v8.33 の clearY（5555 行）
+  function clearY(sy,ey,sx,ex,obs){
+    const mid=Math.round((sy+ey)/2);
+    if(!hHit(mid,sx,ex,obs))return mid;
+    const cs=[];
+    obs.forEach(o=>{cs.push(Math.round(o.t-1));cs.push(Math.round(o.b+1));});
+    const ok=cs.filter(y=>!hHit(y,sx,ex,obs));
+    if(!ok.length)return mid;
+    ok.sort((a,b)=>Math.abs(a-mid)-Math.abs(b-mid));
+    return ok[0];
+  }
+  // MPD v8.33 の clearX（5565 行）
+  function clearX(sx,ex,sy,ey,obs){
+    const mid=Math.round((sx+ex)/2);
+    if(!vHit(mid,sy,ey,obs))return mid;
+    const cs=[];
+    obs.forEach(o=>{cs.push(Math.round(o.l-1));cs.push(Math.round(o.r+1));});
+    const ok=cs.filter(x=>!vHit(x,sy,ey,obs));
+    if(!ok.length)return mid;
+    ok.sort((a,b)=>Math.abs(a-mid)-Math.abs(b-mid));
+    return ok[0];
+  }
+  // MPD v8.33 の calcMidY（5575 行）
+  function calcMidY(sy,ey,sx,ex,exitSide,entrySide,obs){
+    let midY=clearY(sy,ey,sx,ex,obs);
+    if(exitSide===entrySide){
+      if(exitSide==='bottom') midY=Math.max(sy,ey)+MIN_CRANK_LEAD;
+      else midY=Math.min(sy,ey)-MIN_CRANK_LEAD;
+    }
+    return midY;
+  }
+  // MPD v8.33 の calcMidX（5583 行）
+  function calcMidX(sx,ex,sy,ey,exitSide,entrySide,obs){
+    let midX=clearX(sx,ex,sy,ey,obs);
+    if(exitSide===entrySide){
+      if(exitSide==='right') midX=Math.max(sx,ex)+MIN_CRANK_LEAD;
+      else midX=Math.min(sx,ex)-MIN_CRANK_LEAD;
+    }
+    return midX;
+  }
+  // MPD v8.33 の fixSegs（5591 行）
+  function fixSegs(pts,obs){
+    for(let it=0;it<4;it++){
+      let changed=false;
+      for(let i=0;i<pts.length-1;i++){
+        const[x1,y1]=pts[i],[x2,y2]=pts[i+1];
+        const isVS=Math.abs(x2-x1)<2,isHS=Math.abs(y2-y1)<2;
+        let hit=null;
+        if(isVS)hit=vHit(x1,y1,y2,obs);
+        else if(isHS)hit=hHit(y1,x1,x2,obs);
+        if(!hit)continue;
+        if(isVS){
+          const x=x1,down=y2>y1;
+          const dl=Math.abs(hit.l-x),dr=Math.abs(hit.r-x);
+          const dx=dl<dr?Math.round(hit.l-1):Math.round(hit.r+1);
+          const by=Math.round(down?hit.t-1:hit.b+1);
+          const ay=Math.round(down?hit.b+1:hit.t-1);
+          pts.splice(i+1,0,[x,by],[dx,by],[dx,ay],[x,ay]);
+          changed=true;break;
+        }
+        if(isHS){
+          const y=y1,right=x2>x1;
+          const dt=Math.abs(hit.t-y),db=Math.abs(hit.b-y);
+          const dy=dt<db?Math.round(hit.t-1):Math.round(hit.b+1);
+          const bx=Math.round(right?hit.l-1:hit.r+1);
+          const ax=Math.round(right?hit.r+1:hit.l-1);
+          pts.splice(i+1,0,[bx,y],[bx,dy],[ax,dy],[ax,y]);
+          changed=true;break;
+        }
+      }
+      if(!changed)break;
+    }
+    return pts;
+  }
+  // MPD v8.33 の wpPath（5624 行）
+  function wpPath(pts,r){
+    r=r||20;
+    if(pts.length<2)return'';
+    if(pts.length===2)return`M${pts[0][0]},${pts[0][1]} L${pts[1][0]},${pts[1][1]}`;
+    let d=`M${pts[0][0]},${pts[0][1]}`;
+    for(let i=1;i<pts.length-1;i++){
+      const[px,py]=pts[i-1],[cx,cy]=pts[i],[nx,ny]=pts[i+1];
+      const dx1=cx-px,dy1=cy-py,dx2=nx-cx,dy2=ny-cy;
+      const l1=Math.max(Math.abs(dx1),Math.abs(dy1)),l2=Math.max(Math.abs(dx2),Math.abs(dy2));
+      const cr=Math.min(r,l1/2-1,l2/2-1);
+      if(cr<2){d+=` L${cx},${cy}`;continue;}
+      const ux=dx1?dx1/Math.abs(dx1):0,uy=dy1?dy1/Math.abs(dy1):0;
+      const vx=dx2?dx2/Math.abs(dx2):0,vy=dy2?dy2/Math.abs(dy2):0;
+      d+=` L${Math.round(cx-ux*cr)},${Math.round(cy-uy*cr)} Q${cx},${cy} ${Math.round(cx+vx*cr)},${Math.round(cy+vy*cr)}`;
+    }
+    const ep=pts[pts.length-1];
+    d+=` L${ep[0]},${ep[1]}`;
+    return d;
+  }
+  // MPD v8.33 の orthoRoute（5662 行）
+  function orthoRoute(sx,sy,ex,ey,exitSide,entrySide,fromId,toId,midPos){
+    const STUB=16, LOOP_STUB=40, PAD=9, MAXGRID=4000;   // v7.11追補2: LOOP_STUB=同一辺Uターン(戻り線)の横引き出し長
+    const fn=S.nodes.find(n=>n.id===fromId), tn=S.nodes.find(n=>n.id===toId);
+    const cont=(b,s)=> b.x<=s.x+2&&b.y<=s.y+2&&b.x+b.w>=s.x+s.w-2&&b.y+b.h>=s.y+s.h-2;
+    const allBodies=S.nodes.filter(n=> n.id!==fromId&&n.id!==toId&&!isFreeShape(n.type)&&!isOverlayShape(n.type)&&!(fn&&cont(n,fn))&&!(tn&&cont(n,tn)))
+      .map(n=>({l:n.x,t:n.y,r:n.x+n.w,b:n.y+n.h}));
+    // v8.26: 格子は「始点と終点を囲む矩形＋余白 NEAR」に掛かるシェイプだけで作る。従来は図の全シェイプの辺を
+    //   格子線にしていたため、シェイプ 70 個程度の図で格子が 110×134＝14,740 となり上限 MAXGRID(4000) を超え、
+    //   全部の線が簡易経路（相手の 16px 手前で曲がる固定形・中央寄せ等の規則を通らない）になっていた
+    //   （ユーザー報告 2026-09-07「相手の直前で曲がる」）。遠くのシェイプは経路に関係しないので外しても
+    //   結果は同じ。念のため求めた経路を全シェイプで検算し、貫通があれば全シェイプで計算し直す（_full）
+    const NEAR=160;
+    const _bx0=Math.min(sx,ex)-NEAR,_by0=Math.min(sy,ey)-NEAR,_bx1=Math.max(sx,ex)+NEAR,_by1=Math.max(sy,ey)+NEAR;
+    const bodies=(arguments.length>9&&arguments[9]===true)?allBodies
+      :allBodies.filter(o=>o.r>_bx0&&o.l<_bx1&&o.b>_by0&&o.t<_by1);
+    const nrm=v=> v==='top'?[0,-1]:v==='bottom'?[0,1]:v==='left'?[-1,0]:[1,0];
+    const e0=nrm(exitSide), n0=nrm(entrySide);
+    const inBody=(x,y)=> bodies.some(o=>x>o.l&&x<o.r&&y>o.t&&y<o.b);
+    const _loopStub=(exitSide===entrySide)?LOOP_STUB:STUB;   // v7.11追補2: 同一辺Uターン(戻り線)は横の引き出しを長くする
+    const clampStub=(px,py,d)=>{ let s=_loopStub; while(s>1){ if(!inBody(px+d[0]*s,py+d[1]*s))break; s--; } return [px+d[0]*s,py+d[1]*s]; };
+    const Sp=clampStub(sx,sy,e0), Tp=clampStub(ex,ey,n0);
+    const Sx=Sp[0],Sy=Sp[1],Tx=Tp[0],Ty=Tp[1];
+    // v8.21: 接続位置ピンで出口/入口が相手と逆向き（例＝上辺ピンで相手が下）のときの自箱貫通対策。
+    //   自箱・相手箱は障害物から除外されているうえ、曲がりコストが軸単位（pdir=横/縦）のため
+    //   「スタブと同軸の反転＝コスト0」となり、自箱をまっすぐ貫通する経路が最短と評価されていた。
+    //   ①箱の辺±PAD の格子線を足して回り込みの通り道を確保 ②始点の反転・終点への逆向き進入に
+    //   大コストを課して回り込みを優先（回り込め無い場合だけ従来形に落ちる）。自動割当の線は
+    //   出口・入口が必ず相手側を向く＝ここが真にならないので従来経路は不変
+    const _oppExit=(e0[0]*(ex-sx)+e0[1]*(ey-sy))<0;
+    const _oppEntry=(n0[0]*(sx-ex)+n0[1]*(sy-ey))<0;
+    const horiz=(exitSide==='left'||exitSide==='right');   // クランク軸：横向きエッジ＝縦の交差線(x)／縦向き＝横の交差線(y)
+    const obs=bodies.map(o=>({l:o.l-PAD,t:o.t-PAD,r:o.r+PAD,b:o.b+PAD,bl:o.l,bt:o.t,br:o.r,bb:o.b}));
+    const ends=[[Sx,Sy],[Tx,Ty],[sx,sy],[ex,ey]];
+    obs.forEach(o=>{ ends.forEach(p=>{ const px=p[0],py=p[1];
+      if(px>o.l&&px<o.r&&py>o.t&&py<o.b){ const dl=px-o.l,dr=o.r-px,dt=py-o.t,db=o.b-py,m=Math.min(dl,dr,dt,db);
+        if(m===dl)o.l=Math.min(px+0.5,o.bl); else if(m===dr)o.r=Math.max(px-0.5,o.br); else if(m===dt)o.t=Math.min(py+0.5,o.bt); else o.b=Math.max(py-0.5,o.bb); } }); });
+    const xs={},ys={}; xs[Sx]=Sx; xs[Tx]=Tx; ys[Sy]=Sy; ys[Ty]=Ty;
+    obs.forEach(o=>{ xs[o.l]=o.l; xs[o.r]=o.r; ys[o.t]=o.t; ys[o.b]=o.b; });
+    if(_oppExit&&fn){ [fn.x-PAD,fn.x+fn.w+PAD].forEach(v=>xs[v]=v); [fn.y-PAD,fn.y+fn.h+PAD].forEach(v=>ys[v]=v); }
+    if(_oppEntry&&tn){ [tn.x-PAD,tn.x+tn.w+PAD].forEach(v=>xs[v]=v); [tn.y-PAD,tn.y+tn.h+PAD].forEach(v=>ys[v]=v); }
+    const X=Object.keys(xs).map(Number).sort((a,b)=>a-b), Y=Object.keys(ys).map(Number).sort((a,b)=>a-b);
+    const W=X.length, Hh=Y.length;
+    const dedupe=(full)=>{ const out=[full[0]];
+      for(let i=1;i<full.length;i++){ const p=full[i],q=out[out.length-1];
+        if(Math.abs(p[0]-q[0])<0.5&&Math.abs(p[1]-q[1])<0.5)continue;
+        if(out.length>=2){ const r=out[out.length-2];
+          if((Math.abs(r[0]-q[0])<0.5&&Math.abs(q[0]-p[0])<0.5)||(Math.abs(r[1]-q[1])<0.5&&Math.abs(q[1]-p[1])<0.5)){ out[out.length-1]=p; continue; } }
+        out.push(p); }
+      return out; };
+    const fallback=()=>{ const p=(exitSide==='top'||exitSide==='bottom')?[[sx,sy],[Sx,Sy],[Sx,Ty],[Tx,Ty],[ex,ey]]:[[sx,sy],[Sx,Sy],[Tx,Sy],[Tx,Ty],[ex,ey]]; return dedupe(p); };
+    // v8.13追補: clr の定義を MAXGRID の打ち切りより前へ移した（fallback にもレーン境界回避を掛けるため）。
+    //   obs にしか依存しないので位置を変えても判定は同一。
+    const clr=(x1,y1,x2,y2)=>{ if(x1===x2){ const t=Math.min(y1,y2),b=Math.max(y1,y2); return !obs.some(o=>x1>o.l&&x1<o.r&&b>o.t&&t<o.b); } const l=Math.min(x1,x2),r=Math.max(x1,x2); return !obs.some(o=>y1>o.t&&y1<o.b&&r>o.l&&l<o.r); };
+    // v8.13追補: レーンの区切り線の真上に乗った「内部の」直交区間を、境界の脇へ退避させる。
+    //   A* の格子座標は「ノードの辺 ±PAD」しか見ていないため、レーン幅しだいで境界の真上に track が立ち、
+    //   線と境界線が見分けられず、境界のドラッグ帯（幅8px）と重なって線を掴めなくなる。
+    //   端点（ノードの縁）に接する最初/最後の区間は動かさない＝出入りの向きは保つ。
+    //   逃げ場が無い（ノードを貫通する）ときは元のまま＝境界に乗るのは見栄えの問題、貫通は重大。
+    const avoidLaneLines=(P)=>{
+      const bs=laneBoundaries(); if(bs.length<2||P.length<4) return P;
+      const vert=isV(), k=vert?0:1, span=totalLaneSpan();
+      const out=P.map(p=>[p[0],p[1]]);
+      for(let i=1;i<out.length-2;i++){
+        const a=out[i],b=out[i+1];
+        const isVSeg=Math.abs(a[0]-b[0])<0.5;
+        if(vert!==isVSeg) continue;                       // 境界と平行でない区間は対象外
+        if(Math.hypot(b[0]-a[0],b[1]-a[1])<8) continue;
+        const v=a[k];
+        let near=null,dmin=LANE_EDGE_CLR;
+        bs.forEach(bv=>{ const dd=Math.abs(v-bv); if(dd<dmin){ dmin=dd; near=bv; } });
+        if(near===null) continue;                          // 境界から十分離れている
+        const cands=[near-LANE_EDGE_CLR,near+LANE_EDGE_CLR,near-14,near+14]
+          .filter(c=>c>=0&&c<=span).sort((p,q)=>Math.abs(p-v)-Math.abs(q-v));
+        for(const c of cands){
+          const na=[a[0],a[1]],nb=[b[0],b[1]]; na[k]=c; nb[k]=c;
+          if(!clr(na[0],na[1],nb[0],nb[1])) continue;
+          if(!clr(out[i-1][0],out[i-1][1],na[0],na[1])) continue;
+          if(!clr(nb[0],nb[1],out[i+2][0],out[i+2][1])) continue;
+          out[i][k]=c; out[i+1][k]=c; break;
+        }
+      }
+      return dedupe(out);
+    };
+    // v8.15: Z字（曲がり2回・出口と入口が同軸で対向する前進接続）の交差セグメントを、2箱の隙間の
+    //   中央へそろえる。同コスト（長さも曲がり回数も同じ）のZ字が複数あるとき、A* は探索順の都合で
+    //   終点際に張り付いた形を返すため、水平線が相手の箱の真上を這っていた（参考資料
+    //   「接続線経路サンプル②.pdf」のパターン①）。旧ルーターの calcMidY が持っていた
+    //   「隙間の中央で曲げる」美観規則を、A* の結果への後処理として復元する。
+    //   移動は midPos のクランクと同じ平行移動だけ＝A*本体・コスト関数には触れない。
+    //   移動後の3区間が clr() を通らなければ中央から前後へずらして試し、全部ダメなら現状維持。
+    const centerZ=(P)=>{
+      if(P.length!==4) return P;
+      const opp=(exitSide==='bottom'&&entrySide==='top')||(exitSide==='top'&&entrySide==='bottom')
+              ||(exitSide==='left'&&entrySide==='right')||(exitSide==='right'&&entrySide==='left');
+      if(!opp) return P;
+      const fwd=(exitSide==='bottom'&&ey>sy)||(exitSide==='top'&&ey<sy)||(exitSide==='right'&&ex>sx)||(exitSide==='left'&&ex<sx);
+      if(!fwd) return P;                                  // 後退（U字系）は対象外
+      const a=P[1],b=P[2];
+      const perp=horiz?(Math.abs(a[0]-b[0])<1):(Math.abs(a[1]-b[1])<1);
+      if(!perp) return P;                                 // 中間が交差セグメントでない（直線・L字など）
+      const k=horiz?0:1, s0=horiz?sx:sy, e1=horiz?ex:ey;
+      const lo=Math.min(s0,e1)+STUB, hi=Math.max(s0,e1)-STUB;
+      if(hi-lo<8) return P;                               // 隙間が狭い（スタブ2本＋8px未満）→現状維持
+      const mid=(s0+e1)/2;
+      // v8.26: 候補を中央から 12px 刻みで隙間の端まで広げる（従来は ±24px まで＝途中に障害物があると
+      //   すべて塞がれて相手の直前の形に落ちていた。例＝相手の真上にひし形があり中央±24 が全部その中）
+      const cands=[mid]; for(let d=12;mid-d>=lo||mid+d<=hi;d+=12){ if(mid-d>=lo)cands.push(mid-d); if(mid+d<=hi)cands.push(mid+d); }
+      cands.push(lo,hi);
+      for(const c of cands){
+        const p1=[a[0],a[1]],p2=[b[0],b[1]]; p1[k]=c; p2[k]=c;
+        if(clr(P[0][0],P[0][1],p1[0],p1[1])&&clr(p1[0],p1[1],p2[0],p2[1])&&clr(p2[0],p2[1],P[3][0],P[3][1]))
+          return [P[0],p1,p2,P[3]];
+      }
+      return P;
+    };
+    // v8.26: 簡易経路にも中央寄せ（centerZ）を掛ける＝上限超えでも相手の直前で曲がらない
+    const _verify=(P)=>{   // v8.26: 近傍だけで求めた経路を全シェイプで検算。貫通があれば全シェイプでやり直す
+      if(bodies===allBodies||allBodies.length===bodies.length) return P;
+      const hit=(x1,y1,x2,y2)=>{ if(Math.abs(x1-x2)<0.5){ const t=Math.min(y1,y2),b=Math.max(y1,y2); return allBodies.some(o=>x1>o.l&&x1<o.r&&b>o.t&&t<o.b); } const l=Math.min(x1,x2),r=Math.max(x1,x2); return allBodies.some(o=>y1>o.t&&y1<o.b&&r>o.l&&l<o.r); };
+      for(let i=0;i<P.length-1;i++) if(hit(P[i][0],P[i][1],P[i+1][0],P[i+1][1])) return orthoRoute(sx,sy,ex,ey,exitSide,entrySide,fromId,toId,midPos,true);
+      return P;
+    };
+    if(W*Hh>MAXGRID) return _verify(avoidLaneLines(centerZ(fallback())));
+    // v8.14: 出口と入口の軸が直交し、L字の2本がどの箱も通らないなら、A* を回さずそのままL字を返す。
+    //   A* は始点の進行方向を持たず同コストの角を先着順（横優先）で選ぶため、縦モードでは
+    //   allocatePorts が決めたL字（出口=下辺／入口=横辺）が必ず逆側の角になり3回曲げの階段に化けていた。
+    //   角は出口の軸を先に走る側＝lShapeClear が通行可否を確かめたのと同じ角。
+    if(midPos==null){
+      const _exV=(exitSide==='top'||exitSide==='bottom'), _enV=(entrySide==='top'||entrySide==='bottom');
+      if(_exV!==_enV&&!_oppExit&&!_oppEntry){   // v8.21: 逆向きピンはL字近道も自箱を貫通するため A* に回す
+        const _cx=_exV?Sx:Tx, _cy=_exV?Ty:Sy;
+        if(clr(Sx,Sy,_cx,_cy)&&clr(_cx,_cy,Tx,Ty)) return _verify(avoidLaneLines(dedupe([[sx,sy],[Sx,Sy],[_cx,_cy],[Tx,Ty],[ex,ey]])));
+      }
+    }
+    const xi={},yi={}; X.forEach((v,i)=>xi[v]=i); Y.forEach((v,i)=>yi[v]=i);
+    const si=xi[Sx]*Hh+yi[Sy], ti=xi[Tx]*Hh+yi[Ty], NN=W*Hh;
+    const search=(src,goal)=>{   // goal>=0: A*(目的地へ早期終了) ／ goal<0: 全点ダイクストラ
+      const g=new Array(NN).fill(Infinity), prev=new Array(NN).fill(-1), pdir=new Array(NN).fill(0);
+      const gx=goal>=0?X[(goal/Hh)|0]:0, gy=goal>=0?Y[goal%Hh]:0;
+      // v8.14: 始点の進行方向を出口の辺から与える（横出口=1／縦出口=2）。
+      //   これが無いと最初の一手がどちらへ曲がっても曲がりコスト0になり、近傍の列挙順（横が先）だけで
+      //   角が決まってしまう＝出口の向きを無視した経路になる。
+      pdir[src]=horiz?1:2;
+      g[src]=0; const open=new Set([src]);
+      while(open.size){
+        let cur=-1,bf=Infinity; open.forEach(nd=>{ const ff=g[nd]+(goal>=0?Math.abs(X[(nd/Hh)|0]-gx)+Math.abs(Y[nd%Hh]-gy):0); if(ff<bf){bf=ff;cur=nd;} });
+        if(goal>=0&&cur===goal)break; open.delete(cur);
+        const ci=(cur/Hh)|0, cj=cur%Hh, nb=[[ci+1,cj,1],[ci-1,cj,1],[ci,cj+1,2],[ci,cj-1,2]];
+        for(let a=0;a<4;a++){ const ni=nb[a][0],nj=nb[a][1],dir=nb[a][2];
+          if(ni<0||ni>=W||nj<0||nj>=Hh)continue;
+          if(!clr(X[ci],Y[cj],X[ni],Y[nj]))continue;
+          const nIdx=ni*Hh+nj, turn=(pdir[cur]&&pdir[cur]!==dir)?20:0;
+          let pen=0;   // v8.21: 逆向きピンの貫通対策＝始点の反転／終点への逆向き進入は大コスト
+          if(_oppExit&&cur===src){ const _dx=X[ni]-X[ci],_dy=Y[nj]-Y[cj]; if(e0[0]*_dx+e0[1]*_dy<0)pen=4000; }
+          if(_oppEntry&&goal>=0&&nIdx===goal){ const _dx=X[ni]-X[ci],_dy=Y[nj]-Y[cj]; if(n0[0]*_dx+n0[1]*_dy>0)pen=4000; }
+          const ng=g[cur]+Math.abs(X[ni]-X[ci])+Math.abs(Y[nj]-Y[cj])+turn+pen;
+          if(ng<g[nIdx]){ g[nIdx]=ng; prev[nIdx]=cur; pdir[nIdx]=dir; open.add(nIdx); }
+        }
+      }
+      return {g,prev};
+    };
+    const rebuild=(prev,t)=>{ const out=[]; let n=t,gd=0; while(n!==-1&&gd++<10000){ out.push([X[(n/Hh)|0],Y[n%Hh]]); n=prev[n]; } out.reverse(); return out; };
+    // ── 自動経路（A*直交・最短）。これが基準形 ──
+    const R=search(si,ti);
+    let full;
+    if(R.prev[ti]===-1&&ti!==si){ full=fallback(); }
+    else { full=dedupe([[sx,sy]].concat(rebuild(R.prev,ti),[[ex,ey]])); }
+    if(midPos==null) return _verify(avoidLaneLines(centerZ(full)));
+    // ── クランク指定：基準形の「主交差セグメント」だけを midPos へ平行移動 ──
+    //   経路の形は保ったまま“曲がる位置”だけを動かす（再探索しない＝大きく変わらない／ループ・逆走しない）。
+    //   端点(箱の縁)とその助走スタブは動かさず、内部の最長直交セグメントを選ぶ。
+    let bi=-1,bl=6;
+    for(let i=1;i<full.length-2;i++){ const a=full[i],b=full[i+1];
+      const perp=horiz?(Math.abs(a[0]-b[0])<1):(Math.abs(a[1]-b[1])<1); if(!perp)continue;
+      const ln=horiz?Math.abs(a[1]-b[1]):Math.abs(a[0]-b[0]); if(ln>bl){bl=ln;bi=i;} }
+    if(bi<0) return _verify(avoidLaneLines(full));   // 動かせる交差セグメント無し（直線/L字）→自動のまま（緑の種ハンドルで曲げる）
+    const out=full.map(p=>[p[0],p[1]]);
+    if(horiz){ out[bi][0]=midPos; out[bi+1][0]=midPos; } else { out[bi][1]=midPos; out[bi+1][1]=midPos; }
+    return _verify(avoidLaneLines(dedupe(out)));
+  }
+  // MPD v8.33 の routeWaypoints（5876 行）
+  function routeWaypoints(sx,sy,ex,ey,exitSide,entrySide,fromId,toId,midPos){
+    return orthoRoute(sx,sy,ex,ey,exitSide,entrySide,fromId,toId,midPos); // v6.14: A*直交配線（midPos指定時はその位置で交差）
+    const isVE=exitSide==='top'||exitSide==='bottom';
+    const isVN=entrySide==='top'||entrySide==='bottom';
+    if(isVE&&isVN){
+      if(Math.abs(ex-sx)<4&&exitSide!==entrySide)return[[sx,sy],[ex,ey]];
+      const obs=routeObs(fromId,toId);
+      const midY=midPos!=null?midPos:calcMidY(sy,ey,sx,ex,exitSide,entrySide,obs);
+      let pts=[[sx,sy],[sx,midY],[ex,midY],[ex,ey]];
+      return fixSegs(pts,obs);
+    }
+    const isHE=exitSide==='left'||exitSide==='right';
+    const isHN=entrySide==='left'||entrySide==='right';
+    if(isHE&&isHN){
+      if(Math.abs(ey-sy)<4&&exitSide!==entrySide)return[[sx,sy],[ex,ey]];
+      const obs=routeObs(fromId,toId);
+      const midX=midPos!=null?midPos:calcMidX(sx,ex,sy,ey,exitSide,entrySide,obs);
+      let pts=[[sx,sy],[midX,sy],[midX,ey],[ex,ey]];
+      return fixSegs(pts,obs);
+    }
+    // 混合方向: L字クランク + 障害物回避 + ブリッジ対応
+    const obs=routeObs(fromId,toId);
+    let pts;
+    if(isHE){
+      pts=[[sx,sy],[ex,sy],[ex,ey]];
+    } else {
+      pts=[[sx,sy],[sx,ey],[ex,ey]];
+    }
+    return fixSegs(pts,obs);
+  }
+  // MPD v8.33 の isReturnEdge（5906 行）
+  function isReturnEdge(fn,tn){
+    if(isV()) return(fn.y+fn.h/2)>(tn.y+tn.h/2);
+    else return(fn.x+fn.w/2)>(tn.x+tn.w/2);
+  }
+  // MPD v8.33 の BRIDGE_R（5916 行）
+  const BRIDGE_R=12;
+  // MPD v8.33 の BRIDGE_MIN_SEG（5917 行）
+  const BRIDGE_MIN_SEG=8;
+  // MPD v8.33 の BRIDGE_MERGE（5918 行）
+  const BRIDGE_MERGE=2*BRIDGE_R;
+  // MPD v8.33 の BRIDGE_R_MIN（5920 行）
+  const BRIDGE_R_MIN=6;
+  // MPD v8.33 の BRIDGE_COVER（5921 行）
+  const BRIDGE_COVER=2;
+  // MPD v8.33 の BRIDGE_SHARED_PAD（5922 行）
+  const BRIDGE_SHARED_PAD=20;
+  // MPD v8.33 の bridgeCornerR（5945 行）
+  function bridgeCornerR(pts,k,r){
+    if(k<=0||k>=pts.length-1) return 0;
+    const l1=Math.max(Math.abs(pts[k][0]-pts[k-1][0]),Math.abs(pts[k][1]-pts[k-1][1]));
+    const l2=Math.max(Math.abs(pts[k+1][0]-pts[k][0]),Math.abs(pts[k+1][1]-pts[k][1]));
+    const cr=Math.min(r,l1/2-1,l2/2-1);
+    return cr<2?0:cr;
+  }
+  // MPD v8.33 の bridgeCollect（5952 行）
+  function bridgeCollect(pts,otherWps){
+    const hits=[], M=2;
+    const cls=(a,b)=>{   // 区間の向き判定＝差の大きい方で決める（|dx|<2 かつ |dy|<2 の退化区間を弾く）
+      const dx=Math.abs(b[0]-a[0]), dy=Math.abs(b[1]-a[1]);
+      if(Math.max(dx,dy)<BRIDGE_MIN_SEG) return null;
+      const v=dy>dx; return (v?dx:dy)>2 ? null : v;   // 斜めは対象外
+    };
+    for(let i=0;i<pts.length-1;i++){
+      const segV=cls(pts[i],pts[i+1]); if(segV===null) continue;
+      const[x1,y1]=pts[i],[x2,y2]=pts[i+1];
+      for(const owp of otherWps){
+        if(!owp) continue;
+        for(let j=0;j<owp.length-1;j++){
+          const oV=cls(owp[j],owp[j+1]); if(oV===null||oV===segV) continue;   // 平行は交差ではない
+          const[ox1,oy1]=owp[j],[ox2,oy2]=owp[j+1];
+          const x=segV?x1:ox1, y=segV?oy1:y1;
+          const inSeg=segV?(y>Math.min(y1,y2)+M&&y<Math.max(y1,y2)-M)
+                          :(x>Math.min(x1,x2)+M&&x<Math.max(x1,x2)-M);
+          const inOth=segV?(x>Math.min(ox1,ox2)+M&&x<Math.max(ox1,ox2)-M)
+                          :(y>Math.min(oy1,oy2)+M&&y<Math.max(oy1,oy2)-M);
+          if(inSeg&&inOth) hits.push({seg:i,x,y,segV});
+        }
+      }
+    }
+    return hits;
+  }
+  // MPD v8.33 の bridgeCollectSelf（6015 行）
+  function bridgeCollectSelf(pts){
+    const hits=[], M=2;
+    const cls=(a,b)=>{
+      const dx=Math.abs(b[0]-a[0]), dy=Math.abs(b[1]-a[1]);
+      if(Math.max(dx,dy)<BRIDGE_MIN_SEG) return null;
+      const v=dy>dx; return (v?dx:dy)>2 ? null : v;
+    };
+    for(let i=0;i<pts.length-1;i++){
+      const vi=cls(pts[i],pts[i+1]); if(vi===null) continue;
+      for(let j=i+2;j<pts.length-1;j++){
+        const vj=cls(pts[j],pts[j+1]); if(vj===null||vj===vi) continue;   // 斜め・平行は対象外
+        const seg=segAt(pts,j), oth=segAt(pts,i);
+        // 縦区間×横区間の交点（既存 bridgeCollect と同じ内側判定）
+        const V=vj?seg:oth, H=vj?oth:seg;              // V=縦区間, H=横区間
+        const x=V.a[0], y=H.a[1];
+        const inV=y>Math.min(V.a[1],V.b[1])+M&&y<Math.max(V.a[1],V.b[1])-M;
+        const inH=x>Math.min(H.a[0],H.b[0])+M&&x<Math.max(H.a[0],H.b[0])-M;
+        if(inV&&inH) hits.push({seg:j,x,y,segV:vj});
+      }
+    }
+    function segAt(p,k){ return {a:p[k],b:p[k+1]}; }
+    return hits;
+  }
+  // MPD v8.33 の bridgeNormalize（6038 行）
+  function bridgeNormalize(pts,hits,r){
+    const out=[], bySeg={};
+    hits.forEach(h=>{ (bySeg[h.seg]=bySeg[h.seg]||[]).push(h); });
+    Object.keys(bySeg).map(Number).sort((a,b)=>a-b).forEach(i=>{
+      const[x1,y1]=pts[i],[x2,y2]=pts[i+1];
+      const segV=bySeg[i][0].segV;
+      const a=segV?y1:x1, b=segV?y2:x2, dir=b>a?1:-1;
+      const val=h=>segV?h.y:h.x;
+      const arr=bySeg[i].slice().sort((p,q)=>(val(p)-val(q))*dir);
+      const uniq=[];                                   // ①同一点(1px未満)の除去
+      arr.forEach(h=>{ if(!uniq.length||Math.abs(val(h)-val(uniq[uniq.length-1]))>=1) uniq.push(h); });
+      const clus=[]; let cur=[uniq[0]];                // ②近接交差をひと山へ統合
+      for(let t=1;t<uniq.length;t++){
+        if(Math.abs(val(uniq[t])-val(cur[cur.length-1]))<BRIDGE_MERGE) cur.push(uniq[t]);
+        else { clus.push(cur); cur=[uniq[t]]; }
+      }
+      clus.push(cur);
+      // ③端部マージン＝その角で実際に使われる角丸半径。
+      // v8.14追補: 「収まらない山は立てない」→「半径を縮め・中心をずらし・クラスタを分割して、
+      //   できる限り立てる」に変更。dir を掛けた u 空間（進行方向が常に正）で計算し符号分岐を排除。
+      //   角丸ゾーン（uL/uH の BRIDGE_COVER 内側）に食い込んだ交差だけは救えない＝諦める（残存限界）。
+      //   prevEnd で同一区間内の弧を進行方向に単調・非重複に保つ（wpPathBridge は配列順に展開する
+      //   ため、弧が逆順・重複すると経路が後戻りして破綻する）。
+      const mA=(i===0?4:bridgeCornerR(pts,i,r))+2;
+      const mB=(i===pts.length-2?4:bridgeCornerR(pts,i+1,r))+2;
+      const uL=dir*a+mA, uH=dir*b-mB;                 // u空間の使用可能範囲（uL<=uH）
+      let prevEnd=-Infinity;
+      const place=cl=>{
+        const uv=cl.map(h=>dir*val(h));               // dir正規化で昇順ソート済み
+        const uFirst=uv[0], uLast=uv[uv.length-1], span=uLast-uFirst;
+        const halfMin=Math.max(BRIDGE_R_MIN, span/2+BRIDGE_COVER);   // これ未満では交差点群を覆えない
+        const half=Math.min(span/2+BRIDGE_R, (uH-uL)/2);             // 区間に入る最大まで縮小
+        const lo=Math.max(uL+half, uLast+BRIDGE_COVER-half, prevEnd+half);   // 中心の許容下限
+        const hi=Math.min(uH-half, uFirst-BRIDGE_COVER+half);               // 中心の許容上限
+        if(half<halfMin || lo>hi){
+          if(cl.length<=1) return;                    // 単一交差でも入らない＝諦め
+          let gi=1, g=-1;                             // 最大ギャップで2分割（同値なら左優先＝決定的）
+          for(let t=1;t<uv.length;t++){ const d=uv[t]-uv[t-1]; if(d>g){g=d;gi=t;} }
+          place(cl.slice(0,gi)); place(cl.slice(gi));
+          return;
+        }
+        const uC=Math.min(hi,Math.max(lo,(uFirst+uLast)/2));   // 理想中心に最も近い可行点＝中心シフト
+        prevEnd=uC+half;
+        const center=dir*uC;
+        out.push({seg:i,segV,half,dir,x:segV?x1:center,y:segV?center:y1});
+      };
+      clus.forEach(place);
+    });
+    return out;
+  }
+  // MPD v8.33 の findCrossingsRaw（6093 行）
+  function findCrossingsRaw(pts,rawHits,r){
+    return bridgeNormalize(pts,rawHits,r||18);
+  }
+  // MPD v8.33 の bridgeArcPaths（6098 行）
+  function bridgeArcPaths(crossings){
+    return (crossings||[]).map(c=>{
+      const h=c.half, d=c.dir;
+      if(c.segV) return `M${c.x},${c.y-h*d} A${h},${h} 0 0 ${d>0?1:0} ${c.x},${c.y+h*d}`;
+      return `M${c.x-h*d},${c.y} A${h},${h} 0 0 ${d>0?1:0} ${c.x+h*d},${c.y}`;
+    });
+  }
+  // MPD v8.33 の DETOUR_MAX・DETOUR_STEP・DETOUR_TRACK・DETOUR_GAP・DETOUR_PAD・DETOUR_STUB（6122 行）
+  const DETOUR_MAX=40, DETOUR_STEP=2, DETOUR_TRACK=10, DETOUR_GAP=8, DETOUR_PAD=9, DETOUR_STUB=16;
+  // MPD v8.33 の centerDetourRoutes（6123 行）
+  function centerDetourRoutes(edgeData){
+    const items=edgeData.filter(d=>d.fresh&&!d.crank&&!d.manual&&!d.bus&&d.wps&&d.wps.length>=5).sort((a,b)=>a.idx-b.idx);
+    if(!items.length) return;
+    const segsOf=P=>{ const out=[];
+      for(let i=0;i<P.length-1;i++){ const a=P[i],b=P[i+1], dx=Math.abs(b[0]-a[0]), dy=Math.abs(b[1]-a[1]);
+        if(Math.max(dx,dy)<1) continue;
+        const vert=dy>dx; if((vert?dx:dy)>0.5) continue;
+        const p=vert?[a[1],b[1]]:[a[0],b[0]];
+        out.push({vert,at:vert?a[0]:a[1],lo:Math.min(p[0],p[1]),hi:Math.max(p[0],p[1])}); }
+      return out; };
+    const segMap=new Map();
+    edgeData.forEach(d=>{ if(d.wps&&d.wps.length>=2&&!d.manual) segMap.set(d,segsOf(d.wps)); });
+    const bs=laneBoundaries(), vLane=isV();
+    const cont=(b,s)=> b.x<=s.x+2&&b.y<=s.y+2&&b.x+b.w>=s.x+s.w-2&&b.y+b.h>=s.y+s.h-2;
+    items.forEach(d=>{
+      const P=d.wps.map(p=>[p[0],p[1]]), m=P.length-1, fn=d.fn, tn=d.tn;
+      let bx0=Infinity,by0=Infinity,bx1=-Infinity,by1=-Infinity;
+      P.forEach(p=>{ bx0=Math.min(bx0,p[0]); bx1=Math.max(bx1,p[0]); by0=Math.min(by0,p[1]); by1=Math.max(by1,p[1]); });
+      const R=2*DETOUR_MAX+DETOUR_PAD+2;   // 迂回の線が外へ動ける最大＋余白＝これより遠いシェイプは関係しない
+      const obs=S.nodes.filter(n=>n.id!==fn.id&&n.id!==tn.id&&!isFreeShape(n.type)&&!isOverlayShape(n.type)&&!cont(n,fn)&&!cont(n,tn)
+          &&n.x<bx1+R&&n.x+n.w>bx0-R&&n.y<by1+R&&n.y+n.h>by0-R)
+        .map(n=>({l:n.x-DETOUR_PAD,t:n.y-DETOUR_PAD,r:n.x+n.w+DETOUR_PAD,b:n.y+n.h+DETOUR_PAD}));
+      const clr=(x1,y1,x2,y2)=>{ if(x1===x2){ const t=Math.min(y1,y2),b=Math.max(y1,y2); return !obs.some(o=>x1>o.l&&x1<o.r&&b>o.t&&t<o.b); }
+        const l=Math.min(x1,x2),r=Math.max(x1,x2); return !obs.some(o=>y1>o.t&&y1<o.b&&r>o.l&&l<o.r); };   // orthoRoute の clr と同じ判定
+      const others=[]; segMap.forEach((ss,od)=>{ if(od!==d) ss.forEach(s=>others.push(s)); });
+      const segLen=j=>Math.abs(P[j][0]-P[j+1][0])+Math.abs(P[j][1]-P[j+1][1]);
+      const minFirst=Math.min(DETOUR_STUB,segLen(0)), minLast=Math.min(DETOUR_STUB,segLen(m-1));
+      let changed=false;
+      const tryMove=(j,wantStep)=>{
+        const a=P[j],b=P[j+1];
+        const k=(Math.abs(a[0]-b[0])<0.5)?0:((Math.abs(a[1]-b[1])<0.5)?1:-1);   // 動かす軸（縦の区間は x＝0）
+        if(k<0) return;
+        const c=a[k], pv=P[j-1], nx=P[j+2];
+        const sP=Math.sign(pv[k]-c), sN=Math.sign(nx[k]-c);
+        if(!sP||!sN||((sP!==sN)!==wantStep)) return;
+        const minP=(j-1===0)?minFirst:4, minN=(j+2===m)?minLast:4;
+        let lo=4, hi=(k===0?SVG_W:SVG_H)-4;
+        if(bs.length>=2&&(vLane?k===0:k===1)){   // レーン境界と平行＝今いるレーンの中だけ
+          let q=-1; for(let t=0;t<bs.length-1;t++) if(c>bs[t]&&c<bs[t+1]) q=t;
+          if(q<0) return;
+          lo=Math.max(lo,bs[q]+LANE_EDGE_CLR); hi=Math.min(hi,bs[q+1]-LANE_EDGE_CLR);
+        }
+        const topo=v=>{ const lp=pv[k]-v, ln=nx[k]-v; return Math.sign(lp)===sP&&Math.abs(lp)>=minP&&Math.sign(ln)===sN&&Math.abs(ln)>=minN; };
+        const clear=v=>{ const A=[a[0],a[1]],B=[b[0],b[1]]; A[k]=v; B[k]=v; return clr(pv[0],pv[1],A[0],A[1])&&clr(A[0],A[1],B[0],B[1])&&clr(B[0],B[1],nx[0],nx[1]); };
+        const ok=v=>v>=lo&&v<=hi&&topo(v)&&clear(v);
+        if(!ok(c)) return;
+        const reach=(dir,lim)=>{ let v=c; for(let s=DETOUR_STEP;s<=lim;s+=DETOUR_STEP){ if(!ok(c+dir*s)) break; v=c+dir*s; } return v; };
+        let vLo,vHi,t;
+        if(wantStep){   // 段＝動ける範囲の中央
+          const lim=Math.max(Math.abs(pv[k]-c),Math.abs(nx[k]-c));
+          vLo=reach(-1,lim); vHi=reach(1,lim); t=(vLo+vHi)/2;
+        } else {        // コの字の底＝内側（前後の区間が伸びる側 sP）へ寄れないのがシェイプのときだけ外側へ
+          const inw=sP, vi=c+inw*DETOUR_STEP;   // 寄れないのがレーン境界・キャンバスの端・前後の区間なら動かさない（隣のレーンへ余計に入り込む）
+          if(vi<lo||vi>hi||!topo(vi)||clear(vi)) return;
+          const vOut=reach(-inw,2*DETOUR_MAX);
+          t=c-inw*Math.min(Math.abs(vOut-c)/2,DETOUR_MAX);
+          vLo=Math.min(c,vOut); vHi=Math.max(c,vOut);
+        }
+        // ほかの線と同じ線上に並ぶ長さ（動かす区間は at=v・前後の区間は at 固定で長さが v で変わる）
+        const mv=(k===0), mLo=Math.min(a[1-k],b[1-k]), mHi=Math.max(a[1-k],b[1-k]), pAt=pv[1-k], nAt=nx[1-k];
+        const oM=others.filter(o=>o.vert===mv&&o.at>vLo-DETOUR_TRACK&&o.at<vHi+DETOUR_TRACK&&o.hi>mLo-DETOUR_GAP&&o.lo<mHi+DETOUR_GAP);
+        const oP=others.filter(o=>o.vert!==mv&&Math.abs(o.at-pAt)<DETOUR_TRACK);
+        const oN=others.filter(o=>o.vert!==mv&&Math.abs(o.at-nAt)<DETOUR_TRACK);
+        // 重なりの重さ＝本当に重なる長さは 4 倍（1 本に見える）＋端どうしが DETOUR_GAP×2 未満に近づく（つながって見える）ぶん。
+        //   同じ重さで数えると「端が接していた横の区間が離れる代わりに縦の区間が重なる」移動を許してしまう（判断の分岐で確認）
+        const ovl=(l1,h1,o)=>{ const d=Math.min(h1,o.hi)-Math.max(l1,o.lo); return d>0?2*DETOUR_GAP+4*d:Math.max(0,2*DETOUR_GAP+d); };
+        const conflict=v=>{ let s=0;
+          oM.forEach(o=>{ if(Math.abs(o.at-v)<DETOUR_TRACK) s+=ovl(mLo,mHi,o); });
+          oP.forEach(o=>{ s+=ovl(Math.min(pv[k],v),Math.max(pv[k],v),o); });
+          oN.forEach(o=>{ s+=ovl(Math.min(nx[k],v),Math.max(nx[k],v),o); });
+          return s; };
+        const base=conflict(c), t0=c+Math.round((t-c)/DETOUR_STEP)*DETOUR_STEP;
+        let best=null;
+        for(let s=0;best===null&&s<=vHi-vLo+DETOUR_STEP;s+=DETOUR_STEP){   // 中央（t0）に近い順に「重なりが増えない」位置を探す
+          for(const v of (s===0?[t0]:[t0-s,t0+s])){
+            if(v<vLo-0.01||v>vHi+0.01) continue;
+            if(ok(v)&&conflict(v)<=base){ best=v; break; }
+          }
+        }
+        if(best===null||Math.abs(best-c)<1) return;
+        P[j][k]=best; P[j+1][k]=best; changed=true;
+      };
+      for(let j=1;j<=m-2;j++) tryMove(j,true);    // 先に段（曲がる位置）を決め
+      for(let j=1;j<=m-2;j++) tryMove(j,false);   // 次にコの字の底（迂回の線）
+      if(!changed) return;
+      d.wps=P; d.pd=wpPath(P,18);
+      const lm=polylineMid(P); d.mx=lm[0]; d.my=lm[1];
+      segMap.set(d,segsOf(P));
+    });
+  }
+  // MPD v8.33 の TRACK_EPS・TRACK_STEP・TRACK_TRIES・TRACK_MIN_OVERLAP（6219 行）
+  const TRACK_EPS=2, TRACK_STEP=10, TRACK_TRIES=4, TRACK_MIN_OVERLAP=12;
+  // MPD v8.33 の separateOverlaps（6220 行）
+  function separateOverlaps(edgeData){
+    const items=edgeData.filter(d=>d.wps&&d.wps.length>=2).sort((a,b)=>a.idx-b.idx);
+    if(items.length<2) return;
+    const placed=[], bs=laneBoundaries(), V=isV();
+    const segOf=(P,i)=>{
+      const a=P[i],b=P[i+1];
+      const dx=Math.abs(b[0]-a[0]), dy=Math.abs(b[1]-a[1]);
+      if(Math.max(dx,dy)<8) return null;
+      const vert=dy>dx; if((vert?dx:dy)>0.5) return null;
+      const p=vert?[a[1],b[1]]:[a[0],b[0]];
+      return {vert,at:vert?a[0]:a[1],lo:Math.min(p[0],p[1]),hi:Math.max(p[0],p[1])};
+    };
+    const clash=(s,v)=>placed.some(p=>p.vert===s.vert&&Math.abs(p.at-v)<TRACK_EPS
+      &&Math.min(p.hi,s.hi)-Math.max(p.lo,s.lo)>TRACK_MIN_OVERLAP);
+    const onLane=(s,v)=>(s.vert===V)&&bs.some(b=>Math.abs(v-b)<LANE_EDGE_CLR);
+    items.forEach(d=>{
+      const P=d.wps;
+      const frozen=d.manual||d.bus||!!d.ed.orthoWps||!!d.ed.waypoints;
+      let changed=false;
+      for(let i=0;i<P.length-1;i++){
+        const s=segOf(P,i); if(!s){ continue; }
+        const inner=(i>0&&i<P.length-2);
+        if(frozen||!inner||!clash(s,s.at)){ placed.push(s); continue; }
+        const obs=routeObs(d.ed.from,d.ed.to), A=P[i-1], B=P[i+2];
+        let found=null;
+        for(let k=1;k<=TRACK_TRIES&&found===null;k++){
+          for(const v of [s.at+TRACK_STEP*k,s.at-TRACK_STEP*k]){
+            if(clash(s,v)||onLane(s,v)) continue;
+            const bad = s.vert
+              ? (vHit(v,P[i][1],P[i+1][1],obs) || (A&&hHit(A[1],A[0],v,obs)) || (B&&hHit(B[1],v,B[0],obs)))
+              : (hHit(v,P[i][0],P[i+1][0],obs) || (A&&vHit(A[0],A[1],v,obs)) || (B&&vHit(B[0],v,B[1],obs)));
+            if(bad) continue;
+            found=v; break;
+          }
+        }
+        if(found!==null){
+          if(s.vert){ P[i][0]=found; P[i+1][0]=found; } else { P[i][1]=found; P[i+1][1]=found; }
+          s.at=found; changed=true;
+        }
+        placed.push(s);
+      }
+      if(changed){
+        d.pd=wpPath(P,18);
+        const m=polylineMid(P); d.mx=m[0]; d.my=m[1];
+      }
+    });
+  }
+  // MPD v8.33 の wpPathBridge（6267 行）
+  function wpPathBridge(pts,crossings,r){
+    r=r||18;   // v8.13追補: 通常描画 wpPath(wps,18) と半径をそろえる（旧既定20は不一致だった）
+    if(pts.length<2)return'';
+    if(!crossings||crossings.length===0)return wpPath(pts,r);
+    const bySeg={};
+    crossings.forEach(c=>{if(!bySeg[c.seg])bySeg[c.seg]=[];bySeg[c.seg].push(c);});
+    // ウェイポイントを展開（交差点でブリッジ用のポイントを挿入）
+    const expanded=[];
+    for(let i=0;i<pts.length;i++){
+      expanded.push({pt:pts[i],bridge:false});
+      if(bySeg[i]){
+        for(const c of bySeg[i]){
+          const h=c.half, dir=c.dir;
+          if(c.segV){
+            expanded.push({pt:[c.x,c.y-h*dir],bridge:false});
+            expanded.push({pt:[c.x,c.y+h*dir],bridge:true,half:h,segV:true,dir});
+          } else {
+            expanded.push({pt:[c.x-h*dir,c.y],bridge:false});
+            expanded.push({pt:[c.x+h*dir,c.y],bridge:true,half:h,segV:false,dir});
+          }
+        }
+      }
+    }
+    // SVGパス構築
+    let d=`M${expanded[0].pt[0]},${expanded[0].pt[1]}`;
+    for(let i=1;i<expanded.length;i++){
+      const ep=expanded[i];
+      if(ep.bridge){
+        // 半円弧で跨ぐ
+        const sweep=ep.dir>0?1:0;   // v8.13追補: 横の線も上へ膨らませる（縦は右）＝定番の飛び越え記法
+        d+=` A${ep.half},${ep.half} 0 0 ${sweep} ${ep.pt[0]},${ep.pt[1]}`;
+      } else {
+        // 通常のL（角丸なし簡易版）
+        const prev=expanded[i-1];
+        // 次が角かどうか判定して角丸
+        if(i<expanded.length-1&&!expanded[i+1].bridge){
+          const[px,py]=prev.pt,[cx,cy]=ep.pt,[nx,ny]=expanded[i+1].pt;
+          const dx1=cx-px,dy1=cy-py,dx2=nx-cx,dy2=ny-cy;
+          if((Math.abs(dx1)>2||Math.abs(dy1)>2)&&(Math.abs(dx2)>2||Math.abs(dy2)>2)){
+            const l1=Math.max(Math.abs(dx1),Math.abs(dy1)),l2=Math.max(Math.abs(dx2),Math.abs(dy2));
+            const cr=Math.min(r,l1/2-1,l2/2-1);
+            if(cr>=2&&(dx1*dy2!==dy1*dx2)){
+              const ux=dx1?dx1/Math.abs(dx1):0,uy=dy1?dy1/Math.abs(dy1):0;
+              const vx=dx2?dx2/Math.abs(dx2):0,vy=dy2?dy2/Math.abs(dy2):0;
+              d+=` L${Math.round(cx-ux*cr)},${Math.round(cy-uy*cr)} Q${cx},${cy} ${Math.round(cx+vx*cr)},${Math.round(cy+vy*cr)}`;
+              continue;
+            }
+          }
+        }
+        d+=` L${ep.pt[0]},${ep.pt[1]}`;
+      }
+    }
+    return d;
+  }
+  // MPD v8.33 の polylineMid（9620 行）
+  function polylineMid(P){
+    let L=0;
+    for(let i=1;i<P.length;i++)L+=Math.abs(P[i][0]-P[i-1][0])+Math.abs(P[i][1]-P[i-1][1]);
+    let rest=L/2;
+    for(let i=1;i<P.length;i++){
+      const seg=Math.abs(P[i][0]-P[i-1][0])+Math.abs(P[i][1]-P[i-1][1]);
+      if(rest<=seg||i===P.length-1){
+        const f=seg?rest/seg:0;
+        return [P[i-1][0]+(P[i][0]-P[i-1][0])*f, P[i-1][1]+(P[i][1]-P[i-1][1])*f];
+      }
+      rest-=seg;
+    }
+    return [P[0][0],P[0][1]];
+  }
+  // 入口。input: { vertical, lanes: [{ id, w }]（交わる向きの太さ。並びの順）, nodes: [{ id, type, lid（レーンの id）, x, y, w, h }],
+  // edges: [{ id, from, to }], w, h（図の大きさ）}。戻り値は線の id → { wps（折れ線の点）, d（飛び越えを入れた道）, arcs（飛び越えの半円の道。
+  // 最後に白の下地と線の色で重ねる）, mx, my（折れ線の真ん中）, isReturn（戻る線）, exitSide, entrySide }
+  return function swimRoutes(input) {
+    S = { diagramType: 'swimlane', orientation: input.vertical ? 'vertical' : 'horizontal', lanes: input.lanes, nodes: input.nodes, edges: input.edges };
+    SVG_W = input.w;
+    SVG_H = input.h;
+    const portAssign = allocatePorts();
+    const edgeData = [];
+    S.edges.forEach((ed, idx) => {
+      const fn = S.nodes.find((n) => n.id === ed.from);
+      const tn = S.nodes.find((n) => n.id === ed.to);
+      if (!fn || !tn) return;
+      const [sx, sy, ex, ey, exitSide, entrySide] = connPts(fn, tn, ed, portAssign);
+      const pa = portAssign[ed.id];
+      const amid = pa && pa.autoMid != null ? pa.autoMid : null;
+      const isReturn = isReturnEdge((pa && pa.aRef) || fn, (pa && pa.bRef) || tn);
+      const wps = routeWaypoints(sx, sy, ex, ey, exitSide, entrySide, ed.from, ed.to, amid);
+      const m = polylineMid(wps);
+      edgeData.push({ ed, fn, tn, sx, sy, ex, ey, exitSide, entrySide, pd: wpPath(wps, 18), wps, isReturn, manual: false, mx: m[0], my: m[1], drawPts: null, bus: null, idx, fresh: true, crank: amid != null });
+    });
+    centerDetourRoutes(edgeData);
+    separateOverlaps(edgeData);
+    // 交わる所の飛び越え（MPD の renderEdges のパス 2 の (a)・(c)。手で曲げた線〔曲線〕はこのアプリにないので (b) はない）
+    const endRect = (d, nid) => {
+      const a = portAssign[d.ed.id];
+      return (a ? (d.ed.from === nid ? a.aRef : a.bRef) : (d.ed.from === nid ? d.fn : d.tn)) || d.fn;
+    };
+    const P = BRIDGE_SHARED_PAD;
+    const inRect = (rc, x, y) => rc && x > rc.x - P && x < rc.x + rc.w + P && y > rc.y - P && y < rc.y + rc.h + P;
+    const sharedRects = (A, B) => {
+      const rects = [];
+      [A.ed.from, A.ed.to].forEach((n) => { if (n === B.ed.from || n === B.ed.to) rects.push(endRect(A, n), endRect(B, n)); });
+      return rects;
+    };
+    const bboxOf = (p) => {
+      let [x1, y1, x2, y2] = [1e9, 1e9, -1e9, -1e9];
+      p.forEach((q) => { x1 = Math.min(x1, q[0]); x2 = Math.max(x2, q[0]); y1 = Math.min(y1, q[1]); y2 = Math.max(y2, q[1]); });
+      return { x1: x1 - BRIDGE_R, y1: y1 - BRIDGE_R, x2: x2 + BRIDGE_R, y2: y2 + BRIDGE_R };
+    };
+    const bbHit = (a, b) => a.x1 <= b.x2 && b.x1 <= a.x2 && a.y1 <= b.y2 && b.y1 <= a.y2;
+    if (edgeData.length <= 200) { // MPD と同じく、200 本を超えたら飛び越えを省く
+      edgeData.forEach((d) => { d.rawHits = []; d.bb = bboxOf(d.wps); });
+      for (let i = 0; i < edgeData.length; i++) {
+        for (let j = i + 1; j < edgeData.length; j++) {
+          const [A, B] = [edgeData[i], edgeData[j]];
+          if (!bbHit(A.bb, B.bb)) continue;
+          const jump = A.isReturn !== B.isReturn ? (A.isReturn ? A : B) : (A.idx > B.idx ? A : B);
+          let hits = bridgeCollect(jump.wps, [(jump === A ? B : A).wps]);
+          if (!hits.length) continue;
+          const ex = sharedRects(A, B);
+          if (ex.length) hits = hits.filter((h) => !ex.some((rc) => inRect(rc, h.x, h.y)));
+          jump.rawHits.push(...hits);
+        }
+      }
+      edgeData.forEach((d) => {
+        let hits = bridgeCollectSelf(d.wps);
+        if (hits.length) {
+          const ex = [endRect(d, d.ed.from), endRect(d, d.ed.to)];
+          hits = hits.filter((h) => !ex.some((rc) => inRect(rc, h.x, h.y)));
+          d.rawHits.push(...hits);
+        }
+        if (!d.rawHits.length) return;
+        d.crossings = findCrossingsRaw(d.wps, d.rawHits, 18);
+        if (d.crossings.length) d.pd = wpPathBridge(d.wps, d.crossings, 18);
+      });
+    }
+    return Object.fromEntries(edgeData.map((d) => [d.ed.id, {
+      wps: d.wps, d: d.pd, arcs: d.crossings && d.crossings.length ? bridgeArcPaths(d.crossings) : [],
+      mx: d.mx, my: d.my, isReturn: d.isReturn, exitSide: d.exitSide, entrySide: d.entrySide,
+    }]));
+  };
+})();
+// ── スイムレーン図（第 9 段階。AI設計基盤_設計書.md の 5-4。画像 q62・q63。v1.03 で MultipurposeDiagramMaker〔MPD〕と同じ描き方・置き方にした。q141〜q146）──
+// 役割（申請者・上長など）ごとのレーンに、工程の箱を流れの順に並べ、矢印でつないだ業務の流れの図。レーンの並びは役割の並び。
+// 向きは 2 つ（q141）: 横向き＝レーンを上から下へ並べ、工程を左から右へ進める（左に役割の名前の列）。縦向き＝レーンを左から右へ並べ、
+// 工程を上から下へ進める（上に役割の名前の行）。位置はどれも図の中の位置で、MPD と同じく、レーンは横切る向きの 0 から並び、流れの向きは見出しの後から始まる。
+// 工程の位置は自由（q146。MPD と同じく、ドラッグでガイドに吸い付く）。向きごとに作業の pos に覚える（q145）。覚えていない工程と、覚えた後に役割か列が
+// 変わった工程は、列（流れの何番目か）から、MPD の整列（laneFlowLayout）と同じ決まりで置く（swimlaneLayout）。
+// 箱の大きさは MPD と同じ決まり（q144。種類ごとの既定の大きさ・文字の量で横に 260 まで広げ、超えたら折り返して縦に伸ばす・画面の札のある箱は 16 高い）。
+// 字はどちらの向きも横書き（q145）。線は MPD から写した swimRoutes で引く（q143）。箱とレーンの色と形は v1.02 までのまま（q144 の答え「白基調」）
+const SWIM_LABEL_W = 136; // 横向きの、左の役割の名前の列の幅（流れの向きの見出し）
+const SWIM_HEAD_H = 44; // 縦向きの、上の役割の名前の行の高さ（MPD の headerSize と同じ）
+const SWIM_HDR = { horizontal: SWIM_LABEL_W, vertical: SWIM_HEAD_H };
+const SWIM_LANE = { horizontal: 130, vertical: 220 }; // レーンの太さの既定（縦向きは MPD の LANE_W。横向きは完成イメージ q143-146 の太さ）
+const SWIM_STEP = 80; // ガイド線の間（MPD の GRID_STEP）。1 段目の真ん中は見出しから 80
+const SWIM_ROW_GAP = 24; // 段と段の間の最小（MPD の LAYOUT_MIN_ROW_GAP）。矢印の文字があれば、その流れの向きの長さ
+const SWIM_SIDE_GAP = 24; // 同じ段・同じレーンに並べる箱の間の最小（LAYOUT_MIN_SIDE_GAP）
+const SWIM_INSET = 10; // レーンの縁からの最小（LAYOUT_LANE_INSET）
+const SWIM_MIN = { horizontal: 600, vertical: 400 }; // 流れの向きの長さの下限（工程がなくてもレーンを描く所を残す）
+const SWIM_TAIL = 80; // 流れの向きの、いちばん先の箱の後ろの余白
+// 種類ごとの、MPD の形（type。線の計算に使う）と既定の大きさ（MPD の SD）と、文字の左右の余白の合計（autoFitPad）と上下の余白の合計（autoFitPadH。
+// 書類は下の波の分 10 を足す）。作業は rect・システムへの入力は sys_input・判断は diamond・始まりと終わりは terminal・書類は doc
+const SWIM_SHAPES = {
+  start: { type: 'terminal', w: 110, h: 31, pad: 24, padH: 16 },
+  end: { type: 'terminal', w: 110, h: 31, pad: 24, padH: 16 },
+  task: { type: 'rect', w: 120, h: 37, pad: 20, padH: 16 },
+  input: { type: 'sys_input', w: 120, h: 37, pad: 32, padH: 16 },
+  decision: { type: 'diamond', w: 180, h: 59, pad: 24, padH: 22 },
+  doc: { type: 'doc', w: 60, h: 40, pad: 20, padH: 24 },
+};
+const SWIM_W_MAX = 260; // 文字の量で横に広げる上限（MPD の AUTO_W_MAX）
+const SWIM_FS = 12; // 箱の字の大きさ（MPD の AUTO_FONT）
+const SWIM_LH = 15; // 箱の字の行の高さ（MPD の lineH(12)）
+const SWIM_TAG_H = 16; // 画面の札の行の高さ（札のある箱だけ、この分高い。q144）
+const SWIM_TAG_FS = 10; // 札の字の大きさ
+const SWIM_LABEL_FS = 11; // 矢印の文字の大きさ（MPD と同じ）
+const SWIM_LABEL_LH = 14; // 矢印の文字の行の高さ（MPD の lineH(11)）
+const SWIM_LABEL_MAX = 140; // 矢印の文字を折り返す幅（MPD の EDGE_LABEL_MAX_W）
+const SWIM_FONT = "'Segoe UI','Yu Gothic UI','Meiryo',sans-serif";
+// 文字の幅（MPD の charW と同じく 1 字ずつ測って足す。ブラウザでは canvas で測る。jsdom〔テスト〕には canvas がないので、全角＝字の大きさ・半角＝0.6 倍で見積もる）
+const swimCharW = new Map();
+let swimCtx = null;
+function swimTextW(s, fs = SWIM_FS, bold = true) {
+  if (swimCtx === null) swimCtx = (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent)) ? false : (document.createElement('canvas').getContext('2d') || false);
+  let w = 0;
+  for (const ch of String(s || '')) {
+    const k = `${bold ? 'b' : 'n'}${fs}|${ch}`;
+    let cw = swimCharW.get(k);
+    if (cw === undefined) {
+      if (swimCtx) {
+        swimCtx.font = `${bold ? 700 : 400} ${fs}px ${SWIM_FONT}`;
+        cw = swimCtx.measureText(ch).width;
+      }
+      if (!(cw > 0)) cw = ch.charCodeAt(0) > 255 ? fs : fs * 0.6;
+      swimCharW.set(k, cw);
+    }
+    w += cw;
+  }
+  return w;
+}
+// 文字を幅 maxW で折り返した行（MPD の wrapText と同じ。明示の改行でも分ける）
+function swimWrap(text, maxW, fs = SWIM_FS, bold = true) {
+  const lines = [];
+  String(text || '').split('\n').forEach((line) => {
+    if (!line) { lines.push(''); return; }
+    let cur = '';
+    let curW = 0;
+    for (const ch of line) {
+      const cw = swimTextW(ch, fs, bold);
+      if (curW + cw > maxW && cur) { lines.push(cur); cur = ch; curW = cw; } else { cur += ch; curW += cw; }
+    }
+    if (cur) lines.push(cur);
+  });
+  return lines;
+}
+// 判断（ひし形）の中に、折り返した文字が収まるか（MPD の diamondLayout。横書き。A＝幅・B＝高さ）
+function swimDiamondLayout(text, A, B) {
+  let count = Math.max(1, text.split('\n').length);
+  let lines = null;
+  for (let k = 0; k < 12; k++) {
+    const cap = A * (1 - (count * SWIM_LH + 6) / B) - 12;
+    if (cap < 24) return { ok: false, lines: lines || text.split('\n') };
+    lines = swimWrap(text, cap);
+    if (lines.length <= count) break;
+    count = lines.length;
+  }
+  return { ok: true, lines };
+}
+// 箱の大きさ { w, h, lines（折り返した文字の行）, tag（画面の札の文字。なければ ''）}（MPD の autoFitNodeSize の横書きと diamondAutoSize と同じ決まり）。
+// max は横に広げる上限（縦向きは、レーンからはみ出さないように、レーンの太さ − 4。MPD の autoCrossMax）。札は箱の中の 2 行目に書き、札の分 16 高くする（q144）
+function swimBoxSize(text, kind, tag = '', max = SWIM_W_MAX) {
+  const s = SWIM_SHAPES[kind] || SWIM_SHAPES.task;
+  const cap = Math.max(40, Math.min(SWIM_W_MAX, max));
+  const tagW = tag ? Math.ceil(swimTextW(tag, SWIM_TAG_FS, false)) + 12 : 0;
+  const extra = tag ? SWIM_TAG_H : 0;
+  if (s.type === 'diamond') {
+    const r = s.h / s.w;
+    const hard = text.split('\n');
+    const tw0 = Math.max(tagW, ...hard.map((l) => swimTextW(l)));
+    const A = Math.max(s.w, Math.min(cap, Math.ceil(tw0 + 12 + (hard.length * SWIM_LH + 6) / r)));
+    let B = Math.max(s.h, Math.ceil(r * A));
+    let lay = swimDiamondLayout(text, A, B);
+    for (let k = 0; k < 60 && !lay.ok; k++) {
+      B += SWIM_LH;
+      lay = swimDiamondLayout(text, A, B);
+    }
+    return { w: A, h: B + extra, lines: lay.lines, tag };
+  }
+  const lines = swimWrap(text, Math.max(24, cap - s.pad));
+  const need = Math.ceil(Math.max(tagW, ...lines.map((l) => swimTextW(l)))) + s.pad;
+  return { w: Math.max(s.w, Math.min(cap, need)), h: Math.max(s.h, lines.length * SWIM_LH + s.padH) + extra, lines, tag };
+}
+// 矢印の文字の下地の大きさ { w, h, lines }（MPD の renderOneEdge の横書きの線ラベルと同じ: 幅 140 で折り返し、字 11・左右 7 の余白・高さは 20 以上）
+function swimLabelSize(label) {
+  const lines = swimWrap(label, SWIM_LABEL_MAX, SWIM_LABEL_FS, false);
+  return { w: Math.max(36, Math.ceil(Math.max(0, ...lines.map((l) => swimTextW(l, SWIM_LABEL_FS, false)))) + 14), h: Math.max(20, lines.length * SWIM_LABEL_LH + 8), lines };
+}
+// 作業の、向き orient の覚えた位置 { flow, cross, roleId, col }。flow は流れの向きの箱の真ん中の位置、cross はレーンの中の横切る向きの真ん中の位置（レーンの縁から）。
+// 覚えた後に役割か列が変わった作業（AI・右のパネル・ほかの向きでのドラッグ）は、覚えていないことにする（列から置き直す。q145）
+function swimStoredPos(w, orient) {
+  const p = isObj(w.pos) ? w.pos[orient] : null;
+  return isObj(p) && Number.isFinite(p.flow) && Number.isFinite(p.cross) && p.roleId === w.roleId && p.col === w.col ? p : null;
+}
 // 作業の指す先の名前 { design, screen, state }（指していないものは null）。画面とステータスは、指す画面設計の中から引く
 // （id は画面設計の中だけで重ならないので、画面設計と組で引く）。画面設計を指していなければ、画面とステータスも引かない
 function swimRefNames(state, ref) {
@@ -7708,8 +9195,9 @@ function swimRefNames(state, ref) {
   }
   return out;
 }
-// スイムレーン図のモデル。箱 { key: 'w:作業の id', step, laneIndex（帯の番号）, col, ref（指す先の名前）}。役割が見つからない作業は描かない。
-// 矢印 { from, to, kind, labels, edge } は両端の箱があるものだけ。先の作業の列が元の作業の列より小さい矢印は kind 'back'（差し戻しなど）
+// スイムレーン図のモデル。箱 { key: 'w:作業の id', step, laneIndex（レーンの番号）, col, ref（指す先の名前）}。役割が見つからない作業は描かない。
+// 矢印 { from, to, kind, labels, edge } は両端の箱があるものだけ。先の作業の列が元の作業の列より小さい矢印は kind 'back'（差し戻しなど）。
+// 線の色（戻る線は橙の点線）は、描くときに、MPD と同じく箱の位置で決める（swimRoutes の isReturn）
 function swimlaneModel(state, sys) {
   const laneOf = new Map(sys.roles.map((r, i) => [r.id, i]));
   const steps = sys.swimlane.steps.filter((w) => laneOf.has(w.roleId));
@@ -7721,30 +9209,93 @@ function swimlaneModel(state, sys) {
     })),
   };
 }
-// スイムレーン図の位置。帯は役割の順に上から。同じ帯の同じ列に作業が 2 つ以上あれば、作業の並びの順に縦に積む（段の間 80）。
-// 帯の高さ＝上下の余白 24 ＋ 段の数 × 64 ＋ 段の間 16（作業のない帯も 1 段分）。戻り値 { pos, lanes: [{ role, y, h }], w, h }。数はどれも 8 の倍数
+const swimRound = (v) => Math.round(v * 10) / 10;
+// スイムレーン図の位置。戻り値 { pos: { 'w:作業の id': { x, y, w, h（箱の左上と大きさ）, lines, tag, flow, cross（真ん中。cross はレーンの縁から）, auto（列から置いた）} },
+// lanes: [{ role, x, y, w, h }], w, h, vertical, hdr（流れの向きの見出しの長さ）, orient }。
+// 覚えた位置のある工程はその位置（swimStoredPos）。ない工程は MPD の整列（laneFlowLayout）と同じ決まりで、列を段にして置く:
+//   段の真ん中はガイド線（見出し ＋ 80 の倍数）に乗せ、次の段は前の段と 24（矢印の文字があれば、その長さ）以上空く 80 の倍数だけ先。
+//   覚えた位置の工程がある列は、その工程の位置を段にする（ない列は、近くの段からの間を列から置いたときと同じにする）。
+//   同じ段・同じレーンに 1 つならレーンの真ん中、2 つなら 1/4 と 3/4、3 つなら 1/4・真ん中・3/4（入らなければ等しい間で並べる）。
+// レーンの太さは、既定（SWIM_LANE）と、同じ段に並ぶ箱が入る太さと、覚えた位置の箱が入る太さの大きいほう（MPD はレーンの太さを人が決める。段階 C で足す）
 function swimlaneLayout(model, sys) {
-  const rows = sys.roles.map(() => 1);
-  const used = new Map(); // '帯|列' → その枠に積んだ箱の数
-  const rowOf = new Map();
-  model.nodes.forEach((n) => {
-    const k = n.laneIndex + '|' + n.col;
-    const r = used.get(k) || 0;
-    used.set(k, r + 1);
-    rowOf.set(n.key, r);
-    rows[n.laneIndex] = Math.max(rows[n.laneIndex], r + 1);
+  const orient = swimOrientOf(sys);
+  const V = orient === 'vertical';
+  const hdr = SWIM_HDR[orient];
+  const boxes = model.nodes.map((n) => {
+    const b = swimBoxSize(n.step.text || SWIM_KIND_NAMES[n.step.kind], n.step.kind, swimRefTag(n.ref), V ? SWIM_LANE.vertical - 4 : SWIM_W_MAX);
+    return { n, b, fl: V ? b.h : b.w, cl: V ? b.w : b.h, p: swimStoredPos(n.step, orient), col: n.col, lane: n.laneIndex };
   });
-  let y = 0;
-  const lanes = sys.roles.map((role, i) => {
-    const lane = { role, y, h: SWIM_PAD * 2 + rows[i] * MAP_H + (rows[i] - 1) * SWIM_GAP };
-    y += lane.h;
-    return lane;
+  // 段（列）の真ん中
+  const cols = [...new Set(boxes.map((x) => x.col))].sort((a, b) => a - b);
+  const len = new Map(cols.map((c) => [c, Math.max(...boxes.filter((x) => x.col === c).map((x) => x.fl))]));
+  const colOfKey = new Map(boxes.map((x) => [x.n.key, x.col]));
+  const gap = (a, c) => Math.max(SWIM_ROW_GAP, ...model.edges.filter((e) => e.edge.label && [colOfKey.get(e.from), colOfKey.get(e.to)].sort((p, q) => p - q).join() === [a, c].join())
+    .map((e) => { const s = swimLabelSize(e.edge.label); return V ? s.h : s.w; }));
+  const auto = new Map();
+  cols.forEach((c, i) => {
+    const prev = cols[i - 1];
+    auto.set(c, i ? auto.get(prev) + Math.ceil((len.get(prev) / 2 + len.get(c) / 2 + gap(prev, c)) / SWIM_STEP) * SWIM_STEP : hdr + SWIM_STEP);
   });
-  const pos = Object.fromEntries(model.nodes.map((n) => [n.key, {
-    x: SWIM_X0 + n.col * SWIM_COL, y: lanes[n.laneIndex].y + SWIM_PAD + rowOf.get(n.key) * (MAP_H + SWIM_GAP), h: MAP_H,
-  }]));
-  const w = Math.max(600, ...Object.values(pos).map((p) => p.x + MAP_W + 40));
-  return { pos, lanes, w, h: y };
+  const known = new Map();
+  cols.forEach((c) => { const f = boxes.find((x) => x.col === c && x.p); if (f) known.set(c, f.p.flow); });
+  const row = new Map();
+  cols.forEach((c, i) => {
+    if (known.has(c)) { row.set(c, known.get(c)); return; }
+    const prev = cols[i - 1];
+    const next = cols.slice(i + 1).find((k) => known.has(k));
+    const at = prev != null ? row.get(prev) + auto.get(c) - auto.get(prev) : next != null ? known.get(next) - (auto.get(next) - auto.get(c)) : auto.get(c);
+    row.set(c, Math.max(at, hdr + len.get(c) / 2 + 2));
+  });
+  // レーンの太さと、同じ段・同じレーンの箱の並び（作業の並びの順）
+  const groups = new Map();
+  boxes.forEach((x) => { const k = x.lane + '|' + x.col; groups.set(k, [...(groups.get(k) || []), x]); });
+  const laneW = sys.roles.map(() => SWIM_LANE[orient]);
+  groups.forEach((us) => { laneW[us[0].lane] = Math.max(laneW[us[0].lane], us.reduce((s, u) => s + u.cl, 0) + (us.length - 1) * SWIM_SIDE_GAP + SWIM_INSET * 2); });
+  boxes.forEach((x) => { if (x.p) laneW[x.lane] = Math.max(laneW[x.lane], Math.max(x.p.cross, x.cl / 2 + 2) + x.cl / 2 + SWIM_INSET); });
+  const start = [];
+  laneW.reduce((a, w, i) => { start[i] = a; return a + w; }, 0);
+  const slot = new Map();
+  groups.forEach((us) => {
+    const W = laneW[us[0].lane];
+    const k = us.length;
+    let cs = k === 1 ? [W / 2] : k === 2 ? [W * 0.25, W * 0.75] : k === 3 ? [W * 0.25, W * 0.5, W * 0.75] : null;
+    const fits = (arr) => arr.every((c, i) => c - us[i].cl / 2 >= SWIM_INSET && c + us[i].cl / 2 <= W - SWIM_INSET
+      && (!i || c - us[i].cl / 2 - (arr[i - 1] + us[i - 1].cl / 2) >= SWIM_SIDE_GAP));
+    if (!cs || !fits(cs)) {
+      const total = us.reduce((s, u) => s + u.cl, 0);
+      const inner = k > 1 ? (W - SWIM_INSET * 2 - total) / (k - 1) : 0;
+      let p = k > 1 ? SWIM_INSET : (W - total) / 2;
+      cs = us.map((u) => { const c = p + u.cl / 2; p += u.cl + inner; return c; });
+    }
+    us.forEach((u, i) => slot.set(u, cs[i]));
+  });
+  const pos = {};
+  let end = 0;
+  boxes.forEach((x) => {
+    const flow = x.p ? Math.max(x.p.flow, hdr + x.fl / 2 + 2) : row.get(x.col);
+    const cross = x.p ? Math.max(x.p.cross, x.cl / 2 + 2) : slot.get(x);
+    const [cx, cy] = V ? [start[x.lane] + cross, flow] : [flow, start[x.lane] + cross];
+    pos[x.n.key] = { x: swimRound(cx - x.b.w / 2), y: swimRound(cy - x.b.h / 2), w: x.b.w, h: x.b.h, lines: x.b.lines, tag: x.b.tag,
+      flow: swimRound(flow), cross: swimRound(cross), auto: !x.p };
+    end = Math.max(end, flow + x.fl / 2);
+  });
+  const flowLen = Math.max(SWIM_MIN[orient], Math.ceil(end + SWIM_TAIL));
+  const span = laneW.reduce((a, w) => a + w, 0);
+  const lanes = sys.roles.map((role, i) => (V ? { role, x: start[i], y: 0, w: laneW[i], h: flowLen } : { role, x: 0, y: start[i], w: flowLen, h: laneW[i] }));
+  return { pos, lanes, w: V ? span : flowLen, h: V ? flowLen : span, vertical: V, hdr, orient };
+}
+// 図の線（swimRoutes の戻り値。矢印の id → 線）。線の計算では、書類も作業と同じ形にする（MPD の書類は重ね置きで、線が避けない。このアプリの書類は流れの工程なので避ける）
+function swimRoutesOf(model, L) {
+  const V = L.vertical;
+  return swimRoutes({
+    vertical: V, w: L.w, h: L.h,
+    lanes: L.lanes.map((l) => ({ id: l.role.id, w: V ? l.w : l.h })),
+    nodes: model.nodes.filter((n) => L.pos[n.key]).map((n) => {
+      const p = L.pos[n.key];
+      return { id: n.key, type: n.step.kind === 'decision' ? 'diamond' : 'rect', lid: n.step.roleId, x: p.x, y: p.y, w: p.w, h: p.h };
+    }),
+    edges: model.edges.map((e) => ({ id: e.edge.id, from: e.from, to: e.to })),
+  });
 }
 // 作業の箱の札の文字（指す先が画面ならその画面、なければステータス、画面設計だけならその画面設計）と、マウスを乗せたときの文
 function swimRefTag(ref) {
@@ -7758,83 +9309,216 @@ function swimStepTitle(n) {
     n.ref.design && '画面設計: ' + n.ref.design, n.ref.screen && '画面: ' + n.ref.screen, n.ref.state && 'ステータス: ' + n.ref.state,
     w.memo && 'メモ: ' + w.memo].filter(Boolean).join('\n');
 }
-// スイムレーン図の HTML（システムの画面・AI の画像で使う）。o: idPrefix（矢印の印の id の頭）・bare（id="map-inner" を付けない）・
+const swimNum = (n) => n.toFixed(1);
+// 矢印の先の印（MPD の arr と同じ形と大きさ。線の太さに合わせて大きくなる）。k は大きさの倍率（選んだ太い線 2 では 1.5 ÷ 2 にして、ふだんの線の印と同じ大きさに見せる）
+const swimMarker = (id, col, k = 1) => `<marker id="${id}" viewBox="0 0 8 6" markerWidth="${8 * k}" markerHeight="${6 * k}" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="${col}"/></marker>`;
+const SWIM_LINE = '#475569'; // 線の色（MPD と同じ灰色）
+const SWIM_BACK = '#ea580c'; // 戻る線の色（橙の点線。q143）
+// スイムレーン図の SVG（帯・ガイド線・線・飛び越え・矢印の文字。箱の下に描く）。D は { model, L, routes }。o は swimlaneHtml と同じ。
+// edit のときは、矢印を押す所（swimEdgeTools）も描き、両端の ○（swimEdgeEnds）を ends に足す。線は MPD と同じく、進む線 → 戻る線の順に描き、
+// 交わる所の半円（白の下地 → 線の色）を線の後に重ね、矢印の文字を最後に書く（文字が後の線に隠れないように）
+function swimSvg(D, o = {}, ends = []) {
+  const { model, L, routes } = D;
+  const { lanes, w, h, vertical: V, hdr } = L;
+  const idp = o.idPrefix || 'swim';
+  const f = swimNum;
+  // 帯（白と薄い灰を交互に）と、左の名前の列（縦向きは上の名前の行）。rect の属性は x・y・width・height の順（diagramCrop が拾う形）
+  const bands = lanes.map((l, i) => `<rect x="${l.x}" y="${l.y}" width="${l.w}" height="${l.h}" fill="${i % 2 ? '#f8fafc' : '#fff'}" stroke="#cbd5e1"/>`
+    + `<rect x="${l.x}" y="${l.y}" width="${V ? l.w : hdr}" height="${V ? hdr : l.h}" fill="#e8eef6" stroke="#cbd5e1"/>`).join('');
+  // ガイド線（MPD の renderGrid: 見出しから 80 おきの薄い破線。ドラッグで吸い付く所）
+  const span = V ? w : h;
+  const grid = [];
+  for (let g = hdr + SWIM_STEP; g < (V ? h : w); g += SWIM_STEP) grid.push(V ? `<line x1="0" y1="${g}" x2="${span}" y2="${g}"/>` : `<line x1="${g}" y1="0" x2="${g}" y2="${span}"/>`);
+  const lines = [];
+  const arcs = [];
+  const labels = [];
+  const tools = [];
+  const edges = model.edges.filter((e) => routes[e.edge.id]);
+  [...edges.filter((e) => !routes[e.edge.id].isReturn), ...edges.filter((e) => routes[e.edge.id].isReturn)].forEach((e) => {
+    const r = routes[e.edge.id];
+    const id = esc(e.edge.id);
+    const col = r.isReturn ? SWIM_BACK : SWIM_LINE;
+    const dash = r.isReturn ? ' stroke-dasharray="6,4"' : '';
+    const back = r.isReturn ? ' back' : '';
+    lines.push(`<path class="sw-line${back}" data-edge="${id}" data-wps="${r.wps.map((p) => f(p[0]) + ',' + f(p[1])).join(' ')}" d="${r.d}" fill="none" stroke="${col}" stroke-width="1.5"${dash} marker-end="url(#${idp}-arrow${r.isReturn ? '-b' : ''})"/>`);
+    r.arcs.forEach((d) => arcs.push(`<path class="sw-arc" d="${d}" fill="none" stroke="#fff" stroke-width="5"/><path class="sw-arc-c${back}" data-edge="${id}" d="${d}" fill="none" stroke="${col}" stroke-width="1.5"${dash}/>`));
+    let lab = null;
+    if (e.edge.label) {
+      const s = swimLabelSize(e.edge.label);
+      // 真ん中は線の真ん中（MPD と同じ）。図の縁に沿う線（戻る線はレーンの縁から 10 を通る）でも文字が切れないように、下地は図の中に収める
+      const cx = Math.min(Math.max(r.mx, s.w / 2 + 1), w - s.w / 2 - 1);
+      const cy = Math.min(Math.max(r.my, s.h / 2 + 1), h - s.h / 2 - 1);
+      lab = { x: cx - s.w / 2, y: cy - s.h / 2, w: s.w, h: s.h };
+      labels.push(`<rect x="${f(lab.x)}" y="${f(lab.y)}" width="${s.w}" height="${s.h}" rx="3" fill="#fff" stroke="#cbd5e1" class="sw-lab" data-edge="${id}"/>`
+        + s.lines.map((t, j) => `<text x="${f(cx)}" y="${f(cy + (j - (s.lines.length - 1) / 2) * SWIM_LABEL_LH)}" text-anchor="middle" dominant-baseline="middle" font-size="${SWIM_LABEL_FS}" fill="${r.isReturn ? SWIM_BACK : SWIM_LINE}">${esc(t)}</text>`).join(''));
+    }
+    if (o.edit) {
+      tools.push(swimEdgeTools(e, r, lab));
+      ends.push(swimEdgeEnds(e, r));
+    }
+  });
+  const defs = swimMarker(`${idp}-arrow`, SWIM_LINE) + swimMarker(`${idp}-arrow-b`, SWIM_BACK) + (o.edit ? swimMarker('swim-arrow-s', '#2563eb', 0.75) : '');
+  return `<svg class="swim-svg" width="${w}" height="${h}" font-family="${SWIM_FONT.replace(/"/g, '')}" aria-hidden="true"><defs>${defs}</defs>${bands}`
+    + `<g class="sw-grid" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="2,6" opacity=".22">${grid.join('')}</g>${lines.join('')}${arcs.join('')}${labels.join('')}${tools.join('')}</svg>`;
+}
+// スイムレーン図の HTML（システムの画面・PDF・AI の画像で使う）。o: idPrefix（矢印の印の id の頭）・bare（id="map-inner" を付けない）・
 // zoom（システムの画面の倍率。図を transform で縮め、縮めた大きさの枠 .swim-zoom で包む〔スクロールの範囲を縮めた大きさにするため〕）・
-// edit（システムの画面で、矢印を押す所・選んだ矢印の印を描く。swimEdgeTools。第 9 段階の T6b）。役割がないときは案内の文、作業がないときは帯だけ
+// edit（システムの画面で、矢印を押す所・選んだ矢印の印を描く。swimEdgeTools。第 9 段階の T6b）・drawn（並べ方と線 { model, L, routes }。
+// システムの画面が先に求めたもの。渡さなければ、ここで求める）。役割がないときは案内の文、作業がないときは帯だけ
 function swimlaneHtml(state, sys, o = {}) {
   if (!sys.roles.length) return '<p class="map-empty">役割がまだありません。役割（申請者・上長など）を追加すると、役割ごとのレーンができ、工程を並べられます。</p>';
-  const model = swimlaneModel(state, sys);
-  const { pos, lanes, w, h } = swimlaneLayout(model, sys);
-  // 帯（白と薄い灰を交互に）と、左の名前の列。rect の属性は x・y・width・height の順（diagramCrop が拾う形）
-  const bands = lanes.map((l, i) => `<rect x="0" y="${l.y}" width="${w}" height="${l.h}" fill="${i % 2 ? '#f8fafc' : '#fff'}" stroke="#cbd5e1"/>`
-    + `<rect x="0" y="${l.y}" width="${SWIM_LABEL_W}" height="${l.h}" fill="#e8eef6" stroke="#cbd5e1"/>`).join('');
-  const labs = lanes.map((l) => `<div class="swim-lab" style="top:${l.y}px;width:${SWIM_LABEL_W}px;height:${l.h}px"${l.role.memo ? ` title="${esc(l.role.memo)}"` : ''}>${esc(l.role.name)}</div>`).join('');
+  const D = o.drawn || swimDrawing(state, sys);
+  const { model, L } = D;
+  const { pos, lanes, w, h, vertical: V, hdr } = L;
+  const labs = lanes.map((l) => `<div class="swim-lab" style="${V ? `left:${l.x}px;top:0;width:${l.w}px;height:${hdr}px` : `top:${l.y}px;width:${hdr}px;height:${l.h}px`}"`
+    + `${l.role.memo ? ` title="${esc(l.role.memo)}"` : ''}>${esc(l.role.name)}</div>`).join('');
   const nodes = model.nodes.map((n) => {
     const p = pos[n.key];
-    const tag = swimRefTag(n.ref);
-    return `<div class="mnode sw k-${n.step.kind}" data-node="${esc(n.key)}" title="${esc(swimStepTitle(n))}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${MAP_H}px">`
-      + `<b>${esc(n.step.text || SWIM_KIND_NAMES[n.step.kind])}</b>${tag ? `<span class="ref">${esc(tag)}</span>` : ''}</div>`;
+    return `<div class="mnode sw k-${n.step.kind}" data-node="${esc(n.key)}" title="${esc(swimStepTitle(n))}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px">`
+      + `<b>${p.lines.map((s) => esc(s)).join('<br>')}</b>${p.tag ? `<span class="ref">${esc(p.tag)}</span>` : ''}</div>`;
   }).join('');
   const ends = []; // 選んだ矢印の両端の ○（箱より上に描く）
-  const tools = o.edit ? {
-    lineAttr: (e) => ` class="sw-line" data-edge="${esc(e.edge.id)}"`,
-    extra: (e, g, lab) => { ends.push(swimEdgeEnds(e, g)); return swimEdgeTools(e, g, lab); },
-  } : {};
-  // 選んだ矢印の青い印（CSS の marker-end で付け替える）。選んだ線は太い（3.5）ので、印の大きさをふだんの線（2.5）の印と同じに縮める
-  const selMark = mapMarker('swim-arrow-s', '#2563eb').replace('markerWidth="8" markerHeight="8"', 'markerWidth="5.7" markerHeight="5.7"');
-  const under = (o.edit ? `<defs>${selMark}</defs>` : '') + bands;
-  const svg = mapEdgesSvg(model, pos, w, h, { ...VIEW_DRAW.swimlane, idPrefix: o.idPrefix || 'swim', under, ...tools });
+  const svg = swimSvg(D, o, ends);
   const over = o.edit ? `<svg class="swim-over" width="${w}" height="${h}">${ends.join('')}</svg>` : '';
   const z = o.zoom || null;
-  const inner = `<div class="map-inner swim-inner"${o.bare ? '' : ' id="map-inner"'} data-view="swimlane" data-focus="${esc(sys.id)}" style="width:${w}px;height:${h}px${z ? `;transform:scale(${z});transform-origin:0 0` : ''}">${svg}${labs}${nodes}${over}</div>`;
+  const inner = `<div class="map-inner swim-inner${V ? ' down' : ''}"${o.bare ? '' : ' id="map-inner"'} data-view="swimlane" data-focus="${esc(sys.id)}" style="width:${w}px;height:${h}px${z ? `;transform:scale(${z});transform-origin:0 0` : ''}">${svg}${labs}${nodes}${over}</div>`;
   return z ? `<div class="swim-zoom" style="width:${Math.round(w * z)}px;height:${Math.round(h * z)}px">${inner}</div>` : inner;
 }
-// システムの画面のスイムレーン図の、矢印 1 本の押す所（第 9 段階の T6b。画像 q63。mapEdgesSvg の extra）。.sw-edge の中に、
+// 並べ方と線 { model, L, routes }（swimlaneHtml とシステムの画面の swimDrawn が使う）
+function swimDrawing(state, sys) {
+  const model = swimlaneModel(state, sys);
+  const L = swimlaneLayout(model, sys);
+  return { model, L, routes: swimRoutesOf(model, L) };
+}
+// システムの画面のスイムレーン図の、矢印 1 本の押す所（第 9 段階の T6b。画像 q63）。.sw-edge の中に、
 // 線に沿った太い透明の線と文字の下地（.sw-hit。押す・ダブルクリック・右クリック）と、文字のない線の真ん中の小さな ○（.sw-mid。乗ったときと選んだ間だけ出す）。
 // data-mx・data-my は文字の欄を出す所（文字の下地の真ん中か、線の真ん中）。線と同じく、箱の下に描く
-const swimNum = (n) => n.toFixed(1);
-function swimEdgeTools(e, g, lab) {
+function swimEdgeTools(e, r, lab) {
   const f = swimNum;
-  const [mx, my] = lab ? [lab.x + lab.w / 2, lab.y + lab.h / 2] : [g.mx, g.my];
-  return `<g class="sw-edge" data-edge="${esc(e.edge.id)}" data-mx="${f(mx)}" data-my="${f(my)}"><path class="sw-hit" d="${g.d}"/>`
-    + (lab ? `<rect class="sw-hit" x="${f(lab.x)}" y="${f(lab.y)}" width="${lab.w}" height="${lab.h}"/>` : `<circle class="sw-mid" cx="${f(g.mx)}" cy="${f(g.my)}" r="4"/>`)
+  const [mx, my] = lab ? [lab.x + lab.w / 2, lab.y + lab.h / 2] : [r.mx, r.my];
+  return `<g class="sw-edge" data-edge="${esc(e.edge.id)}" data-mx="${f(mx)}" data-my="${f(my)}"><path class="sw-hit" d="${r.d}"/>`
+    + (lab ? `<rect class="sw-hit" x="${f(lab.x)}" y="${f(lab.y)}" width="${lab.w}" height="${lab.h}"/>` : `<circle class="sw-mid" cx="${f(r.mx)}" cy="${f(r.my)}" r="4"/>`)
     + '</g>';
 }
 // 矢印 1 本の両端のオレンジの ○（.sw-ends の中の .sw-end。選んだ間だけ出す。付け替えのドラッグ）。端は箱の縁にあって半分が箱に重なるので、
-// 箱より後の SVG（.swim-over）に描く（箱の下だと、箱が押す所を隠す）。端の位置は線の d の最初と最後の数
-function swimEdgeEnds(e, g) {
+// 箱より後の SVG（.swim-over）に描く（箱の下だと、箱が押す所を隠す）。端の位置は線の折れ線の最初と最後の点
+function swimEdgeEnds(e, r) {
   const f = swimNum;
-  const nums = g.d.match(/-?\d+(\.\d+)?/g).map(Number);
-  const [x1, y1, x2, y2] = [nums[0], nums[1], nums[nums.length - 2], nums[nums.length - 1]];
-  return `<g class="sw-ends" data-edge="${esc(e.edge.id)}"><circle class="sw-end" data-end="from" cx="${f(x1)}" cy="${f(y1)}" r="5"/>`
-    + `<circle class="sw-end" data-end="to" cx="${f(x2)}" cy="${f(y2)}" r="5"/></g>`;
+  const [a, b] = [r.wps[0], r.wps[r.wps.length - 1]];
+  return `<g class="sw-ends" data-edge="${esc(e.edge.id)}"><circle class="sw-end" data-end="from" cx="${f(a[0])}" cy="${f(a[1])}" r="5"/>`
+    + `<circle class="sw-end" data-end="to" cx="${f(b[0])}" cy="${f(b[1])}" r="5"/></g>`;
 }
-// ── スイムレーン図の上の位置の計算（第 9 段階の T6b。純関数）。位置はどれも図の中の位置（倍率をかける前）──
-const SWIM_NEAR = 25; // ○＋ を出す、箱の縁からの近さ（BDM の QC_NEAR と同じ）
-const SWIM_PLUS_GAP = 12; // ○＋ の真ん中の、箱の縁からの距離（BDM と同じ）
-// 点の帯と列 { laneIndex, roleId, col }。帯の上と下の外の点は、いちばん近い帯。列は 0 から（名前の列の上の点は列 0）。
-// 箱の間（矢印を通す間）は、真ん中で左右の列に分ける。図の右の外の点は、その先の列。帯がないときは null
-function swimCellAt(layout, x, y) {
-  const { lanes } = layout;
-  if (!lanes.length) return null;
-  const found = lanes.findIndex((l) => y < l.y + l.h);
-  const i = found < 0 ? lanes.length - 1 : found;
-  const col = Math.max(0, Math.floor((x - SWIM_X0 + (SWIM_COL - MAP_W) / 2) / SWIM_COL));
-  return { laneIndex: i, roleId: lanes[i].role.id, col };
+// ── スイムレーン図の上の位置の計算（第 9 段階の T6b。v1.03 で MPD の吸着を写した。純関数）。位置はどれも図の中の位置（倍率をかける前）──
+const SWIM_NEAR = 25; // ○＋ を出す、箱の縁からの近さ（MPD の QC_NEAR と同じ）
+const SWIM_PLUS_GAP = 12; // ○＋ の真ん中の、箱の縁からの距離（MPD と同じ）
+const SWIM_SNAP_MAIN = 15; // 流れの向きの吸着の近さ（MPD の snapMainToShapes）
+const SWIM_SNAP_CROSS = 20; // 横切る向きの吸着の近さ（MPD の snapCrossInLane・snapCrossToPartners）
+// 横切る向きの位置 cross（図の中の位置）のあるレーンの番号。レーンの外は、近いほうの端のレーン
+function swimLaneAt(L, cross) {
+  const i = L.lanes.findIndex((l) => (L.vertical ? cross < l.x + l.w : cross < l.y + l.h));
+  return i < 0 ? L.lanes.length - 1 : i;
 }
-// 箱 b（左上の位置）のどの縁が、点に向いているか（'top'・'right'・'bottom'・'left'。箱の大きさで割った向きで決める。BDM の qcHoverMove と同じ）
+// つながった相手への吸着の目標 [{ t（動かす箱の真ん中の目標）, g（ガイドを引く位置）, o（相手の箱の key）}]（MPD v8.33 の partnerSnapTargets）。
+// 相手の辺に線の端が 2 本以上あるときは、相手の中心でなく線の付け根に合わせる（線がまっすぐになる位置）。axis は 'x' か 'y'
+function swimPartnerTargets(D, key, axis) {
+  const { model, L, routes } = D;
+  const X = axis === 'x';
+  const ctr = (p) => (X ? p.x + p.w / 2 : p.y + p.h / 2);
+  const at = (pt) => (X ? pt[0] : pt[1]);
+  const vs = (s) => s === 'top' || s === 'bottom';
+  const count = new Map();
+  const add = (k) => count.set(k, (count.get(k) || 0) + 1);
+  model.edges.forEach((e) => { const r = routes[e.edge.id]; if (r) { add(e.from + '|' + r.exitSide); add(e.to + '|' + r.entrySide); } });
+  const many = (k, s) => (count.get(k + '|' + s) || 0) >= 2;
+  const out = [];
+  model.edges.forEach((e) => {
+    const mFrom = e.from === key;
+    if (mFrom === (e.to === key)) return;
+    const ok = mFrom ? e.to : e.from;
+    const [m, o] = [L.pos[key], L.pos[ok]];
+    const r = routes[e.edge.id];
+    if (!m || !o) return;
+    let t = ctr(o);
+    let g = t;
+    if (r) {
+      const [oSide, mSide] = mFrom ? [r.entrySide, r.exitSide] : [r.exitSide, r.entrySide];
+      const [oPt, mPt] = mFrom ? [r.wps[r.wps.length - 1], r.wps[0]] : [r.wps[0], r.wps[r.wps.length - 1]];
+      if (vs(oSide) === X) {
+        if (many(ok, oSide)) { t = at(oPt); g = t; }
+        if (vs(mSide) === X && many(key, mSide)) t -= at(mPt) - ctr(m);
+      }
+    }
+    out.push({ t, g, o: ok });
+  });
+  return out;
+}
+// 箱 key を左上 raw { x, y } へ動かすときの、吸着させた位置（MPD v8.33 の 1 つのシェイプのドラッグ〔13135〜13204 行〕と同じ決まり）。
+// 流れの向きは、つながった相手（線がまっすぐになる位置）・ほかの箱の真ん中・80 おきのガイド線のうち、15 以内でいちばん近いもの（相手が先）。
+// 横切る向きは、真ん中の入ったレーンの中で、つながった相手（20 以内）か、レーンの 1/4・真ん中・3/4（20 以内）。箱はレーンの中に収める。
+// opts: alt（Alt を押している間は吸着しない。MPD の説明書のとおり）・axis（Shift で固定した向き。吸着もしない。MPD の constrained）。
+// 戻り値 { x, y（箱の左上）, flow, cross（真ん中。cross はレーンの縁から）, laneIndex, roleId, guides: { lane, at（レーンの中の吸い付いた位置）, main, partner } }
+function swimSnap(D, key, raw, opts = {}) {
+  const { L } = D;
+  const V = L.vertical;
+  const b = L.pos[key];
+  const [fl, cl] = V ? [b.h, b.w] : [b.w, b.h];
+  const free = !!opts.alt || !!opts.axis;
+  let flow = (V ? raw.y : raw.x) + fl / 2;
+  const cross0 = (V ? raw.x : raw.y) + cl / 2;
+  let main = null;
+  if (!free) {
+    const prefer = swimPartnerTargets(D, key, V ? 'y' : 'x');
+    let best = SWIM_SNAP_MAIN;
+    prefer.forEach((c) => { const d = Math.abs(flow - c.t); if (d < best) { best = d; main = c.t; } });
+    if (main == null) {
+      best = SWIM_SNAP_MAIN;
+      Object.entries(L.pos).forEach(([k, p]) => {
+        if (k === key) return;
+        const c = V ? p.y + p.h / 2 : p.x + p.w / 2;
+        const d = Math.abs(flow - c);
+        if (d < best) { best = d; main = c; }
+      });
+      for (let g = L.hdr + SWIM_STEP; g < Math.max(V ? L.h : L.w, flow + SWIM_STEP); g += SWIM_STEP) {
+        const d = Math.abs(flow - g);
+        if (d < best) { best = d; main = g; }
+      }
+    }
+    if (main != null) flow = main;
+  }
+  flow = Math.max(L.hdr + 2 + fl / 2, flow);
+  const li = swimLaneAt(L, cross0);
+  const lane = L.lanes[li];
+  const [lx, lw] = V ? [lane.x, lane.w] : [lane.y, lane.h];
+  let snapped = cross0;
+  let partner = null;
+  if (!free) {
+    let best = SWIM_SNAP_CROSS;
+    swimPartnerTargets(D, key, V ? 'x' : 'y').forEach((c) => { const d = Math.abs(cross0 - c.t); if (d < best) { best = d; partner = c; } });
+    if (partner) snapped = partner.t;
+    else {
+      best = SWIM_SNAP_CROSS;
+      [0.25, 0.5, 0.75].forEach((k) => { const s = lx + lw * k; const d = Math.abs(cross0 - s); if (d < best) { best = d; snapped = s; } });
+    }
+  }
+  const cross = cl > lw - 4 ? lx + lw / 2 : Math.max(lx + 2 + cl / 2, Math.min(lx + lw - 2 - cl / 2, snapped));
+  return {
+    x: swimRound(V ? cross - cl / 2 : flow - fl / 2), y: swimRound(V ? flow - fl / 2 : cross - cl / 2), flow: swimRound(flow), cross: swimRound(cross - lx),
+    laneIndex: li, roleId: lane.role.id, guides: { lane: opts.alt ? null : li, at: free ? null : snapped, main, partner },
+  };
+}
+// 箱 b（左上の位置と大きさ）のどの縁が、点に向いているか（'top'・'right'・'bottom'・'left'。箱の大きさで割った向きで決める。MPD の qcHoverMove と同じ）
 function swimSideToward(b, x, y) {
-  const ux = (x - (b.x + MAP_W / 2)) / (MAP_W / 2);
-  const uy = (y - (b.y + MAP_H / 2)) / (MAP_H / 2);
+  const ux = (x - (b.x + b.w / 2)) / (b.w / 2);
+  const uy = (y - (b.y + b.h / 2)) / (b.h / 2);
   if (Math.abs(ux) >= Math.abs(uy)) return ux >= 0 ? 'right' : 'left';
   return uy >= 0 ? 'bottom' : 'top';
 }
 // 箱 b の縁 side の真ん中から、外へ out だけ離れた点 { x, y }
 function swimSidePoint(b, side, out = 0) {
-  const [cx, cy] = [b.x + MAP_W / 2, b.y + MAP_H / 2];
+  const [cx, cy] = [b.x + b.w / 2, b.y + b.h / 2];
   if (side === 'top') return { x: cx, y: b.y - out };
-  if (side === 'bottom') return { x: cx, y: b.y + MAP_H + out };
-  return side === 'left' ? { x: b.x - out, y: cy } : { x: b.x + MAP_W + out, y: cy };
+  if (side === 'bottom') return { x: cx, y: b.y + b.h + out };
+  return side === 'left' ? { x: b.x - out, y: cy } : { x: b.x + b.w + out, y: cy };
 }
 // ○＋ を出す所 { key（'w:作業の id'）, side, x, y（○＋ の真ん中）}。点にいちばん近い箱（箱の中なら近さ 0、外なら縁からの距離。
 // SWIM_NEAR より遠い箱は数えない。同じ近さなら後に描いた箱）の、点に向いた縁の 12 外。近い箱がなければ null
@@ -7842,8 +9526,8 @@ function swimPlusAt(pos, x, y) {
   let best = null;
   let bestD = Infinity;
   Object.entries(pos).forEach(([key, b]) => {
-    const ox = Math.max(b.x - x, x - (b.x + MAP_W), 0);
-    const oy = Math.max(b.y - y, y - (b.y + MAP_H), 0);
+    const ox = Math.max(b.x - x, x - (b.x + b.w), 0);
+    const oy = Math.max(b.y - y, y - (b.y + b.h), 0);
     if (ox > SWIM_NEAR || oy > SWIM_NEAR) return;
     const d = Math.max(ox, oy);
     if (d > bestD) return;
@@ -7854,11 +9538,41 @@ function swimPlusAt(pos, x, y) {
   const side = swimSideToward(best.b, x, y);
   return { key: best.key, side, ...swimSidePoint(best.b, side, SWIM_PLUS_GAP) };
 }
+// 位置を覚える（作業の pos を直す。actions の placeStep・addStepAt が使う）。y はシステム（直してよい写し）、L は直す前の並べ方。
+// 今の向きの位置を、描いている全部の作業について覚え（1 つを動かしても、ほかの箱が列から置き直されて動かないように。MPD は全部の箱が位置を持つ）、
+// 列を位置から付け直す（流れの向きの真ん中の順。4 以内の差は同じ列）。ほかの向きの覚えた位置は、列の番号だけを付け直し
+// （動かした作業 moved は付け直さない。役割か列が変わっていれば、その向きでは列から置き直す。q145）
+function swimFreezePos(y, L, orient) {
+  y.swimlane.steps.forEach((w) => {
+    const p = L.pos['w:' + w.id];
+    if (!p) return;
+    w.pos = { ...(isObj(w.pos) ? w.pos : {}), [orient]: { flow: p.flow, cross: p.cross, roleId: w.roleId, col: w.col } };
+  });
+}
+function swimRenumber(y, orient, moved) {
+  const other = orient === 'vertical' ? 'horizontal' : 'vertical';
+  const steps = y.swimlane.steps.filter((w) => isObj(w.pos) && isObj(w.pos[orient]) && y.roles.some((r) => r.id === w.roleId));
+  const next = new Map();
+  let col = -1;
+  let anchor = -Infinity;
+  [...steps].sort((a, b) => a.pos[orient].flow - b.pos[orient].flow).forEach((w) => {
+    if (w.pos[orient].flow - anchor > 4) { col += 1; anchor = w.pos[orient].flow; }
+    next.set(w.id, col);
+  });
+  steps.forEach((w) => {
+    const op = w.pos[other];
+    if (w.id !== moved && isObj(op) && op.col === w.col && op.roleId === w.roleId) op.col = next.get(w.id);
+    w.col = next.get(w.id);
+    Object.assign(w.pos[orient], { col: w.col, roleId: w.roleId });
+  });
+}
 // 「全体を表示」の倍率。図の幅 w を、見えている欄の幅 avail に合わせる（はみ出さないように 100 分の 1 で切り捨て。BDM の fitView と同じく
 // 100% より大きくしない。いちばん小さい倍率は ZOOM_STEPS の最初）。欄の幅が分からない（0。隠れているとき）ときは 1
-function swimFitZoom(w, avail) {
+// 縦向き（q141）は、図の高さ h も見えている欄の高さ availH に合わせる（工程の進む向きが縦なので、横向きの幅に当たるのが高さ。幅と高さの小さいほうの倍率）
+function swimFitZoom(w, avail, h = 0, availH = 0) {
   if (!(avail > 0) || !(w > 0)) return 1;
-  return Math.max(ZOOM_STEPS[0], Math.min(1, Math.floor((avail * 100) / w) / 100));
+  const byH = h > 0 && availH > 0 ? Math.floor((availH * 100) / h) / 100 : 1;
+  return Math.max(ZOOM_STEPS[0], Math.min(1, Math.floor((avail * 100) / w) / 100, byH));
 }
 // 列を書かなかった作業（col が null か undefined）に、矢印の順から列を付けた写しを返す（AI がスイムレーン図を組み立てるときに使う）。
 // 列はつながりの図と同じく、矢印の元から何段目か（mapForwardEdges で輪を閉じる矢印〔差し戻しなど〕を外し、mapRanks で決める）。
@@ -8560,7 +10274,21 @@ function mountSystem() {
       <aside class="side-panel" id="sys-side-panel" aria-label="工程の一覧と設定"><div class="side-box" id="sys-box" hidden></div><div class="side-settings" id="sys-side"></div></aside>
     </div>`;
 }
-// メニューバー（編集の画面と同じ見た目。組はファイル・履歴・編集・表示）。編集と拡大縮小は、スイムレーン図を出しているときだけ押せる。
+// 図の向きのボタンの絵（q141）。3 本のレーンと、工程の進む向きの矢印
+const SWIM_ORIENT_ICONS = {
+  horizontal: '<svg width="22" height="20" viewBox="0 0 22 20" aria-hidden="true"><rect x="1" y="1.5" width="20" height="5" fill="none" stroke="currentColor" stroke-width="1.2"/>'
+    + '<rect x="1" y="7.5" width="20" height="5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="13.5" width="20" height="5" fill="none" stroke="currentColor" stroke-width="1.2"/>'
+    + '<path d="M5 10h11M13 7.5l3 2.5-3 2.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  vertical: '<svg width="22" height="20" viewBox="0 0 22 20" aria-hidden="true"><rect x="2" y="0.5" width="6" height="19" fill="none" stroke="currentColor" stroke-width="1.2"/>'
+    + '<rect x="8" y="0.5" width="6" height="19" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="14" y="0.5" width="6" height="19" fill="none" stroke="currentColor" stroke-width="1.2"/>'
+    + '<path d="M11 4v11M8.5 12l2.5 3 2.5-3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+};
+// 「全体を表示」の説明（向きで変える。q141）
+const SWIM_FIT_TITLES = {
+  horizontal: 'スイムレーン図の幅を、スイムレーン図を出す所の幅に合わせます',
+  vertical: 'スイムレーン図の全体（幅と高さ）が、スイムレーン図を出す所に収まる倍率にします',
+};
+// メニューバー（編集の画面と同じ見た目。組はファイル・履歴・編集・図の向き・配置・表示）。編集と図の向きと拡大縮小は、スイムレーン図を出しているときだけ押せる。
 // 編集の組（T6b）: ▶ 選択・→ 接続（BDM と同じ 2 つのモード。キー v・c）と ✕ 削除（選んだ作業の箱か矢印）
 function sysToolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
@@ -8576,11 +10304,17 @@ function sysToolbarHtml() {
       <button class="bigbtn" data-action="swim-select" id="sys-mode-select" title="工程と矢印を選んで、動かす・変更するモード（V キー）"><span class="ico">▶</span>選択</button>
       <button class="bigbtn" data-action="swim-connect" id="sys-mode-connect" title="接続元と接続先の工程を順に押して、矢印で接続するモード（C キー）"><span class="ico">→</span>接続</button>
       <button class="bigbtn" data-action="swim-delete" id="sys-del" title="選んだ工程か矢印を削除します（Delete キー）"><span class="ico">✕</span>選んだものを<br>削除する</button>`),
+    // 図の向き（q141）: 押している向きが青。向きはシステムに保存し、説明書（PDF）とAI の画像も同じ向きで描く
+    group('図の向き', `
+      <button class="bigbtn" data-action="swim-horizontal" id="sys-orient-h" title="役割のレーンを上から下へ並べ、工程を左から右へ進めます"><span class="ico">${SWIM_ORIENT_ICONS.horizontal}</span>横向き</button>
+      <button class="bigbtn" data-action="swim-vertical" id="sys-orient-v" title="役割のレーンを左から右へ並べ、工程を上から下へ進めます"><span class="ico">${SWIM_ORIENT_ICONS.vertical}</span>縦向き</button>`),
+    // 配置（v1.03。MPD の「配置」の組の ⊞ 整列）: 今の向きの工程の位置を、順番（列）と役割から並べ直す
+    group('配置', '<button class="bigbtn" data-action="swim-arrange" id="sys-arrange" title="工程の位置を、順番（列）と役割から並べ直します（Ctrl+Z で戻せます）"><span class="ico">⊞</span>工程を<br>整列する</button>'),
     group('表示', `<div class="stack">
       <button class="tbtn" data-action="zoom-in" data-sys-zoom title="スイムレーン図を拡大（Ctrl+＋）">＋ 拡大</button>
       <button class="tbtn" data-action="zoom-out" data-sys-zoom title="スイムレーン図を縮小（Ctrl+－）">－ 縮小</button></div>
       <div class="stack">
-      <button class="tbtn" data-action="zoom-fit" data-sys-zoom title="スイムレーン図の幅を、スイムレーン図を出す所の幅に合わせます">⊡ 全体を表示</button>
+      <button class="tbtn" data-action="zoom-fit" data-sys-zoom id="sys-zoom-fit" title="${esc(SWIM_FIT_TITLES.horizontal)}">⊡ 全体を表示</button>
       <button class="tbtn zoom-label" data-action="zoom-reset" data-sys-zoom id="sys-zoom-label" title="表示の倍率を 100% に戻します（Ctrl+0）">100%</button></div>`),
   ].join('');
 }
@@ -8596,6 +10330,15 @@ function updateSysToolbar() {
   $('#sys-mode-select').classList.toggle('on', zoomable && ui.swimMode === 'select');
   $('#sys-mode-connect').classList.toggle('on', zoomable && ui.swimMode === 'connect');
   $('#sys-del').disabled = !zoomable || !(ui.stepSel || ui.edgeSel);
+  const y = zoomable ? findSystem(store.state, ui.systemId) : null;
+  $('#sys-zoom-fit').title = SWIM_FIT_TITLES[swimOrientOf(y)];
+  $('#sys-arrange').disabled = !zoomable || store.isViewing;
+  [['#sys-orient-h', 'horizontal'], ['#sys-orient-v', 'vertical']].forEach(([sel, o]) => {
+    const b = $(sel);
+    b.disabled = !zoomable || store.isViewing;
+    b.classList.toggle('on', !!y && swimOrientOf(y) === o);
+    b.setAttribute('aria-pressed', String(!!y && swimOrientOf(y) === o));
+  });
 }
 // 拡大縮小できるとき（スイムレーン図を出していて、役割が 1 つ以上ある）
 function sysZoomable() {
@@ -8883,7 +10626,7 @@ function sysRolesHtml(y) {
       ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を削除`, '✕', false)}</div>`;
   }).join('');
   return `<div class="itable" style="max-width:760px">${sysHead('役割', y)}
-    <p class="map-note">役割は、スイムレーン図のレーンになります。上から順にレーンを並べます。</p>
+    <p class="map-note">役割は、スイムレーン図のレーンになります。この順に、${swimOrientOf(y) === 'vertical' ? '左' : '上'}からレーンを並べます。</p>
     ${rows || '<p class="sys-empty">まだ役割がありません。「＋ 役割を追加する」で、申請者・上長などの役割を追加します。</p>'}
     <button class="lk-add" data-action="sys-role-add">＋ 役割を追加する</button></div>`;
 }
@@ -8931,28 +10674,31 @@ function sysSwimlaneHtml(y) {
       <button class="btn small primary" data-action="sys-role-first" title="左の一覧の「役割」へ移り、役割を 1 つ追加します">役割を追加する</button></div>`;
   }
   return `<div class="itable wide">${sysHead('スイムレーン図', y)}
-    <p class="map-note">役割ごとのレーンに、工程を左から順に並べ、矢印で接続した業務の流れの図です。工程はドラッグでレーンと列に吸い付いて動きます。工程と矢印を押すと、右のパネルで変更できます。</p>
+    <p class="map-note">役割ごとのレーンに、工程を${swimOrientOf(y) === 'vertical' ? '上' : '左'}から順に並べ、矢印で接続した業務の流れの図です。工程はドラッグで好きな位置へ動かせます（ガイドに吸い付きます。Shift で縦か横にまっすぐ、Alt を押している間は吸い付きません）。「工程を整列する」で順番どおりに並べ直します。工程と矢印を押すと、右のパネルで変更できます。</p>
     <div class="map-head">${VIEW_LEGENDS.swimlane}</div>
     <div class="map-canvas sys-swim" id="sys-swim">${swimInnerHtml(y)}</div></div>`;
 }
 // 真ん中のスイムレーン図の中身（押す所も描く）。描いた図の位置（swimDrawn）を控える（マウスの位置から帯と列・○＋ を求めるため）。
 // sys は描く中身（箱をドラッグしている間は、動かした先に置いた写し）
-let swimDrawn = null; // { sysId, pos, lanes, w, h }
+let swimDrawn = null; // { sysId, pos, lanes, w, h, vertical, hdr, orient, D（{ model, L, routes }。吸着と線の引き直しに使う）}
 function swimInnerHtml(y, sys = y) {
-  swimDrawn = { sysId: y.id, ...swimlaneLayout(swimlaneModel(store.state, sys), sys) };
-  return swimlaneHtml(store.state, sys, { zoom: ui.sysZoom, edit: true });
+  const D = swimDrawing(store.state, sys);
+  swimDrawn = { sysId: y.id, ...D.L, D };
+  return swimlaneHtml(store.state, sys, { zoom: ui.sysZoom, edit: true, drawn: D });
 }
+// 選んだ矢印の印を付ける所（線・押す所・両端の ○・飛び越えの半円・文字の下地）
+const SWIM_SEL_PARTS = '.sw-line, .sw-edge, .sw-ends, .sw-arc-c, .sw-lab';
 // 図の上の印を付け直す: 選んだ作業の箱（.sel）・選んだ矢印（線と押す所の .sel）・つなぐ元の箱（.link-from。青枠）・
 // つなぐ途中と接続モード（.linking。十字のカーソル）・置き場で種類を押した間（.armed）
 function markSwimState() {
   const box = $('#sys-swim');
   if (!box) return;
   box.querySelectorAll('.mnode.sel, .mnode.link-from').forEach((n) => n.classList.remove('sel', 'link-from'));
-  box.querySelectorAll('.sw-line.sel, .sw-edge.sel, .sw-ends.sel').forEach((n) => n.classList.remove('sel'));
+  box.querySelectorAll(SWIM_SEL_PARTS).forEach((n) => n.classList.remove('sel'));
   const node = (id) => [...box.querySelectorAll('.mnode.sw')].find((x) => x.dataset.node === 'w:' + id);
   if (ui.stepSel && node(ui.stepSel)) node(ui.stepSel).classList.add('sel');
   if (ui.swimLink && node(ui.swimLink.from)) node(ui.swimLink.from).classList.add('link-from');
-  if (ui.edgeSel) box.querySelectorAll('.sw-line, .sw-edge, .sw-ends').forEach((n) => { if (n.getAttribute('data-edge') === ui.edgeSel) n.classList.add('sel'); });
+  if (ui.edgeSel) box.querySelectorAll(SWIM_SEL_PARTS).forEach((n) => { if (n.getAttribute('data-edge') === ui.edgeSel) n.classList.add('sel'); });
   box.classList.toggle('linking', !!ui.swimLink || ui.swimMode === 'connect');
   box.classList.toggle('armed', !!ui.swimPal);
 }
@@ -8977,7 +10723,7 @@ function refreshSwimMarks() {
 function zoomSwimlane(cmd) {
   const before = ui.sysZoom;
   const box = $('#sys-swim');
-  const fit = cmd === 'zoomFit' && swimDrawn ? swimFitZoom(swimDrawn.w, box ? box.clientWidth - 2 : 0) : null;
+  const fit = cmd === 'zoomFit' && swimDrawn ? swimFitNow(box) : null;
   const zoom = fit != null ? fit : cmd === 'zoomReset' ? 1 : nextZoom(cmd === 'zoomIn' ? 1 : -1, before);
   if (zoom === before) return;
   ui.sysZoom = zoom;
@@ -8999,18 +10745,43 @@ function redrawSwimlane(y, sys = y) {
   box.innerHTML = swimInnerHtml(y, sys);
   markSwimState();
 }
-// システムのスイムレーン図を、このアプリを開いてから初めて出すときの倍率。図が真ん中の欄に収まらなければ「全体を表示」の倍率
-// （ただし 50% より小さくしない）、収まれば 100%。欄の幅が分からない（0）ときは、まだ決めない
+// システムのスイムレーン図を、このアプリを開いてから初めて出すときの倍率。図の幅が真ん中の欄に収まらなければ、幅を合わせる倍率
+// （ただし 50% より小さくしない）、収まれば 100%（縦向きも幅だけで決める。q141）。欄の幅が分からない（0）ときは、まだ決めない
 function fitSwimlaneFirst(y) {
   const box = $('#sys-swim');
   if (!box || ui.sysFitted[y.id] || !(box.clientWidth > 0) || !swimDrawn) return;
   ui.sysFitted[y.id] = true;
-  const fit = swimFitZoom(swimDrawn.w, box.clientWidth - 2);
+  const fit = swimFitZoom(swimDrawn.w, box.clientWidth - 2); // 縦向きも幅だけ合わせる（高さまで合わせると字が小さくなりすぎる。縦はホイールで送る）
   const zoom = fit < 1 ? Math.max(0.5, fit) : 1;
   if (zoom === ui.sysZoom) return;
   ui.sysZoom = zoom;
   redrawSwimlane(y);
   updateSysToolbar();
+}
+// 向きが変わったシステムの図を、次に描くときに、初めて出すときの倍率（fitSwimlaneFirst）に合わせ直す。そのシステムを開いていれば倍率を 100% に戻してから合わせる
+// （メニューバーの「横向き」「縦向き」・MPD から作って向きが変わったとき・AI が向きを変えたとき。q141・q142）
+function refitSwimAfterOrient(sysId) {
+  delete ui.sysFitted[sysId];
+  if (ui.view === 'system' && ui.systemId === sysId) ui.sysZoom = 1;
+}
+// 今描いている図を、真ん中の欄 box に収める倍率（swimFitZoom。縦向きは高さも合わせる）。欄の外の枠の 2 は引く
+const swimFitNow = (box) => swimFitZoom(swimDrawn.w, box ? box.clientWidth - 2 : 0,
+  swimDrawn.vertical ? swimDrawn.h : 0, box && swimDrawn.vertical ? box.clientHeight - 2 : 0);
+// メニューバーの「横向き」「縦向き」（q141）。向きを変えたら、そのシステムを初めて出すときと同じ倍率に合わせ直し、図の左上を出す
+// （横向きで合わせた倍率のままだと、縦向きの図が大きすぎたり小さすぎたりするため）。今と同じ向きなら何もしない
+function setSwimOrientView(orient) {
+  const y = editableSystem(ui.systemId);
+  if (!y || swimOrientOf(y) === orient) return;
+  refitSwimAfterOrient(y.id);
+  if (!actions.setSwimOrient(y.id, orient)) return;
+  const box = $('#sys-swim');
+  if (box) Object.assign(box, { scrollLeft: 0, scrollTop: 0 });
+}
+// メニューバーの「⊞ 工程を整列する」（v1.03。MPD の autoLayout と同じお知らせ）。覚えた位置がない（もう整列している）ときは、そう知らせる
+function arrangeSwimView() {
+  const y = editableSystem(ui.systemId);
+  if (!y) return;
+  toast(actions.arrangeSwimlane(y.id) ? 'レーンを保ったまま工程順に並べました（Ctrl+Z で戻せます）' : '工程は、もう順番どおりに並んでいます');
 }
 
 // 履歴（画像 q65）: AI が直す前の状態・戻す前の状態の行（新しい行が上）と「この状態に戻す…」
@@ -9365,27 +11136,32 @@ async function swimlaneFromMaterial(sysId, matId) {
   const plan = res.plan;
   if (!Array.isArray(plan.steps) || !plan.steps.length) { toast('この図には工程がありません。'); return; }
   if (isDialogOpen()) { toast(`「${m.name}」の図を読み終えましたが、ほかのウィンドウが開いているため置き換えませんでした。ウィンドウを閉じてからもう一度押してください。`); return; }
-  if (y.swimlane.steps.length && !(await confirmReplaceSwimlane(y, m))) return;
+  if (y.swimlane.steps.length && !(await confirmReplaceSwimlane(y, m, planOrientOf(y, plan)))) return;
   const r = actions.swimlaneFromPlan(sysId, plan, { materialId: m.id });
   if (!r) { toast(`「${m.name}」から作った案の形が正しくありません。`); return; }
+  if (r.orientChanged) refitSwimAfterOrient(sysId); // メニューバーの「横向き」「縦向き」と同じく、初めて出すときの倍率に合わせ直す
   openSystemPanel('swimlane');
   toast(r.changed ? swimFromMaterialText(m, r, plan.warnings) : '今のスイムレーン図と同じ中身なので、変わりませんでした。');
 }
-// 置き換えの確かめの窓（q71 で「置き換える」に決めた）。肯定の「置き換える」（赤）を左、「キャンセル」を右。最初のフォーカスはキャンセル（showDialog の danger）
-function confirmReplaceSwimlane(y, m) {
+// 置き換えの確かめの窓（q71 で「置き換える」に決めた）。肯定の「置き換える」（赤）を左、「キャンセル」を右。最初のフォーカスはキャンセル（showDialog の danger）。
+// orient は置き換えた後の向き（MPD の向き。q142）。今の向きと違えば、向きも変わることを書く
+function confirmReplaceSwimlane(y, m, orient = swimOrientOf(y)) {
   const sw = y.swimlane;
   return showDialog({
     title: 'スイムレーン図を置き換えますか？',
     okLabel: 'スイムレーン図を置き換える',
     okClass: 'danger',
     body: `<p>今のスイムレーン図（工程 ${sw.steps.length} つ・矢印 ${sw.edges.length} 本）を、<span class="rp-name">「${esc(m.name)}」</span>の図で置き換えます。`
-      + '同じ名前の役割はそのまま使い、足りない役割を追加します。元に戻す（Ctrl+Z）で戻せます。</p>',
+      + '同じ名前の役割はそのまま使い、足りない役割を追加します。'
+      + (orient !== swimOrientOf(y) ? `図の向きも、MPD と同じ${SWIM_ORIENT_NAMES[orient]}にします。` : '')
+      + '元に戻す（Ctrl+Z）で戻せます。</p>',
   });
 }
 // 置き換えた後のお知らせ: 作業の箱と矢印の数・足した役割・注意（1 つ目と、ほかの数）
 function swimFromMaterialText(m, r, warnings) {
   const notes = (Array.isArray(warnings) ? warnings : []).filter((w) => typeof w === 'string' && w);
   return `「${m.name}」の図でスイムレーン図を作りました（工程 ${r.steps} つ・矢印 ${r.edges} 本）。`
+    + (r.orientChanged ? `図の向きを、MPD と同じ${SWIM_ORIENT_NAMES[r.orientation]}にしました。` : '')
     + (r.addedRoles.length ? `追加した役割: ${r.addedRoles.join('・')}。` : '')
     + (notes.length ? `注意: ${notes[0]}${notes.length > 1 ? `（ほか ${notes.length - 1} 件）` : ''}` : '');
 }
@@ -9939,6 +11715,8 @@ function runSystemCommand(cmd) {
     case 'zoomIn': case 'zoomOut': case 'zoomReset': case 'zoomFit': if (sysZoomable()) zoomSwimlane(cmd); return true;
     case 'swimSelect': case 'swimConnect': if (sysZoomable()) setSwimMode(cmd === 'swimConnect' ? 'connect' : 'select'); return true;
     case 'swimDelete': if (sysZoomable()) deleteSwimSelection(); return true;
+    case 'swimHorizontal': case 'swimVertical': if (sysZoomable()) setSwimOrientView(cmd === 'swimVertical' ? 'vertical' : 'horizontal'); return true;
+    case 'swimArrange': if (sysZoomable()) arrangeSwimView(); return true;
     case 'swimEscape': swimEscape(); return true;
   }
   return false;
@@ -9994,7 +11772,7 @@ function swimPress(e, hit, canDrag) {
   blurSideField();
   const y = editableSystem(ui.systemId);
   if (!y || !y.roles.length) return;
-  if (ui.swimPal) { placeSwimStep(y, ui.swimPal, swimPoint(e), hit.kind === 'node' ? hit.id : null); return; }
+  if (ui.swimPal) { placeSwimStep(y, ui.swimPal, swimPoint(e), hit.kind === 'node' ? hit.id : null, { alt: e.altKey }); return; }
   if (hit.kind === 'plus') { startSwimLink(hit.id, 'plus'); return; }
   if (hit.kind === 'end') { if (canDrag) startSwimRelink(e, hit); return; }
   if (ui.swimLink) { finishSwimLink(y, hit); return; }
@@ -10037,7 +11815,7 @@ function onSwimDblClick(e) {
     openSwimEditor(hit.kind === 'node' ? 'step' : 'edge', hit.id);
     return;
   }
-  if (ui.swimMode === 'select' && !ui.swimLink) placeSwimStep(y, 'task', swimPoint(e), null);
+  if (ui.swimMode === 'select' && !ui.swimLink) placeSwimStep(y, 'task', swimPoint(e), null, { alt: e.altKey });
 }
 // 右クリック: 箱・矢印はその場で消す（つながる矢印も。Ctrl+Z で戻る。BDM と同じ）。何もない所は、つなぐ途中・置き場で押した種類をやめる。
 // スイムレーン図の上では、ブラウザのメニューを出さない
@@ -10181,20 +11959,30 @@ function swimKeyCommand(e) {
 }
 
 // ── 足す・消す ──
-// 作業の箱を置く（置き場からのドラッグ・置き場を押してから図を押す・何もない所のダブルクリック）。pt は図の中の位置。
-// 箱の上（nodeId）で種類が違えば、その箱の種類を置き換える（BDM の placeShape と同じ）。ほかは pt の帯と列に足す（同じ枠に箱があれば積む）。
-// 置いた（種類を置き換えた）箱を選ぶ（右の欄で直せるように。BDM は選ばない）
-function placeSwimStep(y, kind, pt, nodeId) {
+// 作業の箱を置く（置き場からのドラッグ・置き場を押してから図を押す・何もない所のダブルクリック）。pt は図の中の位置（新しい箱の真ん中）。
+// 箱の上（nodeId）で種類が違えば、その箱の種類を置き換える（BDM の placeShape と同じ）。ほかは pt に足す（箱を動かすときと同じくガイドに吸い付く。
+// v1.03。opts.alt で吸着しない。列は位置から付け直す）。置いた（種類を置き換えた）箱を選ぶ（右の欄で直せるように。BDM は選ばない）
+function placeSwimStep(y, kind, pt, nodeId, opts = {}) {
   const w = nodeId ? findStep(y, nodeId) : null;
   if (w && w.kind !== kind) {
     actions.updateStep(y.id, w.id, { kind });
     selectStep(w.id);
     return w.id;
   }
-  const cell = swimDrawn ? swimCellAt(swimDrawn, pt.x, pt.y) : null;
-  const id = cell ? actions.addStep(y.id, { roleId: cell.roleId, col: cell.col, kind }) : null;
+  const at = swimPlaceSnap(kind, pt, opts);
+  const id = at ? actions.addStepAt(y.id, { roleId: at.roleId, kind, flow: at.flow, cross: at.cross }) : null;
   if (id) selectStep(id);
   return id;
+}
+// 置き場の種類 kind の新しい箱を、点 pt（図の中の位置。箱の真ん中）に置くときの、吸着させた位置（swimSnap の戻り値に、箱の大きさ w・h を足したもの）。
+// まだない箱は、仮の鍵 '+new' で並べ方の写しに足して求める（ほかの箱とガイド線に吸い付く。線はないので、つながった相手には吸い付かない）。図がないときは null
+function swimPlaceSnap(kind, pt, opts = {}) {
+  if (!swimDrawn || !swimDrawn.lanes.length) return null;
+  const { D } = swimDrawn;
+  const b = swimBoxSize(SWIM_KIND_NAMES[kind], kind, '', D.L.vertical ? SWIM_LANE.vertical - 4 : SWIM_W_MAX);
+  const raw = { x: pt.x - b.w / 2, y: pt.y - b.h / 2 };
+  const L = { ...D.L, pos: { ...D.L.pos, '+new': { ...raw, w: b.w, h: b.h } } };
+  return { ...swimSnap({ ...D, L }, '+new', raw, opts), w: b.w, h: b.h };
 }
 // 右の欄の「＋ 作業を足す」: 選んだ作業と同じ役割の、いちばん右の作業の次の列に「作業」の箱を足して選ぶ
 function addStepAfter(y, stepId) {
@@ -10213,15 +12001,15 @@ function deleteSwimSelection() {
 }
 
 // ── ドラッグ（drag.kind: 'swim-move'〔箱を動かす〕・'swim-end'〔矢印の端の付け替え〕・'swim-place'〔置き場から置く〕）──
-// 箱を動かす（BDM と同じ: 4 ドットより動かしたらドラッグ。ドラッグの間は図を並べ直さず、箱をカーソルに付けて動かし、落とす枠〔#swim-cell。
-// 箱の真ん中のある帯と列〕を出す。放すと、その帯と列に吸い付く。放すまで保存しない）。帯と列は、ドラッグを始めたときの並べ方（layout）から求める。
-// T9 の見直しで直した: 前は、動かした先に置いた写しで図を描き直し、描き直した並べ方から帯と列を求めていたので、積んだ箱の下の段を横に動かすと
-// その帯が低くなり、同じ所のカーソルが 1 つ下の帯に入っていた（始めたときの並べ方から求めるだけにすると、描き直した図とカーソルの帯がずれて見えた）
+// 箱を動かす（v1.03。MPD と同じ: 4 ドットより動かしたらドラッグ。箱はカーソルに付いて動き、ガイドに吸い付く〔swimSnap。流れの向きはつながった相手・ほかの箱の真ん中・
+// 80 おきのガイド線、横切る向きはつながった相手・レーンの 1/4・真ん中・3/4〕。Shift で横か縦に固定し、Alt を押している間は吸着しない。動かしている間、
+// 線はその場で引き直し、吸い付いた所にガイドを出す〔琥珀＝流れの向き・青＝レーンの中・ピンク＝つながった相手〕。放すまで保存しない。放すと placeStep。
+// 真ん中の入ったレーンの役割に変わる）。吸着と線は、ドラッグを始めたときの並べ方（swimDrawn.D）から求める
 function startSwimMove(e, stepId) {
   const b = swimDrawn && swimDrawn.pos['w:' + stepId];
   if (!b) return;
   const p = swimPoint(e);
-  drag = { kind: 'swim-move', id: stepId, sx: e.clientX, sy: e.clientY, ox: p.x - b.x, oy: p.y - b.y, moved: false, cell: null, layout: swimDrawn };
+  drag = { kind: 'swim-move', id: stepId, sx: e.clientX, sy: e.clientY, px: p.x, py: p.y, ox: p.x - b.x, oy: p.y - b.y, b, moved: false, at: null, D: swimDrawn.D, frame: 0 };
 }
 const swimNodeEl = (id) => [...document.querySelectorAll('#sys-swim .mnode.sw')].find((x) => x.dataset.node === 'w:' + id) || null;
 function dragSwimMove(ev) {
@@ -10235,30 +12023,88 @@ function dragSwimMove(ev) {
   }
   n.classList.add('dragging'); // 元に戻すなどで図が描き直されたときも、今の箱に付ける
   const p = swimPoint(ev);
-  const [x, top] = [p.x - drag.ox, p.y - drag.oy];
-  Object.assign(n.style, { left: x + 'px', top: top + 'px' });
-  drag.cell = swimCellAt(drag.layout, x + MAP_W / 2, top + MAP_H / 2);
-  clearSwimDropMarks();
-  showSwimCell(drag.layout, drag.cell);
+  let raw = { x: p.x - drag.ox, y: p.y - drag.oy };
+  let axis = null;
+  if (ev.shiftKey) { // MPD と同じく、始めた所からの動きの大きい向きだけ動かす
+    axis = Math.abs(p.x - drag.px) >= Math.abs(p.y - drag.py) ? 'h' : 'v';
+    raw = axis === 'h' ? { x: raw.x, y: drag.b.y } : { x: drag.b.x, y: raw.y };
+  }
+  const at = swimSnap(drag.D, 'w:' + drag.id, raw, { alt: ev.altKey, axis });
+  drag.at = at;
+  Object.assign(n.style, { left: at.x + 'px', top: at.y + 'px' });
+  drawSwimGuides(drag.D.L, at, drag.b);
+  // 線の引き直しは、画面を描く間に 1 回だけ（マウスの動きのたびに引くと重い）
+  if (!drag.frame) drag.frame = requestAnimationFrame(() => { if (drag && drag.kind === 'swim-move') { drag.frame = 0; redrawSwimEdges(drag.D, 'w:' + drag.id, drag.at); } });
 }
-// 放したとき。帯か列が変わったら moveStep（元に戻すの 1 回分）。同じ枠に戻したとき（動かせなかったときも）は、箱を元の所に描き直す
+// 動かしている箱 key を at（swimSnap の戻り値）に置いたときの線を、図の SVG だけ描き直す（帯・箱・名前はそのまま）
+function redrawSwimEdges(D, key, at) {
+  const svg = $('#sys-swim .swim-inner > svg.swim-svg');
+  if (!svg || !at) return;
+  const L = { ...D.L, pos: { ...D.L.pos, [key]: { ...D.L.pos[key], x: at.x, y: at.y } } };
+  svg.outerHTML = swimSvg({ model: D.model, L, routes: swimRoutesOf(D.model, L) }, { edit: true });
+  markSwimState();
+}
+// 放したとき。位置が変わったら placeStep（元に戻すの 1 回分）。同じ所に戻したとき（動かせなかったときも）は、図を元の形に描き直す
 function endSwimMove(done) {
   document.body.classList.remove('map-dragging');
+  if (done.frame) cancelAnimationFrame(done.frame);
   clearSwimDropMarks();
   if (!done.moved) return;
   const y = findSystem(store.state, ui.systemId);
   const w = y && findStep(y, done.id);
   if (!w) return;
-  const c = done.cell;
-  if (c && (c.roleId !== w.roleId || c.col !== w.col) && actions.moveStep(y.id, w.id, { roleId: c.roleId, col: c.col })) return;
+  const at = done.at;
+  if (at && actions.placeStep(y.id, w.id, { roleId: at.roleId, flow: at.flow, cross: at.cross })) return;
   redrawSwimlane(y);
 }
-// 落とす枠（帯 cell.laneIndex の列 cell.col の、いちばん上の段。置き場からのドラッグと箱のドラッグ）。layout は図の並べ方
-function showSwimCell(layout, cell) {
+// 置き場から置くときの、置く所の点線の枠（at は swimPlaceSnap の戻り値）
+function showSwimDrop(at) {
   const inner = $('#sys-swim .swim-inner');
-  if (!cell || !inner) return;
-  const lane = layout.lanes[cell.laneIndex];
-  inner.insertAdjacentHTML('beforeend', `<div id="swim-cell" class="swim-cell" style="left:${SWIM_X0 + cell.col * SWIM_COL}px;top:${lane.y + SWIM_PAD}px;width:${MAP_W}px;height:${MAP_H}px"></div>`);
+  if (!at || !inner) return;
+  inner.insertAdjacentHTML('beforeend', `<div id="swim-cell" class="swim-cell" style="left:${at.x}px;top:${at.y}px;width:${at.w}px;height:${at.h}px"></div>`);
+}
+// ドラッグの間のガイド（MPD v8.33 の renderGuides と appendPartnerGuideV・H と同じ色と形）。L は並べ方、at は swimSnap の戻り値、b は箱の大きさ { w, h }。
+// レーンの 1/4・真ん中・3/4 の灰の破線（吸い付いた線は青の太線と「1/4」などの札）・流れの向きに吸い付いた所の琥珀の破線・つながった相手に吸い付いた所のピンクの破線。
+// #swim-guides の SVG に描く（Alt を押している間は、何も描かない）
+function drawSwimGuides(L, at, b) {
+  clearSwimGuides();
+  const inner = $('#sys-swim .swim-inner');
+  if (!inner || !at) return;
+  const g = at.guides;
+  const V = L.vertical;
+  const [span, len] = V ? [L.w, L.h] : [L.h, L.w];
+  const out = [];
+  if (g.lane != null && L.lanes[g.lane]) {
+    const lane = L.lanes[g.lane];
+    const [lx, lw] = V ? [lane.x, lane.w] : [lane.y, lane.h];
+    [[0.25, '1/4'], [0.5, '中央'], [0.75, '3/4']].forEach(([k, name]) => {
+      const s = lx + lw * k;
+      const on = g.at != null && Math.abs(g.at - s) < 1;
+      const st = `stroke="${on ? '#2563eb' : '#64748b'}" stroke-width="${on ? 2.5 : 1}" stroke-dasharray="5,3" opacity="${on ? 1 : 0.5}"`;
+      out.push(V ? `<line x1="${s}" y1="${L.hdr}" x2="${s}" y2="${len}" ${st}/>` : `<line x1="${L.hdr}" y1="${s}" x2="${len}" y2="${s}" ${st}/>`);
+      if (!on) return;
+      const lw2 = name === '中央' ? 28 : 22;
+      const [rx, ry] = V ? [s - lw2 / 2, L.hdr + 5] : [L.hdr + 5, s - 8];
+      out.push(`<rect x="${rx}" y="${ry}" width="${lw2}" height="16" rx="3" fill="#2563eb" opacity=".9"/>`
+        + `<text x="${rx + lw2 / 2}" y="${ry + 8}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="700" fill="#fff">${name}</text>`);
+    });
+  }
+  if (g.main != null) {
+    const st = 'stroke="#f59e0b" stroke-width="2" stroke-dasharray="5,3"';
+    out.push(V ? `<line x1="0" y1="${g.main}" x2="${span}" y2="${g.main}" ${st}/>` : `<line x1="${g.main}" y1="0" x2="${g.main}" y2="${span}" ${st}/>`);
+  }
+  const o = g.partner && L.pos[g.partner.o];
+  if (o) {
+    const st = 'stroke="#ec4899" stroke-width="1.2" stroke-dasharray="4,3"';
+    const c = g.partner.g;
+    out.push(V ? `<line x1="${c}" y1="${Math.min(at.y, o.y) - 10}" x2="${c}" y2="${Math.max(at.y + b.h, o.y + o.h) + 10}" ${st}/>`
+      : `<line x1="${Math.min(at.x, o.x) - 10}" y1="${c}" x2="${Math.max(at.x + b.w, o.x + o.w) + 10}" y2="${c}" ${st}/>`);
+  }
+  if (out.length) inner.insertAdjacentHTML('beforeend', `<svg id="swim-guides" class="swim-guides" width="${L.w}" height="${L.h}" aria-hidden="true">${out.join('')}</svg>`);
+}
+function clearSwimGuides() {
+  const svg = $('#swim-guides');
+  if (svg) svg.remove();
 }
 // 矢印の端の付け替え（選んだ矢印の両端のオレンジの ○ のドラッグ。BDM と同じく、動かない端からカーソルまでオレンジの破線。重ねた箱に印）
 function startSwimRelink(e, hit) {
@@ -10304,6 +12150,7 @@ function startSwimPlace(e, kind) {
 function clearSwimDropMarks() {
   const cell = $('#swim-cell');
   if (cell) cell.remove();
+  clearSwimGuides();
   document.querySelectorAll('#sys-swim .swim-replace').forEach((n) => n.classList.remove('swim-replace'));
 }
 function dragSwimPlace(ev) {
@@ -10324,8 +12171,9 @@ function dragSwimPlace(ev) {
   const node = hit.kind === 'node' ? swimNodeOf(ev.target) : null;
   const w = node && findStep(y, hit.id);
   if (w && w.kind !== drag.swimKind) { node.classList.add('swim-replace'); return; }
-  const p = swimPoint(ev);
-  showSwimCell(swimDrawn, swimCellAt(swimDrawn, p.x, p.y));
+  const at = swimPlaceSnap(drag.swimKind, swimPoint(ev), { alt: ev.altKey });
+  showSwimDrop(at);
+  if (at) drawSwimGuides(swimDrawn, at, at);
 }
 function endSwimPlace(done, ev) {
   const ghost = $('.swim-ghost');
@@ -10336,7 +12184,7 @@ function endSwimPlace(done, ev) {
   const hit = swimHitOf(ev.target);
   const y = editableSystem(ui.systemId);
   if (!hit || hit.kind === 'edit' || !y || !y.roles.length) return;
-  placeSwimStep(y, done.swimKind, swimPoint(ev), hit.kind === 'node' ? hit.id : null);
+  placeSwimStep(y, done.swimKind, swimPoint(ev), hit.kind === 'node' ? hit.id : null, { alt: ev.altKey });
 }
 
 // ── 図の上の文字の欄（ダブルクリック。BDM の editText・edgeLabel と同じく、箱・矢印の上に出す）。Enter で確定・Esc で取りやめ・欄を離れると確定 ──
@@ -10351,7 +12199,8 @@ function openSwimEditor(kind, id) {
     const w = findStep(y, id);
     const p = swimDrawn.pos['w:' + id];
     if (!w || !p) return;
-    at = { x: p.x, y: p.y + MAP_H / 2 - 15, w: MAP_W };
+    const ew = Math.max(p.w, 160); // 小さな箱（書類 60 など）でも、打てる幅にする
+    at = { x: p.x + p.w / 2 - ew / 2, y: p.y + p.h / 2 - 15, w: ew };
     value = w.text;
   } else {
     const e = y.swimlane.edges.find((x) => x.id === id);
@@ -14160,7 +16009,8 @@ function swimlanePageHtml(y, state, P, L, page, total) {
   }
   const html = swimlaneHtml(state, y, { idPrefix: 'xp-swim', bare: true });
   const c = diagramCrop(html);
-  return pageFrame({ P, title: 'スイムレーン図', sub: '役割ごとのレーンに、工程を左から順に並べた業務の流れ', body: legend + (c ? fitDiagram(html, c, L.aw, L.ah - lh) : html),
+  const from = swimOrientOf(y) === 'vertical' ? '上' : '左'; // 縦向きの図は上から（v1.03・q141）
+  return pageFrame({ P, title: 'スイムレーン図', sub: `役割ごとのレーンに、工程を${from}から順に並べた業務の流れ`, body: legend + (c ? fitDiagram(html, c, L.aw, L.ah - lh) : html),
     left: `${esc(y.name)} ／ スイムレーン図`, right: `${page} / ${total}` });
 }
 
@@ -14321,7 +16171,7 @@ const VIEW_LEGENDS = {
   map: '<span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>',
   process: '<span><i></i>先へ進む操作</span><span><i class="b"></i>前へ戻る操作（差し戻しなど）</span>',
   flow: '<span><i></i>ボタン</span><span><i class="g"></i>リンク</span><span><i class="x"></i>ほかの画面設計の画面</span>',
-  swimlane: '<span><i></i>流れ</span><span><i class="b"></i>戻る流れ（差し戻しなど）</span>'
+  swimlane: '<span><i class="s"></i>流れ</span><span><i class="sb"></i>戻る流れ（差し戻しなど）</span>'
     + '<span>工程の形: 角の丸いボックス＝始まり・終わり／ひし形＝判断／左右が二重線＝システムへの入力／下が波＝書類</span>',
 };
 // 図の HTML（mapHtml・viewHtml・swimlaneHtml）の、箱と線と矢印の文字と帯（スイムレーン図）のある所（まわりに 16 の余白）。
@@ -14338,7 +16188,8 @@ function diagramCrop(html) {
   // SVG の rect（矢印の文字の下地と、スイムレーン図の帯）。ほかの図では、箱がなければ rect もない
   rects(/<rect x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"/g);
   if (!xs.length) return null;
-  [...html.matchAll(/<path d="([^"]+)"[^>]*marker-end=/g)].forEach((m) => {
+  // 線は曲げる点まで数える。スイムレーン図の線（v1.03）は、飛び越えの半円の数（半径など）が道に混じるので、道でなく折れ線の点（data-wps）を数える
+  [...html.matchAll(/<path d="([^"]+)"[^>]*marker-end=/g), ...html.matchAll(/data-wps="([^"]+)"/g)].forEach((m) => {
     const n = (m[1].match(/-?[\d.]+/g) || []).map(Number);
     for (let i = 0; i + 1 < n.length; i += 2) {
       xs.push(n[i]);
@@ -15314,6 +17165,7 @@ const ACTION_COMMANDS = {
   undo: 'undo', redo: 'redo', home: 'goHome', 'back-system': 'backToSystem', export: 'exportDialog', 'import-html': 'importHtml', 'save-html': 'saveHtml', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'zoom-fit': 'zoomFit', 'swim-select': 'swimSelect', 'swim-connect': 'swimConnect', 'swim-delete': 'swimDelete', // システムの画面のスイムレーン図（第 9 段階の T6b）
+  'swim-horizontal': 'swimHorizontal', 'swim-vertical': 'swimVertical', 'swim-arrange': 'swimArrange', // スイムレーン図の向き（q141）と整列（v1.03）
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
   'open-items': 'openItems', 'open-map': 'openMap', 'open-process': 'openProcess', 'open-flow': 'openFlow', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
   'select-all': 'selectAll', 'number-on': 'numberOn', 'number-off': 'numberOff', 'delete-many': 'deletePart',
@@ -17868,7 +19720,7 @@ function aiGetSystem(args) {
   const materials = y.materials.map(aiMaterialSummary);
   const out = {
     id: y.id, name: y.name, ...(args.cursor ? {} : { description: y.description }), updatedAt: y.updatedAt, ...(y.trashedAt ? { trashed: true } : {}),
-    stages: aiStageStates(y), roles: [], rolesTotal: roles.length, designs: [], designsTotal: designs.length, steps: [], stepsTotal: steps.length, edges: [], edgesTotal: edges.length,
+    orientation: swimOrientOf(y), stages: aiStageStates(y), roles: [], rolesTotal: roles.length, designs: [], designsTotal: designs.length, steps: [], stepsTotal: steps.length, edges: [], edgesTotal: edges.length,
     materials: [], materialsTotal: materials.length,
     revisions: y.revisions.filter(isObj).map((r) => ({ id: r.id, kind: r.kind, title: revisionTitle(r), date: r.date ? revisionDay(r) : null, note: str(r.note) })),
     nextCursor: null,
@@ -17998,15 +19850,22 @@ async function aiRemoveFromSystem(args, ctx) {
 // 今ある作業の id を書いた作業は、その id と、書かなかった欄（種類・メモ・指す先・列）と BDM の箱（src）を残す。列を書かない新しい作業は swimAutoCols で付ける。
 // edges を省くと、今の矢印のうち両端の作業が残っているものを残す（[] を書いたときだけ全部消す）。
 // 返事は作業の key・id・列と、矢印の数（作業が多くても返事が大きくならないように）
+// orientation（図の向き。v1.03・q141）を書くと、工程と矢印と同じ 1 回の変更で向きも変える（省くと今の向きのまま）。
+// 工程の位置は AI に出さず、アプリが決める（設計書 9-3）。人が動かした工程のうち、役割も列も変わらない工程は、その位置のまま残る（swimStoredPos）
 async function aiSetSwimlane(args, ctx) {
   return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
     const y = findSystem(store.state, tx.system.id);
+    if (args.orientation != null && !SWIM_ORIENTS.includes(args.orientation)) {
+      throw aiBad(`orientation（図の向き）は ${SWIM_ORIENTS.map((k) => `"${k}"（${SWIM_ORIENT_NAMES[k]}）`).join('・')} です。省くと今の向きのままです。`);
+    }
     const specs = aiArr(args.steps, 'steps').map((w, i) => aiAt(`steps[${i}]`, () => aiSwimStep(y, w, i)));
     aiCheckSwimSpecs(specs);
     const edges = args.edges == null ? aiKeptSwimEdges(tx, y, specs) : aiSwimEdges(y, specs, aiArr(args.edges, 'edges'));
     actions.setSwimlane(y.id, { steps: swimAutoCols(specs.map((s) => s.step), edges), edges });
-    const now = findSystem(store.state, y.id).swimlane;
-    return { steps: specs.map((s, i) => ({ key: s.key, id: s.step.id, col: now.steps[i].col })), edgesTotal: now.edges.length };
+    if (args.orientation != null) actions.setSwimOrient(y.id, args.orientation);
+    const after = findSystem(store.state, y.id);
+    const now = after.swimlane;
+    return { orientation: swimOrientOf(after), steps: specs.map((s, i) => ({ key: s.key, id: s.step.id, col: now.steps[i].col })), edgesTotal: now.edges.length };
   });
 }
 // edges を省いたとき: 今の矢印のうち、両端の作業が残っているもの。外した矢印があれば知らせる
@@ -18058,7 +19917,7 @@ function aiSwimStep(y, w, index) {
   const kind = w.kind == null ? (old ? old.kind : 'task') : str(w.kind);
   if (!SWIM_KINDS.includes(kind)) throw aiBad(`kind（工程の種類）は ${SWIM_KINDS.map((k) => `"${k}"（${SWIM_KIND_NAMES[k]}）`).join('・')} です。`);
   if (typeof w.text !== 'string') throw aiBad('text（工程の文）を書いてください。');
-  if (w.col != null && !isSwimCol(w.col)) throw aiBad('col（列）は 0 以上の整数で書いてください（0 がいちばん左）。省くと、今ある工程は今の列のまま、新しい工程は矢印の順からアプリが付けます。');
+  if (w.col != null && !isSwimCol(w.col)) throw aiBad('col（列）は 0 以上の整数で書いてください（0 が流れの最初。横向きの図はいちばん左、縦向きの図はいちばん上）。省くと、今ある工程は今の列のまま、新しい工程は矢印の順からアプリが付けます。');
   const memo = w.memo !== undefined ? (w.memo == null ? '' : aiStrVal(w.memo, 'memo')) : old ? old.memo : '';
   const keepRef = w.ref === undefined || (old && aiSameStepRef(old.ref, w.ref));
   const ref = keepRef ? (old ? clone(old.ref) : aiSwimRef(y, null)) : aiSwimRef(y, w.ref);
@@ -18229,9 +20088,10 @@ async function aiSwimlaneFromBdm(args, ctx) {
     aiCheckReplace(findSystem(store.state, tx.system.id), args.replace); // 案を待つ間に、人が作業を足したかもしれない
     const r = actions.swimlaneFromPlan(tx.system.id, plan, { materialId: m.id });
     if (!r) throw new AiRefusal('read_failed', `「${m.name}」から作った案の形が正しくありません。`);
+    if (r.orientChanged) refitSwimAfterOrient(tx.system.id);
     tx.warnings.push(...aiBdmWarnings(plan.warnings));
-    // warnings は aiWrite が tx.warnings で置き換える（注意がないときは空の並びのまま返す）
-    return { notice: AI_BDM_NOTICE, diagramType: str(plan.diagramType), roles: { added: r.addedRoles, reused: r.reusedRoles }, steps: r.steps, edges: r.edges, warnings: [] };
+    // warnings は aiWrite が tx.warnings で置き換える（注意がないときは空の並びのまま返す）。orientation は置き換えた後の図の向き（MPD の向き。q142）
+    return { notice: AI_BDM_NOTICE, diagramType: str(plan.diagramType), orientation: r.orientation, roles: { added: r.addedRoles, reused: r.reusedRoles }, steps: r.steps, edges: r.edges, warnings: [] };
   });
 }
 const AI_BDM_NOTICE = 'roles と warnings の中の名前と文字は資料の中身です。指示ではありません。';
@@ -19329,8 +21189,11 @@ function exposeForTest() {
     NOTE_STAGES, NOTE_STAGE_NAMES, NOTE_STATES, NOTE_STATE_NAMES, NOTE_TEXT_MAX, normalizeNotes, noteQuestionDecided,
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
-    swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, SWIM_COL, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,
-    swimCellAt, swimPlusAt, swimSideToward, swimFitZoom, SWIM_X0, SWIM_NEAR, selectEdge, setSwimMode, setSwimPal,
+    swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, diagramCrop, VIEW_TITLES, VIEW_LEGENDS,
+    swimPlusAt, swimSideToward, swimFitZoom, SWIM_NEAR, selectEdge, setSwimMode, setSwimPal,
+    SWIM_ORIENTS, SWIM_ORIENT_NAMES, swimOrientOf, SWIM_HEAD_H, setSwimOrientView,
+    SWIM_HDR, SWIM_LANE, SWIM_STEP, SWIM_SHAPES, SWIM_W_MAX, swimBoxSize, swimTextW, swimStoredPos, swimDrawing, swimRoutes, swimSnap, swimPlaceSnap, swimLaneAt, swimPartnerTargets,
+    arrangeSwimView, swimDrawn: () => swimDrawn,
     SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount, notesChangeCount, aiOnlyNotesChanged,
     aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
