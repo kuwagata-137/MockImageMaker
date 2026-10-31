@@ -1117,10 +1117,10 @@ test('コピーと貼り付け（段階 B・q149 案A）: Ctrl+C でコピー、
   // Ctrl+D: 選んだ工程で貼り付けモード（コピーしたもの〔w-2・w-3〕は変えない）
   press(node('w-8'));
   key(app, app.document.body, { key: 'd', ctrlKey: true });
-  assert.deepEqual(api.ui.swimPaste.steps.map((c) => c.key), ['w-8']);
+  assert.deepEqual(plain(api.ui.swimPaste.steps.map((c) => c.key)), ['w-8']);
   key(app, app.document.body, { key: 'Escape' });
   key(app, app.document.body, { key: 'v', ctrlKey: true });
-  assert.deepEqual(api.ui.swimPaste.steps.map((c) => c.key), ['w-2', 'w-3']);
+  assert.deepEqual(plain(api.ui.swimPaste.steps.map((c) => c.key)), ['w-2', 'w-3']);
 });
 
 test('アプリのメニュー「編集」の命令（段階 B）: システムの画面では、すべて選ぶ・コピー・貼り付け・削除が工程に効く', async (t) => {
@@ -1130,7 +1130,7 @@ test('アプリのメニュー「編集」の命令（段階 B）: システム�
   press(node('w-8'));
   api.runCommand('copyPart');
   api.runCommand('pastePart');
-  assert.deepEqual(api.ui.swimPaste.steps.map((c) => c.key), ['w-8']);
+  assert.deepEqual(plain(api.ui.swimPaste.steps.map((c) => c.key)), ['w-8']);
   api.runCommand('swimEscape');
   api.runCommand('deletePart');
   assert.equal(sys().swimlane.steps.length, 7);
