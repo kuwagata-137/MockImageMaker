@@ -547,6 +547,40 @@ test('set_swimlane: get_system の形も受け取る（作業の roleId・ref �
   app2.close();
 });
 
+// ── 図の向きと位置（v1.03・q141・q146）──
+test('set_swimlane: orientation で図の向きも変える（工程と同じ 1 回の変更。省くと今の向き）。知らない向きは断る。get_system は orientation を返し、位置は出さない。人が動かした工程の位置は、役割と列が同じなら残す', async () => {
+  const st = systemState();
+  const kept = { horizontal: { flow: 300, cross: 40, roleId: 'l1', col: 0 } };
+  st.systems[0].swimlane.steps[0].pos = kept;
+  const { app, T, call, sys } = await boot(st);
+  T.ui.view = 'system';
+  T.ui.systemId = 'y1';
+  const g = ok(await call('get_system', { system: 'y1' }));
+  assert.equal(g.orientation, 'horizontal');
+  assert.ok(g.steps.every((w) => !('pos' in w)), '位置は AI に出さない（並べ方はアプリが決める。設計書 9-3）');
+  assert.deepEqual(issues(swimInput.safeParse({ system: 'y1', steps: g.steps, edges: g.edges, orientation: 'vertical' })), []);
+  assert.notDeepEqual(issues(swimInput.safeParse({ system: 'y1', steps: [], orientation: 'up' })), [], '知らない向きは入口で断る');
+  const u0 = T.store.undoStack.length;
+  const r = ok(await call('set_swimlane', { system: 'y1', expect: g.updatedAt, steps: g.steps, edges: g.edges, orientation: 'vertical' }));
+  assert.deepEqual([r.orientation, r.changed, sys('y1').swimlane.orientation], ['vertical', true, 'vertical']);
+  assert.equal(T.store.undoStack.length, u0 + 1, '工程と向きを 1 回の変更で');
+  assert.deepEqual(sys('y1').swimlane.steps[0].pos, kept, '役割と列が同じ工程は、覚えた位置を残す');
+  assert.equal(ok(await call('get_system', { system: 'y1' })).orientation, 'vertical');
+  // 省くと今の向きのまま。役割を変えた工程も覚えた位置は残す（描くときに、役割と列が覚えたときと違う工程は列から置き直す）
+  const g2 = ok(await call('get_system', { system: 'y1' }));
+  const r2 = ok(await call('set_swimlane', { system: 'y1', steps: g2.steps.map((w, i) => (i ? w : { ...w, role: '上長', roleId: 'l2' })), edges: g2.edges }));
+  assert.deepEqual([r2.orientation, sys('y1').swimlane.orientation, sys('y1').swimlane.steps[0].roleId], ['vertical', 'vertical', 'l2']);
+  assert.deepEqual(sys('y1').swimlane.steps[0].pos, kept);
+  // 横向きに戻す（orientation の欄を外す）
+  ok(await call('set_swimlane', { system: 'y1', steps: g2.steps, edges: g2.edges, orientation: 'horizontal' }));
+  assert.equal('orientation' in sys('y1').swimlane, false);
+  const before = sys('y1');
+  const bad = ng(await call('set_swimlane', { system: 'y1', steps: g2.steps, orientation: 'diagonal' }), 'bad_request');
+  assert.match(bad.message, /orientation（図の向き）は "horizontal"（横向き）・"vertical"（縦向き）/);
+  assert.deepEqual(sys('y1'), before, '断ったときは何も変わらない');
+  app.close();
+});
+
 test('set_swimlane: 返事の作業は key・id・col だけ、矢印は数だけ（作業が多くても目安の 24,000 字に収まる）', async () => {
   const { app, call } = await boot();
   const steps = Array.from({ length: 150 }, (_, i) => ({ key: `k${i}`, role: i % 2 ? '上長' : '営業', text: `顧客の連絡先を確かめて受注の見込みを書く ${i}` }));

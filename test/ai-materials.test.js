@@ -188,7 +188,7 @@ test('swimlane_from_bdm: 案の役割・作業・矢印でスイムレーン図�
   assert.deepEqual(plain(calls), [{ systemId: 'y4', file: 'm7.html' }]);
   const y = sys('y4');
   assert.deepEqual(r, {
-    notice: SWIM_NOTICE, diagramType: 'swimlane', roles: { added: ['申請者', '上長'], reused: [] }, steps: 3, edges: 2,
+    notice: SWIM_NOTICE, diagramType: 'swimlane', orientation: 'horizontal', roles: { added: ['申請者', '上長'], reused: [] }, steps: 3, edges: 2,
     warnings: ['グループの枠につながる矢印 1 本は外しました。'], changed: true, updatedAt: y.updatedAt,
   });
   assert.equal(Object.keys(r)[0], 'notice', '断り書きは JSON のいちばん前');
@@ -208,6 +208,21 @@ test('swimlane_from_bdm: 案の役割・作業・矢印でスイムレーン図�
   assert.deepEqual(sys('y4').swimlane.steps.map((w) => w.id), ids);
   assert.equal(aiRows(sys('y4')).length, 1);
   app.close();
+});
+
+test('swimlane_from_bdm: スイムレーン図の向きは MPD の向きに合わせる（q142。縦向きの MPD なら縦向き。向きのない案は今の向きのまま）。工程の位置は渡さず、順番から置く', async () => {
+  const { app, call, sys } = await boot({ materials: fakeMaterialsAPI(() => ({ ok: true, plan: { ...PLAN, orientation: 'vertical' } })) });
+  const r = ok(await call('swimlane_from_bdm', { system: 'y4', material: 'm7' }));
+  assert.equal(r.orientation, 'vertical');
+  const y = sys('y4');
+  assert.equal(y.swimlane.orientation, 'vertical');
+  assert.ok(y.swimlane.steps.every((w) => !('pos' in w)), '位置は覚えない（アプリが列から置く）');
+  app.close();
+  const { app: app2, call: call2, sys: sys2 } = await boot({ materials: fakeMaterialsAPI(() => ({ ok: true, plan: { ...PLAN, orientation: undefined } })) });
+  const r2 = ok(await call2('swimlane_from_bdm', { system: 'y4', material: 'm7' }));
+  assert.equal(r2.orientation, 'horizontal');
+  assert.equal('orientation' in sys2('y4').swimlane, false);
+  app2.close();
 });
 
 test('swimlane_from_bdm: 今の図に作業があれば、replace: true のときだけ置き換える（同じ名前の役割は使い回す）。置き換える前の図は「AI が変更する前の状態」の行に残る', async () => {

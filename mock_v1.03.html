@@ -1493,7 +1493,7 @@ body.xp-doc .pg+.pg{break-before:page}
 // =============================================================================
 
 // ── 1. 版 ─────────────────────────────────────────────────────────────────────
-const APP_VERSION = '1.02';
+const APP_VERSION = '1.03';
 // 出力する HTML（単体で開いて編集できる HTML）の材料にする、このアプリの script の文字。
 // document.currentScript は script を実行している間しか取れないので、いちばん初めに取っておく（style の文字は起動のときに取る）
 const APP_SCRIPT = document.currentScript ? document.currentScript.textContent : '';
@@ -7539,9 +7539,8 @@ function mapEdgesSvg(model, pos, w, h, o = {}) {
     }
     const lh = 16 + (label.length - 1) * 15;
     const tw = labelWidth(label);
-    const [mx, my] = o.normalOutside && outside && !vert && g.tx != null ? edgeLabelOutside(g, outside, tw, lh)
-      : !vert ? [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)]
-        : g.detour ? [outer + 8 + tw / 2, g.my] : [g.mx + (outside || 1) * (tw / 2 + 12), g.my];
+    const [mx, my] = !vert ? [g.mx, g.my + (g.detour ? 0 : outside ? outside * (8 + lh / 2) : i % 2 ? 14 : -14)]
+      : g.detour ? [outer + 8 + tw / 2, g.my] : [g.mx + (outside || 1) * (tw / 2 + 12), g.my];
     const text = label.map((s, j) => `<text x="${(mx - tw / 2 + 6).toFixed(1)}" y="${(my + 4 + j * 15 - (label.length - 1) * 7.5).toFixed(1)}" font-size="${j ? 11 : 12}" font-weight="${(j && !o.flat) || st.light ? 400 : 700}" fill="${j && !o.flat ? '#475569' : st.col}">${esc(s)}</text>`).join('');
     const tag = `
       <rect x="${(mx - tw / 2).toFixed(1)}" y="${(my - 9 - (label.length - 1) * 7.5).toFixed(1)}" width="${tw}" height="${16 + (label.length - 1) * 15}" rx="4" fill="#fff" opacity=".92"/>${text}`;
@@ -7556,16 +7555,6 @@ function mapEdgesSvg(model, pos, w, h, o = {}) {
     : mapMarker(`${idp}-arrow-n`, '#1d3f6e') + mapMarker(`${idp}-arrow-g`, '#16a34a');
   return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>${defs}
     </defs>${o.under || ''}${paths}</svg>`;
-}
-// 同じ 2 つの箱の間に 2 本並んだ線の文字の真ん中（スイムレーン図。VIEW_DRAW の normalOutside）。線の真ん中の向きに直角に、外側（outside。
-// -1 は上〔縦の線では左〕の線、1 は下〔右〕の線）へ、下地が自分の線から 8 離れるまで離す。横の線は今までどおり上と下（8 ＋ 高さの半分）。帯をまたぐ急な線では横へ離す
-// （上と下へ離すと、下地が、すぐそばを通るもう 1 本の線〔行きと差し戻し〕を途切れさせていた。T9 の見直し）
-function edgeLabelOutside(g, outside, tw, lh) {
-  const len = Math.hypot(g.tx, g.ty) || 1;
-  let [nx, ny] = [-g.ty / len, g.tx / len];
-  if (ny < 0 || (ny === 0 && nx < 0)) [nx, ny] = [-nx, -ny]; // 下向きの法線（上の線の外側は、その逆）
-  const d = (Math.abs(nx) * tw) / 2 + (Math.abs(ny) * lh) / 2 + 8;
-  return [g.mx + outside * d * nx, g.my + outside * d * ny];
 }
 // 箱のどちらの縁（l・r・t・b）から線を出すか
 function mapSides(a, b) {
@@ -7612,8 +7601,7 @@ function mapEdgeGeometry(a, b, port, others, shift = 0) {
   const c2 = horiz ? [x2 - s * off, y2] : [x2, y2 - s * off];
   const way = horiz ? mapDetour([x1, y1], c1, c2, [x2, y2], others) : null;
   if (!way) {
-    const tan = (k) => 0.75 * (c1[k] - [x1, y1][k]) + 1.5 * (c2[k] - c1[k]) + 0.75 * ([x2, y2][k] - c2[k]);
-    return { detour: false, mx: (x1 + x2) / 2, my: (y1 + y2) / 2, tx: tan(0), ty: tan(1),
+    return { detour: false, mx: (x1 + x2) / 2, my: (y1 + y2) / 2,
       d: `M${f(x1)},${f(y1)} C${f(c1[0])},${f(c1[1])} ${f(c2[0])},${f(c2[1])} ${f(x2)},${f(y2)}` };
   }
   const { xa, xb } = way;
@@ -9322,8 +9310,8 @@ function swimStepTitle(n) {
     w.memo && 'メモ: ' + w.memo].filter(Boolean).join('\n');
 }
 const swimNum = (n) => n.toFixed(1);
-// 矢印の先の印（MPD の arr と同じ形と大きさ。線の太さに合わせて大きくなる）
-const swimMarker = (id, col) => `<marker id="${id}" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="${col}"/></marker>`;
+// 矢印の先の印（MPD の arr と同じ形と大きさ。線の太さに合わせて大きくなる）。k は大きさの倍率（選んだ太い線 2 では 1.5 ÷ 2 にして、ふだんの線の印と同じ大きさに見せる）
+const swimMarker = (id, col, k = 1) => `<marker id="${id}" viewBox="0 0 8 6" markerWidth="${8 * k}" markerHeight="${6 * k}" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="${col}"/></marker>`;
 const SWIM_LINE = '#475569'; // 線の色（MPD と同じ灰色）
 const SWIM_BACK = '#ea580c'; // 戻る線の色（橙の点線。q143）
 // スイムレーン図の SVG（帯・ガイド線・線・飛び越え・矢印の文字。箱の下に描く）。D は { model, L, routes }。o は swimlaneHtml と同じ。
@@ -9357,16 +9345,19 @@ function swimSvg(D, o = {}, ends = []) {
     let lab = null;
     if (e.edge.label) {
       const s = swimLabelSize(e.edge.label);
-      lab = { x: r.mx - s.w / 2, y: r.my - s.h / 2, w: s.w, h: s.h };
+      // 真ん中は線の真ん中（MPD と同じ）。図の縁に沿う線（戻る線はレーンの縁から 10 を通る）でも文字が切れないように、下地は図の中に収める
+      const cx = Math.min(Math.max(r.mx, s.w / 2 + 1), w - s.w / 2 - 1);
+      const cy = Math.min(Math.max(r.my, s.h / 2 + 1), h - s.h / 2 - 1);
+      lab = { x: cx - s.w / 2, y: cy - s.h / 2, w: s.w, h: s.h };
       labels.push(`<rect x="${f(lab.x)}" y="${f(lab.y)}" width="${s.w}" height="${s.h}" rx="3" fill="#fff" stroke="#cbd5e1" class="sw-lab" data-edge="${id}"/>`
-        + s.lines.map((t, j) => `<text x="${f(r.mx)}" y="${f(r.my + (j - (s.lines.length - 1) / 2) * SWIM_LABEL_LH)}" text-anchor="middle" dominant-baseline="middle" font-size="${SWIM_LABEL_FS}" fill="${r.isReturn ? SWIM_BACK : SWIM_LINE}">${esc(t)}</text>`).join(''));
+        + s.lines.map((t, j) => `<text x="${f(cx)}" y="${f(cy + (j - (s.lines.length - 1) / 2) * SWIM_LABEL_LH)}" text-anchor="middle" dominant-baseline="middle" font-size="${SWIM_LABEL_FS}" fill="${r.isReturn ? SWIM_BACK : SWIM_LINE}">${esc(t)}</text>`).join(''));
     }
     if (o.edit) {
       tools.push(swimEdgeTools(e, r, lab));
       ends.push(swimEdgeEnds(e, r));
     }
   });
-  const defs = swimMarker(`${idp}-arrow`, SWIM_LINE) + swimMarker(`${idp}-arrow-b`, SWIM_BACK) + (o.edit ? swimMarker('swim-arrow-s', '#2563eb') : '');
+  const defs = swimMarker(`${idp}-arrow`, SWIM_LINE) + swimMarker(`${idp}-arrow-b`, SWIM_BACK) + (o.edit ? swimMarker('swim-arrow-s', '#2563eb', 0.75) : '');
   return `<svg class="swim-svg" width="${w}" height="${h}" font-family="${SWIM_FONT.replace(/"/g, '')}" aria-hidden="true"><defs>${defs}</defs>${bands}`
     + `<g class="sw-grid" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="2,6" opacity=".22">${grid.join('')}</g>${lines.join('')}${arcs.join('')}${labels.join('')}${tools.join('')}</svg>`;
 }
@@ -10635,7 +10626,7 @@ function sysRolesHtml(y) {
       ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を削除`, '✕', false)}</div>`;
   }).join('');
   return `<div class="itable" style="max-width:760px">${sysHead('役割', y)}
-    <p class="map-note">役割は、スイムレーン図のレーンになります。上から順にレーンを並べます。</p>
+    <p class="map-note">役割は、スイムレーン図のレーンになります。この順に、${swimOrientOf(y) === 'vertical' ? '左' : '上'}からレーンを並べます。</p>
     ${rows || '<p class="sys-empty">まだ役割がありません。「＋ 役割を追加する」で、申請者・上長などの役割を追加します。</p>'}
     <button class="lk-add" data-action="sys-role-add">＋ 役割を追加する</button></div>`;
 }
@@ -10683,7 +10674,7 @@ function sysSwimlaneHtml(y) {
       <button class="btn small primary" data-action="sys-role-first" title="左の一覧の「役割」へ移り、役割を 1 つ追加します">役割を追加する</button></div>`;
   }
   return `<div class="itable wide">${sysHead('スイムレーン図', y)}
-    <p class="map-note">役割ごとのレーンに、工程を${swimOrientOf(y) === 'vertical' ? '上' : '左'}から順に並べ、矢印で接続した業務の流れの図です。工程はドラッグでレーンと${swimOrientOf(y) === 'vertical' ? '段' : '列'}に吸い付いて動きます。工程と矢印を押すと、右のパネルで変更できます。</p>
+    <p class="map-note">役割ごとのレーンに、工程を${swimOrientOf(y) === 'vertical' ? '上' : '左'}から順に並べ、矢印で接続した業務の流れの図です。工程はドラッグで好きな位置へ動かせます（ガイドに吸い付きます。Shift で縦か横にまっすぐ、Alt を押している間は吸い付きません）。「工程を整列する」で順番どおりに並べ直します。工程と矢印を押すと、右のパネルで変更できます。</p>
     <div class="map-head">${VIEW_LEGENDS.swimlane}</div>
     <div class="map-canvas sys-swim" id="sys-swim">${swimInnerHtml(y)}</div></div>`;
 }
@@ -16018,7 +16009,8 @@ function swimlanePageHtml(y, state, P, L, page, total) {
   }
   const html = swimlaneHtml(state, y, { idPrefix: 'xp-swim', bare: true });
   const c = diagramCrop(html);
-  return pageFrame({ P, title: 'スイムレーン図', sub: '役割ごとのレーンに、工程を左から順に並べた業務の流れ', body: legend + (c ? fitDiagram(html, c, L.aw, L.ah - lh) : html),
+  const from = swimOrientOf(y) === 'vertical' ? '上' : '左'; // 縦向きの図は上から（v1.03・q141）
+  return pageFrame({ P, title: 'スイムレーン図', sub: `役割ごとのレーンに、工程を${from}から順に並べた業務の流れ`, body: legend + (c ? fitDiagram(html, c, L.aw, L.ah - lh) : html),
     left: `${esc(y.name)} ／ スイムレーン図`, right: `${page} / ${total}` });
 }
 
@@ -19728,7 +19720,7 @@ function aiGetSystem(args) {
   const materials = y.materials.map(aiMaterialSummary);
   const out = {
     id: y.id, name: y.name, ...(args.cursor ? {} : { description: y.description }), updatedAt: y.updatedAt, ...(y.trashedAt ? { trashed: true } : {}),
-    stages: aiStageStates(y), roles: [], rolesTotal: roles.length, designs: [], designsTotal: designs.length, steps: [], stepsTotal: steps.length, edges: [], edgesTotal: edges.length,
+    orientation: swimOrientOf(y), stages: aiStageStates(y), roles: [], rolesTotal: roles.length, designs: [], designsTotal: designs.length, steps: [], stepsTotal: steps.length, edges: [], edgesTotal: edges.length,
     materials: [], materialsTotal: materials.length,
     revisions: y.revisions.filter(isObj).map((r) => ({ id: r.id, kind: r.kind, title: revisionTitle(r), date: r.date ? revisionDay(r) : null, note: str(r.note) })),
     nextCursor: null,
@@ -19858,15 +19850,22 @@ async function aiRemoveFromSystem(args, ctx) {
 // 今ある作業の id を書いた作業は、その id と、書かなかった欄（種類・メモ・指す先・列）と BDM の箱（src）を残す。列を書かない新しい作業は swimAutoCols で付ける。
 // edges を省くと、今の矢印のうち両端の作業が残っているものを残す（[] を書いたときだけ全部消す）。
 // 返事は作業の key・id・列と、矢印の数（作業が多くても返事が大きくならないように）
+// orientation（図の向き。v1.03・q141）を書くと、工程と矢印と同じ 1 回の変更で向きも変える（省くと今の向きのまま）。
+// 工程の位置は AI に出さず、アプリが決める（設計書 9-3）。人が動かした工程のうち、役割も列も変わらない工程は、その位置のまま残る（swimStoredPos）
 async function aiSetSwimlane(args, ctx) {
   return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
     const y = findSystem(store.state, tx.system.id);
+    if (args.orientation != null && !SWIM_ORIENTS.includes(args.orientation)) {
+      throw aiBad(`orientation（図の向き）は ${SWIM_ORIENTS.map((k) => `"${k}"（${SWIM_ORIENT_NAMES[k]}）`).join('・')} です。省くと今の向きのままです。`);
+    }
     const specs = aiArr(args.steps, 'steps').map((w, i) => aiAt(`steps[${i}]`, () => aiSwimStep(y, w, i)));
     aiCheckSwimSpecs(specs);
     const edges = args.edges == null ? aiKeptSwimEdges(tx, y, specs) : aiSwimEdges(y, specs, aiArr(args.edges, 'edges'));
     actions.setSwimlane(y.id, { steps: swimAutoCols(specs.map((s) => s.step), edges), edges });
-    const now = findSystem(store.state, y.id).swimlane;
-    return { steps: specs.map((s, i) => ({ key: s.key, id: s.step.id, col: now.steps[i].col })), edgesTotal: now.edges.length };
+    if (args.orientation != null) actions.setSwimOrient(y.id, args.orientation);
+    const after = findSystem(store.state, y.id);
+    const now = after.swimlane;
+    return { orientation: swimOrientOf(after), steps: specs.map((s, i) => ({ key: s.key, id: s.step.id, col: now.steps[i].col })), edgesTotal: now.edges.length };
   });
 }
 // edges を省いたとき: 今の矢印のうち、両端の作業が残っているもの。外した矢印があれば知らせる
@@ -19918,7 +19917,7 @@ function aiSwimStep(y, w, index) {
   const kind = w.kind == null ? (old ? old.kind : 'task') : str(w.kind);
   if (!SWIM_KINDS.includes(kind)) throw aiBad(`kind（工程の種類）は ${SWIM_KINDS.map((k) => `"${k}"（${SWIM_KIND_NAMES[k]}）`).join('・')} です。`);
   if (typeof w.text !== 'string') throw aiBad('text（工程の文）を書いてください。');
-  if (w.col != null && !isSwimCol(w.col)) throw aiBad('col（列）は 0 以上の整数で書いてください（0 がいちばん左）。省くと、今ある工程は今の列のまま、新しい工程は矢印の順からアプリが付けます。');
+  if (w.col != null && !isSwimCol(w.col)) throw aiBad('col（列）は 0 以上の整数で書いてください（0 が流れの最初。横向きの図はいちばん左、縦向きの図はいちばん上）。省くと、今ある工程は今の列のまま、新しい工程は矢印の順からアプリが付けます。');
   const memo = w.memo !== undefined ? (w.memo == null ? '' : aiStrVal(w.memo, 'memo')) : old ? old.memo : '';
   const keepRef = w.ref === undefined || (old && aiSameStepRef(old.ref, w.ref));
   const ref = keepRef ? (old ? clone(old.ref) : aiSwimRef(y, null)) : aiSwimRef(y, w.ref);

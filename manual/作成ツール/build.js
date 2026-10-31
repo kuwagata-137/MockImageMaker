@@ -17,7 +17,7 @@ const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 const HTML_NAME = PKG.build.files.find((f) => /^mock_v.*\.html$/.test(f));
 const APP_VERSION = 'v' + fs.readFileSync(path.join(ROOT, HTML_NAME), 'utf8').match(/const APP_VERSION = '([^']+)'/)[1];
 // 原稿を直したら、この日付も直す（作るたびに今日の日付にすると、中身が同じでも manual.html が変わるため）
-const LAST_UPDATED = '2026年10月30日';
+const LAST_UPDATED = '2026年10月31日';
 const DOCX_NAME = `モックイメージメーカー_使用説明書_${APP_VERSION}.docx`;
 
 function loadContent() {

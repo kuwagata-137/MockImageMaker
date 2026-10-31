@@ -227,6 +227,10 @@ const roleOps = z.discriminatedUnion('op', [
 // ── スイムレーン（set_swimlane。第 9 段階）──
 // 作業の種類。ページの SWIM_KINDS と同じ（test/mcp.test.js で比べる）
 const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end'];
+// 図の向き（v1.03・q141）。ページの SWIM_ORIENTS と同じ（test/mcp.test.js で比べる）
+const SWIM_ORIENTS = ['horizontal', 'vertical'];
+const swimOrient = opt(z.enum(SWIM_ORIENTS).describe('図の向き: "horizontal"（横向き。レーンを上から下へ並べ、工程を左から右へ進める）・"vertical"（縦向き。レーンを左から右へ並べ、工程を上から下へ進める）。' +
+  '省くと今の向きのまま。工程の位置はアプリが決める'));
 // 作業の指す先の欄。id か名前か、get_system の返事の形（{ id, name }。id を使う）か null（なし）
 const swimRefField = (what) => opt(z.union([z.string(), z.number(), obj({ id: z.string(), name: opt(z.string()) }), z.null()])
   .describe(`${what}（get_system の返事の { id, name } の形も書ける。null はなし）`));
@@ -238,7 +242,7 @@ const swimStep = obj({
   kind: opt(z.enum(SWIM_KINDS).describe('工程の種類: "start"（始まり）・"task"（作業。既定）・"input"（システムへの入力）・"decision"（判断）・"doc"（書類）・"end"（終わり）')),
   text: z.string().describe('工程の文（例 "出張申請書を書く"）'),
   memo: opt(z.string()),
-  col: opt(z.number().int().min(0).describe('左から何番目の列か（0 から）。省くと、今ある工程（id を書いた工程）は今の列のまま、新しい工程は矢印の順からアプリが付ける')),
+  col: opt(z.number().int().min(0).describe('流れの何番目の列か（0 から。横向きの図は左から、縦向きの図は上から）。省くと、今ある工程（id を書いた工程）は今の列のまま、新しい工程は矢印の順からアプリが付ける')),
   ref: opt(z.union([
     obj({
       design: swimRefField('このシステムに入っている画面設計の id か名前'),
@@ -311,6 +315,7 @@ module.exports = {
   z, obj, S, layout, itemOps: opsOf(itemOps), screenOps: opsOf(screenOps), partOps: opsOf(partOps), calloutOps: opsOf(calloutOps), processOps: opsOf(processOps),
   roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('工程の並び（今のスイムレーン図の工程を全部置き換える。空の並びで工程を全部消す）'),
   swimEdges: z.array(swimEdge).describe('矢印の並び（今の矢印を全部置き換える。省くと、今の矢印のうち両端の工程が残っているものを残す。[] で全部消す）'),
-  materialInputs, noteInputs, promptArgs, DEVICES, LOOKS, ITEM_VIEWS, TABLE_KINDS, FRAME_COLORS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, NOTE_STAGES, NOTE_STATES,
+  swimOrient,
+  materialInputs, noteInputs, promptArgs, DEVICES, LOOKS, ITEM_VIEWS, TABLE_KINDS, FRAME_COLORS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, SWIM_ORIENTS, NOTE_STAGES, NOTE_STATES,
   WINDOW_POS, HEADER_KINDS,
 };
