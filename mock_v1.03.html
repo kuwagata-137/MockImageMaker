@@ -10784,10 +10784,10 @@ function markSwimState() {
   box.classList.toggle('hand', ui.swimMode === 'hand');
   box.classList.toggle('pasting', !!ui.swimPaste);
 }
-// 作業か矢印を選ぶ（どちらか 1 つ。null で選ぶのをやめる）。図の印を付け直し、右の欄を描き直す
+// 作業か矢印を選ぶ（どちらか 1 つ。null で選ぶのをやめる。いくつか選んでいた工程もやめる）。図の印を付け直し、右の欄を描き直す
 function setSwimSel(stepId, edgeId) {
   const [s, e] = [stepId || null, edgeId || null];
-  if (ui.stepSel === s && ui.edgeSel === e) return;
+  if (ui.stepSels.length === (s ? 1 : 0) && ui.stepSel === s && ui.edgeSel === e) return; // 2 つ以上選んでいるときは stepSel が null なので、数も比べる
   Object.assign(ui, { stepSel: s, edgeSel: e });
   refreshSwimMarks();
 }
@@ -12395,13 +12395,13 @@ const swimAutoScroll = (() => {
   function tick() {
     const box = $('#sys-swim');
     if (!busy() || !box) { stop(); return; }
-    if (last && drag.moved) {
+    if (last && drag.moved && box.clientWidth > 0) { // 大きさの分からない欄（jsdom・隠れているとき）では送らない
       const v = velocity(box);
       if (v.dx || v.dy) {
         const [sl, st] = [box.scrollLeft, box.scrollTop];
         box.scrollLeft = sl + v.dx;
         box.scrollTop = st + v.dy;
-        if (box.scrollLeft !== sl || box.scrollTop !== st) onDragMove({ ...last, target: document.elementFromPoint(last.clientX, last.clientY) || last.target });
+        if (box.scrollLeft !== sl || box.scrollTop !== st) onDragMove({ ...last, target: (document.elementFromPoint && document.elementFromPoint(last.clientX, last.clientY)) || last.target });
       }
     }
     if (raf != null) raf = requestAnimationFrame(tick);
@@ -12483,7 +12483,7 @@ function drawSwimPasteGhost(m) {
   const box = $('#sys-swim');
   if (!inner || !box || !ui.swimPaste) return;
   const r = box.getBoundingClientRect();
-  if (m.clientX < r.left || m.clientX > r.right || m.clientY < r.top || m.clientY > r.bottom) { removeSwimPasteGhost(); return; }
+  if (r.width > 0 && (m.clientX < r.left || m.clientX > r.right || m.clientY < r.top || m.clientY > r.bottom)) { removeSwimPasteGhost(); return; } // 大きさの分からない欄（jsdom）では見ない
   const at = swimPasteTargets(ui.swimPaste, swimPoint(m), !!m.altKey);
   let g = $('#swim-paste-ghost');
   if (!g) {

@@ -98,16 +98,16 @@ async function boot(t, state = sampleState(), sysId = 'y-trip') {
 }
 
 // ── 配置（q62 の案A）──
-test('配置: いちばん上の帯（システムの名前と小さく「（システム）」）・メニューバー（一覧へ・元に戻す・やり直す・選択・接続・削除・拡大・縮小・全体を表示）・左の入口 5 つ（資料の窓口がないとき）・右のパネル。最初はスイムレーン図', async (t) => {
+test('配置: いちばん上の帯（システムの名前と小さく「（システム）」）・メニューバー（一覧へ・元に戻す・やり直す・選択・接続・手のひらツール・コピー・貼り付け・削除・拡大・縮小・全体を表示）・左の入口 5 つ（資料の窓口がないとき）・右のパネル。最初はスイムレーン図', async (t) => {
   const { $, $$, api, entries } = await boot(t);
   assert.equal($('.brandbar .brand').textContent, 'モックイメージメーカー');
   assert.equal($('#sys-title').textContent, '出張申請システム（システム）');
   assert.equal($('#sys-title small').textContent, '（システム）');
   // メニューバーは編集の画面と同じ見た目（組と、組の名前）
-  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', '編集', '図の向き', '配置', '表示']);
+  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', 'モード', '編集', '図の向き', '配置', '表示']);
   assert.match($('#toolbar [data-action="home"]').textContent, /一覧へ/);
   assert.equal($('#toolbar [data-action="home"]').title, 'システムと画面設計の一覧へ戻ります');
-  assert.deepEqual($$('#toolbar .tbtn').map((b) => b.textContent), ['↶ 元に戻す', '↷ やり直す', '＋ 拡大', '－ 縮小', '⊡ 全体を表示', '100%']);
+  assert.deepEqual($$('#toolbar .tbtn').map((b) => b.textContent), ['↶ 元に戻す', '↷ やり直す', '⧉ コピー', '📋 貼り付け', '＋ 拡大', '－ 縮小', '⊡ 全体を表示', '100%']);
   assert.equal($('#toolbar [data-action="undo"]').disabled, true);
   assert.equal($('#toolbar [data-action="redo"]').disabled, true);
   // 左の入口（数）。履歴は「AI が直す前の状態」の行の数
@@ -507,7 +507,7 @@ test('スイムレーン図: 見出し・案内の文・凡例・図（帯 3 本
   assert.equal($('#sys-view h3').textContent, 'スイムレーン図（出張申請システム）');
   assert.ok($('#sys-view .map-note'));
   assert.match($('#sys-view .map-head').textContent, /流れ.*戻る流れ/);
-  assert.equal($$('#sys-swim .swim-lab').length, 3);
+  assert.equal($$('#sys-swim .swim-inner .swim-lab').length, 3); // 端に残す見出し（.swim-stick）は数えない
   assert.equal($$('#sys-swim .mnode.sw').length, 8);
   const node = (id) => $(`#sys-swim .mnode[data-node="w:${id}"]`);
   // 押すと選ぶ（ドラッグは始めない）

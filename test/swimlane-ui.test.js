@@ -148,27 +148,38 @@ test('全体を表示の倍率（swimFitZoom）: 図の幅を欄の幅に合わ�
 });
 
 // ── メニューバー ──
-test('メニューバー: 「編集」の組（▶ 選択・→ 接続・✕ 削除）・「図の向き」（横向き・縦向き）・「配置」（工程を整列する）と「表示」の「全体を表示」。削除は選んでいるときだけ押せる。スイムレーン図のほかでは押せない', async (t) => {
+test('メニューバー: 「モード」の組（▶ 選択・→ 接続・✋ 手のひらツール。v1.03 段階 B・q148 案B）・「編集」の組（⧉ コピー・📋 貼り付け・✕ 削除）・「図の向き」（横向き・縦向き）・「配置」（工程を整列する）と「表示」の「全体を表示」。削除とコピーは選んでいるときだけ、貼り付けはコピーした後だけ押せる。スイムレーン図のほかでは押せない', async (t) => {
   const { app, api, $, $$, node } = await boot(t);
-  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', '編集', '図の向き', '配置', '表示']);
+  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', 'モード', '編集', '図の向き', '配置', '表示']);
   assert.deepEqual(['swim-horizontal', 'swim-vertical', 'swim-arrange'].map((a) => $(`#toolbar [data-action="${a}"]`).textContent.replace(/\s+/g, '')), ['横向き', '縦向き', '⊞工程を整列する']);
   const sel = $('#toolbar [data-action="swim-select"]');
   const con = $('#toolbar [data-action="swim-connect"]');
+  const hand = $('#toolbar [data-action="swim-hand"]');
+  const copy = $('#toolbar [data-action="swim-copy"]');
+  const paste = $('#toolbar [data-action="swim-paste"]');
   const del = $('#toolbar [data-action="swim-delete"]');
-  assert.deepEqual([sel, con, del].map((b) => b.textContent.replace(/\s+/g, '')), ['▶選択', '→接続', '✕選んだものを削除する']);
-  assert.deepEqual([sel.classList.contains('on'), con.classList.contains('on'), del.disabled], [true, false, true]);
+  assert.deepEqual([sel, con, hand].map((b) => b.closest('.rgroup').querySelector('.glabel').textContent), ['モード', 'モード', 'モード']);
+  assert.deepEqual([copy, paste, del].map((b) => b.closest('.rgroup').querySelector('.glabel').textContent), ['編集', '編集', '編集']);
+  assert.deepEqual([sel, con, hand, copy, paste, del].map((b) => b.textContent.replace(/\s+/g, '')), ['▶選択', '→接続', '✋手のひらツール', '⧉コピー', '📋貼り付け', '✕選んだものを削除する']);
+  assert.deepEqual([sel.classList.contains('on'), con.classList.contains('on'), hand.classList.contains('on'), del.disabled, copy.disabled, paste.disabled], [true, false, false, true, true, true]);
   assert.ok($('#toolbar [data-action="zoom-fit"]'));
   assert.equal($('#toolbar [data-action="zoom-fit"]').textContent, '⊡ 全体を表示');
   press(node('w-3'));
-  assert.equal(del.disabled, false);
+  assert.deepEqual([del.disabled, copy.disabled, paste.disabled], [false, false, true]);
+  click(copy);
+  assert.equal(paste.disabled, false, 'コピーした後は、貼り付けを押せる');
   click(con);
   assert.equal(api.ui.swimMode, 'connect');
   assert.deepEqual([sel.classList.contains('on'), con.classList.contains('on')], [false, true]);
   assert.equal(del.disabled, true, '接続モードにすると、選ぶのをやめる');
   click(sel);
   assert.equal(api.ui.swimMode, 'select');
+  click(hand);
+  assert.equal(api.ui.swimMode, 'hand');
+  assert.deepEqual([sel.classList.contains('on'), hand.classList.contains('on')], [false, true]);
+  click(sel);
   click($('#sys-list .db-entry[data-panel="roles"]'));
-  assert.deepEqual([sel.disabled, con.disabled, del.disabled, $('#toolbar [data-action="zoom-fit"]').disabled], [true, true, true, true]);
+  assert.deepEqual([sel.disabled, con.disabled, hand.disabled, copy.disabled, paste.disabled, del.disabled, $('#toolbar [data-action="zoom-fit"]').disabled], [true, true, true, true, true, true, true]);
   assert.deepEqual(['swim-horizontal', 'swim-vertical', 'swim-arrange'].map((a) => $(`#toolbar [data-action="${a}"]`).disabled), [true, true, true]);
   void app;
 });
@@ -945,5 +956,255 @@ test('作業の種類（radio）を押した後も Ctrl+Z・Ctrl+Y は効く。D
   assert.equal(step('w-6').kind, 'doc');
   key(app, app.document.activeElement, { key: 'Delete' });
   key(app, app.document.activeElement, { key: 'Backspace' });
+  assert.equal(sys().swimlane.steps.length, 8);
+});
+
+// ── v1.03 段階 B: 複数選択・まとめて動かす・複製・矢印キー・囲む選択・コピーと貼り付け・手のひらツール・ホイール・見出しを端に残す（q147〜q150）──
+test('複数選択（段階 B・q147 案B）: Shift か Ctrl＋クリックで足す・外す。選んだ工程は全部に同じ青い枠。右のパネルは選んだ数とまとめて削除するボタン。Ctrl+A ですべて・Esc でやめる。Delete でまとめて消し、Ctrl+Z 1 回で戻る', async (t) => {
+  const { app, api, $, $$, node, side, sys } = await boot(t);
+  press(node('w-1'));
+  press(node('w-3'), { shiftKey: true });
+  assert.deepEqual(plain(api.ui.stepSels), ['w-1', 'w-3']);
+  assert.equal(api.ui.stepSel, null, '2 つ以上のときは、1 つのときの id はない');
+  assert.deepEqual($$('#sys-swim .mnode.sw.sel').map((n) => n.dataset.node), ['w:w-1', 'w:w-3']);
+  assert.match(side(), /2 個の工程を選んでいます/);
+  assert.ok($('#sys-side [data-action="swim-delete"]'));
+  press(node('w-5'), { ctrlKey: true });
+  assert.deepEqual(plain(api.ui.stepSels), ['w-1', 'w-3', 'w-5']);
+  press(node('w-3'), { ctrlKey: true });
+  assert.deepEqual(plain(api.ui.stepSels), ['w-1', 'w-5'], 'もう一度押すと外す');
+  press(node('w-5'));
+  assert.deepEqual(plain(api.ui.stepSels), ['w-5'], '選んだ工程の 1 つを（キーなしで）押すと、それだけを選ぶ');
+  key(app, app.document.body, { key: 'a', ctrlKey: true });
+  assert.equal(api.ui.stepSels.length, 8, 'Ctrl+A ですべて選ぶ');
+  key(app, app.document.body, { key: 'Escape' });
+  assert.equal(api.ui.stepSels.length, 0);
+  press(node('w-6'));
+  press(node('w-7'), { shiftKey: true });
+  key(app, app.document.body, { key: 'Delete' });
+  assert.deepEqual(sys().swimlane.steps.map((w) => w.id), ['w-1', 'w-2', 'w-3', 'w-4', 'w-5', 'w-8']);
+  assert.ok(!sys().swimlane.edges.some((e) => ['w-6', 'w-7'].includes(e.from) || ['w-6', 'w-7'].includes(e.to)), 'つながる矢印も消す');
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  assert.equal(sys().swimlane.steps.length, 8, '元に戻す 1 回で、2 つとも戻る');
+  assert.equal(sys().swimlane.edges.length, 8);
+});
+
+test('囲む選択（段階 B・q150 案B）: 何もない所からドラッグすると点線の青い枠を出し、全体が枠に入った工程を選ぶ（一部がはみ出した工程は選ばない）。Shift を押していたら今の選択に足す。動かさずに押しただけなら選ぶのをやめる', async (t) => {
+  const { app, api, $, inner, geom, node } = await boot(t);
+  const { pos } = geom();
+  const [b1, b2] = [pos['w:w-1'], pos['w:w-2']];
+  fire(inner(), 'mousedown', at(b1.x - 10, b1.y - 10));
+  fire(inner(), 'mousemove', at(b2.x + b2.w / 2, b2.y + b2.h + 10));
+  assert.ok($('#swim-band'), '囲んでいる間は点線の枠');
+  fire(inner(), 'mouseup', at(b2.x + b2.w / 2, b2.y + b2.h + 10));
+  assert.equal($('#swim-band'), null);
+  assert.deepEqual(plain(api.ui.stepSels), ['w-1'], 'w-2 は右半分がはみ出しているので選ばない');
+  const b5 = pos['w:w-5'];
+  fire(inner(), 'mousedown', { ...at(b5.x - 10, b5.y - 10), shiftKey: true });
+  fire(inner(), 'mousemove', { ...at(b5.x + b5.w + 10, b5.y + b5.h + 10), shiftKey: true });
+  fire(inner(), 'mouseup', { ...at(b5.x + b5.w + 10, b5.y + b5.h + 10), shiftKey: true });
+  assert.deepEqual(plain(api.ui.stepSels), ['w-1', 'w-5'], 'Shift なら足す');
+  press(inner(), at(b5.x - 40, b5.y + b5.h + 60));
+  assert.deepEqual(plain(api.ui.stepSels), []);
+  void app; void node;
+});
+
+test('まとめて動かす（段階 B）: 選んだ工程のどれかをドラッグすると、全部が同じだけ動く（掴んだ工程だけ吸着）。真ん中の入ったレーンの役割になり、選んだまま。Ctrl+Z 1 回で戻る', async (t) => {
+  const { app, api, node, inner, center, step, geom } = await boot(t);
+  press(node('w-1'));
+  press(node('w-2'), { shiftKey: true });
+  const before = geom().pos;
+  const c = center('w-2');
+  fire(node('w-2'), 'mousedown', c);
+  fire(inner(), 'mousemove', at(c.clientX, c.clientY + 60));
+  fire(inner(), 'mousemove', at(c.clientX, c.clientY + 130));
+  fire(inner(), 'mouseup', at(c.clientX, c.clientY + 130));
+  assert.deepEqual([step('w-1').roleId, step('w-2').roleId], ['l-b', 'l-b'], '2 つとも上長のレーンへ');
+  const after = geom().pos;
+  const d = (k) => [after[k].x - before[k].x, after[k].y - before[k].y];
+  assert.deepEqual(d('w:w-1'), d('w:w-2'), '同じだけ動く');
+  assert.ok(d('w:w-2')[1] > 100);
+  assert.deepEqual(plain(api.ui.stepSels), ['w-1', 'w-2'], '選んだまま');
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  assert.deepEqual([step('w-1').roleId, step('w-2').roleId], ['l-a', 'l-a']);
+});
+
+test('Ctrl＋ドラッグで複製（段階 B）: 選んだ工程を写して、放した所に足す（写した工程どうしの矢印も写す。元の工程はそのまま）。足した工程を選ぶ。途中で Ctrl を離すと移動に戻る', async (t) => {
+  const { app, api, node, inner, center, sys, step } = await boot(t);
+  press(node('w-3'));
+  press(node('w-4'), { shiftKey: true });
+  const c = center('w-4');
+  fire(node('w-4'), 'mousedown', { ...c, ctrlKey: true });
+  fire(inner(), 'mousemove', { ...at(c.clientX, c.clientY + 60), ctrlKey: true });
+  assert.equal(app.document.querySelectorAll('#sys-swim .swim-orig').length, 2, '複製の間は、元の位置に元の工程の写し');
+  fire(inner(), 'mousemove', { ...at(c.clientX, c.clientY + 130), ctrlKey: true });
+  fire(inner(), 'mouseup', { ...at(c.clientX, c.clientY + 130), ctrlKey: true });
+  const y = sys();
+  assert.equal(y.swimlane.steps.length, 10);
+  const added = y.swimlane.steps.slice(8);
+  assert.deepEqual(added.map((w) => [w.text, w.kind, w.roleId]), [['申請を確かめる', 'decision', 'l-c'], ['承認する', 'input', 'l-c']]);
+  assert.deepEqual(y.swimlane.edges.slice(8).map((e) => [e.from, e.to, e.label]), [[added[0].id, added[1].id, '承認']], 'w-3 → w-4 の矢印も写す');
+  assert.deepEqual([step('w-3').roleId, step('w-4').roleId], ['l-b', 'l-b'], '元の工程は動かさない');
+  assert.deepEqual(plain(api.ui.stepSels), added.map((w) => w.id));
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  assert.equal(sys().swimlane.steps.length, 8);
+  // 途中で Ctrl を離すと、移動
+  press(node('w-4'));
+  const c2 = center('w-4');
+  fire(node('w-4'), 'mousedown', { ...c2, ctrlKey: true });
+  fire(inner(), 'mousemove', { ...at(c2.clientX, c2.clientY + 60), ctrlKey: true });
+  fire(inner(), 'mousemove', at(c2.clientX, c2.clientY + 130));
+  fire(inner(), 'mouseup', at(c2.clientX, c2.clientY + 130));
+  assert.equal(sys().swimlane.steps.length, 8);
+  assert.equal(step('w-4').roleId, 'l-c');
+  assert.equal(app.document.querySelectorAll('#sys-swim .swim-orig').length, 0);
+});
+
+test('矢印キー（段階 B）: 選んだ工程を 1 ドット（Shift で 10 ドット）動かす（吸着しない）。1 回押す＝元に戻すの 1 回分。入力欄の中では動かさない', async (t) => {
+  const { app, api, $, node, geom } = await boot(t);
+  press(node('w-5'));
+  press(node('w-6'), { shiftKey: true });
+  const b0 = geom().pos;
+  key(app, app.document.body, { key: 'ArrowRight' });
+  key(app, app.document.body, { key: 'ArrowDown', shiftKey: true });
+  const b1 = geom().pos;
+  for (const k of ['w:w-5', 'w:w-6']) assert.deepEqual([b1[k].x - b0[k].x, b1[k].y - b0[k].y], [1, 10], k);
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  const b2 = geom().pos;
+  assert.deepEqual([b2['w:w-5'].x - b0['w:w-5'].x, b2['w:w-5'].y - b0['w:w-5'].y], [1, 0], '元に戻す 1 回で、1 回分だけ戻る');
+  press(node('w-5'));
+  key(app, $('#sys-side [data-sw="text"]'), { key: 'ArrowRight' });
+  assert.equal(geom().pos['w:w-5'].x, b2['w:w-5'].x);
+  void api;
+});
+
+test('コピーと貼り付け（段階 B・q149 案A）: Ctrl+C でコピー、Ctrl+V で貼り付けモード（薄い形がカーソルに付く・右のパネルに案内）。図を押した所に貼り付け、貼り付けた工程を選ぶ。工程どうしの矢印も写す。Esc・右クリックでやめる', async (t) => {
+  const { app, api, $, $$, node, inner, sys, side, toast, pt } = await boot(t);
+  key(app, app.document.body, { key: 'v', ctrlKey: true });
+  assert.match(toast(), /貼り付ける工程がありません/);
+  assert.equal(api.ui.swimPaste, null);
+  press(node('w-2'));
+  press(node('w-3'), { shiftKey: true });
+  key(app, app.document.body, { key: 'c', ctrlKey: true });
+  assert.match(toast(), /2 個の工程をコピーしました/);
+  key(app, app.document.body, { key: 'v', ctrlKey: true });
+  assert.ok(api.ui.swimPaste);
+  assert.ok($('#sys-swim').classList.contains('pasting'));
+  assert.ok($('#toolbar [data-action="swim-paste"]').classList.contains('on'));
+  assert.match(side(), /貼り付け/);
+  fire(inner(), 'mousemove', pt(2, 700));
+  assert.equal($$('#swim-paste-ghost .mnode').length, 2, '薄い形');
+  press(inner(), pt(2, 700));
+  const y = sys();
+  assert.equal(y.swimlane.steps.length, 10);
+  const added = y.swimlane.steps.slice(8);
+  assert.deepEqual(added.map((w) => w.text), ['出張申請を入力する', '申請を確かめる']);
+  assert.equal(added[0].ref.designId, 'd-trip', 'このシステムの画面設計を指す「使う画面」は写す');
+  assert.deepEqual(y.swimlane.edges.slice(8).map((e) => [e.from, e.to, e.label]), [[added[0].id, added[1].id, ''], [added[1].id, added[0].id, '差し戻し']]);
+  assert.deepEqual(plain(api.ui.stepSels), added.map((w) => w.id));
+  assert.equal(api.ui.swimPaste, null, '貼り付けたら、貼り付けモードをやめる');
+  assert.equal($('#swim-paste-ghost'), null);
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  assert.equal(sys().swimlane.steps.length, 8, '元に戻す 1 回で戻る');
+  key(app, app.document.body, { key: 'v', ctrlKey: true });
+  key(app, app.document.body, { key: 'Escape' });
+  assert.equal(api.ui.swimPaste, null, 'Esc でやめる');
+  click($('#toolbar [data-action="swim-paste"]'));
+  assert.ok(api.ui.swimPaste, 'ツールバーのボタンでも貼り付けモード');
+  fire(inner(), 'contextmenu', { ...pt(2, 700), button: 2 });
+  assert.equal(api.ui.swimPaste, null, '右クリックでやめる');
+  assert.equal(sys().swimlane.steps.length, 8);
+  // Ctrl+D: 選んだ工程で貼り付けモード（コピーしたもの〔w-2・w-3〕は変えない）
+  press(node('w-8'));
+  key(app, app.document.body, { key: 'd', ctrlKey: true });
+  assert.deepEqual(api.ui.swimPaste.steps.map((c) => c.key), ['w-8']);
+  key(app, app.document.body, { key: 'Escape' });
+  key(app, app.document.body, { key: 'v', ctrlKey: true });
+  assert.deepEqual(api.ui.swimPaste.steps.map((c) => c.key), ['w-2', 'w-3']);
+});
+
+test('アプリのメニュー「編集」の命令（段階 B）: システムの画面では、すべて選ぶ・コピー・貼り付け・削除が工程に効く', async (t) => {
+  const { api, node, sys } = await boot(t);
+  api.runCommand('selectAll');
+  assert.equal(api.ui.stepSels.length, 8);
+  press(node('w-8'));
+  api.runCommand('copyPart');
+  api.runCommand('pastePart');
+  assert.deepEqual(api.ui.swimPaste.steps.map((c) => c.key), ['w-8']);
+  api.runCommand('swimEscape');
+  api.runCommand('deletePart');
+  assert.equal(sys().swimlane.steps.length, 7);
+});
+
+test('手のひらツール（段階 B）: 選んでいた工程はそのまま。右のパネルに案内。工程は押して選べる。Esc・V で選択に戻る。左右のボタンの同時押しで選択と切り替え、そのときの右クリックでは消さない', async (t) => {
+  const { app, api, $, node, inner, side, sys } = await boot(t);
+  press(node('w-1'));
+  click($('#toolbar [data-action="swim-hand"]'));
+  assert.equal(api.ui.swimMode, 'hand');
+  assert.ok($('#sys-swim').classList.contains('hand'));
+  assert.equal(api.ui.stepSel, 'w-1', '選択と手のひらツールの切り替えでは、選んだまま');
+  press(node('w-3'));
+  assert.equal(api.ui.stepSel, 'w-3', '手のひらツールでも工程を選べる');
+  key(app, app.document.body, { key: 'Escape' });
+  assert.equal(api.ui.swimMode, 'select');
+  key(app, app.document.body, { key: 'Escape' });
+  assert.equal(api.ui.stepSel, null);
+  click($('#toolbar [data-action="swim-hand"]'));
+  assert.match(side(), /手のひらツール/);
+  key(app, app.document.body, { key: 'v' });
+  assert.equal(api.ui.swimMode, 'select');
+  // 同時押し: 左を押したまま右を押す
+  fire(node('w-1'), 'mousedown', { button: 2, buttons: 3 });
+  assert.equal(api.ui.swimMode, 'hand');
+  fire(node('w-1'), 'contextmenu', { button: 2 });
+  assert.equal(sys().swimlane.steps.length, 8, '同時押しの右クリックでは消さない');
+  fire(app.document.body, 'mouseup', { button: 2, buttons: 0 });
+  await new Promise((r) => setTimeout(r, 10));
+  fire(inner(), 'mousedown', { button: 0, buttons: 3 });
+  assert.equal(api.ui.swimMode, 'select', 'もう一度で選択へ');
+});
+
+test('ホイールの拡大縮小（段階 B）: Ctrl＋ホイールはどのモードでも、手のひらツールではホイールだけで拡大縮小する。選択のホイールだけでは変えない', async (t) => {
+  const { app, api, $, inner } = await boot(t);
+  const wheel = (init) => inner().dispatchEvent(new app.window.WheelEvent('wheel', { bubbles: true, cancelable: true, ...init }));
+  const z0 = api.ui.sysZoom;
+  wheel({ deltaY: -100 });
+  assert.equal(api.ui.sysZoom, z0);
+  wheel({ deltaY: -100, ctrlKey: true });
+  assert.ok(api.ui.sysZoom > z0);
+  const z1 = api.ui.sysZoom;
+  click($('#toolbar [data-action="swim-hand"]'));
+  wheel({ deltaY: 100 });
+  assert.ok(api.ui.sysZoom < z1);
+});
+
+test('レーンの見出しを端に残す（段階 B）: システムの画面の図の前に、見出しの写しを sticky の箱で置く（横向きは左・縦向きは上）。説明書（PDF）の図には出さない', async (t) => {
+  const { api, $, $$, S, call } = await boot(t);
+  assert.ok($('#sys-swim .swim-stick:not(.down)'));
+  assert.deepEqual($$('#sys-swim .swim-stick .swim-lab').map((e) => e.textContent), ['申請者', '上長', '経理']);
+  const y = S().systems[0];
+  assert.ok(!api.swimlaneHtml(S(), y).includes('swim-stick'));
+  await call('set_swimlane', { system: '出張申請システム', orientation: 'vertical', steps: y.swimlane.steps.map((w) => ({ key: w.id, role: ['申請者', '上長', '経理'][['l-a', 'l-b', 'l-c'].indexOf(w.roleId)], kind: w.kind, text: w.text })) });
+  assert.ok($('#sys-swim .swim-stick.down'), '縦向きは上の端');
+});
+
+test('まとめて置く・写して足す・まとめて消す（actions.placeSteps・addStepsAt・deleteSteps。段階 B）: 直せない行があれば何もしない。使う画面は、そのシステムの画面設計のときだけ写す', async (t) => {
+  const { api, sys } = await boot(t);
+  const before = JSON.stringify(sys().swimlane);
+  assert.equal(api.actions.placeSteps('y-trip', [{ id: 'w-1', roleId: 'l-b', flow: 300, cross: 60 }, { id: 'w-x', roleId: 'l-b', flow: 400, cross: 60 }]), false);
+  assert.equal(JSON.stringify(sys().swimlane), before);
+  assert.equal(api.actions.placeSteps('y-trip', [{ id: 'w-1', roleId: 'l-b', flow: 300, cross: 60 }, { id: 'w-2', roleId: 'l-c', flow: 400, cross: 60 }]), true);
+  assert.deepEqual(['w-1', 'w-2'].map((id) => sys().swimlane.steps.find((w) => w.id === id).roleId), ['l-b', 'l-c']);
+  const ids = api.actions.addStepsAt('y-trip', [
+    { key: 'a', step: { kind: 'task', text: '写し 1', memo: 'メモ', ref: { designId: 'd-cli', screenId: null, stateId: null } }, roleId: 'l-a', flow: 900, cross: 65 },
+    { key: 'b', step: { kind: 'doc', text: '写し 2', memo: '', ref: { designId: 'd-emp', screenId: null, stateId: null } }, roleId: 'l-a', flow: 1100, cross: 65 },
+  ], [{ from: 'a', to: 'b', label: '次' }, { from: 'a', to: 'zz' }]);
+  const y = sys();
+  const [a, b] = ids.map((id) => y.swimlane.steps.find((w) => w.id === id));
+  assert.deepEqual([a.text, a.memo, a.ref.designId, b.ref.designId], ['写し 1', 'メモ', null, 'd-emp'], '取引先マスタはこのシステムにないので写さない');
+  assert.deepEqual(y.swimlane.edges.filter((e) => ids.includes(e.from)).map((e) => [e.from, e.to, e.label]), [[a.id, b.id, '次']]);
+  assert.equal(api.actions.addStepsAt('y-trip', [{ key: 'a', step: {}, roleId: 'l-x', flow: 1, cross: 1 }]), null);
+  assert.equal(api.actions.deleteSteps('y-trip', ['w-zz']), false);
+  assert.equal(api.actions.deleteSteps('y-trip', ids), true);
   assert.equal(sys().swimlane.steps.length, 8);
 });
