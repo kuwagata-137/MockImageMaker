@@ -1112,6 +1112,19 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .sys-swim.linking .mnode.sw,.sys-swim.linking .swim-inner,.sys-swim.armed .mnode.sw,.sys-swim.armed .swim-inner{cursor:crosshair}
 .mnode.sw.link-from{outline:3px solid #3b82f6;outline-offset:3px}
 .mnode.sw.dragging{z-index:3;box-shadow:0 6px 18px rgba(15,23,42,.25);opacity:.92}
+/* v1.03 段階 B: 複製の間に元の位置に残す写し・貼り付けモードの薄い形・手のひらツール・端に残すレーンの見出し */
+.mnode.sw.swim-orig{opacity:.55;pointer-events:none}
+.swim-paste-ghost{position:absolute;left:0;top:0;width:0;height:0;z-index:4;pointer-events:none}
+.swim-paste-ghost .mnode.sw{opacity:.45;cursor:default}
+.sys-swim.pasting .swim-inner,.sys-swim.pasting .mnode.sw{cursor:copy}
+.sys-swim.hand .swim-inner{cursor:grab}
+.sys-swim.hand .mnode.sw{cursor:move}
+.sys-swim.hand.grabbing,.sys-swim.hand.grabbing *{cursor:grabbing!important}
+.swim-stick{position:sticky;left:0;width:0;height:0;z-index:5;overflow:visible}
+.swim-stick.down{left:auto;top:0}
+.swim-stick-in{position:absolute;left:0;top:0;transform-origin:0 0}
+.swim-stick .swim-lab{background:#e8eef6;border:1px solid #cbd5e1;box-sizing:border-box}
+.sw-multi{margin:0 0 10px;padding:10px 12px;border:1px solid #bfdbfe;border-radius:6px;background:#eff6ff;color:#1e3a8a;font-size:13px}
 .mnode.sw.relink-to{outline:3px solid #16a34a;outline-offset:3px}
 .mnode.sw.swim-replace{box-shadow:0 0 0 6px rgba(249,115,22,.35)}
 .swim-plus{position:absolute;z-index:3;width:18px;height:18px;border-radius:50%;background:#2563eb;border:1.5px solid #fff;box-sizing:border-box;cursor:pointer;box-shadow:0 1px 3px rgba(15,23,42,.3)}
@@ -5338,19 +5351,55 @@ const actions = {
   // レーンの縁からの横切る向きの位置。swimSnap の戻り値）。今の向きの位置を全部の作業について覚え（ほかの箱が動かないように）、列を位置から付け直す
   // （swimFreezePos・swimRenumber）。1 回の変更なので、元に戻す 1 回で戻る。中身が変わらないとき・直せないときは false
   placeStep(sysId, stepId, to = {}) {
+    return actions.placeSteps(sysId, [{ ...(isObj(to) ? to : {}), id: stepId }]);
+  },
+  // いくつかの工程をまとめて置き直す（v1.03 段階 B。まとめて動かす・矢印キー）。moves は [{ id, roleId, flow, cross }]（placeStep と同じ位置）。
+  // 1 つでも直せない行があれば何もしない。元に戻すの 1 回分。戻り値は中身が変わったか
+  placeSteps(sysId, moves = []) {
     const y = editableSystem(sysId);
-    if (!y || !isObj(to) || !findStep(y, stepId) || !y.roles.some((r) => r.id === to.roleId) || !Number.isFinite(to.flow) || !Number.isFinite(to.cross)) return false;
+    const ok = (m) => isObj(m) && findStep(y, m.id) && y.roles.some((r) => r.id === m.roleId) && Number.isFinite(m.flow) && Number.isFinite(m.cross);
+    if (!y || !Array.isArray(moves) || !moves.length || !moves.every(ok)) return false;
     const orient = swimOrientOf(y);
     const L = swimlaneLayout(swimlaneModel(store.state, y), y);
     const before = JSON.stringify(y.swimlane);
     mutateSystem(sysId, (yy) => {
       swimFreezePos(yy, L, orient);
-      const w = findStep(yy, stepId);
-      w.roleId = to.roleId;
-      w.pos = { ...(isObj(w.pos) ? w.pos : {}), [orient]: { flow: swimRound(to.flow), cross: swimRound(to.cross), roleId: to.roleId, col: w.col } };
-      swimRenumber(yy, orient, stepId);
+      moves.forEach((m) => {
+        const w = findStep(yy, m.id);
+        w.roleId = m.roleId;
+        w.pos = { ...(isObj(w.pos) ? w.pos : {}), [orient]: { flow: swimRound(m.flow), cross: swimRound(m.cross), roleId: m.roleId, col: w.col } };
+      });
+      swimRenumber(yy, orient, moves.map((m) => m.id));
     });
     return JSON.stringify(findSystem(store.state, sysId).swimlane) !== before;
+  },
+  // 工程を写して図の上の位置に足す（v1.03 段階 B。Ctrl＋ドラッグの複製・貼り付け）。items は [{ key（edges で指す名前）, step（写す工程。kind・text・memo・ref を使う）,
+  // roleId, flow, cross }]、edges は写した工程どうしの矢印 [{ from, to（items の key）, label ほか }]。ref は、このシステムに入っている画面設計を指すときだけ写す。
+  // 新しい id を付け、列は位置から付け直す。元に戻すの 1 回分。戻り値は足した工程の id の配列（items と同じ順。直せないときは null）
+  addStepsAt(sysId, items = [], edges = []) {
+    const y = editableSystem(sysId);
+    const ok = (it) => isObj(it) && isObj(it.step) && y.roles.some((r) => r.id === it.roleId) && Number.isFinite(it.flow) && Number.isFinite(it.cross);
+    if (!y || !Array.isArray(items) || !items.length || !items.every(ok)) return null;
+    const orient = swimOrientOf(y);
+    const L = swimlaneLayout(swimlaneModel(store.state, y), y);
+    const inSys = new Set(designsOfSystem(store.state, y).map((d) => d.id));
+    const idOf = new Map();
+    const steps = items.map((it) => {
+      const src = it.step;
+      const ref = isObj(src.ref) && inSys.has(src.ref.designId) ? clone(src.ref) : {};
+      const w = normalizeStep({ roleId: it.roleId, col: 0, kind: src.kind, text: src.text, memo: src.memo, ref });
+      idOf.set(it.key, w.id);
+      return { ...w, pos: { [orient]: { flow: swimRound(it.flow), cross: swimRound(it.cross), roleId: it.roleId, col: 0 } } };
+    });
+    const newEdges = (Array.isArray(edges) ? edges : []).filter((e) => isObj(e) && idOf.has(e.from) && idOf.has(e.to) && e.from !== e.to)
+      .map((e) => ({ ...clone(e), id: newId('e'), from: idOf.get(e.from), to: idOf.get(e.to), label: str(e.label) }));
+    mutateSystem(sysId, (yy) => {
+      swimFreezePos(yy, L, orient);
+      yy.swimlane.steps.push(...steps);
+      yy.swimlane.edges.push(...newEdges);
+      swimRenumber(yy, orient, steps.map((w) => w.id));
+    });
+    return steps.map((w) => w.id);
   },
   // 作業を図の上の位置に足す（v1.03。置き場からのドラッグ・置き場を押してから図を押す・何もない所のダブルクリック）。spec は { roleId, kind, flow, cross }（placeStep と同じ位置）。
   // 列は位置から付け直す。戻り値は作業の id（直せないときは null）
@@ -5385,11 +5434,16 @@ const actions = {
   },
   // 作業を消す。つながる矢印も消す
   deleteStep(sysId, stepId) {
+    return actions.deleteSteps(sysId, [stepId]);
+  },
+  // いくつかの工程をまとめて消す（v1.03 段階 B）。つながる矢印も消す。元に戻すの 1 回分。ない工程は数えない（どれもなければ false）
+  deleteSteps(sysId, ids = []) {
     const y = editableSystem(sysId);
-    if (!y || !findStep(y, stepId)) return false;
+    const gone = new Set((Array.isArray(ids) ? ids : []).filter((id) => y && findStep(y, id)));
+    if (!y || !gone.size) return false;
     return mutateSystem(sysId, (yy) => {
-      yy.swimlane.steps = yy.swimlane.steps.filter((w) => w.id !== stepId);
-      yy.swimlane.edges = yy.swimlane.edges.filter((e) => e.from !== stepId && e.to !== stepId);
+      yy.swimlane.steps = yy.swimlane.steps.filter((w) => !gone.has(w.id));
+      yy.swimlane.edges = yy.swimlane.edges.filter((e) => !gone.has(e.from) && !gone.has(e.to));
     });
   },
   // 矢印を足す。同じ向きの同じ 2 つの作業の間に 2 本目は作らない（逆向きは作れる）・自分への矢印は作らない。戻り値は矢印の id
@@ -7334,10 +7388,11 @@ const ui = {
   notesStages: {}, // システムの id → 設計ノートで開いている札の段階（NOTE_STAGES の値。第 10 段階。アプリを閉じるまで覚える）
   sysZoom: 1, // スイムレーン図の倍率
   sysFitted: {}, // システムの id → そのシステムのスイムレーン図を、最初の倍率（全体を表示か 100%）で出したか（T6b。アプリを閉じるまで覚える）
-  stepSel: null, // スイムレーン図で選んでいる作業の id
+  stepSels: [], // スイムレーン図で選んでいる工程の id（いくつでも。v1.03 段階 B。1 つだけのときの id は下の stepSel）
   // スイムレーン図の上の操作（第 9 段階の T6b。画像 q63）
   edgeSel: null, // 選んでいる矢印の id（作業と矢印は、どちらか 1 つだけ選ぶ）
-  swimMode: 'select', // 'select'（選択）か 'connect'（接続モード。元・先の箱を順に押してつなぐ）
+  swimMode: 'select', // 'select'（選択）・'connect'（接続モード。元・先の箱を順に押してつなぐ）・'hand'（手のひらツール。余白のドラッグで画面を動かす。v1.03 段階 B）
+  swimPaste: null, // 貼り付けモードで貼る工程（swimClip と同じ形。null は貼り付けモードでない。v1.03 段階 B・q149）
   swimLink: null, // つなぐ途中 { from（元の作業の id）, via（'plus'〔○＋ から〕か 'mode'〔接続モード〕）}
   swimPal: null, // 置き場で押した作業の箱の種類（図を押すと、その種類の箱を置く。続けて置ける）
   sysDesignMenu: null, // 左の画面設計のカードで「…」のメニューを開いている画面設計の id
@@ -7372,6 +7427,12 @@ const ui = {
     get: () => (ui.sel.length === 1 && ui.sel[0].k === k ? ui.sel[0].id : null),
     set: (id) => { ui.sel = id ? [{ k, id }] : []; },
   });
+});
+// stepSel は、スイムレーン図で工程を 1 つだけ選んでいるときのその id（ほかのときは null）。入れると、それだけを選んだことにする（v1.03 段階 B。partId と同じ形）
+Object.defineProperty(ui, 'stepSel', {
+  enumerable: true,
+  get: () => (ui.stepSels.length === 1 ? ui.stepSels[0] : null),
+  set: (id) => { ui.stepSels = id ? [id] : []; },
 });
 const isSelected = (k, id) => ui.sel.some((x) => x.k === k && x.id === id);
 const appEl = () => $('#app');
@@ -9541,7 +9602,7 @@ function swimPlusAt(pos, x, y) {
 // 位置を覚える（作業の pos を直す。actions の placeStep・addStepAt が使う）。y はシステム（直してよい写し）、L は直す前の並べ方。
 // 今の向きの位置を、描いている全部の作業について覚え（1 つを動かしても、ほかの箱が列から置き直されて動かないように。MPD は全部の箱が位置を持つ）、
 // 列を位置から付け直す（流れの向きの真ん中の順。4 以内の差は同じ列）。ほかの向きの覚えた位置は、列の番号だけを付け直し
-// （動かした作業 moved は付け直さない。役割か列が変わっていれば、その向きでは列から置き直す。q145）
+// （動かした作業 moved〔id か id の配列〕は付け直さない。役割か列が変わっていれば、その向きでは列から置き直す。q145）
 function swimFreezePos(y, L, orient) {
   y.swimlane.steps.forEach((w) => {
     const p = L.pos['w:' + w.id];
@@ -9551,6 +9612,7 @@ function swimFreezePos(y, L, orient) {
 }
 function swimRenumber(y, orient, moved) {
   const other = orient === 'vertical' ? 'horizontal' : 'vertical';
+  const movedSet = new Set([].concat(moved ?? [])); // 動かした工程（1 つの id か、id の配列。v1.03 段階 B）
   const steps = y.swimlane.steps.filter((w) => isObj(w.pos) && isObj(w.pos[orient]) && y.roles.some((r) => r.id === w.roleId));
   const next = new Map();
   let col = -1;
@@ -9561,7 +9623,7 @@ function swimRenumber(y, orient, moved) {
   });
   steps.forEach((w) => {
     const op = w.pos[other];
-    if (w.id !== moved && isObj(op) && op.col === w.col && op.roleId === w.roleId) op.col = next.get(w.id);
+    if (!movedSet.has(w.id) && isObj(op) && op.col === w.col && op.roleId === w.roleId) op.col = next.get(w.id);
     w.col = next.get(w.id);
     Object.assign(w.pos[orient], { col: w.col, roleId: w.roleId });
   });
@@ -10246,7 +10308,7 @@ function openSystem(id, { panel = null } = {}) {
   Object.assign(ui, {
     view: 'system', systemId: id, designId: null, screenId: null, menuFor: null, sysMenu: null, sysDesignMenu: null, stepSel: null, editorFrom: null,
     previewHeight: null, sel: [], panel: 'screen', itemId: null, addItemMenu: false, revMenu: false, foldMenu: null, sysPanel: p,
-    edgeSel: null, swimMode: 'select', swimLink: null, swimPal: null,
+    edgeSel: null, swimMode: 'select', swimLink: null, swimPal: null, swimPaste: null,
   });
   ui.sysPanels[id] = p;
   store.clearHistory();
@@ -10288,8 +10350,8 @@ const SWIM_FIT_TITLES = {
   horizontal: 'スイムレーン図の幅を、スイムレーン図を出す所の幅に合わせます',
   vertical: 'スイムレーン図の全体（幅と高さ）が、スイムレーン図を出す所に収まる倍率にします',
 };
-// メニューバー（編集の画面と同じ見た目。組はファイル・履歴・編集・図の向き・配置・表示）。編集と図の向きと拡大縮小は、スイムレーン図を出しているときだけ押せる。
-// 編集の組（T6b）: ▶ 選択・→ 接続（BDM と同じ 2 つのモード。キー v・c）と ✕ 削除（選んだ作業の箱か矢印）
+// メニューバー（編集の画面と同じ見た目。組はファイル・履歴・モード・編集・図の向き・配置・表示）。モードと編集と図の向きと拡大縮小は、スイムレーン図を出しているときだけ押せる。
+// モードの組（T6b・v1.03 段階 B）: ▶ 選択・→ 接続・✋ 手のひらツール（MPD と同じ 3 つのモード。キー v・c）
 function sysToolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
   return [
@@ -10300,9 +10362,15 @@ function sysToolbarHtml() {
     group('履歴', `<div class="stack">
       <button class="tbtn" data-action="undo" id="sys-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" id="sys-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
-    group('編集', `
+    // モードの組（v1.03 段階 B・q148 案B。編集の画面の組「モード」・MPD と同じく、モードを独立した組にする）: ▶ 選択・→ 接続・✋ 手のひらツール
+    group('モード', `
       <button class="bigbtn" data-action="swim-select" id="sys-mode-select" title="工程と矢印を選んで、動かす・変更するモード（V キー）"><span class="ico">▶</span>選択</button>
       <button class="bigbtn" data-action="swim-connect" id="sys-mode-connect" title="接続元と接続先の工程を順に押して、矢印で接続するモード（C キー）"><span class="ico">→</span>接続</button>
+      <button class="bigbtn" data-action="swim-hand" id="sys-mode-hand" title="何もない所のドラッグで図を動かすモード（ホイールで拡大縮小。マウスの左右のボタンの同時押しで選択と切り替え。Esc で選択に戻る）"><span class="ico">✋</span>手のひら<br>ツール</button>`),
+    // 編集の組: ⧉ コピー・📋 貼り付け（Ctrl+C・Ctrl+V。貼り付けモードの間は青）と ✕ 削除（選んだ工程か矢印）
+    group('編集', `<div class="stack">
+      <button class="tbtn" data-action="swim-copy" id="sys-copy" title="選んだ工程をコピーします（Ctrl+C）">⧉ コピー</button>
+      <button class="tbtn" data-action="swim-paste" id="sys-paste" title="コピーした工程を、図の押した所に貼り付けます（Ctrl+V。Esc でやめる）">📋 貼り付け</button></div>
       <button class="bigbtn" data-action="swim-delete" id="sys-del" title="選んだ工程か矢印を削除します（Delete キー）"><span class="ico">✕</span>選んだものを<br>削除する</button>`),
     // 図の向き（q141）: 押している向きが青。向きはシステムに保存し、説明書（PDF）とAI の画像も同じ向きで描く
     group('図の向き', `
@@ -10325,11 +10393,14 @@ function updateSysToolbar() {
   const zoomable = sysZoomable();
   document.querySelectorAll('#toolbar [data-sys-zoom]').forEach((b) => { b.disabled = !zoomable; });
   $('#sys-zoom-label').textContent = Math.round(ui.sysZoom * 100) + '%';
-  $('#sys-mode-select').disabled = !zoomable;
-  $('#sys-mode-connect').disabled = !zoomable;
-  $('#sys-mode-select').classList.toggle('on', zoomable && ui.swimMode === 'select');
-  $('#sys-mode-connect').classList.toggle('on', zoomable && ui.swimMode === 'connect');
-  $('#sys-del').disabled = !zoomable || !(ui.stepSel || ui.edgeSel);
+  [['#sys-mode-select', 'select'], ['#sys-mode-connect', 'connect'], ['#sys-mode-hand', 'hand']].forEach(([sel, mode]) => {
+    $(sel).disabled = !zoomable;
+    $(sel).classList.toggle('on', zoomable && ui.swimMode === mode);
+  });
+  $('#sys-del').disabled = !zoomable || !(ui.stepSels.length || ui.edgeSel);
+  $('#sys-copy').disabled = !zoomable || !ui.stepSels.length;
+  $('#sys-paste').disabled = !zoomable || store.isViewing || !swimClip;
+  $('#sys-paste').classList.toggle('on', zoomable && !!ui.swimPaste);
   const y = zoomable ? findSystem(store.state, ui.systemId) : null;
   $('#sys-zoom-fit').title = SWIM_FIT_TITLES[swimOrientOf(y)];
   $('#sys-arrange').disabled = !zoomable || store.isViewing;
@@ -10380,15 +10451,15 @@ function keepNoteMenuFocus() {
 // 元に戻す・AI が書いたなどで、選んでいた作業・矢印、つなぐ元の作業が消えたときは外す。スイムレーン図を出していないとき・役割がないときは、
 // つなぐ途中と、置き場で押した種類をやめる
 function fixSwimState(y) {
-  if (ui.stepSel && !findStep(y, ui.stepSel)) ui.stepSel = null;
+  if (ui.stepSels.some((id) => !findStep(y, id))) ui.stepSels = ui.stepSels.filter((id) => findStep(y, id));
   if (ui.edgeSel && !y.swimlane.edges.some((e) => e.id === ui.edgeSel)) ui.edgeSel = null;
   if (ui.swimLink && !findStep(y, ui.swimLink.from)) ui.swimLink = null;
-  if (ui.sysPanel !== 'swimlane' || !y.roles.length) Object.assign(ui, { swimLink: null, swimPal: null });
+  if (ui.sysPanel !== 'swimlane' || !y.roles.length) Object.assign(ui, { swimLink: null, swimPal: null, swimPaste: null });
 }
 // 右の欄（上の置き場と、下の設定）を描く。同じものを描き直すときは、スクロールの位置と、打っている欄のフォーカスを戻す
 function renderSysSide(y) {
   const el = $('#sys-side');
-  const key = `${ui.sysPanel}:${ui.stepSel || ''}:${ui.edgeSel || ''}`;
+  const key = `${ui.sysPanel}:${ui.stepSels.join(',')}:${ui.edgeSel || ''}:${ui.swimPaste ? 'paste' : ''}`;
   const same = el.dataset.key === key;
   const top = same ? el.scrollTop : 0;
   const focus = same ? keepSysSideFocus() : () => {};
@@ -10684,7 +10755,15 @@ let swimDrawn = null; // { sysId, pos, lanes, w, h, vertical, hdr, orient, D（{
 function swimInnerHtml(y, sys = y) {
   const D = swimDrawing(store.state, sys);
   swimDrawn = { sysId: y.id, ...D.L, D };
-  return swimlaneHtml(store.state, sys, { zoom: ui.sysZoom, edit: true, drawn: D });
+  return (sys.roles.length ? swimStickyHtml(D.L, ui.sysZoom) : '') + swimlaneHtml(store.state, sys, { zoom: ui.sysZoom, edit: true, drawn: D });
+}
+// スクロールしても画面の端に残すレーンの見出し（v1.03 段階 B。MPD の syncLaneSticky と同じく position: sticky の重ね箱。横向きは左の端、縦向きは上の端）。
+// 図の見出しと同じ大きさ・倍率の写しを、図の前の大きさ 0 の箱に置く（スクロールの間に動く JS はない）。システムの画面だけ（説明書〔PDF〕と画像には出さない）
+function swimStickyHtml(L, z) {
+  const V = L.vertical;
+  const labs = L.lanes.map((l) => `<div class="swim-lab" style="${V ? `left:${l.x}px;top:0;width:${l.w}px;height:${L.hdr}px` : `left:0;top:${l.y}px;width:${L.hdr}px;height:${l.h}px`}"`
+    + `${l.role.memo ? ` title="${esc(l.role.memo)}"` : ''}>${esc(l.role.name)}</div>`).join('');
+  return `<div class="swim-stick${V ? ' down' : ''}" aria-hidden="true"><div class="swim-stick-in" style="width:${V ? L.w : L.hdr}px;height:${V ? L.hdr : L.h}px;transform:scale(${z})">${labs}</div></div>`;
 }
 // 選んだ矢印の印を付ける所（線・押す所・両端の ○・飛び越えの半円・文字の下地）
 const SWIM_SEL_PARTS = '.sw-line, .sw-edge, .sw-ends, .sw-arc-c, .sw-lab';
@@ -10696,20 +10775,39 @@ function markSwimState() {
   box.querySelectorAll('.mnode.sel, .mnode.link-from').forEach((n) => n.classList.remove('sel', 'link-from'));
   box.querySelectorAll(SWIM_SEL_PARTS).forEach((n) => n.classList.remove('sel'));
   const node = (id) => [...box.querySelectorAll('.mnode.sw')].find((x) => x.dataset.node === 'w:' + id);
-  if (ui.stepSel && node(ui.stepSel)) node(ui.stepSel).classList.add('sel');
+  const sels = new Set(ui.stepSels.map((id) => 'w:' + id));
+  box.querySelectorAll('.mnode.sw').forEach((n) => { if (sels.has(n.dataset.node)) n.classList.add('sel'); }); // 選んだ工程は全部、同じ印（q147 案B）
   if (ui.swimLink && node(ui.swimLink.from)) node(ui.swimLink.from).classList.add('link-from');
   if (ui.edgeSel) box.querySelectorAll(SWIM_SEL_PARTS).forEach((n) => { if (n.getAttribute('data-edge') === ui.edgeSel) n.classList.add('sel'); });
   box.classList.toggle('linking', !!ui.swimLink || ui.swimMode === 'connect');
   box.classList.toggle('armed', !!ui.swimPal);
+  box.classList.toggle('hand', ui.swimMode === 'hand');
+  box.classList.toggle('pasting', !!ui.swimPaste);
 }
-// 作業か矢印を選ぶ（どちらか 1 つ。null で選ぶのをやめる）。図の印を付け直し、右の欄を描き直す
+// 作業か矢印を選ぶ（どちらか 1 つ。null で選ぶのをやめる。いくつか選んでいた工程もやめる）。図の印を付け直し、右の欄を描き直す
 function setSwimSel(stepId, edgeId) {
   const [s, e] = [stepId || null, edgeId || null];
-  if (ui.stepSel === s && ui.edgeSel === e) return;
+  if (ui.stepSels.length === (s ? 1 : 0) && ui.stepSel === s && ui.edgeSel === e) return; // 2 つ以上選んでいるときは stepSel が null なので、数も比べる
   Object.assign(ui, { stepSel: s, edgeSel: e });
   refreshSwimMarks();
 }
 const selectStep = (id) => setSwimSel(id, null);
+// 工程をいくつか選ぶ（v1.03 段階 B。矢印の選択はやめる）。同じなら何もしない
+function setSwimSels(ids) {
+  const next = [...new Set(ids)];
+  if (!ui.edgeSel && next.length === ui.stepSels.length && next.every((id, i) => id === ui.stepSels[i])) return;
+  Object.assign(ui, { stepSels: next, edgeSel: null });
+  refreshSwimMarks();
+}
+// Ctrl か Shift＋クリック: 選ぶ工程に足す・外す（MPD・編集の画面と同じ）
+const toggleStepSel = (id) => setSwimSels(ui.stepSels.includes(id) ? ui.stepSels.filter((x) => x !== id) : [...ui.stepSels, id]);
+// Ctrl+A: スイムレーン図の工程をすべて選ぶ
+function selectAllSteps() {
+  const y = findSystem(store.state, ui.systemId);
+  if (!y || !y.swimlane.steps.length) return;
+  exitSwimPaste();
+  setSwimSels(y.swimlane.steps.map((w) => w.id));
+}
 const selectEdge = (id) => setSwimSel(null, id);
 // 図の印・右の欄・メニューバーを、今の ui に合わせる（中身は変わっていないとき）
 function refreshSwimMarks() {
@@ -10744,6 +10842,7 @@ function redrawSwimlane(y, sys = y) {
   swimEditor = null;
   box.innerHTML = swimInnerHtml(y, sys);
   markSwimState();
+  if (ui.swimPaste && swimMouse) drawSwimPasteGhost(swimMouse); // 貼り付けモードの薄い形を描き直す
 }
 // システムのスイムレーン図を、このアプリを開いてから初めて出すときの倍率。図の幅が真ん中の欄に収まらなければ、幅を合わせる倍率
 // （ただし 50% より小さくしない）、収まれば 100%（縦向きも幅だけで決める。q141）。欄の幅が分からない（0）ときは、まだ決めない
@@ -11442,6 +11541,7 @@ function sysSideHtml(y) {
       + hint('決めたことと理由と、まだ決まっていないこと（答えのある行も）は、システム設計書（PDF）の最後のページに入ります（⑤ の行は入りません）。');
   }
   if (!y.roles.length) return `<div class="panel-title">工程の設定</div>${hint('役割を追加すると、スイムレーン図に工程を置けます。')}`;
+  if (ui.stepSels.length > 1) return sysMultiStepsHtml(ui.stepSels.length);
   const w = ui.stepSel ? findStep(y, ui.stepSel) : null;
   if (w) return sysStepSettingsHtml(y, w);
   const e = ui.edgeSel ? y.swimlane.edges.find((x) => x.id === ui.edgeSel) : null;
@@ -11476,9 +11576,21 @@ function renderSysBox(y) {
     + `<div class="pal-grid">${SWIM_KINDS.map(btn).join('')}</div>`
     + (ui.swimPal ? `<p class="hint sw-armed">図を押すと「${esc(SWIM_KIND_NAMES[ui.swimPal])}」を置きます（続けて置けます）。もう一度押す・Esc・何もない所の右クリックでやめます。</p>` : '');
 }
-// 何も選んでいないとき（つなぐ途中・接続モードのときは、その案内）
+// 工程をいくつか選んでいるとき（v1.03 段階 B・q147 案B）: 選んだ数と、まとめて削除するボタン
+function sysMultiStepsHtml(n) {
+  const hint = (t) => `<p class="hint">${t}</p>`;
+  return `<div class="panel-title">工程の設定</div><p class="sw-multi"><b>${n} 個の工程を選んでいます</b></p>`
+    + '<div class="sw-btns"><button class="btn small danger" data-action="swim-delete" title="選んだ工程と、接続している矢印を削除します（Delete キー。元に戻す〔Ctrl+Z〕で戻せます）">✕ 選んだ工程を削除する</button></div>'
+    + hint('選んだ工程は、まとめてドラッグで動かせます。Ctrl を押しながらドラッグすると複製します。矢印キーで 1 ドット（Shift を押すと 10 ドット）動きます。')
+    + hint('Ctrl か Shift を押しながら工程を押すと、選ぶ工程に追加する・外すことができます。Ctrl+C でコピーし、Ctrl+V で貼り付けます。');
+}
+// 何も選んでいないとき（貼り付けモード・つなぐ途中・接続モード・手のひらツールのときは、その案内）
 function sysSwimHintHtml(y) {
   const hint = (t) => `<p class="hint">${t}</p>`;
+  if (ui.swimPaste) {
+    return `<div class="panel-title">貼り付け</div>${hint(`図の押した所に、コピーした工程 ${ui.swimPaste.steps.length} 個を貼り付けます（工程どうしの矢印も貼り付けます）。`)}`
+      + hint('Esc か右クリックでやめます。');
+  }
   if (ui.swimLink) {
     return `<div class="panel-title">接続</div>${hint(`「${esc(swimStepName(findStep(y, ui.swimLink.from)))}」からの接続先の工程を押します。Esc・何もない所を押す・右クリックでやめます。`)}`;
   }
@@ -11486,10 +11598,15 @@ function sysSwimHintHtml(y) {
     return `<div class="panel-title">接続モード</div>${hint('接続元の工程を押してから、接続先の工程を押します（続けて接続できます）。')}`
       + hint('ツールバーの「▶ 選択」か V キーで、接続モードをやめます。');
   }
+  if (ui.swimMode === 'hand') {
+    return `<div class="panel-title">手のひらツール</div>${hint('何もない所をドラッグすると、図が動きます。ホイールで拡大縮小します。工程と矢印は、選択のときと同じように動かす・変更することができます。')}`
+      + hint('ツールバーの「▶ 選択」・V キー・Esc か、マウスの左右のボタンの同時押しで、選択に戻ります。');
+  }
   return `<div class="panel-title">工程の設定</div>`
     + hint('工程を追加する: 上の一覧から図へドラッグします。一覧のボタンを押してから図を押しても置けます。何もない所をダブルクリックすると「作業」を追加します。')
     + hint('工程を接続する: 工程にマウスを近づけると出る青い ○＋ を押してから、接続先の工程を押します。ツールバーの「→ 接続」（C キー）でも接続できます。')
-    + hint('工程か矢印を押すと、ここで変更できます。ダブルクリックで文字を変更し、右クリックか Delete キーで削除します。');
+    + hint('工程か矢印を押すと、ここで変更できます。ダブルクリックで文字を変更し、右クリックか Delete キーで削除します。')
+    + hint('工程をいくつか選ぶ: Ctrl か Shift を押しながら工程を押すか、何もない所からドラッグして囲みます（全体が枠に入った工程を選びます）。Ctrl+A ですべて選びます。');
 }
 // 作業の設定（画像 q63 の右の欄）: 文字・種類・役割・この作業で使う画面とステータス・次の作業（矢印）・＋ 次の作業をつなぐ・メモ・＋ 作業を足す・この作業を消す。
 // 欄には data-step（作業の id）を付ける（選び直した後に古い欄の change が来ても、別の作業に入れないため）
@@ -11701,6 +11818,7 @@ function onSystemScreenClick(action, btn) {
 // （離れると打ちかけの文字の保存で左の欄が描き直され、押したボタンが click の前に消えるため。打ちかけの文字は、押したときの処理の初めに保存する）。
 // 画面設計のカードは、そのままドラッグすると並べ替える。置き場の作業の箱は、そのままドラッグすると図に置く。スイムレーン図の上は onSwimMouseDown（T6b）
 function onSystemMouseDown(e) {
+  if (onSwimChord(e)) return;
   if (e.button !== 0) return;
   if (onSwimMouseDown(e)) return;
   if (e.target.closest('#sys-list button, #sys-menu-root button, #sys-box button')) e.preventDefault();
@@ -11713,12 +11831,20 @@ function onSystemMouseDown(e) {
 function runSystemCommand(cmd) {
   switch (cmd) {
     case 'zoomIn': case 'zoomOut': case 'zoomReset': case 'zoomFit': if (sysZoomable()) zoomSwimlane(cmd); return true;
-    case 'swimSelect': case 'swimConnect': if (sysZoomable()) setSwimMode(cmd === 'swimConnect' ? 'connect' : 'select'); return true;
-    case 'swimDelete': if (sysZoomable()) deleteSwimSelection(); return true;
+    case 'swimSelect': case 'swimConnect': case 'swimHand': if (sysZoomable()) setSwimMode({ swimSelect: 'select', swimConnect: 'connect', swimHand: 'hand' }[cmd]); return true;
+    case 'swimDelete': case 'deletePart': if (sysZoomable()) deleteSwimSelection(); return true;
+    // v1.03 段階 B: すべて選ぶ（Ctrl+A）・コピー（Ctrl+C）・貼り付けモード（Ctrl+V）・複製（Ctrl+D。選んだ工程で貼り付けモードにする。コピーしたものは変えない）。
+    // アプリのメニュー「編集」の同じ命令もここに来る
+    case 'selectAll': if (sysZoomable()) selectAllSteps(); return true;
+    case 'copyPart': if (sysZoomable()) copySwimSelection(); return true;
+    case 'pastePart': if (sysZoomable()) startSwimPaste(swimClip); return true;
+    case 'duplicatePart': if (sysZoomable()) startSwimPaste(swimClipOf(ui.stepSels), { empty: '複製する工程を選んでください' }); return true;
     case 'swimHorizontal': case 'swimVertical': if (sysZoomable()) setSwimOrientView(cmd === 'swimVertical' ? 'vertical' : 'horizontal'); return true;
     case 'swimArrange': if (sysZoomable()) arrangeSwimView(); return true;
     case 'swimEscape': swimEscape(); return true;
   }
+  // 矢印キー（'swimNudge:dx,dy'。v1.03 段階 B）
+  if (cmd.startsWith('swimNudge:')) { if (sysZoomable()) nudgeSwimSteps(...cmd.slice(10).split(',').map(Number)); return true; }
   return false;
 }
 // ── スイムレーン図の上の操作（第 9 段階の T6b。画像 q63。ビジネスダイアグラムメーカー〔BDM〕の操作を写した）──
@@ -11772,6 +11898,7 @@ function swimPress(e, hit, canDrag) {
   blurSideField();
   const y = editableSystem(ui.systemId);
   if (!y || !y.roles.length) return;
+  if (ui.swimPaste) { pasteSwimAt(y, swimPoint(e), e.altKey); return; } // 貼り付けモード: どこを押しても、押した所に貼り付ける（MPD と同じ）
   if (ui.swimPal) { placeSwimStep(y, ui.swimPal, swimPoint(e), hit.kind === 'node' ? hit.id : null, { alt: e.altKey }); return; }
   if (hit.kind === 'plus') { startSwimLink(hit.id, 'plus'); return; }
   if (hit.kind === 'end') { if (canDrag) startSwimRelink(e, hit); return; }
@@ -11781,13 +11908,20 @@ function swimPress(e, hit, canDrag) {
     else if (hit.kind === 'edge') { setSwimMode('select'); selectEdge(hit.id); } // 矢印を押すと、選択のモードに戻して選ぶ（BDM と同じ）
     return;
   }
+  // 工程（v1.03 段階 B。MPD・編集の画面と同じ）: Ctrl か Shift を押していなければ、選んでいない工程は押した時点でそれだけを選ぶ（選んだ工程を押したときは、
+  // まとめてドラッグできるように選んだままにし、動かさずに放したらそれだけを選ぶ）。Ctrl か Shift を押していたら、動かさずに放したときに足す・外す
+  const mod = e.ctrlKey || e.metaKey || e.shiftKey;
   if (hit.kind === 'node') {
-    selectStep(hit.id);
-    if (canDrag) startSwimMove(e, hit.id);
+    if (!canDrag) { if (mod) toggleStepSel(hit.id); else selectStep(hit.id); return; } // 押した時点を通らない click（テスト）
+    if (!mod && !ui.stepSels.includes(hit.id)) selectStep(hit.id);
+    startSwimMove(e, hit.id, mod);
     return;
   }
   if (hit.kind === 'edge') { selectEdge(hit.id); return; }
-  setSwimSel(null, null);
+  // 何もない所: 手のひらツールは図を動かす（動かさずに放したら選ぶのをやめる）。選択は、選ぶのをやめて（Ctrl・Shift を押していたら、やめない）囲む選択を始める
+  if (ui.swimMode === 'hand') { if (canDrag) startSwimPan(e); else setSwimSel(null, null); return; }
+  if (!mod) setSwimSel(null, null);
+  if (canDrag) startSwimBand(e, mod);
 }
 // 右の欄・真ん中の欄の入力欄のフォーカスを外す（図を押した後の Delete・c・v を、図の操作にするため。押した時点の preventDefault でフォーカスが残るため）
 function blurSideField() {
@@ -11799,13 +11933,15 @@ function onSysSwimClick(e) {
   const hit = swimHitOf(e.target);
   if (!hit || e.target.closest('[data-action]')) return false;
   if (swimPressed) { swimPressed = false; return true; }
+  if (swimChordSuppress) return true;
   if (hit.kind !== 'edit') swimPress(e, hit, false);
   return true;
 }
 // ダブルクリック: 箱・矢印は文字の欄、何もない所は「作業」の箱を足す（選択のモードのとき。置き場で種類を押している間は足さない）
 function onSwimDblClick(e) {
   const hit = swimHitOf(e.target);
-  if (!hit || hit.kind === 'edit' || hit.kind === 'plus' || ui.swimPal) return;
+  if (!hit || hit.kind === 'edit' || hit.kind === 'plus' || ui.swimPal || ui.swimPaste || swimChordSuppress) return;
+  if (hit.kind === 'empty' && e.target.closest('.swim-stick')) return; // 端に残したレーンの見出しの上では足さない
   const y = editableSystem(ui.systemId);
   if (!y || !y.roles.length) return;
   if (hit.kind === 'node' || hit.kind === 'edge' || hit.kind === 'end') {
@@ -11823,6 +11959,8 @@ function onSwimContextMenu(e) {
   const hit = swimHitOf(e.target);
   if (!hit || hit.kind === 'edit') return;
   e.preventDefault();
+  if (swimChordSuppress) return; // 左右のボタンの同時押し（選択と手のひらツールの切り替え）の右クリックでは消さない
+  if (ui.swimPaste) { exitSwimPaste(); return; } // 貼り付けモードの右クリックは、やめるだけ（MPD と同じ）
   commitSwimEditor();
   flushSideField();
   if (hit.kind === 'node') { deleteSwimStep(hit.id); return; }
@@ -11834,10 +11972,12 @@ function onSwimContextMenu(e) {
 
 // ○＋（選択のモードで、箱に近づくと出る。押すと、その箱からつなぐ）と、つなぐ途中の破線。マウスを動かすたびに決める（BDM の qcHoverMove と同じく、位置で決める）
 function onSwimHover(ev) {
+  swimMouse = { clientX: ev.clientX, clientY: ev.clientY, target: ev.target, altKey: ev.altKey };
   if (ui.view !== 'system' || drag || !$('#sys-swim')) return;
+  if (ui.swimPaste) { hideSwimPlus(); drawSwimPasteGhost(swimMouse); return; }
   if (ui.swimLink) { drawSwimLinkPreview(ev); return; }
   const inside = ev.target && ev.target.closest && ev.target.closest('#sys-swim');
-  if (!inside || ui.swimMode !== 'select' || ui.swimPal || swimEditor || !swimDrawn) { hideSwimPlus(); return; }
+  if (!inside || (ui.swimMode !== 'select' && ui.swimMode !== 'hand') || ui.swimPal || swimEditor || !swimDrawn) { hideSwimPlus(); return; } // 手のひらツールでも ○＋ で接続できる（MPD と同じ）
   if (ev.target.closest('#swim-plus')) return;
   const p = swimPoint(ev);
   showSwimPlus(swimPlusAt(swimDrawn.pos, p.x, p.y));
@@ -11927,35 +12067,56 @@ function addSwimEdge(y, from, to, { select = true } = {}) {
   if (id && select) selectEdge(id);
   return id;
 }
-// モードを切り替える（▶ 選択・→ 接続。BDM の setMode と同じく、つなぐ途中・置き場で押した種類・選んでいたものをやめる）
+// モードを切り替える（▶ 選択・→ 接続・✋ 手のひらツール。BDM の setMode と同じく、つなぐ途中・置き場で押した種類・貼り付けモードをやめる）。
+// 選んでいたものは、接続モードに入る・出るときだけやめる（選択と手のひらツールは、どちらも選んで動かせるので、そのまま。v1.03 段階 B）
 function setSwimMode(mode) {
   hideSwimPlus();
   clearSwimGuide();
-  Object.assign(ui, { swimMode: mode, swimLink: null, swimPal: null, stepSel: null, edgeSel: null });
+  removeSwimPasteGhost();
+  const keepSel = mode !== 'connect' && ui.swimMode !== 'connect';
+  Object.assign(ui, { swimMode: mode, swimLink: null, swimPal: null, swimPaste: null }, keepSel ? {} : { stepSels: [], edgeSel: null });
   refreshSwimMarks();
 }
 // 置き場で押した種類（null でやめる）。押すと選択のモードに戻し、つなぐ途中をやめる（BDM の palClick と同じ）
 function setSwimPal(kind) {
   hideSwimPlus();
   clearSwimGuide();
-  Object.assign(ui, { swimPal: kind || null, swimLink: null });
+  removeSwimPasteGhost();
+  Object.assign(ui, { swimPal: kind || null, swimLink: null }, kind ? { swimPaste: null } : {});
   if (kind) ui.swimMode = 'select';
   refreshSwimMarks();
 }
-// Esc: つなぐ途中・置き場で押した種類・選んでいたものを、まとめてやめる（BDM と同じ。接続モードはそのまま）
+// Esc: 貼り付けモードをやめる → 手のひらツールなら選択に戻る → つなぐ途中・置き場で押した種類・選んでいたものを、まとめてやめる
+// （MPD v8.33 と同じ順。接続モードはそのまま）
 function swimEscape() {
+  if (ui.swimPaste) { exitSwimPaste(); return; }
+  if (ui.swimMode === 'hand' && !ui.swimLink && !ui.swimPal) { setSwimMode('select'); return; }
   hideSwimPlus();
   clearSwimGuide();
   Object.assign(ui, { swimLink: null, swimPal: null, stepSel: null, edgeSel: null });
   refreshSwimMarks();
 }
-// スイムレーン図を出しているときのキー（入力欄の外。Ctrl・Alt なし）。Delete・Backspace は選んだものを消す・Esc はやめる・c は接続モード・v は選択のモード
+// スイムレーン図を出しているときのキー（入力欄の外。Ctrl・Alt なし）。Delete・Backspace は選んだものを消す・Esc はやめる・c は接続モード・v は選択のモード・
+// 矢印キーは選んだ工程を 1 ドット（Shift で 10 ドット）動かす（v1.03 段階 B。MPD と同じ。吸着しない。貼り付けモードの間は動かさない）
 function swimKeyCommand(e) {
   if (!sysZoomable()) return null;
   const k = String(e.key || '');
-  if (k === 'Delete' || k === 'Backspace') return ui.stepSel || ui.edgeSel ? 'swimDelete' : null;
-  if (k === 'Escape') return ui.swimLink || ui.swimPal || ui.stepSel || ui.edgeSel ? 'swimEscape' : null;
+  if (k === 'Delete' || k === 'Backspace') return ui.stepSels.length || ui.edgeSel ? 'swimDelete' : null;
+  if (k === 'Escape') return ui.swimPaste || ui.swimLink || ui.swimPal || ui.stepSels.length || ui.edgeSel || ui.swimMode === 'hand' ? 'swimEscape' : null;
+  const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+  if (arrow) return ui.stepSels.length && !ui.swimPaste ? `swimNudge:${arrow.map((v) => v * (e.shiftKey ? 10 : 1)).join(',')}` : null;
+  if (e.shiftKey) return null;
   return { c: 'swimConnect', v: 'swimSelect' }[k.toLowerCase()] || null;
+}
+// スイムレーン図を出しているときの Ctrl つきのキー（入力欄の外。v1.03 段階 B）: Ctrl+A すべて選ぶ・Ctrl+C コピー・Ctrl+V 貼り付けモード・Ctrl+D 複製
+function swimCtrlKeyCommand(e) {
+  if (!sysZoomable()) return null;
+  const low = String(e.key || '').toLowerCase();
+  if (low === 'a') return 'selectAll';
+  if (low === 'c') return ui.stepSels.length ? 'copyPart' : null;
+  if (low === 'v') return 'pastePart';
+  if (low === 'd') return ui.stepSels.length ? 'duplicatePart' : null;
+  return null;
 }
 
 // ── 足す・消す ──
@@ -11996,7 +12157,7 @@ function addStepAfter(y, stepId) {
 const deleteSwimStep = (id) => actions.deleteStep(ui.systemId, id);
 const deleteSwimEdge = (id) => actions.deleteEdge(ui.systemId, id);
 function deleteSwimSelection() {
-  if (ui.stepSel) deleteSwimStep(ui.stepSel);
+  if (ui.stepSels.length) actions.deleteSteps(ui.systemId, ui.stepSels);
   else if (ui.edgeSel) deleteSwimEdge(ui.edgeSel);
 }
 
@@ -12005,23 +12166,25 @@ function deleteSwimSelection() {
 // 80 おきのガイド線、横切る向きはつながった相手・レーンの 1/4・真ん中・3/4〕。Shift で横か縦に固定し、Alt を押している間は吸着しない。動かしている間、
 // 線はその場で引き直し、吸い付いた所にガイドを出す〔琥珀＝流れの向き・青＝レーンの中・ピンク＝つながった相手〕。放すまで保存しない。放すと placeStep。
 // 真ん中の入ったレーンの役割に変わる）。吸着と線は、ドラッグを始めたときの並べ方（swimDrawn.D）から求める
-function startSwimMove(e, stepId) {
+// 選んだ工程のどれかを動かすと、選んだ工程をまとめて動かす（v1.03 段階 B。MPD と同じく、掴んだ工程だけが吸着し、ほかの工程は同じだけ動く〔レーンの中に収める〕）。
+// Ctrl を押している間は複製（元の工程は元の位置に残す。途中で押しても離しても切り替わる。放すと、写した工程どうしの矢印と一緒に足す）。mod は押した時点で Ctrl か Shift を押していたか
+function startSwimMove(e, stepId, mod = false) {
   const b = swimDrawn && swimDrawn.pos['w:' + stepId];
   if (!b) return;
   const p = swimPoint(e);
-  drag = { kind: 'swim-move', id: stepId, sx: e.clientX, sy: e.clientY, px: p.x, py: p.y, ox: p.x - b.x, oy: p.y - b.y, b, moved: false, at: null, D: swimDrawn.D, frame: 0 };
+  const ids = (ui.stepSels.includes(stepId) ? ui.stepSels : [stepId]).filter((id) => swimDrawn.pos['w:' + id]);
+  drag = { kind: 'swim-move', id: stepId, ids, mod, sx: e.clientX, sy: e.clientY, px: p.x, py: p.y, ox: p.x - b.x, oy: p.y - b.y, b, moved: false, ats: null, at: null, copy: false, D: swimDrawn.D, frame: 0 };
 }
 const swimNodeEl = (id) => [...document.querySelectorAll('#sys-swim .mnode.sw')].find((x) => x.dataset.node === 'w:' + id) || null;
 function dragSwimMove(ev) {
   if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
-  const n = swimNodeEl(drag.id);
-  if (!n) return;
+  if (!swimNodeEl(drag.id)) return;
   if (!drag.moved) {
     drag.moved = true;
     document.body.classList.add('map-dragging');
     hideSwimPlus();
   }
-  n.classList.add('dragging'); // 元に戻すなどで図が描き直されたときも、今の箱に付ける
+  setSwimDragCopy(!!(ev.ctrlKey || ev.metaKey));
   const p = swimPoint(ev);
   let raw = { x: p.x - drag.ox, y: p.y - drag.oy };
   let axis = null;
@@ -12030,33 +12193,345 @@ function dragSwimMove(ev) {
     raw = axis === 'h' ? { x: raw.x, y: drag.b.y } : { x: drag.b.x, y: raw.y };
   }
   const at = swimSnap(drag.D, 'w:' + drag.id, raw, { alt: ev.altKey, axis });
-  drag.at = at;
-  Object.assign(n.style, { left: at.x + 'px', top: at.y + 'px' });
+  const [dx, dy] = [at.x - drag.b.x, at.y - drag.b.y];
+  const ats = { ['w:' + drag.id]: at };
+  drag.ids.forEach((id) => {
+    const k = 'w:' + id;
+    const b0 = drag.D.L.pos[k];
+    if (id !== drag.id && b0) ats[k] = swimSnap(drag.D, k, { x: b0.x + dx, y: b0.y + dy }, { alt: true });
+  });
+  Object.assign(drag, { at, ats });
+  Object.entries(ats).forEach(([k, a]) => {
+    const n = swimNodeEl(k.slice(2));
+    if (!n) return;
+    n.classList.add('dragging'); // 元に戻すなどで図が描き直されたときも、今の箱に付ける
+    Object.assign(n.style, { left: a.x + 'px', top: a.y + 'px' });
+  });
   drawSwimGuides(drag.D.L, at, drag.b);
-  // 線の引き直しは、画面を描く間に 1 回だけ（マウスの動きのたびに引くと重い）
-  if (!drag.frame) drag.frame = requestAnimationFrame(() => { if (drag && drag.kind === 'swim-move') { drag.frame = 0; redrawSwimEdges(drag.D, 'w:' + drag.id, drag.at); } });
+  // 線の引き直しは、画面を描く間に 1 回だけ（マウスの動きのたびに引くと重い）。複製の間は、元の工程の線のまま
+  if (!drag.frame) drag.frame = requestAnimationFrame(() => { if (drag && drag.kind === 'swim-move') { drag.frame = 0; redrawSwimEdges(drag.D, drag.copy ? {} : drag.ats); } });
 }
-// 動かしている箱 key を at（swimSnap の戻り値）に置いたときの線を、図の SVG だけ描き直す（帯・箱・名前はそのまま）
-function redrawSwimEdges(D, key, at) {
+// 複製に切り替える・移動に戻す（Ctrl を押した・離した）。複製の間は、元の位置に元の工程の写し（.swim-orig。押せない）を置く
+function setSwimDragCopy(on) {
+  if (drag.copy === on) return;
+  drag.copy = on;
+  document.body.classList.toggle('copying', on);
+  document.querySelectorAll('#sys-swim .swim-orig').forEach((n) => n.remove());
+  if (!on) return;
+  drag.ids.forEach((id) => {
+    const n = swimNodeEl(id);
+    const b0 = drag.D.L.pos['w:' + id];
+    if (!n || !b0) return;
+    const c = n.cloneNode(true);
+    delete c.dataset.node;
+    c.classList.remove('dragging', 'sel');
+    c.classList.add('swim-orig');
+    Object.assign(c.style, { left: b0.x + 'px', top: b0.y + 'px' });
+    n.parentNode.insertBefore(c, n);
+  });
+}
+// 動かしている箱（ats: 鍵 → swimSnap の戻り値）を置いたときの線を、図の SVG だけ描き直す（帯・箱・名前はそのまま）
+function redrawSwimEdges(D, ats) {
   const svg = $('#sys-swim .swim-inner > svg.swim-svg');
-  if (!svg || !at) return;
-  const L = { ...D.L, pos: { ...D.L.pos, [key]: { ...D.L.pos[key], x: at.x, y: at.y } } };
+  if (!svg || !ats) return;
+  const pos = { ...D.L.pos };
+  Object.entries(ats).forEach(([k, a]) => { if (pos[k]) pos[k] = { ...pos[k], x: a.x, y: a.y }; });
+  const L = { ...D.L, pos };
   svg.outerHTML = swimSvg({ model: D.model, L, routes: swimRoutesOf(D.model, L) }, { edit: true });
   markSwimState();
 }
-// 放したとき。位置が変わったら placeStep（元に戻すの 1 回分）。同じ所に戻したとき（動かせなかったときも）は、図を元の形に描き直す
+// 放したとき。動かしていなければ、Ctrl・Shift なら足す・外す、選んだ工程の 1 つを押したならそれだけを選ぶ。
+// 位置が変わったら placeSteps（元に戻すの 1 回分）、複製なら addStepsAt で足して、足した工程を選ぶ。同じ所に戻したとき（動かせなかったときも）は、図を元の形に描き直す
 function endSwimMove(done) {
-  document.body.classList.remove('map-dragging');
+  document.body.classList.remove('map-dragging', 'copying');
   if (done.frame) cancelAnimationFrame(done.frame);
   clearSwimDropMarks();
-  if (!done.moved) return;
+  if (!done.moved) {
+    if (done.mod) toggleStepSel(done.id);
+    else if (ui.stepSels.length > 1) selectStep(done.id);
+    return;
+  }
   const y = findSystem(store.state, ui.systemId);
-  const w = y && findStep(y, done.id);
-  if (!w) return;
-  const at = done.at;
-  if (at && actions.placeStep(y.id, w.id, { roleId: at.roleId, flow: at.flow, cross: at.cross })) return;
+  const moves = y && done.ats ? done.ids.map((id) => {
+    const a = done.ats['w:' + id];
+    return a && findStep(y, id) ? { id, roleId: a.roleId, flow: a.flow, cross: a.cross } : null;
+  }).filter(Boolean) : [];
+  if (!moves.length) { if (y) redrawSwimlane(y); return; }
+  if (done.copy) {
+    const set = new Set(moves.map((m) => m.id));
+    const items = moves.map((m) => ({ key: m.id, step: findStep(y, m.id), roleId: m.roleId, flow: m.flow, cross: m.cross }));
+    const ids = actions.addStepsAt(y.id, items, y.swimlane.edges.filter((e) => set.has(e.from) && set.has(e.to)));
+    if (ids) setSwimSels(ids);
+    else redrawSwimlane(y);
+    return;
+  }
+  if (actions.placeSteps(y.id, moves)) { setSwimSels(moves.map((m) => m.id)); return; }
   redrawSwimlane(y);
 }
+// 矢印キー（v1.03 段階 B。MPD の nudgeSel と同じ）: 選んだ工程を dx・dy（図の中のドット）だけ動かす。吸着せず、レーンの中に収め、真ん中の入ったレーンの役割にする。
+// 1 回押す＝元に戻すの 1 回分（MPD と同じ）
+function nudgeSwimSteps(dx, dy) {
+  const y = editableSystem(ui.systemId);
+  if (!y || !swimDrawn || !ui.stepSels.length || !(dx || dy)) return;
+  const { D } = swimDrawn;
+  const moves = ui.stepSels.map((id) => {
+    const k = 'w:' + id;
+    const b = D.L.pos[k];
+    if (!b) return null;
+    const a = swimSnap(D, k, { x: b.x + dx, y: b.y + dy }, { alt: true });
+    return { id, roleId: a.roleId, flow: a.flow, cross: a.cross };
+  }).filter(Boolean);
+  if (moves.length) actions.placeSteps(y.id, moves);
+}
+
+// ── 囲む選択（v1.03 段階 B・q150 案B。編集の画面の 'band' と同じく、全体が枠に入った工程を選ぶ。Ctrl か Shift を押していたら、今の選択に足す）──
+function startSwimBand(e, additive) {
+  const p = swimPoint(e);
+  drag = { kind: 'swim-band', x0: p.x, y0: p.y, base: additive ? [...ui.stepSels] : [], sx: e.clientX, sy: e.clientY, moved: false };
+}
+// 枠 r（図の中の位置）に全体が入った工程の id
+function swimStepsInRect(r) {
+  if (!swimDrawn) return [];
+  return Object.entries(swimDrawn.pos).filter(([k, b]) => k.startsWith('w:') && b.x >= r.x && b.y >= r.y && b.x + b.w <= r.x + r.w && b.y + b.h <= r.y + r.h).map(([k]) => k.slice(2));
+}
+function dragSwimBand(ev) {
+  if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
+  const inner = $('#sys-swim .swim-inner');
+  if (!inner) return;
+  if (!drag.moved) { drag.moved = true; hideSwimPlus(); }
+  const p = swimPoint(ev);
+  const r = { x: Math.min(drag.x0, p.x), y: Math.min(drag.y0, p.y), w: Math.abs(p.x - drag.x0), h: Math.abs(p.y - drag.y0) };
+  let el = $('#swim-band');
+  if (!el) {
+    inner.insertAdjacentHTML('beforeend', '<div id="swim-band" class="band"></div>');
+    el = $('#swim-band');
+  }
+  Object.assign(el.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' });
+  // 囲んでいる間も、選ぶ工程の印を付ける（右のパネルは放したときに描き直す）
+  ui.stepSels = [...new Set([...drag.base, ...swimStepsInRect(r)])];
+  ui.edgeSel = null;
+  markSwimState();
+}
+function endSwimBand(done) {
+  const el = $('#swim-band');
+  if (el) el.remove();
+  if (done.moved) refreshSwimMarks();
+}
+
+// ── 手のひらツールの、何もない所のドラッグ（図を動かす。編集の画面の 'pan' と同じ）──
+function startSwimPan(e) {
+  const box = $('#sys-swim');
+  if (!box) return;
+  drag = { kind: 'swim-pan', box, sx: e.clientX, sy: e.clientY, sl: box.scrollLeft, st: box.scrollTop, moved: false };
+  box.classList.add('grabbing');
+}
+function dragSwimPan(ev) {
+  if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) < 4) return;
+  drag.moved = true;
+  drag.box.scrollLeft = drag.sl - (ev.clientX - drag.sx);
+  drag.box.scrollTop = drag.st - (ev.clientY - drag.sy);
+}
+function endSwimPan(done) {
+  done.box.classList.remove('grabbing');
+  if (!done.moved) setSwimSel(null, null); // 押しただけなら、選ぶのをやめる（MPD と同じ）
+}
+
+// ── 左右のボタンの同時押し（v1.03 段階 B。MPD v8.26 の chordToggleMode）: 選択 ⇔ 手のひらツール。している途中のドラッグはやめて元に戻す。
+// 切り替えた直後の右クリック（消す）・クリック・ダブルクリックは、両方のボタンを離すまで効かせない ──
+let swimChordSuppress = false;
+function onSwimChord(e) {
+  const chord = (e.button === 2 && (e.buttons & 1)) || (e.button === 0 && (e.buttons & 2));
+  if (!chord || !swimHitOf(e.target) || !sysZoomable()) return false;
+  e.preventDefault();
+  swimChordSuppress = true;
+  cancelSwimDrag();
+  setSwimMode(ui.swimMode === 'hand' ? 'select' : 'hand');
+  return true;
+}
+function onSwimChordUp(ev) {
+  if (swimChordSuppress && ev.buttons === 0) setTimeout(() => { swimChordSuppress = false; }, 0);
+}
+// している途中のスイムレーン図のドラッグをやめる（保存しない。図を描き直して元の形に戻す）
+function cancelSwimDrag() {
+  if (!drag || !String(drag.kind).startsWith('swim-')) return;
+  const d = drag;
+  drag = null;
+  if (d.frame) cancelAnimationFrame(d.frame);
+  document.body.classList.remove('map-dragging', 'copying');
+  ['#swim-band', '.swim-ghost'].forEach((sel) => { const el = $(sel); if (el) el.remove(); });
+  clearSwimDropMarks();
+  clearSwimGuide();
+  clearRelinkMark();
+  if (d.kind === 'swim-pan') d.box.classList.remove('grabbing');
+  if (d.kind === 'swim-band') ui.stepSels = d.base;
+  const y = findSystem(store.state, ui.systemId);
+  if (y && $('#sys-swim')) redrawSwimlane(y);
+  refreshSwimMarks();
+}
+
+// ── 画面の端での自動スクロール（v1.03 段階 B。MPD v8.23 の edgeAutoScroll）: 工程を動かす・囲む・置き場から置く・矢印の端の付け替えの間に、
+// カーソルが図の見えている所の端（24 ドット以内か外）に出たら、その向きへ毎フレーム送り、最後のマウスの位置でドラッグを続ける（マウスが止まっていても続く）。
+// 置き場から置くときは、カーソルが図の中にあるときだけ（右のパネルの置き場の上で、図が送られないように）。端に残したレーンの見出しの所は、端に数えない ──
+const swimAutoScroll = (() => {
+  const MARGIN = 24;
+  const MAX_STEP = 20;
+  const GAIN = 0.25;
+  let raf = null;
+  let last = null;
+  const busy = () => !!drag && ['swim-move', 'swim-band', 'swim-place', 'swim-end'].includes(drag.kind);
+  function velocity(box) {
+    const r = box.getBoundingClientRect();
+    const hdr = swimDrawn ? swimDrawn.hdr * ui.sysZoom : 0;
+    const V = !!(swimDrawn && swimDrawn.vertical);
+    const e = { left: r.left + (V ? 0 : hdr), top: r.top + (V ? hdr : 0), right: r.left + box.clientWidth, bottom: r.top + box.clientHeight };
+    const { clientX: x, clientY: y } = last;
+    if (drag.kind === 'swim-place' && (x < r.left || x > e.right || y < r.top || y > e.bottom)) return { dx: 0, dy: 0 };
+    const spd = (d) => Math.sign(d) * Math.min(MAX_STEP, Math.ceil(Math.abs(d) * GAIN));
+    return {
+      dx: x < e.left + MARGIN ? spd(x - (e.left + MARGIN)) : x > e.right - MARGIN ? spd(x - (e.right - MARGIN)) : 0,
+      dy: y < e.top + MARGIN ? spd(y - (e.top + MARGIN)) : y > e.bottom - MARGIN ? spd(y - (e.bottom - MARGIN)) : 0,
+    };
+  }
+  function tick() {
+    const box = $('#sys-swim');
+    if (!busy() || !box) { stop(); return; }
+    if (last && drag.moved && box.clientWidth > 0) { // 大きさの分からない欄（jsdom・隠れているとき）では送らない
+      const v = velocity(box);
+      if (v.dx || v.dy) {
+        const [sl, st] = [box.scrollLeft, box.scrollTop];
+        box.scrollLeft = sl + v.dx;
+        box.scrollTop = st + v.dy;
+        if (box.scrollLeft !== sl || box.scrollTop !== st) onDragMove({ ...last, target: (document.elementFromPoint && document.elementFromPoint(last.clientX, last.clientY)) || last.target });
+      }
+    }
+    if (raf != null) raf = requestAnimationFrame(tick);
+  }
+  function stop() {
+    if (raf != null) cancelAnimationFrame(raf);
+    raf = null;
+    last = null;
+  }
+  return {
+    update(ev) {
+      if (raf == null) { if (!busy()) return; raf = requestAnimationFrame(tick); }
+      last = { clientX: ev.clientX, clientY: ev.clientY, altKey: !!ev.altKey, shiftKey: !!ev.shiftKey, ctrlKey: !!ev.ctrlKey, metaKey: !!ev.metaKey, target: ev.target };
+    },
+    stop,
+  };
+})();
+
+// ── コピーと貼り付け（v1.03 段階 B・q149 案A。MPD と同じ貼り付けモード）──
+// swimClip: コピーした工程 { steps: [{ key（元の id）, step（工程の写し）, x, y, w, h（コピーしたときの箱の位置と大きさ）}], edges（写した工程どうしの矢印の写し）}。
+// アプリの中だけに持つ（別のウィンドウからの貼り付けは写さない）。別のシステムにも貼れる（役割は置いた所のレーン。使う画面は、そのシステムの画面設計のときだけ写す）
+let swimClip = null;
+let swimMouse = null; // 最後のマウスの位置（貼り付けの薄い形を、マウスを動かす前から出すため）
+function swimClipOf(ids) {
+  const y = findSystem(store.state, ui.systemId);
+  if (!y || !swimDrawn) return null;
+  const steps = ids.map((id) => {
+    const w = findStep(y, id);
+    const b = swimDrawn.pos['w:' + id];
+    return w && b ? { key: id, step: clone(w), x: b.x, y: b.y, w: b.w, h: b.h } : null;
+  }).filter(Boolean);
+  if (!steps.length) return null;
+  const set = new Set(steps.map((c) => c.key));
+  return { steps, edges: y.swimlane.edges.filter((e) => set.has(e.from) && set.has(e.to)).map(clone) };
+}
+function copySwimSelection() {
+  const c = swimClipOf(ui.stepSels);
+  if (!c) { toast('コピーする工程を選んでください'); return; }
+  swimClip = c;
+  toast(`${c.steps.length} 個の工程をコピーしました`);
+  updateSysToolbar();
+}
+// 貼り付けモードにする（clip を、図の押した所に貼る）。clip がないときはお知らせだけ
+function startSwimPaste(clip, { empty = '貼り付ける工程がありません。先に工程を選んで、Ctrl+C でコピーしてください' } = {}) {
+  if (store.isViewing || !editableSystem(ui.systemId)) return;
+  if (!clip) { toast(empty); return; }
+  hideSwimPlus();
+  clearSwimGuide();
+  Object.assign(ui, { swimPaste: clip, swimLink: null, swimPal: null }, ui.swimMode === 'connect' ? { swimMode: 'select' } : {});
+  toast('図の押した所に貼り付けます（Esc でやめる）');
+  refreshSwimMarks();
+  if (swimMouse) drawSwimPasteGhost(swimMouse);
+}
+function exitSwimPaste() {
+  if (!ui.swimPaste) return;
+  ui.swimPaste = null;
+  removeSwimPasteGhost();
+  refreshSwimMarks();
+}
+// 点 pt（図の中の位置）に貼るときの、工程ごとの置く所（swimSnap の戻り値に、写した工程 c を足したもの）。工程の集まりの真ん中を pt に合わせ、
+// 最初の工程をガイドに吸い付かせ（alt で吸い付かない）、ほかの工程は同じだけずらして、真ん中の入ったレーンの中に収める
+function swimPasteTargets(clip, pt, alt = false) {
+  if (!swimDrawn || !swimDrawn.lanes.length) return [];
+  const { D } = swimDrawn;
+  const xs = clip.steps.flatMap((c) => [c.x, c.x + c.w]);
+  const ys = clip.steps.flatMap((c) => [c.y, c.y + c.h]);
+  const [dx, dy] = [pt.x - (Math.min(...xs) + Math.max(...xs)) / 2, pt.y - (Math.min(...ys) + Math.max(...ys)) / 2];
+  const pos = { ...D.L.pos };
+  clip.steps.forEach((c, i) => { pos['+p' + i] = { x: c.x + dx, y: c.y + dy, w: c.w, h: c.h }; });
+  const DD = { ...D, L: { ...D.L, pos } };
+  const c0 = clip.steps[0];
+  const a0 = swimSnap(DD, '+p0', { x: c0.x + dx, y: c0.y + dy }, { alt });
+  const [sx, sy] = [a0.x - (c0.x + dx), a0.y - (c0.y + dy)];
+  return clip.steps.map((c, i) => ({ ...(i ? swimSnap(DD, '+p' + i, { x: c.x + dx + sx, y: c.y + dy + sy }, { alt: true }) : a0), c }));
+}
+// 貼り付けの薄い形（マウスに付いて動く。押せない）。マウスが図の外にあるときは出さない
+function drawSwimPasteGhost(m) {
+  const inner = $('#sys-swim .swim-inner');
+  const box = $('#sys-swim');
+  if (!inner || !box || !ui.swimPaste) return;
+  const r = box.getBoundingClientRect();
+  if (r.width > 0 && (m.clientX < r.left || m.clientX > r.right || m.clientY < r.top || m.clientY > r.bottom)) { removeSwimPasteGhost(); return; } // 大きさの分からない欄（jsdom）では見ない
+  const at = swimPasteTargets(ui.swimPaste, swimPoint(m), !!m.altKey);
+  let g = $('#swim-paste-ghost');
+  if (!g) {
+    inner.insertAdjacentHTML('beforeend', '<div id="swim-paste-ghost" class="swim-paste-ghost" aria-hidden="true"></div>');
+    g = $('#swim-paste-ghost');
+  }
+  g.innerHTML = at.map((a) => `<div class="mnode sw k-${a.c.step.kind}" style="left:${a.x}px;top:${a.y}px;width:${a.c.w}px;height:${a.c.h}px"><b>${esc(swimStepName(a.c.step))}</b></div>`).join('');
+}
+function removeSwimPasteGhost() {
+  const g = $('#swim-paste-ghost');
+  if (g) g.remove();
+}
+// 押した所に貼り付ける（元に戻すの 1 回分）。貼り付けモードをやめ、貼り付けた工程を選ぶ
+function pasteSwimAt(y, pt, alt = false) {
+  const clip = ui.swimPaste;
+  const at = clip ? swimPasteTargets(clip, pt, alt) : [];
+  exitSwimPaste();
+  if (!at.length) return;
+  const ids = actions.addStepsAt(y.id, at.map((a) => ({ key: a.c.key, step: a.c.step, roleId: a.roleId, flow: a.flow, cross: a.cross })), clip.edges);
+  if (!ids) return;
+  setSwimSels(ids);
+  toast(`${ids.length} 個の工程を貼り付けました`);
+}
+
+// ── ホイールの拡大縮小（v1.03 段階 B。MPD・編集の画面と同じ）: Ctrl＋ホイールはどのモードでも、手のひらツールではホイールだけで、カーソルの位置を中心に ──
+function onSwimWheel(ev) {
+  if (ui.view !== 'system' || isDialogOpen() || !sysZoomable()) return;
+  if (!ev.target || !ev.target.closest || !ev.target.closest('#sys-swim')) return;
+  if (ui.swimMode !== 'hand' && !(ev.ctrlKey || ev.metaKey)) return;
+  ev.preventDefault();
+  if (ev.deltaY !== 0) zoomSwimAt(ev, ev.deltaY < 0 ? 1 : -1);
+}
+function zoomSwimAt(ev, dir) {
+  const box = $('#sys-swim');
+  const y = findSystem(store.state, ui.systemId);
+  const before = ui.sysZoom;
+  const zoom = nextZoom(dir, before);
+  if (!box || !y || zoom === before) return;
+  const r = box.getBoundingClientRect();
+  const [vx, vy] = [ev.clientX - r.left, ev.clientY - r.top];
+  const [docX, docY] = [(vx + box.scrollLeft) / before, (vy + box.scrollTop) / before];
+  ui.sysZoom = zoom;
+  redrawSwimlane(y);
+  box.scrollLeft = Math.max(0, docX * zoom - vx);
+  box.scrollTop = Math.max(0, docY * zoom - vy);
+  updateSysToolbar();
+}
+
 // 置き場から置くときの、置く所の点線の枠（at は swimPlaceSnap の戻り値）
 function showSwimDrop(at) {
   const inner = $('#sys-swim .swim-inner');
@@ -15236,9 +15711,12 @@ function onDragMove(ev) {
   if (drag.kind === 'item-sort') { dragItemSort(ev); return; }
   if (drag.kind === 'screen-sort') { dragScreenSort(ev); return; }
   if (drag.kind === 'sys-design-sort') { dragSysDesignSort(ev); return; }
+  if (String(drag.kind).startsWith('swim-')) swimAutoScroll.update(ev); // 画面の端での自動スクロール（v1.03 段階 B）
   if (drag.kind === 'swim-move') { dragSwimMove(ev); return; }
   if (drag.kind === 'swim-end') { dragSwimRelink(ev); return; }
   if (drag.kind === 'swim-place') { dragSwimPlace(ev); return; }
+  if (drag.kind === 'swim-band') { dragSwimBand(ev); return; }
+  if (drag.kind === 'swim-pan') { dragSwimPan(ev); return; }
   if (drag.kind === 'co-move' || drag.kind === 'co-size') { dragCallout(ev); return; }
   if (drag.kind === 'co-link') { dragCalloutLink(ev); return; }
   if (drag.kind === 'move' || drag.kind === 'size') { dragPart(ev); return; }
@@ -15292,9 +15770,12 @@ function onDragEnd(ev) {
     return;
   }
   if (done.kind === 'sys-design-sort') { endSysDesignSort(done); return; }
+  if (String(done.kind).startsWith('swim-')) swimAutoScroll.stop();
   if (done.kind === 'swim-move') { endSwimMove(done); return; }
   if (done.kind === 'swim-end') { endSwimRelink(done, ev); return; }
   if (done.kind === 'swim-place') { endSwimPlace(done, ev); return; }
+  if (done.kind === 'swim-band') { endSwimBand(done); return; }
+  if (done.kind === 'swim-pan') { endSwimPan(done); return; }
   if (done.kind === 'place') { if (done.moved) dropPlace(done, ev); return; }
   if (done.kind === 'move' || done.kind === 'size') {
     const r = done.rect;
@@ -17165,6 +17646,7 @@ const ACTION_COMMANDS = {
   undo: 'undo', redo: 'redo', home: 'goHome', 'back-system': 'backToSystem', export: 'exportDialog', 'import-html': 'importHtml', 'save-html': 'saveHtml', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
   'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
   'zoom-fit': 'zoomFit', 'swim-select': 'swimSelect', 'swim-connect': 'swimConnect', 'swim-delete': 'swimDelete', // システムの画面のスイムレーン図（第 9 段階の T6b）
+  'swim-hand': 'swimHand', 'swim-copy': 'copyPart', 'swim-paste': 'pastePart', // 手のひらツール・コピー・貼り付け（v1.03 段階 B）
   'swim-horizontal': 'swimHorizontal', 'swim-vertical': 'swimVertical', 'swim-arrange': 'swimArrange', // スイムレーン図の向き（q141）と整列（v1.03）
   'copy-part': 'copyPart', 'paste-part': 'pastePart', 'duplicate-part': 'duplicatePart', 'delete-part': 'deletePart', renumber: 'renumber',
   'open-items': 'openItems', 'open-map': 'openMap', 'open-process': 'openProcess', 'open-flow': 'openFlow', 'add-item-menu': 'addItemMenu', 'import-items': 'importItems', 'delete-callout': 'deletePart',
@@ -17369,6 +17851,11 @@ function onKeyDown(e) {
   // システムの画面のスイムレーン図（T6b）: Delete・Backspace で選んだものを消す・Esc でつなぐ途中と置き場の種類と選んだものをやめる・c と v でモード
   if (ui.view === 'system' && !inField && !inMenu && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
     const swimCmd = swimKeyCommand(e);
+    if (swimCmd) { e.preventDefault(); runCommand(swimCmd); return; }
+  }
+  // スイムレーン図の Ctrl+A・Ctrl+C・Ctrl+V・Ctrl+D（v1.03 段階 B。入力欄の中はブラウザの文字の操作のまま）
+  if (ui.view === 'system' && !inField && !inMenu && !e.altKey && (e.ctrlKey || e.metaKey) && !e.isComposing) {
+    const swimCmd = swimCtrlKeyCommand(e);
     if (swimCmd) { e.preventDefault(); runCommand(swimCmd); return; }
   }
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
@@ -21096,6 +21583,9 @@ function bindGlobalEvents() {
   document.addEventListener('mousemove', onDragMove);
   document.addEventListener('mousemove', onSwimHover); // スイムレーン図の ○＋ と、つなぐ途中の破線（T6b）
   document.addEventListener('mouseup', onDragEnd);
+  document.addEventListener('mouseup', onSwimChordUp, true); // 左右のボタンの同時押しの後、両方を離したら、クリックを効かせ直す（v1.03 段階 B）
+  // スイムレーン図の Ctrl＋ホイール・手のひらツールのホイールの拡大縮小（v1.03 段階 B。ブラウザ全体の拡大縮小にしないため、捕まえる側で受けて止める）
+  document.addEventListener('wheel', onSwimWheel, { capture: true, passive: false });
   // メニューの位置がボタンからずれるので閉じる
   window.addEventListener('resize', () => {
     if (ui.view === 'editor') { syncZoomSpacer(); closeScreenMenu(); closeRevMenu(); closeFoldMenu(); }
