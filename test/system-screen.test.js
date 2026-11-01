@@ -104,10 +104,10 @@ test('配置: いちばん上の帯（システムの名前と小さく「（シ
   assert.equal($('#sys-title').textContent, '出張申請システム（システム）');
   assert.equal($('#sys-title small').textContent, '（システム）');
   // メニューバーは編集の画面と同じ見た目（組と、組の名前）
-  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', 'モード', '編集', '図の向き', '配置', '表示']);
+  assert.deepEqual($$('#toolbar > .rgroup > .glabel').map((e) => e.textContent), ['ファイル', '履歴', 'モード', '編集', '図の向き', '配置', 'スペース', 'グループ', '表示']);
   assert.match($('#toolbar [data-action="home"]').textContent, /一覧へ/);
   assert.equal($('#toolbar [data-action="home"]').title, 'システムと画面設計の一覧へ戻ります');
-  assert.deepEqual($$('#toolbar .tbtn').map((b) => b.textContent), ['↶ 元に戻す', '↷ やり直す', '⧉ コピー', '📋 貼り付け', '＋ 拡大', '－ 縮小', '⊡ 全体を表示', '100%']);
+  assert.deepEqual($$('#toolbar .tbtn').map((b) => b.textContent), ['↶ 元に戻す', '↷ やり直す', '⧉ 選んだ工程をコピーする', '📋 コピーした工程を貼り付ける', '✕ 選んだものを削除する', ' スペース挿入', ' スペース調整', '⧉ グループ化', '⧈ グループ解除', ' グループ枠', '＋ 拡大', '－ 縮小', '⊡ 全体を表示', '100%']);
   assert.equal($('#toolbar [data-action="undo"]').disabled, true);
   assert.equal($('#toolbar [data-action="redo"]').disabled, true);
   // 左の入口（数）。履歴は「AI が直す前の状態」の行の数

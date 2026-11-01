@@ -248,6 +248,32 @@ test('exportBdmHtml — 矢印: 文字が変われば fromLabel・toLabel を空
   assert.equal(planFromHtml(out.html).edges.find((e) => e.from === first.from && e.to === first.to).label, 'はい');
 });
 
+test('exportBdmHtml — 見た目（v1.03 段階 D・q161）: 人が決めた色・枠・点線・文字の大きさと揃え・矢印の点線・レーンの色だけ、MPD の同じ名前の欄に入れる', () => {
+  const orig = { ...TRIP, nodes: TRIP.nodes.map((n, i) => (i === 0 ? { ...n, color: '#fef9c3', stroke: '#ca8a04' } : n)) };
+  const payload = payloadOf(bdmPlan(orig));
+  const [k0, k1] = [payload.steps[0].key, payload.steps[1].key];
+  payload.steps[1].look = { color: '#DCFCE7', stroke: '#16a34a', dashed: true, fontSize: 16, textAlign: 'left' };
+  payload.steps[2].look = { color: 'red', dashed: 'yes', fontSize: 99, textAlign: 'center', groupId: 'g1' };
+  payload.edges[0].dashed = true;
+  payload.laneColors = [null, { bg: '#FFF1F2', hd: '#fecdd3' }, { bg: 'x', hd: '#fff' }];
+  const out = exportBdmHtml(saved(orig), payload);
+  assertSameFlow(out.html, payload, out);
+  const st = extractBdmState(out.html);
+  const nodeOf = (key) => st.nodes.find((n) => n.id === payload.steps.find((s) => s.key === key).box);
+  assert.deepEqual([nodeOf(k0).color, nodeOf(k0).stroke], ['#fef9c3', '#ca8a04'], '決めていない欄は、使い回した元の箱の値のまま');
+  const n1 = nodeOf(k1);
+  assert.deepEqual([n1.color, n1.stroke, n1.dashed, n1.fontSize, n1.textAlign], ['#dcfce7', '#16a34a', true, 16, 'left']);
+  const n2 = nodeOf(payload.steps[2].key);
+  assert.deepEqual([n2.color, n2.dashed, n2.fontSize, n2.textAlign, n2.groupId], [undefined, undefined, 48, undefined, undefined], '形の違う欄は渡さない・大きさは 48 まで・グループは渡さない');
+  assert.equal(st.edges.find((e) => e.id === TRIP.edges[0].id).dashed, true);
+  assert.ok(st.edges.filter((e) => e.id !== TRIP.edges[0].id).every((e) => !('dashed' in e)), '点線にしない矢印には欄を足さない');
+  assert.deepEqual([st.lanes[1].bg, st.lanes[1].hd], ['#fff1f2', '#fecdd3'], '決めたレーンの色で上書きする');
+  assert.deepEqual([st.lanes[0], st.lanes[2]].map((l) => [l.bg, l.hd]), [TRIP.lanes[0], TRIP.lanes[2]].map((l) => [l.bg, l.hd]), '決めていない・形の違うレーンは元の色');
+  const fresh = extractBdmState(exportBdmHtml(saved(BLANK), { ...payload, steps: payload.steps.map((s) => ({ ...s, box: null })) }).html);
+  assert.deepEqual([fresh.lanes[1].bg, fresh.lanes[1].hd], ['#fff1f2', '#fecdd3'], '新しいレーンも決めた色');
+  assert.equal(fresh.nodes.find((n) => n.text === payload.steps[1].text).dashed, true, '新しい箱にも見た目を入れる');
+});
+
 test('exportBdmHtml — 始まり・終わりは矢印で読み直されるので、食い違えば warnings で知らせる', () => {
   const payload = flow(['申請者'], [step('a', 0, 0, 'task', '申請する'), step('b', 0, 1, 'end', '受付')], [['b', 'a']]);
   const out = exportBdmHtml(saved(BLANK), payload);

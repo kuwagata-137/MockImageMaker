@@ -150,7 +150,7 @@ test('全体を表示の倍率（swimFitZoom）: 図の幅を欄の幅に合わ�
 // ── メニューバー ──
 test('メニューバー: 「モード」の組（▶ 選択・→ 接続・✋ 手のひらツール。v1.03 段階 B・q148 案B）・「編集」の組（⧉ コピー・📋 貼り付け・✕ 削除）・「図の向き」（横向き・縦向き）・「配置」（工程を整列する）と「表示」の「全体を表示」。削除とコピーは選んでいるときだけ、貼り付けはコピーした後だけ押せる。スイムレーン図のほかでは押せない', async (t) => {
   const { app, api, $, $$, node } = await boot(t);
-  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', 'モード', '編集', '図の向き', '配置', '表示']);
+  assert.deepEqual($$('#toolbar > .rgroup > .glabel').map((e) => e.textContent), ['ファイル', '履歴', 'モード', '編集', '図の向き', '配置', 'スペース', 'グループ', '表示']);
   assert.deepEqual(['swim-horizontal', 'swim-vertical', 'swim-arrange'].map((a) => $(`#toolbar [data-action="${a}"]`).textContent.replace(/\s+/g, '')), ['横向き', '縦向き', '⊞工程を整列する']);
   const sel = $('#toolbar [data-action="swim-select"]');
   const con = $('#toolbar [data-action="swim-connect"]');
@@ -160,7 +160,7 @@ test('メニューバー: 「モード」の組（▶ 選択・→ 接続・✋ 
   const del = $('#toolbar [data-action="swim-delete"]');
   assert.deepEqual([sel, con, hand].map((b) => b.closest('.rgroup').querySelector('.glabel').textContent), ['モード', 'モード', 'モード']);
   assert.deepEqual([copy, paste, del].map((b) => b.closest('.rgroup').querySelector('.glabel').textContent), ['編集', '編集', '編集']);
-  assert.deepEqual([sel, con, hand, copy, paste, del].map((b) => b.textContent.replace(/\s+/g, '')), ['▶選択', '→接続', '✋手のひらツール', '⧉コピー', '📋貼り付け', '✕選んだものを削除する']);
+  assert.deepEqual([sel, con, hand, copy, paste, del].map((b) => b.textContent.replace(/\s+/g, '')), ['▶選択', '→接続', '✋手のひらツール', '⧉選んだ工程をコピーする', '📋コピーした工程を貼り付ける', '✕選んだものを削除する']);
   assert.deepEqual([sel.classList.contains('on'), con.classList.contains('on'), hand.classList.contains('on'), del.disabled, copy.disabled, paste.disabled], [true, false, false, true, true, true]);
   assert.ok($('#toolbar [data-action="zoom-fit"]'));
   assert.equal($('#toolbar [data-action="zoom-fit"]').textContent, '⊡ 全体を表示');
@@ -1531,4 +1531,491 @@ test('手直しの出し先（段階 C・q155）: 説明書（PDF）と AI の�
   assert.ok(!/sw-rs|sw-seg|sw-lanew|swim-stick|data-role/.test(html), '押す所は描かない');
   const plan = JSON.stringify(api.bdmExportPlan(y, null).plan);
   assert.ok(!/laneW|size|shape|fromPin|orthoWps|labelT/.test(plan), plan);
+});
+
+// ── v1.03 段階 D: 整える機能（q157〜q161）──
+test('見た目とグループ枠のデータ（段階 D）: 形の違う色・点線・文字の大きさ・揃え・グループ・レーンの色・枠は外すか直す。知らない欄は残す。枠がなければ欄を付けない', async (t) => {
+  const s = sampleState();
+  const y = s.systems[0];
+  Object.assign(y.swimlane.steps[0], { color: '#FEE2E2', stroke: 'red', dashed: 'yes', fontSize: 100, textAlign: 'center', groupId: 'g-1' });
+  Object.assign(y.swimlane.steps[1], { dashed: true, fontSize: 3.6, textAlign: 'left', groupId: '' });
+  Object.assign(y.swimlane.edges[0], { dashed: true });
+  Object.assign(y.swimlane.edges[1], { dashed: 1 });
+  Object.assign(y.roles[0], { bg: '#EFF6FF', hd: '#bfdbfe' });
+  Object.assign(y.roles[1], { bg: 'blue' });
+  y.swimlane.frames = [{ id: 'f-1', text: '申請と承認', rect: { horizontal: { x: 10, y: 20, w: 30, h: 10 }, vertical: { x: 'a' }, other: 1 }, memo: 'x' }, { id: 'f-1', text: '', rect: null }, 'x'];
+  const { sys } = await boot(t, s);
+  const yy = sys();
+  const [w1, w2] = yy.swimlane.steps;
+  assert.deepEqual([w1.color, w1.stroke, w1.dashed, w1.fontSize, w1.textAlign, w1.groupId], ['#fee2e2', undefined, undefined, 48, undefined, 'g-1']);
+  assert.deepEqual([w2.dashed, w2.fontSize, w2.textAlign, w2.groupId], [true, 6, 'left', undefined]);
+  assert.deepEqual([yy.swimlane.edges[0].dashed, yy.swimlane.edges[1].dashed], [true, undefined]);
+  assert.deepEqual([yy.roles[0].bg, yy.roles[0].hd, yy.roles[1].bg], ['#eff6ff', '#bfdbfe', undefined]);
+  assert.equal(yy.swimlane.frames.length, 2);
+  assert.deepEqual(yy.swimlane.frames[0], { id: 'f-1', text: '申請と承認', memo: 'x', rect: { horizontal: { x: 10, y: 20, w: 80, h: 44 }, other: 1 } }, '大きさの下限 80 × 44・形の違う向きは外す');
+  assert.notEqual(yy.swimlane.frames[1].id, 'f-1', 'id の重なりを直す');
+  assert.ok(!('rect' in yy.swimlane.frames[1]));
+  assert.ok(!('frames' in sys('y-exp').swimlane), '枠がなければ欄を付けない');
+});
+
+test('工程の見た目・矢印の点線・レーンの色（actions.setStepLook・setEdgeDashed・setRoleColor。段階 D・q160）: null で標準に戻す。形の違う値は入れない。変わらないときは積まない', async (t) => {
+  const { api, sys, step } = await boot(t);
+  const n0 = api.store.undoStack.length;
+  assert.equal(api.actions.setStepLook('y-trip', ['w-x'], { color: '#dbeafe' }), false);
+  assert.equal(api.actions.setStepLook('y-trip', ['w-1'], { memo: 'x' }), false, '見た目の欄でなければ直さない');
+  assert.equal(api.actions.setStepLook('y-trip', ['w-1', 'w-2'], { color: '#DBEAFE', stroke: '#3b82f6', fontSize: 16, textAlign: 'left', dashed: true }), true);
+  assert.equal(api.store.undoStack.length, n0 + 1, '元に戻すの 1 回分');
+  assert.deepEqual([step('w-2').color, step('w-2').stroke, step('w-2').fontSize, step('w-2').textAlign, step('w-2').dashed], ['#dbeafe', '#3b82f6', 16, 'left', true]);
+  assert.equal(api.actions.setStepLook('y-trip', ['w-1', 'w-2'], { color: '#dbeafe' }), false, '変わらないときは積まない');
+  assert.equal(api.actions.setStepLook('y-trip', ['w-1'], { color: 'red', fontSize: 200 }), true);
+  assert.deepEqual([step('w-1').color, step('w-1').fontSize], [undefined, 48], '形の違う色は外し、大きさは 48 まで');
+  assert.equal(api.actions.setStepLook('y-trip', ['w-2'], { color: null, stroke: null, dashed: null, textAlign: null, fontSize: null }), true);
+  assert.ok(['color', 'stroke', 'dashed', 'textAlign', 'fontSize'].every((k) => !(k in step('w-2'))));
+  // 矢印の点線
+  assert.equal(api.actions.setEdgeDashed('y-trip', 'e-1', false), false);
+  assert.equal(api.actions.setEdgeDashed('y-trip', 'e-1', true), true);
+  assert.equal(sys().swimlane.edges[0].dashed, true);
+  assert.equal(api.actions.setEdgeDashed('y-trip', 'e-1', true), false);
+  assert.equal(api.actions.setEdgeDashed('y-trip', 'e-1', false), true);
+  assert.ok(!('dashed' in sys().swimlane.edges[0]));
+  // レーンの色
+  assert.equal(api.actions.setRoleColor('y-trip', 'l-a', { bg: 'x', hd: '#bfdbfe' }), false);
+  assert.equal(api.actions.setRoleColor('y-trip', 'l-a', null), false, '色がないときに標準へは戻さない');
+  assert.equal(api.actions.setRoleColor('y-trip', 'l-a', { bg: '#EFF6FF', hd: '#BFDBFE' }), true);
+  assert.deepEqual([sys().roles[0].bg, sys().roles[0].hd], ['#eff6ff', '#bfdbfe']);
+  assert.equal(api.actions.setRoleColor('y-trip', 'l-a', { bg: '#eff6ff', hd: '#bfdbfe' }), false);
+  assert.equal(api.actions.setRoleColor('y-trip', 'l-a', null), true);
+  assert.ok(!('bg' in sys().roles[0]) && !('hd' in sys().roles[0]));
+});
+
+test('グループ化とグループ枠（actions.groupSteps・ungroupSteps・addFrame・setFrameRect・renameFrame・deleteFrames。段階 D・q159）', async (t) => {
+  const { api, sys, step } = await boot(t);
+  const y = () => api.store.state.systems.find((x) => x.id === 'y-trip');
+  assert.equal(api.actions.groupSteps('y-trip', ['w-1']), null, '2 つ以上が要る');
+  const g1 = api.actions.groupSteps('y-trip', ['w-1', 'w-2']);
+  assert.ok(g1);
+  assert.deepEqual(plain(api.swimWithGroup(y(), ['w-2'])), ['w-2', 'w-1'], '1 つで同じグループの全部');
+  const g2 = api.actions.groupSteps('y-trip', ['w-2', 'w-3']);
+  assert.deepEqual([step('w-1').groupId, step('w-2').groupId, step('w-3').groupId], [g2, g2, g2], '入っていたグループの工程もまとめる');
+  assert.equal(api.actions.ungroupSteps('y-trip', ['w-5']), 0);
+  assert.equal(api.actions.ungroupSteps('y-trip', ['w-3']), 3);
+  assert.ok(['w-1', 'w-2', 'w-3'].every((id) => !('groupId' in step(id))));
+  // 枠
+  const n0 = api.store.undoStack.length;
+  const fid = api.actions.addFrame('y-trip', { x: 100, y: 10, w: 20, h: 300 });
+  assert.ok(fid);
+  assert.deepEqual(sys().swimlane.frames, [{ id: fid, text: 'グループ', rect: { horizontal: { x: 100, y: 10, w: 80, h: 300 } } }]);
+  assert.equal(api.actions.setFrameRect('y-trip', fid, { x: 100, y: 10, w: 80, h: 300 }), false, '変わらないときは積まない');
+  assert.equal(api.actions.setFrameRect('y-trip', fid, { x: 120, y: 10, w: 200, h: 300 }), true);
+  api.actions.setSwimOrient('y-trip', 'vertical');
+  assert.equal(api.swimFramesOf(y(), 'vertical').length, 0, 'ほかの向きでは描かない');
+  assert.equal(api.actions.setFrameRect('y-trip', fid, { x: 5, y: 60, w: 300, h: 200 }), true);
+  assert.deepEqual(plain(sys().swimlane.frames[0].rect), { horizontal: { x: 120, y: 10, w: 200, h: 300 }, vertical: { x: 5, y: 60, w: 300, h: 200 } });
+  assert.equal(api.actions.renameFrame('y-trip', fid, '  '), false);
+  assert.equal(api.actions.renameFrame('y-trip', fid, '申請と承認'), true);
+  assert.equal(sys().swimlane.frames[0].text, '申請と承認');
+  assert.equal(api.actions.deleteFrames('y-trip', ['f-x']), false);
+  assert.equal(api.actions.deleteFrames('y-trip', [fid]), true);
+  assert.ok(!('frames' in sys().swimlane), '最後の枠を消すと欄も消す');
+  assert.equal(api.store.undoStack.length, n0 + 6);
+});
+
+test('スペース挿入（actions.insertSwimGap。段階 D・q158 案A）: 流れの向きは点線より先の工程・曲がり角・枠を押し出す（またぐ枠は伸ばす）。レーンをまたぐ向きは点線のあるレーンを広げ、そのレーンの中の先の工程だけ押し出す', async (t) => {
+  const { api, geom, sys } = await boot(t);
+  const L0 = geom();
+  const b = (id, L = geom()) => L.pos['w:' + id];
+  const at = b('w-5', L0).x; // 出張に行く の左の縁
+  api.actions.setEdgeShape('y-trip', 'e-6', { orthoWps: [{ x: at + 200, y: 65 }, { x: at + 200, y: 325 }] });
+  const fid = api.actions.addFrame('y-trip', { x: at - 100, y: 10, w: 300, h: 100 }); // 点線をまたぐ枠
+  const n0 = api.store.undoStack.length;
+  assert.deepEqual(plain(api.actions.insertSwimGap('y-trip', { axis: 'flow', at, gap: 80 })), { lane: -1 });
+  assert.equal(api.store.undoStack.length, n0 + 1, '元に戻すの 1 回分');
+  const L1 = geom();
+  ['w-1', 'w-2', 'w-3', 'w-4'].forEach((id) => assert.equal(b(id, L1).x, b(id, L0).x, id + ' は動かない'));
+  ['w-5', 'w-6', 'w-7', 'w-8'].forEach((id) => assert.equal(b(id, L1).x, b(id, L0).x + 80, id + ' は 80 先へ'));
+  assert.equal(sys().swimlane.edges.find((e) => e.id === 'e-6').shape.horizontal.orthoWps[0].x, at + 280, '曲がり角も動く');
+  assert.deepEqual(plain(sys().swimlane.frames.find((f) => f.id === fid).rect.horizontal), { x: at - 100, y: 10, w: 380, h: 100 }, 'またぐ枠は伸ばす');
+  assert.equal(api.actions.insertSwimGap('y-trip', { axis: 'flow', at: 1e6, gap: 80 }), null, '動くものがなければ直さない');
+  // レーンをまたぐ向き（横向きは y）。申請者のレーン（0〜130）の 40 の所（工程の上の縁 49.5 より手前）
+  const c0 = geom();
+  assert.deepEqual(plain(api.actions.insertSwimGap('y-trip', { axis: 'cross', at: 40, gap: 80 })), { lane: 0 });
+  const c1 = geom();
+  assert.equal(c1.lanes[0].h, c0.lanes[0].h + 80, '申請者のレーンを 80 広げる');
+  assert.equal(sys().roles[0].laneW.horizontal, c0.lanes[0].h + 80);
+  assert.equal(b('w-1', c1).y, b('w-1', c0).y + 80, '申請者のレーンの中の、点線より先の工程を押し出す');
+  assert.equal(b('w-3', c1).y, b('w-3', c0).y + 80, '後ろのレーンの工程は、レーンがずれて動く');
+  api.store.undo();
+  assert.equal(geom().lanes[0].h, c0.lanes[0].h, '元に戻す');
+  assert.equal(api.actions.insertSwimGap('y-trip', { axis: 'x', at: 1, gap: 80 }), null);
+  assert.equal(api.actions.insertSwimGap('y-trip', { axis: 'flow', at: 1, gap: 0 }), null);
+});
+
+test('スペース調整（actions.adjustSwimGap・swimGapAdjustOf。段階 D・q158 案A）: 点線の両側でいちばん近い工程の外枠の間を既定の間（横向きの流れの向き 40）にそろえる。詰める・広げる。両側に工程がなければ直さない', async (t) => {
+  const { api, geom } = await boot(t);
+  const y = () => api.store.state.systems.find((x) => x.id === 'y-trip');
+  const b = (id) => geom().pos['w:' + id];
+  assert.equal(api.swimGapEdge(geom(), 'flow'), 40);
+  assert.equal(api.swimGapEdge(geom(), 'cross'), 43);
+  const mid = (b('w-1').x + b('w-1').w + b('w-2').x) / 2;
+  const r = plain(api.swimGapAdjustOf(y(), 'flow', mid));
+  assert.deepEqual([r.A.id, r.B.id, r.gap], ['w-1', 'w-2', 40]);
+  const gap0 = b('w-2').x - (b('w-1').x + b('w-1').w);
+  assert.equal(r.delta, Math.round(gap0 - 40));
+  const x6 = b('w-6').x;
+  const n0 = api.store.undoStack.length;
+  assert.equal(api.actions.adjustSwimGap('y-trip', { axis: 'flow', at: mid }).changed, true);
+  assert.equal(api.store.undoStack.length, n0 + 1);
+  assert.ok(Math.abs(b('w-2').x - (b('w-1').x + b('w-1').w) - 40) <= 0.5, '外枠の間が 40');
+  assert.ok(Math.abs(b('w-6').x - (x6 - r.delta)) <= 0.5, '先の工程も同じだけ動く');
+  assert.equal(api.actions.adjustSwimGap('y-trip', { axis: 'flow', at: mid }).changed, false, 'もうそろっている');
+  // 広げる: 間を詰めてからそろえる
+  api.actions.insertSwimGap('y-trip', { axis: 'flow', at: b('w-2').x, gap: 1 }); // 41
+  const w2 = b('w-2').x;
+  const r2 = api.actions.adjustSwimGap('y-trip', { axis: 'flow', at: mid });
+  assert.equal(r2.delta, 1);
+  assert.equal(b('w-2').x, w2 - 1);
+  assert.equal(api.actions.adjustSwimGap('y-trip', { axis: 'flow', at: -10 }).changed, false, '手前に工程がない');
+});
+
+test('見た目・グループ・グループ枠の出し先（段階 D・q161）: 説明書（PDF）と AI の画像の図（swimlaneHtml）に、色・点線・文字の大きさと揃え・矢印の点線・レーンの色・グループの点線の外枠・グループ枠を出す。ほかの向きの枠は描かない', async (t) => {
+  const { api, S } = await boot(t);
+  api.actions.setStepLook('y-trip', ['w-1'], { color: '#fee2e2', stroke: '#ef4444', dashed: true, fontSize: 18, textAlign: 'left' });
+  api.actions.setStepLook('y-trip', ['w-2'], { color: '#dbeafe' });
+  api.actions.setEdgeDashed('y-trip', 'e-1', true);
+  api.actions.setRoleColor('y-trip', 'l-a', { bg: '#eff6ff', hd: '#bfdbfe' });
+  const g = api.actions.groupSteps('y-trip', ['w-1', 'w-2']);
+  api.actions.addFrame('y-trip', { x: 10, y: 10, w: 300, h: 120 }, '申請と承認');
+  const html = api.swimlaneHtml(S(), S().systems[0]);
+  assert.match(html, /class="mnode sw k-[a-z]+ dashed" data-node="w:w-1"[^>]*background:#fee2e2;border-color:#ef4444;border-style:dashed/, '箱の色・枠の色・点線');
+  assert.match(html, /data-node="w:w-1"[^>]*><b style="font-size:18px;line-height:23px;align-self:stretch;text-align:left/, '文字の大きさと揃え');
+  assert.match(html, /data-node="w:w-2"[^>]*background:#dbeafe/);
+  assert.ok(!/data-node="w:w-3"[^>]*background:/.test(html), '決めていない工程は今までどおり');
+  assert.match(html, /stroke-dasharray="6,4"/, '矢印の点線');
+  assert.match(html, /fill="#eff6ff"/, 'レーンの色');
+  assert.match(html, /fill="#bfdbfe" stroke="#cbd5e1"/, 'レーンの見出しの色');
+  assert.match(html, new RegExp(`<rect class="sw-grp" data-group="${g}"[^>]*stroke-dasharray="5,4"`), 'グループの点線の外枠');
+  assert.match(html, /<g class="sw-frame" data-frame="f[^"]*"><rect class="sw-fr-line" x="10" y="10" width="300" height="120"/, 'グループ枠');
+  assert.match(html, />申請と承認<\/text>/);
+  // MPD への出力（bdmExportPlan）には、色・点線・文字の大きさと揃え・矢印の点線・レーンの色を渡し、グループとグループ枠は渡さない
+  const plan = api.bdmExportPlan(S().systems[0], null).plan;
+  const lookOf = (id) => JSON.parse(JSON.stringify(plan.steps.find((w) => w.key === id).look || {}));
+  assert.deepEqual(lookOf('w-1'), { color: '#fee2e2', stroke: '#ef4444', dashed: true, fontSize: 18, textAlign: 'left' });
+  assert.deepEqual(lookOf('w-2'), { color: '#dbeafe' });
+  assert.ok(!('look' in plan.steps.find((w) => w.key === 'w-3')), '見た目のない工程には欄を付けない（今までと同じ形）');
+  assert.equal(plan.edges.find((e) => e.from === 'w-1').dashed, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(plan.laneColors[0])), { bg: '#eff6ff', hd: '#bfdbfe' });
+  assert.equal(plan.laneColors[1], null);
+  assert.ok(!/groupId|frames|申請と承認/.test(JSON.stringify(plan)), 'グループとグループ枠は渡さない');
+  api.actions.setSwimOrient('y-trip', 'vertical');
+  assert.ok(!api.swimlaneHtml(S(), S().systems[0]).includes('sw-frame'), 'ほかの向きでは枠を描かない');
+});
+
+test('ツールバーのたたんだ組（段階 D・q162 案A）: 「編集」「グループ」は 1 つのボタン。押すと組のボタンを縦に出し、中のボタン・Esc で閉じる。グループ枠を描いている間は、たたんだボタンも青', async (t) => {
+  const { app, $, $$ } = await boot(t);
+  const fold = (k) => $(`#toolbar .fold-btn[data-fold="${k}"]`);
+  assert.deepEqual($$('#toolbar .fold-btn').map((b) => b.textContent.replace(/\s+/g, '')), ['✎編集▼', '▭グループ▼']);
+  const isOpen = (k) => fold(k).closest('.rgroup').classList.contains('open');
+  click(fold('sys-group'));
+  assert.equal(isOpen('sys-group'), true);
+  assert.equal(fold('sys-group').getAttribute('aria-expanded'), 'true');
+  click(fold('sys-edit'));
+  assert.deepEqual([isOpen('sys-edit'), isOpen('sys-group')], [true, false], 'ほかの組を押すと、そちらだけ出す');
+  key(app, app.document, { key: 'Escape' });
+  assert.equal(isOpen('sys-edit'), false, 'Esc で閉じる');
+  click(fold('sys-group'));
+  click($('#sys-frame'));
+  assert.equal(isOpen('sys-group'), false, '中のボタンを押すと閉じる');
+  assert.ok($('#sys-frame').classList.contains('on') && fold('sys-group').classList.contains('on'), 'グループ枠を描いている間は、たたんだボタンも青');
+  click($('#sys-frame'));
+  assert.equal(fold('sys-group').classList.contains('on'), false);
+});
+
+// 図の中の位置 (x, y) のマウスの値（図の左上と倍率から求める。jsdom では図の左上が 0・倍率 100% なので、そのまま。ブラウザで動かしても同じ所になる）
+function cpOf(env) {
+  if (env.api.ui.sysZoom !== 1) click(env.$('#sys-zoom-label')); // 100% にする（マウスの位置は整数に丸められるため）
+  return (x, y) => {
+    const r = env.inner().getBoundingClientRect();
+    const z = env.api.ui.sysZoom;
+    return { clientX: Math.round(r.left + x * z), clientY: Math.round(r.top + y * z) };
+  };
+}
+
+test('ツールバーの組「スペース」「グループ」（段階 D・q157 案A）: スペース挿入・調整は押している間は青（同じボタンでやめる）。向きのボタンは今の向きで ↔ 横・↕ 縦。グループ化は 2 つ以上、グループ解除はグループの工程を選んだときだけ押せる', async (t) => {
+  const env = await boot(t);
+  const { $, api, node, toast } = env;
+  const b = (id) => $('#' + id);
+  assert.equal(b('sys-gap-dir').textContent, '↔横', '横向きの流れの向きは左右');
+  click(b('sys-gap-dir'));
+  assert.equal(api.ui.swimGapAxis, 'cross');
+  assert.equal(b('sys-gap-dir').textContent, '↕縦', 'レーンをまたぐ向きは上下');
+  click(b('sys-gap-dir'));
+  click($('#sys-orient-v'));
+  assert.equal(b('sys-gap-dir').textContent, '↕縦', '縦向きの流れの向きは上下');
+  click(b('sys-gap-ins'));
+  assert.ok(b('sys-gap-ins').classList.contains('on'));
+  assert.ok($('#sys-swim').classList.contains('gap-y'));
+  assert.match(toast(), /横の点線の所を押すと、80 のスペースを挿入します/);
+  click(b('sys-gap-adj'));
+  assert.ok(!b('sys-gap-ins').classList.contains('on') && b('sys-gap-adj').classList.contains('on'), '別のボタンでそのモードへ');
+  click(b('sys-gap-adj'));
+  assert.equal(api.ui.swimGap, null);
+  assert.match(toast(), /スペース調整を終了しました/);
+  // グループ
+  assert.equal(b('sys-group').disabled, true);
+  assert.equal(b('sys-ungroup').disabled, true);
+  click(node('w-1'));
+  fire(node('w-2'), 'click', { ctrlKey: true });
+  assert.deepEqual(plain(api.ui.stepSels), ['w-1', 'w-2']);
+  assert.equal(b('sys-group').disabled, false);
+  click(b('sys-group'));
+  assert.match(toast(), /2 個の工程をグループにしました/);
+  assert.equal(b('sys-ungroup').disabled, false);
+  click(b('sys-frame'));
+  assert.ok(b('sys-frame').classList.contains('on') && $('#sys-swim').classList.contains('framing'));
+  assert.deepEqual(plain(api.ui.stepSels), [], '描くモードでは選ぶのをやめる');
+  key(env.app, env.app.document.body, { key: 'Escape' });
+  assert.equal(api.ui.swimFrameDraw, false);
+});
+
+test('スペース挿入のモード（段階 D・q158 案A）: 押すと 80、ドラッグでその幅だけ点線より先の工程を押し出す（元に戻すの 1 回分ずつ）。モードは続き、Esc・右クリックでやめる。点線は 10 刻み', async (t) => {
+  const env = await boot(t);
+  const { $, api, inner, geom, toast } = env;
+  const cp = cpOf(env);
+  const x = (id) => geom().pos['w:' + id].x;
+  const [x4, x5] = [x('w-4'), x('w-5')];
+  click($('#sys-gap-ins'));
+  fire(inner(), 'mousemove', cp(943, 200));
+  assert.ok($('#swim-gap'), '点線を出す');
+  assert.match($('#swim-gap').innerHTML, /x1="940(\.0)?"/, '10 刻み');
+  const n0 = api.store.undoStack.length;
+  press(inner(), cp(943, 200));
+  assert.equal(api.store.undoStack.length, n0 + 1);
+  assert.deepEqual([x('w-4'), x('w-5')], [x4, x5 + 80]);
+  assert.match(toast(), /スペース 80 を挿入しました（続けて挿入できます/);
+  assert.ok(api.ui.swimGap, 'モードは続く');
+  // ドラッグで幅
+  fire(inner(), 'mousedown', cp(940, 200));
+  fire(inner(), 'mousemove', cp(1000, 200));
+  fire(inner(), 'mousemove', cp(1060, 200));
+  assert.match($('#swim-gap').textContent, /＋120/);
+  fire(inner(), 'mouseup', cp(1060, 200));
+  assert.equal(x('w-5'), x5 + 200);
+  assert.equal(api.store.undoStack.length, n0 + 2);
+  // レーンをまたぐ向き（横向きは上下）: 点線のあるレーンを広げる
+  const h0 = geom().lanes[1].h;
+  click($('#sys-gap-dir'));
+  assert.equal(api.ui.swimGap.axis, 'cross', 'モードの間に向きを変えると、点線もすぐ変わる');
+  press(inner(), cp(600, 140));
+  assert.equal(geom().lanes[1].h, h0 + 80);
+  assert.match(toast(), /レーン「上長」を 80 広げました/);
+  fire(inner(), 'contextmenu', cp(600, 140));
+  assert.equal(api.ui.swimGap, null, '右クリックでやめる（工程は消さない）');
+  assert.equal(env.sys().swimlane.steps.length, 8);
+  assert.equal($('#swim-gap'), null);
+});
+
+test('スペース調整のモード（段階 D・q158 案A）: 押した所の両側でいちばん近い工程の外枠の間を既定の間（横向きの左右 40）にそろえる。点線の帯は 広げる＝青・詰める＝赤・既定どおり＝灰。両側に工程がないときは知らせる', async (t) => {
+  const env = await boot(t);
+  const { $, api, inner, geom, toast } = env;
+  const cp = cpOf(env);
+  const b = (id) => geom().pos['w:' + id];
+  const mid = Math.round((b('w-1').x + b('w-1').w + b('w-2').x) / 20) * 10;
+  click($('#sys-gap-adj'));
+  fire(inner(), 'mousemove', cp(mid, 60));
+  assert.match($('#swim-gap').innerHTML, /fill="#2563eb"[^>]*>＋5</, '広げる所は青（始まりの工程と次の工程の間は 34.5）');
+  press(inner(), cp(mid, 60));
+  assert.ok(Math.abs(b('w-2').x - (b('w-1').x + b('w-1').w) - 40) <= 0.5);
+  assert.match(toast(), /左右の間を既定（外枠の間 40）にそろえました（＋5/);
+  assert.match($('#swim-gap').innerHTML, /fill="#94a3b8"/, 'そろえた後は灰');
+  press(inner(), cp(mid, 60));
+  assert.match(toast(), /もう既定（外枠の間 40）どおりです/);
+  const m2 = Math.round((b('w-2').x + b('w-2').w + b('w-3').x) / 20) * 10;
+  api.actions.insertSwimGap('y-trip', { axis: 'flow', at: b('w-3').x, gap: 30 });
+  fire(inner(), 'mousemove', cp(m2, 60));
+  assert.match($('#swim-gap').innerHTML, /fill="#dc2626"/, '詰める所は赤');
+  press(inner(), cp(140, 60));
+  assert.match(toast(), /左右の両側に工程がある所を押してください/);
+  key(env.app, env.app.document.body, { key: 'Escape' });
+  assert.equal(api.ui.swimGap, null);
+  assert.match(toast(), /スペース調整を終了しました/);
+});
+
+test('グループ化（段階 D・q159）: Ctrl+G でまとめ、1 つを押すとグループの工程を全部選ぶ（囲む選択も）。点線の外枠は選んでいるグループだけ青。Ctrl+Shift+G で解除。コピーして貼ると新しいグループになる', async (t) => {
+  const env = await boot(t);
+  const { $, $$, api, node, toast, step } = env;
+  const body = env.app.document.body;
+  click(node('w-1'));
+  fire(node('w-2'), 'click', { ctrlKey: true });
+  key(env.app, body, { key: 'g', ctrlKey: true });
+  const gid = step('w-1').groupId;
+  assert.ok(gid && step('w-2').groupId === gid, 'Ctrl+G でまとめる');
+  assert.equal($$('#sys-swim .sw-grp').length, 1, '点線の外枠');
+  click(node('w-5'));
+  assert.ok(!$('#sys-swim .sw-grp').classList.contains('sel'), 'ほかを選んでいるときは灰');
+  click(node('w-2'));
+  assert.deepEqual(plain(api.ui.stepSels), ['w-2', 'w-1'], '1 つでグループの全部');
+  assert.ok($('#sys-swim .sw-grp').classList.contains('sel'), '選んでいるグループは青');
+  fire(node('w-5'), 'click', { ctrlKey: true });
+  fire(node('w-1'), 'click', { ctrlKey: true });
+  assert.deepEqual(plain(api.ui.stepSels), ['w-5'], 'Ctrl＋クリックはグループの全部を外す');
+  // コピーして貼る: 新しいグループ
+  click(node('w-1'));
+  key(env.app, body, { key: 'c', ctrlKey: true });
+  key(env.app, body, { key: 'v', ctrlKey: true });
+  const cp = cpOf(env);
+  press(env.inner(), cp(1200, 200));
+  const added = env.sys().swimlane.steps.slice(8);
+  assert.equal(added.length, 2);
+  assert.ok(added[0].groupId && added[0].groupId === added[1].groupId && added[0].groupId !== gid, '新しいグループの id');
+  // 解除
+  press(node('w-1'));
+  key(env.app, body, { key: 'G', ctrlKey: true, shiftKey: true });
+  assert.ok(!('groupId' in step('w-1')) && !('groupId' in step('w-2')));
+  assert.match(toast(), /グループを解除しました（2 個の工程）/);
+});
+
+test('グループ枠（段階 D・q159 案B）: 「グループ枠」のモードで図をドラッグして描き、描いた枠を選ぶ（8 つの四角）。見出しのドラッグで動かす・四角で大きさ・ダブルクリックで名前・Delete で消す。どれも元に戻すの 1 回分', async (t) => {
+  const env = await boot(t);
+  const { $, $$, api, inner, sys, toast } = env;
+  const cp = cpOf(env);
+  const rect = () => plain(sys().swimlane.frames[0].rect.horizontal);
+  click($('#sys-frame'));
+  press(inner(), cp(300, 20));
+  assert.match(toast(), /ドラッグして、グループ枠の大きさを決めてください/, '押しただけでは描かない');
+  fire(inner(), 'mousedown', cp(300, 20));
+  fire(inner(), 'mousemove', cp(500, 120));
+  assert.ok($('#swim-band'));
+  fire(inner(), 'mousemove', cp(560, 230));
+  fire(inner(), 'mouseup', cp(560, 230));
+  assert.deepEqual(rect(), { x: 300, y: 20, w: 260, h: 210 });
+  assert.equal(api.ui.swimFrameDraw, false, '描いたらモードをやめる');
+  const fid = sys().swimlane.frames[0].id;
+  assert.equal(api.ui.frameSel, fid);
+  assert.equal($$('#swim-frs .sw-frs').length, 8);
+  assert.match($('#sys-swim .sw-frame').textContent, /グループ/);
+  // 見出しのドラッグで動かす
+  const head = () => $('#sys-swim .sw-frame .sw-fr-head');
+  fire(head(), 'mousedown', cp(320, 30));
+  fire(inner(), 'mousemove', cp(340, 40));
+  fire(inner(), 'mousemove', cp(360, 50));
+  fire(inner(), 'mouseup', cp(360, 50));
+  assert.deepEqual(rect(), { x: 340, y: 40, w: 260, h: 210 });
+  // 右下の四角で大きさ（80 × 44 より小さくしない）
+  const se = () => $$('#swim-frs .sw-frs').find((r) => r.getAttribute('data-h') === 'se');
+  fire(se(), 'mousedown', cp(600, 250));
+  fire(inner(), 'mousemove', cp(300, 50));
+  fire(inner(), 'mouseup', cp(300, 50));
+  assert.deepEqual(rect(), { x: 340, y: 40, w: 80, h: 44 });
+  // ダブルクリックで名前
+  fire(head(), 'dblclick');
+  const ed = $('#sys-swim .swim-edit');
+  assert.equal(ed.value, 'グループ');
+  ed.value = '申請と承認';
+  key(env.app, ed, { key: 'Enter' });
+  assert.equal(sys().swimlane.frames[0].text, '申請と承認');
+  // Delete で消す・元に戻す
+  click(head());
+  key(env.app, env.app.document.body, { key: 'Delete' });
+  assert.ok(!('frames' in sys().swimlane));
+  key(env.app, env.app.document.body, { key: 'z', ctrlKey: true });
+  assert.equal(sys().swimlane.frames[0].text, '申請と承認');
+  // 縦向きでは描かない
+  click($('#sys-orient-v'));
+  assert.equal($('#sys-swim .sw-frame'), null);
+});
+
+test('右のパネルの見た目（段階 D・q160 案A）: 工程の色見本・ほかの色・標準の色・文字の大きさ（A˄・A˅・欄）・文字の揃え・枠の点線。いくつか選ぶとまとめて変える。矢印の「線を点線にする」。役割の画面のレーンの色', async (t) => {
+  const env = await boot(t);
+  const { $, $$, api, node, step, sys } = env;
+  click(node('w-5'));
+  const sw = (name) => $$('#sys-side .sw-sw').find((b) => b.title === name);
+  assert.deepEqual($$('#sys-side .sw-sw').map((b) => b.title), ['青', '緑', '黄', '赤', '紫', 'グレー']);
+  click(sw('赤'));
+  assert.deepEqual([step('w-5').color, step('w-5').stroke], ['#fee2e2', '#dc2626']);
+  assert.ok(sw('赤').classList.contains('on'));
+  const color = $('#sys-side [data-sw="look-color"]');
+  setValue(color, '#3366CC');
+  assert.deepEqual([step('w-5').color, step('w-5').stroke], ['#3366cc', '#2a54a7'], 'ほかの色は、枠をその色から暗く（0.18）');
+  click($$('#sys-side [data-action="sys-step-color"]').find((b) => b.textContent === '標準の色'));
+  assert.ok(!('color' in step('w-5')) && !('stroke' in step('w-5')));
+  click($$('#sys-side [data-action="sys-step-fs"]')[0]);
+  assert.equal(step('w-5').fontSize, 13);
+  setValue($('#sys-side [data-sw="look-fs"]'), '100');
+  assert.equal(step('w-5').fontSize, 48);
+  assert.equal($('#sys-side [data-sw="look-fs"]').value, '48', '範囲の外は直した値を欄に出す');
+  setValue($('#sys-side [data-sw="look-fs"]'), '12');
+  assert.ok(!('fontSize' in step('w-5')), '標準の 12 は書かない');
+  click($('#sys-side [data-action="sys-step-align"][data-align="left"]'));
+  assert.equal(step('w-5').textAlign, 'left');
+  click($('#sys-side [data-action="sys-step-align"][data-align="center"]'));
+  assert.ok(!('textAlign' in step('w-5')));
+  const dash = $('#sys-side [data-sw="look-dashed"]');
+  dash.checked = true;
+  setValue(dash, 'on');
+  assert.equal(step('w-5').dashed, true);
+  // まとめて
+  fire(node('w-6'), 'click', { ctrlKey: true });
+  assert.match($('#sys-side').textContent, /2 個の工程を選んでいます/);
+  click(sw('緑'));
+  assert.deepEqual([step('w-5').color, step('w-6').color], ['#dcfce7', '#dcfce7']);
+  // 矢印
+  click(env.edgeHit('e-6'));
+  const ed = $('#sys-side [data-sw="edge-dashed"]');
+  assert.match($('#sys-side').textContent, /橙の点線は、戻る流れ/);
+  ed.checked = true;
+  setValue(ed, 'on');
+  assert.equal(sys().swimlane.edges.find((e) => e.id === 'e-6').dashed, true);
+  // レーンの色
+  api.openSystemPanel('roles');
+  click($('#sys-view [data-action="sys-role-color"][data-id="l-b"]'));
+  assert.equal($$('#sys-view .sys-role-colors .sw-sw').length, 7);
+  click($$('#sys-view .sys-role-colors .sw-sw').find((b) => b.title === '緑'));
+  assert.deepEqual([sys().roles[1].bg, sys().roles[1].hd], ['#f0fdf4', '#bbf7d0']);
+  setValue($('#sys-view [data-sy="role-color"]'), '#ff0000');
+  assert.deepEqual([sys().roles[1].bg, sys().roles[1].hd], ['#ffbfbf', '#ff4747'], 'ほかの色は、地を白へ 0.75・見出しを 0.28 寄せる');
+  click($$('#sys-view .sys-role-colors .btn').find((b) => b.textContent === '標準の色'));
+  assert.ok(!('bg' in sys().roles[1]));
+});
+
+test('AI の見た目（段階 D・q161）: get_system に工程の見た目・矢印の点線・レーンの色を出す（グループと枠は出さない）。set_swimlane で書け、省くと今のまま・null で標準。update_system の set_color でレーンの色', async (t) => {
+  const { api, call, step, sys } = await boot(t);
+  api.actions.setStepLook('y-trip', ['w-1'], { color: '#fee2e2', stroke: '#dc2626', fontSize: 16 });
+  api.actions.groupSteps('y-trip', ['w-1', 'w-2']);
+  api.actions.addFrame('y-trip', { x: 10, y: 10, w: 200, h: 100 });
+  api.actions.setEdgeDashed('y-trip', 'e-1', true);
+  let g = (await call('get_system', { system: 'y-trip' })).result;
+  const s1 = g.steps.find((w) => w.id === 'w-1');
+  assert.deepEqual([s1.color, s1.stroke, s1.fontSize], ['#fee2e2', '#dc2626', 16]);
+  assert.ok(!('groupId' in s1) && !('frames' in g), 'グループと枠は出さない');
+  assert.ok(!('color' in g.steps.find((w) => w.id === 'w-3')), '決めていない工程には欄を出さない');
+  assert.equal(g.edges.find((e) => e.id === 'e-1').dashed, true);
+  // 読んだまま送り直すと変わらない
+  const r0 = await call('set_swimlane', { system: 'y-trip', expect: g.updatedAt, steps: g.steps, edges: g.edges });
+  assert.equal(r0.ok, true, JSON.stringify(r0.error));
+  assert.deepEqual([step('w-1').color, step('w-1').fontSize, step('w-1').groupId != null], ['#fee2e2', 16, true], '見た目とグループは残る');
+  assert.equal(sys().swimlane.edges.find((e) => e.id === 'e-1').dashed, true);
+  // 書く
+  g = (await call('get_system', { system: 'y-trip' })).result;
+  const steps = g.steps.map((w) => (w.id === 'w-1' ? { ...w, color: null, fontSize: null } : w.id === 'w-3' ? { ...w, color: '#dcfce7', dashed: true, textAlign: 'left' } : w));
+  const edges = g.edges.map((e) => (e.id === 'e-1' ? { ...e, dashed: false } : e.id === 'e-2' ? { ...e, dashed: true } : e));
+  const r1 = await call('set_swimlane', { system: 'y-trip', expect: g.updatedAt, steps, edges });
+  assert.equal(r1.ok, true, JSON.stringify(r1.error));
+  assert.ok(!('color' in step('w-1')) && !('stroke' in step('w-1')) && !('fontSize' in step('w-1')), 'null で標準');
+  assert.deepEqual([step('w-3').color, step('w-3').stroke, step('w-3').dashed, step('w-3').textAlign], ['#dcfce7', '#16a34a', true, 'left'], '色見本の色は、その枠の色');
+  assert.deepEqual(sys().swimlane.edges.filter((e) => e.dashed).map((e) => e.id), ['e-2']);
+  const bad = await call('set_swimlane', { system: 'y-trip', steps: [{ ...steps[0], color: 'red' }] });
+  assert.equal(bad.ok, false);
+  assert.match(bad.error.message, /steps\[0\]: color（塗りの色）は "#rrggbb"/);
+  const bad2 = await call('set_swimlane', { system: 'y-trip', steps: [{ ...steps[0], fontSize: 100 }] });
+  assert.match(bad2.error.message, /fontSize（文字の大きさ）は 6〜48/);
+  // レーンの色
+  g = (await call('get_system', { system: 'y-trip' })).result;
+  const r2 = await call('update_system', { system: 'y-trip', expect: g.updatedAt, ops: [{ op: 'set_color', role: '上長', color: '#ff0000' }, { op: 'set_color', role: '経理', color: { bg: '#f0fdf4', hd: '#bbf7d0' } }] });
+  assert.equal(r2.ok, true, JSON.stringify(r2.error));
+  assert.deepEqual(plain(r2.result.ops[0].color), { bg: '#ffbfbf', hd: '#ff4747' });
+  g = (await call('get_system', { system: 'y-trip' })).result;
+  assert.deepEqual(g.roles.map((r) => r.color || null), [null, { bg: '#ffbfbf', hd: '#ff4747' }, { bg: '#f0fdf4', hd: '#bbf7d0' }]);
+  const r3 = await call('update_system', { system: 'y-trip', expect: g.updatedAt, ops: [{ op: 'set_color', role: '上長', color: null }] });
+  assert.equal(r3.ok, true);
+  assert.ok(!('bg' in sys().roles[1]));
 });
