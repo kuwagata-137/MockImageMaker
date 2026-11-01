@@ -1532,3 +1532,147 @@ test('手直しの出し先（段階 C・q155）: 説明書（PDF）と AI の�
   const plan = JSON.stringify(api.bdmExportPlan(y, null).plan);
   assert.ok(!/laneW|size|shape|fromPin|orthoWps|labelT/.test(plan), plan);
 });
+
+// ── v1.03 段階 D: 整える機能（q157〜q161）──
+test('見た目とグループ枠のデータ（段階 D）: 形の違う色・点線・文字の大きさ・揃え・グループ・レーンの色・枠は外すか直す。知らない欄は残す。枠がなければ欄を付けない', async (t) => {
+  const s = sampleState();
+  const y = s.systems[0];
+  Object.assign(y.swimlane.steps[0], { color: '#FEE2E2', stroke: 'red', dashed: 'yes', fontSize: 100, textAlign: 'center', groupId: 'g-1' });
+  Object.assign(y.swimlane.steps[1], { dashed: true, fontSize: 3.6, textAlign: 'left', groupId: '' });
+  Object.assign(y.swimlane.edges[0], { dashed: true });
+  Object.assign(y.swimlane.edges[1], { dashed: 1 });
+  Object.assign(y.roles[0], { bg: '#EFF6FF', hd: '#bfdbfe' });
+  Object.assign(y.roles[1], { bg: 'blue' });
+  y.swimlane.frames = [{ id: 'f-1', text: '申請と承認', rect: { horizontal: { x: 10, y: 20, w: 30, h: 10 }, vertical: { x: 'a' }, other: 1 }, memo: 'x' }, { id: 'f-1', text: '', rect: null }, 'x'];
+  const { sys } = await boot(t, s);
+  const yy = sys();
+  const [w1, w2] = yy.swimlane.steps;
+  assert.deepEqual([w1.color, w1.stroke, w1.dashed, w1.fontSize, w1.textAlign, w1.groupId], ['#fee2e2', undefined, undefined, 48, undefined, 'g-1']);
+  assert.deepEqual([w2.dashed, w2.fontSize, w2.textAlign, w2.groupId], [true, 6, 'left', undefined]);
+  assert.deepEqual([yy.swimlane.edges[0].dashed, yy.swimlane.edges[1].dashed], [true, undefined]);
+  assert.deepEqual([yy.roles[0].bg, yy.roles[0].hd, yy.roles[1].bg], ['#eff6ff', '#bfdbfe', undefined]);
+  assert.equal(yy.swimlane.frames.length, 2);
+  assert.deepEqual(yy.swimlane.frames[0], { id: 'f-1', text: '申請と承認', memo: 'x', rect: { horizontal: { x: 10, y: 20, w: 80, h: 44 }, other: 1 } }, '大きさの下限 80 × 44・形の違う向きは外す');
+  assert.notEqual(yy.swimlane.frames[1].id, 'f-1', 'id の重なりを直す');
+  assert.ok(!('rect' in yy.swimlane.frames[1]));
+  assert.ok(!('frames' in sys('y-exp').swimlane), '枠がなければ欄を付けない');
+});
+
+test('工程の見た目・矢印の点線・レーンの色（actions.setStepLook・setEdgeDashed・setRoleColor。段階 D・q160）: null で標準に戻す。形の違う値は入れない。変わらないときは積まない', async (t) => {
+  const { api, sys, step } = await boot(t);
+  const n0 = api.store.undoStack.length;
+  assert.equal(api.actions.setStepLook('y-trip', ['w-x'], { color: '#dbeafe' }), false);
+  assert.equal(api.actions.setStepLook('y-trip', ['w-1'], { memo: 'x' }), false, '見た目の欄でなければ直さない');
+  assert.equal(api.actions.setStepLook('y-trip', ['w-1', 'w-2'], { color: '#DBEAFE', stroke: '#3b82f6', fontSize: 16, textAlign: 'left', dashed: true }), true);
+  assert.equal(api.store.undoStack.length, n0 + 1, '元に戻すの 1 回分');
+  assert.deepEqual([step('w-2').color, step('w-2').stroke, step('w-2').fontSize, step('w-2').textAlign, step('w-2').dashed], ['#dbeafe', '#3b82f6', 16, 'left', true]);
+  assert.equal(api.actions.setStepLook('y-trip', ['w-1', 'w-2'], { color: '#dbeafe' }), false, '変わらないときは積まない');
+  assert.equal(api.actions.setStepLook('y-trip', ['w-1'], { color: 'red', fontSize: 200 }), true);
+  assert.deepEqual([step('w-1').color, step('w-1').fontSize], [undefined, 48], '形の違う色は外し、大きさは 48 まで');
+  assert.equal(api.actions.setStepLook('y-trip', ['w-2'], { color: null, stroke: null, dashed: null, textAlign: null, fontSize: null }), true);
+  assert.ok(['color', 'stroke', 'dashed', 'textAlign', 'fontSize'].every((k) => !(k in step('w-2'))));
+  // 矢印の点線
+  assert.equal(api.actions.setEdgeDashed('y-trip', 'e-1', false), false);
+  assert.equal(api.actions.setEdgeDashed('y-trip', 'e-1', true), true);
+  assert.equal(sys().swimlane.edges[0].dashed, true);
+  assert.equal(api.actions.setEdgeDashed('y-trip', 'e-1', true), false);
+  assert.equal(api.actions.setEdgeDashed('y-trip', 'e-1', false), true);
+  assert.ok(!('dashed' in sys().swimlane.edges[0]));
+  // レーンの色
+  assert.equal(api.actions.setRoleColor('y-trip', 'l-a', { bg: 'x', hd: '#bfdbfe' }), false);
+  assert.equal(api.actions.setRoleColor('y-trip', 'l-a', null), false, '色がないときに標準へは戻さない');
+  assert.equal(api.actions.setRoleColor('y-trip', 'l-a', { bg: '#EFF6FF', hd: '#BFDBFE' }), true);
+  assert.deepEqual([sys().roles[0].bg, sys().roles[0].hd], ['#eff6ff', '#bfdbfe']);
+  assert.equal(api.actions.setRoleColor('y-trip', 'l-a', { bg: '#eff6ff', hd: '#bfdbfe' }), false);
+  assert.equal(api.actions.setRoleColor('y-trip', 'l-a', null), true);
+  assert.ok(!('bg' in sys().roles[0]) && !('hd' in sys().roles[0]));
+});
+
+test('グループ化とグループ枠（actions.groupSteps・ungroupSteps・addFrame・setFrameRect・renameFrame・deleteFrames。段階 D・q159）', async (t) => {
+  const { api, sys, step } = await boot(t);
+  const y = () => api.store.state.systems.find((x) => x.id === 'y-trip');
+  assert.equal(api.actions.groupSteps('y-trip', ['w-1']), null, '2 つ以上が要る');
+  const g1 = api.actions.groupSteps('y-trip', ['w-1', 'w-2']);
+  assert.ok(g1);
+  assert.deepEqual(plain(api.swimWithGroup(y(), ['w-2'])), ['w-2', 'w-1'], '1 つで同じグループの全部');
+  const g2 = api.actions.groupSteps('y-trip', ['w-2', 'w-3']);
+  assert.deepEqual([step('w-1').groupId, step('w-2').groupId, step('w-3').groupId], [g2, g2, g2], '入っていたグループの工程もまとめる');
+  assert.equal(api.actions.ungroupSteps('y-trip', ['w-5']), 0);
+  assert.equal(api.actions.ungroupSteps('y-trip', ['w-3']), 3);
+  assert.ok(['w-1', 'w-2', 'w-3'].every((id) => !('groupId' in step(id))));
+  // 枠
+  const n0 = api.store.undoStack.length;
+  const fid = api.actions.addFrame('y-trip', { x: 100, y: 10, w: 20, h: 300 });
+  assert.ok(fid);
+  assert.deepEqual(sys().swimlane.frames, [{ id: fid, text: 'グループ', rect: { horizontal: { x: 100, y: 10, w: 80, h: 300 } } }]);
+  assert.equal(api.actions.setFrameRect('y-trip', fid, { x: 100, y: 10, w: 80, h: 300 }), false, '変わらないときは積まない');
+  assert.equal(api.actions.setFrameRect('y-trip', fid, { x: 120, y: 10, w: 200, h: 300 }), true);
+  api.actions.setSwimOrient('y-trip', 'vertical');
+  assert.equal(api.swimFramesOf(y(), 'vertical').length, 0, 'ほかの向きでは描かない');
+  assert.equal(api.actions.setFrameRect('y-trip', fid, { x: 5, y: 60, w: 300, h: 200 }), true);
+  assert.deepEqual(plain(sys().swimlane.frames[0].rect), { horizontal: { x: 120, y: 10, w: 200, h: 300 }, vertical: { x: 5, y: 60, w: 300, h: 200 } });
+  assert.equal(api.actions.renameFrame('y-trip', fid, '  '), false);
+  assert.equal(api.actions.renameFrame('y-trip', fid, '申請と承認'), true);
+  assert.equal(sys().swimlane.frames[0].text, '申請と承認');
+  assert.equal(api.actions.deleteFrames('y-trip', ['f-x']), false);
+  assert.equal(api.actions.deleteFrames('y-trip', [fid]), true);
+  assert.ok(!('frames' in sys().swimlane), '最後の枠を消すと欄も消す');
+  assert.equal(api.store.undoStack.length, n0 + 6);
+});
+
+test('スペース挿入（actions.insertSwimGap。段階 D・q158 案A）: 流れの向きは点線より先の工程・曲がり角・枠を押し出す（またぐ枠は伸ばす）。レーンをまたぐ向きは点線のあるレーンを広げ、そのレーンの中の先の工程だけ押し出す', async (t) => {
+  const { api, geom, sys } = await boot(t);
+  const L0 = geom();
+  const b = (id, L = geom()) => L.pos['w:' + id];
+  const at = b('w-5', L0).x; // 出張に行く の左の縁
+  api.actions.setEdgeShape('y-trip', 'e-6', { orthoWps: [{ x: at + 200, y: 65 }, { x: at + 200, y: 325 }] });
+  const fid = api.actions.addFrame('y-trip', { x: at - 100, y: 10, w: 300, h: 100 }); // 点線をまたぐ枠
+  const n0 = api.store.undoStack.length;
+  assert.deepEqual(plain(api.actions.insertSwimGap('y-trip', { axis: 'flow', at, gap: 80 })), { lane: -1 });
+  assert.equal(api.store.undoStack.length, n0 + 1, '元に戻すの 1 回分');
+  const L1 = geom();
+  ['w-1', 'w-2', 'w-3', 'w-4'].forEach((id) => assert.equal(b(id, L1).x, b(id, L0).x, id + ' は動かない'));
+  ['w-5', 'w-6', 'w-7', 'w-8'].forEach((id) => assert.equal(b(id, L1).x, b(id, L0).x + 80, id + ' は 80 先へ'));
+  assert.equal(sys().swimlane.edges.find((e) => e.id === 'e-6').shape.horizontal.orthoWps[0].x, at + 280, '曲がり角も動く');
+  assert.deepEqual(plain(sys().swimlane.frames.find((f) => f.id === fid).rect.horizontal), { x: at - 100, y: 10, w: 380, h: 100 }, 'またぐ枠は伸ばす');
+  assert.equal(api.actions.insertSwimGap('y-trip', { axis: 'flow', at: 1e6, gap: 80 }), null, '動くものがなければ直さない');
+  // レーンをまたぐ向き（横向きは y）。申請者のレーン（0〜130）の 40 の所（工程の上の縁 49.5 より手前）
+  const c0 = geom();
+  assert.deepEqual(plain(api.actions.insertSwimGap('y-trip', { axis: 'cross', at: 40, gap: 80 })), { lane: 0 });
+  const c1 = geom();
+  assert.equal(c1.lanes[0].h, c0.lanes[0].h + 80, '申請者のレーンを 80 広げる');
+  assert.equal(sys().roles[0].laneW.horizontal, c0.lanes[0].h + 80);
+  assert.equal(b('w-1', c1).y, b('w-1', c0).y + 80, '申請者のレーンの中の、点線より先の工程を押し出す');
+  assert.equal(b('w-3', c1).y, b('w-3', c0).y + 80, '後ろのレーンの工程は、レーンがずれて動く');
+  api.store.undo();
+  assert.equal(geom().lanes[0].h, c0.lanes[0].h, '元に戻す');
+  assert.equal(api.actions.insertSwimGap('y-trip', { axis: 'x', at: 1, gap: 80 }), null);
+  assert.equal(api.actions.insertSwimGap('y-trip', { axis: 'flow', at: 1, gap: 0 }), null);
+});
+
+test('スペース調整（actions.adjustSwimGap・swimGapAdjustOf。段階 D・q158 案A）: 点線の両側でいちばん近い工程の外枠の間を既定の間（横向きの流れの向き 40）にそろえる。詰める・広げる。両側に工程がなければ直さない', async (t) => {
+  const { api, geom } = await boot(t);
+  const y = () => api.store.state.systems.find((x) => x.id === 'y-trip');
+  const b = (id) => geom().pos['w:' + id];
+  assert.equal(api.swimGapEdge(geom(), 'flow'), 40);
+  assert.equal(api.swimGapEdge(geom(), 'cross'), 43);
+  const mid = (b('w-1').x + b('w-1').w + b('w-2').x) / 2;
+  const r = plain(api.swimGapAdjustOf(y(), 'flow', mid));
+  assert.deepEqual([r.A.id, r.B.id, r.gap], ['w-1', 'w-2', 40]);
+  const gap0 = b('w-2').x - (b('w-1').x + b('w-1').w);
+  assert.equal(r.delta, Math.round(gap0 - 40));
+  const x6 = b('w-6').x;
+  const n0 = api.store.undoStack.length;
+  assert.equal(api.actions.adjustSwimGap('y-trip', { axis: 'flow', at: mid }).changed, true);
+  assert.equal(api.store.undoStack.length, n0 + 1);
+  assert.ok(Math.abs(b('w-2').x - (b('w-1').x + b('w-1').w) - 40) <= 0.5, '外枠の間が 40');
+  assert.ok(Math.abs(b('w-6').x - (x6 - r.delta)) <= 0.5, '先の工程も同じだけ動く');
+  assert.equal(api.actions.adjustSwimGap('y-trip', { axis: 'flow', at: mid }).changed, false, 'もうそろっている');
+  // 広げる: 間を詰めてからそろえる
+  api.actions.insertSwimGap('y-trip', { axis: 'flow', at: b('w-2').x, gap: 1 }); // 41
+  const w2 = b('w-2').x;
+  const r2 = api.actions.adjustSwimGap('y-trip', { axis: 'flow', at: mid });
+  assert.equal(r2.delta, 1);
+  assert.equal(b('w-2').x, w2 - 1);
+  assert.equal(api.actions.adjustSwimGap('y-trip', { axis: 'flow', at: -10 }).changed, false, '手前に工程がない');
+});
