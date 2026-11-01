@@ -150,7 +150,7 @@ test('全体を表示の倍率（swimFitZoom）: 図の幅を欄の幅に合わ�
 // ── メニューバー ──
 test('メニューバー: 「モード」の組（▶ 選択・→ 接続・✋ 手のひらツール。v1.03 段階 B・q148 案B）・「編集」の組（⧉ コピー・📋 貼り付け・✕ 削除）・「図の向き」（横向き・縦向き）・「配置」（工程を整列する）と「表示」の「全体を表示」。削除とコピーは選んでいるときだけ、貼り付けはコピーした後だけ押せる。スイムレーン図のほかでは押せない', async (t) => {
   const { app, api, $, $$, node } = await boot(t);
-  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', 'モード', '編集', '図の向き', '配置', 'スペース', 'グループ', '表示']);
+  assert.deepEqual($$('#toolbar > .rgroup > .glabel').map((e) => e.textContent), ['ファイル', '履歴', 'モード', '編集', '図の向き', '配置', 'スペース', 'グループ', '表示']);
   assert.deepEqual(['swim-horizontal', 'swim-vertical', 'swim-arrange'].map((a) => $(`#toolbar [data-action="${a}"]`).textContent.replace(/\s+/g, '')), ['横向き', '縦向き', '⊞工程を整列する']);
   const sel = $('#toolbar [data-action="swim-select"]');
   const con = $('#toolbar [data-action="swim-connect"]');
@@ -160,7 +160,7 @@ test('メニューバー: 「モード」の組（▶ 選択・→ 接続・✋ 
   const del = $('#toolbar [data-action="swim-delete"]');
   assert.deepEqual([sel, con, hand].map((b) => b.closest('.rgroup').querySelector('.glabel').textContent), ['モード', 'モード', 'モード']);
   assert.deepEqual([copy, paste, del].map((b) => b.closest('.rgroup').querySelector('.glabel').textContent), ['編集', '編集', '編集']);
-  assert.deepEqual([sel, con, hand, copy, paste, del].map((b) => b.textContent.replace(/\s+/g, '')), ['▶選択', '→接続', '✋手のひらツール', '⧉コピー', '📋貼り付け', '✕選んだものを削除する']);
+  assert.deepEqual([sel, con, hand, copy, paste, del].map((b) => b.textContent.replace(/\s+/g, '')), ['▶選択', '→接続', '✋手のひらツール', '⧉選んだ工程をコピーする', '📋コピーした工程を貼り付ける', '✕選んだものを削除する']);
   assert.deepEqual([sel.classList.contains('on'), con.classList.contains('on'), hand.classList.contains('on'), del.disabled, copy.disabled, paste.disabled], [true, false, false, true, true, true]);
   assert.ok($('#toolbar [data-action="zoom-fit"]'));
   assert.equal($('#toolbar [data-action="zoom-fit"]').textContent, '⊡ 全体を表示');
@@ -1708,6 +1708,26 @@ test('見た目・グループ・グループ枠の出し先（段階 D・q161�
   assert.ok(!/groupId|frames|申請と承認/.test(JSON.stringify(plan)), 'グループとグループ枠は渡さない');
   api.actions.setSwimOrient('y-trip', 'vertical');
   assert.ok(!api.swimlaneHtml(S(), S().systems[0]).includes('sw-frame'), 'ほかの向きでは枠を描かない');
+});
+
+test('ツールバーのたたんだ組（段階 D・q162 案A）: 「編集」「グループ」は 1 つのボタン。押すと組のボタンを縦に出し、中のボタン・Esc で閉じる。グループ枠を描いている間は、たたんだボタンも青', async (t) => {
+  const { app, $, $$ } = await boot(t);
+  const fold = (k) => $(`#toolbar .fold-btn[data-fold="${k}"]`);
+  assert.deepEqual($$('#toolbar .fold-btn').map((b) => b.textContent.replace(/\s+/g, '')), ['✎編集▼', '▭グループ▼']);
+  const isOpen = (k) => fold(k).closest('.rgroup').classList.contains('open');
+  click(fold('sys-group'));
+  assert.equal(isOpen('sys-group'), true);
+  assert.equal(fold('sys-group').getAttribute('aria-expanded'), 'true');
+  click(fold('sys-edit'));
+  assert.deepEqual([isOpen('sys-edit'), isOpen('sys-group')], [true, false], 'ほかの組を押すと、そちらだけ出す');
+  key(app, app.document, { key: 'Escape' });
+  assert.equal(isOpen('sys-edit'), false, 'Esc で閉じる');
+  click(fold('sys-group'));
+  click($('#sys-frame'));
+  assert.equal(isOpen('sys-group'), false, '中のボタンを押すと閉じる');
+  assert.ok($('#sys-frame').classList.contains('on') && fold('sys-group').classList.contains('on'), 'グループ枠を描いている間は、たたんだボタンも青');
+  click($('#sys-frame'));
+  assert.equal(fold('sys-group').classList.contains('on'), false);
 });
 
 // 図の中の位置 (x, y) のマウスの値（図の左上と倍率から求める。jsdom では図の左上が 0・倍率 100% なので、そのまま。ブラウザで動かしても同じ所になる）

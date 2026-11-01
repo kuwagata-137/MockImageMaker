@@ -171,6 +171,7 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .tbtn{background:transparent;border:1px solid transparent;color:#334155;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;white-space:nowrap}
 .tbtn:hover{background:#e2e8f0;color:#0f172a}
 .tbtn:disabled{opacity:.4;cursor:default;background:transparent}
+.tbtn.on{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
 .bigbtn:disabled{opacity:.4;cursor:default}
 .zoom-label{min-width:52px;color:#475569;align-self:center}
 /* たたんだ組（q73・q74）: 組を 1 つのボタンにし、押すと組のボタンを下に出す。出す位置は placeFoldPop が決める */
@@ -7776,7 +7777,7 @@ const ui = {
   screenMenu: null, // 左の画面の一覧で「…」のメニューを開いている画面の id
   prevScreenId: null, // 画面を足す・複製する前に開いていた画面の id（元に戻すでその画面が消えたときに戻る先）
   revMenu: false, // メニューバーの「改訂履歴」の ▼ のメニューを開いているか
-  foldMenu: null, // メニューバーのたたんだ組（'align'・'items'）のうち、押して下に出している組（q73・q74）
+  foldMenu: null, // メニューバーのたたんだ組（編集の画面の 'edit'・'align'・'items'、システムの画面の 'sys-edit'・'sys-group'）のうち、押して下に出している組（q73・q74）
   viewRev: null, // 見ている前の版の行の id（見ていないときは null。q41）
   viewReturn: null, // 前の版を見る前に開いていた所 { screenId, panel }（見るのをやめたときに戻る）
   diffHidden: false, // 単体で開いた HTML で、違いの札を隠しているか（q44d）
@@ -11080,11 +11081,14 @@ function sysToolbarHtml() {
       <button class="bigbtn" data-action="swim-select" id="sys-mode-select" title="工程と矢印を選んで、動かす・変更するモード（V キー）"><span class="ico">▶</span>選択</button>
       <button class="bigbtn" data-action="swim-connect" id="sys-mode-connect" title="接続元と接続先の工程を順に押して、矢印で接続するモード（C キー）"><span class="ico">→</span>接続</button>
       <button class="bigbtn" data-action="swim-hand" id="sys-mode-hand" title="何もない所のドラッグで図を動かすモード（ホイールで拡大縮小。マウスの左右のボタンの同時押しで選択と切り替え。Esc で選択に戻る）"><span class="ico">✋</span>手のひら<br>ツール</button>`),
-    // 編集の組: ⧉ コピー・📋 貼り付け（Ctrl+C・Ctrl+V。貼り付けモードの間は青）と ✕ 削除（選んだ工程か矢印）
-    group('編集', `<div class="stack">
-      <button class="tbtn" data-action="swim-copy" id="sys-copy" title="選んだ工程をコピーします（Ctrl+C）">⧉ コピー</button>
-      <button class="tbtn" data-action="swim-paste" id="sys-paste" title="コピーした工程を、図の押した所に貼り付けます（Ctrl+V。Esc でやめる）">📋 貼り付け</button></div>
-      <button class="bigbtn" data-action="swim-delete" id="sys-del" title="選んだ工程か矢印を削除します（Delete キー）"><span class="ico">✕</span>選んだものを<br>削除する</button>`),
+    // 編集の組: コピー・貼り付け（Ctrl+C・Ctrl+V。貼り付けモードの間は青）と削除（選んだ工程か矢印）。
+    // 窓の幅 1280 に入りきらなくなったので、編集の画面と同じく 1 つのボタンにたたむ（v1.03 段階 D・q162 案A。どれもキーがある）
+    foldGroup('sys-edit', '編集', '<span class="ico">✎</span>', '編集（選んだ工程と矢印）',
+      '編集のボタン（選んだ工程をコピーする・コピーした工程を貼り付ける・選んだものを削除する）を出します', [
+        listBtn('data-action="swim-copy" id="sys-copy" title="選んだ工程をコピーします（Ctrl+C）"', '⧉', '選んだ工程をコピーする'),
+        listBtn('data-action="swim-paste" id="sys-paste" title="コピーした工程を、図の押した所に貼り付けます（Ctrl+V。Esc でやめる）"', '📋', 'コピーした工程を貼り付ける'),
+        listBtn('data-action="swim-delete" id="sys-del" title="選んだ工程か矢印を削除します（Delete キー）"', '✕', '選んだものを削除する'),
+      ].join(''), 'fold-list'),
     // 図の向き（q141）: 押している向きが青。向きはシステムに保存し、説明書（PDF）とAI の画像も同じ向きで描く
     group('図の向き', `
       <button class="bigbtn" data-action="swim-horizontal" id="sys-orient-h" title="役割のレーンを上から下へ並べ、工程を左から右へ進めます"><span class="ico">${SWIM_ORIENT_ICONS.horizontal}</span>横向き</button>
@@ -11096,11 +11100,14 @@ function sysToolbarHtml() {
       <button class="tbtn" data-action="swim-gap-insert" id="sys-gap-ins" title="押した所に点線を引き、点線より先の工程を押し出してスペースを挿入します（押すと 80・ドラッグでその幅。Esc か右クリックでやめる）">${SWIM_ARRANGE_ICONS.gapInsert} スペース挿入</button>
       <button class="tbtn" data-action="swim-gap-adjust" id="sys-gap-adj" title="押した所の点線の両側で、いちばん近い工程の外枠の間を既定の間にそろえます（詰まっていれば広げる。Esc か右クリックでやめる）">${SWIM_ARRANGE_ICONS.gapAdjust} スペース調整</button></div>
       <button class="bigbtn" data-action="swim-gap-dir" id="sys-gap-dir" title="スペースを挿入・調整する向きを切り替えます（縦＝上下・横＝左右。レーンをまたぐ向きは、点線のあるレーンの太さが変わります）"><span class="ico">↔</span>横</button>`),
-    // グループ（v1.03 段階 D・q157 案A・q159 案B）: グループ化・グループ解除（Ctrl+G・Ctrl+Shift+G）・グループ枠を描く（押している間は青）
-    group('グループ', `<div class="stack">
-      <button class="tbtn" data-action="swim-group" id="sys-group" title="選んだ工程を 1 つのグループにまとめます。1 つを押すと、グループの工程を全部選びます（Ctrl+G）">⧉ グループ化</button>
-      <button class="tbtn" data-action="swim-ungroup" id="sys-ungroup" title="選んだ工程のグループを解除します（Ctrl+Shift+G）">⧈ グループ解除</button></div>
-      <button class="bigbtn" data-action="swim-frame" id="sys-frame" title="図をドラッグして、見出しの帯つきの枠を描きます。見出しをダブルクリックすると名前を変えられます（Esc でやめる）"><span class="ico">${SWIM_ARRANGE_ICONS.frame}</span>グループ枠</button>`),
+    // グループ（v1.03 段階 D・q157 案A・q159 案B）: グループ化・グループ解除（Ctrl+G・Ctrl+Shift+G）・グループ枠を描く（押している間は青）。
+    // 「編集」と同じく 1 つのボタンにたたむ（q162 案A）。グループ枠を描いている間は、たたんだボタンも青（updateSysToolbar）
+    foldGroup('sys-group', 'グループ', '<span class="ico">▭</span>', 'グループ',
+      'グループのボタン（グループ化・グループ解除・グループ枠）を出します', [
+        listBtn('data-action="swim-group" id="sys-group" title="選んだ工程を 1 つのグループにまとめます。1 つを押すと、グループの工程を全部選びます（Ctrl+G）"', '⧉', 'グループ化'),
+        listBtn('data-action="swim-ungroup" id="sys-ungroup" title="選んだ工程のグループを解除します（Ctrl+Shift+G）"', '⧈', 'グループ解除'),
+        listBtn('data-action="swim-frame" id="sys-frame" title="図をドラッグして、見出しの帯つきの枠を描きます。見出しをダブルクリックすると名前を変えられます（Esc でやめる）"', SWIM_ARRANGE_ICONS.frame, 'グループ枠'),
+      ].join(''), 'fold-list'),
     group('表示', `<div class="stack">
       <button class="tbtn" data-action="zoom-in" data-sys-zoom title="スイムレーン図を拡大（Ctrl+＋）">＋ 拡大</button>
       <button class="tbtn" data-action="zoom-out" data-sys-zoom title="スイムレーン図を縮小（Ctrl+－）">－ 縮小</button></div>
@@ -11142,6 +11149,11 @@ function updateSysToolbar() {
   $('#sys-ungroup').disabled = !editable || !ui.stepSels.some((id) => (findStep(y, id) || {}).groupId);
   $('#sys-frame').disabled = !editable;
   $('#sys-frame').classList.toggle('on', editable && !!ui.swimFrameDraw);
+  // たたんだ組（q162）: 中のボタンが青（貼り付け・グループ枠を描いている間）なら、たたんだボタンも青。押せなくなった組は閉じる
+  document.querySelectorAll('#toolbar .rgroup.fold').forEach((g) => g.querySelector('.fold-btn').classList.toggle('on', !!g.querySelector('.fold-pop .on')));
+  const foldBtn = ui.foldMenu && $(`#toolbar .fold-btn[data-fold="${ui.foldMenu}"]`);
+  if (!foldBtn || foldBtn.disabled) ui.foldMenu = null;
+  renderFoldMenu();
   [['#sys-orient-h', 'horizontal'], ['#sys-orient-v', 'vertical']].forEach(([sel, o]) => {
     const b = $(sel);
     b.disabled = !zoomable || store.isViewing;
@@ -14341,17 +14353,18 @@ function mountEditor() {
   refreshStandaloneBar();
 }
 
-function toolbarHtml() {
-  const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
-  // たたんだ組（q73・q74）: 窓の幅が狭いとメニューバーの右が切れたため、「揃える」「項目」はいつも 1 つのボタンにする。
-  // 組のボタンは #toolbar の中に残す（押せる・押せないを、ほかのボタンと同じく updateToolbarState で決めるため）
-  // popClass: 'fold-list' は、出した組のボタンを縦に 1 列に並べる（「編集」の組。q122）
-  const foldGroup = (key, label, ico, note, title, body, popClass = '') => `<div class="rgroup fold" data-fold="${key}"><div class="gbody">
+// たたんだ組（q73・q74）: 窓の幅が狭いとメニューバーの右が切れたため、組を 1 つのボタンにする（編集の画面と、システムの画面の q162）。
+// 組のボタンは #toolbar の中に残す（押せる・押せないを、ほかのボタンと同じく updateToolbarState・updateSysToolbar で決めるため）
+// popClass: 'fold-list' は、出した組のボタンを縦に 1 列に並べる（「編集」の組。q122）
+const foldGroup = (key, label, ico, note, title, body, popClass = '') => `<div class="rgroup fold" data-fold="${key}"><div class="gbody">
       <button class="bigbtn fold-btn" data-action="fold-menu" data-fold="${key}" aria-expanded="false" title="${title}">${ico}${label}<span class="fold-caret">▼</span></button></div>
     <div class="glabel">${label}</div>
     <div class="fold-pop${popClass ? ` ${popClass}` : ''}" role="group" aria-label="${label}"><div class="gbody">${body}</div><div class="glabel">${note}</div></div></div>`;
-  // 縦に 1 列に並べる組のボタン（絵の幅をそろえて、文字の始まりを縦にそろえる）
-  const listBtn = (attrs, ico, text) => `<button class="tbtn" ${attrs}><span class="fl-ico">${ico}</span> ${text}</button>`;
+// 縦に 1 列に並べる組のボタン（絵の幅をそろえて、文字の始まりを縦にそろえる）
+const listBtn = (attrs, ico, text) => `<button class="tbtn" ${attrs}><span class="fl-ico">${ico}</span> ${text}</button>`;
+
+function toolbarHtml() {
+  const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
   const addItemBtn = '<button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="項目一覧に項目を追加します"><span class="ico">＋</span>項目を<br>追加する</button>';
   return [
     group('ファイル', (standalone
@@ -19287,6 +19300,7 @@ function onAppClick(e) {
   if (onAiClick(action, btn)) return;
   if (ui.view === 'editor') flushSideField(); // 押した時点で右の欄を離れなかったボタン（mousedown を止めた）の、打ちかけの文字を先に保存する（見直し⑤-4）
   if (ui.view === 'editor' && onEditorClick(action, btn)) return;
+  if (ui.view === 'system' && action === 'fold-menu') { toggleFoldMenu(btn.dataset.fold); return; } // たたんだ組（q162）
   if (ui.view === 'system' && onSystemScreenClick(action, btn)) return;
   onHomeAction(action, id, btn).catch(reportPageError);
 }
@@ -23173,7 +23187,7 @@ function bindGlobalEvents() {
   // メニューの位置がボタンからずれるので閉じる
   window.addEventListener('resize', () => {
     if (ui.view === 'editor') { syncZoomSpacer(); closeScreenMenu(); closeRevMenu(); closeFoldMenu(); }
-    if (ui.view === 'system') { closeSysMenu(); closeSysDesignMenu(); }
+    if (ui.view === 'system') { closeSysMenu(); closeSysDesignMenu(); closeFoldMenu(); }
   });
   // 画面の一覧（システムの画面では左の欄）を送ったときは、「…」のメニューを閉じる（「…」から離れるため。scroll は泡立たないので、捕まえる側で受ける）
   document.addEventListener('scroll', (e) => {
