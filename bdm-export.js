@@ -17,6 +17,27 @@ const NO_STEPS = 'スイムレーン図に工程がないので、MPD に出力�
 const KIND_NAMES = Object.freeze({ start: '始まり', task: '作業', input: 'システムへの入力', decision: '判断', doc: '書類', end: '終わり' });
 const isCol = (v) => Number.isSafeInteger(v) && v >= 0;
 const bad = (message = BAD_PLAN) => new MaterialError('bad_request', message);
+// 見た目の欄（v1.03 段階 D・q161。MultipurposeDiagramMaker の n.color・n.stroke・n.dashed・n.fontSize・n.textAlign と、レーンの bg・hd）。
+// 見た目は付け足しなので、形が違う欄は bad_request にせず、その欄だけ渡さない（アプリの SWIM_LOOK_FIX と同じ範囲）
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const hexOf = (v) => (typeof v === 'string' && HEX.test(v) ? v.toLowerCase() : undefined);
+const LOOK_FIX = {
+  color: hexOf,
+  stroke: hexOf,
+  dashed: (v) => (v === true ? true : undefined),
+  fontSize: (v) => (Number.isFinite(v) ? Math.max(6, Math.min(48, Math.round(v))) : undefined),
+  textAlign: (v) => (v === 'left' || v === 'right' ? v : undefined),
+};
+function readLook(look) {
+  const out = {};
+  if (!isObject(look)) return out;
+  for (const [k, fix] of Object.entries(LOOK_FIX)) {
+    const v = fix(look[k]);
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+}
+const readLaneColor = (c) => (isObject(c) && hexOf(c.bg) && hexOf(c.hd) ? { bg: hexOf(c.bg), hd: hexOf(c.hd) } : null);
 // MultipurposeDiagramMaker の本体のコードにある文字（図の中身の印がなくてもある。資料の種類の見分け〔material-kind.js〕の印の 1 つ）
 const MPD_CODE_MARK = '__SWIMLANE_STATE__';
 
@@ -30,14 +51,15 @@ function readExportPlan(plan) {
       && isCol(s.col) && Object.hasOwn(TYPE_OF_KIND, s.kind) && typeof s.text === 'string' && (s.box == null || typeof s.box === 'string');
     if (!ok) throw bad();
     keys.add(s.key);
-    return { key: s.key, lane: s.lane, col: s.col, kind: s.kind, text: s.text, box: s.box || null };
+    return { key: s.key, lane: s.lane, col: s.col, kind: s.kind, text: s.text, box: s.box || null, look: readLook(s.look) };
   });
   if (!steps.length) throw bad(NO_STEPS);
   const pairs = new Set();
   const edges = plan.edges.filter((e) => isObject(e) && keys.has(e.from) && keys.has(e.to) && e.from !== e.to)
     .filter((e) => !pairs.has(`${e.from}\n${e.to}`) && pairs.add(`${e.from}\n${e.to}`))
-    .map((e) => ({ from: e.from, to: e.to, label: typeof e.label === 'string' ? e.label : '' }));
-  return { name: typeof plan.name === 'string' ? cleanText(plan.name) : '', lanes: plan.lanes.slice(), steps, edges };
+    .map((e) => ({ from: e.from, to: e.to, label: typeof e.label === 'string' ? e.label : '', dashed: e.dashed === true }));
+  const laneColors = plan.lanes.map((_, i) => (Array.isArray(plan.laneColors) ? readLaneColor(plan.laneColors[i]) : null));
+  return { name: typeof plan.name === 'string' ? cleanText(plan.name) : '', lanes: plan.lanes.slice(), laneColors, steps, edges };
 }
 
 // 元の図の中身。図の中身の印がない本体だけの HTML は、空の図（向きは MultipurposeDiagramMaker の既定の縦）として扱う。

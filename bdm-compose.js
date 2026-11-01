@@ -1,5 +1,6 @@
 // bdm-compose.js — システムのスイムレーン図（ページが渡す形）と元の MPD の図の中身から、MPD へ出力する図の中身を組む（第 11 段階。設計書 11-3）
-// 渡す形（bdm-export.js が形を確かめた物）: { name, lanes: [役割の名前…], steps: [{ key, lane（lanes の番号）, col, kind, text, box }], edges: [{ from, to, label }] }
+// 渡す形（bdm-export.js が形を確かめた物）: { name, lanes: [役割の名前…], laneColors: [{ bg, hd } か null…], steps: [{ key, lane（lanes の番号）, col, kind, text, box, look }],
+//   edges: [{ from, to, label, dashed }] }。look は人が決めた見た目の欄だけ（{ color, stroke, dashed, fontSize, textAlign } のどれか）
 //   box は、その作業が元の MPD の箱から作ったもののとき、その箱の id（ページが作業の src.material と選んだ資料を比べて入れる）
 // 決まり（2026-10-21。設計書 16 章）:
 //  - 図の種類は swimlane・名前はシステムの名前・向きと用紙・見た目・appVer などほかの欄は元のまま。docId は null（元のままだと、出力したファイルを
@@ -10,6 +11,8 @@
 //  - 元の箱の使い回し: box の箱の id を使う。読み直して同じ種類になる（新しい矢印の本数で classifyBox）なら欄も残し、違えば作り直す。複数レーンの箱は作り直す
 //  - 元の位置を使うのは、欄を残した箱のうち、元の図での役割と列が今と同じもの（位置は bdm-place.js）
 //  - 矢印は、両端の箱が元の図の同じ向きの矢印でつながっていれば、その欄を使い回す（文字が変われば fromLabel・toLabel を空に、端の箱が動いたら経路の欄を消す）
+//  - 見た目（v1.03 段階 D・q161）: 人が決めた見た目（工程の色・枠・点線・文字の大きさと揃え、矢印の点線、レーンの色）だけ、同じ名前の欄に入れる（元の欄を上書きする）。
+//    決めていない欄は、使い回した元の箱・矢印・レーンの値のまま（新しく作るものは MultipurposeDiagramMaker の標準）。グループとグループ枠は入れない
 // Electron に触らない。node だけでテストできる
 'use strict';
 
@@ -64,16 +67,17 @@ function createIds(orig) {
 }
 
 // レーン: [{ lane（出力するレーン）, from（使い回した元のレーンの id か null）}]
-function composeLanes(orig, names, ids) {
+function composeLanes(orig, names, ids, colors = []) {
   const origLanes = useLanesOf(orig.diagramType) ? listOf(orig.lanes) : [];
   const taken = new Set();
   return names.map((name, i) => {
     const j = origLanes.findIndex((l, k) => !taken.has(k) && nameKey(l.name) === nameKey(name));
-    if (j < 0) return { lane: { id: ids.fresh(), name, ...LANE_COLORS[i % LANE_COLORS.length], w: DEFAULT_LANE_SIZE }, from: null };
+    const color = colors[i] ? { bg: colors[i].bg, hd: colors[i].hd } : null;
+    if (j < 0) return { lane: { id: ids.fresh(), name, ...(color || LANE_COLORS[i % LANE_COLORS.length]), w: DEFAULT_LANE_SIZE }, from: null };
     taken.add(j);
     const l = origLanes[j];
     const w = Number.isFinite(l.w) && l.w > 0 ? l.w : DEFAULT_LANE_SIZE;
-    return { lane: { ...l, id: ids.claim(idOf(l.id)), name, w }, from: idOf(l.id) };
+    return { lane: { ...l, ...color, id: ids.claim(idOf(l.id)), name, w }, from: idOf(l.id) };
   });
 }
 
@@ -106,6 +110,7 @@ function composeBoxes(plan, lanes, degrees, ctx) {
     const type = keep ? origNode.type : TYPE_OF_KIND[step.kind];
     const id = origNode ? ctx.ids.claim(idOf(origNode.id)) : ctx.ids.fresh();
     const node = keep ? { ...origNode, id, text: step.text, lid: lanes[step.lane].lane.id } : { id, type, x: 0, y: 0, w: 0, h: 0, text: step.text, lid: lanes[step.lane].lane.id };
+    Object.assign(node, step.look || {});
     const size = keep ? { w: finiteNumber(origNode.w, BOX_SIZE.rect.w), h: finiteNumber(origNode.h, BOX_SIZE.rect.h) } : null;
     const [main, cross] = size ? (ctx.vertical ? [size.h, size.w] : [size.w, size.h]) : [BOX_SIZE[type].h, BOX_SIZE[type].w];
     const reuse = keep ? reuseOf(origNode, step, lanes[step.lane], ctx) : null;
@@ -125,8 +130,9 @@ function composeEdges(orig, plan, boxOf, ids) {
     const to = boxOf.get(e.to);
     const was = origByPair.get(`${from.node.id}\n${to.node.id}`);
     origByPair.delete(`${from.node.id}\n${to.node.id}`);
-    if (!was) return { id: ids.fresh(), from: from.node.id, to: to.node.id, label: e.label, fromLabel: '', toLabel: '', fromLid: null, toLid: null };
-    const out = { ...was, id: ids.claim(idOf(was.id)), from: from.node.id, to: to.node.id };
+    const dash = e.dashed ? { dashed: true } : {};
+    if (!was) return { id: ids.fresh(), from: from.node.id, to: to.node.id, label: e.label, fromLabel: '', toLabel: '', fromLid: null, toLid: null, ...dash };
+    const out = { ...was, id: ids.claim(idOf(was.id)), from: from.node.id, to: to.node.id, ...dash };
     if (labelOf(was) !== cleanText(e.label)) Object.assign(out, { label: e.label, fromLabel: '', toLabel: '' });
     if (from.moved || to.moved) {
       for (const k of ROUTE_KEYS) delete out[k];
@@ -151,7 +157,7 @@ function degreesOf(plan) {
 function composeBdmState(orig, plan, origPlan) {
   const vertical = (orig.orientation || 'vertical') === 'vertical'; // MultipurposeDiagramMaker の isV()
   const ids = createIds(orig);
-  const lanes = composeLanes(orig, plan.lanes, ids);
+  const lanes = composeLanes(orig, plan.lanes, ids, plan.laneColors);
   const ctx = {
     vertical, ids,
     origById: new Map(listOf(orig.nodes).map((n) => [idOf(n.id), n]).reverse()), // 同じ id が 2 つなら前の箱

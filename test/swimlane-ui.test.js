@@ -1696,6 +1696,16 @@ test('見た目・グループ・グループ枠の出し先（段階 D・q161�
   assert.match(html, new RegExp(`<rect class="sw-grp" data-group="${g}"[^>]*stroke-dasharray="5,4"`), 'グループの点線の外枠');
   assert.match(html, /<g class="sw-frame" data-frame="f[^"]*"><rect class="sw-fr-line" x="10" y="10" width="300" height="120"/, 'グループ枠');
   assert.match(html, />申請と承認<\/text>/);
+  // MPD への出力（bdmExportPlan）には、色・点線・文字の大きさと揃え・矢印の点線・レーンの色を渡し、グループとグループ枠は渡さない
+  const plan = api.bdmExportPlan(S().systems[0], null).plan;
+  const lookOf = (id) => JSON.parse(JSON.stringify(plan.steps.find((w) => w.key === id).look));
+  assert.deepEqual(lookOf('w-1'), { color: '#fee2e2', stroke: '#ef4444', dashed: true, fontSize: 18, textAlign: 'left' });
+  assert.deepEqual(lookOf('w-2'), { color: '#dbeafe' });
+  assert.deepEqual(lookOf('w-3'), {});
+  assert.equal(plan.edges.find((e) => e.from === 'w-1').dashed, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(plan.laneColors[0])), { bg: '#eff6ff', hd: '#bfdbfe' });
+  assert.equal(plan.laneColors[1], null);
+  assert.ok(!/groupId|frames|申請と承認/.test(JSON.stringify(plan)), 'グループとグループ枠は渡さない');
   api.actions.setSwimOrient('y-trip', 'vertical');
   assert.ok(!api.swimlaneHtml(S(), S().systems[0]).includes('sw-frame'), 'ほかの向きでは枠を描かない');
 });
