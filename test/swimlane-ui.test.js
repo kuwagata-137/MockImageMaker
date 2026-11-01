@@ -1946,3 +1946,46 @@ test('右のパネルの見た目（段階 D・q160 案A）: 工程の色見本�
   click($$('#sys-view .sys-role-colors .btn').find((b) => b.textContent === '標準の色'));
   assert.ok(!('bg' in sys().roles[1]));
 });
+
+test('AI の見た目（段階 D・q161）: get_system に工程の見た目・矢印の点線・レーンの色を出す（グループと枠は出さない）。set_swimlane で書け、省くと今のまま・null で標準。update_system の set_color でレーンの色', async (t) => {
+  const { api, call, step, sys } = await boot(t);
+  api.actions.setStepLook('y-trip', ['w-1'], { color: '#fee2e2', stroke: '#dc2626', fontSize: 16 });
+  api.actions.groupSteps('y-trip', ['w-1', 'w-2']);
+  api.actions.addFrame('y-trip', { x: 10, y: 10, w: 200, h: 100 });
+  api.actions.setEdgeDashed('y-trip', 'e-1', true);
+  let g = (await call('get_system', { system: 'y-trip' })).result;
+  const s1 = g.steps.find((w) => w.id === 'w-1');
+  assert.deepEqual([s1.color, s1.stroke, s1.fontSize], ['#fee2e2', '#dc2626', 16]);
+  assert.ok(!('groupId' in s1) && !('frames' in g), 'グループと枠は出さない');
+  assert.ok(!('color' in g.steps.find((w) => w.id === 'w-3')), '決めていない工程には欄を出さない');
+  assert.equal(g.edges.find((e) => e.id === 'e-1').dashed, true);
+  // 読んだまま送り直すと変わらない
+  const r0 = await call('set_swimlane', { system: 'y-trip', expect: g.updatedAt, steps: g.steps, edges: g.edges });
+  assert.equal(r0.ok, true, JSON.stringify(r0.error));
+  assert.deepEqual([step('w-1').color, step('w-1').fontSize, step('w-1').groupId != null], ['#fee2e2', 16, true], '見た目とグループは残る');
+  assert.equal(sys().swimlane.edges.find((e) => e.id === 'e-1').dashed, true);
+  // 書く
+  g = (await call('get_system', { system: 'y-trip' })).result;
+  const steps = g.steps.map((w) => (w.id === 'w-1' ? { ...w, color: null, fontSize: null } : w.id === 'w-3' ? { ...w, color: '#dcfce7', dashed: true, textAlign: 'left' } : w));
+  const edges = g.edges.map((e) => (e.id === 'e-1' ? { ...e, dashed: false } : e.id === 'e-2' ? { ...e, dashed: true } : e));
+  const r1 = await call('set_swimlane', { system: 'y-trip', expect: g.updatedAt, steps, edges });
+  assert.equal(r1.ok, true, JSON.stringify(r1.error));
+  assert.ok(!('color' in step('w-1')) && !('stroke' in step('w-1')) && !('fontSize' in step('w-1')), 'null で標準');
+  assert.deepEqual([step('w-3').color, step('w-3').stroke, step('w-3').dashed, step('w-3').textAlign], ['#dcfce7', '#16a34a', true, 'left'], '色見本の色は、その枠の色');
+  assert.deepEqual(sys().swimlane.edges.filter((e) => e.dashed).map((e) => e.id), ['e-2']);
+  const bad = await call('set_swimlane', { system: 'y-trip', steps: [{ ...steps[0], color: 'red' }] });
+  assert.equal(bad.ok, false);
+  assert.match(bad.error.message, /steps\[0\]: color（塗りの色）は "#rrggbb"/);
+  const bad2 = await call('set_swimlane', { system: 'y-trip', steps: [{ ...steps[0], fontSize: 100 }] });
+  assert.match(bad2.error.message, /fontSize（文字の大きさ）は 6〜48/);
+  // レーンの色
+  g = (await call('get_system', { system: 'y-trip' })).result;
+  const r2 = await call('update_system', { system: 'y-trip', expect: g.updatedAt, ops: [{ op: 'set_color', role: '上長', color: '#ff0000' }, { op: 'set_color', role: '経理', color: { bg: '#f0fdf4', hd: '#bbf7d0' } }] });
+  assert.equal(r2.ok, true, JSON.stringify(r2.error));
+  assert.deepEqual(plain(r2.result.ops[0].color), { bg: '#ffbfbf', hd: '#ff4747' });
+  g = (await call('get_system', { system: 'y-trip' })).result;
+  assert.deepEqual(g.roles.map((r) => r.color || null), [null, { bg: '#ffbfbf', hd: '#ff4747' }, { bg: '#f0fdf4', hd: '#bbf7d0' }]);
+  const r3 = await call('update_system', { system: 'y-trip', expect: g.updatedAt, ops: [{ op: 'set_color', role: '上長', color: null }] });
+  assert.equal(r3.ok, true);
+  assert.ok(!('bg' in sys().roles[1]));
+});

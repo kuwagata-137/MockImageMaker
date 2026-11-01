@@ -21720,7 +21720,7 @@ function aiGetSystem(args) {
   const S = aiState();
   const y = aiResolveSystem(S, args.system);
   const roleOf = new Map(y.roles.map((r) => [r.id, r]));
-  const roles = y.roles.map((r) => ({ id: r.id, name: r.name, memo: r.memo, steps: y.swimlane.steps.filter((w) => w.roleId === r.id).length }));
+  const roles = y.roles.map((r) => ({ id: r.id, name: r.name, memo: r.memo, steps: y.swimlane.steps.filter((w) => w.roleId === r.id).length, ...(r.bg ? { color: { bg: r.bg, hd: r.hd } } : {}) }));
   // ごみ箱の画面設計も並びに出す（trashed の印。システムの画面には出ないが、戻すと元の場所に出る）。sharedWith は、ほかに入っているシステム（共通の画面設計）
   const designs = y.designIds.map((id) => findDesign(S, id)).filter(Boolean).map((d) => ({
     id: d.id, name: d.name, target: targetLabel(d.target), screens: d.screens.length, ...(d.trashedAt ? { trashed: true } : {}),
@@ -21728,9 +21728,9 @@ function aiGetSystem(args) {
   }));
   const steps = y.swimlane.steps.map((w) => ({
     id: w.id, role: roleOf.has(w.roleId) ? roleOf.get(w.roleId).name : null, roleId: w.roleId, col: w.col, kind: w.kind, text: w.text, memo: w.memo,
-    ref: aiStepRef(S, w.ref),
+    ref: aiStepRef(S, w.ref), ...aiStepLook(w),
   }));
-  const edges = y.swimlane.edges.map((e) => ({ id: e.id, from: e.from, to: e.to, label: e.label }));
+  const edges = y.swimlane.edges.map((e) => ({ id: e.id, from: e.from, to: e.to, label: e.label, ...(e.dashed ? { dashed: true } : {}) }));
   const materials = y.materials.map(aiMaterialSummary);
   const out = {
     id: y.id, name: y.name, ...(args.cursor ? {} : { description: y.description }), updatedAt: y.updatedAt, ...(y.trashedAt ? { trashed: true } : {}),
@@ -21740,6 +21740,41 @@ function aiGetSystem(args) {
     nextCursor: null,
   };
   return aiPageInto(out, [['roles', roles], ['designs', designs], ['steps', steps], ['edges', edges], ['materials', materials]], args.cursor);
+}
+
+// 工程の見た目（v1.03 段階 D・q161）: 人か AI が決めた欄だけを出す（決めていなければ標準の見た目）。グループとグループ枠は位置なので出さない（設計書 9-3）
+const aiStepLook = (w) => Object.fromEntries(SWIM_STEP_LOOK.filter((k) => w[k] != null).map((k) => [k, w[k]]));
+// set_swimlane の工程の見た目の欄を、今の工程の見た目 cur に当てる。省いた欄は今のまま、null は標準に戻す。color だけを書いたときの枠の色は、
+// 色見本の同じ色の枠か、その色から暗くした色（右のパネルのほかの色と同じ）。get_system で読んだ工程の color だけを書き換えて送ったとき
+// （stroke は読んだまま）も、枠を新しい色に合わせる（stroke を今と違う色で書いたときだけ、その枠にする）
+function aiSwimLook(w0, cur) {
+  const w = { ...w0 };
+  const colorChanged = w.color !== undefined && (w.color == null ? null : String(w.color).toLowerCase()) !== (cur.color || null);
+  if (colorChanged && typeof w.stroke === 'string' && w.stroke.toLowerCase() === cur.stroke) delete w.stroke;
+  const out = { ...cur };
+  const hex = (k) => {
+    if (w[k] === undefined) return;
+    if (w[k] === null) { delete out[k]; return; }
+    if (typeof w[k] !== 'string' || !SWIM_HEX.test(w[k])) throw aiBad(`${k}（${k === 'color' ? '塗りの色' : '枠の色'}）は "#rrggbb" の形の色か null（標準の色）で書いてください。`);
+    out[k] = w[k].toLowerCase();
+  };
+  hex('color');
+  hex('stroke');
+  if (colorChanged && w.color && w.stroke === undefined) out.stroke = (SWIM_STEP_COLORS.find((c) => c.fill === out.color) || {}).stroke || swimMix(out.color, 0.18, 0);
+  if (colorChanged && w.color === null && w.stroke === undefined) delete out.stroke;
+  if (w.dashed !== undefined) {
+    if (w.dashed !== null && typeof w.dashed !== 'boolean') throw aiBad('dashed（枠を点線にする）は true か false で書いてください。');
+    if (w.dashed) out.dashed = true; else delete out.dashed;
+  }
+  if (w.fontSize !== undefined) {
+    if (w.fontSize !== null && !(Number.isInteger(w.fontSize) && w.fontSize >= SWIM_FONT_MIN && w.fontSize <= SWIM_FONT_MAX)) throw aiBad(`fontSize（文字の大きさ）は ${SWIM_FONT_MIN}〜${SWIM_FONT_MAX} の整数か null（標準の ${SWIM_FS}）で書いてください。`);
+    if (w.fontSize == null || w.fontSize === SWIM_FS) delete out.fontSize; else out.fontSize = w.fontSize;
+  }
+  if (w.textAlign !== undefined) {
+    if (w.textAlign !== null && !['left', 'center', 'right'].includes(w.textAlign)) throw aiBad('textAlign（文字の揃え）は "left"・"center"・"right" か null（中央）で書いてください。');
+    if (w.textAlign == null || w.textAlign === 'center') delete out.textAlign; else out.textAlign = w.textAlign;
+  }
+  return out;
 }
 
 async function aiCreateSystem(args, ctx) {
@@ -21755,7 +21790,7 @@ async function aiCreateSystem(args, ctx) {
   });
 }
 // 名前・説明と、役割の ops（add・rename・set_memo・move・delete）
-const AI_ROLE_OPS = ['add', 'rename', 'set_memo', 'move', 'delete'];
+const AI_ROLE_OPS = ['add', 'rename', 'set_memo', 'move', 'set_color', 'delete'];
 async function aiUpdateSystem(args, ctx) {
   return aiWrite(ctx, { system: args.system, expect: args.expect }, (tx) => {
     const id = tx.system.id;
@@ -21813,6 +21848,18 @@ function aiRoleOp(tx, op) {
       if (!Number.isInteger(op.to) || op.to < 0 || op.to >= n) throw aiBad(`to（動かした後の位置）は 0〜${n - 1} の整数で書いてください（0 がいちばん上のレーン）。`);
       actions.moveRole(id, r.id, op.to);
       return { op: 'move', id: r.id, name: r.name, index: y().roles.findIndex((x) => x.id === r.id) };
+    }
+    // レーンの色（v1.03 段階 D）: { bg（レーンの地）, hd（見出し）} か、見出しの色 1 つ（地はその色を白へ寄せる。右のパネルのほかの色と同じ）か null（標準）
+    case 'set_color': {
+      const r = roleOf(op.role);
+      const c = op.color;
+      let v = null;
+      if (typeof c === 'string' && SWIM_HEX.test(c)) v = { bg: swimMix(c.toLowerCase(), 0.75, 255), hd: swimMix(c.toLowerCase(), 0.28, 255) };
+      else if (isObj(c) && SWIM_HEX.test(c.bg) && SWIM_HEX.test(c.hd)) v = { bg: c.bg, hd: c.hd };
+      else if (c !== null) throw aiBad('color は "#rrggbb" の形の見出しの色か、{ bg, hd }（レーンの地と見出しの色）か、null（標準の色）で書いてください。');
+      actions.setRoleColor(id, r.id, v);
+      const now = y().roles.find((x) => x.id === r.id);
+      return { op: 'set_color', id: r.id, name: r.name, color: now.bg ? { bg: now.bg, hd: now.hd } : null };
     }
     case 'delete': {
       const r = roleOf(op.role);
@@ -21904,6 +21951,8 @@ function aiSwimEdges(y, specs, list) {
     if (same) used.add(same.id);
     const label = x.label === undefined ? (old ? old.label : '') : x.label;
     const kept = old ? clone(old) : {};
+    // 線の点線（v1.03 段階 D）: 省くと今のまま、false・null で実線
+    if (x.dashed !== undefined) { if (x.dashed) kept.dashed = true; else delete kept.dashed; }
     if (old) swimForgetEnds(kept, x.from, x.to); // 端を変えた矢印は、その端の出入りの位置と曲がり角を消す（付け替えと同じ。v1.03 段階 C）
     return { ...kept, id: old ? old.id : newId('e'), from: x.from, to: x.to, label };
   });
@@ -21938,7 +21987,7 @@ function aiSwimStep(y, w, index) {
   const keepRef = w.ref === undefined || (old && aiSameStepRef(old.ref, w.ref));
   const ref = keepRef ? (old ? clone(old.ref) : aiSwimRef(y, null)) : aiSwimRef(y, w.ref);
   const col = w.col == null ? (old ? old.col : null) : w.col;
-  const step = { ...(old ? clone(old) : {}), id: old ? old.id : newId('w'), roleId: role.id, col, kind, text: w.text.trim(), memo, ref };
+  const step = aiSwimLook(w, { ...(old ? clone(old) : {}), id: old ? old.id : newId('w'), roleId: role.id, col, kind, text: w.text.trim(), memo, ref });
   return { key: w.key == null ? step.text : aiKey(w.key), explicitKey: w.key != null, step, index, isNew: !old };
 }
 // 作業の役割。role（名前か id）か roleId（get_system の steps[].roleId）で指す。両方を書いたときは同じ役割を指すこと
@@ -22019,7 +22068,8 @@ function aiSwimEdgeEnds(y, specs, e) {
   const from = aiSwimEnd(specs, e.from, 'from');
   const to = aiSwimEnd(specs, e.to, 'to');
   if (from === to) throw aiBad(`工程「${from.step.text}」から自分への矢印は作れません。`);
-  return { old, from: from.step.id, to: to.step.id, label: e.label === undefined ? undefined : e.label == null ? '' : aiStrVal(e.label, 'label').trim() };
+  if (e.dashed != null && typeof e.dashed !== 'boolean') throw aiBad('dashed（線を点線にする）は true か false で書いてください。');
+  return { old, from: from.step.id, to: to.step.id, label: e.label === undefined ? undefined : e.label == null ? '' : aiStrVal(e.label, 'label').trim(), dashed: e.dashed };
 }
 // 2 つ以上に当たるときの候補は、key・文字・steps の何番目か（index。0 から）。今ある作業だけ id も付ける（新しい作業の id は、この頼みの中だけのもの）
 function aiSwimEnd(specs, ref, what) {

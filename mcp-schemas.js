@@ -215,12 +215,19 @@ const processOps = z.discriminatedUnion('op', [
   op('delete_action', { action: actionRef }, '操作を消す'),
 ]);
 
+// 色の欄（"#rrggbb"。v1.03 段階 D）
+const swimHexOf = (what) => z.string().regex(/^#[0-9a-fA-F]{6}$/).describe(`${what}（"#rrggbb"）`);
 // ── システムの役割（update_system。第 9 段階）──
 const roleOps = z.discriminatedUnion('op', [
   op('add', { name: z.string().describe('役割の名前（例 "申請者"・"上長"・"経理"）'), memo: opt(z.string().describe('役割のメモ')) }, '役割を追加する（いちばん下のレーン）'),
   op('rename', { role: S.role, name: z.string() }, '役割の名前を変える（同じシステムに同じ名前の役割は作れない）'),
   op('set_memo', { role: S.role, memo: z.string() }, '役割のメモを書く'),
   op('move', { role: S.role, to: z.number().int().min(0).describe('動かした後の位置（0 がいちばん上のレーン）') }, '役割（スイムレーン図のレーン）を並べ替える'),
+  op('set_color', {
+    role: S.role,
+    color: z.union([swimHexOf('レーンの見出しの色（レーンの地は、その色を薄くした色）'), obj({ bg: swimHexOf('レーンの地の色'), hd: swimHexOf('見出しの色') }), z.null()])
+      .describe('レーンの色。null で標準の色（白基調）に戻す'),
+  }, 'レーンの色を変える（v1.03）'),
   op('delete', { role: S.role }, '役割を消す（その役割の工程と、その工程に接続している矢印も消える）'),
 ]);
 
@@ -251,6 +258,13 @@ const swimStep = obj({
     }),
     z.null(),
   ]).describe('この工程で使う画面設計・画面・ステータス（null で外す）。今ある工程の今と同じ指す先（get_system で読んだまま）は、そのまま残す')),
+  // 見た目（v1.03 段階 D）。省くと今のまま、null で標準に戻す
+  color: opt(z.union([swimHexOf('塗りの色。色見本は 青 #dbeafe・緑 #dcfce7・黄 #fef9c3・赤 #fee2e2・紫 #ede9fe・グレー #e5e7eb'), z.null()])
+    .describe('工程の塗りの色。stroke を省くと、枠はその色に合う色。省くと今のまま、null で標準の色')),
+  stroke: opt(z.union([swimHexOf('枠の色'), z.null()]).describe('工程の枠の色。省くと今のまま（color を書いたときは color に合う色）')),
+  dashed: opt(z.union([z.boolean(), z.null()]).describe('枠を点線にする（省略できる工程など）。省くと今のまま')),
+  fontSize: opt(z.union([z.number().int().min(6).max(48), z.null()]).describe('文字の大きさ（6〜48。標準は 12）。省くと今のまま、null で標準')),
+  textAlign: opt(z.union([z.enum(['left', 'center', 'right']), z.null()]).describe('文字の揃え（標準は "center"）。省くと今のまま、null で標準')),
 });
 const swimEdge = obj({
   id: opt(z.string().describe('今ある矢印の id（get_system の edges[].id）。書くと、その矢印の id のまま元・先・文字を変更する。' +
@@ -258,6 +272,7 @@ const swimEdge = obj({
   from: z.string().describe('矢印の元の工程（key か id か文字）'),
   to: z.string().describe('矢印の先の工程（key か id か文字）'),
   label: opt(z.string().describe('矢印の文字（例 "差し戻し"）。省くと、今の矢印の文字のまま（新しい矢印は文字なし）')),
+  dashed: opt(z.union([z.boolean(), z.null()]).describe('線を灰色の点線にする（省略できる流れなど。戻る流れの橙の点線はアプリが付ける）。省くと今のまま（v1.03）')),
 });
 
 // ── 資料の置き場（list_materials・read_material・swimlane_from_bdm。第 9 段階の後半。export_bdm は第 11 段階）──

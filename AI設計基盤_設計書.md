@@ -707,6 +707,10 @@ props: {
     返事は作業の `key`・`id`・`col` と矢印の数 `edgesTotal` だけ。端が 2 つに当たったときの候補は `{ key, text, index }`（今ある作業には `id` も）。
   - v1.03（2026-10-31）: `get_system` に図の向き `orientation`、`set_swimlane` の入力と返事に `orientation`（省くと今の向き。工程と同じ 1 回の変更）、
     `swimlane_from_bdm` の返事に `orientation`（MPD の向き）を足した。作業の位置 `pos` は AI に出さない。道具の数は 36 のまま。
+  - v1.03 段階 D（2026-11-01・q161）: 工程の見た目 `color`・`stroke`・`dashed`・`fontSize`・`textAlign`、矢印の `dashed`、役割の `color`（`{ bg, hd }`）を `get_system` に出し
+    （決めた欄だけ）、`set_swimlane`（省くと今のまま・`null` で標準）と `update_system` の `set_color`（見出しの色 1 つか `{ bg, hd }` か `null`）で書けるようにした。
+    `color` だけを変えたときは、枠の色を色見本の枠か、その色を暗くした色に合わせる（読んだままの `stroke` を送っても）。
+    グループ（`groupId`）とグループ枠（`frames`）は、位置の話なので AI に出さない（9-3。AI は役割と列だけを決める）。`set_swimlane` で今ある工程の id を書けば、グループは残る。道具の数は 36 のまま。
   - `get_system`: 説明は最初のページ（cursor なし）にだけ入れる。
   - `add_to_system`・`remove_from_system`: 任意の `expect`（システムの更新の印）。`add_to_system` の返事は、`updatedAt` がシステムの印、`design: { id, name, updatedAt }` が入れた画面設計の印。`remove_from_system` はごみ箱の画面設計を `trashed` で断る。
   - `create_design` に `system` を書いたときの返事に `system: { id, name, updatedAt }`。`update_system` でほかのシステムと同じ名前にしたときは warnings。

@@ -306,7 +306,11 @@ const CATALOG = `# アイテムのカタログ
 - kintoneTypes: 項目とテーブルの列の kintone の欄に書ける kintone の種類（type・名前・選べるアイテムの種類 parts・選ばないとその種類になるアイテムの種類 defaultFor・kintone が値を入れるか auto）。read_guide の "kintone"。
 - maxScreenHeight: AI の依頼で伸ばせる画面の高さの上限（20000 ドット）。edit_screen の height・edit_parts の move・並べ方で、これを超えて画面を伸ばす依頼は断られる。
 - スイムレーン図の工程の種類（set_swimlane の kind）: "start"（始まり）・"task"（作業。既定）・"input"（システムへの入力）・"decision"（判断）・"doc"（書類）・"end"（終わり）。
-  工程の位置と大きさはアプリが決める（レーンは役割の並び、列は col。col を省くと矢印の順から付ける）。`;
+  工程の位置と大きさはアプリが決める（レーンは役割の並び、列は col。col を省くと矢印の順から付ける）。
+- スイムレーン図の見た目（v1.03）: 工程の color（塗り）・stroke（枠）・dashed（枠を点線にする）・fontSize（6〜48。標準 12）・textAlign（"left"・"center"・"right"）、
+  矢印の dashed（灰色の点線。戻る流れの橙の点線はアプリが付ける）を set_swimlane で書く（省くと今のまま、null で標準）。color だけを書くと、枠はその色に合う色になる。
+  色見本: 青 #dbeafe・緑 #dcfce7・黄 #fef9c3・赤 #fee2e2・紫 #ede9fe・グレー #e5e7eb。レーンの色は update_system の set_color（見出しの色か { bg, hd } か null）。
+  人が付けた見た目は、人に依頼されたとき以外は変えないでください（get_system で読んだまま送れば残ります）。`;
 
 const RULES = `# 守ること
 
