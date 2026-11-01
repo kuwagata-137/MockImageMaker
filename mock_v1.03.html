@@ -12312,13 +12312,15 @@ function bdmExportPlan(y, materialId) {
   const keys = new Set(steps.map((w) => w.id));
   const boxOf = (w) => (isObj(w.src) && w.src.material === materialId && w.src.id != null ? String(w.src.id) : null);
   // 見た目（段階 D・q161）: 人が決めた欄だけ渡す（色・枠・点線・文字の大きさと揃え・矢印の点線・レーンの色）。グループとグループ枠は渡さない
-  const lookOf = (w) => { const o = {}; SWIM_STEP_LOOK.forEach((k) => { if (w[k] != null) o[k] = w[k]; }); return o; };
+  // 見た目のない図は、今までと同じ形（look・laneColors の欄を付けない）
+  const lookOf = (w) => { const o = {}; SWIM_STEP_LOOK.forEach((k) => { if (w[k] != null) o[k] = w[k]; }); return Object.keys(o).length ? { look: o } : {}; };
+  const laneColors = y.roles.map((r) => (r.bg && r.hd ? { bg: r.bg, hd: r.hd } : null));
   return {
     plan: {
       name: y.name,
       lanes: y.roles.map((r) => r.name),
-      laneColors: y.roles.map((r) => (r.bg && r.hd ? { bg: r.bg, hd: r.hd } : null)),
-      steps: steps.map((w) => ({ key: w.id, lane: laneOf.get(w.roleId), col: w.col, kind: w.kind, text: w.text, box: boxOf(w), look: lookOf(w) })),
+      ...(laneColors.some(Boolean) ? { laneColors } : {}),
+      steps: steps.map((w) => ({ key: w.id, lane: laneOf.get(w.roleId), col: w.col, kind: w.kind, text: w.text, box: boxOf(w), ...lookOf(w) })),
       edges: y.swimlane.edges.filter((e) => keys.has(e.from) && keys.has(e.to)).map((e) => ({ from: e.from, to: e.to, label: e.label, ...(e.dashed ? { dashed: true } : {}) })),
     },
     dropped: y.swimlane.steps.length - steps.length,
