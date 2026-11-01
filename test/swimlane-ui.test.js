@@ -150,7 +150,7 @@ test('全体を表示の倍率（swimFitZoom）: 図の幅を欄の幅に合わ�
 // ── メニューバー ──
 test('メニューバー: 「モード」の組（▶ 選択・→ 接続・✋ 手のひらツール。v1.03 段階 B・q148 案B）・「編集」の組（⧉ コピー・📋 貼り付け・✕ 削除）・「図の向き」（横向き・縦向き）・「配置」（工程を整列する）と「表示」の「全体を表示」。削除とコピーは選んでいるときだけ、貼り付けはコピーした後だけ押せる。スイムレーン図のほかでは押せない', async (t) => {
   const { app, api, $, $$, node } = await boot(t);
-  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', 'モード', '編集', '図の向き', '配置', '表示']);
+  assert.deepEqual($$('#toolbar .glabel').map((e) => e.textContent), ['ファイル', '履歴', 'モード', '編集', '図の向き', '配置', 'スペース', 'グループ', '表示']);
   assert.deepEqual(['swim-horizontal', 'swim-vertical', 'swim-arrange'].map((a) => $(`#toolbar [data-action="${a}"]`).textContent.replace(/\s+/g, '')), ['横向き', '縦向き', '⊞工程を整列する']);
   const sel = $('#toolbar [data-action="swim-select"]');
   const con = $('#toolbar [data-action="swim-connect"]');
@@ -1698,4 +1698,198 @@ test('見た目・グループ・グループ枠の出し先（段階 D・q161�
   assert.match(html, />申請と承認<\/text>/);
   api.actions.setSwimOrient('y-trip', 'vertical');
   assert.ok(!api.swimlaneHtml(S(), S().systems[0]).includes('sw-frame'), 'ほかの向きでは枠を描かない');
+});
+
+// 図の中の位置 (x, y) のマウスの値（図の左上と倍率から求める。jsdom では図の左上が 0・倍率 100% なので、そのまま。ブラウザで動かしても同じ所になる）
+function cpOf(env) {
+  if (env.api.ui.sysZoom !== 1) click(env.$('#sys-zoom-label')); // 100% にする（マウスの位置は整数に丸められるため）
+  return (x, y) => {
+    const r = env.inner().getBoundingClientRect();
+    const z = env.api.ui.sysZoom;
+    return { clientX: Math.round(r.left + x * z), clientY: Math.round(r.top + y * z) };
+  };
+}
+
+test('ツールバーの組「スペース」「グループ」（段階 D・q157 案A）: スペース挿入・調整は押している間は青（同じボタンでやめる）。向きのボタンは今の向きで ↔ 横・↕ 縦。グループ化は 2 つ以上、グループ解除はグループの工程を選んだときだけ押せる', async (t) => {
+  const env = await boot(t);
+  const { $, api, node, toast } = env;
+  const b = (id) => $('#' + id);
+  assert.equal(b('sys-gap-dir').textContent, '↔横', '横向きの流れの向きは左右');
+  click(b('sys-gap-dir'));
+  assert.equal(api.ui.swimGapAxis, 'cross');
+  assert.equal(b('sys-gap-dir').textContent, '↕縦', 'レーンをまたぐ向きは上下');
+  click(b('sys-gap-dir'));
+  click($('#sys-orient-v'));
+  assert.equal(b('sys-gap-dir').textContent, '↕縦', '縦向きの流れの向きは上下');
+  click(b('sys-gap-ins'));
+  assert.ok(b('sys-gap-ins').classList.contains('on'));
+  assert.ok($('#sys-swim').classList.contains('gap-y'));
+  assert.match(toast(), /横の点線の所を押すと、80 のスペースを挿入します/);
+  click(b('sys-gap-adj'));
+  assert.ok(!b('sys-gap-ins').classList.contains('on') && b('sys-gap-adj').classList.contains('on'), '別のボタンでそのモードへ');
+  click(b('sys-gap-adj'));
+  assert.equal(api.ui.swimGap, null);
+  assert.match(toast(), /スペース調整を終了しました/);
+  // グループ
+  assert.equal(b('sys-group').disabled, true);
+  assert.equal(b('sys-ungroup').disabled, true);
+  click(node('w-1'));
+  fire(node('w-2'), 'click', { ctrlKey: true });
+  assert.deepEqual(plain(api.ui.stepSels), ['w-1', 'w-2']);
+  assert.equal(b('sys-group').disabled, false);
+  click(b('sys-group'));
+  assert.match(toast(), /2 個の工程をグループにしました/);
+  assert.equal(b('sys-ungroup').disabled, false);
+  click(b('sys-frame'));
+  assert.ok(b('sys-frame').classList.contains('on') && $('#sys-swim').classList.contains('framing'));
+  assert.deepEqual(plain(api.ui.stepSels), [], '描くモードでは選ぶのをやめる');
+  key(env.app, env.app.document.body, { key: 'Escape' });
+  assert.equal(api.ui.swimFrameDraw, false);
+});
+
+test('スペース挿入のモード（段階 D・q158 案A）: 押すと 80、ドラッグでその幅だけ点線より先の工程を押し出す（元に戻すの 1 回分ずつ）。モードは続き、Esc・右クリックでやめる。点線は 10 刻み', async (t) => {
+  const env = await boot(t);
+  const { $, api, inner, geom, toast } = env;
+  const cp = cpOf(env);
+  const x = (id) => geom().pos['w:' + id].x;
+  const [x4, x5] = [x('w-4'), x('w-5')];
+  click($('#sys-gap-ins'));
+  fire(inner(), 'mousemove', cp(943, 200));
+  assert.ok($('#swim-gap'), '点線を出す');
+  assert.match($('#swim-gap').innerHTML, /x1="940(\.0)?"/, '10 刻み');
+  const n0 = api.store.undoStack.length;
+  press(inner(), cp(943, 200));
+  assert.equal(api.store.undoStack.length, n0 + 1);
+  assert.deepEqual([x('w-4'), x('w-5')], [x4, x5 + 80]);
+  assert.match(toast(), /スペース 80 を挿入しました（続けて挿入できます/);
+  assert.ok(api.ui.swimGap, 'モードは続く');
+  // ドラッグで幅
+  fire(inner(), 'mousedown', cp(940, 200));
+  fire(inner(), 'mousemove', cp(1000, 200));
+  fire(inner(), 'mousemove', cp(1060, 200));
+  assert.match($('#swim-gap').textContent, /＋120/);
+  fire(inner(), 'mouseup', cp(1060, 200));
+  assert.equal(x('w-5'), x5 + 200);
+  assert.equal(api.store.undoStack.length, n0 + 2);
+  // レーンをまたぐ向き（横向きは上下）: 点線のあるレーンを広げる
+  const h0 = geom().lanes[1].h;
+  click($('#sys-gap-dir'));
+  assert.equal(api.ui.swimGap.axis, 'cross', 'モードの間に向きを変えると、点線もすぐ変わる');
+  press(inner(), cp(600, 140));
+  assert.equal(geom().lanes[1].h, h0 + 80);
+  assert.match(toast(), /レーン「上長」を 80 広げました/);
+  fire(inner(), 'contextmenu', cp(600, 140));
+  assert.equal(api.ui.swimGap, null, '右クリックでやめる（工程は消さない）');
+  assert.equal(env.sys().swimlane.steps.length, 8);
+  assert.equal($('#swim-gap'), null);
+});
+
+test('スペース調整のモード（段階 D・q158 案A）: 押した所の両側でいちばん近い工程の外枠の間を既定の間（横向きの左右 40）にそろえる。点線の帯は 広げる＝青・詰める＝赤・既定どおり＝灰。両側に工程がないときは知らせる', async (t) => {
+  const env = await boot(t);
+  const { $, api, inner, geom, toast } = env;
+  const cp = cpOf(env);
+  const b = (id) => geom().pos['w:' + id];
+  const mid = Math.round((b('w-1').x + b('w-1').w + b('w-2').x) / 20) * 10;
+  click($('#sys-gap-adj'));
+  fire(inner(), 'mousemove', cp(mid, 60));
+  assert.match($('#swim-gap').innerHTML, /fill="#2563eb"[^>]*>＋5</, '広げる所は青（始まりの工程と次の工程の間は 34.5）');
+  press(inner(), cp(mid, 60));
+  assert.ok(Math.abs(b('w-2').x - (b('w-1').x + b('w-1').w) - 40) <= 0.5);
+  assert.match(toast(), /左右の間を既定（外枠の間 40）にそろえました（＋5/);
+  assert.match($('#swim-gap').innerHTML, /fill="#94a3b8"/, 'そろえた後は灰');
+  press(inner(), cp(mid, 60));
+  assert.match(toast(), /もう既定（外枠の間 40）どおりです/);
+  const m2 = Math.round((b('w-2').x + b('w-2').w + b('w-3').x) / 20) * 10;
+  api.actions.insertSwimGap('y-trip', { axis: 'flow', at: b('w-3').x, gap: 30 });
+  fire(inner(), 'mousemove', cp(m2, 60));
+  assert.match($('#swim-gap').innerHTML, /fill="#dc2626"/, '詰める所は赤');
+  press(inner(), cp(140, 60));
+  assert.match(toast(), /左右の両側に工程がある所を押してください/);
+  key(env.app, env.app.document.body, { key: 'Escape' });
+  assert.equal(api.ui.swimGap, null);
+  assert.match(toast(), /スペース調整を終了しました/);
+});
+
+test('グループ化（段階 D・q159）: Ctrl+G でまとめ、1 つを押すとグループの工程を全部選ぶ（囲む選択も）。点線の外枠は選んでいるグループだけ青。Ctrl+Shift+G で解除。コピーして貼ると新しいグループになる', async (t) => {
+  const env = await boot(t);
+  const { $, $$, api, node, toast, step } = env;
+  const body = env.app.document.body;
+  click(node('w-1'));
+  fire(node('w-2'), 'click', { ctrlKey: true });
+  key(env.app, body, { key: 'g', ctrlKey: true });
+  const gid = step('w-1').groupId;
+  assert.ok(gid && step('w-2').groupId === gid, 'Ctrl+G でまとめる');
+  assert.equal($$('#sys-swim .sw-grp').length, 1, '点線の外枠');
+  click(node('w-5'));
+  assert.ok(!$('#sys-swim .sw-grp').classList.contains('sel'), 'ほかを選んでいるときは灰');
+  click(node('w-2'));
+  assert.deepEqual(plain(api.ui.stepSels), ['w-2', 'w-1'], '1 つでグループの全部');
+  assert.ok($('#sys-swim .sw-grp').classList.contains('sel'), '選んでいるグループは青');
+  fire(node('w-5'), 'click', { ctrlKey: true });
+  fire(node('w-1'), 'click', { ctrlKey: true });
+  assert.deepEqual(plain(api.ui.stepSels), ['w-5'], 'Ctrl＋クリックはグループの全部を外す');
+  // コピーして貼る: 新しいグループ
+  click(node('w-1'));
+  key(env.app, body, { key: 'c', ctrlKey: true });
+  key(env.app, body, { key: 'v', ctrlKey: true });
+  const cp = cpOf(env);
+  press(env.inner(), cp(1200, 200));
+  const added = env.sys().swimlane.steps.slice(8);
+  assert.equal(added.length, 2);
+  assert.ok(added[0].groupId && added[0].groupId === added[1].groupId && added[0].groupId !== gid, '新しいグループの id');
+  // 解除
+  press(node('w-1'));
+  key(env.app, body, { key: 'G', ctrlKey: true, shiftKey: true });
+  assert.ok(!('groupId' in step('w-1')) && !('groupId' in step('w-2')));
+  assert.match(toast(), /グループを解除しました（2 個の工程）/);
+});
+
+test('グループ枠（段階 D・q159 案B）: 「グループ枠」のモードで図をドラッグして描き、描いた枠を選ぶ（8 つの四角）。見出しのドラッグで動かす・四角で大きさ・ダブルクリックで名前・Delete で消す。どれも元に戻すの 1 回分', async (t) => {
+  const env = await boot(t);
+  const { $, $$, api, inner, sys, toast } = env;
+  const cp = cpOf(env);
+  const rect = () => plain(sys().swimlane.frames[0].rect.horizontal);
+  click($('#sys-frame'));
+  press(inner(), cp(300, 20));
+  assert.match(toast(), /ドラッグして、グループ枠の大きさを決めてください/, '押しただけでは描かない');
+  fire(inner(), 'mousedown', cp(300, 20));
+  fire(inner(), 'mousemove', cp(500, 120));
+  assert.ok($('#swim-band'));
+  fire(inner(), 'mousemove', cp(560, 230));
+  fire(inner(), 'mouseup', cp(560, 230));
+  assert.deepEqual(rect(), { x: 300, y: 20, w: 260, h: 210 });
+  assert.equal(api.ui.swimFrameDraw, false, '描いたらモードをやめる');
+  const fid = sys().swimlane.frames[0].id;
+  assert.equal(api.ui.frameSel, fid);
+  assert.equal($$('#swim-frs .sw-frs').length, 8);
+  assert.match($('#sys-swim .sw-frame').textContent, /グループ/);
+  // 見出しのドラッグで動かす
+  const head = () => $('#sys-swim .sw-frame .sw-fr-head');
+  fire(head(), 'mousedown', cp(320, 30));
+  fire(inner(), 'mousemove', cp(340, 40));
+  fire(inner(), 'mousemove', cp(360, 50));
+  fire(inner(), 'mouseup', cp(360, 50));
+  assert.deepEqual(rect(), { x: 340, y: 40, w: 260, h: 210 });
+  // 右下の四角で大きさ（80 × 44 より小さくしない）
+  const se = () => $$('#swim-frs .sw-frs').find((r) => r.getAttribute('data-h') === 'se');
+  fire(se(), 'mousedown', cp(600, 250));
+  fire(inner(), 'mousemove', cp(300, 50));
+  fire(inner(), 'mouseup', cp(300, 50));
+  assert.deepEqual(rect(), { x: 340, y: 40, w: 80, h: 44 });
+  // ダブルクリックで名前
+  fire(head(), 'dblclick');
+  const ed = $('#sys-swim .swim-edit');
+  assert.equal(ed.value, 'グループ');
+  ed.value = '申請と承認';
+  key(env.app, ed, { key: 'Enter' });
+  assert.equal(sys().swimlane.frames[0].text, '申請と承認');
+  // Delete で消す・元に戻す
+  click(head());
+  key(env.app, env.app.document.body, { key: 'Delete' });
+  assert.ok(!('frames' in sys().swimlane));
+  key(env.app, env.app.document.body, { key: 'z', ctrlKey: true });
+  assert.equal(sys().swimlane.frames[0].text, '申請と承認');
+  // 縦向きでは描かない
+  click($('#sys-orient-v'));
+  assert.equal($('#sys-swim .sw-frame'), null);
 });
