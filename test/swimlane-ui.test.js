@@ -1893,3 +1893,56 @@ test('グループ枠（段階 D・q159 案B）: 「グループ枠」のモー�
   click($('#sys-orient-v'));
   assert.equal($('#sys-swim .sw-frame'), null);
 });
+
+test('右のパネルの見た目（段階 D・q160 案A）: 工程の色見本・ほかの色・標準の色・文字の大きさ（A˄・A˅・欄）・文字の揃え・枠の点線。いくつか選ぶとまとめて変える。矢印の「線を点線にする」。役割の画面のレーンの色', async (t) => {
+  const env = await boot(t);
+  const { $, $$, api, node, step, sys } = env;
+  click(node('w-5'));
+  const sw = (name) => $$('#sys-side .sw-sw').find((b) => b.title === name);
+  assert.deepEqual($$('#sys-side .sw-sw').map((b) => b.title), ['青', '緑', '黄', '赤', '紫', 'グレー']);
+  click(sw('赤'));
+  assert.deepEqual([step('w-5').color, step('w-5').stroke], ['#fee2e2', '#dc2626']);
+  assert.ok(sw('赤').classList.contains('on'));
+  const color = $('#sys-side [data-sw="look-color"]');
+  setValue(color, '#3366CC');
+  assert.deepEqual([step('w-5').color, step('w-5').stroke], ['#3366cc', '#2a54a7'], 'ほかの色は、枠をその色から暗く（0.18）');
+  click($$('#sys-side [data-action="sys-step-color"]').find((b) => b.textContent === '標準の色'));
+  assert.ok(!('color' in step('w-5')) && !('stroke' in step('w-5')));
+  click($$('#sys-side [data-action="sys-step-fs"]')[0]);
+  assert.equal(step('w-5').fontSize, 13);
+  setValue($('#sys-side [data-sw="look-fs"]'), '100');
+  assert.equal(step('w-5').fontSize, 48);
+  assert.equal($('#sys-side [data-sw="look-fs"]').value, '48', '範囲の外は直した値を欄に出す');
+  setValue($('#sys-side [data-sw="look-fs"]'), '12');
+  assert.ok(!('fontSize' in step('w-5')), '標準の 12 は書かない');
+  click($('#sys-side [data-action="sys-step-align"][data-align="left"]'));
+  assert.equal(step('w-5').textAlign, 'left');
+  click($('#sys-side [data-action="sys-step-align"][data-align="center"]'));
+  assert.ok(!('textAlign' in step('w-5')));
+  const dash = $('#sys-side [data-sw="look-dashed"]');
+  dash.checked = true;
+  setValue(dash, 'on');
+  assert.equal(step('w-5').dashed, true);
+  // まとめて
+  fire(node('w-6'), 'click', { ctrlKey: true });
+  assert.match($('#sys-side').textContent, /2 個の工程を選んでいます/);
+  click(sw('緑'));
+  assert.deepEqual([step('w-5').color, step('w-6').color], ['#dcfce7', '#dcfce7']);
+  // 矢印
+  click(env.edgeHit('e-6'));
+  const ed = $('#sys-side [data-sw="edge-dashed"]');
+  assert.match($('#sys-side').textContent, /橙の点線は、戻る流れ/);
+  ed.checked = true;
+  setValue(ed, 'on');
+  assert.equal(sys().swimlane.edges.find((e) => e.id === 'e-6').dashed, true);
+  // レーンの色
+  api.openSystemPanel('roles');
+  click($('#sys-view [data-action="sys-role-color"][data-id="l-b"]'));
+  assert.equal($$('#sys-view .sys-role-colors .sw-sw').length, 7);
+  click($$('#sys-view .sys-role-colors .sw-sw').find((b) => b.title === '緑'));
+  assert.deepEqual([sys().roles[1].bg, sys().roles[1].hd], ['#f0fdf4', '#bbf7d0']);
+  setValue($('#sys-view [data-sy="role-color"]'), '#ff0000');
+  assert.deepEqual([sys().roles[1].bg, sys().roles[1].hd], ['#ffbfbf', '#ff4747'], 'ほかの色は、地を白へ 0.75・見出しを 0.28 寄せる');
+  click($$('#sys-view .sys-role-colors .btn').find((b) => b.textContent === '標準の色'));
+  assert.ok(!('bg' in sys().roles[1]));
+});

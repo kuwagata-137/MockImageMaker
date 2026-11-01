@@ -1167,6 +1167,20 @@ body.swim-dragging .swim-over{display:none}
 .sys-swim .swim-inner svg .sw-fr-hit{fill:none;stroke:transparent;stroke-width:10px;pointer-events:stroke;cursor:move}
 .sys-swim .swim-inner svg .sw-fr-head{pointer-events:all;cursor:move}
 .swim-inner svg .sw-frs{fill:#fff;stroke:#2563eb;stroke-width:1.5px;pointer-events:all}
+/* v1.03 段階 D（q160 案A。MPD の色見本と同じ 26 × 26）: 右のパネルの工程の「見た目」・役割の色の点と色見本 */
+.sw-look{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center;font-size:12px;color:#475569}
+.sw-look>span{white-space:nowrap}
+.sw-sws{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.sw-sw{width:26px;height:26px;border-radius:6px;border:0;padding:0;cursor:pointer}
+.sw-sw.on{outline:2px solid #1e293b;outline-offset:1px}
+.sw-sws input[type=color]{width:30px;height:26px;padding:0;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;background:#fff}
+.sw-fs{display:flex;gap:4px;align-items:center}
+.sw-look .sw-fs input{width:52px;flex:0 0 52px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px}
+.sw-al{display:flex;gap:4px}
+.sw-al .btn.on{background:#dbeafe;border-color:#2563eb}
+.sw-chk{display:flex;gap:6px;align-items:center;cursor:pointer;font-size:13px;color:#1e293b}
+.sys-role .sw-dot{width:22px;height:22px;flex-shrink:0;border-radius:6px;border:1px solid #cbd5e1;padding:0;cursor:pointer}
+.sys-role-colors{margin:-2px 0 8px 30px}
 .swim-inner svg .sw-line.sel{stroke:#2563eb;stroke-width:2px;marker-end:url(#swim-arrow-s)}
 .swim-inner svg .sw-arc-c.sel{stroke:#2563eb;stroke-width:2px}
 .swim-inner svg .sw-lab.sel{stroke:#2563eb}
@@ -7738,6 +7752,7 @@ const ui = {
   swimPaste: null, // 貼り付けモードで貼る工程（swimClip と同じ形。null は貼り付けモードでない。v1.03 段階 B・q149）
   swimLink: null, // つなぐ途中 { from（元の作業の id）, via（'plus'〔○＋ から〕か 'mode'〔接続モード〕）}
   swimPal: null, // 置き場で押した作業の箱の種類（図を押すと、その種類の箱を置く。続けて置ける）
+  roleColorFor: null, // 役割の画面で、レーンの色見本を開いている役割の id（v1.03 段階 D）
   frameSel: null, // 選んでいるグループ枠の id（v1.03 段階 D・q159。工程・矢印とは一緒に選ばない）
   swimGap: null, // スペース挿入・調整のモード { op（'insert'・'adjust'）, axis（'flow'・'cross'）, pos, from（ドラッグの始まり）}（v1.03 段階 D・q158。MPD の gapState）
   swimGapAxis: 'flow', // 次にスペースを挿入・調整する向き（ツールバーの ↕ 縦・↔ 横。MPD の gapDir）
@@ -9934,6 +9949,21 @@ function swimLookCss(w) {
   if (w.textAlign) text.push(`align-self:stretch;text-align:${w.textAlign};padding:0 ${(SWIM_SHAPES[w.kind] || SWIM_SHAPES.task).pad / 2}px`);
   return { box: box.map((x) => ';' + x).join(''), text: text.join(';') };
 }
+// 工程の色見本（v1.03 段階 D・q160。MPD の GANTT_COLORS と同じ 6 色。紫は AI の色と同じだが、MPD との受け渡しのため同じにする）と、
+// レーンの色見本（MPD の LC と同じ 7 色。bg はレーンの地・hd は見出し）
+const SWIM_STEP_COLORS = [
+  { name: '青', fill: '#dbeafe', stroke: '#3b82f6' }, { name: '緑', fill: '#dcfce7', stroke: '#16a34a' }, { name: '黄', fill: '#fef9c3', stroke: '#ca8a04' },
+  { name: '赤', fill: '#fee2e2', stroke: '#dc2626' }, { name: '紫', fill: '#ede9fe', stroke: '#7c3aed' }, { name: 'グレー', fill: '#e5e7eb', stroke: '#6b7280' },
+];
+const SWIM_LANE_COLORS = [
+  { name: '青', bg: '#eff6ff', hd: '#bfdbfe' }, { name: '緑', bg: '#f0fdf4', hd: '#bbf7d0' }, { name: '黄', bg: '#fefce8', hd: '#fde68a' }, { name: '紫', bg: '#fdf4ff', hd: '#e9d5ff' },
+  { name: '赤', bg: '#fff1f2', hd: '#fecdd3' }, { name: '青緑', bg: '#f0fdfa', hd: '#99f6e4' }, { name: '橙', bg: '#fff7ed', hd: '#fed7aa' },
+];
+// 色を白へ amt だけ寄せる・黒へ amt だけ寄せる（MPD の ganttLighten・ganttDarken。ほかの色を選んだときの枠・レーンの地の色）
+function swimMix(hex, amt, to) {
+  const n = parseInt(hex.slice(1), 16);
+  return '#' + [n >> 16, (n >> 8) & 255, n & 255].map((c) => Math.round(c + (to - c) * amt).toString(16).padStart(2, '0')).join('');
+}
 // 判断（ひし形）・書類の形の背景（CSS の .k-decision・.k-doc と同じ形。色と点線だけ変える）
 const SWIM_SHAPE_PATH = {
   decision: { d: "<polygon points='100,2 198,32 100,62 2,32'", fill: '#fffbeb', stroke: '#b45309' },
@@ -11404,14 +11434,23 @@ function sysRolesHtml(y) {
     return `<div class="ps-row sys-role" data-id="${esc(r.id)}"><span class="no">${i + 1}</span>
       <input type="text" data-sy="role-name" data-role="${esc(r.id)}" maxlength="${NAME_MAX}" value="${esc(r.name)}" aria-label="${i + 1} つ目の役割の名前">
       <input type="text" data-sy="role-memo" data-role="${esc(r.id)}" value="${esc(r.memo)}" placeholder="この役割の人・部署など" aria-label="${what}のメモ">
+      <button class="sw-dot" data-action="sys-role-color" data-id="${esc(r.id)}" style="background:${r.hd || '#e8eef6'}" title="レーンの色を変えます" aria-label="${what}のレーンの色" aria-expanded="${ui.roleColorFor === r.id}"></button>
       <label class="sys-lanew" title="レーンの${dim}（空にすると自動）。スイムレーン図では、レーンの境目をドラッグしても変えられます">${dim}<input type="number" data-sy="role-lanew" data-role="${esc(r.id)}" min="${SWIM_LANE_MIN}" step="${SWIM_LANE_SNAP}" value="${swimLaneSize(y, r.id)}" aria-label="${what}のレーンの${dim}"></label>
       <span class="cnt">${k ? `工程 ${k} つ` : '工程なし'}</span>
-      ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を削除`, '✕', false)}</div>`;
+      ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を削除`, '✕', false)}</div>`
+      + (ui.roleColorFor === r.id ? sysRoleColorsHtml(r) : '');
   }).join('');
   return `<div class="itable" style="max-width:760px">${sysHead('役割', y)}
     <p class="map-note">役割は、スイムレーン図のレーンになります。この順に、${swimOrientOf(y) === 'vertical' ? '左' : '上'}からレーンを並べます。</p>
     ${rows || '<p class="sys-empty">まだ役割がありません。「＋ 役割を追加する」で、申請者・上長などの役割を追加します。</p>'}
     <button class="lk-add" data-action="sys-role-add">＋ 役割を追加する</button></div>`;
+}
+// 役割のレーンの色見本（v1.03 段階 D。MPD の showLaneColorMenu: 7 色・ほかの色〔見出しはその色を白へ 0.28、地は 0.75 寄せる〕・標準の色）
+function sysRoleColorsHtml(r) {
+  const sws = SWIM_LANE_COLORS.map((c) => { const on = r.bg === c.bg && r.hd === c.hd; return `<button class="sw-sw${on ? ' on' : ''}" data-action="sys-role-color-set" data-id="${esc(r.id)}" data-bg="${c.bg}" data-hd="${c.hd}"
+    style="background:${c.bg};box-shadow:inset 0 0 0 3px ${c.hd}" title="${c.name}" aria-label="レーンの色を${c.name}にする" aria-pressed="${on}"></button>`; }).join('');
+  return `<div class="sys-role-colors sw-sws">${sws}<input type="color" data-sy="role-color" data-role="${esc(r.id)}" value="${r.hd || '#93c5fd'}" title="ほかの色" aria-label="レーンのほかの色">
+    <button class="btn small" data-action="sys-role-color-set" data-id="${esc(r.id)}" title="レーンの色を標準に戻します"${r.bg ? '' : ' disabled'}>標準の色</button></div>`;
 }
 // 役割 roleId のレーンの今の太さ（人が決めた太さか、自動の太さ。横向きは高さ・縦向きは幅）
 function swimLaneSize(y, roleId) {
@@ -12530,7 +12569,7 @@ function sysSideHtml(y) {
       + hint('決めたことと理由と、まだ決まっていないこと（答えのある行も）は、システム設計書（PDF）の最後のページに入ります（⑤ の行は入りません）。');
   }
   if (!y.roles.length) return `<div class="panel-title">工程の設定</div>${hint('役割を追加すると、スイムレーン図に工程を置けます。')}`;
-  if (ui.stepSels.length > 1) return sysMultiStepsHtml(ui.stepSels.length);
+  if (ui.stepSels.length > 1) return sysMultiStepsHtml(ui.stepSels.length, findStep(y, ui.stepSels[0]));
   const w = ui.stepSel ? findStep(y, ui.stepSel) : null;
   if (w) return sysStepSettingsHtml(y, w);
   const e = ui.edgeSel ? y.swimlane.edges.find((x) => x.id === ui.edgeSel) : null;
@@ -12565,10 +12604,25 @@ function renderSysBox(y) {
     + `<div class="pal-grid">${SWIM_KINDS.map(btn).join('')}</div>`
     + (ui.swimPal ? `<p class="hint sw-armed">図を押すと「${esc(SWIM_KIND_NAMES[ui.swimPal])}」を置きます（続けて置けます）。もう一度押す・Esc・何もない所の右クリックでやめます。</p>` : '');
 }
-// 工程をいくつか選んでいるとき（v1.03 段階 B・q147 案B）: 選んだ数と、まとめて削除するボタン
-function sysMultiStepsHtml(n) {
+// 工程の「見た目」（v1.03 段階 D・q160 案A。MPD の色・文字の大きさ・文字の揃え・点線）: 色見本 6 色・ほかの色・標準の色、文字の大きさ（A˄・A˅ で 1 ずつ）、
+// 文字の揃え（左・中央・右）、枠を点線にする。w は値を出す工程（いくつか選んでいるときは最初の工程）。変えると選んでいる工程の全部を変える（setStepLook）
+function sysStepLookHtml(w) {
+  const sws = SWIM_STEP_COLORS.map((c) => `<button class="sw-sw${w.color === c.fill ? ' on' : ''}" data-action="sys-step-color" data-fill="${c.fill}" data-stroke="${c.stroke}"
+    style="background:${c.fill};box-shadow:inset 0 0 0 2px ${c.stroke}" title="${c.name}" aria-label="色を${c.name}にする" aria-pressed="${w.color === c.fill}"></button>`).join('');
+  const al = [['left', '左揃え', 'M2 3h12M2 6.3h7.5M2 9.7h12M2 13h7.5'], ['center', '中央揃え', 'M2 3h12M4.3 6.3h7.5M2 9.7h12M4.3 13h7.5'], ['right', '右揃え', 'M2 3h12M6.5 6.3h7.5M2 9.7h12M6.5 13h7.5']]
+    .map(([v, t, d]) => { const on = (w.textAlign || 'center') === v; return `<button class="btn small${on ? ' on' : ''}" data-action="sys-step-align" data-align="${v}" title="${t}" aria-label="${t}" aria-pressed="${on}"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="${d}" stroke="currentColor" stroke-width="1.4"/></svg></button>`; }).join('');
+  return `<div class="field"><span>見た目</span><div class="sw-look">
+    <span>色</span><div class="sw-sws">${sws}<input type="color" data-sw="look-color" value="${w.color || '#dbeafe'}" title="ほかの色" aria-label="ほかの色">
+      <button class="btn small" data-action="sys-step-color" title="色を標準に戻します"${w.color || w.stroke ? '' : ' disabled'}>標準の色</button></div>
+    <span>文字の大きさ</span><div class="sw-fs"><input type="number" data-sw="look-fs" min="${SWIM_FONT_MIN}" max="${SWIM_FONT_MAX}" value="${w.fontSize || SWIM_FS}" aria-label="文字の大きさ">
+      <button class="btn small" data-action="sys-step-fs" data-d="1" title="文字を大きくします">A˄</button><button class="btn small" data-action="sys-step-fs" data-d="-1" title="文字を小さくします">A˅</button></div>
+    <span>文字の揃え</span><div class="sw-al">${al}</div>
+    <span>枠</span><label class="sw-chk"><input type="checkbox" data-sw="look-dashed"${w.dashed ? ' checked' : ''}> 枠を点線にする</label></div></div>`;
+}
+// 工程をいくつか選んでいるとき（v1.03 段階 B・q147 案B）: 選んだ数と、まとめて削除するボタン。見た目（段階 D）は、選んだ工程をまとめて変える
+function sysMultiStepsHtml(n, w) {
   const hint = (t) => `<p class="hint">${t}</p>`;
-  return `<div class="panel-title">工程の設定</div><p class="sw-multi"><b>${n} 個の工程を選んでいます</b></p>`
+  return `<div class="panel-title">工程の設定</div><p class="sw-multi"><b>${n} 個の工程を選んでいます</b></p>${w ? sysStepLookHtml(w) : ''}`
     + '<div class="sw-btns"><button class="btn small danger" data-action="swim-delete" title="選んだ工程と、接続している矢印を削除します（Delete キー。元に戻す〔Ctrl+Z〕で戻せます）">✕ 選んだ工程を削除する</button></div>'
     + hint('選んだ工程は、まとめてドラッグで動かせます。Ctrl を押しながらドラッグすると複製します。矢印キーで 1 ドット（Shift を押すと 10 ドット）動きます。')
     + hint('Ctrl か Shift を押しながら工程を押すと、選ぶ工程に追加する・外すことができます。Ctrl+C でコピーし、Ctrl+V で貼り付けます。');
@@ -12613,6 +12667,7 @@ function sysStepSettingsHtml(y, w) {
   return `<div class="panel-title">工程の設定</div>
     <label class="field"><span>文字</span><input type="text" data-sw="text" data-step="${id}" value="${esc(w.text)}" placeholder="例: 出張申請を入力する"></label>
     <div class="field"><span>種類</span><div class="sw-kinds">${kinds}</div></div>
+    ${sysStepLookHtml(w)}
     <label class="field"><span>役割（レーン）</span><select data-sw="role" data-step="${id}">${roles}</select></label>
     ${sysStepRefHtml(y, w)}
     <div class="field"><span>次の工程（矢印）</span>${next || '<p class="hint">まだ接続していません。</p>'}
@@ -12654,6 +12709,8 @@ function sysEdgeSettingsHtml(y, e) {
   return `<div class="panel-title">矢印の設定</div>
     <p class="sw-edge-names">${esc(swimStepName(findStep(y, e.from)))} → ${esc(swimStepName(findStep(y, e.to)))}</p>
     <label class="field"><span>文字</span><input type="text" data-sw="edge-label" data-edge="${esc(e.id)}" value="${esc(e.label)}" placeholder="例: 差し戻し"></label>
+    <div class="field"><span>線</span><label class="sw-chk"><input type="checkbox" data-sw="edge-dashed" data-edge="${esc(e.id)}"${e.dashed ? ' checked' : ''}> 線を点線にする</label>
+      <p class="hint">点線は灰色の線です。橙の点線は、戻る流れ（差し戻しなど）の印で、アプリが付けます。</p></div>
     <div class="field"><span>線の形</span><p class="hint">両端の ○ を辺に沿ってドラッグすると、出入りの位置が決まります。区間の □ をドラッグすると、平行にずらせます。</p>
       <button class="btn small" data-action="sys-edge-shape-reset" data-id="${esc(e.id)}" title="出入りの位置と、ずらした区間を、自動で引いた線に戻します（元に戻す〔Ctrl+Z〕で戻せます）"${shaped ? '' : ' disabled'}>⟲ 線の形を自動に戻す</button></div>
     <div class="sw-btns"><button class="btn small danger" data-action="sys-edge-del" data-id="${esc(e.id)}" title="この矢印を削除します（元に戻す〔Ctrl+Z〕で戻せます）">この矢印を削除する</button></div>`;
@@ -12706,6 +12763,7 @@ function onSystemFieldChange(el) {
     if (v !== r.memo) commitKeepSide(() => actions.setRoleMemo(y.id, r.id, v));
     return;
   }
+  if (k === 'role-color') { const c = el.value.toLowerCase(); actions.setRoleColor(y.id, r.id, { bg: swimMix(c, 0.75, 255), hd: swimMix(c, 0.28, 255) }); return; }
   if (k === 'role-lanew') { // レーンの高さ（縦向きは幅）。空は自動の太さに戻す。数でなければ変えない（MPD と同じ）。欄には今の太さを書き直す
     const t = el.value.trim();
     const w = t === '' ? null : Math.round(Number(t));
@@ -12733,6 +12791,17 @@ function onStepFieldChange(el) {
   const y = editableSystem(ui.systemId);
   if (!y) return;
   const k = el.dataset.sw;
+  // 見た目（v1.03 段階 D）: 選んでいる工程の全部を変える。矢印の点線
+  if (k === 'look-color') { const c = el.value.toLowerCase(); actions.setStepLook(y.id, ui.stepSels, { color: c, stroke: swimMix(c, 0.18, 0) }); return; }
+  if (k === 'look-fs') {
+    const v = Math.round(Number(el.value));
+    if (el.value.trim() === '' || !Number.isFinite(v)) { renderSysSide(y); return; }
+    actions.setStepLook(y.id, ui.stepSels, { fontSize: v === SWIM_FS ? null : v });
+    renderSysSide(findSystem(store.state, y.id)); // 範囲の外（6〜48）を直した値を欄に出す
+    return;
+  }
+  if (k === 'look-dashed') { actions.setStepLook(y.id, ui.stepSels, { dashed: el.checked || null }); return; }
+  if (k === 'edge-dashed') { actions.setEdgeDashed(y.id, el.dataset.edge, el.checked); return; }
   if (k === 'edge-label') {
     const e = y.swimlane.edges.find((x) => x.id === el.dataset.edge);
     if (e && el.value.trim() !== e.label) commitKeepSysSide(() => actions.updateEdge(y.id, e.id, el.value));
@@ -12792,6 +12861,18 @@ function onSystemScreenClick(action, btn) {
     case 'sys-edge-del': deleteSwimEdge(id); return true;
     case 'sys-edge-shape-reset': actions.resetEdgeShape(y.id, id); return true;
     case 'sys-step-size-reset': actions.resetStepSize(y.id, id); return true;
+    // 工程の見た目と役割の色（v1.03 段階 D・q160）。色の data-fill がないボタンは「標準の色」
+    case 'sys-step-color': actions.setStepLook(y.id, ui.stepSels, btn.dataset.fill ? { color: btn.dataset.fill, stroke: btn.dataset.stroke } : { color: null, stroke: null }); return true;
+    case 'sys-step-fs': {
+      const w = findStep(y, ui.stepSels[0]);
+      if (!w) return true;
+      const v = Math.max(SWIM_FONT_MIN, Math.min(SWIM_FONT_MAX, (w.fontSize || SWIM_FS) + Number(btn.dataset.d)));
+      actions.setStepLook(y.id, ui.stepSels, { fontSize: v === SWIM_FS ? null : v });
+      return true;
+    }
+    case 'sys-step-align': actions.setStepLook(y.id, ui.stepSels, { textAlign: btn.dataset.align === 'center' ? null : btn.dataset.align }); return true;
+    case 'sys-role-color': ui.roleColorFor = ui.roleColorFor === id ? null : id; renderSystem(); return true;
+    case 'sys-role-color-set': actions.setRoleColor(y.id, id, btn.dataset.bg ? { bg: btn.dataset.bg, hd: btn.dataset.hd } : null); return true;
     // 資料（第 9 段階の後半）: ファイルを入れる・読む・スイムレーン図にする・MPD に出力（第 11 段階）・消す
     case 'sys-mat-pick': addMaterialFiles(y.id, (api) => api.pick(y.id)).catch(reportPageError); return true;
     case 'sys-mat-read': openMaterialReader(y.id, id).catch(reportPageError); return true;
