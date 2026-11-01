@@ -1676,3 +1676,26 @@ test('スペース調整（actions.adjustSwimGap・swimGapAdjustOf。段階 D・
   assert.equal(b('w-2').x, w2 - 1);
   assert.equal(api.actions.adjustSwimGap('y-trip', { axis: 'flow', at: -10 }).changed, false, '手前に工程がない');
 });
+
+test('見た目・グループ・グループ枠の出し先（段階 D・q161）: 説明書（PDF）と AI の画像の図（swimlaneHtml）に、色・点線・文字の大きさと揃え・矢印の点線・レーンの色・グループの点線の外枠・グループ枠を出す。ほかの向きの枠は描かない', async (t) => {
+  const { api, S } = await boot(t);
+  api.actions.setStepLook('y-trip', ['w-1'], { color: '#fee2e2', stroke: '#ef4444', dashed: true, fontSize: 18, textAlign: 'left' });
+  api.actions.setStepLook('y-trip', ['w-2'], { color: '#dbeafe' });
+  api.actions.setEdgeDashed('y-trip', 'e-1', true);
+  api.actions.setRoleColor('y-trip', 'l-a', { bg: '#eff6ff', hd: '#bfdbfe' });
+  const g = api.actions.groupSteps('y-trip', ['w-1', 'w-2']);
+  api.actions.addFrame('y-trip', { x: 10, y: 10, w: 300, h: 120 }, '申請と承認');
+  const html = api.swimlaneHtml(S(), S().systems[0]);
+  assert.match(html, /class="mnode sw k-[a-z]+ dashed" data-node="w:w-1"[^>]*background:#fee2e2;border-color:#ef4444;border-style:dashed/, '箱の色・枠の色・点線');
+  assert.match(html, /data-node="w:w-1"[^>]*><b style="font-size:18px;line-height:23px;align-self:stretch;text-align:left/, '文字の大きさと揃え');
+  assert.match(html, /data-node="w:w-2"[^>]*background:#dbeafe/);
+  assert.ok(!/data-node="w:w-3"[^>]*background:/.test(html), '決めていない工程は今までどおり');
+  assert.match(html, /stroke-dasharray="6,4"/, '矢印の点線');
+  assert.match(html, /fill="#eff6ff"/, 'レーンの色');
+  assert.match(html, /fill="#bfdbfe" stroke="#cbd5e1"/, 'レーンの見出しの色');
+  assert.match(html, new RegExp(`<rect class="sw-grp" data-group="${g}"[^>]*stroke-dasharray="5,4"`), 'グループの点線の外枠');
+  assert.match(html, /<g class="sw-frame" data-frame="f[^"]*"><rect class="sw-fr-line" x="10" y="10" width="300" height="120"/, 'グループ枠');
+  assert.match(html, />申請と承認<\/text>/);
+  api.actions.setSwimOrient('y-trip', 'vertical');
+  assert.ok(!api.swimlaneHtml(S(), S().systems[0]).includes('sw-frame'), 'ほかの向きでは枠を描かない');
+});

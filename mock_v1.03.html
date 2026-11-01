@@ -1108,6 +1108,8 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .sys-swim{max-height:max(240px,calc(100vh - 300px))}
 .swim-zoom{position:relative;overflow:hidden}
 .mnode.sw.sel{outline:3px solid #2563eb;outline-offset:3px}
+.swim-svg .sw-grp.sel{stroke:#3b82f6;fill:rgba(59,130,246,.05)}
+.swim-svg .sw-frame.sel .sw-fr-line{stroke:#2563eb;stroke-width:2.5}
 /* スイムレーン図の上の操作（第 9 段階の T6b。画像 q63。BDM の見た目を写した）: ○＋（半径 9・#2563eb・白い＋）・つなぐ元の青枠・十字のカーソル・
    矢印の押す所（太い透明の線）・選んだ矢印（青・太く・両端にオレンジの ○）・文字のない線の真ん中の ○・図の上の文字の欄・置く枠と置き換える箱の印 */
 .sys-swim .mnode.sw{cursor:grab}
@@ -7722,6 +7724,10 @@ const ui = {
   swimPaste: null, // 貼り付けモードで貼る工程（swimClip と同じ形。null は貼り付けモードでない。v1.03 段階 B・q149）
   swimLink: null, // つなぐ途中 { from（元の作業の id）, via（'plus'〔○＋ から〕か 'mode'〔接続モード〕）}
   swimPal: null, // 置き場で押した作業の箱の種類（図を押すと、その種類の箱を置く。続けて置ける）
+  frameSel: null, // 選んでいるグループ枠の id（v1.03 段階 D・q159。工程・矢印とは一緒に選ばない）
+  swimGap: null, // スペース挿入・調整のモード { op（'insert'・'adjust'）, axis（'flow'・'cross'）, pos, from（ドラッグの始まり）}（v1.03 段階 D・q158。MPD の gapState）
+  swimGapAxis: 'flow', // 次にスペースを挿入・調整する向き（ツールバーの ↕ 縦・↔ 横。MPD の gapDir）
+  swimFrameDraw: false, // グループ枠を描くモード（ツールバーの「グループ枠」。図をドラッグして描く）
   sysDesignMenu: null, // 左の画面設計のカードで「…」のメニューを開いている画面設計の id
   editorFrom: null, // 編集の画面の「← システムへ」で戻るシステムの id（システムの画面から開いたとき。最初の画面から開いたときは null）
   trashOpen: false,
@@ -9550,14 +9556,17 @@ function swimWrap(text, maxW, fs = SWIM_FS, bold = true) {
   });
   return lines;
 }
+// 字の大きさ fs の行の高さ（MPD の lineH。12 なら 15）
+const swimLineH = (fs) => Math.round(fs * 1.25);
 // 判断（ひし形）の中に、折り返した文字が収まるか（MPD の diamondLayout。横書き。A＝幅・B＝高さ）
-function swimDiamondLayout(text, A, B) {
+function swimDiamondLayout(text, A, B, fs = SWIM_FS) {
+  const lh = swimLineH(fs);
   let count = Math.max(1, text.split('\n').length);
   let lines = null;
   for (let k = 0; k < 12; k++) {
-    const cap = A * (1 - (count * SWIM_LH + 6) / B) - 12;
+    const cap = A * (1 - (count * lh + 6) / B) - 12;
     if (cap < 24) return { ok: false, lines: lines || text.split('\n') };
-    lines = swimWrap(text, cap);
+    lines = swimWrap(text, cap, fs);
     if (lines.length <= count) break;
     count = lines.length;
   }
@@ -9567,8 +9576,9 @@ function swimDiamondLayout(text, A, B) {
 // max は横に広げる上限（縦向きは、レーンからはみ出さないように、レーンの太さ − 4。MPD の autoCrossMax）。札は箱の中の 2 行目に書き、札の分 16 高くする（q144）。
 // size は人が決めた大きさ { w?, h? }（q151。MPD の manualW・manualH と同じく、幅は決めた幅のまま〔既定より小さくてもよい〕で文字をその幅で折り返し、
 // 高さは決めた高さと文字の入る高さの大きいほう。文字は縮めない）
-function swimBoxSize(text, kind, tag = '', max = SWIM_W_MAX, size = null) {
+function swimBoxSize(text, kind, tag = '', max = SWIM_W_MAX, size = null, fs = SWIM_FS) {
   const s = SWIM_SHAPES[kind] || SWIM_SHAPES.task;
+  const lh = swimLineH(fs); // 文字の大きさ（段階 D・q160。MPD の fontSize。行の高さは lineH）
   const fixW = size && size.w ? Math.max(SWIM_SIZE_MIN, size.w) : 0;
   const minH = size && size.h ? Math.max(SWIM_SIZE_MIN, size.h) : 0;
   const cap = fixW || Math.max(40, Math.min(SWIM_W_MAX, max));
@@ -9577,19 +9587,19 @@ function swimBoxSize(text, kind, tag = '', max = SWIM_W_MAX, size = null) {
   if (s.type === 'diamond') {
     const r = s.h / s.w;
     const hard = text.split('\n');
-    const tw0 = Math.max(tagW, ...hard.map((l) => swimTextW(l)));
-    const A = fixW || Math.max(s.w, Math.min(cap, Math.ceil(tw0 + 12 + (hard.length * SWIM_LH + 6) / r)));
+    const tw0 = Math.max(tagW, ...hard.map((l) => swimTextW(l, fs)));
+    const A = fixW || Math.max(s.w, Math.min(cap, Math.ceil(tw0 + 12 + (hard.length * lh + 6) / r)));
     let B = Math.max(fixW ? 0 : s.h, Math.ceil(r * A), minH - extra);
-    let lay = swimDiamondLayout(text, A, B);
+    let lay = swimDiamondLayout(text, A, B, fs);
     for (let k = 0; k < 60 && !lay.ok; k++) {
-      B += SWIM_LH;
-      lay = swimDiamondLayout(text, A, B);
+      B += lh;
+      lay = swimDiamondLayout(text, A, B, fs);
     }
     return { w: A, h: B + extra, lines: lay.lines, tag };
   }
-  const lines = swimWrap(text, Math.max(24, cap - s.pad));
-  const need = Math.ceil(Math.max(tagW, ...lines.map((l) => swimTextW(l)))) + s.pad;
-  return { w: fixW || Math.max(s.w, Math.min(cap, need)), h: Math.max(s.h + extra, lines.length * SWIM_LH + s.padH + extra, minH), lines, tag };
+  const lines = swimWrap(text, Math.max(24, cap - s.pad), fs);
+  const need = Math.ceil(Math.max(tagW, ...lines.map((l) => swimTextW(l, fs)))) + s.pad;
+  return { w: fixW || Math.max(s.w, Math.min(cap, need)), h: Math.max(s.h + extra, lines.length * lh + s.padH + extra, minH), lines, tag };
 }
 // 矢印の文字の下地の大きさ { w, h, lines }（MPD の renderOneEdge の横書きの線ラベルと同じ: 幅 140 で折り返し、字 11・左右 7 の余白・高さは 20 以上）
 function swimLabelSize(label) {
@@ -9690,7 +9700,7 @@ function swimlaneLayout(model, sys) {
   const userW = sys.roles.map((r) => swimLaneWOf(r, orient));
   const boxes = model.nodes.map((n) => {
     const b = swimBoxSize(n.step.text || SWIM_KIND_NAMES[n.step.kind], n.step.kind, swimRefTag(n.ref),
-      V ? (userW[n.laneIndex] || SWIM_LANE.vertical) - 4 : SWIM_W_MAX, swimSizeOf(n.step, orient));
+      V ? (userW[n.laneIndex] || SWIM_LANE.vertical) - 4 : SWIM_W_MAX, swimSizeOf(n.step, orient), n.step.fontSize || SWIM_FS);
     return { n, b, fl: V ? b.h : b.w, cl: V ? b.w : b.h, p: swimStoredPos(n.step, orient), col: n.col, lane: n.laneIndex };
   });
   // 段（列）の真ん中
@@ -9796,8 +9806,9 @@ function swimSvg(D, o = {}, ends = []) {
   const idp = o.idPrefix || 'swim';
   const f = swimNum;
   // 帯（白と薄い灰を交互に）と、左の名前の列（縦向きは上の名前の行）。rect の属性は x・y・width・height の順（diagramCrop が拾う形）
-  const bands = lanes.map((l, i) => `<rect x="${l.x}" y="${l.y}" width="${l.w}" height="${l.h}" fill="${i % 2 ? '#f8fafc' : '#fff'}" stroke="#cbd5e1"/>`
-    + `<rect x="${l.x}" y="${l.y}" width="${V ? l.w : hdr}" height="${V ? hdr : l.h}" fill="#e8eef6" stroke="#cbd5e1"/>`).join('');
+  // レーンの色（段階 D。MPD の lane.bg・lane.hd）を決めた役割は、その色
+  const bands = lanes.map((l, i) => `<rect x="${l.x}" y="${l.y}" width="${l.w}" height="${l.h}" fill="${l.role.bg || (i % 2 ? '#f8fafc' : '#fff')}" stroke="#cbd5e1"/>`
+    + `<rect x="${l.x}" y="${l.y}" width="${V ? l.w : hdr}" height="${V ? hdr : l.h}" fill="${l.role.hd || '#e8eef6'}" stroke="#cbd5e1"/>`).join('');
   // ガイド線（MPD の renderGrid: 見出しから 80 おきの薄い破線。ドラッグで吸い付く所）
   const span = V ? w : h;
   const grid = [];
@@ -9811,7 +9822,7 @@ function swimSvg(D, o = {}, ends = []) {
     const r = routes[e.edge.id];
     const id = esc(e.edge.id);
     const col = r.isReturn ? SWIM_BACK : SWIM_LINE;
-    const dash = r.isReturn ? ' stroke-dasharray="6,4"' : '';
+    const dash = r.isReturn || e.edge.dashed ? ' stroke-dasharray="6,4"' : ''; // 人が付けた点線は灰色のまま（q160。戻る線は橙の点線）
     const back = r.isReturn ? ' back' : '';
     lines.push(`<path class="sw-line${back}" data-edge="${id}" data-wps="${r.wps.map((p) => f(p[0]) + ',' + f(p[1])).join(' ')}" d="${r.d}" fill="none" stroke="${col}" stroke-width="1.5"${dash} marker-end="url(#${idp}-arrow${r.isReturn ? '-b' : ''})"/>`);
     r.arcs.forEach((d) => arcs.push(`<path class="sw-arc" d="${d}" fill="none" stroke="#fff" stroke-width="5"/><path class="sw-arc-c${back}" data-edge="${id}" d="${d}" fill="none" stroke="${col}" stroke-width="1.5"${dash}/>`));
@@ -9833,7 +9844,38 @@ function swimSvg(D, o = {}, ends = []) {
   });
   const defs = swimMarker(`${idp}-arrow`, SWIM_LINE) + swimMarker(`${idp}-arrow-b`, SWIM_BACK) + (o.edit ? swimMarker('swim-arrow-s', '#2563eb', 0.75) : '');
   return `<svg class="swim-svg" width="${w}" height="${h}" font-family="${SWIM_FONT.replace(/"/g, '')}" aria-hidden="true"><defs>${defs}</defs>${bands}`
-    + `<g class="sw-grid" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="2,6" opacity=".22">${grid.join('')}</g>${lines.join('')}${arcs.join('')}${labels.join('')}${tools.join('')}</svg>`;
+    + `<g class="sw-grid" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="2,6" opacity=".22">${grid.join('')}</g>${swimFramesSvg(D.frames || [])}${swimGroupsSvg(model, L)}${lines.join('')}${arcs.join('')}${labels.join('')}${tools.join('')}</svg>`;
+}
+// グループ枠（v1.03 段階 D・q159 案B。MPD の group_box の四角い枠を、白基調に合わせた色で描く: 枠 #64748b・見出しの帯 #e2e8f0・字 13 の太字）。
+// 線と箱の下に描く。見出しの帯と枠の線は押せる（.sw-fr-hit。システムの画面で選ぶ・動かす・名前を変える）
+const SWIM_FRAME_HEAD = 26;
+function swimFramesSvg(frames) {
+  return frames.map(({ frame: f, rect: r }) => {
+    const { x, y, w, h } = r;
+    const hh = Math.min(SWIM_FRAME_HEAD, h);
+    const head = `M${x} ${y + hh} V${y + 8} Q${x} ${y} ${x + 8} ${y} H${x + w - 8} Q${x + w} ${y} ${x + w} ${y + 8} V${y + hh} Z`;
+    return `<g class="sw-frame" data-frame="${esc(f.id)}"><rect class="sw-fr-line" x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="none" stroke="#64748b" stroke-width="1.5"/>`
+      + `<path class="sw-fr-head" d="${head}" fill="#e2e8f0"/><text x="${x + 10}" y="${y + Math.min(18, hh - 4)}" font-size="13" font-weight="700" fill="#334155">${esc(swimEllipsis(f.text || 'グループ', w - 20, 13))}</text></g>`;
+  }).join('');
+}
+// 文字を幅 maxW に収まるように切る（はみ出す分は「…」）
+function swimEllipsis(text, maxW, fs) {
+  if (swimTextW(text, fs) <= maxW) return text;
+  let out = '';
+  for (const ch of text) { if (swimTextW(out + ch + '…', fs) > maxW) break; out += ch; }
+  return out + '…';
+}
+// グループの点線の外枠（MPD の renderGroupOutlines: 2 つ以上の工程のグループを、6 外に灰色の点線で囲む。選んでいる工程のグループは青。色は markSwimState が付け替える）
+function swimGroupsSvg(model, L) {
+  const groups = new Map();
+  model.nodes.forEach((n) => { const p = L.pos[n.key]; if (p && n.step.groupId) groups.set(n.step.groupId, [...(groups.get(n.step.groupId) || []), p]); });
+  return [...groups].filter(([, ps]) => ps.length >= 2).map(([gid, ps]) => {
+    const x1 = Math.min(...ps.map((p) => p.x)) - 6;
+    const y1 = Math.min(...ps.map((p) => p.y)) - 6;
+    const x2 = Math.max(...ps.map((p) => p.x + p.w)) + 6;
+    const y2 = Math.max(...ps.map((p) => p.y + p.h)) + 6;
+    return `<rect class="sw-grp" data-group="${esc(gid)}" x="${swimNum(x1)}" y="${swimNum(y1)}" width="${swimNum(x2 - x1)}" height="${swimNum(y2 - y1)}" rx="6" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="5,4"/>`;
+  }).join('');
 }
 // スイムレーン図の HTML（システムの画面・PDF・AI の画像で使う）。o: idPrefix（矢印の印の id の頭）・bare（id="map-inner" を付けない）・
 // zoom（システムの画面の倍率。図を transform で縮め、縮めた大きさの枠 .swim-zoom で包む〔スクロールの範囲を縮めた大きさにするため〕）・
@@ -9848,8 +9890,9 @@ function swimlaneHtml(state, sys, o = {}) {
     + `${l.role.memo ? ` title="${esc(l.role.memo)}"` : ''}>${esc(l.role.name)}</div>`).join('');
   const nodes = model.nodes.map((n) => {
     const p = pos[n.key];
-    return `<div class="mnode sw k-${n.step.kind}" data-node="${esc(n.key)}" title="${esc(swimStepTitle(n))}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px">`
-      + `<b>${p.lines.map((s) => esc(s)).join('<br>')}</b>${p.tag ? `<span class="ref">${esc(p.tag)}</span>` : ''}</div>`;
+    const k = swimLookCss(n.step);
+    return `<div class="mnode sw k-${n.step.kind}${n.step.dashed ? ' dashed' : ''}" data-node="${esc(n.key)}" title="${esc(swimStepTitle(n))}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px${k.box}">`
+      + `<b${k.text ? ` style="${k.text}"` : ''}>${p.lines.map((s) => esc(s)).join('<br>')}</b>${p.tag ? `<span class="ref">${esc(p.tag)}</span>` : ''}</div>`;
   }).join('');
   const ends = []; // 選んだ矢印の両端の ○（箱より上に描く）
   const svg = swimSvg(D, o, ends);
@@ -9858,11 +9901,40 @@ function swimlaneHtml(state, sys, o = {}) {
   const inner = `<div class="map-inner swim-inner${V ? ' down' : ''}"${o.bare ? '' : ' id="map-inner"'} data-view="swimlane" data-focus="${esc(sys.id)}" style="width:${w}px;height:${h}px${z ? `;transform:scale(${z});transform-origin:0 0` : ''}">${svg}${labs}${nodes}${over}</div>`;
   return z ? `<div class="swim-zoom" style="width:${Math.round(w * z)}px;height:${Math.round(h * z)}px">${inner}</div>` : inner;
 }
+// 工程の見た目の CSS（v1.03 段階 D・q160。人が決めたときだけ書く。決めていなければ今までどおり CSS の白基調）{ box（箱の style に足す ;… の文字）, text（文字の b の style）}。
+// 判断・書類は形を SVG の背景で描くので、色・点線を変えたときは背景を作り直す（swimShapeBg）。点線は MPD の NODE_DASH（6,4）
+function swimLookCss(w) {
+  const box = [];
+  const text = [];
+  const fill = w.color || '';
+  const stroke = w.stroke || '';
+  if (w.kind === 'decision' || w.kind === 'doc') {
+    if (fill || stroke || w.dashed) box.push(`background-image:${swimShapeBg(w.kind, fill, stroke, w.dashed)}`);
+  } else {
+    if (fill) box.push(`background:${fill}`);
+    if (stroke) box.push(`border-color:${stroke}`);
+    if (w.dashed) box.push(w.kind === 'input' ? 'border-top-style:dashed;border-bottom-style:dashed' : 'border-style:dashed');
+  }
+  if (w.fontSize && w.fontSize !== SWIM_FS) text.push(`font-size:${w.fontSize}px;line-height:${swimLineH(w.fontSize)}px`);
+  if (w.textAlign) text.push(`align-self:stretch;text-align:${w.textAlign};padding:0 ${(SWIM_SHAPES[w.kind] || SWIM_SHAPES.task).pad / 2}px`);
+  return { box: box.map((x) => ';' + x).join(''), text: text.join(';') };
+}
+// 判断（ひし形）・書類の形の背景（CSS の .k-decision・.k-doc と同じ形。色と点線だけ変える）
+const SWIM_SHAPE_PATH = {
+  decision: { d: "<polygon points='100,2 198,32 100,62 2,32'", fill: '#fffbeb', stroke: '#b45309' },
+  doc: { d: "<path d='M2,2 H198 V52 C150,40 120,66 100,56 C70,44 40,66 2,54 Z'", fill: '#fff', stroke: '#1d3f6e' },
+};
+function swimShapeBg(kind, fill, stroke, dashed) {
+  const s = SWIM_SHAPE_PATH[kind];
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 64' preserveAspectRatio='none'>${s.d} fill='${fill || s.fill}' stroke='${stroke || s.stroke}' stroke-width='2'`
+    + `${dashed ? " stroke-dasharray='6,4'" : ''} vector-effect='non-scaling-stroke'/></svg>`;
+  return `url('data:image/svg+xml,${encodeURIComponent(svg).replace(/'/g, '%27')}')`;
+}
 // 並べ方と線 { model, L, routes }（swimlaneHtml とシステムの画面の swimDrawn が使う）
 function swimDrawing(state, sys) {
   const model = swimlaneModel(state, sys);
   const L = swimlaneLayout(model, sys);
-  return { model, L, routes: swimRoutesOf(model, L) };
+  return { model, L, routes: swimRoutesOf(model, L), frames: swimFramesOf(sys, L.orient) };
 }
 // システムの画面のスイムレーン図の、矢印 1 本の押す所（第 9 段階の T6b。画像 q63）。.sw-edge の中に、
 // 線に沿った太い透明の線と文字の下地（.sw-hit。押す・ダブルクリック・右クリック）と、文字のない線の真ん中の小さな ○（.sw-mid。乗ったときと選んだ間だけ出す）。
@@ -11354,7 +11426,7 @@ function swimInnerHtml(y, sys = y) {
 // 図の見出しと同じ大きさ・倍率の写しを、図の前の大きさ 0 の箱に置く（スクロールの間に動く JS はない）。システムの画面だけ（説明書〔PDF〕と画像には出さない）
 function swimStickyHtml(L, z) {
   const V = L.vertical;
-  const labs = L.lanes.map((l) => `<div class="swim-lab" data-role="${esc(l.role.id)}" style="${V ? `left:${l.x}px;top:0;width:${l.w}px;height:${L.hdr}px` : `left:0;top:${l.y}px;width:${L.hdr}px;height:${l.h}px`}"`
+  const labs = L.lanes.map((l) => `<div class="swim-lab" data-role="${esc(l.role.id)}" style="${V ? `left:${l.x}px;top:0;width:${l.w}px;height:${L.hdr}px` : `left:0;top:${l.y}px;width:${L.hdr}px;height:${l.h}px`}${l.role.hd ? `;background:${l.role.hd}` : ''}"`
     + `${l.role.memo ? ` title="${esc(l.role.memo)}"` : ''}>${esc(l.role.name)}</div>`
     + `<div class="swim-lanew" data-role="${esc(l.role.id)}" style="${V ? `left:${l.x + l.w - 4}px;top:0;width:8px;height:${L.hdr}px` : `left:0;top:${l.y + l.h - 4}px;width:${L.hdr}px;height:8px`}"></div>`).join('');
   return `<div class="swim-stick${V ? ' down' : ''}" aria-hidden="true"><div class="swim-stick-in" style="width:${V ? L.w : L.hdr}px;height:${V ? L.hdr : L.h}px;transform:scale(${z})">${labs}</div></div>`;
@@ -11373,6 +11445,11 @@ function markSwimState() {
   box.querySelectorAll('.mnode.sw').forEach((n) => { if (sels.has(n.dataset.node)) n.classList.add('sel'); }); // 選んだ工程は全部、同じ印（q147 案B）
   if (ui.swimLink && node(ui.swimLink.from)) node(ui.swimLink.from).classList.add('link-from');
   if (ui.edgeSel) box.querySelectorAll(SWIM_SEL_PARTS).forEach((n) => { if (n.getAttribute('data-edge') === ui.edgeSel) n.classList.add('sel'); });
+  // グループの点線の外枠は、選んでいる工程のグループだけ青（段階 D・MPD の renderGroupOutlines）。選んだグループ枠（ui.frameSel）は青
+  const y = findSystem(store.state, ui.systemId);
+  const selG = new Set(y ? ui.stepSels.map((id) => (findStep(y, id) || {}).groupId).filter(Boolean) : []);
+  box.querySelectorAll('.sw-grp').forEach((n) => n.classList.toggle('sel', selG.has(n.getAttribute('data-group'))));
+  box.querySelectorAll('.sw-frame').forEach((n) => n.classList.toggle('sel', n.getAttribute('data-frame') === ui.frameSel));
   box.classList.toggle('linking', !!ui.swimLink || ui.swimMode === 'connect');
   box.classList.toggle('armed', !!ui.swimPal);
   box.classList.toggle('hand', ui.swimMode === 'hand');
