@@ -1101,6 +1101,8 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .sys-role{gap:6px;margin-bottom:6px}
 .sys-role input[data-sy="role-name"]{flex:1 1 0}
 .sys-role input[data-sy="role-memo"]{flex:1.4 1 0}
+.sys-role .sys-lanew{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;white-space:nowrap}
+.sys-role .sys-lanew input{width:62px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px}
 .sys-role input::placeholder{color:#94a3b8}
 .sys-role .cnt{width:66px;flex-shrink:0;text-align:right;font-size:11.5px;color:#64748b;white-space:nowrap}
 .sys-swim{max-height:max(240px,calc(100vh - 300px))}
@@ -10993,6 +10995,9 @@ function sysOverviewHtml(y) {
 // 役割（画像 q64 の案A）: 1 行に 1 つ（番号・名前・メモ・作業の数・↑↓✕）。並びがスイムレーン図の帯の順。ステータスの並び（第 8 段階）と同じ形
 function sysRolesHtml(y) {
   const n = y.roles.length;
+  // レーンの高さ（縦向きは幅）の欄（v1.03 段階 C・q153 案A。MPD の setLaneWidth: 20 ずつの ▲▼・下限 100）。値は今の太さ（人が決めていなければ自動の太さ）。
+  // 空にすると自動の太さに戻す。今の向きの値だけを変える（q154）
+  const dim = swimOrientOf(y) === 'vertical' ? '幅' : '高さ';
   const btn = (action, id, label, text, off) => `<button class="del-x" data-action="${action}" data-id="${esc(id)}" title="${label}" aria-label="${label}"${off ? ' disabled' : ''}>${text}</button>`;
   const rows = y.roles.map((r, i) => {
     const what = `役割「${esc(r.name)}」`;
@@ -11000,6 +11005,7 @@ function sysRolesHtml(y) {
     return `<div class="ps-row sys-role" data-id="${esc(r.id)}"><span class="no">${i + 1}</span>
       <input type="text" data-sy="role-name" data-role="${esc(r.id)}" maxlength="${NAME_MAX}" value="${esc(r.name)}" aria-label="${i + 1} つ目の役割の名前">
       <input type="text" data-sy="role-memo" data-role="${esc(r.id)}" value="${esc(r.memo)}" placeholder="この役割の人・部署など" aria-label="${what}のメモ">
+      <label class="sys-lanew" title="レーンの${dim}（空にすると自動）。スイムレーン図では、レーンの境目をドラッグしても変えられます">${dim}<input type="number" data-sy="role-lanew" data-role="${esc(r.id)}" min="${SWIM_LANE_MIN}" step="${SWIM_LANE_SNAP}" value="${swimLaneSize(y, r.id)}" aria-label="${what}のレーンの${dim}"></label>
       <span class="cnt">${k ? `工程 ${k} つ` : '工程なし'}</span>
       ${btn('sys-role-up', r.id, `${what}を上へ`, '↑', !i)}${btn('sys-role-down', r.id, `${what}を下へ`, '↓', i === n - 1)}${btn('sys-role-del', r.id, `${what}を削除`, '✕', false)}</div>`;
   }).join('');
@@ -11007,6 +11013,13 @@ function sysRolesHtml(y) {
     <p class="map-note">役割は、スイムレーン図のレーンになります。この順に、${swimOrientOf(y) === 'vertical' ? '左' : '上'}からレーンを並べます。</p>
     ${rows || '<p class="sys-empty">まだ役割がありません。「＋ 役割を追加する」で、申請者・上長などの役割を追加します。</p>'}
     <button class="lk-add" data-action="sys-role-add">＋ 役割を追加する</button></div>`;
+}
+// 役割 roleId のレーンの今の太さ（人が決めた太さか、自動の太さ。横向きは高さ・縦向きは幅）
+function swimLaneSize(y, roleId) {
+  const i = y.roles.findIndex((r) => r.id === roleId);
+  const L = i >= 0 ? swimlaneLayout(swimlaneModel(store.state, y), y) : null;
+  const l = L && L.lanes[i];
+  return l ? (L.vertical ? l.w : l.h) : '';
 }
 // 足す役割の名前（「役割 1」「役割 2」…の空いている番号）
 function freeRoleName(y) {
@@ -11944,6 +11957,7 @@ function sysStepSettingsHtml(y, w) {
       <select data-sw="link-to" data-step="${id}" class="sw-link" aria-label="次の工程を接続する"${cands.length ? '' : ' disabled'}><option value="">＋ 次の工程を接続する ▾</option>
         ${cands.map((x) => `<option value="${esc(x.id)}">${esc(swimStepName(x))}（${esc(roleName(x))}）</option>`).join('')}</select></div>
     <label class="field"><span>メモ</span><textarea data-sw="memo" data-step="${id}" placeholder="例: 金額が 10 万円以上なら部長も見る">${esc(w.memo)}</textarea></label>
+    ${swimSizeOf(w, swimOrientOf(y)) ? `<div class="field"><span>大きさ</span><button class="btn small" data-action="sys-step-size-reset" data-id="${id}" title="8 つの四角のドラッグで決めた大きさを、文字に合わせた大きさに戻します（元に戻す〔Ctrl+Z〕で戻せます）">⟲ 大きさを自動に戻す</button></div>` : ''}
     <div class="sw-btns"><button class="btn small" data-action="sys-step-add" data-id="${id}" title="この工程と同じ役割の、いちばん右の次の列に「作業」を追加します">＋ 作業を追加する</button>
       <button class="btn small danger" data-action="sys-step-del" data-id="${id}" title="この工程と、接続している矢印を削除します（元に戻す〔Ctrl+Z〕で戻せます）">この工程を削除する</button></div>`;
 }
@@ -11971,10 +11985,15 @@ function sysStepRefHtml(y, w) {
     ${select('ref-state', 'ステータス', tOpts, ref.stateId, tOpts.length < 2)}</div>`;
 }
 // 矢印の設定: 「元 → 先」・文字・この矢印を消す
+// 「線の形」（v1.03 段階 C・q152 案A）: 両端の出入りの位置と、区間をずらした形を、今の向きについて自動に戻すボタン（手直しがないときは押せない。文字の位置は残す）
 function sysEdgeSettingsHtml(y, e) {
+  const sh = swimShapeOf(e, swimOrientOf(y)) || {};
+  const shaped = !!(sh.fromPin || sh.toPin || sh.orthoWps);
   return `<div class="panel-title">矢印の設定</div>
     <p class="sw-edge-names">${esc(swimStepName(findStep(y, e.from)))} → ${esc(swimStepName(findStep(y, e.to)))}</p>
     <label class="field"><span>文字</span><input type="text" data-sw="edge-label" data-edge="${esc(e.id)}" value="${esc(e.label)}" placeholder="例: 差し戻し"></label>
+    <div class="field"><span>線の形</span><p class="hint">両端の ○ を辺に沿ってドラッグすると、出入りの位置が決まります。区間の □ をドラッグすると、平行にずらせます。</p>
+      <button class="btn small" data-action="sys-edge-shape-reset" data-id="${esc(e.id)}" title="出入りの位置と、ずらした区間を、自動で引いた線に戻します（元に戻す〔Ctrl+Z〕で戻せます）"${shaped ? '' : ' disabled'}>⟲ 線の形を自動に戻す</button></div>
     <div class="sw-btns"><button class="btn small danger" data-action="sys-edge-del" data-id="${esc(e.id)}" title="この矢印を削除します（元に戻す〔Ctrl+Z〕で戻せます）">この矢印を削除する</button></div>`;
 }
 // 右の欄の作業の設定で打っている欄（data-sw）を控え、描き直した後に同じ欄へフォーカスと文字の位置を戻す関数を返す
@@ -12023,6 +12042,13 @@ function onSystemFieldChange(el) {
   if (k === 'role-memo') {
     const v = el.value.trim();
     if (v !== r.memo) commitKeepSide(() => actions.setRoleMemo(y.id, r.id, v));
+    return;
+  }
+  if (k === 'role-lanew') { // レーンの高さ（縦向きは幅）。空は自動の太さに戻す。数でなければ変えない（MPD と同じ）。欄には今の太さを書き直す
+    const t = el.value.trim();
+    const w = t === '' ? null : Math.round(Number(t));
+    if (t === '' || Number.isFinite(w)) commitKeepSide(() => actions.setLaneWidth(y.id, r.id, w));
+    el.value = swimLaneSize(findSystem(store.state, y.id), r.id);
     return;
   }
   if (k !== 'role-name') return;
@@ -12102,6 +12128,8 @@ function onSystemScreenClick(action, btn) {
     case 'sys-step-add': addStepAfter(y, id); return true;
     case 'sys-step-del': deleteSwimStep(id); return true;
     case 'sys-edge-del': deleteSwimEdge(id); return true;
+    case 'sys-edge-shape-reset': actions.resetEdgeShape(y.id, id); return true;
+    case 'sys-step-size-reset': actions.resetStepSize(y.id, id); return true;
     // 資料（第 9 段階の後半）: ファイルを入れる・読む・スイムレーン図にする・MPD に出力（第 11 段階）・消す
     case 'sys-mat-pick': addMaterialFiles(y.id, (api) => api.pick(y.id)).catch(reportPageError); return true;
     case 'sys-mat-read': openMaterialReader(y.id, id).catch(reportPageError); return true;
