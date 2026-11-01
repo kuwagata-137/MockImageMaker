@@ -1208,3 +1208,135 @@ test('まとめて置く・写して足す・まとめて消す（actions.placeS
   assert.equal(api.actions.deleteSteps('y-trip', ids), true);
   assert.equal(sys().swimlane.steps.length, 8);
 });
+
+// ── 段階 C（v1.03・q151〜q156）: 工程の大きさ・線の形・レーンの太さの手直し ──
+test('工程の大きさ（actions.resizeStep・resetStepSize。段階 C・q151）: 今の向きの size と位置を 1 回で直す。下限 24。中身が変わらないときは積まない。自動に戻すと size を消す', async (t) => {
+  const { api, sys, step, geom } = await boot(t);
+  assert.equal(api.actions.resizeStep('y-trip', 'w-5', { w: 200, roleId: 'l-x', flow: 1, cross: 1 }), false, 'ない役割');
+  assert.equal(api.actions.resizeStep('y-trip', 'w-5', { roleId: 'l-a', flow: 1, cross: 1 }), false, '大きさがない');
+  const b = geom().pos['w:w-5'];
+  const n0 = api.store.undoStack.length;
+  assert.equal(api.actions.resizeStep('y-trip', 'w-5', { w: 200, h: 10, roleId: 'l-a', flow: b.flow + 40, cross: b.cross }), true);
+  assert.equal(api.store.undoStack.length, n0 + 1, '元に戻すの 1 回分');
+  assert.deepEqual(step('w-5').size, { horizontal: { w: 200, h: 24 } }, '高さは下限 24');
+  const b2 = geom().pos['w:w-5'];
+  assert.deepEqual([b2.w, b2.h, b2.flow], [200, b.h, b.flow + 40], '幅は決めたとおり。高さは下限なので、文字の入る高さより低くはならない');
+  assert.equal(api.actions.resizeStep('y-trip', 'w-5', { w: 200, roleId: 'l-a', flow: b.flow + 40, cross: b.cross }), false, '変わらない');
+  assert.equal(api.store.undoStack.length, n0 + 1);
+  assert.equal(api.actions.resetStepSize('y-trip', 'w-5'), true);
+  assert.equal(step('w-5').size, undefined);
+  assert.equal(api.actions.resetStepSize('y-trip', 'w-5'), false);
+  api.runCommand('undo');
+  assert.deepEqual(step('w-5').size, { horizontal: { w: 200, h: 24 } });
+  // 向きごと（q154）: 縦向きでは横向きの大きさを使わず、縦向きで決めた大きさは横向きに戻しても残る
+  assert.equal(api.actions.setSwimOrient('y-trip', 'vertical'), true);
+  assert.notEqual(geom().pos['w:w-5'].w, 200);
+  const v = geom().pos['w:w-5'];
+  assert.equal(api.actions.resizeStep('y-trip', 'w-5', { h: 80, roleId: 'l-a', flow: v.flow, cross: v.cross }), true);
+  assert.deepEqual(plain(step('w-5').size), { horizontal: { w: 200, h: 24 }, vertical: { h: 80 } });
+  api.actions.setSwimOrient('y-trip', 'horizontal');
+  assert.equal(geom().pos['w:w-5'].w, 200);
+  assert.equal(sys().swimlane.steps.length, 8);
+});
+
+test('線の形（actions.setEdgeShape・resetEdgeShape。段階 C・q152・q156）: 今の向きの出入りの位置・曲がり角・文字の位置を入れ、null で消す。形の違う値は入れない。自動に戻すは文字の位置を残す', async (t) => {
+  const { api, sys } = await boot(t);
+  const shape = () => sys().swimlane.edges.find((e) => e.id === 'e-2').shape;
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-x', { labelT: 0.3 }), false, 'ない矢印');
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { other: 1 }), false, '知らない欄だけ');
+  const n0 = api.store.undoStack.length;
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { orthoWps: [{ x: 300, y: 200 }, { x: 'a', y: 1 }] }), false, '数でない点があれば曲がり角ごと入れない（MPD と同じ）');
+  assert.equal(api.store.undoStack.length, n0);
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { fromPin: { side: 'bottom', frac: 0.25 }, orthoWps: [{ x: 300, y: 200 }], labelT: 0.7, labelOff: [4, -6] }), true);
+  assert.equal(api.store.undoStack.length, n0 + 1);
+  const s1 = shape();
+  assert.deepEqual(s1.horizontal.fromPin, { side: 'bottom', frac: 0.25 });
+  assert.deepEqual(s1.horizontal.orthoWps, [{ x: 300, y: 200 }]);
+  assert.deepEqual([s1.horizontal.labelT, s1.horizontal.labelOff], [0.7, [4, -6]]);
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { labelT: 0.7 }), false, '変わらない');
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { toPin: { side: 'nowhere', frac: 0.5 } }), false, '形の違う出入りの位置は入れない');
+  assert.equal(api.actions.resetEdgeShape('y-trip', 'e-2'), true);
+  assert.deepEqual(shape(), { horizontal: { labelT: 0.7, labelOff: [4, -6] } }, '文字の位置は残す');
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { labelT: null, labelOff: null }), true);
+  assert.equal(shape(), undefined, '空になったら欄ごと消す');
+  api.runCommand('undo');
+  api.runCommand('undo');
+  assert.deepEqual(shape().horizontal.orthoWps, [{ x: 300, y: 200 }], '1 回ずつ戻る');
+  // 向きごと（q154）: 縦向きで直しても横向きの形は残る
+  api.actions.setSwimOrient('y-trip', 'vertical');
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { labelT: 0.2 }), true);
+  assert.deepEqual(Object.keys(shape()).sort(), ['horizontal', 'vertical']);
+  assert.deepEqual(shape().vertical, { labelT: 0.2 });
+});
+
+test('レーンの太さ（actions.setLaneWidth。段階 C・q153）: 今の向きの値だけ変える。下限 100。null で自動に戻す。変わらないときは積まない', async (t) => {
+  const { api, sys, geom } = await boot(t);
+  const laneW = () => plain(sys().roles.find((r) => r.id === 'l-b').laneW);
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-x', 200), false);
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', 'a'), false);
+  const n0 = api.store.undoStack.length;
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', 40), true);
+  assert.deepEqual(laneW(), { horizontal: 100 }, '下限 100');
+  assert.equal(geom().lanes[1].h, 100);
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', 100.2), false, '丸めて同じなら変えない');
+  assert.equal(api.store.undoStack.length, n0 + 1);
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', 240), true);
+  assert.equal(geom().lanes[1].h, 240);
+  api.actions.setSwimOrient('y-trip', 'vertical');
+  assert.notEqual(geom().lanes[1].w, 240, '縦向きは別');
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', 180), true);
+  assert.deepEqual(laneW(), { horizontal: 240, vertical: 180 });
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', null), true);
+  assert.deepEqual(laneW(), { horizontal: 240 });
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', null), false);
+});
+
+test('手直しした線と工程の動き（段階 C）: 工程を動かすと、つながる矢印の曲がり角も同じだけ動く。整列は今の向きの曲がり角を消す。付け替えはその端の出入りの位置と曲がり角を消す。写して足すときは曲がり角を写さない', async (t) => {
+  const { api, sys, geom } = await boot(t);
+  const sh = (id) => sys().swimlane.edges.find((e) => e.id === id).shape;
+  // e-5（w-4 → w-5）に曲がり角、e-6 に出入りの位置
+  api.actions.setEdgeShape('y-trip', 'e-5', { orthoWps: [{ x: 900, y: 150 }], toPin: { side: 'top', frac: 0.5 } });
+  api.actions.setEdgeShape('y-trip', 'e-6', { fromPin: { side: 'right', frac: 0.5 } });
+  const b = geom().pos['w:w-5'];
+  assert.equal(api.actions.placeStep('y-trip', 'w-5', { roleId: 'l-a', flow: b.flow + 30, cross: b.cross + 10 }), true);
+  assert.deepEqual(sh('e-5').horizontal.orthoWps, [{ x: 930, y: 160 }], '工程と同じだけ動く');
+  // 付け替え: 終わりの端を変えると toPin と曲がり角を消す（始まりの出入りの位置は残す）
+  api.actions.setEdgeShape('y-trip', 'e-5', { fromPin: { side: 'bottom', frac: 0.5 } });
+  assert.equal(api.actions.relinkEdge('y-trip', 'e-5', { to: 'w-6' }), true);
+  assert.deepEqual(sh('e-5'), { horizontal: { fromPin: { side: 'bottom', frac: 0.5 } } });
+  // 整列: 今の向きの曲がり角だけを消す（出入りの位置は残す）。曲がり角だけあるときも動く
+  api.actions.setEdgeShape('y-trip', 'e-6', { orthoWps: [{ x: 1100, y: 300 }] });
+  api.actions.arrangeSwimlane('y-trip');
+  assert.equal(api.actions.arrangeSwimlane('y-trip'), false, '2 回目は何もない');
+  assert.deepEqual(sh('e-6'), { horizontal: { fromPin: { side: 'right', frac: 0.5 } } });
+  api.actions.setEdgeShape('y-trip', 'e-6', { orthoWps: [{ x: 1100, y: 300 }] });
+  assert.equal(api.actions.arrangeSwimlane('y-trip'), true, '位置がなくても曲がり角があれば消す');
+  // 写して足す: 曲がり角は写さず、出入りの位置は写す
+  api.actions.setEdgeShape('y-trip', 'e-7', { orthoWps: [{ x: 1200, y: 300 }], labelT: 0.4 });
+  const ids = api.actions.addStepsAt('y-trip', [
+    { key: 'a', step: { kind: 'task', text: '写し 1' }, roleId: 'l-a', flow: 900, cross: 65 },
+    { key: 'b', step: { kind: 'task', text: '写し 2' }, roleId: 'l-a', flow: 1100, cross: 65 },
+  ], [{ ...plain(sys().swimlane.edges.find((e) => e.id === 'e-7')), from: 'a', to: 'b' }]);
+  const copy = sys().swimlane.edges.find((e) => e.from === ids[0]);
+  assert.deepEqual(copy.shape, { horizontal: { labelT: 0.4 } });
+});
+
+test('AI の set_swimlane（段階 C）: 手直しは AI に出さず、残す。矢印の端を変えたときだけ、その端の出入りの位置と曲がり角を消す（付け替えと同じ）', async (t) => {
+  const { api, sys, call } = await boot(t);
+  api.actions.setEdgeShape('y-trip', 'e-5', { orthoWps: [{ x: 900, y: 150 }], fromPin: { side: 'bottom', frac: 0.5 }, toPin: { side: 'top', frac: 0.5 } });
+  api.actions.setEdgeShape('y-trip', 'e-6', { orthoWps: [{ x: 1100, y: 300 }], labelT: 0.3 });
+  api.actions.setLaneWidth('y-trip', 'l-b', 200);
+  const y = sys();
+  const names = { 'l-a': '申請者', 'l-b': '上長', 'l-c': '経理' };
+  const res = await call('set_swimlane', {
+    system: '出張申請システム',
+    steps: y.swimlane.steps.map((w) => ({ id: w.id, key: w.id, role: names[w.roleId], kind: w.kind, text: w.text })),
+    edges: y.swimlane.edges.map((e) => (e.id === 'e-5' ? { id: e.id, from: e.from, to: 'w-6' } : { id: e.id, from: e.from, to: e.to, label: e.label })),
+  });
+  assert.ok(!JSON.stringify(res).includes('orthoWps'), '手直しは返事に出さない');
+  assert.ok(!res.error, JSON.stringify(res));
+  const sh = (id) => sys().swimlane.edges.find((e) => e.id === id).shape;
+  assert.deepEqual(sh('e-5'), { horizontal: { fromPin: { side: 'bottom', frac: 0.5 } } });
+  assert.deepEqual(sh('e-6'), { horizontal: { orthoWps: [{ x: 1100, y: 300 }], labelT: 0.3 } });
+  assert.deepEqual(sys().roles.find((r) => r.id === 'l-b').laneW, { horizontal: 200 });
+});

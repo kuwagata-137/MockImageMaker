@@ -5412,6 +5412,7 @@ const actions = {
     const L = swimlaneLayout(swimlaneModel(store.state, y), y);
     const before = JSON.stringify(y.swimlane);
     mutateSystem(sysId, (yy) => {
+      swimShiftManualRoutes(yy, L, orient, moves);
       swimFreezePos(yy, L, orient);
       moves.forEach((m) => {
         const w = findStep(yy, m.id);
@@ -5421,6 +5422,39 @@ const actions = {
       swimRenumber(yy, orient, moves.map((m) => m.id));
     });
     return JSON.stringify(findSystem(store.state, sysId).swimlane) !== before;
+  },
+  // 工程の大きさを変える（v1.03 段階 C・q151。1 つだけ選んだ工程の 8 つの四角のドラッグを放したとき）。to は { w?, h?（変えた向きだけ。MPD の manualW・manualH）,
+  // roleId, flow, cross（大きさを変えた後の箱の真ん中。placeStep と同じ位置）}。今の向きの size と位置を 1 回の変更で直す（元に戻すの 1 回分）。
+  // 大きさは SWIM_SIZE_MIN より小さくしない。中身が変わらないとき・直せないときは false
+  resizeStep(sysId, stepId, to = {}) {
+    const y = editableSystem(sysId);
+    const okLen = (v) => v == null || Number.isFinite(v);
+    if (!y || !isObj(to) || !findStep(y, stepId) || !y.roles.some((r) => r.id === to.roleId) || !Number.isFinite(to.flow) || !Number.isFinite(to.cross)
+      || !okLen(to.w) || !okLen(to.h) || (to.w == null && to.h == null)) return false;
+    const orient = swimOrientOf(y);
+    const L = swimlaneLayout(swimlaneModel(store.state, y), y);
+    const before = JSON.stringify(y.swimlane);
+    const move = { id: stepId, roleId: to.roleId, flow: to.flow, cross: to.cross };
+    mutateSystem(sysId, (yy) => {
+      swimShiftManualRoutes(yy, L, orient, [move]);
+      swimFreezePos(yy, L, orient);
+      const w = findStep(yy, stepId);
+      const cur = { ...(swimSizeOf(w, orient) || {}) };
+      if (to.w != null) cur.w = swimRound(Math.max(SWIM_SIZE_MIN, to.w));
+      if (to.h != null) cur.h = swimRound(Math.max(SWIM_SIZE_MIN, to.h));
+      w.size = { ...(isObj(w.size) ? w.size : {}), [orient]: cur };
+      w.roleId = to.roleId;
+      w.pos = { ...(isObj(w.pos) ? w.pos : {}), [orient]: { flow: swimRound(to.flow), cross: swimRound(to.cross), roleId: to.roleId, col: w.col } };
+      swimRenumber(yy, orient, [stepId]);
+    });
+    return JSON.stringify(findSystem(store.state, sysId).swimlane) !== before;
+  },
+  // 工程の大きさを自動に戻す（今の向きの size を消す。q151）。人が決めた大きさがないとき・直せないときは false
+  resetStepSize(sysId, stepId) {
+    const y = editableSystem(sysId);
+    const orient = y ? swimOrientOf(y) : null;
+    if (!y || !findStep(y, stepId) || !swimSizeOf(findStep(y, stepId), orient)) return false;
+    return mutateSystem(sysId, (yy) => { swimDropOrient(findStep(yy, stepId), 'size', orient); });
   },
   // 工程を写して図の上の位置に足す（v1.03 段階 B。Ctrl＋ドラッグの複製・貼り付け）。items は [{ key（edges で指す名前）, step（写す工程。kind・text・memo・ref を使う）,
   // roleId, flow, cross }]、edges は写した工程どうしの矢印 [{ from, to（items の key）, label ほか }]。ref は、このシステムに入っている画面設計を指すときだけ写す。
@@ -5441,7 +5475,12 @@ const actions = {
       return { ...w, pos: { [orient]: { flow: swimRound(it.flow), cross: swimRound(it.cross), roleId: it.roleId, col: 0 } } };
     });
     const newEdges = (Array.isArray(edges) ? edges : []).filter((e) => isObj(e) && idOf.has(e.from) && idOf.has(e.to) && e.from !== e.to)
-      .map((e) => ({ ...clone(e), id: newId('e'), from: idOf.get(e.from), to: idOf.get(e.to), label: str(e.label) }));
+      .map((e) => {
+        const c = { ...clone(e), id: newId('e'), from: idOf.get(e.from), to: idOf.get(e.to), label: str(e.label) };
+        // 手で直した曲がり角は元の位置のままなので写さない（出入りの位置と文字の位置は、箱と線に対する割合なので写す。v1.03 段階 C）
+        SWIM_ORIENTS.forEach((o) => { if (swimShapeOf(c, o)) swimEditShape(c, o, (sh) => { delete sh.orthoWps; }); });
+        return c;
+      });
     mutateSystem(sysId, (yy) => {
       swimFreezePos(yy, L, orient);
       yy.swimlane.steps.push(...steps);
@@ -5471,14 +5510,12 @@ const actions = {
     const y = editableSystem(sysId);
     if (!y) return false;
     const orient = swimOrientOf(y);
-    if (!y.swimlane.steps.some((w) => isObj(w.pos) && orient in w.pos)) return false;
+    const bent = (e) => { const sh = swimShapeOf(e, orient); return !!(sh && sh.orthoWps); };
+    if (!y.swimlane.steps.some((w) => isObj(w.pos) && orient in w.pos) && !y.swimlane.edges.some(bent)) return false;
     return mutateSystem(sysId, (yy) => {
-      yy.swimlane.steps.forEach((w) => {
-        if (!isObj(w.pos) || !(orient in w.pos)) return;
-        const { [orient]: gone, ...rest } = w.pos;
-        if (Object.keys(rest).length) w.pos = rest;
-        else delete w.pos;
-      });
+      yy.swimlane.steps.forEach((w) => swimDropOrient(w, 'pos', orient));
+      // 手で直した曲がり角は、並べ直した工程に合わなくなるので消す（MPD の autoLayout 17993。出入りの位置・文字の位置・大きさ・レーンの太さは残す）
+      yy.swimlane.edges.forEach((e) => { if (bent(e)) swimEditShape(e, orient, (sh) => { delete sh.orthoWps; }); });
     });
   },
   // 作業を消す。つながる矢印も消す
@@ -5522,7 +5559,53 @@ const actions = {
     if (!e) return false;
     const [from, dest] = ['from' in to ? to.from : e.from, 'to' in to ? to.to : e.to];
     if (from === dest || !findStep(y, from) || !findStep(y, dest) || y.swimlane.edges.some((x) => x.id !== edgeId && x.from === from && x.to === dest)) return false;
-    return mutateSystem(sysId, (yy) => { Object.assign(yy.swimlane.edges.find((x) => x.id === edgeId), { from, to: dest }); });
+    return mutateSystem(sysId, (yy) => {
+      const ee = yy.swimlane.edges.find((x) => x.id === edgeId);
+      swimForgetEnds(ee, from, dest);
+      Object.assign(ee, { from, to: dest });
+    });
+  },
+  // 矢印の線の形を直す（v1.03 段階 C・q152・q156。今の向きの shape）。patch は { fromPin, toPin（{ side, frac }）, orthoWps（[{ x, y }]）, labelT, labelOff } のどれか。
+  // null の欄は消す（自動に戻す）。形の違う値は入れない（normalizeEdgeShape）。元に戻すの 1 回分。中身が変わらないとき・直せないときは false
+  setEdgeShape(sysId, edgeId, patch = {}) {
+    const y = editableSystem(sysId);
+    const e = y && isObj(patch) ? y.swimlane.edges.find((x) => x.id === edgeId) : null;
+    const keys = ['fromPin', 'toPin', 'orthoWps', 'labelT', 'labelOff'];
+    if (!e || !Object.keys(patch).some((k) => keys.includes(k))) return false;
+    const orient = swimOrientOf(y);
+    const before = JSON.stringify(e);
+    const next = clone(e);
+    swimEditShape(next, orient, (sh) => keys.forEach((k) => {
+      if (!(k in patch)) return;
+      if (patch[k] == null) delete sh[k];
+      else sh[k] = clone(patch[k]);
+    }));
+    const fixed = normalizeEdgeShape(next.shape);
+    if (fixed) next.shape = fixed;
+    else delete next.shape;
+    if (JSON.stringify(next) === before) return false;
+    return mutateSystem(sysId, (yy) => {
+      const i = yy.swimlane.edges.findIndex((x) => x.id === edgeId);
+      yy.swimlane.edges[i] = next;
+    });
+  },
+  // 線の形を自動に戻す（右のパネルの「⟲ 線の形を自動に戻す」。今の向きの出入りの位置と曲がり角を消す。文字の位置は残す。MPD の ○・□ のダブルクリックと同じ範囲）
+  resetEdgeShape(sysId, edgeId) {
+    return actions.setEdgeShape(sysId, edgeId, { fromPin: null, toPin: null, orthoWps: null });
+  },
+  // レーンの太さを決める（v1.03 段階 C・q153。境目のドラッグを放したとき・役割のパネルの欄）。w は数（SWIM_LANE_MIN より小さくしない）か null（自動に戻す）。
+  // 今の向きの値だけ変える（q154）。元に戻すの 1 回分。中身が変わらないとき・直せないときは false
+  setLaneWidth(sysId, roleId, w) {
+    const y = editableSystem(sysId);
+    if (!y || !y.roles.some((r) => r.id === roleId) || (w != null && !Number.isFinite(w))) return false;
+    const orient = swimOrientOf(y);
+    const next = w == null ? null : Math.max(SWIM_LANE_MIN, Math.round(w));
+    if (swimLaneWOf(y.roles.find((r) => r.id === roleId), orient) === next) return false;
+    return mutateSystem(sysId, (yy) => {
+      const r = yy.roles.find((x) => x.id === roleId);
+      if (next == null) swimDropOrient(r, 'laneW', orient);
+      else r.laneW = { ...(isObj(r.laneW) ? r.laneW : {}), [orient]: next };
+    });
   },
   // ── 資料（第 9 段階の後半。設計書の 5-3）──
   // 資料の行を足す。added は資料の窓口（materialsAPI の pick・addDropped）の返事の added [{ id, name, kind, size, file, legacy }]（ファイルは窓口が
@@ -9736,6 +9819,53 @@ function swimPlusAt(pos, x, y) {
 // 今の向きの位置を、描いている全部の作業について覚え（1 つを動かしても、ほかの箱が列から置き直されて動かないように。MPD は全部の箱が位置を持つ）、
 // 列を位置から付け直す（流れの向きの真ん中の順。4 以内の差は同じ列）。ほかの向きの覚えた位置は、列の番号だけを付け直し
 // （動かした作業 moved〔id か id の配列〕は付け直さない。役割か列が変わっていれば、その向きでは列から置き直す。q145）
+// 欄 key（pos・size・laneW・shape）の向き orient を消す。ほかの向きが残らなければ欄ごと消す
+function swimDropOrient(obj, key, orient) {
+  if (!isObj(obj[key]) || !(orient in obj[key])) return;
+  const { [orient]: gone, ...rest } = obj[key];
+  if (Object.keys(rest).length) obj[key] = rest;
+  else delete obj[key];
+}
+// 矢印の向き orient の線の形を fn で直す（なければ空から作る）。直した後に空なら、その向きを消す
+function swimEditShape(e, orient, fn) {
+  const sh = { ...(swimShapeOf(e, orient) || {}) };
+  fn(sh);
+  if (Object.keys(sh).length) e.shape = { ...(isObj(e.shape) ? e.shape : {}), [orient]: sh };
+  else swimDropOrient(e, 'shape', orient);
+}
+// 矢印の端を付け替える前に、付け替える端の出入りの位置と、手で直した曲がり角を、どの向きでも消す（MPD 13435。箱が変わると意味を失う）。
+// from・to は付け替えた後の端の作業の id
+function swimForgetEnds(e, from, to) {
+  const gone = [...(from !== e.from ? ['fromPin'] : []), ...(to !== e.to ? ['toPin'] : []), ...(from !== e.from || to !== e.to ? ['orthoWps'] : [])];
+  if (gone.length) SWIM_ORIENTS.forEach((o) => { if (swimShapeOf(e, o)) swimEditShape(e, o, (sh) => gone.forEach((k) => delete sh[k])); });
+}
+// 並べ方 L の中の、役割 roleId のレーンの位置で、流れの向き flow・レーンの縁からの cross の点（図の中の [x, y]）
+function swimAbsPoint(L, sys, roleId, flow, cross) {
+  const i = sys.roles.findIndex((r) => r.id === roleId);
+  const l = L.lanes[i];
+  if (!l) return null;
+  return L.vertical ? [l.x + cross, flow] : [flow, l.y + cross];
+}
+// 工程を動かすとき、その工程につながる矢印の手で直した曲がり角（今の向き）を、工程と同じ量だけ平行に動かす（MPD の bakeManualRouteShift。
+// 動かした形のまま付いてくる）。両端とも動かすときは、元の工程の動きに合わせる（MPD の edgeShiftOf）。moves は placeSteps と同じ
+function swimShiftManualRoutes(y, L, orient, moves) {
+  const delta = new Map();
+  moves.forEach((m) => {
+    const p = L.pos['w:' + m.id];
+    const w = findStep(y, m.id);
+    const at = p && w ? swimAbsPoint(L, y, m.roleId, m.flow, m.cross) : null;
+    if (!at) return;
+    const [ox, oy] = [p.x + p.w / 2, p.y + p.h / 2];
+    if (Math.abs(at[0] - ox) > 0.01 || Math.abs(at[1] - oy) > 0.01) delta.set(m.id, [at[0] - ox, at[1] - oy]);
+  });
+  if (!delta.size) return;
+  y.swimlane.edges.forEach((e) => {
+    const sh = swimShapeOf(e, orient);
+    const d = sh && sh.orthoWps ? delta.get(e.from) || delta.get(e.to) : null;
+    if (!d) return;
+    swimEditShape(e, orient, (s) => { s.orthoWps = s.orthoWps.map((q) => ({ ...q, x: swimRound(q.x + d[0]), y: swimRound(q.y + d[1]) })); });
+  });
+}
 function swimFreezePos(y, L, orient) {
   y.swimlane.steps.forEach((w) => {
     const p = L.pos['w:' + w.id];
@@ -20509,7 +20639,9 @@ function aiSwimEdges(y, specs, list) {
     const old = x.old || same;
     if (same) used.add(same.id);
     const label = x.label === undefined ? (old ? old.label : '') : x.label;
-    return { ...(old ? clone(old) : {}), id: old ? old.id : newId('e'), from: x.from, to: x.to, label };
+    const kept = old ? clone(old) : {};
+    if (old) swimForgetEnds(kept, x.from, x.to); // 端を変えた矢印は、その端の出入りの位置と曲がり角を消す（付け替えと同じ。v1.03 段階 C）
+    return { ...kept, id: old ? old.id : newId('e'), from: x.from, to: x.to, label };
   });
   edges.forEach((e, i) => {
     if (edges.findIndex((x) => x.from === e.from && x.to === e.to) !== i) throw aiBad(`edges[${i}]: 同じ 2 つの工程の間に、同じ向きの矢印が 2 本あります（1 本にしてください）。`);
