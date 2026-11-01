@@ -138,7 +138,7 @@ const TOOLS = [
     '矢印の from・to は、工程の key（この依頼の中の名前）か id か文字で書く。get_system で読んだ steps・edges は、そのまま渡せる（今と同じ中身なら何も変わらない）。' +
     '今ある工程は id を書く（col を省くと今の列のまま）。col を省いた新しい工程は、矢印の順からアプリが列を付ける。矢印は、同じ「元 → 先」の今の矢印の id をそのまま使う。' +
     'edges を省くと、今の矢印のうち両端の工程が残っているものを残す（[] で全部消す）。orientation で図の向き（横向き・縦向き）も変えられる（省くと今のまま）。' +
-    '工程の位置はアプリが決める（人が動かした工程は、役割と列を変えなければその位置のまま）。返事は図の向き orientation・工程の key・id・col と、矢印の数 edgesTotal。',
+    '工程の位置はアプリが決める（人が動かした工程は、役割と列を変えなければその位置のまま。人が決めた工程の大きさ・レーンの太さ・矢印の線の形も残り、矢印の端を変えたときだけ、その端の線の形を自動に戻す）。返事は図の向き orientation・工程の key・id・col と、矢印の数 edgesTotal。',
     { system: S.system, expect: S.expect, steps: swimSteps, edges: swimEdges.optional(), orientation: swimOrient }),
   write('swimlane_from_bdm', 'MPD からスイムレーン図を作る',
     'システムの資料の MPD（kind bdm。MultipurposeDiagramMaker〔旧名 ビジネスダイアグラムメーカー・BDM〕で保存したスイムレーン図・フローチャート・BPMN の図の HTML）から、システムのスイムレーン図を作る。人に依頼されたときだけ使う。' +

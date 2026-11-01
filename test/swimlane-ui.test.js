@@ -1208,3 +1208,327 @@ test('まとめて置く・写して足す・まとめて消す（actions.placeS
   assert.equal(api.actions.deleteSteps('y-trip', ids), true);
   assert.equal(sys().swimlane.steps.length, 8);
 });
+
+// ── 段階 C（v1.03・q151〜q156）: 工程の大きさ・線の形・レーンの太さの手直し ──
+test('工程の大きさ（actions.resizeStep・resetStepSize。段階 C・q151）: 今の向きの size と位置を 1 回で直す。下限 24。中身が変わらないときは積まない。自動に戻すと size を消す', async (t) => {
+  const { api, sys, step, geom } = await boot(t);
+  assert.equal(api.actions.resizeStep('y-trip', 'w-5', { w: 200, roleId: 'l-x', flow: 1, cross: 1 }), false, 'ない役割');
+  assert.equal(api.actions.resizeStep('y-trip', 'w-5', { roleId: 'l-a', flow: 1, cross: 1 }), false, '大きさがない');
+  const b = geom().pos['w:w-5'];
+  const n0 = api.store.undoStack.length;
+  assert.equal(api.actions.resizeStep('y-trip', 'w-5', { w: 200, h: 10, roleId: 'l-a', flow: b.flow + 40, cross: b.cross }), true);
+  assert.equal(api.store.undoStack.length, n0 + 1, '元に戻すの 1 回分');
+  assert.deepEqual(step('w-5').size, { horizontal: { w: 200, h: 24 } }, '高さは下限 24');
+  const b2 = geom().pos['w:w-5'];
+  assert.deepEqual([b2.w, b2.h, b2.flow], [200, b.h, b.flow + 40], '幅は決めたとおり。高さは下限なので、文字の入る高さより低くはならない');
+  assert.equal(api.actions.resizeStep('y-trip', 'w-5', { w: 200, roleId: 'l-a', flow: b.flow + 40, cross: b.cross }), false, '変わらない');
+  assert.equal(api.store.undoStack.length, n0 + 1);
+  assert.equal(api.actions.resetStepSize('y-trip', 'w-5'), true);
+  assert.equal(step('w-5').size, undefined);
+  assert.equal(api.actions.resetStepSize('y-trip', 'w-5'), false);
+  api.runCommand('undo');
+  assert.deepEqual(step('w-5').size, { horizontal: { w: 200, h: 24 } });
+  // 向きごと（q154）: 縦向きでは横向きの大きさを使わず、縦向きで決めた大きさは横向きに戻しても残る
+  assert.equal(api.actions.setSwimOrient('y-trip', 'vertical'), true);
+  assert.notEqual(geom().pos['w:w-5'].w, 200);
+  const v = geom().pos['w:w-5'];
+  assert.equal(api.actions.resizeStep('y-trip', 'w-5', { h: 80, roleId: 'l-a', flow: v.flow, cross: v.cross }), true);
+  assert.deepEqual(plain(step('w-5').size), { horizontal: { w: 200, h: 24 }, vertical: { h: 80 } });
+  api.actions.setSwimOrient('y-trip', 'horizontal');
+  assert.equal(geom().pos['w:w-5'].w, 200);
+  assert.equal(sys().swimlane.steps.length, 8);
+});
+
+test('線の形（actions.setEdgeShape・resetEdgeShape。段階 C・q152・q156）: 今の向きの出入りの位置・曲がり角・文字の位置を入れ、null で消す。形の違う値は入れない。自動に戻すは文字の位置を残す', async (t) => {
+  const { api, sys } = await boot(t);
+  const shape = () => sys().swimlane.edges.find((e) => e.id === 'e-2').shape;
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-x', { labelT: 0.3 }), false, 'ない矢印');
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { other: 1 }), false, '知らない欄だけ');
+  const n0 = api.store.undoStack.length;
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { orthoWps: [{ x: 300, y: 200 }, { x: 'a', y: 1 }] }), false, '数でない点があれば曲がり角ごと入れない（MPD と同じ）');
+  assert.equal(api.store.undoStack.length, n0);
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { fromPin: { side: 'bottom', frac: 0.25 }, orthoWps: [{ x: 300, y: 200 }], labelT: 0.7, labelOff: [4, -6] }), true);
+  assert.equal(api.store.undoStack.length, n0 + 1);
+  const s1 = shape();
+  assert.deepEqual(s1.horizontal.fromPin, { side: 'bottom', frac: 0.25 });
+  assert.deepEqual(s1.horizontal.orthoWps, [{ x: 300, y: 200 }]);
+  assert.deepEqual([s1.horizontal.labelT, s1.horizontal.labelOff], [0.7, [4, -6]]);
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { labelT: 0.7 }), false, '変わらない');
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { toPin: { side: 'nowhere', frac: 0.5 } }), false, '形の違う出入りの位置は入れない');
+  assert.equal(api.actions.resetEdgeShape('y-trip', 'e-2'), true);
+  assert.deepEqual(shape(), { horizontal: { labelT: 0.7, labelOff: [4, -6] } }, '文字の位置は残す');
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { labelT: null, labelOff: null }), true);
+  assert.equal(shape(), undefined, '空になったら欄ごと消す');
+  api.runCommand('undo');
+  api.runCommand('undo');
+  assert.deepEqual(shape().horizontal.orthoWps, [{ x: 300, y: 200 }], '1 回ずつ戻る');
+  // 向きごと（q154）: 縦向きで直しても横向きの形は残る
+  api.actions.setSwimOrient('y-trip', 'vertical');
+  assert.equal(api.actions.setEdgeShape('y-trip', 'e-2', { labelT: 0.2 }), true);
+  assert.deepEqual(Object.keys(shape()).sort(), ['horizontal', 'vertical']);
+  assert.deepEqual(shape().vertical, { labelT: 0.2 });
+});
+
+test('レーンの太さ（actions.setLaneWidth。段階 C・q153）: 今の向きの値だけ変える。下限 100。null で自動に戻す。変わらないときは積まない', async (t) => {
+  const { api, sys, geom } = await boot(t);
+  const laneW = () => plain(sys().roles.find((r) => r.id === 'l-b').laneW);
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-x', 200), false);
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', 'a'), false);
+  const n0 = api.store.undoStack.length;
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', 40), true);
+  assert.deepEqual(laneW(), { horizontal: 100 }, '下限 100');
+  assert.equal(geom().lanes[1].h, 100);
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', 100.2), false, '丸めて同じなら変えない');
+  assert.equal(api.store.undoStack.length, n0 + 1);
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', 240), true);
+  assert.equal(geom().lanes[1].h, 240);
+  api.actions.setSwimOrient('y-trip', 'vertical');
+  assert.notEqual(geom().lanes[1].w, 240, '縦向きは別');
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', 180), true);
+  assert.deepEqual(laneW(), { horizontal: 240, vertical: 180 });
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', null), true);
+  assert.deepEqual(laneW(), { horizontal: 240 });
+  assert.equal(api.actions.setLaneWidth('y-trip', 'l-b', null), false);
+});
+
+test('手直しした線と工程の動き（段階 C）: 工程を動かすと、つながる矢印の曲がり角も同じだけ動く。整列は今の向きの曲がり角を消す。付け替えはその端の出入りの位置と曲がり角を消す。写して足すときは曲がり角を写さない', async (t) => {
+  const { api, sys, geom } = await boot(t);
+  const sh = (id) => sys().swimlane.edges.find((e) => e.id === id).shape;
+  // e-5（w-4 → w-5）に曲がり角、e-6 に出入りの位置
+  api.actions.setEdgeShape('y-trip', 'e-5', { orthoWps: [{ x: 900, y: 150 }], toPin: { side: 'top', frac: 0.5 } });
+  api.actions.setEdgeShape('y-trip', 'e-6', { fromPin: { side: 'right', frac: 0.5 } });
+  const b = geom().pos['w:w-5'];
+  assert.equal(api.actions.placeStep('y-trip', 'w-5', { roleId: 'l-a', flow: b.flow + 30, cross: b.cross + 10 }), true);
+  assert.deepEqual(sh('e-5').horizontal.orthoWps, [{ x: 930, y: 160 }], '工程と同じだけ動く');
+  // 付け替え: 終わりの端を変えると toPin と曲がり角を消す（始まりの出入りの位置は残す）
+  api.actions.setEdgeShape('y-trip', 'e-5', { fromPin: { side: 'bottom', frac: 0.5 } });
+  assert.equal(api.actions.relinkEdge('y-trip', 'e-5', { to: 'w-6' }), true);
+  assert.deepEqual(sh('e-5'), { horizontal: { fromPin: { side: 'bottom', frac: 0.5 } } });
+  // 整列: 今の向きの曲がり角だけを消す（出入りの位置は残す）。曲がり角だけあるときも動く
+  api.actions.setEdgeShape('y-trip', 'e-6', { orthoWps: [{ x: 1100, y: 300 }] });
+  api.actions.arrangeSwimlane('y-trip');
+  assert.equal(api.actions.arrangeSwimlane('y-trip'), false, '2 回目は何もない');
+  assert.deepEqual(sh('e-6'), { horizontal: { fromPin: { side: 'right', frac: 0.5 } } });
+  api.actions.setEdgeShape('y-trip', 'e-6', { orthoWps: [{ x: 1100, y: 300 }] });
+  assert.equal(api.actions.arrangeSwimlane('y-trip'), true, '位置がなくても曲がり角があれば消す');
+  // 写して足す: 曲がり角は写さず、出入りの位置は写す
+  api.actions.setEdgeShape('y-trip', 'e-7', { orthoWps: [{ x: 1200, y: 300 }], labelT: 0.4 });
+  const ids = api.actions.addStepsAt('y-trip', [
+    { key: 'a', step: { kind: 'task', text: '写し 1' }, roleId: 'l-a', flow: 900, cross: 65 },
+    { key: 'b', step: { kind: 'task', text: '写し 2' }, roleId: 'l-a', flow: 1100, cross: 65 },
+  ], [{ ...plain(sys().swimlane.edges.find((e) => e.id === 'e-7')), from: 'a', to: 'b' }]);
+  const copy = sys().swimlane.edges.find((e) => e.from === ids[0]);
+  assert.deepEqual(copy.shape, { horizontal: { labelT: 0.4 } });
+});
+
+test('AI の set_swimlane（段階 C）: 手直しは AI に出さず、残す。矢印の端を変えたときだけ、その端の出入りの位置と曲がり角を消す（付け替えと同じ）', async (t) => {
+  const { api, sys, call } = await boot(t);
+  api.actions.setEdgeShape('y-trip', 'e-5', { orthoWps: [{ x: 900, y: 150 }], fromPin: { side: 'bottom', frac: 0.5 }, toPin: { side: 'top', frac: 0.5 } });
+  api.actions.setEdgeShape('y-trip', 'e-6', { orthoWps: [{ x: 1100, y: 300 }], labelT: 0.3 });
+  api.actions.setLaneWidth('y-trip', 'l-b', 200);
+  const y = sys();
+  const names = { 'l-a': '申請者', 'l-b': '上長', 'l-c': '経理' };
+  const res = await call('set_swimlane', {
+    system: '出張申請システム',
+    steps: y.swimlane.steps.map((w) => ({ id: w.id, key: w.id, role: names[w.roleId], kind: w.kind, text: w.text })),
+    edges: y.swimlane.edges.map((e) => (e.id === 'e-5' ? { id: e.id, from: e.from, to: 'w-6' } : { id: e.id, from: e.from, to: e.to, label: e.label })),
+  });
+  assert.ok(!JSON.stringify(res).includes('orthoWps'), '手直しは返事に出さない');
+  assert.ok(!res.error, JSON.stringify(res));
+  const sh = (id) => sys().swimlane.edges.find((e) => e.id === id).shape;
+  assert.deepEqual(sh('e-5'), { horizontal: { fromPin: { side: 'bottom', frac: 0.5 } } });
+  assert.deepEqual(sh('e-6'), { horizontal: { orthoWps: [{ x: 1100, y: 300 }], labelT: 0.3 } });
+  assert.deepEqual(sys().roles.find((r) => r.id === 'l-b').laneW, { horizontal: 200 });
+});
+
+// ── 段階 C の図の上の操作（jsdom では要素の位置が 0 なので、マウスの位置がそのまま図の中の位置になる）──
+test('8 つの四角（段階 C・q151 案A）: 1 つだけ選んだ工程に出す（2 つ以上・手のひらツールでは出さない）。ドラッグで掴んだ辺だけ動かし、元に戻す 1 回で戻る。四角のダブルクリックで自動の大きさに戻す', async (t) => {
+  const { app, api, $, $$, node, geom, step: get } = await boot(t);
+  press(node('w-5'));
+  assert.deepEqual($$('#swim-rs .sw-rs').map((n) => n.getAttribute('data-h')), ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']);
+  press(node('w-6'), { shiftKey: true });
+  assert.equal($$('#swim-rs .sw-rs').length, 0, '2 つ選んだときは出さない');
+  press(node('w-5'));
+  click($('#toolbar [data-action="swim-hand"]'));
+  assert.equal($$('#swim-rs .sw-rs').length, 0, '手のひらツールでは出さない');
+  key(app, app.document.body, { key: 'v' });
+  assert.equal($$('#swim-rs .sw-rs').length, 8);
+  const b = geom().pos['w:w-5'];
+  const rs = (h) => $(`#swim-rs .sw-rs[data-h="${h}"]`);
+  fire(rs('e'), 'mousedown', at(b.x + b.w, b.y + b.h / 2));
+  fire(app.document, 'mousemove', at(b.x + b.w + 50, b.y + b.h / 2));
+  assert.ok(app.document.body.classList.contains('swim-dragging'));
+  fire(app.document, 'mouseup', at(b.x + b.w + 50, b.y + b.h / 2));
+  assert.ok(!app.document.body.classList.contains('swim-dragging'));
+  assert.deepEqual(get('w-5').size, { horizontal: { w: b.w + 50 } });
+  const b2 = geom().pos['w:w-5'];
+  assert.deepEqual([b2.x, b2.w], [b.x, b.w + 50], '左の辺は動かない');
+  assert.equal($$('#swim-rs .sw-rs').length, 8, '選んだまま');
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  assert.equal(get('w-5').size, undefined);
+  key(app, app.document.body, { key: 'y', ctrlKey: true });
+  fire(rs('e'), 'dblclick');
+  assert.equal(get('w-5').size, undefined, 'ダブルクリックで自動の大きさ');
+  // 動かさずに放したときは何も変えない
+  const n0 = api.store.undoStack.length;
+  fire(rs('s'), 'mousedown', at(b.x + b.w / 2, b.y + b.h));
+  fire(app.document, 'mouseup', at(b.x + b.w / 2, b.y + b.h));
+  assert.equal(api.store.undoStack.length, n0);
+});
+
+test('区間の □ と端の ○（段階 C・q152 案A）: 選んだ矢印の区間に □ を出し、ドラッグで平行にずらす。○ を自分の工程の辺に沿って動かすと出入りの位置。どちらもダブルクリックで自動に戻す。□ の右クリックは矢印を消す', async (t) => {
+  const { app, api, $, $$, S, edgeHit, inner, geom, sys } = await boot(t);
+  const sh = () => (sys().swimlane.edges.find((e) => e.id === 'e-6') || {}).shape;
+  const route = () => { const y = S().systems[0]; return api.swimDrawing(S(), y).routes['e-6']; };
+  press(edgeHit('e-6'));
+  assert.ok($('#sys-swim .sw-segs[data-edge="e-6"]').classList.contains('sel'));
+  assert.ok($$('#sys-swim .sw-segs[data-edge="e-6"] .sw-seg').length > 0);
+  // 区間: いちばん長い区間をずらす
+  const r = route();
+  const segs = r.wps.slice(0, -1).map((a, i) => ({ i, a, b: r.wps[i + 1], len: Math.hypot(r.wps[i + 1][0] - a[0], r.wps[i + 1][1] - a[1]) })).filter((g) => g.len >= 8);
+  const g = segs.sort((p, q) => q.len - p.len)[0];
+  const vert = Math.abs(g.a[0] - g.b[0]) < 0.5;
+  const m = [(g.a[0] + g.b[0]) / 2, (g.a[1] + g.b[1]) / 2];
+  const seg = () => $(`#sys-swim .sw-segs[data-edge="e-6"] .sw-seg[data-i="${g.i}"]`);
+  fire(seg(), 'mousedown', at(...m));
+  fire(app.document, 'mousemove', at(m[0] + (vert ? 25 : 0), m[1] + (vert ? 0 : 25)));
+  fire(app.document, 'mouseup', at(m[0] + (vert ? 25 : 0), m[1] + (vert ? 0 : 25)));
+  assert.ok(sh() && sh().horizontal.orthoWps.length >= 2, JSON.stringify(sh()));
+  const moved = route().wps.some((p) => Math.abs((vert ? p[0] : p[1]) - (vert ? m[0] + 25 : m[1] + 25)) < 0.6);
+  assert.ok(moved, 'ずらした所を通る');
+  assert.equal(api.ui.edgeSel, 'e-6', '選んだまま');
+  fire($('#sys-swim .sw-segs[data-edge="e-6"] .sw-seg'), 'dblclick');
+  assert.equal(sh(), undefined, '□ のダブルクリックで自動の線');
+  // 端の ○: 始まりの工程（w-5）の下の辺の 8 割の所（Alt で吸い付かない）
+  const b = geom().pos['w:w-5'];
+  const end = (which) => $(`#sys-swim .sw-ends[data-edge="e-6"] .sw-end[data-end="${which}"]`);
+  fire(end('from'), 'mousedown');
+  fire(inner(), 'mousemove', { ...at(b.x + b.w * 0.8, b.y + b.h + 4), altKey: true });
+  assert.ok($('#swim-prev .sw-pin-mark'), '出入りの位置の印');
+  fire(inner(), 'mouseup', { ...at(b.x + b.w * 0.8, b.y + b.h + 4), altKey: true });
+  assert.deepEqual(sh(), { horizontal: { fromPin: { side: 'bottom', frac: 0.8 } } });
+  assert.deepEqual(sys().swimlane.edges.find((e) => e.id === 'e-6').from, 'w-5', '付け替えない');
+  fire(end('from'), 'dblclick');
+  assert.equal(sh(), undefined, '○ のダブルクリックでその端の出入りの位置を消す');
+  assert.equal($('.swim-edit'), null, '文字の欄は出さない');
+  // □ の右クリックは矢印を消す
+  api.actions.setEdgeShape('y-trip', 'e-6', { orthoWps: route().wps.slice(1, -1).map(([x, y]) => ({ x, y })) });
+  press(edgeHit('e-6'));
+  fire($('#sys-swim .sw-segs[data-edge="e-6"] .sw-seg'), 'contextmenu', { button: 2 });
+  assert.ok(!sys().swimlane.edges.some((e) => e.id === 'e-6'));
+});
+
+test('レーンの境目と見出し（段階 C・q153 案A・q156）: 境目のドラッグで太さ（20 刻み・Alt で自由・札）。見出しのドラッグで並べ替え（青い太線）、ダブルクリックで名前の欄。境目のダブルクリックで自動の太さ', async (t) => {
+  const { app, api, $, sys, toast } = await boot(t);
+  const band = (id) => $(`#sys-swim .swim-over .sw-lanew[data-role="${id}"]`);
+  fire(band('l-a'), 'mousedown', at(300, 130));
+  fire(app.document, 'mousemove', at(300, 171));
+  assert.equal($('#sys-swim .swim-tip').textContent, '申請者 の高さ: 180');
+  assert.ok($('#sys-swim .swim-tip-line'));
+  fire(app.document, 'mouseup', at(300, 171));
+  assert.deepEqual(sys().roles[0].laneW, { horizontal: 180 });
+  assert.equal($('#sys-swim .swim-tip'), null);
+  fire(band('l-b'), 'mousedown', at(300, 310));
+  fire(app.document, 'mousemove', { ...at(300, 321), altKey: true });
+  fire(app.document, 'mouseup', { ...at(300, 321), altKey: true });
+  assert.deepEqual(sys().roles[1].laneW, { horizontal: 141 }, 'Alt で吸い付かない');
+  fire(band('l-b'), 'dblclick');
+  assert.equal(sys().roles[1].laneW, undefined);
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  key(app, app.document.body, { key: 'z', ctrlKey: true });
+  assert.ok(sys().roles.every((r) => !r.laneW), '1 回ずつ戻る');
+  // 見出しの並べ替え（申請者を最後へ）
+  const head = (id) => $(`#sys-swim .swim-inner .swim-lab[data-role="${id}"]`);
+  fire(head('l-a'), 'mousedown', at(68, 65));
+  fire(app.document, 'mousemove', at(68, 380));
+  assert.ok($('#swim-lanedrop'), '入る所の青い太線');
+  assert.ok(head('l-a').classList.contains('lane-grab'));
+  fire(app.document, 'mouseup', at(68, 380));
+  assert.deepEqual(sys().roles.map((r) => r.name), ['上長', '経理', '申請者']);
+  assert.equal($('#swim-lanedrop'), null);
+  // 動かさずに放したときは変えない
+  fire(head('l-b'), 'mousedown', at(68, 65));
+  fire(app.document, 'mouseup', at(68, 65));
+  assert.deepEqual(sys().roles.map((r) => r.name), ['上長', '経理', '申請者']);
+  // 端に残す見出しのダブルクリックで名前の欄
+  fire($('#sys-swim .swim-stick .swim-lab[data-role="l-b"]'), 'dblclick');
+  const input = $('#sys-swim .swim-stick .swim-edit');
+  assert.equal(input.value, '上長');
+  input.value = '経理';
+  key(app, input, { key: 'Enter' });
+  assert.equal(toast(), '「経理」という役割がもうあります。');
+  assert.equal(sys().roles[0].name, '上長');
+  fire($('#sys-swim .swim-stick .swim-lab[data-role="l-b"]'), 'dblclick');
+  $('#sys-swim .swim-stick .swim-edit').value = '課長';
+  key(app, $('#sys-swim .swim-stick .swim-edit'), { key: 'Enter' });
+  assert.equal(sys().roles[0].name, '課長');
+  assert.equal(api.ui.swimMode, 'select');
+});
+
+test('矢印の文字のドラッグ（段階 C・q156）: 線から 10 以内なら線の上に吸い付き（labelT だけ）、離すと離れ方（labelOff）も覚える。押しただけなら変えない', async (t) => {
+  const { app, api, $, sys } = await boot(t);
+  const lab = () => $('#sys-swim .sw-edge[data-edge="e-3"] .sw-labhit');
+  const c = () => { const g = $('#sys-swim .sw-edge[data-edge="e-3"]'); return [Number(g.getAttribute('data-mx')), Number(g.getAttribute('data-my'))]; };
+  const sh = () => (sys().swimlane.edges.find((e) => e.id === 'e-3').shape || {}).horizontal;
+  const n0 = api.store.undoStack.length;
+  fire(lab(), 'mousedown', at(...c()));
+  fire(app.document, 'mouseup', at(...c()));
+  assert.equal(api.store.undoStack.length, n0, '押しただけ');
+  assert.equal(api.ui.edgeSel, 'e-3', '押すと矢印を選ぶ');
+  const [x, y] = c();
+  fire(lab(), 'mousedown', at(x, y));
+  fire(app.document, 'mousemove', at(x - 20, y + 4));
+  fire(app.document, 'mouseup', at(x - 20, y + 4));
+  assert.ok(sh() && sh().labelT > 0 && sh().labelT < 1 && !sh().labelOff, JSON.stringify(sh()));
+  const [x2, y2] = c();
+  fire(lab(), 'mousedown', at(x2, y2));
+  fire(app.document, 'mousemove', at(x2, y2 + 40));
+  fire(app.document, 'mouseup', at(x2, y2 + 40));
+  assert.ok(sh().labelOff && Math.abs(sh().labelOff[1] - 40) < 6, JSON.stringify(sh()));
+});
+
+test('右のパネルと役割のパネル（段階 C）: 「⟲ 線の形を自動に戻す」は手直しがあるときだけ押せる（文字の位置は残す）。大きさを決めた工程だけ「⟲ 大きさを自動に戻す」。役割の行に高さ（縦向きは幅）の欄', async (t) => {
+  const { api, $, $$, sys, edgeHit, node, side } = await boot(t);
+  press(edgeHit('e-6'));
+  assert.match(side(), /線の形/);
+  assert.ok($('#sys-side [data-action="sys-edge-shape-reset"]').disabled);
+  api.actions.setEdgeShape('y-trip', 'e-6', { toPin: { side: 'left', frac: 0.5 }, labelT: 0.3 });
+  click($('#sys-side [data-action="sys-edge-shape-reset"]'));
+  assert.deepEqual(sys().swimlane.edges.find((e) => e.id === 'e-6').shape, { horizontal: { labelT: 0.3 } });
+  assert.ok($('#sys-side [data-action="sys-edge-shape-reset"]').disabled);
+  press(node('w-5'));
+  assert.equal($('#sys-side [data-action="sys-step-size-reset"]'), null);
+  api.actions.resetStepSize('y-trip', 'w-5');
+  const b = api.swimlaneLayout(api.swimlaneModel(api.store.state, api.store.state.systems[0]), api.store.state.systems[0]).pos['w:w-5'];
+  api.actions.resizeStep('y-trip', 'w-5', { w: 200, roleId: 'l-a', flow: b.flow, cross: b.cross });
+  click($('#sys-side [data-action="sys-step-size-reset"]'));
+  assert.equal(sys().swimlane.steps.find((w) => w.id === 'w-5').size, undefined);
+  api.openSystemPanel('roles');
+  const fields = () => $$('#sys-view [data-sy="role-lanew"]');
+  assert.deepEqual(fields().map((x) => x.value), ['130', '130', '130']);
+  assert.match(fields()[0].closest('label').textContent, /高さ/);
+  setValue(fields()[1], '40');
+  assert.deepEqual(sys().roles[1].laneW, { horizontal: 100 });
+  assert.equal(fields()[1].value, '100');
+  setValue(fields()[1], '');
+  assert.equal(sys().roles[1].laneW, undefined, '空で自動');
+  assert.equal(fields()[1].value, '130');
+  api.actions.setSwimOrient('y-trip', 'vertical');
+  assert.match(fields()[0].closest('label').textContent, /幅/);
+});
+
+test('手直しの出し先（段階 C・q155）: 説明書（PDF）と AI の画像の図（swimlaneHtml）には出し、MPD への出力（bdmExportPlan）には渡さない。説明書の図には押す所を描かない', async (t) => {
+  const { api, S } = await boot(t);
+  api.actions.setLaneWidth('y-trip', 'l-a', 200);
+  const b = api.swimlaneLayout(api.swimlaneModel(S(), S().systems[0]), S().systems[0]).pos['w:w-5'];
+  api.actions.resizeStep('y-trip', 'w-5', { w: 222, roleId: 'l-a', flow: b.flow, cross: b.cross });
+  api.actions.setEdgeShape('y-trip', 'e-6', { fromPin: { side: 'bottom', frac: 0.5 } });
+  const y = S().systems[0];
+  const html = api.swimlaneHtml(S(), y);
+  assert.match(html, /<rect x="0" y="0" width="\d+" height="200"/, '申請者のレーンの高さ 200');
+  assert.match(html, /data-node="w:w-5"[^>]*width:222px/, '工程の幅 222');
+  assert.ok(!/sw-rs|sw-seg|sw-lanew|swim-stick|data-role/.test(html), '押す所は描かない');
+  const plan = JSON.stringify(api.bdmExportPlan(y, null).plan);
+  assert.ok(!/laneW|size|shape|fromPin|orthoWps|labelT/.test(plan), plan);
+});

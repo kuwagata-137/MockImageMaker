@@ -363,3 +363,121 @@ test('列を自動で付ける: 矢印の並びの順によらない（作業の
   assert.deepEqual(cols([fwd[0], back, fwd[1]]), [0, 1, 2], '差し戻しが行きより先に並んでいても同じ');
   assert.deepEqual(cols([back, fwd[1], fwd[0]]), [0, 1, 2]);
 });
+
+// ── v1.03 の段階 C（q151〜q156）: 人が直した工程の大きさ・レーンの太さ・矢印の線の形と文字の位置。どれも向きごとに覚える（q154）──
+test('手直しの欄を整える: 工程の size・矢印の shape・役割の laneW を向きごとに残し、形の違う値は外す。知らない欄は残す', async (t) => {
+  const st = sampleState();
+  const y = st.systems[0];
+  y.roles[0].laneW = { horizontal: 30, vertical: 'x', future: 1 };
+  y.roles[1].laneW = { vertical: 'x' };
+  y.swimlane.steps[1].size = { horizontal: { w: 90, h: -5, note: 'a' }, vertical: { w: 0 } };
+  y.swimlane.steps[2].size = { vertical: 'x' };
+  y.swimlane.edges[0].shape = {
+    horizontal: { fromPin: { side: 'right', frac: 1.5 }, toPin: { side: 'up', frac: 0.5 }, orthoWps: [{ x: 1, y: 2 }], labelT: 0.3, labelOff: [1, 2], keep: true },
+    vertical: { orthoWps: [{ x: 1 }], labelOff: [1] },
+  };
+  const { sys } = await boot(t, st);
+  const v = plain(sys('y-trip'));
+  assert.deepEqual(v.roles[0].laneW, { horizontal: 100, future: 1 }, '下限は 100。数でない向きは外す');
+  assert.equal('laneW' in v.roles[1], false, '何も残らなければ欄を付けない');
+  assert.deepEqual(v.swimlane.steps[1].size, { horizontal: { w: 90, note: 'a' } }, '0 以下の大きさは外す');
+  assert.equal('size' in v.swimlane.steps[2], false);
+  assert.deepEqual(v.swimlane.edges[0].shape, { horizontal: { fromPin: { side: 'right', frac: 1 }, orthoWps: [{ x: 1, y: 2 }], labelT: 0.3, labelOff: [1, 2], keep: true } },
+    '割合は 0〜1 に収め、知らない辺の出入りの位置・点の形の違う経路は外す');
+  assert.equal('shape' in v.swimlane.edges[1], false, '手直しのない矢印には欄を付けない（v1.02 までと同じ形）');
+});
+
+test('工程の大きさ（q151。MPD の manualW・manualH）: 幅は決めた幅のまま（既定より小さくてもよい。下限 24）で文字を折り返し、高さは決めた高さと文字の入る高さの大きいほう', async (t) => {
+  const { api } = await boot(t);
+  const sz = (text, kind, size) => { const b = api.swimBoxSize(text, kind, '', 260, size); return { w: b.w, h: b.h, n: b.lines.length }; };
+  assert.deepEqual(sz('作業', 'task', { w: 90, h: 60 }), { w: 90, h: 60, n: 1 });
+  assert.deepEqual(sz('作業', 'task', { w: 10 }), { w: 24, h: 37, n: 1 }, '幅の下限は 24。高さは既定のまま');
+  const long = sz('あ'.repeat(30), 'task', { w: 100, h: 40 });
+  assert.equal(long.w, 100);
+  assert.ok(long.n >= 3, '決めた幅で折り返す');
+  assert.equal(long.h, long.n * 15 + 16, '文字が入らなければ、決めた高さより高くする（文字は縮めない）');
+  assert.equal(sz('判断', 'decision', { w: 240 }).w, 240, 'ひし形も決めた幅');
+  assert.deepEqual(sz('作業', 'task', { h: 80 }), { w: 120, h: 80, n: 1 }, '高さだけ決めたときは、幅は今までどおり');
+});
+
+test('並べ方の手直し: 工程の大きさとレーンの太さは今の向きの値だけ使う。人が決めた太さのレーンは広げず、はみ出す工程はレーンの中へ寄せる（MPD の applyLaneWidth）', async (t) => {
+  const { api, S, sys } = await boot(t);
+  const lay = (fix, orientation) => {
+    const y = plain(sys('y-trip'));
+    if (orientation) y.swimlane.orientation = orientation;
+    fix(y);
+    return api.swimlaneLayout(api.swimlaneModel(S(), y), y);
+  };
+  const L = lay((y) => {
+    y.roles[0].laneW = { horizontal: 200, vertical: 300 };
+    y.swimlane.steps.find((w) => w.id === 'w-5').size = { horizontal: { w: 90, h: 60 }, vertical: { w: 150 } };
+  });
+  const base = lay(() => {});
+  assert.deepEqual(plain(L.lanes.map((l) => l.h)), [200, base.lanes[1].h, base.lanes[2].h], '横向きは 1 つ目のレーンの高さ 200（ほかのレーンは今までどおり）');
+  assert.deepEqual(plain([L.pos['w:w-5'].w, L.pos['w:w-5'].h]), [90, 60]);
+  const V = lay((y) => {
+    y.roles[0].laneW = { horizontal: 200, vertical: 300 };
+    y.swimlane.steps.find((w) => w.id === 'w-5').size = { horizontal: { w: 90, h: 60 }, vertical: { w: 150 } };
+  }, 'vertical');
+  const baseV = lay(() => {}, 'vertical');
+  assert.deepEqual(plain(V.lanes.map((l) => l.w)), [300, baseV.lanes[1].w, baseV.lanes[2].w], '縦向きは縦向きの値');
+  assert.equal(V.pos['w:w-5'].w, 150);
+  // 覚えた位置がレーンの外へはみ出すとき: 決めた太さのレーンでは中へ寄せる。決めていないレーンは今までどおり広げる
+  const pos = { horizontal: { flow: 500, cross: 95, roleId: 'l-app', col: 1 } };
+  const narrow = lay((y) => { y.roles[0].laneW = { horizontal: 100 }; y.swimlane.steps.find((w) => w.id === 'w-2').pos = pos; });
+  const p = narrow.pos['w:w-2'];
+  assert.equal(narrow.lanes[0].h, 100, '人が決めた太さは広げない');
+  assert.equal(p.cross, 100 - p.h / 2 - 2, 'レーンの縁から 2 の所まで寄せる');
+  const auto = lay((y) => { y.swimlane.steps.find((w) => w.id === 'w-2').pos = pos; });
+  assert.equal(auto.pos['w:w-2'].cross, 95);
+  assert.ok(auto.lanes[0].h > 130, '決めていないレーンは、覚えた位置の工程が入るように広げる');
+});
+
+test('線の手直し（q152）: 出入りの位置の固定（辺と割合）・手で直した曲がり角（orthoWps）を今の向きで使う。今の出入りの辺に合わない経路は自動の経路に戻す', async (t) => {
+  const { api, S, sys } = await boot(t);
+  const draw = (fix, orientation) => {
+    const y = plain(sys('y-trip'));
+    if (orientation) y.swimlane.orientation = orientation;
+    fix(y);
+    return api.swimDrawing(S(), y);
+  };
+  const shapeOf = (y, id, o, sh) => { y.swimlane.edges.find((e) => e.id === id).shape = { [o]: sh }; };
+  // 出入りの位置の固定: e-1（出張が決まる → 申請を入力する）を、元の箱の下の辺の 25% から出す
+  const D = draw((y) => shapeOf(y, 'e-1', 'horizontal', { fromPin: { side: 'bottom', frac: 0.25 } }));
+  const b = D.L.pos['w:w-1'];
+  const [x0, y0] = D.routes['e-1'].wps[0];
+  assert.ok(Math.abs(x0 - (b.x + b.w * 0.25)) < 0.6 && Math.abs(y0 - (b.y + b.h)) < 0.6, `下の辺の 25% から出る（${x0},${y0}）`);
+  assert.equal(D.routes['e-1'].exitSide, 'bottom');
+  // 縦向きの手直しは、横向きでは使わない
+  const H = draw((y) => shapeOf(y, 'e-1', 'vertical', { fromPin: { side: 'bottom', frac: 0.25 } }));
+  assert.notEqual(H.routes['e-1'].exitSide, 'bottom');
+  // 手で直した曲がり角: 自動の経路の真ん中の区間を 20 ずらした形を覚えさせると、その形で引く
+  const auto = draw(() => {}).routes['e-2'].wps;
+  assert.ok(auto.length >= 4, `e-2 の自動の経路は Z の形（${JSON.stringify(auto)}）`);
+  const vert = Math.abs(auto[1][0] - auto[2][0]) < 0.5;
+  const moved = auto.slice(1, -1).map(([x, yy], i) => (vert && (i === 0 || i === 1) ? { x: x + 20, y: yy } : !vert && (i === 0 || i === 1) ? { x, y: yy + 20 } : { x, y: yy }));
+  const M = draw((y) => shapeOf(y, 'e-2', 'horizontal', { orthoWps: moved })).routes['e-2'];
+  assert.equal(M.manual, true);
+  assert.equal(M.dropped, false);
+  assert.equal(vert ? M.wps[1][0] : M.wps[1][1], vert ? auto[1][0] + 20 : auto[1][1] + 20, '曲がる位置が 20 ずれる');
+  // 斜めになる経路は捨てて自動の経路（MPD 9687）
+  const bad = draw((y) => shapeOf(y, 'e-2', 'horizontal', { orthoWps: [{ x: auto[1][0] + 7, y: auto[1][1] + 9 }, { x: auto[1][0] + 31, y: auto[1][1] + 45 }] })).routes['e-2'];
+  assert.deepEqual([bad.manual, bad.dropped], [false, true]);
+  assert.deepEqual(plain(bad.wps), plain(auto));
+});
+
+test('矢印の文字の位置（q156。MPD の edgeLabelPos）: 動かした文字は、線の道のりの割合の点 ＋ 離れ方。動かしていなければ線の真ん中', async (t) => {
+  const { app, api, S, sys } = await boot(t);
+  const y = plain(sys('y-trip'));
+  y.swimlane.edges.find((e) => e.id === 'e-3').shape = { horizontal: { labelT: 0.25, labelOff: [0, 6] } };
+  const D = api.swimDrawing(S(), y);
+  const r = D.routes['e-3'];
+  const q = api.polyAt(r.wps, 0.25);
+  assert.deepEqual(plain(api.swimLabelCenter(r, api.swimShapeOf(y.swimlane.edges.find((e) => e.id === 'e-3'), 'horizontal'))), plain([q[0], q[1] + 6]));
+  assert.deepEqual(plain(api.swimLabelCenter(r, null)), plain([r.mx, r.my]));
+  const box = dom(app, api.swimlaneHtml(S(), y, { drawn: D }));
+  const lab = [...box.querySelectorAll('rect.sw-lab')].find((n) => n.getAttribute('data-edge') === 'e-3');
+  const cx = Number(lab.getAttribute('x')) + Number(lab.getAttribute('width')) / 2;
+  const cy = Number(lab.getAttribute('y')) + Number(lab.getAttribute('height')) / 2;
+  assert.ok(Math.abs(cx - q[0]) < 0.11 && Math.abs(cy - q[1] - 6) < 0.11, '文字の下地の真ん中が、その点にある');
+});
