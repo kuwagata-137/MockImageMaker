@@ -177,9 +177,10 @@ const TOOLS = [
       items: z.boolean().optional().describe('PDF に項目一覧のページを入れる（項目があるとき。既定は入れる）'),
       process: z.boolean().optional().describe('PDF にステータスの流れのページ（図と操作一覧）を入れる（操作があるとき。既定は入れる）'),
       flow: z.boolean().optional().describe('PDF に画面遷移図のページを入れる（ボタン・リンクの移動先があるとき。既定は入れる）'),
+      settings: z.boolean().optional().describe('PDF の画面のページと PNG の画像に、設定一覧（アイテムの番号・項目名・設定の表）を付ける（既定は付ける。false にすると画面と吹き出しだけを大きく出し、ページ数が減る）'),
       diffWith: z.union([z.string(), z.number()]).optional().describe('この版（改訂履歴の行の id か版の番号）との違いを「新」「変」の変更マークで示す'),
     }, { slow: true }),
-  // ページの名前（systemCover・swimlane・notes・cover・map・items・process・flow）は、アプリの説明書の窓と同じ（第 10 段階の後半）
+  // ページの名前（systemCover・swimlane・notes・cover・map・items・process・flow・settings）は、アプリの説明書の窓と同じ（第 10 段階の後半。settings は v1.04）
   write('export_system_doc', 'システム設計書を出力する',
     'システム設計書（1 つの PDF。システムの表紙 → スイムレーン図 → 入っている画面設計ごとに、export_design の PDF と同じページ → 設計ノート）を出力し、' +
     '決めたフォルダ（ドキュメント\\モックイメージメーカー\\AI の出力）に書いたファイルの場所を返す。同じ名前のファイルがあれば番号を付ける。' +
@@ -197,6 +198,7 @@ const TOOLS = [
       items: z.boolean().optional().describe('画面設計ごとの項目一覧のページを入れる（項目があるとき。既定は入れる）'),
       process: z.boolean().optional().describe('画面設計ごとのステータスの流れのページを入れる（操作があるとき。既定は入れる）'),
       flow: z.boolean().optional().describe('画面設計ごとの画面遷移図のページを入れる（移動先があるとき。既定は入れる）'),
+      settings: z.boolean().optional().describe('画面のページに設定一覧（アイテムの番号・項目名・設定の表）を付ける（既定は付ける。false にすると画面と吹き出しだけを大きく出し、ページ数が減る）'),
     }, { slow: true }),
   // 元の資料の MPD のファイルは書き換えない（第 11 段階。設計書の 11-3）
   write('export_bdm', 'スイムレーン図を MPD に出力する',

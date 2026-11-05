@@ -78,7 +78,7 @@ test('出力の窓: 「入れるページ」に「ステータスの流れ」「
   const empty = await boot(t, { full: false });
   const done = empty.api.openExportDialog(empty.A);
   await tick();
-  assert.deepEqual(pageChecks(empty.app).slice(3), [['process', false, true], ['flow', false, true]]);
+  assert.deepEqual(pageChecks(empty.app).slice(3, 5), [['process', false, true], ['flow', false, true]]);
   const box = $(empty.app, '[data-xbox="pdf"]').textContent;
   assert.match(box, /ステータスの流れステータスを進める操作がないので、出しません/);
   assert.match(box, /画面遷移図ボタン・リンクの移動先がないので、出しません/);
@@ -87,7 +87,7 @@ test('出力の窓: 「入れるページ」に「ステータスの流れ」「
   const { app, api, A } = await boot(t);
   const done2 = api.openExportDialog(A);
   await tick();
-  assert.deepEqual(pageChecks(app).slice(3), [['process', true, false], ['flow', true, false]]);
+  assert.deepEqual(pageChecks(app).slice(3, 5), [['process', true, false], ['flow', true, false]]);
   click($(app, '[data-dlg="cancel"]'));
   await done2;
 });
@@ -182,7 +182,7 @@ test('PDF: 「ステータスの流れ」「画面遷移図」のチェックを
   assert.deepEqual(names, ['出張申請', '項目一覧', '1　一覧', '2　詳細']);
   const done = api.openExportDialog(A);
   await tick();
-  assert.deepEqual(pageChecks(app).slice(3), [['process', false, false], ['flow', false, false]]);
+  assert.deepEqual(pageChecks(app).slice(3, 5), [['process', false, false], ['flow', false, false]]);
   click($(app, '[data-dlg="cancel"]'));
   await done;
 });

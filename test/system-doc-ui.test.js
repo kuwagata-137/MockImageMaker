@@ -14,7 +14,7 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 const settle = () => new Promise((r) => setTimeout(r, 150));
 // ラジオを選んで change を起こす（窓は change で向きの押せる・押せないを決める）
 const pickRadio = (el) => { el.checked = true; el.dispatchEvent(new el.ownerDocument.defaultView.Event('change', { bubbles: true })); };
-const PAGE_KEYS = ['systemCover', 'swimlane', 'notes', 'cover', 'map', 'items', 'process', 'flow'];
+const PAGE_KEYS = ['systemCover', 'swimlane', 'notes', 'cover', 'map', 'items', 'process', 'flow', 'settings'];
 
 // 出力の窓口の身代わり（デスクトップ版のとき）。呼ばれた中身を calls に残す。hold なら savePdf は release() まで返事を待つ
 function fakeExportAPI(result = {}, { hold = false } = {}) {
@@ -191,7 +191,7 @@ test('説明書の窓: 選んだ設定はアプリを閉じるまで覚える（
   await openDocDialog(api, $);
   assert.equal($('.modal [name="dp-paper"]:checked').value, 'A3');
   assert.equal($('.modal [name="dp-orient"]:checked').value, 'portrait');
-  assert.deepEqual(pageChecks($$).map((r) => r.slice(0, 2)), [['systemCover', true], ['swimlane', false], ['notes', false], ['cover', true], ['map', false], ['items', true], ['process', true], ['flow', true]]);
+  assert.deepEqual(pageChecks($$).map((r) => r.slice(0, 2)), [['systemCover', true], ['swimlane', false], ['notes', false], ['cover', true], ['map', false], ['items', true], ['process', true], ['flow', true], ['settings', true]]);
   click($('[data-dlg="ok"]'));
   await settle();
   assert.equal(api.docOpts.swimlane, true, '押せなかった印は前の設定のまま');
