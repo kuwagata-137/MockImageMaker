@@ -1003,6 +1003,12 @@ const CHAPTERS = {
     await page.keyboard.press('Escape');
     await T(() => { if (document.activeElement) document.activeElement.blur(); });
     await page.mouse.move(VW - 4, VH - 4);
+    // 4.2 の「画面の移動」（v1.04 の q165）: ツールバーの「履歴」と「画面の移動」の組を切り抜く
+    await T(() => { document.querySelectorAll('*').forEach((el) => { if (el.scrollTop && !el.closest('#canvas-wrap, #screen-list, #side-panel')) el.scrollTop = 0; }); window.scrollTo(0, 0); });
+    await shot('sc_pager', { clip: [{ sel: '#toolbar .rgroup', text: '元に戻す' }, '#toolbar .rgroup[data-fold="edit"]'], pad: 14, anno: [
+      { box: '#tb-page', n: 1, pad: 2, at: 'bl', bdx: -14, bdy: 14 },
+      { box: '#tb-pager .pager-step', n: 2, pad: 2, at: 'r', bdx: 18 },
+    ] });
     // ステータスの移り方
     await run('openProcess');
     await sleep(400);

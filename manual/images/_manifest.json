@@ -73,8 +73,8 @@
  },
  "ed_edit": {
   "file": "ed_edit.png",
-  "w": 750,
-  "h": 316,
+  "w": 873,
+  "h": 290,
   "dsf": 2
  },
  "ed_import": {
@@ -164,13 +164,13 @@
  "ex_pdf": {
   "file": "ex_pdf.png",
   "w": 664,
-  "h": 614,
+  "h": 608,
   "dsf": 2
  },
  "ex_png": {
   "file": "ex_png.png",
   "w": 664,
-  "h": 546,
+  "h": 574,
   "dsf": 2
  },
  "home_card": {
@@ -335,6 +335,12 @@
   "h": 668,
   "dsf": 2
  },
+ "sc_pager": {
+  "file": "sc_pager.png",
+  "w": 299,
+  "h": 122,
+  "dsf": 2
+ },
  "sc_process": {
   "file": "sc_process.jpg",
   "w": 1280,
@@ -350,7 +356,7 @@
  "sys_doc": {
   "file": "sys_doc.png",
   "w": 704,
-  "h": 410,
+  "h": 412,
   "dsf": 2
  },
  "sys_exportmenu": {
