@@ -52,7 +52,8 @@ async function exportVia(app, api, designId, init = () => {}) {
   await tick();
   return done;
 }
-const screenPages = (doc) => [...doc.querySelectorAll('body > .pg')].filter((p) => /^\d+　/.test(p.querySelector('.pg-head h2').textContent));
+// 表紙には見出し（.pg-head）がないので、見出しのあるページから選ぶ
+const screenPages = (doc) => [...doc.querySelectorAll('body > .pg')].filter((p) => { const h = p.querySelector('.pg-head h2'); return !!h && /^\d+　/.test(h.textContent); });
 
 test('出力の窓: 「出力するページ」の並びのいちばん後ろに「設定一覧」。既定は付ける（今までと同じ PDF）', async (t) => {
   const { app, api, A, pdfDoc } = await boot(t);

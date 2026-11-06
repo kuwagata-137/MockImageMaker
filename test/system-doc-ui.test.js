@@ -142,7 +142,7 @@ test('説明書の窓: 出せないページは印を外して押せなくし、
   const { api, $, $$, xapi } = await boot(t, { steps: false, notes: false });
   await openDocDialog(api, $);
   assert.deepEqual(pageChecks($$), [['systemCover', true, false], ['swimlane', false, true], ['notes', false, true],
-    ['cover', true, false], ['map', true, false], ['items', true, false], ['process', true, false], ['flow', true, false]]);
+    ['cover', true, false], ['map', true, false], ['items', true, false], ['process', true, false], ['flow', true, false], ['settings', true, false]]);
   assert.match($('.modal').textContent, /工程がないので、出しません/);
   assert.match($('.modal').textContent, /設計ノートに行がないので、出しません/);
   click($('[data-dlg="cancel"]'));
@@ -152,7 +152,7 @@ test('説明書の窓: 出せないページは印を外して押せなくし、
   api.openSystem(empty);
   await openDocDialog(api, $);
   assert.match($('.modal .xp-note').textContent, /このシステムには、まだ画面設計が入っていません。/);
-  assert.deepEqual(pageChecks($$).slice(3).map((r) => r[2]), [true, true, true, true, true]);
+  assert.deepEqual(pageChecks($$).slice(3).map((r) => r[2]), [true, true, true, true, true, true]);
   assert.match($('.modal').textContent, /このシステムには画面設計が入っていません/);
   const cover = $('.modal [data-dpage="systemCover"]');
   cover.checked = false;

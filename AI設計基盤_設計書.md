@@ -775,7 +775,7 @@ props: {
 | `get_notes` | 設計ノートを読む | `system`・`cursor` | `{ system: { id, name }, stages, findings, memo, decisions, questions, updatedAt, nextCursor }` |
 | `update_notes` | 読み取ったこと・決めたことと理由・まだ決まっていないこと・メモを書く | `system`・`expect`・`ops` | `{ changed, added: [{ op, id }], updatedAt }` |
 | `set_stage` | 段階の進み具合を変える（`doing` 作業中・`review` 確認待ち・`done` 確認済み・`skipped` 確認を飛ばした） | `system`・`stage`・`state`・`expect` | `{ stage, state, confirmedAt, changed, updatedAt, warnings? }` |
-| `export_system_doc` | システムの説明書（PDF）を出力する | `system`・`paper`・`orient`・入れるページ（`systemCover`・`swimlane`・`notes`・`cover`・`map`・`items`・`process`・`flow`） | `{ system, format, paper, orient, pages, included, designs }` と書いたファイルの場所（`folder`・`files`） |
+| `export_system_doc` | システムの説明書（PDF）を出力する | `system`・`paper`・`orient`・入れるページ（`systemCover`・`swimlane`・`notes`・`cover`・`map`・`items`・`process`・`flow`）・`settings`（v1.04） | `{ system, format, paper, orient, pages, included, designs }` と書いたファイルの場所（`folder`・`files`） |
 
 第 10 段階を前半・後半に分けた（2026-10-20 ユーザーが決めた）。前半で上の表の 3 個（`get_notes`・`update_notes`・`set_stage`）と、`read_guide` の `stages`・prompts 3 つ（9-4）を作り、
 道具は 30 個から 33 個になった。後半で `export_system_doc` を作り、34 個になった。
@@ -791,7 +791,8 @@ props: {
 - 設計ノートだけを直す頼みでは、「AI が直す前の状態」の行を足さない（設計ノートは履歴の写しに入らないため）。紫とオレンジの帯の数と文は `仕様_細かい決めごと.md` の「設計ノートの細かい決めごと」。
 
 後半で作るときに決めたこと（2026-10-20。理由は `開発記録.txt`、細かい決めごとは `仕様_細かい決めごと.md` の「説明書（PDF）の細かい決めごと」）:
-- `export_system_doc` の入れるページの名前（`systemCover`・`swimlane`・`notes`・`cover`・`map`・`items`・`process`・`flow`）は、アプリの説明書の窓と同じ。既定はどれも入れる。`paper`・`orient` は `export_design` と同じ（既定は A4 の横。スライドは横だけ）。
+- `export_system_doc` の入れるページの名前（`systemCover`・`swimlane`・`notes`・`cover`・`map`・`items`・`process`・`flow`）は、アプリの説明書の窓と同じ。既定はどれも入れる。
+  v1.04（2026-11-05・q164）で、`export_design` と `export_system_doc` に `settings`（画面のページ〔PNG は画像〕に設定一覧を付けるか。既定は付ける）を足した。道具の数は変わらない。`paper`・`orient` は `export_design` と同じ（既定は A4 の横。スライドは横だけ）。
 - 出せないページ（作業の箱がない・設計ノートに入れる行がない・画面設計につながりがないなど）は黙って外し、返事の `included`（システムのページ）と `designs`（画面設計ごとの `{ id, name, firstPage, pages, included }`）に、本当に入れたページを書く。
   `pages` は説明書の全体のページ数。ページが 1 つもないときは、`bad_request`「入れるページが 1 つもありません。」で断る。
 - `export_design` と同じく、ページが印刷用の HTML を組み、main が決めたフォルダ（ドキュメント\モックイメージメーカー\AI の出力）に `<システムの名前>_説明書.pdf` を書く（同じ名前のファイルがあれば番号を付ける）。

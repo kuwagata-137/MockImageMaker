@@ -102,5 +102,5 @@ test('手引き: ⑤ の段階で export_system_doc を使うと書き、「守�
   assert.ok(tool.description.includes('ドキュメント\\モックイメージメーカー\\AI の出力'));
   assert.equal(tool.readOnly, false, 'ファイルを書くので、読むだけの道具にしない');
   assert.equal(tool.slow, true);
-  assert.deepEqual(Object.keys(tool.input.shape).sort(), ['cover', 'flow', 'items', 'map', 'notes', 'orient', 'paper', 'process', 'swimlane', 'system', 'systemCover'].sort());
+  assert.deepEqual(Object.keys(tool.input.shape).sort(), ['cover', 'flow', 'items', 'map', 'notes', 'orient', 'paper', 'process', 'settings', 'swimlane', 'system', 'systemCover'].sort());
 });
