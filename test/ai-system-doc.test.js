@@ -26,8 +26,8 @@ test('export_system_doc: 既定は全部のページを入れ、返事にペー�
     system: undefined, format: 'pdf', paper: 'A4', orient: 'landscape', pages: 2 + a + b + 1,
     included: { systemCover: true, swimlane: true, notes: true },
     designs: [
-      { id: d('出張申請').id, name: '出張申請', firstPage: 3, pages: a, included: { cover: true, map: true, items: true, process: true, flow: true } },
-      { id: d('経費精算').id, name: '経費精算', firstPage: 3 + a, pages: b, included: { cover: true, map: true, items: true, process: false, flow: true } },
+      { id: d('出張申請').id, name: '出張申請', firstPage: 3, pages: a, included: { cover: true, map: true, items: true, process: true, flow: true, settings: true } },
+      { id: d('経費精算').id, name: '経費精算', firstPage: 3 + a, pages: b, included: { cover: true, map: true, items: true, process: false, flow: true, settings: true } },
     ],
   });
   assert.equal(r.render.kind, 'pdf');
@@ -47,7 +47,7 @@ test('export_system_doc: ページの名前は窓と同じ（systemCover・swiml
   assert.equal(r.ok, true);
   assert.deepEqual(r.result.included, { systemCover: false, swimlane: true, notes: false });
   assert.equal(r.result.designs[0].firstPage, 2, 'スイムレーン図の次');
-  assert.deepEqual(r.result.designs[0].included, { cover: false, map: false, items: true, process: true, flow: true });
+  assert.deepEqual(r.result.designs[0].included, { cover: false, map: false, items: true, process: true, flow: true, settings: true });
   assert.equal(r.result.pages, full.pages - 1 - 1 - 2 - 2);
   assert.deepEqual([r.result.paper, r.result.orient], ['A3', 'portrait']);
   assert.ok(r.render.files[0].pageSize.height > r.render.files[0].pageSize.width, 'A3 縦');
@@ -102,5 +102,5 @@ test('手引き: ⑤ の段階で export_system_doc を使うと書き、「守�
   assert.ok(tool.description.includes('ドキュメント\\モックイメージメーカー\\AI の出力'));
   assert.equal(tool.readOnly, false, 'ファイルを書くので、読むだけの道具にしない');
   assert.equal(tool.slow, true);
-  assert.deepEqual(Object.keys(tool.input.shape).sort(), ['cover', 'flow', 'items', 'map', 'notes', 'orient', 'paper', 'process', 'swimlane', 'system', 'systemCover'].sort());
+  assert.deepEqual(Object.keys(tool.input.shape).sort(), ['cover', 'flow', 'items', 'map', 'notes', 'orient', 'paper', 'process', 'settings', 'swimlane', 'system', 'systemCover'].sort());
 });

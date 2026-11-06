@@ -126,7 +126,7 @@ test('出力の窓: メニューバー・カードの「…」・アプリのメ
   assert.equal($(app, '[name="xp-paper"]:checked').value, 'A4');
   assert.equal($(app, '[name="xp-orient"]:checked').value, 'landscape');
   assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => [x.dataset.xpage, x.checked, x.disabled]),
-    [['cover', true, false], ['map', true, false], ['items', true, false], ['process', false, true], ['flow', false, true]], '操作も移動先もないので、ステータスの流れと画面遷移図は押せない');
+    [['cover', true, false], ['map', true, false], ['items', true, false], ['process', false, true], ['flow', false, true], ['settings', true, false]], '操作も移動先もないので、ステータスの流れと画面遷移図は押せない');
   assert.equal($$(app, '[data-xbox="pdf"] [data-xscreen]:checked').length, 2, '画面は全部選んである');
   // 札を押すと、その形の設定だけが出る
   click($(app, '[data-xkind="png"]'));
@@ -156,7 +156,7 @@ test('出力の窓: つながりがない・項目がないときは、そのペ
   const done = api.openExportDialog('d9');
   await tick();
   assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => [x.dataset.xpage, x.checked, x.disabled]),
-    [['cover', true, false], ['map', false, true], ['items', false, true], ['process', false, true], ['flow', false, true]]);
+    [['cover', true, false], ['map', false, true], ['items', false, true], ['process', false, true], ['flow', false, true], ['settings', true, false]]);
   assert.match($(app, '[data-xbox="pdf"]').textContent, /関連がないので、出しません/);
   click($(app, '[name="xp-paper"][value="slide"]'));
   $(app, '[name="xp-paper"][value="slide"]').dispatchEvent(new app.window.Event('change', { bubbles: true }));
@@ -174,7 +174,7 @@ test('出力の窓: つながりがない・項目がないときは、そのペ
   await tick();
   assert.equal($(app, '[name="xp-paper"]:checked').value, 'A3');
   assert.equal($(app, '[name="xp-orient"]:checked').value, 'portrait');
-  assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => x.checked), [true, true, true, false, false], '押せなかったチェックは前の設定のまま');
+  assert.deepEqual($$(app, '[data-xbox="pdf"] [data-xpage]').map((x) => x.checked), [true, true, true, false, false, true], '押せなかったチェックは前の設定のまま');
   click($(app, '[data-dlg="cancel"]'));
   assert.equal(await again, null);
 });

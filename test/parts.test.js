@@ -249,7 +249,7 @@ test('ツールバーのたたんだ組: 「編集」「配置」「項目」は
   const fold = (k) => $(app, `#toolbar .fold-btn[data-fold="${k}"]`);
   const group = (k) => $(app, `#toolbar .rgroup[data-fold="${k}"]`);
   const isOpen = (k) => group(k).classList.contains('open') && fold(k).getAttribute('aria-expanded') === 'true';
-  assert.deepEqual($$(app, '#toolbar .rgroup > .glabel').map((e) => e.textContent), ['ファイル', '画面', '履歴', '編集', '配置', '項目', 'モード', '表示']);
+  assert.deepEqual($$(app, '#toolbar .rgroup > .glabel').map((e) => e.textContent), ['ファイル', '画面', '履歴', '画面の移動', '編集', '配置', '項目', 'モード', '表示']);
   assert.match(fold('align').textContent, /配置/);
   assert.match(fold('items').textContent, /項目/);
   // 中のボタンは #toolbar の中に残す（押せる・押せないを、ほかのボタンと同じく決めるため）

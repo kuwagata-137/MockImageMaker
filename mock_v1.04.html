@@ -171,6 +171,13 @@ input,textarea,select{font-family:inherit;font-size:13px;color:#1e293b}
 .tbtn{background:transparent;border:1px solid transparent;color:#334155;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;white-space:nowrap}
 .tbtn:hover{background:#e2e8f0;color:#0f172a}
 .tbtn:disabled{opacity:.4;cursor:default;background:transparent}
+/* 画面の移動（v1.04 の q165。番号の欄と「/ 全部の数」を横に、▲ ▼ を縦に積む） */
+.pager{display:flex;align-items:center;gap:4px;padding:0 2px;align-self:center}
+.pager-no{width:28px;height:20px;box-sizing:border-box;text-align:center;border:1px solid #94a3b8;border-radius:4px;font-size:12px;padding:0;color:#0f172a;background:#fff}
+.pager-no:disabled{background:#f1f5f9;color:#94a3b8;border-color:#cbd5e1}
+.pager-total{font-size:12px;color:#475569;white-space:nowrap}
+.pager-step{display:flex;flex-direction:column;gap:2px}
+.pager-step .tbtn{width:22px;height:17px;padding:0;font-size:9px;line-height:1;border-color:#cbd5e1}
 .tbtn.on{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
 .bigbtn:disabled{opacity:.4;cursor:default}
 .zoom-label{min-width:52px;color:#475569;align-self:center}
@@ -1551,7 +1558,7 @@ body.xp-doc .pg+.pg{break-before:page}
 // =============================================================================
 
 // ── 1. 版 ─────────────────────────────────────────────────────────────────────
-const APP_VERSION = '1.03';
+const APP_VERSION = '1.04';
 // 出力する HTML（単体で開いて編集できる HTML）の材料にする、このアプリの script の文字。
 // document.currentScript は script を実行している間しか取れないので、いちばん初めに取っておく（style の文字は起動のときに取る）
 const APP_SCRIPT = document.currentScript ? document.currentScript.textContent : '';
@@ -14381,6 +14388,12 @@ function toolbarHtml() {
     group('履歴', `<div class="stack">
       <button class="tbtn" data-action="undo" id="tb-undo" title="直前の操作を取り消します（Ctrl+Z）">↶ 元に戻す</button>
       <button class="tbtn" data-action="redo" id="tb-redo" title="取り消した操作をやり直します（Ctrl+Y）">↷ やり直す</button></div>`),
+    // 画面の番号を打って移る欄（v1.04 の q165。番号を打って Enter・▲ は前の画面・▼ は次の画面。PageUp・PageDown と同じ）
+    group('画面の移動', `<div class="pager" id="tb-pager">
+      <input class="pager-no" id="tb-page" data-screen-only inputmode="numeric" autocomplete="off" aria-label="画面の番号" title="画面の番号を打って Enter で、その画面へ移ります">
+      <span class="pager-total" id="tb-page-total"></span>
+      <div class="pager-step"><button class="tbtn" data-action="prev-screen" id="tb-prev" title="前の画面へ移ります（PageUp）" aria-label="前の画面へ移る">▲</button>
+      <button class="tbtn" data-action="next-screen" id="tb-next" title="次の画面へ移ります（PageDown）" aria-label="次の画面へ移る">▼</button></div></div>`),
     // 「編集」の組（q122）: ボタンの文字に対象を書いて長くなり、窓の幅 1280 に入りきらなくなったので、「配置」「項目」と同じくたたむ。
     // 出した組は、ボタンを縦に 1 列に並べる
     foldGroup('edit', '編集', '<span class="ico">✎</span>', '編集（選んだアイテムと吹き出し）',
@@ -14461,6 +14474,7 @@ function updateToolbarState() {
   $('#tb-mode-hand').classList.toggle('on', ui.mode === 'hand');
   document.querySelectorAll('#toolbar [data-screen-only]').forEach((b) => { b.disabled = !onScreen; });
   if (currentDesign().screens.length < 2) $('#tb-del-screen').disabled = true; // 最後の 1 つの画面は消せない
+  updatePager(onScreen);
   $('#canvas-wrap').classList.toggle('hand', ui.mode === 'hand');
   // 前の版を見ている間は、一覧へ・拡大縮小・選択・ハンドのほかは押せない（上の黄色い帯から戻す・やめる）
   if (store.isViewing) {
@@ -14489,7 +14503,54 @@ function updateHomeButton() {
   $('#tb-home').dataset.action = back ? 'back-system' : 'home';
   $('#tb-home').title = back ? `${back.name}の画面へ戻ります` : '画面設計の一覧へ戻ります';
 }
-const VIEW_OK_ACTIONS = ['home', 'back-system', 'zoom-in', 'zoom-out', 'zoom-reset', 'mode-select', 'mode-hand'];
+const VIEW_OK_ACTIONS = ['home', 'back-system', 'zoom-in', 'zoom-out', 'zoom-reset', 'mode-select', 'mode-hand', 'prev-screen', 'next-screen'];
+// 画面の移動の欄（v1.04 の q165）。番号と全部の数を書き、最初の画面では ▲、最後の画面では ▼ を押せなくする。画面でないものを開いている間は欄ごと押せない。
+// 番号を打っている間（data-typing）は、打ちかけの番号を消さない
+function updatePager(onScreen) {
+  const no = $('#tb-page');
+  if (!no) return;
+  const d = currentDesign();
+  const i = d.screens.findIndex((s) => s.id === ui.screenId);
+  if (!no.dataset.typing) no.value = String(i + 1);
+  $('#tb-page-total').textContent = `/ ${d.screens.length}`;
+  $('#tb-prev').disabled = !onScreen || i <= 0;
+  $('#tb-next').disabled = !onScreen || i >= d.screens.length - 1;
+}
+// 打った番号の画面へ移る（命令 gotoScreen）。全角の数字も読む。番号でない・範囲の外のときは、今の番号に戻す
+function gotoScreenNo(text) {
+  const no = $('#tb-page');
+  if (no) delete no.dataset.typing;
+  if (drag) return; // ドラッグの途中で画面を移ると、放したときに移った先の画面へ高さや位置が書かれるため（stepScreen と同じ）
+  const d = currentDesign();
+  const n = Number(String(text == null ? '' : text).normalize('NFKC').trim());
+  const s = Number.isInteger(n) ? d.screens[n - 1] : null;
+  if (s && (s.id !== ui.screenId || ui.panel !== 'screen')) openScreen(s.id);
+  else updatePager(ui.panel === 'screen');
+}
+// 番号の欄の操作。Enter で移り、Esc で打ちかけの番号を戻して欄を離れる。欄を離れたとき（change）も、打った番号へ移る
+function onPagerKey(e) {
+  if (!e.target || e.target.id !== 'tb-page') return;
+  if (e.key === 'Enter' && !e.isComposing) {
+    e.preventDefault();
+    runCommand('gotoScreen', e.target.value);
+    e.target.select();
+  } else if (e.key === 'Escape') {
+    delete e.target.dataset.typing;
+    updatePager(ui.panel === 'screen');
+    e.target.blur();
+  }
+}
+function onPagerInput(e) {
+  if (e.target && e.target.id === 'tb-page') e.target.dataset.typing = '1';
+}
+function onPagerChange(e) {
+  if (e.target && e.target.id === 'tb-page' && e.target.dataset.typing) runCommand('gotoScreen', e.target.value);
+}
+// 欄の外を押したら欄を離れる（画面の上を押す操作は mousedown を止めるので、そのままでは欄にカーソルが残り、打った番号へ移らない）
+function onPagerAway(e) {
+  const no = document.activeElement;
+  if (no && no.id === 'tb-page' && !(e.target && e.target.closest && e.target.closest('#tb-pager'))) no.blur();
+}
 
 function screenListHtml(d) {
   const linked = mapModel(store.state, d.id).nodes.length - 1;
@@ -17817,7 +17878,7 @@ function diffSumHtml(df, info) {
   return `<span class="df-sum">${esc(df.title)}との違い：<b class="n">新 ${c.new}</b>・<b class="c">変 ${c.chg}</b>・<b class="d">削除 ${c.del}</b></span>`;
 }
 
-// PDF の中身を組む。opts { paper, orient, cover, map, items, process, flow, screenIds（省略するとすべての画面）, diffRevId（比べる版の行の id） }。
+// PDF の中身を組む。opts { paper, orient, cover, map, items, process, flow, settings（false なら画面のページに設定一覧を付けない。省略は付ける）, screenIds（省略するとすべての画面）, diffRevId（比べる版の行の id） }。
 // 表紙（入りきらなければ「画面の一覧（続き）」「改訂履歴（続き）」）→ 比べた版からの変更内容（違いの印を選んだときだけ）→ つながりの図（つながりがあるときだけ）→
 // 項目の一覧表（項目があるときだけ）→ ステータスの移り方（操作があるときだけ）→ 画面の移り方（移る先があるときだけ）→ 選んだ画面。
 // システムの説明書（第 10 段階の後半）に画面設計のページを並べるときは、opts に pageStart（最初のページの番号。既定 1）・grandTotal（「n / N」と
@@ -17828,7 +17889,7 @@ function exportDocument(d, state, opts, exportedAt = nowIso()) {
   const L = exportLayout(d, state, opts, exportedAt);
   if (opts.countOnly) return { P: L.P, total: L.plan.total };
   const pages = [...exportCoverPages(d, L, exportedAt), ...exportViewPages(d, state, L), ...exportScreenPages(d, L)];
-  const included = { cover: !!opts.cover, map: L.withMap, items: L.itemChunks.length > 0, process: !!L.proc, flow: L.withFlow };
+  const included = { cover: !!opts.cover, map: L.withMap, items: L.itemChunks.length > 0, process: !!L.proc, flow: L.withFlow, settings: !L.noTable };
   return { P: L.P, pages, total: L.plan.total, included, html: printDocumentHtml(d.name, L.P, pages.join('\n')) };
 }
 // ページの並べ方を決める（どのページを何ページ目に置くか・表紙と表をどこで分けるか）。番号は pageStart からの通し番号、plan.total はこの画面設計のページ数。
@@ -17849,7 +17910,10 @@ function exportLayout(d, state, opts, exportedAt) {
   const withFlow = !!opts.flow && hasFlowPage(d, state);
   const base = (opts.pageStart || 1) - 1;
   // 画面ごとに、設定一覧を次のページへ分けるか（q138）。番号が決まる前に、仮の番号の文で 1 回だけ測る（countOnly でも同じなので、説明書の数がそろう）
+  // 設定一覧を付けない（opts.settings が false。v1.04 の q164）ときは、どの画面も画面と吹き出しだけの 1 ページ
+  const noTable = opts.settings === false;
   const splits = screens.map(({ s }) => {
+    if (noTable) return { pages: 1, split: false };
     const info = df ? df.result.screens[s.id] : null;
     return screenSplitPlan(d, s, state, measured, info && { info, label: df.label }, aw, ah, exportSettingRefs(d, itemChunks, proc, null));
   });
@@ -17883,7 +17947,7 @@ function exportLayout(d, state, opts, exportedAt) {
       coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     }
   }
-  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, revChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag,
+  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, revChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag, noTable,
     refs: exportSettingRefs(d, itemChunks, proc, plan) };
 }
 // 表紙と「画面の一覧（続き）」「改訂履歴（続き）」のページ
@@ -17928,7 +17992,7 @@ function exportScreenPages(d, L) {
   return L.plan.screens.flatMap(({ s, i, page, split }) => {
     const info = df ? df.result.screens[s.id] : null;
     const diff = info && { info, label: df.label };
-    const comp = screenComposite(d, s, 'p' + page, measured, diff, split.split ? { table: false } : { refs: L.refs });
+    const comp = screenComposite(d, s, 'p' + page, measured, diff, L.noTable || split.split ? { table: false } : { refs: L.refs });
     const body = screenPageBody(comp, aw, ah, measured);
     const name = `${i + 1}　${esc(s.name)}`;
     const left = `${esc(d.name)} ／ ${name}`;
@@ -18120,7 +18184,7 @@ function noteDocPagesHtml(y, P, pages, sub, firstPage, total) {
 }
 
 // 説明書の中身を組む。opts { paper, orient, systemCover, swimlane, notes（システムのページ）, cover, map, items, process, flow（画面設計ごとのページ） }。
-// 戻り値 { P, pages, total, html, included: { systemCover, swimlane, notes }, designs: [{ id, name, firstPage, pages, included: { cover, map, items, process, flow } }] }。
+// 戻り値 { P, pages, total, html, included: { systemCover, swimlane, notes }, designs: [{ id, name, firstPage, pages, included: { cover, map, items, process, flow, settings } }] }。
 // 画面設計ごとのページは exportDocument で組み（番号は通し番号、矢印の印の id の頭は画面設計ごとに '-d1'・'-d2'…）、画面のページはいつも全部入れる
 function exportSystemDocument(y, state, opts, exportedAt = nowIso()) {
   const P = paperSize(opts.paper, opts.orient);
@@ -18128,7 +18192,7 @@ function exportSystemDocument(y, state, opts, exportedAt = nowIso()) {
   const { aw, ah } = pageBodySize(P, measured);
   const can = systemDocCan(y, state);
   const included = { systemCover: !!opts.systemCover, swimlane: !!opts.swimlane && can.swimlane, notes: !!opts.notes && can.notes };
-  const per = { paper: opts.paper, orient: opts.orient, cover: !!opts.cover, map: !!opts.map, items: !!opts.items, process: !!opts.process, flow: !!opts.flow };
+  const per = { paper: opts.paper, orient: opts.orient, cover: !!opts.cover, map: !!opts.map, items: !!opts.items, process: !!opts.process, flow: !!opts.flow, settings: opts.settings !== false };
   const notes = included.notes ? noteDocSections(y) : { sub: '', sections: [] };
   const notePages = splitNoteSections(notes.sections, aw, ah, measured);
   const plan = systemDocPlan(y, state, P, { included, per, notePages: notePages.length, measured, ah, exportedAt });
@@ -18503,7 +18567,8 @@ async function saveStandalone() {
 
 // ── 出力の窓（q33）──
 // 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない）
-const exportOpts = { kind: 'pdf', paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, process: true, flow: true, openAfter: true, diff: false };
+// settings は画面のページ（PNG は画像）に設定一覧を付けるか（v1.04。q164 案B）
+const exportOpts = { kind: 'pdf', paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, process: true, flow: true, settings: true, openAfter: true, diff: false };
 const EXPORT_KINDS = [
   ['pdf', '📄', 'PDF', '印刷して渡す。1 画面＝1 ページ。表紙・関連図・項目一覧も出力できる'],
   ['html', '🌐', 'HTML', 'ブラウザで開いて、見る・変更することができる。変更したものはアプリで取り込める'],
@@ -18547,7 +18612,7 @@ function exportDialogBody(d, desk, kind, hasMap) {
         <div class="field"><span>向き</span>${xpSeg('xp-orient', slide ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
       </div>
       <div class="xp-sub">出力するページ</div>
-      <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', '関連図', hasMap, 'ほかの画面設計との関連がないので、出しません')}${page('items', '項目一覧', d.items.length > 0, '項目がないので、出しません')}${page('process', 'ステータスの流れ', hasProcessPage(d), 'ステータスを進める操作がないので、出しません')}${page('flow', '画面遷移図', hasFlowPage(d, store.state), 'ボタン・リンクの移動先がないので、出しません')}</div>
+      <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', '関連図', hasMap, 'ほかの画面設計との関連がないので、出しません')}${page('items', '項目一覧', d.items.length > 0, '項目がないので、出しません')}${page('process', 'ステータスの流れ', hasProcessPage(d), 'ステータスを進める操作がないので、出しません')}${page('flow', '画面遷移図', hasFlowPage(d, store.state), 'ボタン・リンクの移動先がないので、出しません')}${page('settings', SETTINGS_PAGE_LABEL, true, '')}</div>
       ${pick}
       ${diffPick('pdf')}
       <label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>出力したら PDF を開く</span></label>
@@ -18560,9 +18625,11 @@ function exportDialogBody(d, desk, kind, hasMap) {
       ${diffPick('html')}
     </div>
     <div class="xp-box" data-xbox="png"${kind === 'png' ? '' : ' hidden'}>
+      <div class="xp-sub">出力するもの</div>
+      <div class="xp-pages">${page('settings', '設定一覧（画面の画像に付ける表）', true, '')}</div>
       ${pick}
       ${diffPick('png')}
-      <p class="xp-note">1 画面＝1 枚（画面・吹き出し・設定一覧が入る大きさ）。2 倍の細かさで出力します。<br>
+      <p class="xp-note">1 画面＝1 枚（画面・吹き出し・設定一覧〔付けるとき〕が入る大きさ）。2 倍の細かさで出力します。<br>
         画面が 2 つ以上のときは、保存するフォルダを選びます（ファイルの名前は「${esc(safeFileName(d.name))}_01_${esc(safeFileName(d.screens[0].name, '画面'))}.png」のようにします）。</p>
     </div>`;
 }
@@ -18602,12 +18669,13 @@ async function openExportDialog(designId) {
       const xd = box.querySelector('[data-xdiff]');
       const diffOn = !!xd && !xd.disabled && xd.checked;
       const diffRevId = diffOn ? box.querySelector('[data-xdiffrev]').value : null;
-      if (k !== 'pdf') return { kind: k, screenIds, diffRevId, diffOn };
       const checked = (key) => { const x = box.querySelector(`[data-xpage="${key}"]`); return !!x && !x.disabled && x.checked; };
+      if (k === 'png') return { kind: k, screenIds, diffRevId, diffOn, settings: checked('settings') };
+      if (k !== 'pdf') return { kind: k, screenIds, diffRevId, diffOn };
       const r2 = {
         kind: k, screenIds, paper: (box.querySelector('[name="xp-paper"]:checked') || {}).value || 'A4',
         orient: (box.querySelector('[name="xp-orient"]:checked') || {}).value || 'landscape',
-        cover: checked('cover'), map: checked('map'), items: checked('items'), process: checked('process'), flow: checked('flow'),
+        cover: checked('cover'), map: checked('map'), items: checked('items'), process: checked('process'), flow: checked('flow'), settings: checked('settings'),
         openAfter: !!box.querySelector('[data-xopen]').checked, diffRevId, diffOn,
       };
       if (!screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((key) => r2[key])) return { error: '出力するページか画面を 1 つ以上選んでください。' };
@@ -18618,6 +18686,7 @@ async function openExportDialog(designId) {
   // 覚える（押せなかったチェックは、前の設定のままにする）
   exportOpts.kind = r.kind;
   if (versionRows(d).some(hasSnapshot)) exportOpts.diff = r.diffOn;
+  if (r.kind !== 'html') exportOpts.settings = r.settings;
   if (r.kind === 'pdf') {
     Object.assign(exportOpts, { paper: r.paper, orient: r.paper === 'slide' ? exportOpts.orient : r.orient, cover: r.cover, openAfter: r.openAfter });
     if (hasMap) exportOpts.map = r.map;
@@ -18632,7 +18701,7 @@ function reportExport(res, what) {
   if (!res.ok) { toast(`${what} を出力できませんでした（${res.error || 'わからない理由'}）。`); return; }
   toast(res.count > 1 ? `${res.count} 枚の ${what} を出力しました（${res.dir}）。` : `${what} を出力しました（${res.path}）。`);
 }
-// 出力する。r は出力の窓の結果（{ kind, screenIds, paper, orient, cover, map, items, process, flow, openAfter, diffRevId（比べる版。違いの印を付けないときは null） }）
+// 出力する。r は出力の窓の結果（{ kind, screenIds, paper, orient, cover, map, items, process, flow, settings（PDF・PNG。false で設定一覧を付けない）, openAfter, diffRevId（比べる版。違いの印を付けないときは null） }）
 async function runExport(designId, r) {
   const d = findDesign(store.state, designId);
   if (!d) return null;
@@ -18655,7 +18724,7 @@ async function runExport(designId, r) {
       const doc = exportDocument(cur, store.state, r);
       res = await api.savePdf({ name: safeFileName(cur.name) + '.pdf', html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
     } else {
-      res = await api.savePng({ files: exportPngDocs(cur, store.state, r.screenIds, r.diffRevId) });
+      res = await api.savePng({ files: exportPngDocs(cur, store.state, r.screenIds, r.diffRevId, r.settings === false ? { table: false } : {}) });
     }
     reportExport(res, what);
     return res;
@@ -18667,9 +18736,11 @@ async function runExport(designId, r) {
 // ── システムの説明書の窓（第 10 段階の後半。q76・q77・画像 q81_1）──
 // 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない。画面設計の出力の窓の設定 exportOpts とは別）。
 // ページの名前は、窓・exportSystemDocument の opts・AI の export_system_doc の入力と返事で同じ
-const docOpts = { paper: 'A4', orient: 'landscape', systemCover: true, swimlane: true, notes: true, cover: true, map: true, items: true, process: true, flow: true, openAfter: true };
+const docOpts = { paper: 'A4', orient: 'landscape', systemCover: true, swimlane: true, notes: true, cover: true, map: true, items: true, process: true, flow: true, settings: true, openAfter: true };
 const DOC_SYSTEM_PAGES = [['systemCover', '表紙'], ['swimlane', 'スイムレーン図'], ['notes', '設計ノート（決めたことと理由・まだ決まっていないこと）']];
-const DOC_DESIGN_PAGES = [['cover', '表紙'], ['map', '関連図'], ['items', '項目一覧'], ['process', 'ステータスの流れ'], ['flow', '画面遷移図']];
+// 設定一覧の名前は、画面設計の出力の窓と同じ（v1.04 の q164 案B。ページではないが、出力するページの並びに置く）
+const SETTINGS_PAGE_LABEL = '設定一覧（画面のページに付ける表）';
+const DOC_DESIGN_PAGES = [['cover', '表紙'], ['map', '関連図'], ['items', '項目一覧'], ['process', 'ステータスの流れ'], ['flow', '画面遷移図'], ['settings', SETTINGS_PAGE_LABEL]];
 const DOC_PAGE_KEYS = [...DOC_SYSTEM_PAGES, ...DOC_DESIGN_PAGES].map(([k]) => k);
 // 説明書の出力を待っているシステムの id（待つ間に命令がもう 1 回来ても、窓を開かずに無視する）
 const docWaiting = new Set();
@@ -19048,7 +19119,8 @@ function openManual() {
 }
 
 // ボタン・キー・アプリのメニュー（Electron の menu:command）からの命令は、すべてここで受ける
-function runCommand(cmd) {
+// arg は命令に添える値（gotoScreen の画面の番号だけが使う）
+function runCommand(cmd, arg) {
   switch (cmd) {
     // 使い方は別の窓で開くので、確かめの窓を出している間・前の版を見ている間も開ける
     case 'openManual': openManual(); return true;
@@ -19136,6 +19208,7 @@ function runCommand(cmd) {
     case 'deselectItem': if (ui.panel === 'items') selectItem(null); return true;
     case 'addScreen': openAddScreenDialog().catch(reportPageError); return true;
     case 'prevScreen': case 'nextScreen': stepScreen(cmd === 'nextScreen' ? 1 : -1); return true;
+    case 'gotoScreen': gotoScreenNo(arg); return true;
   }
   if (ui.panel !== 'screen') return false;
   switch (cmd) {
@@ -19161,7 +19234,7 @@ function runCommand(cmd) {
 }
 
 // 前の版を見ている間にも使える命令（見る・選ぶ・移る・拡大縮小と、今の中身に戻ってから行う命令）
-const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'backToSystem', 'importHtml', 'newDesign', 'newSystem', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'openProcess', 'openFlow', 'prevScreen', 'nextScreen',
+const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'backToSystem', 'importHtml', 'newDesign', 'newSystem', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'openProcess', 'openFlow', 'prevScreen', 'nextScreen', 'gotoScreen',
   'zoomIn', 'zoomOut', 'zoomReset', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart', 'aiConnect'];
 
 // 揃える命令（メニューバー・右の欄・アプリのメニュー）と、alignedRects の how
@@ -19187,7 +19260,7 @@ const alignSvg = (inner) => `<svg width="20" height="20" viewBox="0 0 20 20" ari
 
 const ACTION_COMMANDS = {
   undo: 'undo', redo: 'redo', home: 'goHome', 'back-system': 'backToSystem', export: 'exportDialog', 'import-html': 'importHtml', 'save-html': 'saveHtml', 'zoom-in': 'zoomIn', 'zoom-out': 'zoomOut',
-  'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand',
+  'zoom-reset': 'zoomReset', 'mode-select': 'modeSelect', 'mode-hand': 'modeHand', 'prev-screen': 'prevScreen', 'next-screen': 'nextScreen',
   'zoom-fit': 'zoomFit', 'swim-select': 'swimSelect', 'swim-connect': 'swimConnect', 'swim-delete': 'swimDelete', // システムの画面のスイムレーン図（第 9 段階の T6b）
   'swim-hand': 'swimHand', 'swim-copy': 'copyPart', 'swim-paste': 'pastePart', // 手のひらツール・コピー・貼り付け（v1.03 段階 B）
   'swim-horizontal': 'swimHorizontal', 'swim-vertical': 'swimVertical', 'swim-arrange': 'swimArrange', // スイムレーン図の向き（q141）と整列（v1.03）
@@ -22408,7 +22481,7 @@ function aiSwimlaneImage(S, args) {
   );
 }
 const AI_EXPORT_FORMATS = ['pdf', 'html', 'png'];
-// 出力する。設定は出力の窓と同じ（PDF: 用紙・向き・表紙・つながりの図・項目の一覧表、PDF と PNG: 画面、全部: 違いの印を付ける版）
+// 出力する。設定は出力の窓と同じ（PDF: 用紙・向き・表紙・つながりの図・項目の一覧表、PDF と PNG: 画面・設定一覧〔settings。v1.04〕、全部: 違いの印を付ける版）
 async function aiExportDesign(args) {
   aiFlushBeforeRead();
   const S = aiState();
@@ -22428,20 +22501,21 @@ async function aiExportDesign(args) {
     return new AiRendered(result, { kind: 'files', files: [{ name: `${base}.html`, text: buildStandaloneHtml(d, S, { diffRevId }) }] });
   }
   if (format === 'png') {
-    const docs = exportPngDocs(d, S, screenIds, diffRevId);
+    const settings = args.settings !== false;
+    const docs = exportPngDocs(d, S, screenIds, diffRevId, settings ? {} : { table: false });
     if (!docs.length) throw aiBad('出力する画面を 1 つ以上選んでください。');
-    return new AiRendered({ ...result, screens: docs.length }, { kind: 'png', files: docs.map(({ name, html, width, height }) => ({ name, html, width, height })) });
+    return new AiRendered({ ...result, screens: docs.length, settings }, { kind: 'png', files: docs.map(({ name, html, width, height }) => ({ name, html, width, height })) });
   }
   const { paper, orient } = aiPaperOrient(args);
   const opts = {
     paper, orient, screenIds, diffRevId,
     cover: args.cover !== false, map: args.map !== false && hasMapLinks(d, S), items: args.items !== false && d.items.length > 0,
-    process: args.process !== false && hasProcessPage(d), flow: args.flow !== false && hasFlowPage(d, S),
+    process: args.process !== false && hasProcessPage(d), flow: args.flow !== false && hasFlowPage(d, S), settings: args.settings !== false,
   };
   if (screenIds && !screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((k) => opts[k])) throw aiBad('出力するページか画面を 1 つ以上選んでください。');
   const doc = exportDocument(d, S, opts);
   return new AiRendered(
-    { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items, process: opts.process, flow: opts.flow },
+    { ...result, paper, orient, pages: doc.total, cover: opts.cover, map: opts.map, items: opts.items, process: opts.process, flow: opts.flow, settings: opts.settings },
     { kind: 'pdf', files: [{ name: `${base}.pdf`, html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi } }] },
   );
 }
@@ -23177,6 +23251,10 @@ function bindGlobalEvents() {
     const sel = e.target.closest(EDITOR_PICK_ACTIONS);
     if (sel) onEditorClick(sel.dataset.action, sel);
   });
+  document.addEventListener('keydown', onPagerKey, true); // 画面の移動の欄（v1.04 の q165）。Enter・Esc を onKeyDown より先に受ける
+  document.addEventListener('input', onPagerInput);
+  document.addEventListener('mousedown', onPagerAway, true);
+  document.addEventListener('change', onPagerChange);
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('mousemove', onDragMove);
   document.addEventListener('mousemove', onSwimHover); // スイムレーン図の ○＋ と、つなぐ途中の破線（T6b）

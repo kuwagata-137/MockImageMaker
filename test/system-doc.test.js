@@ -174,11 +174,11 @@ test('印を外したページは入らない: システムの表紙・スイム
   assert.deepEqual(JSON.parse(JSON.stringify(x.included)), { systemCover: false, swimlane: false, notes: false });
   assert.equal(pageNo(parse, x.pages[0]), `1 / ${screens}`);
   assert.deepEqual(JSON.parse(JSON.stringify(x.designs.map((r) => r.included))), [
-    { cover: false, map: false, items: false, process: false, flow: false }, { cover: false, map: false, items: false, process: false, flow: false }]);
+    { cover: false, map: false, items: false, process: false, flow: false, settings: true }, { cover: false, map: false, items: false, process: false, flow: false, settings: true }]);
   // 全部入れたときの画面設計ごとの included（経費精算にはステータスがないので process は false）
   const full = doc();
   assert.deepEqual(JSON.parse(JSON.stringify(full.designs.map((r) => r.included))), [
-    { cover: true, map: true, items: true, process: true, flow: true }, { cover: true, map: true, items: true, process: false, flow: true }]);
+    { cover: true, map: true, items: true, process: true, flow: true, settings: true }, { cover: true, map: true, items: true, process: false, flow: true, settings: true }]);
   void api;
 });
 

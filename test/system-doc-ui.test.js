@@ -14,7 +14,7 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 const settle = () => new Promise((r) => setTimeout(r, 150));
 // ラジオを選んで change を起こす（窓は change で向きの押せる・押せないを決める）
 const pickRadio = (el) => { el.checked = true; el.dispatchEvent(new el.ownerDocument.defaultView.Event('change', { bubbles: true })); };
-const PAGE_KEYS = ['systemCover', 'swimlane', 'notes', 'cover', 'map', 'items', 'process', 'flow'];
+const PAGE_KEYS = ['systemCover', 'swimlane', 'notes', 'cover', 'map', 'items', 'process', 'flow', 'settings'];
 
 // 出力の窓口の身代わり（デスクトップ版のとき）。呼ばれた中身を calls に残す。hold なら savePdf は release() まで返事を待つ
 function fakeExportAPI(result = {}, { hold = false } = {}) {
@@ -142,7 +142,7 @@ test('説明書の窓: 出せないページは印を外して押せなくし、
   const { api, $, $$, xapi } = await boot(t, { steps: false, notes: false });
   await openDocDialog(api, $);
   assert.deepEqual(pageChecks($$), [['systemCover', true, false], ['swimlane', false, true], ['notes', false, true],
-    ['cover', true, false], ['map', true, false], ['items', true, false], ['process', true, false], ['flow', true, false]]);
+    ['cover', true, false], ['map', true, false], ['items', true, false], ['process', true, false], ['flow', true, false], ['settings', true, false]]);
   assert.match($('.modal').textContent, /工程がないので、出しません/);
   assert.match($('.modal').textContent, /設計ノートに行がないので、出しません/);
   click($('[data-dlg="cancel"]'));
@@ -152,7 +152,7 @@ test('説明書の窓: 出せないページは印を外して押せなくし、
   api.openSystem(empty);
   await openDocDialog(api, $);
   assert.match($('.modal .xp-note').textContent, /このシステムには、まだ画面設計が入っていません。/);
-  assert.deepEqual(pageChecks($$).slice(3).map((r) => r[2]), [true, true, true, true, true]);
+  assert.deepEqual(pageChecks($$).slice(3).map((r) => r[2]), [true, true, true, true, true, true]);
   assert.match($('.modal').textContent, /このシステムには画面設計が入っていません/);
   const cover = $('.modal [data-dpage="systemCover"]');
   cover.checked = false;
@@ -191,7 +191,7 @@ test('説明書の窓: 選んだ設定はアプリを閉じるまで覚える（
   await openDocDialog(api, $);
   assert.equal($('.modal [name="dp-paper"]:checked').value, 'A3');
   assert.equal($('.modal [name="dp-orient"]:checked').value, 'portrait');
-  assert.deepEqual(pageChecks($$).map((r) => r.slice(0, 2)), [['systemCover', true], ['swimlane', false], ['notes', false], ['cover', true], ['map', false], ['items', true], ['process', true], ['flow', true]]);
+  assert.deepEqual(pageChecks($$).map((r) => r.slice(0, 2)), [['systemCover', true], ['swimlane', false], ['notes', false], ['cover', true], ['map', false], ['items', true], ['process', true], ['flow', true], ['settings', true]]);
   click($('[data-dlg="ok"]'));
   await settle();
   assert.equal(api.docOpts.swimlane, true, '押せなかった印は前の設定のまま');
