@@ -9455,7 +9455,8 @@ const swimRoutes = (() => {
       if (!fn || !tn) return;
       const [sx, sy, ex, ey, exitSide, entrySide] = connPts(fn, tn, ed, portAssign);
       const pa = portAssign[ed.id];
-      const amid = pa && pa.autoMid != null ? pa.autoMid : null;
+      // ed.mid は、呼ぶ側が決めた曲がる位置（v1.05。関連図・画面遷移図で、線ごとに通り道を分けるため。スイムレーン図は渡さない）
+      const amid = ed.mid != null ? ed.mid : pa && pa.autoMid != null ? pa.autoMid : null;
       const isReturn = isReturnEdge((pa && pa.aRef) || fn, (pa && pa.bRef) || tn);
       // MPD 9683 の手で直した直交経路の分岐: 再探索せず、覚えた曲がり角を通す。今の出入りの辺に合わなければ自動の経路
       let wps = ed.orthoWps && ed.orthoWps.length ? buildOrthoManualPts(ed, sx, sy, ex, ey, exitSide, entrySide) : null;
