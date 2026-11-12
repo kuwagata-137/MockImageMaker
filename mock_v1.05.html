@@ -1338,6 +1338,11 @@ body.swim-dragging .swim-over{display:none}
 .mpd-pick label:has(input:checked){border-color:#2563eb;background:#eff6ff}
 .mpd-pick b{min-width:0;overflow-wrap:anywhere}
 .mpd-pick small{color:#64748b;font-size:11.5px;margin-left:auto;text-align:right}
+.how-pick{display:flex;flex-direction:column;gap:6px}
+.how-pick label{display:flex;align-items:flex-start;gap:10px;border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px;font-size:13px;background:#fff;cursor:pointer}
+.how-pick label:has(input:checked){border-color:#2563eb;background:#eff6ff}
+.how-pick input{margin-top:3px}
+.how-pick small{display:block;color:#64748b;font-size:11.5px;line-height:1.5;margin-top:2px}
 /* 取り込みの確かめの窓（q39） */
 .imp-cmp{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 10px}
 .imp-cmp th,.imp-cmp td{border:1px solid #e2e8f0;padding:5px 8px;text-align:left}
@@ -5358,6 +5363,19 @@ const actions = {
       if (copy) done.push(copy);
     }));
     return done;
+  },
+  // 画面設計を、追加先のシステムへ移動する（v1.05・q181 案A）。元のシステム fromSysId（「システムに入っていない」画面設計は null）から外し、toSysId に追加する。
+  // 1 回の変更なので、元に戻す 1 回で戻る。追加先にもう入っている・ごみ箱の画面設計・ごみ箱のシステムのときは何もしない
+  moveDesignToSystem(fromSysId, toSysId, designId) {
+    const to = editableSystem(toSysId);
+    const d = findDesign(store.state, designId);
+    if (!to || to.trashedAt || !d || d.trashedAt || to.designIds.includes(designId) || fromSysId === toSysId) return false;
+    let moved = false;
+    store.batch(() => {
+      moved = !!actions.addDesignToSystem(toSysId, designId);
+      if (moved && fromSysId) actions.removeDesignFromSystem(fromSysId, designId);
+    });
+    return moved;
   },
   // システムから外す（画面設計は残る）
   removeDesignFromSystem(sysId, designId) {
@@ -10749,6 +10767,7 @@ function cardMenuHtml(d, sys = null) {
     <div class="card-menu" role="menu">
       <button role="menuitem" data-action="rename" data-id="${id}">この画面設計の名前を変更する</button>
       <button role="menuitem" data-action="duplicate" data-id="${id}"${inSys}>この画面設計を複製する</button>
+      ${store.state.systems.some((y) => !y.trashedAt) ? `<button role="menuitem" data-action="add-to-system" data-id="${id}"${inSys}>この画面設計をシステムに追加する…</button>` : ''}
       <button role="menuitem" data-action="export-design" data-id="${id}">この画面設計を出力…</button>
       ${sys ? `<button role="menuitem" data-action="remove-from-system" data-id="${id}"${inSys}>画面設計をこのシステムから外す</button>` : ''}
       <button role="menuitem" class="danger" data-action="trash" data-id="${id}">この画面設計を削除する（ごみ箱へ移す）</button>
@@ -11148,6 +11167,34 @@ async function onHomeAction(action, id, btn) {
   await onDesignAction(action, d, btn);
 }
 
+// 画面設計の「…」のメニューの「この画面設計をシステムに追加する…」のウィンドウ（v1.05・q181 案A）。追加先のシステムと追加方法（移動・複製して追加）を選ぶ。
+// from は、カードを出しているシステムのまとまり（「システムに入っていない」では null）。移動は、from から外して追加先のシステムに追加する
+function openAddToSystemDialog(d, from) {
+  const systems = store.state.systems.filter((y) => !y.trashedAt);
+  const first = systems.find((y) => !y.designIds.includes(d.id)) || systems[0];
+  const opt = (y) => `<option value="${esc(y.id)}"${y === first ? ' selected' : ''}>${esc(y.name)}</option>`;
+  const moveNote = from ? `「${esc(from.name)}」から外し、追加先のシステムに追加する` : '「システムに入っていない」からなくなり、追加先のシステムに並ぶ';
+  return showDialog({
+    title: `この画面設計をシステムに追加する（${d.name}）`,
+    okLabel: '画面設計を追加する',
+    width: 520,
+    body: `<label class="field"><span>追加先のシステム</span><select name="system">${systems.map(opt).join('')}</select></label>
+      <div class="field"><span>追加方法</span><div class="how-pick">
+        <label><input type="radio" name="how" value="move" checked><span><b>画面設計を移動する</b><small>${moveNote}</small></span></label>
+        <label><input type="radio" name="how" value="copy"><span><b>画面設計を複製して追加する（コピー）</b><small>複製が追加先のシステムに並ぶ。元の画面設計は残り、複製とは同期しない</small></span></label>
+      </div></div>`,
+    collect: (m) => {
+      const y = findSystem(store.state, m.querySelector('[name="system"]').value);
+      const how = m.querySelector('[name="how"]:checked').value;
+      if (!y || y.trashedAt) return { error: '追加先のシステムを選んでください。' };
+      if (how === 'move' && y.designIds.includes(d.id)) {
+        return { error: `「${d.name}」は、すでに${y.name}に入っています。ほかのシステムを選ぶか、「画面設計を複製して追加する（コピー）」を選んでください。` };
+      }
+      return { sysId: y.id, how };
+    },
+  });
+}
+
 async function onDesignAction(action, d, btn = null) {
   // カードを出しているシステムのまとまり（「…」のメニューの複製・このシステムから外す）
   const inSys = btn && btn.dataset.sys ? findSystem(store.state, btn.dataset.sys) : null;
@@ -11165,6 +11212,15 @@ async function onDesignAction(action, d, btn = null) {
       actions.duplicateDesign(d.id, { systemId: inSys ? inSys.id : null });
       toast(inSys ? `「${d.name} のコピー」を作り、${inSys.name}に追加しました。` : `「${d.name} のコピー」を作りました。`);
       return;
+    case 'add-to-system': {
+      const r = await openAddToSystemDialog(d, inSys);
+      const y = r ? findSystem(store.state, r.sysId) : null;
+      if (!y) return;
+      if (r.how === 'copy') {
+        if (actions.copyDesignIntoSystem(y.id, d.id)) toast(`「${d.name}」を複製して、${y.name}に追加しました。`);
+      } else if (actions.moveDesignToSystem(inSys ? inSys.id : null, y.id, d.id)) toast(`「${d.name}」を${y.name}に移動しました。`);
+      return;
+    }
     case 'remove-from-system':
       if (inSys && actions.removeDesignFromSystem(inSys.id, d.id)) toast(`「${d.name}」を${inSys.name}から外しました。画面設計は残っています。`);
       return;
