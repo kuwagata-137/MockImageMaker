@@ -635,7 +635,7 @@ props: {
 
 | 道具 | すること | 主な入力 | 返すもの |
 |---|---|---|---|
-| `read_guide` | 手引きを読む（9-4） | `topic`（`overview`・`layout`・`catalog`・`stages`・`rules`。`stages` は第 10 段階で足した） | 手引きの文 |
+| `read_guide` | 手引きを読む（9-4） | `topic`（`overview`・`layout`・`catalog`・`stages`・`rules`・`kintone`・`crm`・`writing`。`stages` は第 10 段階、`kintone` は第 13 段階、`crm` は第 17 段階、`writing`〔説明文の書き方〕は v1.05 の段階 E で足した） | 手引きの文 |
 | `list_designs` | 画面設計の一覧 | `query`・`trashed`（ごみ箱のものも出すか） | id・名前・作る先・画面と項目の数・最新の版・更新の印 |
 | `get_design` | 画面設計の中身の要約 | `design` | 名前・作る先・説明・項目の一覧（設定の文つき）・画面の一覧（id・名前・機器・大きさ・部品の数）・改訂履歴の行（写しは除く）・ルックアップと取り込みのつながり・更新の印 |
 | `get_screen` | 画面 1 つの中身 | `design`・`screen` | 部品（id・赤い番号・種類・項目名・位置と大きさ・設定の文・移る先）・吹き出し・部品の設定の一覧表の文 |

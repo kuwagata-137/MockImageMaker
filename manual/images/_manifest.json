@@ -20,7 +20,13 @@
  "ai_connect": {
   "file": "ai_connect.png",
   "w": 784,
-  "h": 976,
+  "h": 1356,
+  "dsf": 2
+ },
+ "ai_rules": {
+  "file": "ai_rules.png",
+  "w": 740,
+  "h": 393,
   "dsf": 2
  },
  "dash_cal_month": {
