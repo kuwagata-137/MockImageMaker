@@ -95,16 +95,16 @@ module.exports = async function shootAi(browser, env) {
   await page.waitForSelector('.modal .aic-sec');
   await page.click('.modal [data-copy="claude"]');
   await shot(page, '99_AI_AIとつなぐ窓');
-  // 286: 「説明文ルール」の欄に追加ルールを入力して、［追加ルールを保存する］を押した後（v1.05 段階 E・質問 q179）
+  // 288: 「説明文ルール」の欄に追加ルールを入力して、［追加ルールを保存する］を押した後（v1.05 段階 E・質問 q179）
   await page.type('#aic-rules', '金額は税込で書く\nボタン名は［ ］で囲む\n敬語を使わない');
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForSelector('#aic-rules-saved:not([hidden])');
   await page.evaluate(() => document.querySelector('.aic-rules').scrollIntoView({ block: 'center' }));
-  await shot(page, '286_AI_説明文ルール_追加ルールを保存した後');
-  // 287: 既定のウィンドウの大きさ（幅 1280・高さ 720）でも、ボタンが見えること
+  await shot(page, '288_AI_説明文ルール_追加ルールを保存した後');
+  // 289: 既定のウィンドウの大きさ（幅 1280・高さ 720）でも、ボタンが見えること
   await page.setViewport({ width: 1280, height: 720 });
   await sleep(100);
-  await shot(page, '287_AI_説明文ルール_幅1280');
+  await shot(page, '289_AI_説明文ルール_幅1280');
   await page.close();
 
   // 100: タスクトレイのアイコン（automation-tray.js が作る PNG を、そのままの大きさと 4 倍で並べる）
