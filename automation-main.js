@@ -12,6 +12,7 @@
 const { createAutomationServer } = require('./automation');
 const { createRenderFinisher } = require('./automation-render');
 const { connectInfo } = require('./automation-connect');
+const { readWritingRules, saveWritingRules } = require('./mcp-writing-rules');
 
 const READY_WAIT_MS = 30000; // ページの準備を待つ時間
 const IDLE_QUIT_MS = 30000; // AI のつながりが 0 で窓が見えていないとき、終わるまでの時間
@@ -157,6 +158,9 @@ function initAutomation({ app, ipcMain, getWindow, background = false, headless 
     require('electron').clipboard.writeText(String(text == null ? '' : text));
     return true;
   });
+  // 説明文ルールの追加ルール（「AI と連携」のウィンドウの入力欄。v1.05 段階 E・質問 q179）。<userData>/data/writing-rules.json に保存する
+  ipcMain.handle('ai:writing-rules', () => readWritingRules(app.getPath('userData')));
+  ipcMain.handle('ai:save-writing-rules', (_e, text) => saveWritingRules(app.getPath('userData'), text));
 
   return {
     clientCount: () => server.clientCount(),

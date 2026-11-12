@@ -1401,6 +1401,12 @@ body.swim-dragging .swim-over{display:none}
 .aic-code{margin-top:8px;background:#0f172a;color:#e2e8f0;border-radius:7px;padding:10px 12px;font-family:Consolas,'Cascadia Mono',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;user-select:text}
 .aic-copy{min-width:118px;justify-content:center}
 .aic-copy.done{background:#dcfce7;border-color:#86efac;color:#166534;font-weight:600}
+.aic-rule-list{margin:8px 0 0;padding-left:22px;font-size:12.5px;color:#334155;line-height:1.7}
+.aic-rules-label{display:block;margin-top:12px;font-size:13px;font-weight:600;color:#0f172a}
+.aic-rules-label span{font-weight:400;font-size:12.5px;color:#475569}
+.aic-rules textarea{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font:inherit;font-size:13px;line-height:1.6;resize:vertical;background:#fff}
+.aic-rules textarea:focus{outline:2px solid #7c3aed;outline-offset:-1px}
+.aic-rules-saved{margin-left:8px;color:#15803d;font-weight:600}
 .aic-notes{margin:12px 0 0;font-size:12.5px;color:#334155;line-height:1.7;padding-left:18px}
 .aic-dev{margin-top:10px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:6px 10px}
 .rv-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px;color:#64748b}
@@ -6814,15 +6820,25 @@ function showDialog({ title, body, okLabel = 'OK', okClass = 'primary', init, co
       appEl().removeAttribute('inert');
       resolve(value);
     };
-    const ok = () => {
-      const r = collect ? collect(modal) : true;
+    // collect の戻り値: { error } は文を出して閉じない。{ keepOpen: true } は閉じない（保存してもウィンドウを開いたままにする時）。ほかは閉じて返す
+    const done = (r) => {
       if (r && r.error) {
         const errEl = $('.modal-error', modal);
         errEl.textContent = r.error;
         errEl.hidden = false;
         return;
       }
+      if (r && r.keepOpen) {
+        $('.modal-error', modal).hidden = true;
+        return;
+      }
       close(r);
+    };
+    // collect が Promise を返す時（main に保存を依頼する時）だけ待つ。ほかは今までどおり、その場で閉じる
+    const ok = () => {
+      const r = collect ? collect(modal) : true;
+      if (r && typeof r.then === 'function') r.then((v) => { if (modal.isConnected) done(v); }, reportPageError);
+      else done(r);
     };
     function onKey(e) {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(null); return; }
@@ -20682,6 +20698,74 @@ async function aiWaitIdle() {
   }
 }
 
+// ── 説明文ルールの点検（v1.05 段階 E。質問 q178）──
+// AI が書き込んだ説明文のうち、その依頼で変わった説明文だけを点検し、ルールに合わない説明文には、修正を促すメッセージを返事の warnings に入れる
+// （書き込みは断らない。長い説明文が必要な場面で AI の作業を止めないため。Claude が決めた）。
+// 文字数の目安と対象は、手引き "writing"（mcp-guide.js の WRITING）の表と同じにする。工程のメモと役割のメモの 60 字は Claude が決めた。
+// aiWrite の opts.noTextCheck（人が描いた MPD から工程を作る時）と opts.noBeforeRow（人が選んだ前の版に戻す時）では点検しない
+const AI_TEXT_LIMITS = { cond: 30, callout: 60, itemMemo: 60, action: 60, step: 20, stepMemo: 60, roleMemo: 60, description: 200 };
+const AI_TEXT_WARN_MAX = 8; // 1 回の返事に入れる、修正を促すメッセージの数の上限
+// 検討の経緯として書かないもの（質問番号・日付・「仮」「未確認」・ファイルの保存場所）。決定者と AI の作業メモは、機械では見分けられないので点検しない。
+// 円の記号として書いた \（後ろが数字）は、ファイルの保存場所とみなさない
+const AI_TEXT_TRACES = [
+  ['質問番号', /質問\s*[A-Za-z]{0,2}\s*\d+|(?:^|[^A-Za-z0-9])[qQ]\d{2,}(?![A-Za-z0-9])/],
+  ['日付', /\d{4}\s*[-/年]\s*\d{1,2}\s*[-/月]\s*\d{1,2}/],
+  ['「仮」', /(?:^|[\s。、（(])仮\s*[:：]|[（(]仮[）)]/],
+  ['「未確認」', /未確認(?=$|[。、）)\s])/],
+  ['ファイルの保存場所', /[A-Za-z]:\\|[^\s\\]+\\(?!\d)[^\s\\]+/],
+];
+// アプリに最初からある説明文ルール（「AI と連携」のウィンドウに並べる。手引き "writing" の 5 項目と同じ）
+const AI_WRITING_RULES = ['読み手を意識して書く', '結論だけを簡潔に書く', '検討の経緯を書かない', '理由と未決事項は設計ノートに書く', '技術用語を控える'];
+// 点検する説明文の一覧（キー → { kind, label, text }）。空の説明文は入れない
+function aiTextEntries(state) {
+  const out = new Map();
+  const put = (key, kind, label, text) => { const t = str(text).trim(); if (t) out.set(key, { kind, label, text: t }); };
+  state.designs.forEach((d) => {
+    put(`design/${d.id}`, 'description', `画面設計「${d.name}」の説明`, d.description);
+    d.items.forEach((it) => {
+      put(`item/${d.id}/${it.id}`, 'itemMemo', `項目「${it.name}」のメモ`, it.memo);
+      const acts = it.type === 'status' && isObj(it.props) && Array.isArray(it.props.actions) ? it.props.actions : [];
+      acts.forEach((a) => put(`action/${d.id}/${a.id}`, 'cond', `ステータスの操作「${a.name}」の条件`, a.cond));
+    });
+    d.screens.forEach((sc) => {
+      sc.parts.forEach((p) => { if (p.type === 'button') put(`part/${d.id}/${p.id}`, 'action', `画面「${sc.name}」のボタン「${partTitle(p)}」の「押したとき」`, isObj(p.props) ? p.props.action : ''); });
+      sc.callouts.forEach((k) => put(`callout/${d.id}/${k.id}`, 'callout', `画面「${sc.name}」の吹き出し（${k.id}）`, k.text));
+    });
+  });
+  state.systems.forEach((y) => {
+    put(`system/${y.id}`, 'description', `システム「${y.name}」の説明`, y.description);
+    y.roles.forEach((r) => put(`role/${y.id}/${r.id}`, 'roleMemo', `役割「${r.name}」のメモ`, r.memo));
+    y.swimlane.steps.forEach((w) => {
+      put(`step/${y.id}/${w.id}/text`, 'step', `スイムレーン図の工程「${w.text}」`, w.text);
+      put(`step/${y.id}/${w.id}/memo`, 'stepMemo', `スイムレーン図の工程「${w.text}」のメモ`, w.memo);
+    });
+  });
+  return out;
+}
+// 1 つの説明文について、修正を促すメッセージを返す（ルールに合っていれば空文字列）
+function aiTextWarning({ kind, label, text }) {
+  const n = [...text].length;
+  const limit = AI_TEXT_LIMITS[kind];
+  const traces = AI_TEXT_TRACES.filter(([, re]) => re.test(text)).map(([name]) => name);
+  if (n <= limit && !traces.length) return '';
+  return label + (n > limit ? `が ${n} 字あります（目安 ${limit} 字）。` : 'を確認してください。')
+    + (traces.length ? `${traces.join('・')}が含まれています。` : '')
+    + (n > limit ? '簡潔に書き直し、' : '') + '検討の経緯と理由は設計ノートに書いてください（read_guide の "writing"）。';
+}
+// 依頼の前（before）と後（after）の説明文を比べ、新しく書いた説明文・変わった説明文のうち、ルールに合わないものについて、修正を促すメッセージを並べて返す
+function aiTextWarnings(before, after) {
+  const all = [];
+  after.forEach((e, key) => {
+    const old = before.get(key);
+    if (old && old.text === e.text) return;
+    const m = aiTextWarning(e);
+    if (m) all.push(m);
+  });
+  if (all.length <= AI_TEXT_WARN_MAX) return all;
+  return [...all.slice(0, AI_TEXT_WARN_MAX), `ほかにも、説明文ルールに合わない説明文が ${all.length - AI_TEXT_WARN_MAX} 個あります（read_guide の "writing"）。`];
+}
+
+
 // 書く道具の共通の流れ。opts は { design（指す画面設計）, system（指すシステム。第 9 段階）, expect（読んだときの更新の印）, noBeforeRow }。
 // design と system は、新しく作る道具では書かない。
 // run(tx) は store.batch の中で actions を呼び、返事の中身を返す（例外を投げると、何も変えずに断る）。
@@ -20700,6 +20784,7 @@ async function aiWrite(ctx, opts, run) {
   const tx = { ctx, design: d, system: y, warnings: [], createdDesign: null, createdSystem: null, noBeforeRow: !!opts.noBeforeRow, afterMap: null, afterSys: null };
   const beforeMap = new Map(S.designs.map((x) => [x.id, designJsonWithRefs(x)]));
   const beforeSys = new Map(S.systems.map((x) => [x.id, systemContent(x)]));
+  const beforeTexts = opts.noBeforeRow || opts.noTextCheck ? null : aiTextEntries(S);
   const beforeTimes = {
     designs: new Map(S.designs.map((x) => [x.id, { json: beforeMap.get(x.id), at: x.updatedAt }])),
     systems: new Map(S.systems.map((x) => [x.id, { json: systemJsonWithRefs(x), at: x.updatedAt }])),
@@ -20741,6 +20826,7 @@ async function aiWrite(ctx, opts, run) {
   } catch (e) {
     throw new AiRefusal('save_failed', `変更はアプリに入りましたが、ファイルへの保存に失敗しました（${(e && e.message) || e}）。アプリの赤いバーの案内を確かめてください。`);
   }
+  if (changed && beforeTexts) tx.warnings.push(...aiTextWarnings(beforeTexts, aiTextEntries(store.state)));
   const now = d ? findDesign(store.state, d.id) : y ? findSystem(store.state, y.id) : null;
   return { ...out, changed: !!changed, ...(now ? { updatedAt: now.updatedAt } : {}), ...(tx.warnings.length ? { warnings: tx.warnings } : {}) };
 }
@@ -22668,7 +22754,7 @@ async function aiSwimlaneFromBdm(args, ctx) {
   aiCheckReplace(y, args.replace);
   const plan = await aiBdmPlan(api, y, m);
   if (!Array.isArray(plan.steps) || !plan.steps.length) throw aiBad('この図には工程がありません。');
-  return aiWrite(ctx, { system: y.id, expect: args.expect }, (tx) => {
+  return aiWrite(ctx, { system: y.id, expect: args.expect, noTextCheck: true }, (tx) => {
     aiCheckReplace(findSystem(store.state, tx.system.id), args.replace); // 案を待つ間に、人が作業を足したかもしれない
     const r = actions.swimlaneFromPlan(tx.system.id, plan, { materialId: m.id });
     if (!r) throw new AiRefusal('read_failed', `「${m.name}」から作った案の形が正しくありません。`);
@@ -23393,13 +23479,18 @@ function aiConnectStatusHtml() {
 async function openAiConnectDialog() {
   if (!window.aiAPI || !window.aiAPI.connectInfo) return;
   const info = await window.aiAPI.connectInfo();
+  // 説明文ルールの追加ルール（v1.05 段階 E・質問 q179）。main が <userData>/data/writing-rules.json に保存し、AI の入口が手引き "writing" の最後に追加する
+  const canRules = !!(window.aiAPI.writingRules && window.aiAPI.saveWritingRules);
+  const rules = canRules ? await window.aiAPI.writingRules() : [];
   if (!info || isDialogOpen()) return;
   await showDialog({
     title: 'AI と連携',
     width: 760,
-    okHidden: true,
+    okHidden: !canRules,
+    okLabel: '追加ルールを保存する',
     cancelLabel: 'このウィンドウを閉じる',
     aiPassive: true,
+    collect: canRules ? saveAiWritingRules : undefined,
     body: `
       <div class="aic-status" id="aic-status">${aiConnectStatusHtml()}</div>
       <p>Claude Code などの AI から、このアプリの画面設計とシステムを読んだり、作ったり、変更したりできます（MCP という仕組みで連携します）。
@@ -23417,6 +23508,7 @@ async function openAiConnectDialog() {
         <div class="hint">Claude のデスクトップアプリに登録したときは、Claude のデスクトップアプリを完全に終了して（ウィンドウを閉じても終わらないときは、タスクトレイのアイコンから終了して）、起動し直すと使えます。</div>
       </div>
       ${info.dev ? '<div class="aic-dev">これは開発版（npm start で動かしているアプリ）の文です。インストールした版のアプリでは、その版の「AI と連携」に出る文を使ってください。</div>' : ''}
+      ${canRules ? aiWritingRulesHtml(rules) : ''}
       <ul class="aic-notes">
         <li>AI が今ある画面設計を変更すると、変更する前の中身が改訂履歴に「AI が変更する前の状態」として自動で記録されます。そこから戻せます。</li>
         <li>AI には、画面設計とシステムをごみ箱へ移すこと・完全に削除すること・改訂履歴の行を削除すること・資料を追加することと削除することはさせません。</li>
@@ -23426,6 +23518,29 @@ async function openAiConnectDialog() {
       copyAiText(b, info[b.dataset.copy === 'claude' ? 'claudeCommand' : 'json']).catch(reportPageError);
     })),
   });
+}
+// 「AI と連携」のウィンドウの「説明文ルール」の欄（v1.05 段階 E・質問 q179）。アプリに最初からあるルール（AI_WRITING_RULES）と、人が追加する追加ルールの入力欄
+function aiWritingRulesHtml(rules) {
+  return `
+      <div class="aic-sec aic-rules">
+        <h3>説明文ルール</h3>
+        <div class="hint">AI は、アプリに書く説明文（吹き出し・項目のメモ・説明など）を、次のルールで書きます。ルールに合わない説明文を AI が書き込むと、アプリが AI に修正を促します。</div>
+        <ol class="aic-rule-list">${AI_WRITING_RULES.map((r) => `<li>${esc(r)}</li>`).join('')}</ol>
+        <label class="aic-rules-label" for="aic-rules">追加ルール<span>（1 行に 1 項目。AI が次に手引きを読んだ時から適用されます）</span></label>
+        <textarea id="aic-rules" rows="4" spellcheck="false" placeholder="例: 金額は税込で書く">${esc((Array.isArray(rules) ? rules : []).join('\n'))}</textarea>
+        <div class="hint">追加ルールは、このパソコンのアプリに保存されます。出力した HTML には含まれません。<span class="aic-rules-saved" id="aic-rules-saved" hidden>✓ 追加ルールを保存しました</span></div>
+      </div>`;
+}
+// ［追加ルールを保存する］を押した時。保存してもウィンドウは閉じない（登録用コマンドをコピーする操作を続けられるように）
+async function saveAiWritingRules(modal) {
+  const area = $('#aic-rules', modal);
+  $('#aic-rules-saved', modal).hidden = true;
+  const res = await window.aiAPI.saveWritingRules(area.value);
+  if (!res || !res.ok) return { error: (res && res.error) || '追加ルールを保存できませんでした。' };
+  if (!modal.isConnected) return { keepOpen: true }; // 待っている間に閉じた
+  area.value = res.rules.join('\n');
+  $('#aic-rules-saved', modal).hidden = false;
+  return { keepOpen: true };
 }
 async function copyAiText(btn, text) {
   const ok = await window.aiAPI.copyText(String(text || ''));
@@ -23799,7 +23914,7 @@ function exposeForTest() {
     arrangeSwimView, swimDrawn: () => swimDrawn,
     mapWires, mapWireEnds, mapWireLayout, mapWireRoute, mapEdgesSvg, WIRE_PITCH,
     SYSTEM_CONTENT_KEYS, systemContentOf, systemContent, systemContentFrom, normalizeSystemRevision, systemRevisionRow, systemFromSnapshot, systemChangeCount, notesChangeCount, aiOnlyNotesChanged,
-    aiDispatch, AI_TOOLS, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
+    aiDispatch, AI_TOOLS, AI_TEXT_LIMITS, AI_WRITING_RULES, aiPage, aiState: () => aiState(), imeComposing: () => imeComposing, setDragForTest: (v) => { drag = v; },
     aiView, AI_ROWS_MAX, AI_GLOW_MS, AI_CLIENT_NAMES, aiChipText,
     KINTONE_TYPES, kintoneChoices, kintoneTypeOf, kintoneCodeOf, kintoneCodeOk, kintoneCodes, isKintoneDesign,
     WINDOW_POS, windowRect, partBounds, clampGroupMove, HEADER_KINDS, PORTAL_BAND, portalOf, bandHeight, templateUnderId,

@@ -51,6 +51,9 @@ contextBridge.exposeInMainWorld('aiAPI', {
   connectInfo: () => ipcRenderer.invoke('ai:connect-info'),
   // 文をクリップボードに写す。戻り値は true
   copyText: (text) => ipcRenderer.invoke('ai:copy', text),
+  // 説明文ルールの追加ルール（「AI と連携」のウィンドウ）。writingRules は文字の配列、saveWritingRules は { ok, rules } か { ok: false, error }
+  writingRules: () => ipcRenderer.invoke('ai:writing-rules'),
+  saveWritingRules: (text) => ipcRenderer.invoke('ai:save-writing-rules', text),
 });
 
 // 落としたファイルのうち、このパソコンの中に場所がないもの（ブラウザや圧縮ファイルの中から落としたものなど。webUtils の場所が空）の、
