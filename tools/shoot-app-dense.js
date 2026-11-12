@@ -43,8 +43,20 @@ async function buildDense(page) {
     [{ type: 'text1', label: '顧客名' }, { type: 'text1', label: '電話番号' }],
     { align: 'right', parts: [btn('登録する', '顧客詳細', 'primary'), btn('キャンセル', '顧客一覧')] },
   ] } });
+  // 関連図のための画面設計（顧客管理をルックアップで引く 3 つ。顧客管理の側は、契約管理と請求管理を関連レコード一覧で並べる）
+  const lookup = (design, key, copies = []) => ({ design, key, copies: copies.map((c) => ({ from: c, to: c, create: true })) });
+  for (const [name, extra] of [['契約管理', []], ['訪問管理', []],
+    ['請求管理', [{ op: 'add', name: '契約番号', type: 'text1' }, { op: 'lookup', item: '契約番号', lookup: lookup('契約管理', '契約番号') }]]]) {
+    await call('create_design', { name, target: 'kintone' });
+    await call('edit_items', { design: name, ops: [
+      ...(name === '契約管理' ? [{ op: 'add', name: '契約番号', type: 'text1' }] : []),
+      { op: 'add', name: '顧客名', type: 'text1' }, { op: 'lookup', item: '顧客名', lookup: lookup('顧客管理', '顧客名', ['電話番号']) }, ...extra,
+    ] });
+  }
+  const related = (db, columns) => ({ type: 'table', tableKind: 'related', label: db, span: 4, props: { db, columns } });
   await call('layout_screen', { design: '顧客管理', screen: '顧客詳細', layout: { columns: 4, rows: [
     [{ item: '顧客名', span: 2 }, { item: '電話番号', span: 2 }],
+    [related('契約管理', ['契約番号'])], [related('請求管理', ['契約番号'])],
     ...[0, 4, 8].map((i) => SUBS.slice(i, i + 4).map(([to, label]) => btn(label, to))),
     { align: 'right', parts: [btn('一覧へ戻る', '顧客一覧')] },
   ] } });
@@ -236,16 +248,31 @@ module.exports = async function shootDense(browser, env) {
     await page.evaluate((i, c) => { window.__test__.openDesign(i); window.__test__.runCommand(c); }, id, cmd);
     await sleep(150);
   };
-  // 278: 今の画面遷移図（顧客詳細から 12 画面へ行き来する）
+  // 278: 画面遷移図（顧客詳細から 12 画面へ行き来する）。v1.05 の本体の線（q167 案A 往復統合・q168 案A 両端配置）
   await open(ids['顧客管理'], 'openFlow');
-  await shootMap('278_dense_画面遷移図_今の線');
-  // 279〜281: 試作の線
-  for (const [name, opts] of [
+  await shootMap('278_dense_画面遷移図');
+  // 286: ボックスをドラッグで動かした後（線を引き直す。位置を覚える）
+  const box = await page.evaluate(() => {
+    const s = window.__test__.currentDesign().screens.find((x) => x.name === '顧客登録');
+    const r = document.querySelector(`#design-map .mnode[data-node="s:${s.id}"]`).getBoundingClientRect();
+    return { x: r.left + 30, y: r.top + 20 };
+  });
+  await page.mouse.move(box.x, box.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 60, box.y + 420, { steps: 12 });
+  await page.mouse.up();
+  await sleep(150);
+  await shootMap('286_dense_画面遷移図_ボックスを動かした後');
+  // 287: 関連図（編集の画面）
+  await open(ids['顧客管理'], 'openMap');
+  await shootMap('287_dense_関連図');
+  // 279〜285: 試作の線（質問 q167・q168 の画像の元。本体の線ができた後は、--proto を付けたときだけ撮る）
+  for (const [name, opts] of process.argv.includes('--proto') ? [
     ['279_dense_画面遷移図_試作_行きと帰りを別の線', { merge: false, grow: true }],
     ['280_dense_画面遷移図_試作_行きと帰りを1本にまとめる', { merge: true, grow: true }],
     ['281_dense_画面遷移図_試作_ボックスを伸ばさない', { merge: true, grow: false }],
     ['285_dense_画面遷移図_試作_文字を線の少ない側に書く', { merge: true, grow: false, label: 'far' }],
-  ]) {
+  ] : []) {
     await open(ids['顧客管理'], 'openFlow');
     console.log(name, JSON.stringify(await page.evaluate(protoFlow, opts)));
     await shootMap(name);
