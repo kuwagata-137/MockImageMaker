@@ -696,6 +696,69 @@ test('最初の画面の図: ボックスをドラッグで動かすと位置を
   assert.deepEqual(plain(api.store.state.settings.mapPos['d:' + dailyId]), { x: 0, y: 0 });
 });
 
+test('最初の画面の関連図（v1.05 段階 B・q171 案A）: 上の行の［ボックスを自動で並べ直す］の左に、選択・手のひらツール・拡大・縮小・全体を表示・倍率を置く。倍率は編集の画面の図と別', async (t) => {
+  const { app, api, dailyId, node } = await bootMap(t);
+  api.goHome();
+  click($(app, '[data-action="home-map"]'));
+  assert.deepEqual($$(app, '.map-head button').map((b) => b.textContent), ['➤ 選択', '✋ 手のひらツール', '＋ 拡大', '－ 縮小', '⊡ 全体を表示', '100%', 'ボックスを自動で並べ直す']);
+  assert.ok($(app, '#home-mode-select').classList.contains('on'));
+  const inner = () => $(app, '#home-map .map-inner');
+  // 拡大・縮小・100%
+  click($(app, '.map-head [data-action="zoom-in"]'));
+  assert.equal(api.ui.homeZoom, 1.1);
+  assert.equal(api.ui.mapZoom, 1, '編集の画面の図の倍率は変えない');
+  assert.equal(inner().style.transform, 'scale(1.1)');
+  assert.equal($(app, '#home-zoom-label').textContent, '110%');
+  assert.equal(api.runCommand('zoomOut'), true, 'キー（Ctrl+－）も同じ命令');
+  assert.equal(api.ui.homeZoom, 1);
+  // 描き直しても倍率は残る（ボックスを動かして保存したとき）
+  api.ui.homeZoom = 0.5;
+  dragNode(app, node('d:' + dailyId), 48, 32);
+  assert.deepEqual(plain(api.store.state.settings.mapPos), { ['d:' + dailyId]: { x: 136, y: 360 } }, '動いた量を倍率で割る（48 ÷ 0.5 = 96・32 ÷ 0.5 = 64）');
+  assert.equal(inner().style.transform, 'scale(0.5)');
+  assert.equal($(app, '#home-zoom-label').textContent, '50%');
+  click($(app, '#home-zoom-label'));
+  assert.equal(api.ui.homeZoom, 1);
+  // 全体を表示: 図の幅と高さが、関連図の枠と最初の画面の欄に収まる倍率
+  const size = (el, w, h) => { Object.defineProperty(el, 'clientWidth', { configurable: true, value: w }); Object.defineProperty(el, 'clientHeight', { configurable: true, value: h }); };
+  inner().style.width = '1600px';
+  inner().style.height = '500px';
+  size($(app, '#home-map'), 802, 300);
+  size($(app, '.home-scroll'), 900, 648);
+  click($(app, '#home-zoom-fit'));
+  assert.equal(api.ui.homeZoom, 0.5, '幅 800 ÷ 1600（高さは 600 ÷ 500）');
+  // 選択と手のひらツール
+  click($(app, '#home-mode-hand'));
+  assert.equal(api.ui.mode, 'hand');
+  assert.ok($(app, '#home-mode-hand').classList.contains('on'));
+  assert.ok($(app, '#home-map').classList.contains('hand'));
+  mouseAt(app, $(app, '#home-map'), 'mousedown', 100, 100);
+  mouseAt(app, app.document, 'mouseup', 100, 100);
+  assert.equal(api.ui.view, 'home');
+  app.document.dispatchEvent(new app.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(api.ui.mode, 'select', 'Esc で選択に戻る');
+  assert.ok(!$(app, '#home-map').classList.contains('hand'));
+});
+
+test('最初の画面の関連図（q184 案B）: アプリを起動してから初めて表示したときだけ、図の幅に合わせた倍率（50%〜100%）にする', async (t) => {
+  const { app, api } = await bootMap(t);
+  const proto = app.window.HTMLElement.prototype;
+  Object.defineProperty(proto, 'clientWidth', { configurable: true, get() { return this.id === 'home-map' ? 602 : 0; } });
+  t.after(() => { delete proto.clientWidth; });
+  api.goHome();
+  click($(app, '[data-action="home-map"]'));
+  const w = parseFloat($(app, '#home-map .map-inner').style.width);
+  const expect = Math.max(0.5, Math.min(1, Math.floor((600 * 100) / w) / 100));
+  assert.ok(w > 600, '見本の図は幅 600 より広い');
+  assert.equal(api.ui.homeZoom, expect);
+  assert.equal($(app, '#home-zoom-label').textContent, Math.round(expect * 100) + '%');
+  // 2 回目からは合わせ直さない（人が変えた倍率のまま）
+  click($(app, '#home-zoom-label'));
+  click($(app, '[data-action="home-cards"]'));
+  click($(app, '[data-action="home-map"]'));
+  assert.equal(api.ui.homeZoom, 1);
+});
+
 test('編集の画面: 左の一覧の「関連図」で、この画面設計と直接つながる画面設計だけの図を出し、位置は画面設計ごとに覚える', async (t) => {
   const { app, api, masterId, custId, orderId, node, cust } = await bootMap(t);
   api.openDesign(custId);

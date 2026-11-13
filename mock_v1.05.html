@@ -1116,7 +1116,8 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .sys-swim{max-height:max(240px,calc(100vh - 300px))}
 .swim-zoom{position:relative;overflow:hidden}
 .map-zoom{position:relative;overflow:hidden}
-#db-view.hand .map-canvas{cursor:grab}
+#db-view.hand .map-canvas,#home-map.hand{cursor:grab}
+.mz-group{display:inline-flex;gap:4px;align-items:center}
 #db-view .map-canvas.grabbing,#db-view .map-canvas.grabbing *{cursor:grabbing!important}
 .mnode.sw.sel{outline:3px solid #2563eb;outline-offset:3px}
 .swim-svg .sw-grp.sel{stroke:#3b82f6;fill:rgba(59,130,246,.05)}
@@ -7822,6 +7823,8 @@ const ui = {
   itemId: null, // データベースの項目の一覧表で選んでいる項目の id
   addItemMenu: false, // 「＋ 項目を足す」の種類の小さなメニューを開いているか
   homeMap: false, // 最初の画面で、カードの代わりにつながりの図を出しているか（アプリを閉じるまで覚えておく）
+  homeZoom: 1, // 最初の画面の関連図の倍率（v1.05 段階 B・q171。保存しない）
+  homeFitted: false, // 最初の画面の関連図を、初めて表示したときの倍率（fitHomeMapFirst）で表示したか（q184。アプリを閉じるまで覚える）
   colId: null, // 表の部品の設定の欄で選んでいる列の id
   screenMenu: null, // 左の画面の一覧で「…」のメニューを開いている画面の id
   prevScreenId: null, // 画面を足す・複製する前に開いていた画面の id（元に戻すでその画面が消えたときに戻る先）
@@ -7881,7 +7884,9 @@ function renderHome() {
         <div class="trash" id="home-trash">${renderTrash()}</div>`}
       </section>
     </main>`;
+  if (ui.homeMap) applyMapZoom();
   keep();
+  if (ui.homeMap) fitHomeMapFirst();
   renderAiChrome();
 }
 // 描き直す前のスクロールの位置を控え、描き直した後に戻す関数を返す（同じ id・クラスの要素が描き直した後もあるときだけ戻す）
@@ -8614,9 +8619,18 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
   const svg = wire ? mapWireSvg(wire, w, h, draw) : mapEdgesSvg(model, pos, w, h, draw);
   return `<div class="map-inner"${o.bare ? '' : ' id="map-inner"'} style="width:${w}px;height:${h}px" data-view="${view}" data-focus="${esc(d.id)}">${svg}${nodes}</div>`;
 }
+// 最初の画面の関連図の上の行。［ボックスを自動で並べ直す］の左に、選択・手のひらツール・拡大・縮小・全体を表示・倍率のボタンを置く（v1.05 段階 B・q171 案A）
 function mapLegendHtml() {
+  const on = (m) => (ui.mode === m ? ' on' : '');
   return `<div class="map-head"><span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>
-    <span class="spacer"></span><button class="btn small" data-action="map-reset" title="ドラッグで動かしたボックスを、自動で並べた位置に戻します">ボックスを自動で並べ直す</button></div>`;
+    <span class="spacer"></span>
+    <span class="mz-group"><button class="btn small${on('select')}" data-action="mode-select" id="home-mode-select" aria-pressed="${ui.mode === 'select'}" title="ボックスを選んで動かすモード（マウスの左右のボタンの同時押しで手のひらツールと切り替え）">➤ 選択</button>
+      <button class="btn small${on('hand')}" data-action="mode-hand" id="home-mode-hand" aria-pressed="${ui.mode === 'hand'}" title="ドラッグで図を動かすモード（ホイールで拡大縮小。Esc で選択に戻る）">✋ 手のひらツール</button></span>
+    <span class="mz-group"><button class="btn small" data-action="zoom-in" title="図を拡大します（Ctrl+＋・Ctrl+ホイール）">＋ 拡大</button>
+      <button class="btn small" data-action="zoom-out" title="図を縮小します（Ctrl+－・Ctrl+ホイール）">－ 縮小</button>
+      <button class="btn small" data-action="zoom-fit" id="home-zoom-fit" title="図全体が収まる倍率で表示します">⊡ 全体を表示</button>
+      <button class="btn small zoom-label" data-action="zoom-reset" id="home-zoom-label" title="表示の倍率を 100% に戻します（Ctrl+0）">${Math.round(ui.homeZoom * 100)}%</button></span>
+    <button class="btn small" data-action="map-reset" title="ドラッグで動かしたボックスを、自動で並べた位置に戻します">ボックスを自動で並べ直す</button></div>`;
 }
 
 // ── スイムレーン図の線（MultipurposeDiagramMaker〔MPD〕v8.33 から写した。2026-10-31・v1.03。要望「接続線の出方やデザインは MPD と同じに」）──
@@ -17054,8 +17068,22 @@ function applyZoom() {
 }
 // ツールバーの倍率の表示。3 つの図を開いている間は、図の倍率（v1.05）
 function updateZoomLabel() {
+  if (ui.view === 'home') { updateHomeMapTools(); return; }
   const el = $('#zoom-label');
   if (el) el.textContent = Math.round((isDiagramPanel() ? ui.mapZoom : ui.zoom) * 100) + '%';
+}
+// 最初の画面の関連図の、倍率の欄・モードのボタン・手のひらツールのカーソル
+function updateHomeMapTools() {
+  const label = $('#home-zoom-label');
+  if (label) label.textContent = Math.round(ui.homeZoom * 100) + '%';
+  [['#home-mode-select', 'select'], ['#home-mode-hand', 'hand']].forEach(([sel, m]) => {
+    const b = $(sel);
+    if (!b) return;
+    b.classList.toggle('on', ui.mode === m);
+    b.setAttribute('aria-pressed', String(ui.mode === m));
+  });
+  const map = $('#home-map');
+  if (map) map.classList.toggle('hand', ui.mode === 'hand');
 }
 
 // ── 3 つの図（関連図・ステータスの流れ・画面遷移図）の手のひらツールと拡大縮小（v1.05。スイムレーン図・編集の画面と同じ操作）──
@@ -17064,8 +17092,17 @@ function updateZoomLabel() {
 function isDiagramPanel() {
   return ui.view === 'editor' && (ui.panel === 'map' || ui.panel === 'process' || ui.panel === 'flow');
 }
+// 最初の画面で関連図を表示しているか（v1.05 段階 B。最初の画面の関連図にも、同じ手のひらツールと拡大縮小を付けた。q171 案A）
+const isHomeMap = () => ui.view === 'home' && ui.homeMap;
+// 拡大縮小と手のひらツールの対象の図。box は図の枠（横に送る）、outer は外側の欄（縦に送る）、key は倍率を持つ ui の項目名
+function mapZoomTarget() {
+  if (isDiagramPanel()) return { box: $('#design-map'), outer: $('#db-view'), key: 'mapZoom' };
+  if (isHomeMap()) return { box: $('#home-map'), outer: $('.home-scroll'), key: 'homeZoom' };
+  return null;
+}
 function applyMapZoom() {
-  const inner = $('#design-map .map-inner');
+  const t = mapZoomTarget();
+  const inner = t && t.box && t.box.querySelector('.map-inner');
   if (!inner) return;
   let box = inner.parentNode;
   if (!box.classList.contains('map-zoom')) {
@@ -17074,7 +17111,7 @@ function applyMapZoom() {
     inner.parentNode.insertBefore(box, inner);
     box.appendChild(inner);
   }
-  const z = ui.mapZoom;
+  const z = ui[t.key];
   Object.assign(inner.style, { transform: z === 1 ? '' : `scale(${z})`, transformOrigin: z === 1 ? '' : '0 0' });
   syncMapZoomBox(inner);
 }
@@ -17082,8 +17119,9 @@ function applyMapZoom() {
 function syncMapZoomBox(inner) {
   const box = inner.parentNode;
   if (!box || !box.classList.contains('map-zoom')) return;
-  box.style.width = Math.round((parseFloat(inner.style.width) || 0) * ui.mapZoom) + 'px';
-  box.style.height = Math.round((parseFloat(inner.style.height) || 0) * ui.mapZoom) + 'px';
+  const z = inner.closest('#home-map') ? ui.homeZoom : ui.mapZoom;
+  box.style.width = Math.round((parseFloat(inner.style.width) || 0) * z) + 'px';
+  box.style.height = Math.round((parseFloat(inner.style.height) || 0) * z) + 'px';
 }
 // els を順にスクロールする（先の要素で送りきれなかった分を、次の要素で送る）
 function scrollChain(els, dx, dy) {
@@ -17098,35 +17136,37 @@ function scrollChain(els, dx, dy) {
 }
 // 窓の中の点（cx, cy）が指している図の位置を動かさずに、倍率を変える
 function zoomMapAt(cx, cy, zoom) {
-  const box = $('#design-map .map-zoom');
-  const before = ui.mapZoom;
+  const t = mapZoomTarget();
+  const box = t && t.box && t.box.querySelector('.map-zoom');
+  const before = t ? ui[t.key] : 1;
   if (!box || zoom === before) return;
   const r0 = box.getBoundingClientRect();
   const [px, py] = [(cx - r0.left) / before, (cy - r0.top) / before];
-  ui.mapZoom = zoom;
+  ui[t.key] = zoom;
   applyMapZoom();
   const r1 = box.getBoundingClientRect();
-  scrollChain([$('#design-map'), $('#db-view')], r1.left + px * zoom - cx, r1.top + py * zoom - cy);
+  scrollChain([t.box, t.outer], r1.left + px * zoom - cx, r1.top + py * zoom - cy);
   updateZoomLabel();
 }
 // ボタン・キー・メニューからの拡大縮小は、図の見えている部分の真ん中を中心にする
 function zoomMapByCommand(cmd) {
-  const [a, b] = [$('#design-map'), $('#db-view')];
-  if (!a || !b) return;
-  const [ra, rb] = [a.getBoundingClientRect(), b.getBoundingClientRect()];
+  const t = mapZoomTarget();
+  if (!t || !t.box || !t.outer) return;
+  const [ra, rb] = [t.box.getBoundingClientRect(), t.outer.getBoundingClientRect()];
   const cx = (Math.max(ra.left, rb.left) + Math.min(ra.right, rb.right)) / 2;
   const cy = (Math.max(ra.top, rb.top) + Math.min(ra.bottom, rb.bottom)) / 2;
-  zoomMapAt(cx, cy, cmd === 'zoomReset' ? 1 : nextZoom(cmd === 'zoomIn' ? 1 : -1, ui.mapZoom));
+  zoomMapAt(cx, cy, cmd === 'zoomReset' ? 1 : nextZoom(cmd === 'zoomIn' ? 1 : -1, ui[t.key]));
 }
 // 全体を表示（v1.05 段階 B・q183 案A）: 図の幅と高さが、真ん中の欄に収まる倍率（ZOOM_STEPS の最初〜100%）にし、図の左上を表示する。
 // 高さは、真ん中の欄の高さから、上下の余白を引いたもの（図の枠の上端を、真ん中の欄の上端に合わせて送るため）
 const MAP_FIT_PAD = 24;
 function fitMapView() {
-  const [a, b] = [$('#design-map'), $('#db-view')];
-  const inner = $('#design-map .map-inner');
+  const t = mapZoomTarget();
+  const [a, b] = t ? [t.box, t.outer] : [];
+  const inner = a && a.querySelector('.map-inner');
   if (!a || !b || !inner) return;
   const [w, h] = [parseFloat(inner.style.width) || 0, parseFloat(inner.style.height) || 0];
-  ui.mapZoom = swimFitZoom(w, a.clientWidth - 2, h, b.clientHeight - MAP_FIT_PAD * 2);
+  ui[t.key] = swimFitZoom(w, a.clientWidth - 2, h, b.clientHeight - MAP_FIT_PAD * 2);
   applyMapZoom();
   a.scrollLeft = 0;
   a.scrollTop = 0;
@@ -17135,19 +17175,36 @@ function fitMapView() {
 }
 // 手のひらツールではホイールだけで、どのモードでも Ctrl＋ホイールで、カーソルの位置を中心に拡大縮小する
 function onMapWheel(ev) {
-  if (!isDiagramPanel() || isDialogOpen()) return;
-  if (!ev.target || !ev.target.closest || !ev.target.closest('#design-map')) return;
+  const t = mapZoomTarget();
+  if (!t || isDialogOpen()) return;
+  if (!ev.target || !ev.target.closest || !t.box || !t.box.contains(ev.target)) return;
   if (ui.mode !== 'hand' && !(ev.ctrlKey || ev.metaKey)) return;
   ev.preventDefault();
-  if (ev.deltaY !== 0) zoomMapAt(ev.clientX, ev.clientY, nextZoom(ev.deltaY < 0 ? 1 : -1, ui.mapZoom));
+  if (ev.deltaY !== 0) zoomMapAt(ev.clientX, ev.clientY, nextZoom(ev.deltaY < 0 ? 1 : -1, ui[t.key]));
+}
+// 最初の画面の関連図を、アプリを起動してから初めて表示したときの倍率（q184 案B。fitSwimlaneFirst と同じ）。図の幅が欄に収まらなければ、
+// 幅を合わせる倍率（50% より小さくしない）。収まれば 100%。欄の幅が分からない（0）ときは、まだ決めない
+function fitHomeMapFirst() {
+  const box = $('#home-map');
+  const inner = box && box.querySelector('.map-inner');
+  if (!inner || ui.homeFitted || !(box.clientWidth > 0)) return;
+  ui.homeFitted = true;
+  const fit = swimFitZoom(parseFloat(inner.style.width) || 0, box.clientWidth - 2);
+  const zoom = fit < 1 ? Math.max(0.5, fit) : 1;
+  if (zoom === ui.homeZoom) return;
+  ui.homeZoom = zoom;
+  applyMapZoom();
+  updateZoomLabel();
 }
 // 手のひらツールの、何もない所のドラッグ（図を動かす）。横は図の枠、縦は真ん中の欄を送る
 function startMapPan(ev) {
-  const box = $('#design-map');
+  const t = mapZoomTarget();
+  const box = t && t.box;
+  if (!box) return;
   if (ev.target === box && box.clientWidth && (ev.offsetX >= box.clientWidth || ev.offsetY >= box.clientHeight)) return; // スクロールバー（大きさが分かるときだけ）
   ev.preventDefault();
   flushSideField();
-  const outer = $('#db-view');
+  const outer = t.outer;
   drag = { kind: 'map-pan', wrap: box, outer, sx: ev.clientX, sy: ev.clientY, at: [box.scrollLeft, box.scrollTop, outer.scrollLeft, outer.scrollTop] };
   box.classList.add('grabbing');
 }
@@ -17165,11 +17222,11 @@ function isMouseChord(e) {
   return (e.button === 2 && !!(e.buttons & 1)) || (e.button === 0 && !!(e.buttons & 2));
 }
 function onEditorChord(e) {
-  if (ui.view !== 'editor' || !isMouseChord(e) || isDialogOpen()) return false;
+  if ((ui.view !== 'editor' && !isHomeMap()) || !isMouseChord(e) || isDialogOpen()) return false;
   const t = e.target && e.target.closest ? e.target : null;
   if (!t || t.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return false;
   const onScreen = ui.panel === 'screen' && t.closest('#canvas-wrap');
-  if (!onScreen && !(isDiagramPanel() && t.closest('#design-map'))) return false;
+  if (!onScreen && !(isDiagramPanel() && t.closest('#design-map')) && !(isHomeMap() && t.closest('#home-map'))) return false;
   if (!cancelEditorDrag()) return false;
   e.preventDefault();
   modeChordSuppress = true;
@@ -17188,6 +17245,7 @@ function cancelEditorDrag() {
   document.body.classList.remove('moving', 'copying', 'map-dragging');
   if (d.kind === 'pan' || d.kind === 'map-pan') { d.wrap.classList.remove('grabbing'); return true; }
   if (d.kind === 'band' && d.el) d.el.remove();
+  if (d.kind === 'map' && ui.view === 'home') { renderHome(); return true; }
   if (d.kind === 'map') {
     const dd = currentDesign();
     if (ui.panel === 'map') renderMapView(dd);
@@ -17261,6 +17319,7 @@ function fitScreenView() {
 
 function setMode(mode) {
   ui.mode = mode;
+  if (ui.view === 'home') { updateHomeMapTools(); return; }
   updateToolbarState();
 }
 
@@ -17862,7 +17921,7 @@ function startMapDrag(ev, el) {
   const inner = el.closest('.map-inner');
   drag = { kind: 'map', el, inner, view: inner.dataset.view || 'map', key: el.dataset.node, sx: ev.clientX, sy: ev.clientY,
     x0: parseFloat(el.style.left) || 0, y0: parseFloat(el.style.top) || 0, moved: false, focus: inner.dataset.focus || null,
-    zoom: inner.closest('#design-map') ? ui.mapZoom : 1 }; // 編集の画面の図は、動いた量を倍率で割る（v1.05）
+    zoom: inner.closest('#design-map') ? ui.mapZoom : inner.closest('#home-map') ? ui.homeZoom : 1 }; // 倍率を掛けた図は、動いた量を倍率で割る（v1.05）
 }
 // ドラッグの間に描き直す線（ほかの箱は今の位置のまま）。矢印の印の id の頭は、図を描いたときと同じにする
 function viewEdgesSvg(view, focus, pos, w, h) {
@@ -19817,6 +19876,14 @@ function runCommand(cmd, arg) {
       return true;
   }
   if (ui.view === 'system') return runSystemCommand(cmd);
+  if (isHomeMap()) {
+    switch (cmd) {
+      case 'zoomIn': case 'zoomOut': case 'zoomReset': zoomMapByCommand(cmd); return true;
+      case 'zoomFit': fitMapView(); return true;
+      case 'modeSelect': setMode('select'); return true;
+      case 'modeHand': setMode('hand'); return true;
+    }
+  }
   if (ui.view !== 'editor') return false;
   switch (cmd) {
     case 'openItems': openItemsPanel(); return true;
@@ -20098,7 +20165,7 @@ function onKeyDown(e) {
   // 開いたメニュー（画面の一覧の「…」・改訂の ▼・メニューバーのたたんだ組など）の中で押した矢印・Delete では、選んだ部品・作業を動かしたり消したりしない
   // （メニューが閉じて部品が動く・消えていた。デバッグとリリースの見直し⑤-6）
   const inMenu = e.target && e.target.closest && e.target.closest('[role="menu"], .fold-pop');
-  if (e.key === 'Escape' && isDiagramPanel() && ui.mode === 'hand' && !inField && !inMenu && !isDialogOpen()) { e.preventDefault(); setMode('select'); return; }
+  if (e.key === 'Escape' && (isDiagramPanel() || isHomeMap()) && ui.mode === 'hand' && !inField && !inMenu && !isDialogOpen()) { e.preventDefault(); setMode('select'); return; }
   if (ui.view === 'editor' && !inField && !inMenu && !e.altKey && !e.isComposing) {
     const partCmd = editorKeyCommand(e);
     if (partCmd) { e.preventDefault(); runCommand(partCmd); return; }
@@ -23956,7 +24023,7 @@ function bindGlobalEvents() {
     const node = e.button === 0 ? e.target.closest('.mnode') : null;
     if (node && !node.closest('[data-view="swimlane"]')) { startMapDrag(e, node); return; }
     // 3 つの図の手のひらツール: 何もない所のドラッグで図を動かす（v1.05）
-    if (e.button === 0 && ui.mode === 'hand' && isDiagramPanel() && e.target.closest('#design-map')) { startMapPan(e); return; }
+    if (e.button === 0 && ui.mode === 'hand' && e.target.closest('#design-map, #home-map') && mapZoomTarget()) { startMapPan(e); return; }
     if (ui.view === 'system') { onSystemMouseDown(e); return; }
     if (ui.view !== 'editor' || e.button !== 0) return;
     // 「…」・「＋ 画面を足す」・「…」のメニューの項目は、押した時点で右の欄を離れない（離れると打ちかけの文字の保存で画面の一覧が描き直され、
