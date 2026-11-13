@@ -1582,7 +1582,8 @@ const APP_SCRIPT = document.currentScript ? document.currentScript.textContent :
 // ── 2. データの形（純関数）────────────────────────────────────────────────────
 // { schemaVersion, settings: { customTargets, mapPos }, systems, designs: [ { id, name, target, look, bandTabs, description,
 //   createdAt, updatedAt, trashedAt, revisions, items, screens: [ { id, name, device, width, height,
-//   showHeader, tablePos, itemView, parts, callouts } ], mapPos, processPos, flowPos } ] }
+//   showHeader, tablePos, itemView, parts, callouts } ], mapPos, processPos, flowPos, flowVertical } ] }
+// flowVertical（画面遷移図を縦向きで描く。縦向きのときだけ true を持つ）は v1.05 段階 B（q185 案C）で足した。データの形の版は上げない
 // look（見た目）・bandTabs（Salesforce の帯のタブ）・itemView（項目の出し方）は第 12 段階（v1.01）で足した。データの形の版は上げない
 // （ないときは標準・ホームと画面設計の名前・入力の形として読む。v1.00 で開いても、知らない項目として残る）。
 // items（データベースの項目の一覧表）と parts の 1 つずつの形は、下の「項目」「部品」に書いた。callouts（吹き出し）は第 3 段階の後半で使う。
@@ -3462,7 +3463,7 @@ function revisionDate(day) {
 
 // 画面設計の中身（前の版に戻す・取り込んで置き換える・中身を比べるところ）。画面設計に中身の項目を足したら、ここに足す
 // （restoreRevision・replaceWithImported・designContent がこれを使う。3 か所に並べていると、足すときに漏れるため。第 7 段階）
-const DESIGN_CONTENT_KEYS = ['name', 'target', 'look', 'bandTabs', 'portal', 'description', 'items', 'screens', 'mapPos', 'processPos', 'flowPos'];
+const DESIGN_CONTENT_KEYS = ['name', 'target', 'look', 'bandTabs', 'portal', 'description', 'items', 'screens', 'mapPos', 'processPos', 'flowPos', 'flowVertical'];
 // 画面設計の中身だけを抜き出す。copy のときは中身を写す
 function designContentOf(d, copy = false) {
   const out = {};
@@ -3671,6 +3672,7 @@ function designDiff(base0, cur0, state) {
   if ((pa.menu || []).join('\n') !== (pb.menu || []).join('\n')) design.push(fromTo('ポータルのメニュー', portalOf(base).menu.join('・'), portalOf(cur).menu.join('・')));
   if ((pa.button || '') !== (pb.button || '')) design.push(fromTo('ポータルの右上のボタン', portalOf(base).button, portalOf(cur).button));
   if (base.description !== cur.description) design.push(fromTo('説明', base.description, cur.description));
+  if (flowVerticalOf(base) !== flowVerticalOf(cur)) design.push(fromTo('画面遷移図の向き', flowVerticalOf(base) ? '縦向き' : '横向き', flowVerticalOf(cur) ? '縦向き' : '横向き')); // v1.05 段階 B
   if (design.length) rows.push({ screen: '画面設計', no: '－', name: '－', k: 'chg', change: '設定変更', text: design.join('\n') });
   // 画面の順番は、両方にある画面どうしの並びで比べる（足した・消した画面は、画面の追加・削除の行に出る）
   const common = (a, b) => a.screens.filter((s) => b.screens.some((x) => x.id === s.id));
@@ -4364,7 +4366,7 @@ function normalizeDesign(src) {
   screens.forEach((s) => s.parts.forEach((p) => {
     if ((p.type === 'button' || p.type === 'link') && isObj(p.props) && p.props.designId === id) p.props.designId = '';
   }));
-  const { portal: portal0, ...rest } = d;
+  const { portal: portal0, flowVertical: vertical0, ...rest } = d;
   const portal = normalizePortal(portal0); // お客さまポータルのヘッダーのサイトの名前・メニュー・右上のボタン（書いたときだけ持つ。第 16 段階）
   return {
     ...rest,
@@ -4374,6 +4376,7 @@ function normalizeDesign(src) {
     look: lookOf(d).id,
     bandTabs: normalizeBandTabs(d.bandTabs),
     ...(portal ? { portal } : {}),
+    ...(vertical0 === true ? { flowVertical: true } : {}), // 画面遷移図を縦向きで描く（v1.05 段階 B・q185 案C。横向きのときは項目を置かない）
     description: str(d.description),
     createdAt,
     updatedAt: str(d.updatedAt) || createdAt,
@@ -6298,6 +6301,17 @@ const actions = {
     const d = findDesign(store.state, designId);
     if (!d || !Object.keys(d[field] || {}).length) return false;
     return mutateDesign(designId, (dd) => { dd[field] = {}; }, { touch: false });
+  },
+  // 画面遷移図の向き（v1.05 段階 B・q185 案C）。縦向きのときだけ flowVertical: true を持つ。向きを変えると、ドラッグで動かした位置（flowPos）は使わず、
+  // 自動の並びに戻す（元に戻すで戻せる）。PDF の図が変わるので、画面設計の更新日時も変える。向きが同じときは何もしない（false）
+  setFlowVertical(designId, vertical) {
+    const d = findDesign(store.state, designId);
+    if (!d || flowVerticalOf(d) === !!vertical) return false;
+    return mutateDesign(designId, (dd) => {
+      if (vertical) dd.flowVertical = true;
+      else delete dd.flowVertical;
+      dd.flowPos = {};
+    });
   },
   setMapPos(designId, key, pos) { return actions.setViewPos(designId, 'map', key, pos); },
   resetMapPos(designId) { return actions.resetViewPos(designId, 'map'); },
@@ -8319,6 +8333,185 @@ function mapWireSvg(wire, w, h, o = {}) {
   return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>${defs}
     </defs>${lines.join('')}${arcs.length ? `<g class="mw-arcs">${arcs.join('')}</g>` : ''}${labels.join('')}</svg>`;
 }
+// ── 画面遷移図の縦向き（v1.05 段階 B。画像 q185 の案C 向き選択）──
+// 画面設計ごとに、横向き（左から右へ列を並べる。mapWireLayout）と縦向き（上から下へ段を並べる）を選ぶ。縦向きを選んだ画面設計は flowVertical: true を持つ。
+// 段と段の中の並びは、横向きの列と列の中の並び（mapLayout）と同じ。下の段へは下の辺から上の辺へ線を引き、線の文字は横向きと同じく、
+// ボタン・リンクがある画面の側の端（q168 案A）に書く。上下の辺に付く文字は横に並べるので、線の多いボックスは横に伸ばす（ボックスごとの幅 w を持つ）
+const FLOWV_GAP_X = 60; // 段の中のボックスの間
+const FLOWV_GAP_Y = 100; // 段の間の下限
+const flowVerticalOf = (d) => !!(d && d.flowVertical === true);
+// 上下の辺に並ぶ端 1 つ分の幅（文字の幅と線の間の余白。文字がない端は 18）と、端の文字の高さ（文字がない端は 0）
+const flowVEndW = (p) => (p.lines.length ? Math.max(...p.lines.map(wireTextW)) + 14 : 18);
+const flowVTextH = (p) => (p.lines.length ? p.lines.length * WIRE_LINE_H + 8 : 0);
+const flowVBox = (pos, k) => ({ x: pos[k].x, y: pos[k].y, w: pos[k].w || MAP_W, h: pos[k].h || MAP_H });
+// 2 つのボックスの、線が出る辺と入る辺。上下に離れていれば下の辺と上の辺、横に並んでいれば左右の辺
+function flowVSides(a, b) {
+  if (b.y >= a.y + a.h) return ['bottom', 'top'];
+  if (b.y + b.h <= a.y) return ['top', 'bottom'];
+  return b.x + b.w / 2 >= a.x + a.w / 2 ? ['right', 'left'] : ['left', 'right'];
+}
+// 線の端の並び（mapWireEnds の縦向き）。上下の辺の端は、相手のボックスの位置の順（左から）に、文字の幅ずつ、辺の真ん中に寄せて並べる。
+// 左右の辺の端は、辺に等間隔で並べる
+function flowVEnds(wires, pos) {
+  const ends = [];
+  wires.forEach((wire) => {
+    const [sa, sb] = flowVSides(flowVBox(pos, wire.from), flowVBox(pos, wire.to));
+    ends.push({ wire, end: 'from', node: wire.from, other: wire.to, side: sa, lines: wire.fwd });
+    ends.push({ wire, end: 'to', node: wire.to, other: wire.from, side: sb, lines: wire.back });
+  });
+  const bySide = new Map();
+  ends.forEach((p) => {
+    const k = `${p.node}|${p.side}`;
+    if (!bySide.has(k)) bySide.set(k, []);
+    bySide.get(k).push(p);
+  });
+  const center = (k) => { const b = flowVBox(pos, k); return [b.x + b.w / 2, b.y + b.h / 2]; };
+  bySide.forEach((list) => {
+    const tb = list[0].side === 'top' || list[0].side === 'bottom';
+    list.sort((p, q) => center(p.other)[tb ? 0 : 1] - center(q.other)[tb ? 0 : 1] || p.wire.i - q.wire.i);
+    const b = flowVBox(pos, list[0].node);
+    if (tb) {
+      let x = (b.w - list.reduce((w, p) => w + flowVEndW(p), 0)) / 2;
+      list.forEach((p) => { p.frac = Math.min(1, Math.max(0, (x + 9) / b.w)); x += flowVEndW(p); });
+    } else list.forEach((p, j) => { p.frac = (j + 0.5) / list.length; });
+    list.forEach((p) => {
+      p.pt = p.side === 'left' ? [b.x, b.y + b.h * p.frac] : p.side === 'right' ? [b.x + b.w, b.y + b.h * p.frac]
+        : p.side === 'top' ? [b.x + b.w * p.frac, b.y] : [b.x + b.w * p.frac, b.y + b.h];
+    });
+  });
+  return { ends, bySide };
+}
+// ボックスの幅。上下の辺に付く端を横に並べられる幅まで伸ばす（MAP_W より狭くはしない）
+function flowVWidths(model, bySide) {
+  return new Map(model.nodes.map((n) => [n.key,
+    Math.max(MAP_W, ...['top', 'bottom'].map((s) => (bySide.get(`${n.key}|${s}`) || []).reduce((w, p) => w + flowVEndW(p), 24)))]));
+}
+// 段（横向きの列）と、段の中の並び（横向きの列の中の、上からの並び）。線のない画面は、いちばん下の段に並べる
+function flowVRows(model) {
+  const auto = mapLayout(model);
+  const rank = mapRanks(model, mapForwardEdges(model));
+  const linked = new Set(model.edges.flatMap((e) => [e.from, e.to]));
+  const byRank = new Map();
+  const lone = [];
+  model.nodes.forEach((n) => {
+    if (!linked.has(n.key)) { lone.push(n.key); return; }
+    const r = rank.get(n.key);
+    if (!byRank.has(r)) byRank.set(r, []);
+    byRank.get(r).push(n.key);
+  });
+  const rows = [...byRank.keys()].sort((a, b) => a - b).map((r) => byRank.get(r).sort((a, b) => auto[a].y - auto[b].y));
+  if (lone.length) rows.push(lone.sort((a, b) => auto[a].y - auto[b].y || auto[a].x - auto[b].x));
+  return rows;
+}
+// 自動の位置（段を上から下へ。段の中は左に寄せる）。段の間は、上の段の下の辺の文字・下の段の上の辺の文字・通り道の数で広げる
+function flowVAuto(rows, wOf, ends) {
+  const rowOf = new Map();
+  rows.forEach((list, r) => list.forEach((k) => rowOf.set(k, r)));
+  const textH = (k, side) => Math.max(0, ...ends.filter((p) => p.node === k && p.side === side).map(flowVTextH));
+  const span = (w) => [Math.min(rowOf.get(w.from), rowOf.get(w.to)), Math.max(rowOf.get(w.from), rowOf.get(w.to))];
+  const wires = [...new Set(ends.map((p) => p.wire))];
+  const pos = {};
+  let y = 40;
+  rows.forEach((list, r) => {
+    let x = 40;
+    list.forEach((k) => {
+      pos[k] = { x, y, w: wOf.get(k), h: MAP_H };
+      x += wOf.get(k) + FLOWV_GAP_X;
+    });
+    if (r === rows.length - 1) return;
+    const adj = wires.filter((w) => { const [a, b] = span(w); return a === r && b === r + 1; }).length;
+    const through = wires.filter((w) => { const [a, b] = span(w); return a <= r && b > r + 1; }).length;
+    const th = Math.max(16, ...list.map((k) => textH(k, 'bottom')));
+    const bh = Math.max(16, ...rows[r + 1].map((k) => textH(k, 'top')));
+    y += MAP_H + Math.max(FLOWV_GAP_Y, th + (adj + through + 2) * WIRE_TRACK + bh);
+  });
+  return pos;
+}
+// 覚えた位置の箱はそこに置き、自動で並べる箱が覚えた箱と重なるときは、重ならない所まで下へずらす（mapPlace の、幅を持つ形）
+function flowVPlace(model, saved, auto) {
+  const pos = {};
+  const placed = [];
+  const hits = (p) => placed.some((q) => p.x < q.x + q.w + 16 && q.x < p.x + p.w + 16 && p.y < q.y + q.h + 16 && q.y < p.y + p.h + 16);
+  model.nodes.filter((n) => saved[n.key]).forEach((n) => {
+    pos[n.key] = { ...auto[n.key], x: saved[n.key].x, y: saved[n.key].y };
+    placed.push(pos[n.key]);
+  });
+  model.nodes.filter((n) => !saved[n.key]).sort((a, b) => auto[a.key].y - auto[b.key].y || auto[a.key].x - auto[b.key].x).forEach((n) => {
+    const p = { ...auto[n.key] };
+    while (hits(p)) p.y += MAP_ROW;
+    pos[n.key] = p;
+    placed.push(p);
+  });
+  return pos;
+}
+// ボックスの位置と幅（mapWireLayout の縦向き）。端の文字でボックスの幅と段の間が変わるので、2 回並べ直して落ち着かせる
+function flowVLayout(model, saved, wires) {
+  const rows = flowVRows(model);
+  let pos = flowVPlace(model, saved, flowVAuto(rows, new Map(model.nodes.map((n) => [n.key, MAP_W])), []));
+  for (let k = 0; k < 2; k++) {
+    const { ends, bySide } = flowVEnds(wires, pos);
+    pos = flowVPlace(model, saved, flowVAuto(rows, flowVWidths(model, bySide), ends));
+  }
+  return pos;
+}
+// 線の道と、端の文字の置き場（mapWireRoute の縦向き。戻り値の形も同じ）
+function flowVRoute(model, wires, pos) {
+  const { ends } = flowVEnds(wires, pos);
+  const endOf = (wire, end) => ends.find((p) => p.wire === wire && p.end === end);
+  const boxes = model.nodes.map((n) => ({ key: n.key, ...flowVBox(pos, n.key) }));
+  // 曲がる位置。上下に向かい合う 2 つのボックスの間（間にほかのボックスがない所）は、線ごとに横の通り道を 1 本ずつ割り振る。
+  // 右へ向かう線は右から出るものほど上、左へ向かう線は左から出るものほど上を通す（出る所と入る所の縦の線が、ほかの線の横の線と交わらない並び）
+  const groups = new Map();
+  wires.forEach((wire) => {
+    const [a, b] = [endOf(wire, 'from'), endOf(wire, 'to')];
+    if (!['top', 'bottom'].includes(a.side) || !['top', 'bottom'].includes(b.side) || a.side === b.side) return;
+    const [u, l] = a.side === 'bottom' ? [a, b] : [b, a];
+    const [yu, yl] = [u.pt[1], l.pt[1]];
+    const [x0, x1] = [Math.min(u.pt[0], l.pt[0]) - 8, Math.max(u.pt[0], l.pt[0]) + 8];
+    if (boxes.some((o) => o.key !== wire.from && o.key !== wire.to && o.y < yl && o.y + o.h > yu && o.x < x1 && o.x + o.w > x0)) return;
+    const k = `${yu}|${yl}`;
+    if (!groups.has(k)) groups.set(k, { yu, yl, rows: [] });
+    groups.get(k).rows.push({ wire, u, l });
+  });
+  const mids = new Map();
+  groups.forEach((g) => {
+    const th = Math.max(16, ...g.rows.map((r) => flowVTextH(r.u)));
+    const bh = Math.max(16, ...g.rows.map((r) => flowVTextH(r.l)));
+    const bent = g.rows.filter((r) => Math.abs(r.u.pt[0] - r.l.pt[0]) >= 1);
+    const step = Math.min(WIRE_TRACK, (g.yl - g.yu - th - bh) / (bent.length + 1));
+    if (step < 4) return; // 間が狭いときは、割り振らずに swimRoutes に任せる
+    const right = bent.filter((r) => r.l.pt[0] > r.u.pt[0]).sort((p, q) => q.u.pt[0] - p.u.pt[0]);
+    const left = bent.filter((r) => r.l.pt[0] < r.u.pt[0]).sort((p, q) => p.u.pt[0] - q.u.pt[0]);
+    [...right, ...left].forEach((r, j) => mids.set(r.wire, g.yu + th + (j + 1) * step));
+  });
+  const routes = swimRoutes({
+    vertical: true, lanes: [],
+    w: Math.max(0, ...boxes.map((b) => b.x + b.w)) + 240,
+    h: Math.max(0, ...boxes.map((b) => b.y + b.h)) + 240,
+    nodes: boxes.map((b) => ({ id: b.key, type: 'rect', x: b.x, y: b.y, w: b.w, h: b.h })),
+    edges: wires.map((wire) => ({ id: wire.id, from: wire.from, to: wire.to,
+      fromPin: { side: endOf(wire, 'from').side, frac: endOf(wire, 'from').frac }, toPin: { side: endOf(wire, 'to').side, frac: endOf(wire, 'to').frac },
+      ...(mids.has(wire) ? { mid: mids.get(wire) } : {}) })),
+  });
+  // 端の文字。上下の辺は、縦の線の右（重なるときは左）。左右の辺は、横の線の上（重なるときは下）
+  const placed = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
+  const hit = (a, b) => a.x < b.x + b.w + 2 && b.x < a.x + a.w + 2 && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
+  const labels = [];
+  ends.filter((p) => p.lines.length && routes[p.wire.id]).forEach((p) => {
+    const [tw, th] = [wireEndW(p), p.lines.length * WIRE_LINE_H + 2];
+    const [x, y] = p.pt;
+    const cands = (p.side === 'bottom' ? [[x + 4, y + 4], [x - 4 - tw, y + 4]] : p.side === 'top' ? [[x + 4, y - 4 - th], [x - 4 - tw, y - 4 - th]]
+      : p.side === 'right' ? [[x + 6, y - 3 - th], [x + 6, y + 3]] : [[x - 6 - tw, y - 3 - th], [x - 6 - tw, y + 3]])
+      .map(([cx, cy]) => ({ x: Math.max(2, cx), y: Math.max(2, cy), w: tw, h: th }));
+    const at = cands.find((c) => !placed.some((b) => hit(c, b))) || cands[0];
+    placed.push(at);
+    labels.push({ ...at, wire: p.wire, lines: p.lines });
+  });
+  const pts = Object.values(routes).flatMap((r) => r.wps);
+  return { wires, routes, labels,
+    right: Math.max(0, ...pts.map((q) => q[0]), ...labels.map((l) => l.x + l.w)),
+    bottom: Math.max(0, ...pts.map((q) => q[1]), ...labels.map((l) => l.y + l.h)) };
+}
 // ── ステータスの移り方の図と画面の移り方の図（第 8 段階。画像 q54 の案B・q55 の案A・q58）──
 // どちらも、つながりの図と同じ形のモデル { nodes: [{ key, name, ... }], edges: [{ from, to, kind, labels }] } を作り、
 // 箱の置き方（mapPlace）と線（mapEdgesSvg）は、つながりの図の関数を使い回す。箱の位置は画面設計の processPos・flowPos に覚える
@@ -8598,8 +8791,10 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
   const hOf = () => MAP_H;
   // 画面遷移図は、線が多く付くボックスを線の数に合わせて縦に伸ばし、直角の線で引く（v1.05）
   const wires = view === 'process' ? null : mapWires(model, VIEW_DRAW.flow);
-  const pos = wires ? mapWireLayout(model, saved || {}, wires, hOf) : processPositions(model, saved || {}); // ステータスの流れは、文字の分だけボックスを伸ばす（v1.05 段階 B）
-  const wire = wires ? mapWireRoute(model, wires, pos) : null;
+  const vertical = view === 'flow' && flowVerticalOf(d); // 画面遷移図の縦向き（v1.05 段階 B・q185 案C）
+  const pos = !wires ? processPositions(model, saved || {}) // ステータスの流れは、文字の分だけボックスを伸ばす（v1.05 段階 B）
+    : vertical ? flowVLayout(model, saved || {}, wires) : mapWireLayout(model, saved || {}, wires, hOf);
+  const wire = !wires ? null : vertical ? flowVRoute(model, wires, pos) : mapWireRoute(model, wires, pos);
   const nodes = model.nodes.map((n) => {
     const p = pos[n.key];
     const dev = n.screen && DEVICES[n.screen.device] ? DEVICES[n.screen.device].label : '';
@@ -8609,11 +8804,11 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
     const title = view === 'process' ? 'ドラッグで動かせます'
       : !n.ext ? 'ドラッグで動かせます。押すと、この画面を開きます'
         : findDesign(state, n.designId) ? `ドラッグで動かせます。押すと「${esc(n.ext)}」を開きます` : 'ドラッグで動かせます（この HTML に入っていない画面設計なので、開けません）';
-    return `<div class="mnode${n.ext ? ' ext' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${p.h}px" title="${title}">${body}</div>`;
+    return `<div class="mnode${n.ext ? ' ext' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${p.w || MAP_W}px;height:${p.h}px" title="${title}">${body}</div>`;
   }).join('');
   // ステータスの流れは、ボックスの右に積む文字と、右を回る線の分の幅を取る（v1.05 段階 B。実際の右の端から決める）
   const procRight = view === 'process' ? procPlan(model, pos).right + 40 : 0;
-  const w = Math.ceil(Math.max(view === 'process' ? 600 : 860, wire ? wire.right + 40 : 0, procRight, ...Object.values(pos).map((p) => p.x + MAP_W + 40)));
+  const w = Math.ceil(Math.max(view === 'process' ? 600 : 860, wire ? wire.right + 40 : 0, procRight, ...Object.values(pos).map((p) => p.x + (p.w || MAP_W) + 40)));
   const h = Math.ceil(Math.max(view === 'process' ? 300 : 420, wire ? wire.bottom + 40 : 0, ...Object.values(pos).map((p) => p.y + p.h + 60)));
   const draw = { ...VIEW_DRAW[view], idPrefix: o.idPrefix || (view === 'process' ? 'proc' : 'flow') };
   const svg = wire ? mapWireSvg(wire, w, h, draw) : mapEdgesSvg(model, pos, w, h, draw);
@@ -15306,13 +15501,19 @@ const VIEW_NOTES = {
   flow: () => '画面をボックス、ボタン・リンクの移動先を矢印で描きます。画面のボックスを押すと、その画面を開きます。'
     + `ほかの画面設計の画面は灰色の点線のボックスです（${standalone ? 'この HTML に入っていないので開けません' : '押すと、その画面設計を開きます'}）。ボックスをドラッグで動かすと、その位置を覚えます。`,
 };
+// 画面遷移図の上の行の［↔ 横向き］［↕ 縦向き］（v1.05 段階 B・q185 案C）
+function flowOrientHtml(d) {
+  const v = flowVerticalOf(d);
+  return `<span class="mz-group"><button class="btn small${v ? '' : ' on'}" data-action="flow-horizontal" aria-pressed="${!v}" title="画面遷移図を横向き（左から右へ）で描きます。ドラッグで動かしたボックスは、自動で並べた位置に戻します">↔ 横向き</button>
+    <button class="btn small${v ? ' on' : ''}" data-action="flow-vertical" aria-pressed="${v}" title="画面遷移図を縦向き（上から下へ）で描きます。ドラッグで動かしたボックスは、自動で並べた位置に戻します">↕ 縦向き</button></span>`;
+}
 function renderDiagramView(d, view) {
   const el = $('#db-view');
   const keep = el.dataset.view === view && $('#design-map') ? keepScroll(['#db-view', '#design-map']) : () => {};
   el.dataset.view = view;
   el.innerHTML = `<div class="itable wide"><div class="itable-head"><h3>${VIEW_TITLES[view]}（${esc(d.name)}）</h3></div>
     <p class="map-note">${VIEW_NOTES[view]()}</p>
-    <div class="map-head">${VIEW_LEGENDS[view]}<span class="spacer"></span><button class="btn small" data-action="view-reset" data-view="${view}" title="ドラッグで動かしたボックスを、自動で並べた位置に戻します">ボックスを自動で並べ直す</button></div>
+    <div class="map-head">${VIEW_LEGENDS[view]}<span class="spacer"></span>${view === 'flow' ? flowOrientHtml(d) : ''}<button class="btn small" data-action="view-reset" data-view="${view}" title="ドラッグで動かしたボックスを、自動で並べた位置に戻します">ボックスを自動で並べ直す</button></div>
     <div class="map-canvas" id="design-map">${viewHtml(view, store.state, d, d[VIEW_POS[view]] || {})}</div></div>`;
   applyMapZoom();
   keep();
@@ -17928,6 +18129,10 @@ function viewEdgesSvg(view, focus, pos, w, h) {
   if (view === 'map') return mapEdgesSvg(mapModel(store.state, focus), pos, w, h);
   const d = findDesign(store.state, focus);
   const model = view === 'process' ? processModel(d) : flowModel(store.state, d);
+  if (view === 'flow' && flowVerticalOf(d)) { // 画面遷移図の縦向き（q185 案C。ボックスの幅は描いたときのまま）
+    const wire = flowVRoute(model, mapWires(model, VIEW_DRAW.flow), pos);
+    return mapWireSvg(wire, Math.ceil(Math.max(w, wire.right + 40)), Math.ceil(Math.max(h, wire.bottom + 40)), { ...VIEW_DRAW.flow, idPrefix: 'flow' });
+  }
   return mapEdgesSvg(model, pos, w, h, { ...VIEW_DRAW[view], idPrefix: view === 'process' ? 'proc' : 'flow' });
 }
 function dragMap(ev) {
@@ -17942,11 +18147,11 @@ function dragMap(ev) {
   Object.assign(drag.el.style, { left: drag.x + 'px', top: drag.y + 'px' });
   // 図の枠の外へ動かしたときは、枠を広げる（放すまで箱が隠れないように）
   const st = drag.inner.style;
-  st.width = Math.max(parseFloat(st.width), drag.x + MAP_W + 60) + 'px';
+  st.width = Math.max(parseFloat(st.width), drag.x + (parseFloat(drag.el.style.width) || MAP_W) + 60) + 'px';
   st.height = Math.max(parseFloat(st.height), drag.y + (parseFloat(drag.el.style.height) || MAP_H) + 76) + 'px'; // 線の数で伸びたボックスは、その高さで（v1.05）
   // 線も描き直す
   const pos = {};
-  drag.inner.querySelectorAll('.mnode').forEach((n) => { pos[n.dataset.node] = { x: parseFloat(n.style.left) || 0, y: parseFloat(n.style.top) || 0, h: parseFloat(n.style.height) || MAP_H }; });
+  drag.inner.querySelectorAll('.mnode').forEach((n) => { pos[n.dataset.node] = { x: parseFloat(n.style.left) || 0, y: parseFloat(n.style.top) || 0, w: parseFloat(n.style.width) || MAP_W, h: parseFloat(n.style.height) || MAP_H }; });
   const svg = drag.inner.querySelector('svg');
   if (svg) svg.outerHTML = viewEdgesSvg(drag.view, drag.focus, pos, parseFloat(drag.inner.style.width), parseFloat(drag.inner.style.height));
   // 直角の線と端の文字が枠の外へ出たときは、枠も広げる（mapEdgesSvg が SVG を広げている。v1.05）
@@ -20004,6 +20209,7 @@ function onEditorClick(action, btn) {
     case 'open-flow': openViewPanel('flow'); return true;
     case 'map-reset': actions.resetMapPos(ui.designId); return true;
     case 'view-reset': actions.resetViewPos(ui.designId, btn.dataset.view); return true;
+    case 'flow-horizontal': case 'flow-vertical': actions.setFlowVertical(ui.designId, action === 'flow-vertical'); return true;
     case 'select-screen':
       flushSideField();
       if (btn.dataset.id === ui.screenId && ui.panel === 'screen') return true; // mousedown で切り替えた後の click
@@ -20378,6 +20584,7 @@ function aiGetDesign(args) {
   return {
     id: d.id, name: d.name, target: targetLabel(d.target), look: lookOf(d).id, ...(lookOf(d).id === 'salesforce' ? { bandTabs: bandTabsOf(d) } : {}),
     description: d.description, updatedAt: d.updatedAt, ...(d.trashedAt ? { trashed: true } : {}),
+    flowOrientation: flowVerticalOf(d) ? 'vertical' : 'horizontal', // 画面遷移図の向き（v1.05 段階 B）
     items: page, itemsTotal: d.items.length, nextCursor,
     ...(d.portal || d.screens.some(isPortalScreen) ? { portal: portalOf(d) } : {}),
     screens: d.screens.map((s) => ({ id: s.id, name: s.name, device: s.device, width: s.width, height: s.height, showHeader: s.showHeader, tablePos: s.tablePos, itemView: s.itemView,
@@ -21511,14 +21718,18 @@ async function aiUpdateDesign(args, ctx) {
     if (args.bandTabs !== undefined) patch.bandTabs = args.bandTabs == null ? [] : aiBandTabs(args.bandTabs);
     if (args.portal !== undefined) patch.portal = aiPortal(args.portal);
     if (args.description !== undefined) patch.description = aiStrVal(args.description == null ? '' : args.description, 'description');
-    if (!Object.keys(patch).length) throw aiBad('変更する欄（name・target・look・bandTabs・portal・description）を 1 つ以上書いてください。');
+    // 画面遷移図の向き（v1.05 段階 B・q185 案C）
+    const orient = args.flowOrientation;
+    if (orient !== undefined && orient !== 'horizontal' && orient !== 'vertical') throw aiBad('flowOrientation は "horizontal"（横向き）か "vertical"（縦向き）です。');
+    if (!Object.keys(patch).length && orient === undefined) throw aiBad('変更する欄（name・target・look・bandTabs・portal・description・flowOrientation）を 1 つ以上書いてください。');
     const from = lookOf(tx.design);
-    actions.updateDesignInfo(tx.design.id, patch);
+    if (Object.keys(patch).length) actions.updateDesignInfo(tx.design.id, patch);
+    if (orient !== undefined && actions.setFlowVertical(tx.design.id, orient === 'vertical')) tx.warnings.push('画面遷移図の向きを変えたので、ドラッグで動かしたボックスの位置は、自動で並べた位置に戻しました。');
     const d = findDesign(store.state, tx.design.id);
     // 見た目を変えて帯の高さが変わったときは、帯の下の部品と吹き出しを上下にずらしたことを知らせる（get_screen で位置を読み直してもらうため）
     const dy = lookOf(d).band - from.band;
     if (dy) tx.warnings.push(`見た目を変えてヘッダーの高さが ${from.band} から ${lookOf(d).band} になったので、ヘッダーのある画面の、ヘッダーの下のアイテムと吹き出しを ${dy} ドットずらしました（お客さまポータルのヘッダーの画面と、小さなウィンドウの画面は、ずらしていません）。`);
-    return { id: d.id, look: d.look, ...(patch.portal ? { portal: portalOf(d) } : {}) };
+    return { id: d.id, look: d.look, flowOrientation: flowVerticalOf(d) ? 'vertical' : 'horizontal', ...(patch.portal ? { portal: portalOf(d) } : {}) };
   });
 }
 // お客さまポータルのヘッダー（update_design の portal。第 16 段階）。書いた欄だけを変える。null はどれも消す（サイトの名前・メニュー・右上のボタンを、書いていないときの値に戻す）

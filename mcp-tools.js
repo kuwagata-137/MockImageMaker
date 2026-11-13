@@ -6,7 +6,7 @@
 // slow の道具は、アプリの側（automation-main.js の SLOW_TOOLS）でも時間切れを 5 分にしている。2 か所を同じにする。
 'use strict';
 
-const { z, obj, S, layout, itemOps, screenOps, partOps, calloutOps, processOps, roleOps, swimSteps, swimEdges, swimOrient, materialInputs, noteInputs } = require('./mcp-schemas');
+const { z, obj, S, layout, itemOps, screenOps, partOps, calloutOps, processOps, roleOps, swimSteps, swimEdges, swimOrient, flowOrient, materialInputs, noteInputs } = require('./mcp-schemas');
 const { GUIDE_TOPICS } = require('./mcp-guide');
 
 const read = (name, title, description, shape, extra = {}) => ({ name, title, description, input: obj(shape), readOnly: true, ...extra });
@@ -26,7 +26,7 @@ const TOOLS = [
     '画面設計の一覧（id・名前・構築先・画面と項目の数・最新の版・更新日時 updatedAt）を返す。query で名前を検索できる。',
     { query: z.string().optional().describe('名前に含まれる文字'), trashed: z.boolean().optional().describe('ごみ箱にある画面設計も出す'), cursor: S.cursor }),
   read('get_design', '画面設計の中身',
-    '画面設計の中身の要約を返す: 名前・構築先・説明・データベースの項目の一覧（設定の文つき。kintone の欄を書いた項目とテーブルの列は kintone）・画面の一覧（id・名前・機器・大きさ・アイテムの数）・改訂履歴の行・取り込まれている項目・更新日時 updatedAt。',
+    '画面設計の中身の要約を返す: 名前・構築先・説明・データベースの項目の一覧（設定の文つき。kintone の欄を書いた項目とテーブルの列は kintone）・画面の一覧（id・名前・機器・大きさ・アイテムの数）・改訂履歴の行・取り込まれている項目・画面遷移図の向き flowOrientation（horizontal 横向き・vertical 縦向き）・更新日時 updatedAt。',
     { design: S.design, cursor: S.cursor }),
   read('get_screen', '画面の中身',
     '画面 1 つの中身を返す: アイテム（id・赤い番号・種類・項目名・位置と大きさ・設定の文。表はサンプルの行数 rows と列名ごとのサンプル値 samples も）・吹き出し・設定一覧の文。' +
@@ -90,8 +90,8 @@ const TOOLS = [
       description: z.string().optional().describe('説明'), system: S.system.optional().describe('作ってすぐ追加するシステムの id か名前'),
     }),
   write('update_design', '画面設計の情報を変更する',
-    '画面設計の名前・構築先・見た目・ヘッダーのタブ・お客さまポータルのヘッダー・説明を変更する。見た目を変えてヘッダーの高さが変わると、ヘッダーの下のアイテムと吹き出しを高さの差だけずらす。',
-    { design: S.design, expect: S.expect, name: z.string().optional(), target: z.string().optional(), look: S.look.optional(), bandTabs: S.bandTabs.nullable().optional(), portal: S.portal.nullable().optional(), description: z.string().optional() }),
+    '画面設計の名前・構築先・見た目・ヘッダーのタブ・お客さまポータルのヘッダー・説明・画面遷移図の向き（flowOrientation）を変更する。見た目を変えてヘッダーの高さが変わると、ヘッダーの下のアイテムと吹き出しを高さの差だけずらす。',
+    { design: S.design, expect: S.expect, name: z.string().optional(), target: z.string().optional(), look: S.look.optional(), bandTabs: S.bandTabs.nullable().optional(), portal: S.portal.nullable().optional(), description: z.string().optional(), flowOrientation: flowOrient }),
   write('edit_items', 'データベースの項目を変更する',
     'データベースの項目を追加する・変更する・消す・並べ替える・ルックアップを付ける・ほかの画面設計から取り込む・取り込んだ項目の連動を解除する・項目一覧に戻す（ops に並べて 1 回で行う）。' +
     'add・update の kintone で、kintone のフィールドの情報（kintone の種類・フィールドコード・kintone の計算式）を書ける。',
