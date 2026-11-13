@@ -1517,6 +1517,7 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .map-head i.s,.xp-legend i.s{border-top:1.5px solid #475569}
 .map-head i.sb,.xp-legend i.sb{border-top:1.5px dashed #ea580c}
 .map-head i.g,.xp-legend i.g{border-top:2.5px dotted #16a34a}
+.map-head b.tag,.xp-legend b.tag{display:inline-block;border:1.2px solid #1d3f6e;border-radius:8px;padding:0 6px;margin-right:5px;color:#1d3f6e;font-size:11px;line-height:15px}
 .xp-fit{display:flex;justify-content:center;align-items:flex-start}
 .xp-fit .mnode,.xp-png .mnode{cursor:default}
 .xp-proc{display:flex;gap:32px;align-items:flex-start}
@@ -7961,7 +7962,8 @@ const mapMarker = (id, col) => `
 function mapEdgesSvg(model, pos, w, h, o = {}) {
   // 関連図と画面遷移図は、直角の線で引く（v1.05）。線と文字が図の枠（w × h）からはみ出すときは、SVG をその分だけ広げる（ドラッグの間）。
   // ステータスの流れ（vertical）と、スイムレーン図の古い描き方の引数（under・lineAttr・extra）を渡したときは、今までの線
-  if (!o.vertical && !o.under && !o.lineAttr && !o.extra) {
+  if (o.vertical) return procEdgesSvg(model, pos, w, h, o); // ステータスの流れ（v1.05 段階 B）
+  if (!o.under && !o.lineAttr && !o.extra) {
     const wire = mapWireRoute(model, mapWires(model, o), pos);
     return mapWireSvg(wire, Math.ceil(Math.max(w, wire.right + 40)), Math.ceil(Math.max(h, wire.bottom + 40)), o);
   }
@@ -8340,9 +8342,16 @@ function processModel(d) {
     })),
   };
 }
-// ステータスの移り方の図の自動の位置。ステータスの並びの順に上から下へ（q54 の案B。右の欄のステータスの並びと同じ向き）
-function processLayout(model) {
-  return Object.fromEntries(model.nodes.map((n) => [n.key, { x: PROC_X, y: 40 + n.order * PROC_ROW }]));
+// ステータスの移り方の図の自動の位置。ステータスの並びの順に上から下へ（q54 の案B。右の欄のステータスの並びと同じ向き）。
+// hOf はボックスの高さ、gapOf は下のボックスとの間（v1.05 段階 B。渡さなければ、段の高さ PROC_ROW で並べる）
+function processLayout(model, hOf = () => MAP_H, gapOf = () => PROC_ROW - MAP_H) {
+  const pos = {};
+  let y = 40;
+  [...model.nodes].sort((a, b) => a.order - b.order).forEach((n) => {
+    pos[n.key] = { x: PROC_X, y };
+    y += hOf(n.key) + gapOf(n.key);
+  });
+  return pos;
 }
 // 上下に並ぶ箱の間の線（ステータスの移り方の図）。間にほかの箱がなければ null（ふつうの線）。あれば、両方の箱の右の縁から出て、
 // 間の箱の右を回る（lane 本目は 28 ずつ外を回る。隣でないステータスへの操作）。minX は回る線のいちばん内側の x の下限（まっすぐな線の文字の右）
@@ -8357,6 +8366,171 @@ function procBracket(a, b, others, lane, minX = 0) {
   const s = Math.sign(y2 - y1);
   return { detour: true, mx: xd, my: (y1 + y2) / 2,
     d: `M${f(x1)},${f(y1)} L${f(xd - 12)},${f(y1)} Q${f(xd)},${f(y1)} ${f(xd)},${f(y1 + s * 12)} L${f(xd)},${f(y2 - s * 12)} Q${f(xd)},${f(y2)} ${f(xd - 12)},${f(y2)} L${f(x2)},${f(y2)}` };
+}
+// ── ステータスの流れの線と行き先表示（v1.05 段階 B。画像 q170 の案A 本数・距離基準）──
+// 右を回る線の文字を図の右にまとめて書いていたので、どの文字がどの線のものか分からず、16 字を超える文字は図の右端で切れていた（ユーザーの要望 2026-11-12）。
+// 文字は幅 PROC_TEXT_W で折り返す。右を回る線の文字は、線が出るボックスのすぐ右（線の下）に上から積み、ボックスはその分だけ縦に伸ばす。
+// 右を回る線のうち、1 つのステータスに PROC_TAG_GATHER 本以上集まる線と、間にほかのステータスが PROC_TAG_SKIP 個以上ある線は、線を描かずに、
+// 出る側のボックスの右に「→ 20　見送り」と次のステータスの番号と名前を書く（行き先表示）。行き先表示を受けるボックスの右には、来る元を書く
+const PROC_TEXT_W = 192; // 線の文字の 1 行の幅（超える分は折り返す）
+const PROC_LINE_H = 15; // 線の文字の 1 行の高さ
+const PROC_LANE = 22; // 右を回る線の通り道の間隔
+const PROC_TAG_GATHER = 4; // 1 つのステータスに、右を回る線がこの本数以上集まるときは行き先表示
+const PROC_TAG_SKIP = 5; // 線でつながる 2 つのステータスの間に、ほかのステータスがこの個数以上あるときは行き先表示
+// 文字を幅 max で折り返す。幅の半分より後ろに「（」の前・「、」と空白の後があれば、そこで切る
+function procWrap(s, max = PROC_TEXT_W) {
+  const out = [];
+  let rest = String(s || '');
+  while (rest && wireTextW(rest) > max) {
+    const chars = [...rest];
+    let [w, cut, soft] = [0, 0, 0];
+    for (let k = 0; k < chars.length; k++) {
+      if (w + wireCharW(chars[k]) > max) break;
+      w += wireCharW(chars[k]);
+      cut = k + 1;
+      if (chars[k + 1] === '（' || chars[k] === '、' || chars[k] === ' ') soft = k + 1;
+    }
+    const at = Math.max(1, soft >= cut / 2 ? soft : cut);
+    out.push(chars.slice(0, at).join('').trim());
+    rest = chars.slice(at).join('').trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+// 線の文字の行 [{ s, b（太字） }]。1 行目は操作の名前（操作する人）、2 行目からは条件
+const procLines = (e) => [...procWrap(e.labels[0]).map((s) => ({ s, b: true })), ...e.labels.slice(1).flatMap((c) => procWrap(c).map((s) => ({ s })))];
+const procTextW = (list) => Math.max(0, ...list.map((l) => wireTextW(l.s) + (l.pill ? 12 : 0)));
+// 線の分け方と、ボックスの右に積むもの。pos はボックスの位置 { x, y, h }。戻り値:
+// around（右を回る線と行き先表示。間にほかのボックスがある縦の線）・tags（そのうち行き先表示）・drawn（右を回る線。内側を通る順）・
+// side（ボックスごとの { outs: [{ e, tag, lines, dy }], ins: [{ e, dy }], notes: [{ lines, dy }], need（ボックスの高さ） }）・laneStart（いちばん内側の通り道の x）・right（図の右の端）
+function procPlan(model, pos) {
+  const box = (k) => ({ x: pos[k].x, y: pos[k].y, w: MAP_W, h: pos[k].h || MAP_H });
+  const order = Object.fromEntries(model.nodes.map((n) => [n.key, n.order]));
+  const nameAt = (no) => (model.nodes.find((n) => n.order === no) || {}).name || '';
+  const span = (e) => Math.abs(order[e.to] - order[e.from]);
+  const othersOf = (e) => model.nodes.filter((n) => n.key !== e.from && n.key !== e.to).map((n) => box(n.key));
+  const vertical = (e) => ['t', 'b'].includes(mapSides(box(e.from), box(e.to))[0]);
+  const around = model.edges.filter((e) => vertical(e) && procBracket(box(e.from), box(e.to), othersOf(e), 0));
+  const gather = new Map();
+  around.forEach((e) => gather.set(e.to, (gather.get(e.to) || 0) + 1));
+  const tags = around.filter((e) => gather.get(e.to) >= PROC_TAG_GATHER || span(e) - 1 >= PROC_TAG_SKIP);
+  const drawn = around.filter((e) => !tags.includes(e)).sort((p, q) => span(p) - span(q) || order[p.from] - order[q.from]);
+  const side = Object.fromEntries(model.nodes.map((n) => [n.key, { outs: [], ins: [], notes: [] }]));
+  [...around].sort((p, q) => order[p.to] - order[q.to]).forEach((e) => {
+    const tag = tags.includes(e);
+    const lines = procLines(e);
+    if (tag) lines.push({ s: `→ ${order[e.to] + 1}　${nameAt(order[e.to])}`, pill: true });
+    side[e.from].outs.push({ e, tag, lines });
+    if (!tag) side[e.to].ins.push({ e });
+  });
+  model.nodes.forEach((n) => {
+    const r = side[n.key];
+    // 入ってくる線は、線どうしが交わらない並びにする（上から来る線は内側の線ほど上、下から来る線は内側の線ほど下）
+    r.ins.sort((p, q) => {
+      const [ap, aq] = [order[p.e.from] < n.order, order[q.e.from] < n.order];
+      if (ap !== aq) return ap ? 1 : -1;
+      return ap ? drawn.indexOf(p.e) - drawn.indexOf(q.e) : drawn.indexOf(q.e) - drawn.indexOf(p.e);
+    });
+    // 行き先表示を受けるボックスの右に、来る元を操作の名前ごとに書く
+    const groups = new Map();
+    tags.filter((e) => e.to === n.key).forEach((e) => groups.set(e.labels[0], [...(groups.get(e.labels[0]) || []), order[e.from] + 1]));
+    groups.forEach((list, label) => {
+      list.sort((p, q) => p - q);
+      const seq = list.every((v, k) => !k || v === list[k - 1] + 1);
+      const from = list.length === 1 ? `${list[0]}　${nameAt(list[0] - 1)}` : seq ? `${list[0]}〜${list[list.length - 1]}（${list.length} 個）` : list.join('・');
+      r.notes.push({ lines: procWrap(`← ステータス ${from} から「${label}」`, PROC_TEXT_W + 60).map((s) => ({ s })) });
+    });
+    let at = 12;
+    r.outs.forEach((o) => { o.dy = at; at += 6 + o.lines.length * PROC_LINE_H + 8; });
+    r.ins.forEach((o) => { o.dy = at; at += 14; });
+    if (r.ins.length) at += 4;
+    r.notes.forEach((o) => { o.dy = at; at += o.lines.length * PROC_LINE_H + 6; });
+    r.need = Math.max(MAP_H, at + 4);
+  });
+  const textW = Math.max(0, ...Object.values(side).flatMap((r) => [...r.outs, ...r.notes].map((o) => procTextW(o.lines))));
+  const laneStart = Math.max(0, ...model.nodes.map((n) => pos[n.key].x + MAP_W)) + 14 + textW + 24;
+  return { around, tags, drawn, side, laneStart, right: laneStart + Math.max(0, drawn.length - 1) * PROC_LANE };
+}
+// 隣のステータスとの間の高さ（その間を通るまっすぐな線の文字の行の数で広げる）
+function procGapOf(model) {
+  const order = Object.fromEntries(model.nodes.map((n) => [n.key, n.order]));
+  return (key) => {
+    const rows = model.edges.filter((e) => Math.min(order[e.from], order[e.to]) === order[key] && Math.abs(order[e.to] - order[e.from]) === 1).map((e) => procLines(e).length);
+    return Math.max(PROC_ROW - MAP_H, Math.max(0, ...rows) * PROC_LINE_H + 40);
+  };
+}
+// ステータスの流れのボックスの位置（ボックスの右に積む文字の分だけ縦に伸ばし、段の間を線の文字の分だけ広げる。覚えた位置のボックスはそこに置く）
+function processPositions(model, saved) {
+  const base = mapPlace(model, saved, processLayout(model), () => MAP_H);
+  const plan = procPlan(model, base);
+  const need = (k) => plan.side[k].need;
+  return mapPlace(model, saved, processLayout(model, need, procGapOf(model)), need);
+}
+// ステータスの流れの線と文字の SVG（mapEdgesSvg の o.vertical から呼ぶ）。w・h より右と下へはみ出すときは、SVG をその分だけ広げる
+function procEdgesSvg(model, pos, w, h, o = {}) {
+  const idp = o.idPrefix || 'proc';
+  const styleOf = o.style || mapEdgeStyle;
+  const plan = procPlan(model, pos);
+  const box = (k) => ({ x: pos[k].x, y: pos[k].y, w: MAP_W, h: pos[k].h || MAP_H });
+  const f = (n) => n.toFixed(1);
+  const marks = new Map();
+  const [lines, labels] = [[], []];
+  const line = (d, st) => {
+    marks.set(st.mark, st.col);
+    return `<path d="${d}" fill="none" stroke="${st.col}" stroke-width="${st.w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''} marker-end="url(#${idp}-arrow-${st.mark})"/>`;
+  };
+  const text = (x, y, list, col) => list.map((l, j) => `<text x="${f(x)}" y="${f(y + 11 + j * PROC_LINE_H)}" font-size="${l.b || l.pill ? 12 : 11}" font-weight="${l.b || l.pill ? 700 : 400}" fill="${l.b || l.pill ? col : '#475569'}">${esc(l.s)}</text>`).join('');
+  const tagged = (x, y, list, col) => `<rect x="${f(x - 4)}" y="${f(y)}" width="${f(procTextW(list) + 8)}" height="${list.length * PROC_LINE_H + 4}" rx="3" fill="#fff" opacity=".92"/>${text(x, y, list, col)}`;
+  // 間にほかのボックスがない線（隣のステータスへの線・ドラッグで横に並べたボックスの間の線）。同じ 2 つのボックスの間に 2 本あるときは、文字を線の外側に書く
+  const rest = model.edges.filter((e) => !plan.around.includes(e));
+  const ports = mapPorts({ ...model, edges: rest }, pos);
+  const pairOf = (e) => [e.from, e.to].sort().join('|');
+  rest.forEach((e) => {
+    const st = styleOf(e);
+    const others = model.nodes.filter((n) => n.key !== e.from && n.key !== e.to).map((n) => box(n.key));
+    const g = mapEdgeGeometry(box(e.from), box(e.to), ports.get(e), others);
+    lines.push(line(g.d, st));
+    const list = procLines(e);
+    if (!list.length) return;
+    const [tw, lh] = [procTextW(list), list.length * PROC_LINE_H + 4];
+    const vert = ['t', 'b'].includes(mapSides(box(e.from), box(e.to))[0]);
+    const same = rest.filter((x) => pairOf(x) === pairOf(e));
+    const left = same.length > 1 && same.indexOf(e) === 0;
+    const x = !vert ? g.mx - tw / 2 : left ? g.mx - 16 - tw : g.mx + 16;
+    labels.push(tagged(x, g.my - lh / 2, list, st.col));
+  });
+  // 右を回る線（内側の通り道から順に）
+  plan.drawn.forEach((e, k) => {
+    const st = styleOf(e);
+    const [a, b] = [box(e.from), box(e.to)];
+    const ys = a.y + plan.side[e.from].outs.find((x) => x.e === e).dy;
+    const ye = b.y + plan.side[e.to].ins.find((x) => x.e === e).dy;
+    const xd = plan.laneStart + k * PROC_LANE;
+    const s = Math.sign(ye - ys) || 1;
+    lines.push(line(`M${f(a.x + a.w)},${f(ys)} L${f(xd - 10)},${f(ys)} Q${f(xd)},${f(ys)} ${f(xd)},${f(ys + s * 10)} L${f(xd)},${f(ye - s * 10)} Q${f(xd)},${f(ye)} ${f(xd - 10)},${f(ye)} L${f(b.x + b.w)},${f(ye)}`, st));
+  });
+  // ボックスの右に積む文字（右を回る線の文字と行き先表示は線の下。行き先表示の次のステータスは枠で囲む）と、来る元
+  model.nodes.forEach((n) => {
+    const b = box(n.key);
+    const r = plan.side[n.key];
+    r.outs.forEach((x) => {
+      const st = styleOf(x.e);
+      marks.set(st.mark, st.col);
+      const top = b.y + x.dy + 4;
+      const body = x.lines.filter((l) => !l.pill);
+      const pill = x.lines.find((l) => l.pill);
+      labels.push(text(b.x + b.w + 14, top, body, st.col));
+      if (!pill) return;
+      const py = top + body.length * PROC_LINE_H + 2;
+      labels.push(`<rect class="proc-tag" x="${f(b.x + b.w + 10)}" y="${f(py)}" width="${f(wireTextW(pill.s) + 12)}" height="${PROC_LINE_H + 2}" rx="8" fill="#fff" stroke="${st.col}" stroke-width="1.2"/>${text(b.x + b.w + 16, py + 1, [pill], st.col)}`);
+    });
+    r.notes.forEach((x) => labels.push(text(b.x + b.w + 14, b.y + x.dy, x.lines, '#475569')));
+  });
+  const defs = [...marks].map(([mk, col]) => mapMarker(`${idp}-arrow-${mk}`, col)).join('');
+  const W = Math.ceil(Math.max(w, plan.right + 40));
+  const H = Math.ceil(Math.max(h, ...model.nodes.map((n) => box(n.key).y + box(n.key).h + 40)));
+  return `<svg width="${W}" height="${H}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>${defs}
+    </defs>${lines.join('')}${labels.join('')}</svg>`;
 }
 // 移る先の画面設計（画面の移り方の図の、ほかの画面設計の箱）。ごみ箱の画面設計は描かない。単体で開いた HTML では screenPeers から引く
 function flowOwner(state, designId) {
@@ -8419,7 +8593,7 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
   const hOf = () => MAP_H;
   // 画面遷移図は、線が多く付くボックスを線の数に合わせて縦に伸ばし、直角の線で引く（v1.05）
   const wires = view === 'process' ? null : mapWires(model, VIEW_DRAW.flow);
-  const pos = wires ? mapWireLayout(model, saved || {}, wires, hOf) : mapPlace(model, saved || {}, processLayout(model), hOf);
+  const pos = wires ? mapWireLayout(model, saved || {}, wires, hOf) : processPositions(model, saved || {}); // ステータスの流れは、文字の分だけボックスを伸ばす（v1.05 段階 B）
   const wire = wires ? mapWireRoute(model, wires, pos) : null;
   const nodes = model.nodes.map((n) => {
     const p = pos[n.key];
@@ -8432,9 +8606,9 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
         : findDesign(state, n.designId) ? `ドラッグで動かせます。押すと「${esc(n.ext)}」を開きます` : 'ドラッグで動かせます（この HTML に入っていない画面設計なので、開けません）';
     return `<div class="mnode${n.ext ? ' ext' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${p.h}px" title="${title}">${body}</div>`;
   }).join('');
-  // ステータスの移り方の図は、箱の右に矢印の文字と、箱の右を回る線の分の幅を取る
-  const extra = view === 'process' ? 260 + model.edges.length * 28 : 40;
-  const w = Math.ceil(Math.max(view === 'process' ? 600 : 860, wire ? wire.right + 40 : 0, ...Object.values(pos).map((p) => p.x + MAP_W + extra)));
+  // ステータスの流れは、ボックスの右に積む文字と、右を回る線の分の幅を取る（v1.05 段階 B。実際の右の端から決める）
+  const procRight = view === 'process' ? procPlan(model, pos).right + 40 : 0;
+  const w = Math.ceil(Math.max(view === 'process' ? 600 : 860, wire ? wire.right + 40 : 0, procRight, ...Object.values(pos).map((p) => p.x + MAP_W + 40)));
   const h = Math.ceil(Math.max(view === 'process' ? 300 : 420, wire ? wire.bottom + 40 : 0, ...Object.values(pos).map((p) => p.y + p.h + 60)));
   const draw = { ...VIEW_DRAW[view], idPrefix: o.idPrefix || (view === 'process' ? 'proc' : 'flow') };
   const svg = wire ? mapWireSvg(wire, w, h, draw) : mapEdgesSvg(model, pos, w, h, draw);
@@ -18690,7 +18864,8 @@ const pngDocHtml = (title, body) => '<!DOCTYPE html>\n<html lang="ja">\n<head>\n
 const VIEW_TITLES = { map: '関連図', process: 'ステータスの流れ', flow: '画面遷移図', swimlane: 'スイムレーン図' };
 const VIEW_LEGENDS = {
   map: '<span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>',
-  process: '<span><i></i>先へ進む操作</span><span><i class="b"></i>前へ戻る操作（差し戻しなど）</span>',
+  process: '<span><i></i>先へ進む操作</span><span><i class="b"></i>前へ戻る操作（差し戻しなど）</span>'
+    + '<span><b class="tag">→ 20</b>行き先表示（線を描かずに、次のステータスの番号と名前を書いた操作）</span>', // v1.05 段階 B（q170）
   flow: '<span><i></i>ボタン</span><span><i class="g"></i>リンク</span><span><i class="x"></i>ほかの画面設計の画面</span>',
   swimlane: '<span><i class="s"></i>流れ</span><span><i class="sb"></i>戻る流れ（差し戻しなど）</span>'
     + '<span>工程の形: 角の丸いボックス＝始まり・終わり／ひし形＝判断／左右が二重線＝システムへの入力／下が波＝書類</span>',
