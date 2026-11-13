@@ -335,6 +335,12 @@
   "h": 800,
   "dsf": 2
  },
+ "sc_flow_vertical": {
+  "file": "sc_flow_vertical.jpg",
+  "w": 1280,
+  "h": 800,
+  "dsf": 2
+ },
  "sc_menu": {
   "file": "sc_menu.png",
   "w": 323,

@@ -266,6 +266,31 @@ module.exports = async function shootDense(browser, env) {
   // 287: 関連図（編集の画面）
   await open(ids['顧客管理'], 'openMap');
   await shootMap('287_dense_関連図');
+  // 290: 画面遷移図の縦向き（v1.05 段階 B・q185 案C）。撮った後は横向きに戻す
+  await open(ids['顧客管理'], 'openFlow');
+  await page.evaluate((i) => window.__test__.actions.setFlowVertical(i, true), ids['顧客管理']);
+  await sleep(150);
+  await shootMap('290_dense_画面遷移図_縦向き');
+  await page.evaluate((i) => window.__test__.actions.setFlowVertical(i, false), ids['顧客管理']);
+  // 291: 編集の画面（ウィンドウの幅 1280）で［⊡ 全体を表示］を押した後（q183 案A）
+  const shootWindow = async (name) => {
+    const file = path.join(OUT, `v${VERSION}_${name}.png`);
+    await page.screenshot({ path: file });
+    console.log('saved', path.relative(ROOT, file));
+  };
+  await page.setViewport({ width: 1280, height: 800 });
+  await page.evaluate((i) => { window.__test__.openDesign(i); window.__test__.runCommand('openFlow'); }, ids['顧客管理']);
+  await sleep(150);
+  await page.click('#tb-zoom-fit');
+  await sleep(150);
+  await shootWindow('291_dense_画面遷移図_全体を表示（幅1280）');
+  // 292・293: 最初の画面の関連図（幅 1280）。初めて表示した時の倍率（q184 案B）と、［⊡ 全体を表示］を押した後
+  await page.evaluate(() => { window.__test__.goHome(); document.querySelector('[data-action="home-map"]').click(); });
+  await sleep(150);
+  await shootWindow('292_dense_最初の画面_関連図（幅1280）');
+  await page.click('#home-zoom-fit');
+  await sleep(150);
+  await shootWindow('293_dense_最初の画面_関連図_全体を表示（幅1280）');
   // 279〜285: 試作の線（質問 q167・q168 の画像の元。本体の線ができた後は、--proto を付けたときだけ撮る）
   for (const [name, opts] of process.argv.includes('--proto') ? [
     ['279_dense_画面遷移図_試作_行きと帰りを別の線', { merge: false, grow: true }],

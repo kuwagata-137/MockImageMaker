@@ -1026,6 +1026,13 @@ const CHAPTERS = {
     await sleep(400);
     await listTop();
     await shot('sc_flow', { anno: [{ box: { sel: '#screen-list .db-entry', text: '画面遷移図' }, n: 1, pad: 2 }] });
+    // 画面遷移図の縦向き（v1.05 段階 B・q185）。撮った後は横向きに戻す
+    await click('[data-action="flow-vertical"]');
+    await sleep(400);
+    await listTop();
+    await shot('sc_flow_vertical', { anno: [{ box: '.map-head .mz-group', n: 1, pad: 2 }] });
+    await click('[data-action="flow-horizontal"]');
+    await sleep(200);
   },
 
   // 5 章 改訂履歴
