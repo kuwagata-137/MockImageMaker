@@ -50,16 +50,16 @@ async function boot(t) {
 
 test('ツールバーの組「モード」「表示」: 画面と 3 つの図を開いている間は押せ、項目一覧の間は押せない', async (t) => {
   const { app, api } = await boot(t);
-  const disabled = () => ['#tb-mode-select', '#tb-mode-hand', '#toolbar [data-action="zoom-in"]', '#toolbar [data-action="zoom-out"]', '#zoom-label'].map((s) => $(app, s).disabled);
-  assert.deepEqual(disabled(), [false, false, false, false, false], '画面');
+  const disabled = () => ['#tb-mode-select', '#tb-mode-hand', '#toolbar [data-action="zoom-in"]', '#toolbar [data-action="zoom-out"]', '#tb-zoom-fit', '#zoom-label'].map((s) => $(app, s).disabled);
+  assert.deepEqual(disabled(), [false, false, false, false, false, false], '画面');
   for (const cmd of ['openMap', 'openProcess', 'openFlow']) {
     api.runCommand(cmd);
     assert.equal(api.isDiagramPanel(), true);
-    assert.deepEqual(disabled(), [false, false, false, false, false], cmd);
+    assert.deepEqual(disabled(), [false, false, false, false, false, false], cmd);
   }
   api.runCommand('openItems');
   assert.equal(api.isDiagramPanel(), false);
-  assert.deepEqual(disabled(), [true, true, true, true, true], '項目一覧');
+  assert.deepEqual(disabled(), [true, true, true, true, true, true], '項目一覧');
 });
 
 test('3 つの図の手のひらツール: 命令 modeHand で入り、Esc で選択に戻る。何もない所のドラッグは図を動かす（ボックスは動かさない）', async (t) => {
@@ -180,4 +180,39 @@ test('マウスの左右のボタンの同時押し: 3 つの図と編集の画�
   api.runCommand('openItems');
   await chord(app, $(app, '#db-view'), 'left');
   assert.equal(api.ui.mode, 'select');
+});
+
+test('全体を表示（q183 案A）: 3 つの図は、図の幅と高さが真ん中の欄に収まる倍率にし、図の左上を表示する。画面は画面が収まる倍率', async (t) => {
+  const { app, api, a1 } = await boot(t);
+  const size = (el, w, h) => { Object.defineProperty(el, 'clientWidth', { configurable: true, value: w }); Object.defineProperty(el, 'clientHeight', { configurable: true, value: h }); };
+  api.runCommand('openFlow');
+  const inner = $(app, '#design-map .map-inner');
+  inner.style.width = '2000px';
+  inner.style.height = '600px';
+  size($(app, '#design-map'), 1002, 400);
+  size($(app, '#db-view'), 1100, 548);
+  $(app, '#design-map').scrollLeft = 300;
+  assert.equal(api.runCommand('zoomFit'), true);
+  assert.equal(api.ui.mapZoom, 0.5, '幅 1000 ÷ 2000（高さは 500 ÷ 600 = 0.83）');
+  assert.equal(inner.style.transform, 'scale(0.5)');
+  assert.equal($(app, '#design-map').scrollLeft, 0);
+  assert.equal($(app, '#zoom-label').textContent, '50%');
+  // 高さで決まる場合
+  inner.style.height = '2000px';
+  api.runCommand('zoomFit');
+  assert.equal(api.ui.mapZoom, 0.25);
+  // 小さい図は 100% より大きくしない
+  inner.style.width = '300px';
+  inner.style.height = '200px';
+  api.runCommand('zoomFit');
+  assert.equal(api.ui.mapZoom, 1);
+  // ツールバーのボタンからも同じ
+  api.ui.mapZoom = 1.5;
+  $(app, '#tb-zoom-fit').click();
+  assert.equal(api.ui.mapZoom, 1);
+  // 画面を開いている時は、画面の倍率を変え、図の倍率は変えない
+  api.openScreen(a1);
+  api.ui.mapZoom = 0.7;
+  assert.equal(api.runCommand('zoomFit'), true);
+  assert.equal(api.ui.mapZoom, 0.7);
 });

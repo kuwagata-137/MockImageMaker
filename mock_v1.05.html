@@ -14885,7 +14885,9 @@ function toolbarHtml() {
     group('表示', `<div class="stack">
       <button data-screen-or-diagram class="tbtn" data-action="zoom-in" title="画面や図を拡大します（Ctrl+＋・Ctrl+ホイール）">＋ 拡大</button>
       <button data-screen-or-diagram class="tbtn" data-action="zoom-out" title="画面や図を縮小します（Ctrl+－・Ctrl+ホイール）">－ 縮小</button></div>
-      <button data-screen-or-diagram class="tbtn zoom-label" data-action="zoom-reset" id="zoom-label" title="表示の倍率を 100% に戻します（Ctrl+0）">100%</button>`),
+      <div class="stack">
+      <button data-screen-or-diagram class="tbtn" data-action="zoom-fit" id="tb-zoom-fit" title="画面全体や図全体が収まる倍率で表示します">⊡ 全体を表示</button>
+      <button data-screen-or-diagram class="tbtn zoom-label" data-action="zoom-reset" id="zoom-label" title="表示の倍率を 100% に戻します（Ctrl+0）">100%</button></div>`),
   ].join('');
 }
 
@@ -14975,7 +14977,7 @@ function updateHomeButton() {
   $('#tb-home').dataset.action = back ? 'back-system' : 'home';
   $('#tb-home').title = back ? `${back.name}の画面へ戻ります` : '画面設計の一覧へ戻ります';
 }
-const VIEW_OK_ACTIONS = ['home', 'back-system', 'zoom-in', 'zoom-out', 'zoom-reset', 'mode-select', 'mode-hand', 'prev-screen', 'next-screen'];
+const VIEW_OK_ACTIONS = ['home', 'back-system', 'zoom-in', 'zoom-out', 'zoom-reset', 'zoom-fit', 'mode-select', 'mode-hand', 'prev-screen', 'next-screen'];
 // 画面の移動の欄（v1.04 の q165）。番号と全部の数を書き、最初の画面では ▲、最後の画面では ▼ を押せなくする。画面でないものを開いている間は欄ごと押せない。
 // 番号を打っている間（data-typing）は、打ちかけの番号を消さない
 function updatePager(onScreen) {
@@ -17115,6 +17117,21 @@ function zoomMapByCommand(cmd) {
   const cx = (Math.max(ra.left, rb.left) + Math.min(ra.right, rb.right)) / 2;
   const cy = (Math.max(ra.top, rb.top) + Math.min(ra.bottom, rb.bottom)) / 2;
   zoomMapAt(cx, cy, cmd === 'zoomReset' ? 1 : nextZoom(cmd === 'zoomIn' ? 1 : -1, ui.mapZoom));
+}
+// 全体を表示（v1.05 段階 B・q183 案A）: 図の幅と高さが、真ん中の欄に収まる倍率（ZOOM_STEPS の最初〜100%）にし、図の左上を表示する。
+// 高さは、真ん中の欄の高さから、上下の余白を引いたもの（図の枠の上端を、真ん中の欄の上端に合わせて送るため）
+const MAP_FIT_PAD = 24;
+function fitMapView() {
+  const [a, b] = [$('#design-map'), $('#db-view')];
+  const inner = $('#design-map .map-inner');
+  if (!a || !b || !inner) return;
+  const [w, h] = [parseFloat(inner.style.width) || 0, parseFloat(inner.style.height) || 0];
+  ui.mapZoom = swimFitZoom(w, a.clientWidth - 2, h, b.clientHeight - MAP_FIT_PAD * 2);
+  applyMapZoom();
+  a.scrollLeft = 0;
+  a.scrollTop = 0;
+  b.scrollTop += a.getBoundingClientRect().top - b.getBoundingClientRect().top - MAP_FIT_PAD / 2;
+  updateZoomLabel();
 }
 // 手のひらツールではホイールだけで、どのモードでも Ctrl＋ホイールで、カーソルの位置を中心に拡大縮小する
 function onMapWheel(ev) {
@@ -19821,6 +19838,7 @@ function runCommand(cmd, arg) {
   if (isDiagramPanel()) {
     switch (cmd) {
       case 'zoomIn': case 'zoomOut': case 'zoomReset': zoomMapByCommand(cmd); return true;
+      case 'zoomFit': fitMapView(); return true;
       case 'modeSelect': setMode('select'); return true;
       case 'modeHand': setMode('hand'); return true;
     }
@@ -19829,6 +19847,7 @@ function runCommand(cmd, arg) {
   if (ui.panel !== 'screen') return false;
   switch (cmd) {
     case 'zoomIn': case 'zoomOut': case 'zoomReset': zoomByCommand(cmd); return true;
+    case 'zoomFit': fitScreenView(); return true;
     case 'modeSelect': setMode('select'); return true;
     case 'modeHand': setMode('hand'); return true;
     case 'copyPart': copyPart(); return true;
@@ -19851,7 +19870,7 @@ function runCommand(cmd, arg) {
 
 // 前の版を見ている間にも使える命令（見る・選ぶ・移る・拡大縮小と、今の中身に戻ってから行う命令）
 const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'backToSystem', 'importHtml', 'newDesign', 'newSystem', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'openProcess', 'openFlow', 'prevScreen', 'nextScreen', 'gotoScreen',
-  'zoomIn', 'zoomOut', 'zoomReset', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart', 'aiConnect'];
+  'zoomIn', 'zoomOut', 'zoomReset', 'zoomFit', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart', 'aiConnect'];
 
 // 揃える命令（メニューバー・右の欄・アプリのメニュー）と、alignedRects の how
 const ALIGN_COMMANDS = {
