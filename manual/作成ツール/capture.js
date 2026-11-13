@@ -245,6 +245,9 @@ function seedPage(o) {
   window.aiAPI = {
     onRequest: () => {}, onStatus: (fn) => { window.__aiStatus = fn; }, ready: () => {},
     connectInfo: async () => o.connectInfo, copyText: async () => true,
+    // 説明文ルールの追加ルール（8.7）
+    writingRules: async () => ['金額は税込で書く', 'ボタン名は［ ］で囲む'],
+    saveWritingRules: async (text) => ({ ok: true, rules: String(text).split('\n').map((x) => x.trim()).filter(Boolean) }),
   };
   // 資料の窓口（資料の入口を出すため。ファイルは読まない）
   const canceled = async () => ({ ok: false, canceled: true });
@@ -1205,10 +1208,11 @@ const CHAPTERS = {
     await sleep(200);
     await shot('ai_chip', { clip: '.brandbar', pad: 0 });
     // AI とつなぐ窓
-    await B.setSize(VW, 1150);
+    await B.setSize(VW, 1600);
     await run('aiConnect');
     await sleep(500);
     await shot('ai_connect', { clip: '.modal', pad: 12 });
+    await shot('ai_rules', { clip: '.aic-rules', pad: 12 });
     await B.setSize(VW, VH);
     await closeDlg();
     // 開いている画面設計を AI が直したとき（紫の帯と、光る枠）

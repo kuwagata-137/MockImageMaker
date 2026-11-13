@@ -914,6 +914,7 @@ async function shootRevisions(browser) {
     if (wants('dash')) await require('./shoot-app-dash')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
     if (wants('portal')) await require('./shoot-app-portal')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
     if (wants('sample')) await require('./shoot-app-sample')(browser, { ROOT, HTML_NAME, shot, OUT, VERSION });
+    if (wants('dense')) await require('./shoot-app-dense')(browser, { ROOT, openDeskApp, OUT, VERSION });
   } finally {
     await browser.close();
   }

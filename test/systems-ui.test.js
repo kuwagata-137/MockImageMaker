@@ -425,7 +425,7 @@ test('画面設計をごみ箱へ移す: システムに入っていれば確か
 test('カードの「…」の「このシステムから外す」: システムのまとまりのカードだけに出る。外しても画面設計は残る。複製はそのシステムに入れる', async (t) => {
   const { api, $, $$, S, sys, cards, item } = await boot(t);
   click($('.card-more[data-id="d-emp"]'));
-  assert.deepEqual($$('.card-menu [role="menuitem"]').map((b) => b.textContent), ['この画面設計の名前を変更する', 'この画面設計を複製する', 'この画面設計を出力…', '画面設計をこのシステムから外す', 'この画面設計を削除する（ごみ箱へ移す）']);
+  assert.deepEqual($$('.card-menu [role="menuitem"]').map((b) => b.textContent), ['この画面設計の名前を変更する', 'この画面設計を複製する', 'この画面設計をシステムに追加する…', 'この画面設計を出力…', '画面設計をこのシステムから外す', 'この画面設計を削除する（ごみ箱へ移す）']);
   click($('.card-menu [data-action="remove-from-system"]'));
   assert.deepEqual(sys('y-trip').designIds, ['d-trip', 'd-gone']);
   assert.ok(S().designs.some((x) => x.id === 'd-emp'));

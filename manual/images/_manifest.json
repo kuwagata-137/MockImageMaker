@@ -20,7 +20,13 @@
  "ai_connect": {
   "file": "ai_connect.png",
   "w": 784,
-  "h": 976,
+  "h": 1356,
+  "dsf": 2
+ },
+ "ai_rules": {
+  "file": "ai_rules.png",
+  "w": 740,
+  "h": 393,
   "dsf": 2
  },
  "dash_cal_month": {
@@ -73,8 +79,8 @@
  },
  "ed_edit": {
   "file": "ed_edit.png",
-  "w": 873,
-  "h": 290,
+  "w": 846,
+  "h": 316,
   "dsf": 2
  },
  "ed_import": {
@@ -164,13 +170,13 @@
  "ex_pdf": {
   "file": "ex_pdf.png",
   "w": 664,
-  "h": 608,
+  "h": 640,
   "dsf": 2
  },
  "ex_png": {
   "file": "ex_png.png",
   "w": 664,
-  "h": 574,
+  "h": 598,
   "dsf": 2
  },
  "home_card": {
@@ -337,8 +343,8 @@
  },
  "sc_pager": {
   "file": "sc_pager.png",
-  "w": 299,
-  "h": 122,
+  "w": 294,
+  "h": 126,
   "dsf": 2
  },
  "sc_process": {
@@ -356,7 +362,7 @@
  "sys_doc": {
   "file": "sys_doc.png",
   "w": 704,
-  "h": 412,
+  "h": 436,
   "dsf": 2
  },
  "sys_exportmenu": {
@@ -410,7 +416,7 @@
  "sys_roles": {
   "file": "sys_roles.png",
   "w": 772,
-  "h": 214,
+  "h": 232,
   "dsf": 2
  },
  "sys_sample": {

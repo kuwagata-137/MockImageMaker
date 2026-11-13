@@ -16,6 +16,7 @@ const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio
 const { TOOLS } = require('./mcp-tools');
 const { INSTRUCTIONS, GUIDES, PROMPTS } = require('./mcp-guide');
 const { promptArgs } = require('./mcp-schemas');
+const { readWritingRules, writingRulesSection } = require('./mcp-writing-rules');
 const { appTarget, createAppLink } = require('./automation-client');
 const { version } = require('./package.json');
 
@@ -39,7 +40,14 @@ function toToolResult(res) {
   return { content };
 }
 
-function createServer({ link }) {
+// 手引きの文。"writing"（説明文の書き方）だけは、人がアプリで追加したルール（追加ルール）を最後に追加する。
+// 追加ルールはファイルから直接読む（アプリを起動しない。v1.05 段階 E・質問 q179）
+function guideText(topic, userData) {
+  const text = GUIDES[topic].text;
+  return topic === 'writing' ? text + writingRulesSection(readWritingRules(userData)) : text;
+}
+
+function createServer({ link, userData }) {
   const server = new McpServer({ name: 'mockimagemaker', version }, { instructions: INSTRUCTIONS });
   for (const t of TOOLS) {
     server.registerTool(t.name, {
@@ -48,7 +56,7 @@ function createServer({ link }) {
       inputSchema: t.input,
       annotations: { title: t.title, readOnlyHint: t.readOnly, openWorldHint: false },
     }, async (args) => {
-      if (t.local) return { content: [{ type: 'text', text: GUIDES[args.topic].text }] };
+      if (t.local) return { content: [{ type: 'text', text: guideText(args.topic, userData) }] };
       try {
         return toToolResult(await link.call(t.name, args, { slow: !!t.slow, write: !t.readOnly }));
       } catch (err) {
@@ -59,7 +67,7 @@ function createServer({ link }) {
   for (const [topic, g] of Object.entries(GUIDES)) {
     const uri = `mim://guide/${topic}`;
     server.registerResource(`guide-${topic}`, uri, { title: g.title, description: `手引き: ${g.title}（read_guide の "${topic}" と同じ）`, mimeType: 'text/markdown' },
-      async () => ({ contents: [{ uri, mimeType: 'text/markdown', text: g.text }] }));
+      async () => ({ contents: [{ uri, mimeType: 'text/markdown', text: guideText(topic, userData) }] }));
   }
   // prompts（設計書の 9-4）。文は mcp-guide.js の PROMPTS にあり、ここでは引数の値を入れた頼みの文を、人の 1 つの文として返すだけ
   for (const [name, p] of Object.entries(PROMPTS)) {
@@ -72,13 +80,14 @@ function createServer({ link }) {
 async function main() {
   const session = crypto.randomUUID(); // 「AI が直す前の状態」の行を残す単位（設計書 8-3）
   let server = null;
+  const target = appTarget();
   const link = createAppLink({
-    target: appTarget(),
+    target,
     session,
     clientName: () => (server && server.server.getClientVersion() || {}).name || '',
     launchWaitMs: Number(process.env.MIM_TIMEOUT_MS) > 0 ? Number(process.env.MIM_TIMEOUT_MS) : undefined,
   });
-  server = createServer({ link });
+  server = createServer({ link, userData: target.userData });
   let closing = false;
   const shutdown = () => {
     if (closing) return;
@@ -99,4 +108,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, toToolResult };
+module.exports = { createServer, toToolResult, guideText };

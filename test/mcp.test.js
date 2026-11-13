@@ -123,11 +123,18 @@ test('アプリがなくても、道具の一覧・read_guide・resources は返
   const g = await call(client, 'read_guide', { topic: 'overview' });
   assert.match(textOf(g), /^# モックイメージメーカーの使い方/);
   const { resources } = await client.listResources();
-  assert.deepEqual(resources.map((r) => r.uri).sort(), ['mim://guide/catalog', 'mim://guide/crm', 'mim://guide/kintone', 'mim://guide/layout', 'mim://guide/overview', 'mim://guide/rules', 'mim://guide/stages']);
+  assert.deepEqual(resources.map((r) => r.uri).sort(), ['mim://guide/catalog', 'mim://guide/crm', 'mim://guide/kintone', 'mim://guide/layout', 'mim://guide/overview', 'mim://guide/rules', 'mim://guide/stages', 'mim://guide/writing']);
   const kg = await call(client, 'read_guide', { topic: 'kintone' });
   assert.match(textOf(kg), /^# kintone のアプリにするとき/);
   const rr = await client.readResource({ uri: 'mim://guide/rules' });
   assert.match(rr.contents[0].text, /^# 守ること/);
+  // 説明文の書き方（v1.05 段階 E）。人が追加した追加ルールは、ファイルから読んで最後に追加する（アプリを起動しない）
+  const wg = await call(client, 'read_guide', { topic: 'writing' });
+  assert.match(textOf(wg), /^# 説明文の書き方/);
+  assert.doesNotMatch(textOf(wg), /## 追加ルール/);
+  require('../mcp-writing-rules').saveWritingRules(dir, '金額は税込で書く');
+  assert.match(textOf(await call(client, 'read_guide', { topic: 'writing' })), /## 追加ルール（このアプリの利用者が追加したルール）[\s\S]*\n- 金額は税込で書く$/);
+  assert.match((await client.readResource({ uri: 'mim://guide/writing' })).contents[0].text, /\n- 金額は税込で書く$/);
   assert.equal(fs.existsSync(marker), false, 'まだ起動していない');
   const r = await call(client, 'list_designs');
   assert.equal(r.isError, true);

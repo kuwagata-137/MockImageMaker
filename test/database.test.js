@@ -565,6 +565,9 @@ async function bootMap(t) {
   return { ...ctx, orderId, dailyId, oldId, order, node };
 }
 
+// 線の折れる点（v1.05 の直角の線は、線の path の data-wps に「x,y x,y …」で書く）
+const wpsOf = (p) => p.getAttribute('data-wps').split(' ').map((q) => q.split(',').map(Number));
+
 test('関連図の箱と矢印: ルックアップ・関連レコード一覧は元 → 引く側、取り込みは元 → 取り込んだ側。ごみ箱のものは描かない', async (t) => {
   const { api, masterId, custId, orderId, dailyId } = await bootMap(t);
   const model = api.mapModel(api.store.state);
@@ -602,14 +605,19 @@ test('関連図: 矢印が輪になっても（ルックアップと関連レコ
   const pos = api.mapLayout(model);
   assert.deepEqual(plain(['d:' + masterId, 'd:' + custId, 'd:' + orderId].map((k) => pos[k].x)), [40, 440, 840],
     '輪を閉じる矢印（受注管理 → 顧客管理）は列の決め方から外す');
-  // 編集の画面の図: 顧客管理と受注管理の間の 2 本は、上下にずらして引く
+  // 編集の画面の図: 顧客管理と受注管理の間の 2 本は、辺の上の位置を分けて引く（v1.05 から直角の線。辺を線の数で等分した位置に付ける）
   api.openDesign(custId);
   click($(app, '[data-action="open-map"]'));
-  const starts = $$(app, '#design-map svg > path').map((p) => ({ green: p.getAttribute('stroke') === '#16a34a', m: p.getAttribute('d').match(/^M([\d.]+),([\d.]+)/).slice(1).map(Number) }));
-  assert.equal(starts.length, 3, 'ルックアップ・取り込み・関連レコード一覧');
-  const link = starts.find((s) => s.green); // 顧客管理 → 受注管理（右向き。顧客管理の右の縁から）
-  const back = starts.find((s) => !s.green && s.m[0] === 840); // 受注管理 → 顧客管理（左向き。受注管理の左の縁から）
-  assert.deepEqual(plain([link.m[0], [link.m[1], back.m[1]].sort((a, b) => a - b)]), [640, [64, 80]], '箱の真ん中（72）から上下に 8 ずつずらす');
+  const wires = $$(app, '#design-map svg > path').map((p) => ({ green: p.getAttribute('stroke') === '#16a34a', wps: wpsOf(p) }));
+  assert.equal(wires.length, 3, 'ルックアップ・取り込み・関連レコード一覧');
+  const link = wires.find((s) => s.green); // 顧客管理 → 受注管理（右向き。顧客管理の右の辺から）
+  // 列の間は、端の文字の幅と線の通り道の分だけ広がる（今までの 200 より狭くはしない）ので、受注管理の左の辺はボックスの位置から読む
+  const orderX = parseFloat($(app, `#design-map .mnode[data-node="d:${orderId}"]`).style.left);
+  assert.ok(orderX >= 840, `受注管理は顧客管理（右の辺 640）から 200 以上離れる: ${orderX}`);
+  const back = wires.find((s) => !s.green && s.wps[0][0] === orderX); // 受注管理 → 顧客管理（左向き。受注管理の左の辺から）
+  assert.equal(link.wps[0][0], 640, '取り込みの線は、顧客管理の右の辺（640）から出る');
+  assert.deepEqual(plain([link.wps[0][1], back.wps[back.wps.length - 1][1]].sort((a, b) => a - b)), [56, 88], '顧客管理の右の辺（高さ 64）に付く 2 本は、辺を 2 等分した真ん中（上から 16 と 48）');
+  assert.deepEqual(plain([link.wps[link.wps.length - 1][1], back.wps[0][1]].sort((a, b) => a - b)), [64, 112], '受注管理の左の辺（高さ 96）でも 2 等分した真ん中（上から 24 と 72）');
   const orderNode = $(app, `#design-map .mnode[data-node="d:${orderId}"]`);
   assert.match(orderNode.textContent, /関連レコード一覧の元・この画面設計から取り込んでいる/);
   assert.equal(orderNode.style.height, '96px', '役目の行が長いときは 2 行に折り返し、箱も高くする');
@@ -622,11 +630,14 @@ test('関連図: 線がほかの箱に重なるときは、その箱の上か下
   // 取引先マスタ・日報・顧客管理・受注管理を横 1 列に並べる（取引先マスタ → 顧客管理 の線が、日報の箱に重なる）
   [[masterId, 40], [dailyId, 400], [custId, 760], [orderId, 1120]].forEach(([id, x]) => api.actions.setMapPos(null, 'd:' + id, { x, y: 296 }));
   api.actions.setMapPos(null, 'x:会計システム', { x: 760, y: 40 });
-  const ds = $$(app, '#home-map svg > path').map((p) => p.getAttribute('d'));
-  const lookup = ds.find((d) => d.startsWith('M240.0,328.0'));
-  assert.equal(lookup, 'M240.0,328.0 C306.0,328.0 306.0,272.0 372.0,272.0 L628.0,272.0 C694.0,272.0 694.0,328.0 760.0,328.0',
-    '日報の箱（400〜600）の手前で上の隙間（箱の上の 24 上）へ曲がり、過ぎてから顧客管理へ下りる');
-  assert.ok(ds.filter((d) => d !== lookup).every((d) => !d.includes(' L')), 'ほかの線は重ならないので、そのまま引く');
+  // v1.05 から、線は直角の折れ線（スイムレーン図と同じ swimRoutes）。日報のボックスを避けて回る
+  const lines = $$(app, '#home-map svg > path').map(wpsOf);
+  const lookup = lines.find((w) => w[0][0] === 240 && w[w.length - 1][0] === 760);
+  assert.ok(lookup, '取引先マスタの右の辺（240）から、顧客管理の左の辺（760）へ');
+  const crosses = (w, b) => w.slice(1).some((q, i) => Math.max(w[i][0], q[0]) > b.x && Math.min(w[i][0], q[0]) < b.x + 200 && Math.max(w[i][1], q[1]) > b.y && Math.min(w[i][1], q[1]) < b.y + 64);
+  assert.equal(crosses(lookup, { x: 400, y: 296 }), false, '日報のボックス（横 400〜600・縦 296〜360）の中を通らない');
+  assert.ok(lookup.length > 2, 'まっすぐ引くと日報に重なるので、曲がって避ける');
+  lines.forEach((w) => assert.ok(w.slice(1).every((q, i) => q[0] === w[i][0] || q[1] === w[i][1]), 'どの区間も横か縦'));
 });
 
 test('最初の画面: 「関連図」に切り替えると、名前で検索欄・カード・ごみ箱の代わりに図を出す。箱を押すとその画面設計を開く', async (t) => {
@@ -643,8 +654,8 @@ test('最初の画面: 「関連図」に切り替えると、名前で検索欄
   assert.ok(node('x:会計システム').classList.contains('ext'), '一覧にないデータベースは点線の箱');
   assert.match(node('d:' + masterId).textContent, /取引先マスタ.*項目 3 個・画面 1/);
   assert.equal($$(app, '#home-map svg > path').length, 3, '矢印 3 本');
-  const num = '-?[\\d.]+,-?[\\d.]+';
-  $$(app, '#home-map svg > path').forEach((p) => assert.match(p.getAttribute('d'), new RegExp(`^M${num} C${num} ${num} ${num}$`), '曲線は始まりの点・2 つの曲げる点・終わりの点'));
+  $$(app, '#home-map svg > path').map(wpsOf).forEach((w) => assert.ok(w.length >= 2 && w.slice(1).every((q, i) => q[0] === w[i][0] || q[1] === w[i][1]),
+    '線は直角の折れ線（どの区間も横か縦。v1.05）'));
   assert.ok($(app, '.home').classList.contains('wide'), '図のときは横の幅を画面いっぱいに使う');
   const svgText = $(app, '#home-map svg').textContent;
   ['取引先コードで引く', '取り込み: 取引先名', '関連レコード一覧', '請求の履歴'].forEach((s) => assert.ok(svgText.includes(s), s));

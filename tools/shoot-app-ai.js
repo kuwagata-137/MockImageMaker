@@ -29,6 +29,9 @@ async function openAiApp(browser, { ROOT, HTML_NAME }, clients) {
       onStatus(cb) { setTimeout(() => cb({ clients: list }), 0); },
       connectInfo: async () => info,
       copyText: async () => true,
+      // 説明文ルールの追加ルール（v1.05 段階 E）。保存した値は、このページの中だけで覚える
+      writingRules: async () => window.__rules || [],
+      saveWritingRules: async (text) => { window.__rules = String(text).split('\n').map((x) => x.trim()).filter(Boolean); return { ok: true, rules: window.__rules }; },
     };
     localStorage.clear();
     localStorage.setItem('mockimagemaker.v1', data);
@@ -92,6 +95,16 @@ module.exports = async function shootAi(browser, env) {
   await page.waitForSelector('.modal .aic-sec');
   await page.click('.modal [data-copy="claude"]');
   await shot(page, '99_AI_AIとつなぐ窓');
+  // 288: 「説明文ルール」の欄に追加ルールを入力して、［追加ルールを保存する］を押した後（v1.05 段階 E・質問 q179）
+  await page.type('#aic-rules', '金額は税込で書く\nボタン名は［ ］で囲む\n敬語を使わない');
+  await page.click('.modal [data-dlg="ok"]');
+  await page.waitForSelector('#aic-rules-saved:not([hidden])');
+  await page.evaluate(() => document.querySelector('.aic-rules').scrollIntoView({ block: 'center' }));
+  await shot(page, '288_AI_説明文ルール_追加ルールを保存した後');
+  // 289: 既定のウィンドウの大きさ（幅 1280・高さ 720）でも、ボタンが見えること
+  await page.setViewport({ width: 1280, height: 720 });
+  await sleep(100);
+  await shot(page, '289_AI_説明文ルール_幅1280');
   await page.close();
 
   // 100: タスクトレイのアイコン（automation-tray.js が作る PNG を、そのままの大きさと 4 倍で並べる）

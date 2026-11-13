@@ -81,13 +81,15 @@ const CASES = [
 // 取り直した（変わったのは .cv-desc の max-height の数字だけ。前の値に戻すと、前の sha と同じになることを確かめた）。
 // 2026-10-27 の用語の直し（計画外）で、ページの文（見出し・札・説明の文）が変わったので取り直した。直す前のアプリで前の値になること、
 // 文字（テキストと title などの属性）を空にして比べると、ページの数・HTML の形・CSS が直す前と同じことを確かめた
+// 2026-11-12（v1.05）: 関連図と画面遷移図の線を直角の折れ線に変えた（q167・q168）ので取り直した。変更前のアプリ（c9edde7）と 1 ページずつ比べ、
+// 変わったのは「関連図」と「画面遷移図」のページだけで、ページの数は同じことを確かめた
 const GOLDEN = {
-  '顧客管理・A4 横・全部': { total: 7, sha: '0ad3e85253b9628c854802087aa8cecb157ce6d16a92ab8dec1f65d1fae6ca7a' },
-  '顧客管理・A3 縦・全部': { total: 7, sha: 'ee4a63ccd94c390b3f334ed868cea5dac9fd2c4a1b69f2419e5febad8f9fcd24' },
-  '顧客管理・スライド・表紙なし': { total: 6, sha: '702cda555b944ac5427c114eb366a17d4d10295528e79325a7d4cd8712021f27' },
-  '顧客管理・A4 横・第 1 版との変更マーク': { total: 8, sha: '6aef524984c358057d9016ea680e952d3c95551c9e3f9518f659f9b356502b0a' },
-  '顧客管理・A4 横・画面 1 つだけ': { total: 6, sha: 'c29a1ac2ca9df8817a9c7b4c3e32349de4f5ab7044fb614c6f2ba70b6e22f5da' },
-  '受注管理・A4 横・全部': { total: 4, sha: 'a4648e30c1f55a57f9933d88f0d38df55c957634bb42dec5ed7e91d3bbd07aaf' },
+  '顧客管理・A4 横・全部': { total: 7, sha: '9d9306eaeda7ba51667bf2d77764257658d900f4e3e844909f5b8f88afa5ee1e' },
+  '顧客管理・A3 縦・全部': { total: 7, sha: '3b4e8b75a3fc0a7a4a27a1333f36510bb1280a6c2dfdbec8e027deec8f313d69' },
+  '顧客管理・スライド・表紙なし': { total: 6, sha: '374bbc70cd863feb5259b389b972e22fc9a58dee6b24bf0a582d83721298c7ef' },
+  '顧客管理・A4 横・第 1 版との変更マーク': { total: 8, sha: 'aa9b494dae1d7fda331c272720fb77d6457df7e059fd62185ca6ebcefeacb38e' },
+  '顧客管理・A4 横・画面 1 つだけ': { total: 6, sha: 'ea78cf6cfb431561952ec2b7e598cf1d3cfd129ebdd07afd322ddf67a248cf66' },
+  '受注管理・A4 横・全部': { total: 4, sha: '01bcea34db9db3e2049ec0c2561bb32785d7e589d175589e655980a469697597' },
 };
 
 async function boot(t) {
