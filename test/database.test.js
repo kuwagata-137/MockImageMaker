@@ -696,6 +696,19 @@ test('最初の画面の図: ボックスをドラッグで動かすと位置を
   assert.deepEqual(plain(api.store.state.settings.mapPos['d:' + dailyId]), { x: 0, y: 0 });
 });
 
+test('関連図（v1.05 段階 B）: 最初の画面と編集の画面の関連図で、平行に近づく線がない（間を 10 以上離す）', async (t) => {
+  const { app, api, custId } = await bootMap(t);
+  const routes = (sel) => Object.fromEntries($$(app, sel + ' path[data-wps]').map((p) => [p.getAttribute('data-wire'), { wps: wpsOf(p) }]));
+  api.goHome();
+  click($(app, '[data-action="home-map"]'));
+  assert.ok(Object.keys(routes('#home-map')).length >= 3);
+  assert.deepEqual(plain(api.wireOverlaps(routes('#home-map'))), []);
+  api.openDesign(custId);
+  api.runCommand('openMap');
+  assert.ok(Object.keys(routes('#design-map')).length >= 2);
+  assert.deepEqual(plain(api.wireOverlaps(routes('#design-map'))), []);
+});
+
 test('最初の画面の関連図（v1.05 段階 B・q171 案A）: 上の行の［ボックスを自動で並べ直す］の左に、選択・手のひらツール・拡大・縮小・全体を表示・倍率を置く。倍率は編集の画面の図と別', async (t) => {
   const { app, api, dailyId, node } = await bootMap(t);
   api.goHome();

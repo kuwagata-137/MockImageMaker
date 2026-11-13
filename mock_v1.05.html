@@ -8235,6 +8235,73 @@ function mapWireGaps(model, ends) {
   }
   return gaps;
 }
+// 平行に走る 2 本の線の間の下限（v1.05 段階 B。ユーザーの要望 2026-11-13「不用意に線が重ならないような仕組みにしたい」）。
+// 関連図・画面遷移図（横向き・縦向き）で守る。ステータスの流れは、右を回る線を PROC_LANE ずつ離した通り道に引くので、この下限より離れている
+const WIRE_GAP_MIN = 10;
+// 線の道（routes。線の id ごとの { wps }）の中で、ほかの線と平行に近づく所。
+// [{ a, b（線の id）, dir（'h' 横・'v' 縦）, ca, cb（2 本の区間の位置。横なら y、縦なら x）, gap（間）, lap（並んで走る長さ）, sa, sb（2 本の区間の範囲 [始まり, 終わり]） }]。並んで走る長さが 4 以下の所（角で触れるだけの所）は数えない
+function wireOverlaps(routes, min = WIRE_GAP_MIN) {
+  const segs = [];
+  Object.entries(routes).forEach(([id, r]) => (r && r.wps ? r.wps : []).forEach((p, i, wps) => {
+    if (!i) return;
+    const q = wps[i - 1];
+    const dir = Math.abs(p[1] - q[1]) < 0.5 ? 'h' : Math.abs(p[0] - q[0]) < 0.5 ? 'v' : null;
+    if (!dir) return;
+    const [c, k] = dir === 'h' ? [p[1], 0] : [p[0], 1];
+    segs.push({ id, dir, c, lo: Math.min(p[k], q[k]), hi: Math.max(p[k], q[k]) });
+  }));
+  const out = [];
+  segs.forEach((s, i) => segs.slice(i + 1).forEach((t) => {
+    if (s.id === t.id || s.dir !== t.dir) return;
+    const [gap, lap] = [Math.abs(s.c - t.c), Math.min(s.hi, t.hi) - Math.max(s.lo, t.lo)];
+    if (lap > 4 && gap < min) out.push({ a: s.id, b: t.id, dir: s.dir, ca: s.c, cb: t.c, gap, lap, sa: [s.lo, s.hi], sb: [t.lo, t.hi] });
+  }));
+  return out;
+}
+// 線の道 wps が、両端のボックス（from・to）でないボックスの中を通るか
+function wireHitsBox(wps, boxes, from, to) {
+  return boxes.some((b) => b.key !== from && b.key !== to && wps.some((p, i) => {
+    if (!i) return false;
+    const q = wps[i - 1];
+    const [x0, x1, y0, y1] = [Math.min(p[0], q[0]), Math.max(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[1], q[1])];
+    return x0 < b.x + b.w - 2 && x1 > b.x + 2 && y0 < b.y + b.h - 2 && y1 > b.y + 2;
+  }));
+}
+// 線を引き（route(mids)。mids は線ごとの曲がる位置）、2 つのことを直して返す（v1.05 段階 B）。
+// ① 列を飛ばす線に割り振った通り道（skips）で、線がほかのボックスの中を通るときは、その線の割り振りをやめる。
+// ② ほかの線と WIRE_GAP_MIN より近づく所を、曲がる位置 mid（流れと直交する区間の位置。横向きの図は縦の区間の x、縦向きの図は横の区間の y）を動かして直す。
+//    流れと直交する区間どうしが近づくときは、後の線の区間を、前の線の区間から WIRE_GAP_MIN 離した位置へずらす。
+//    流れの向きの区間どうしが並んで走るときは、先に始まる区間の線を、もう 1 本の区間が始まる位置の WIRE_GAP_MIN 手前で曲げる
+//    （例: 列を飛ばす線が、間のボックスの手前まで進んでから曲がり、間のボックスへ入る線と並ぶとき）。
+//    3 回まで繰り返し、近づく所が減らなくなったら・ボックスの中を通る線が増えたらやめる
+function wireRoutesApart(route, wires, mids, skips, boxes, vertical) {
+  let routes = route(mids);
+  const bad = wires.filter((w) => skips.has(w) && routes[w.id] && wireHitsBox(routes[w.id].wps, boxes, w.from, w.to));
+  if (bad.length) {
+    bad.forEach((w) => mids.delete(w));
+    routes = route(mids);
+  }
+  const cross = vertical ? 'h' : 'v';
+  let best = { routes, n: wireOverlaps(routes).length, mids };
+  for (let k = 0; k < 3 && best.n; k++) {
+    const next = new Map(best.mids);
+    wireOverlaps(best.routes).forEach((o) => {
+      if (o.dir === cross) {
+        const w = wires.find((x) => x.id === o.b);
+        if (w) next.set(w, o.ca + Math.sign(o.cb - o.ca || 1) * WIRE_GAP_MIN);
+        return;
+      }
+      const [first, start] = o.sa[0] <= o.sb[0] ? [o.a, o.sb[0]] : [o.b, o.sa[0]];
+      const w = wires.find((x) => x.id === first);
+      if (w) next.set(w, start - WIRE_GAP_MIN);
+    });
+    const r = route(next);
+    const n = wireOverlaps(r).length;
+    if (n >= best.n || wires.some((w) => r[w.id] && wireHitsBox(r[w.id].wps, boxes, w.from, w.to) && !(best.routes[w.id] && wireHitsBox(best.routes[w.id].wps, boxes, w.from, w.to)))) break;
+    best = { routes: r, n, mids: next };
+  }
+  return best.routes;
+}
 // ボックスの位置（覚えた位置と、自動の位置）。線の数でボックスの高さが変わり、高さで自動の位置が変わるので、2 回並べ直して落ち着かせる
 function mapWireLayout(model, saved, wires, baseH) {
   let pos = mapPlace(model, saved, mapLayout(model, baseH), baseH);
@@ -8253,14 +8320,23 @@ function mapWireRoute(model, wires, pos) {
   const boxes = model.nodes.map((n) => ({ key: n.key, x: pos[n.key].x, y: pos[n.key].y, w: MAP_W, h: pos[n.key].h || MAP_H }));
   // 曲がる位置。左右に向かい合う 2 つのボックスの間（間にほかのボックスがない所）は、線ごとに縦の通り道を 1 本ずつ割り振る。
   // 上がる線は上のものほど左、下がる線は上のものほど右を通す（出る所と入る所の横の線が、ほかの線の縦の線と交わらない並び）
+  // 列を飛ばす線（間にほかのボックスがある線）は、左のボックスと、その右の次の列の間に通り道を割り振る（v1.05 段階 B。割り振らないと、
+  // 間のボックスの手前まで横に進んでから曲がり、間のボックスへ入る線と並んで走るため）。右の端は、次の列の左の縁とする
   const groups = new Map();
+  const skips = new Set();
+  const nextX = (x) => Math.min(Infinity, ...boxes.filter((o) => o.x > x + 1).map((o) => o.x));
   wires.forEach((wire) => {
     const [a, b] = [endOf(wire, 'from'), endOf(wire, 'to')];
     if (!['left', 'right'].includes(a.side) || !['left', 'right'].includes(b.side) || a.side === b.side) return;
-    const [l, r] = a.side === 'right' ? [a, b] : [b, a];
-    const [xl, xr] = [l.pt[0], r.pt[0]];
+    let [l, r] = a.side === 'right' ? [a, b] : [b, a];
+    let [xl, xr] = [l.pt[0], r.pt[0]];
     const [y0, y1] = [Math.min(l.pt[1], r.pt[1]) - 8, Math.max(l.pt[1], r.pt[1]) + 8];
-    if (boxes.some((o) => o.key !== wire.from && o.key !== wire.to && o.x < xr && o.x + o.w > xl && o.y < y1 && o.y + o.h > y0)) return;
+    if (boxes.some((o) => o.key !== wire.from && o.key !== wire.to && o.x < xr && o.x + o.w > xl && o.y < y1 && o.y + o.h > y0)) {
+      const xn = nextX(xl);
+      if (!(xn < xr)) return;
+      [xr, r] = [xn, { pt: [xn, r.pt[1]], lines: [] }];
+      skips.add(wire);
+    }
     const k = `${xl}|${xr}`;
     if (!groups.has(k)) groups.set(k, { xl, xr, rows: [] });
     groups.get(k).rows.push({ wire, l, r });
@@ -8276,15 +8352,15 @@ function mapWireRoute(model, wires, pos) {
     const down = bent.filter((r) => r.r.pt[1] > r.l.pt[1]).sort((p, q) => q.l.pt[1] - p.l.pt[1]);
     [...up, ...down].forEach((r, j) => mids.set(r.wire, g.xl + lw + (j + 1) * step));
   });
-  const routes = swimRoutes({
+  const routes = wireRoutesApart((m) => swimRoutes({
     vertical: false, lanes: [],
     w: Math.max(0, ...boxes.map((b) => b.x + b.w)) + 240,
     h: Math.max(0, ...boxes.map((b) => b.y + b.h)) + 240,
     nodes: boxes.map((b) => ({ id: b.key, type: 'rect', x: b.x, y: b.y, w: b.w, h: b.h })),
     edges: wires.map((wire) => ({ id: wire.id, from: wire.from, to: wire.to,
       fromPin: { side: endOf(wire, 'from').side, frac: endOf(wire, 'from').frac }, toPin: { side: endOf(wire, 'to').side, frac: endOf(wire, 'to').frac },
-      ...(mids.has(wire) ? { mid: mids.get(wire) } : {}) })),
-  });
+      ...(m.has(wire) ? { mid: m.get(wire) } : {}) })),
+  }), wires, mids, skips, boxes, false);
   // 端の文字。左右の辺は、ボックスを出てすぐの横の線の上（重なるときは 線の下 → 外へずらした上 → 外へずらした下）。上下の辺は、縦の線の右（重なるときは左）
   const placed = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
   const hit = (a, b) => a.x < b.x + b.w + 2 && b.x < a.x + a.w + 2 && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
@@ -8461,14 +8537,22 @@ function flowVRoute(model, wires, pos) {
   const boxes = model.nodes.map((n) => ({ key: n.key, ...flowVBox(pos, n.key) }));
   // 曲がる位置。上下に向かい合う 2 つのボックスの間（間にほかのボックスがない所）は、線ごとに横の通り道を 1 本ずつ割り振る。
   // 右へ向かう線は右から出るものほど上、左へ向かう線は左から出るものほど上を通す（出る所と入る所の縦の線が、ほかの線の横の線と交わらない並び）
+  // 段を飛ばす線（間にほかのボックスがある線）は、上のボックスと、その下の次の段の間に通り道を割り振る（横向きの列を飛ばす線と同じ）
   const groups = new Map();
+  const skips = new Set();
+  const nextY = (y) => Math.min(Infinity, ...boxes.filter((o) => o.y > y + 1).map((o) => o.y));
   wires.forEach((wire) => {
     const [a, b] = [endOf(wire, 'from'), endOf(wire, 'to')];
     if (!['top', 'bottom'].includes(a.side) || !['top', 'bottom'].includes(b.side) || a.side === b.side) return;
-    const [u, l] = a.side === 'bottom' ? [a, b] : [b, a];
-    const [yu, yl] = [u.pt[1], l.pt[1]];
+    let [u, l] = a.side === 'bottom' ? [a, b] : [b, a];
+    let [yu, yl] = [u.pt[1], l.pt[1]];
     const [x0, x1] = [Math.min(u.pt[0], l.pt[0]) - 8, Math.max(u.pt[0], l.pt[0]) + 8];
-    if (boxes.some((o) => o.key !== wire.from && o.key !== wire.to && o.y < yl && o.y + o.h > yu && o.x < x1 && o.x + o.w > x0)) return;
+    if (boxes.some((o) => o.key !== wire.from && o.key !== wire.to && o.y < yl && o.y + o.h > yu && o.x < x1 && o.x + o.w > x0)) {
+      const yn = nextY(yu);
+      if (!(yn < yl)) return;
+      [yl, l] = [yn, { pt: [l.pt[0], yn], lines: [] }];
+      skips.add(wire);
+    }
     const k = `${yu}|${yl}`;
     if (!groups.has(k)) groups.set(k, { yu, yl, rows: [] });
     groups.get(k).rows.push({ wire, u, l });
@@ -8484,15 +8568,15 @@ function flowVRoute(model, wires, pos) {
     const left = bent.filter((r) => r.l.pt[0] < r.u.pt[0]).sort((p, q) => p.u.pt[0] - q.u.pt[0]);
     [...right, ...left].forEach((r, j) => mids.set(r.wire, g.yu + th + (j + 1) * step));
   });
-  const routes = swimRoutes({
+  const routes = wireRoutesApart((m) => swimRoutes({
     vertical: true, lanes: [],
     w: Math.max(0, ...boxes.map((b) => b.x + b.w)) + 240,
     h: Math.max(0, ...boxes.map((b) => b.y + b.h)) + 240,
     nodes: boxes.map((b) => ({ id: b.key, type: 'rect', x: b.x, y: b.y, w: b.w, h: b.h })),
     edges: wires.map((wire) => ({ id: wire.id, from: wire.from, to: wire.to,
       fromPin: { side: endOf(wire, 'from').side, frac: endOf(wire, 'from').frac }, toPin: { side: endOf(wire, 'to').side, frac: endOf(wire, 'to').frac },
-      ...(mids.has(wire) ? { mid: mids.get(wire) } : {}) })),
-  });
+      ...(m.has(wire) ? { mid: m.get(wire) } : {}) })),
+  }), wires, mids, skips, boxes, true);
   // 端の文字。上下の辺は、縦の線の右（重なるときは左）。左右の辺は、横の線の上（重なるときは下）
   const placed = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
   const hit = (a, b) => a.x < b.x + b.w + 2 && b.x < a.x + a.w + 2 && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
@@ -19773,6 +19857,7 @@ function contentWithoutLookDefaults(c) {
   if (out.look === 'standard') delete out.look;
   if (Array.isArray(out.bandTabs) && !out.bandTabs.length) delete out.bandTabs;
   if (out.portal == null) delete out.portal; // v1.01 の第 16 段階で足した欄（書いていないときは持たない）
+  if (out.flowVertical == null) delete out.flowVertical; // v1.05 段階 B で追加した欄（画面遷移図が横向きのときは持たない）
   out.screens.forEach((s) => { if (s.itemView === 'input') delete s.itemView; });
   return out;
 }
@@ -24378,7 +24463,7 @@ function exposeForTest() {
     NOTE_STAGES, NOTE_STAGE_NAMES, NOTE_STATES, NOTE_STATE_NAMES, NOTE_TEXT_MAX, normalizeNotes, noteQuestionDecided,
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
-    swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, diagramCrop, VIEW_TITLES, VIEW_LEGENDS, bdmExportPlan,
+    wireOverlaps, WIRE_GAP_MIN, swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, diagramCrop, VIEW_TITLES, VIEW_LEGENDS, bdmExportPlan,
     swimPlusAt, swimSideToward, swimFitZoom, SWIM_NEAR, selectEdge, setSwimMode, setSwimPal,
     SWIM_ORIENTS, SWIM_ORIENT_NAMES, swimOrientOf, SWIM_HEAD_H, setSwimOrientView,
     SWIM_HDR, SWIM_LANE, SWIM_STEP, SWIM_SHAPES, SWIM_W_MAX, swimBoxSize, swimTextW, swimStoredPos, swimDrawing, swimRoutes,
