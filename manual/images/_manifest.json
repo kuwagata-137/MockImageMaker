@@ -443,6 +443,12 @@
   "h": 800,
   "dsf": 2
  },
+ "vd_html_pdf": {
+  "file": "vd_html_pdf.png",
+  "w": 664,
+  "h": 512,
+  "dsf": 2
+ },
  "vd_pdf_cover": {
   "file": "vd_pdf_cover.png",
   "w": 1122,

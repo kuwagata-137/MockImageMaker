@@ -1534,11 +1534,14 @@ body.xp-doc{display:block;height:auto;overflow:visible;background:#fff;-webkit-p
 body.xp-doc .pg{box-shadow:none}
 body.xp-doc .pg+.pg{break-before:page}
 .xp-png{background:#fff;position:relative}
-/* ブラウザの印刷（q38）。アプリの画面の代わりに案内の文だけを出す（PDF・PNG はデスクトップ版の「出力」で作る） */
+/* ブラウザの印刷（q38）。アプリの画面の代わりに案内の文だけを出す（PDF・PNG はデスクトップ版の「出力」で作る）。
+   単体で開いた HTML（body.sa-mode）は、ツールバーの「PDF を出力する」で、ブラウザの印刷画面から PDF に保存できる（2026-11-16 の q186 案A）。
+   Ctrl+P はその出力のウィンドウを開くので、この案内文が印刷されるのは、ブラウザのメニューから印刷したときだけ */
 @media print{
   body:not(.xp-doc){display:block;height:auto;overflow:visible;background:#fff}
   body:not(.xp-doc)>*{display:none!important}
   body:not(.xp-doc)::before{content:'この画面は印刷できません。PDF は、デスクトップ版のモックイメージメーカーの「画面設計を出力する」で作ります（HTML を受け取った人は、画面設計を作った人に PDF を頼んでください）。';display:block;padding:24px;font-size:14px;line-height:1.8;color:#1e293b}
+  body.sa-mode:not(.xp-doc)::before{content:'この画面は印刷できません。PDF は、ツールバーの「PDF を出力する」（Ctrl+P）で出力してください。'}
 }
 </style>
 </head>
@@ -15134,8 +15137,10 @@ function toolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
   const addItemBtn = '<button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="項目一覧に項目を追加します"><span class="ico">＋</span>項目を<br>追加する</button>';
   return [
+    // 単体で開いた HTML の［PDF を出力する］（2026-11-16 の q187 案A。ブラウザの印刷画面で PDF に保存する。q186 案A）
     group('ファイル', (standalone
       ? '<button class="bigbtn" data-action="save-html" title="変更した中身を HTML ファイルに保存します（Ctrl+S）"><span class="ico">💾</span>HTML を<br>保存する</button>'
+        + '<button class="bigbtn" data-action="export" id="tb-pdf" title="この画面設計を PDF に出力します（Ctrl+P）"><span class="ico">⇪</span>PDF を<br>出力する</button>'
       : `<button class="bigbtn" data-action="home" id="tb-home" title="画面設計の一覧へ戻ります"><span class="ico">←</span><span id="tb-home-label">一覧へ戻る</span></button>
       <button class="bigbtn" data-action="export" title="この画面設計を PDF・HTML・PNG に出力します"><span class="ico">⇪</span>画面設計を<br>出力する</button>`)
       // 改訂履歴のボタンと、その下の ▼（改訂する・改訂履歴のメニュー。改訂の機能が増えたら、このメニューに足す。q40c）
@@ -18425,7 +18430,8 @@ function nudgePart(dx, dy) {
 
 // ── 8. 出力と取り込み ─────────────────────────────────────────────────────
 // 出力の窓（PDF・HTML・PNG。画像 q33）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面。q34〜q36）・
-// HTML の出力と、単体で開いたとき（q37）・HTML の取り込み（q39）。PDF・PNG のファイルは、デスクトップ版の main（export.js）が作る（q38）
+// HTML の出力と、単体で開いたとき（q37）・HTML の取り込み（q39）。PDF・PNG のファイルは、デスクトップ版の main（export.js）が作る（q38）。
+// 単体で開いた HTML の PDF は、同じ印刷用文書を、ブラウザの印刷画面で PDF に保存してもらう（printDocInBrowser。2026-11-16 の q186 案A）
 const EMBED_ID = 'mim-embedded'; // 出力した HTML に画面設計を埋め込む script の id（ビジネスダイアグラムメーカー・CheckListMaker と別の名前）
 const EMBED_FORMAT = 'mockimagemaker-design';
 const IMPORT_MAX_CHARS = 50 * 1024 * 1024; // 取り込む HTML の大きさの上限
@@ -18842,6 +18848,11 @@ function exportDiff(d, state, revId) {
   if (!isVersionRow(r) || !hasSnapshot(r)) return null;
   return { result: designDiff(designFromSnapshot(d, r), d, state), label: revisionTitle(r), title: `${revisionTitle(r)}（${revisionDay(r)}）` };
 }
+// 単体で開いた HTML の、比べる版の写し（standalone.diffBase。readDiffBase の戻り値）から組む変更マーク（2026-11-16 の q186 の後に Claude が決めた）。形は exportDiff と同じ
+function baseExportDiff(d, state, base) {
+  if (!base || !base.design) return null;
+  return { result: designDiff(base.design, d, state), label: base.title, title: base.day ? `${base.title}（${base.day}）` : base.title };
+}
 // 画面のページの見出しの右に出す、比べた版との違いの数
 function diffSumHtml(df, info) {
   if (!df || !info) return '';
@@ -18875,7 +18886,7 @@ function exportLayout(d, state, opts, exportedAt) {
   const screens = d.screens.map((s, i) => ({ s, i })).filter(({ s }) => !opts.screenIds || opts.screenIds.includes(s.id));
   const withMap = !!opts.map && hasMapLinks(d, state);
   const itemChunks = opts.items ? splitItemRows(itemRowsHtml(d, state), aw, ah, measured) : [];
-  const df = opts.diffRevId ? exportDiff(d, state, opts.diffRevId) : null;
+  const df = opts.diffRevId ? exportDiff(d, state, opts.diffRevId) : opts.diffBase ? baseExportDiff(d, state, opts.diffBase) : null;
   const changesTitle = df ? `${df.title}からの変更点` : '';
   const changeChunks = !df ? [] : df.result.rows.length ? splitItemRows(changeRowsHtml(df.result.rows), aw, ah, measured, printChangeTable) : [[]];
   const proc = opts.process && hasProcessPage(d) ? processPagePlan(d, state, aw, ah, measured, idTag) : null;
@@ -19557,7 +19568,20 @@ function syncSlideOrient(m, paperName, orientName) {
     if (slide && x.value === 'landscape') x.checked = true;
   });
 }
-function exportDialogBody(d, desk, kind, hasMap) {
+// 単体で開いた HTML の出力のウィンドウに添える案内文（2026-11-16 の q186 案A。引継書 7-2: 送信先が「PDF に保存」でないと、横向きのページが横倒しになる）
+const BROWSER_PDF_NOTE = '［PDF を出力…］を押すと、ブラウザの印刷画面が開きます。印刷画面の「送信先」で「PDF に保存」（Edge では「PDF として保存」）を選び、［保存］を押してください。'
+  + '「Microsoft Print to PDF」やプリンターを選ぶと、横向きのページが縦向きの用紙に横倒しで印刷されます。';
+// 単体で開いた HTML の変更マークの欄（HTML に比べる版の写しが入っているときだけ。最初の印は、編集の画面で変更マークを出しているか）
+function baseDiffPick() {
+  const b = standalone && standalone.diffBase;
+  if (!b) return '';
+  return `<div class="xp-sub">変更マーク</div><label class="check xp-diff"><input type="checkbox" data-xdiffbase${ui.diffHidden ? '' : ' checked'}><span>`
+    + `「${esc(b.title)}」（${esc(b.day)}）との違いを変更マークで示す`
+    + '<small class="sub">追加したアイテムに「新」、設定・位置・大きさを変えたアイテムに「変」を付け、削除したアイテムを設定一覧の下に「削除したアイテム」として並べます。'
+    + '表紙の次に、その版からの変更点の一覧のページを入れます。</small></span></label>';
+}
+// pdfOnly: 単体で開いた HTML の、PDF だけの出力のウィンドウ（PDF・HTML・PNG の札を出さない）
+function exportDialogBody(d, desk, kind, hasMap, pdfOnly = false) {
   const o = exportOpts;
   const kinds = EXPORT_KINDS.map(([k, ic, name, note]) => {
     const off = !desk && k !== 'html'; // PDF・PNG はデスクトップ版だけ（q38）
@@ -19578,8 +19602,9 @@ function exportDialogBody(d, desk, kind, hasMap) {
       + `<small class="sub">追加したアイテムに「新」、設定・位置・大きさを変えたアイテムに「変」を付け、削除したアイテムを設定一覧の下に「削除したアイテム」として並べます。${more}</small></span></label>`;
   };
   const slide = o.paper === 'slide';
-  return `<div class="xp-kinds">${kinds}</div>
-    <div class="xp-box" data-xbox="pdf"${kind === 'pdf' ? '' : ' hidden'}>
+  // 単体で開いた HTML（pdfOnly）: PDF の設定だけを出し、ブラウザの印刷画面の案内文を添える。「出力したら PDF を開く」は出さない。
+  // 変更マークは、HTML に比べる版の写し（standalone.diffBase）が入っているときだけ選べる（2026-11-16 の q186 の後に Claude が決めた）
+  const pdfBox = `<div class="xp-box" data-xbox="pdf"${kind === 'pdf' ? '' : ' hidden'}>
       <div class="xp-row">
         <div class="field"><span>用紙</span>${xpSeg('xp-paper', o.paper, Object.entries(PAPERS).map(([k, p]) => [k, p.label]))}</div>
         <div class="field"><span>向き</span>${xpSeg('xp-orient', slide ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
@@ -19587,9 +19612,13 @@ function exportDialogBody(d, desk, kind, hasMap) {
       <div class="xp-sub">出力するページ</div>
       <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', '関連図', hasMap, 'ほかの画面設計との関連がないので、出しません')}${page('items', '項目一覧', d.items.length > 0, '項目がないので、出しません')}${page('process', 'ステータスの流れ', hasProcessPage(d), 'ステータスを進める操作がないので、出しません')}${page('flow', '画面遷移図', hasFlowPage(d, store.state), 'ボタン・リンクの移動先がないので、出しません')}${page('settings', SETTINGS_PAGE_LABEL, true, '')}</div>
       ${pick}
-      ${diffPick('pdf')}
-      <label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>出力したら PDF を開く</span></label>
-    </div>
+      ${pdfOnly ? baseDiffPick() : diffPick('pdf')}
+      ${pdfOnly ? `<p class="xp-note xp-print-note">${esc(BROWSER_PDF_NOTE)}</p>`
+    : `<label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>出力したら PDF を開く</span></label>`}
+    </div>`;
+  if (pdfOnly) return pdfBox;
+  return `<div class="xp-kinds">${kinds}</div>
+    ${pdfBox}
     <div class="xp-box" data-xbox="html"${kind === 'html' ? '' : ' hidden'}>
       <p class="xp-note">画面設計 1 つ分（画面 ${d.screens.length} つ・項目 ${d.items.length} 個）を、アプリごと 1 つの HTML ファイルにします。<br>
         受け取った人は、ブラウザ（Chrome・Edge など）で開いて、見る・変更する・保存し直すことができます。</p>
@@ -19609,16 +19638,18 @@ function exportDialogBody(d, desk, kind, hasMap) {
 // 出力の窓を開き、選んだ形で出力する。戻り値は出力の結果（キャンセルは null）
 async function openExportDialog(designId) {
   const d = findDesign(store.state, designId);
-  if (!d || standalone) return null;
+  if (!d) return null;
   flushSideField();
+  // 単体で開いた HTML では、PDF だけの出力のウィンドウ（ブラウザの印刷画面で PDF に保存する。2026-11-16 の q186 案A）
+  const pdfOnly = !!standalone;
   const desk = !!window.exportAPI;
-  const kind = desk ? exportOpts.kind : 'html';
+  const kind = pdfOnly ? 'pdf' : desk ? exportOpts.kind : 'html';
   const hasMap = hasMapLinks(d, store.state);
   const r = await showDialog({
-    title: `「${d.name}」を出力する`,
-    okLabel: '画面設計を出力…',
+    title: pdfOnly ? `「${d.name}」を PDF に出力する` : `「${d.name}」を出力する`,
+    okLabel: pdfOnly ? 'PDF を出力…' : '画面設計を出力…',
     width: 640,
-    body: exportDialogBody(d, desk, kind, hasMap),
+    body: exportDialogBody(d, desk, kind, hasMap, pdfOnly),
     init(m) {
       const syncOrient = () => syncSlideOrient(m, 'xp-paper', 'xp-orient');
       m.addEventListener('click', (e) => {
@@ -19635,7 +19666,7 @@ async function openExportDialog(designId) {
       syncOrient();
     },
     collect(m) {
-      const k = m.querySelector('.xp-kind.on').dataset.xkind;
+      const k = pdfOnly ? 'pdf' : m.querySelector('.xp-kind.on').dataset.xkind;
       const box = m.querySelector(`[data-xbox="${k}"]`);
       const screenIds = [...box.querySelectorAll('[data-xscreen]:checked')].map((x) => x.value);
       if (k === 'png' && !screenIds.length) return { error: '出力する画面を 1 つ以上選んでください。' };
@@ -19645,11 +19676,15 @@ async function openExportDialog(designId) {
       const checked = (key) => { const x = box.querySelector(`[data-xpage="${key}"]`); return !!x && !x.disabled && x.checked; };
       if (k === 'png') return { kind: k, screenIds, diffRevId, diffOn, settings: checked('settings') };
       if (k !== 'pdf') return { kind: k, screenIds, diffRevId, diffOn };
+      // 単体で開いた HTML の変更マーク（比べる版の写し）と、「出力したら PDF を開く」がないときの前の設定
+      const xb = box.querySelector('[data-xdiffbase]');
+      const xo = box.querySelector('[data-xopen]');
       const r2 = {
         kind: k, screenIds, paper: (box.querySelector('[name="xp-paper"]:checked') || {}).value || 'A4',
         orient: (box.querySelector('[name="xp-orient"]:checked') || {}).value || 'landscape',
         cover: checked('cover'), map: checked('map'), items: checked('items'), process: checked('process'), flow: checked('flow'), settings: checked('settings'),
-        openAfter: !!box.querySelector('[data-xopen]').checked, diffRevId, diffOn,
+        openAfter: xo ? xo.checked : exportOpts.openAfter, diffRevId, diffOn,
+        ...(xb && xb.checked && standalone ? { diffBase: standalone.diffBase } : {}),
       };
       if (!screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((key) => r2[key])) return { error: '出力するページか画面を 1 つ以上選んでください。' };
       return r2;
@@ -19687,7 +19722,7 @@ async function runExport(designId, r) {
     reportExport(res, 'HTML');
     return res;
   }
-  if (!api) return null; // PDF・PNG はデスクトップ版だけ
+  if (!api && r.kind !== 'pdf') return null; // PNG はデスクトップ版だけ
   const what = r.kind === 'pdf' ? 'PDF' : 'PNG';
   const working = `${what} を作っています…`;
   await startWorking(working);
@@ -19695,6 +19730,14 @@ async function runExport(designId, r) {
     const cur = findDesign(store.state, designId) || d; // 描かれるのを待つ間に直っていれば、直した中身で組む
     if (r.kind === 'pdf') {
       const doc = exportDocument(cur, store.state, r);
+      // ブラウザで開いたとき（単体で開いた HTML）は、ブラウザの印刷画面で PDF に保存してもらう（2026-11-16 の q186 案A）。
+      // 印刷画面を開く前に、作っている間のお知らせを消す。保存したかどうかはページから分からないので、うまくいったときはお知らせを出さない
+      if (!api) {
+        endWorking(working);
+        res = await browserPrint(doc.html, safeFileName(cur.name));
+        if (res && !res.ok) toast(`PDF を出力できませんでした（${res.error || 'わからない理由'}）。`);
+        return res;
+      }
       res = await api.savePdf({ name: safeFileName(cur.name) + '.pdf', html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
     } else {
       res = await api.savePng({ files: exportPngDocs(cur, store.state, r.screenIds, r.diffRevId, r.settings === false ? { table: false } : {}) });
@@ -19705,6 +19748,61 @@ async function runExport(designId, r) {
     endWorking(working);
   }
 }
+
+// ── ブラウザの印刷画面で PDF に保存する（単体で開いた HTML。2026-11-16 の q186 案A）──
+// 印刷用文書（デスクトップ版の PDF と同じ HTML。exportDocument）を見えない iframe に読み込み、iframe の印刷画面を開く。
+// 印刷されるのは iframe の文書だけなので、ページ構成・用紙と向き（@page）・背景の色は、デスクトップ版の PDF と同じになる。
+// name は、送信先「PDF に保存」の既定のファイル名（ブラウザが .pdf を付ける。デスクトップ版の「顧客管理.pdf」と同じ名前にする）。
+// 戻り値 { ok: true }（印刷画面を開いた。保存したかどうかはページから分からない）か { ok: false, error }。
+// iframe は、印刷画面を閉じた後（afterprint）に消す。消えずに残ったものは、次に印刷するときに消す。テストでは setBrowserPrint で差し替える
+const PRINT_FRAME_ID = 'mim-print-frame';
+const PRINT_LOAD_TIMEOUT = 20000;
+async function printDocInBrowser(html, name) {
+  const old = document.getElementById(PRINT_FRAME_ID);
+  if (old) old.remove();
+  const frame = document.createElement('iframe');
+  frame.id = PRINT_FRAME_ID;
+  frame.setAttribute('aria-hidden', 'true');
+  frame.setAttribute('tabindex', '-1');
+  // 文書の script は動かさない（印刷用文書に script はない）。中を読むための allow-same-origin と、印刷画面を開くための allow-modals だけを許す
+  frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
+  frame.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;border:0;visibility:hidden';
+  let timer = null;
+  const loaded = new Promise((resolve, reject) => {
+    frame.addEventListener('load', resolve, { once: true });
+    timer = setTimeout(() => reject(new Error('印刷用の文書を読み込めませんでした')), PRINT_LOAD_TIMEOUT);
+  });
+  frame.srcdoc = html;
+  document.body.appendChild(frame);
+  try {
+    await loaded;
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument;
+    if (!win || !doc) throw new Error('印刷用の文書を開けませんでした');
+    // 字の形（フォント）が整うのを待つ（デスクトップ版の export.js と同じ。整う前に印刷すると、字の幅がずれるため）
+    if (doc.fonts && doc.fonts.ready) await doc.fonts.ready;
+    const pageTitle = document.title;
+    doc.title = name;
+    document.title = name; // ブラウザによっては、ページの題名を既定のファイル名にするため
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      document.title = pageTitle;
+      if (frame.isConnected) frame.remove();
+    };
+    win.addEventListener('afterprint', () => setTimeout(finish, 0), { once: true });
+    win.focus();
+    win.print(); // Chrome・Edge では、印刷画面を閉じるまで戻らない
+    return { ok: true };
+  } catch (e) {
+    if (frame.isConnected) frame.remove();
+    return { ok: false, error: (e && e.message) || String(e) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+let browserPrint = printDocInBrowser;
 
 // ── システムの説明書の窓（第 10 段階の後半。q76・q77・画像 q81_1）──
 // 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない。画面設計の出力の窓の設定 exportOpts とは別）。
@@ -20144,11 +20242,15 @@ function runCommand(cmd, arg) {
       (cmd === 'newDesign' ? newDesignWithDialog(from) : newSystemWithDialog()).catch(reportPageError);
       return true;
     }
-    // 出力と取り込み（第 5 段階）。単体で開いた HTML では、出力の窓と取り込みは出さず、HTML を保存し直すだけ（q37）
+    // 出力と取り込み（第 5 段階）。単体で開いた HTML では、取り込みは出さず、HTML を保存し直すだけ（q37）。
+    // 出力は、PDF だけの出力のウィンドウを開く（2026-11-16 の q186 案A。ブラウザの印刷画面で PDF に保存する）
     // システムの画面では、メニューバーの「出力」の小さなメニュー（説明書（PDF）を出力…・MPD に出力…。第 11 段階。q82）。ブラウザで開いたときは
     // メニューを出さず、説明書の窓の入口で、デスクトップ版で使えることを知らせる（openSystemDocDialog）
     case 'exportDialog':
-      if (standalone) return true;
+      if (standalone) {
+        openExportDialog(standalone.designId).catch(reportPageError);
+        return true;
+      }
       if (ui.view === 'editor') openExportDialog(ui.designId).catch(reportPageError);
       else if (ui.view === 'system' && window.exportAPI) {
         flushSideField(); // メニューの項目へフォーカスが移る前に、打ちかけの文字を保存する
@@ -20418,6 +20520,13 @@ function onKeyDown(e) {
     e.preventDefault();
     if (isDialogOpen()) toast('ウィンドウを閉じてから保存してください。');
     else runCommand('saveHtml');
+    return;
+  }
+  // 単体で開いた HTML では、Ctrl+P で PDF の出力のウィンドウを開く（ブラウザの印刷は、アプリの画面の代わりに案内文だけを印刷するため止める。2026-11-16 の q186）
+  if (standalone && (e.ctrlKey || e.metaKey) && !e.altKey && String(e.key || '').toLowerCase() === 'p') {
+    e.preventDefault();
+    if (isDialogOpen()) toast('ウィンドウを閉じてから PDF を出力してください。');
+    else runCommand('exportDialog');
     return;
   }
   if (isDialogOpen()) return;
@@ -24413,6 +24522,7 @@ async function boot() {
   store = created.store;
   store.blockReason = created.blockReason || null;
   if (embedded) {
+    document.body.classList.add('sa-mode'); // ブラウザのメニューから印刷したときの案内文を、単体で開いた HTML 用にする（@media print）
     if (created.blockReason) showBanner(created.blockReason + (created.failed ? '' : ' この HTML は、新しい版のアプリで開いてください。'));
   } else if (created.blockReason) showBanner(created.blockReason + ' 今のデータを消さないように、保存を止めています。');
   else if (created.notice) showBanner(created.notice);
@@ -24477,6 +24587,7 @@ function exposeForTest() {
     WINDOW_POS, windowRect, partBounds, clampGroupMove, HEADER_KINDS, PORTAL_BAND, portalOf, bandHeight, templateUnderId,
     CRM_SAMPLE, buildCrmSample, articlesHeight,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
+    BROWSER_PDF_NOTE, PRINT_FRAME_ID, printDocInBrowser, setBrowserPrint: (fn) => { browserPrint = fn || printDocInBrowser; },
     setMaterialWaitMs: (ms) => { materialWaitMs = ms; },
     ready: true,
   });
