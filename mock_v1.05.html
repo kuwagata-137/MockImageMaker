@@ -1116,7 +1116,8 @@ body.screen-sorting .sys-dcard.dragging{opacity:.4}
 .sys-swim{max-height:max(240px,calc(100vh - 300px))}
 .swim-zoom{position:relative;overflow:hidden}
 .map-zoom{position:relative;overflow:hidden}
-#db-view.hand .map-canvas{cursor:grab}
+#db-view.hand .map-canvas,#home-map.hand{cursor:grab}
+.mz-group{display:inline-flex;gap:4px;align-items:center}
 #db-view .map-canvas.grabbing,#db-view .map-canvas.grabbing *{cursor:grabbing!important}
 .mnode.sw.sel{outline:3px solid #2563eb;outline-offset:3px}
 .swim-svg .sw-grp.sel{stroke:#3b82f6;fill:rgba(59,130,246,.05)}
@@ -1517,6 +1518,7 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .map-head i.s,.xp-legend i.s{border-top:1.5px solid #475569}
 .map-head i.sb,.xp-legend i.sb{border-top:1.5px dashed #ea580c}
 .map-head i.g,.xp-legend i.g{border-top:2.5px dotted #16a34a}
+.map-head b.tag,.xp-legend b.tag{display:inline-block;border:1.2px solid #1d3f6e;border-radius:8px;padding:0 6px;margin-right:5px;color:#1d3f6e;font-size:11px;line-height:15px}
 .xp-fit{display:flex;justify-content:center;align-items:flex-start}
 .xp-fit .mnode,.xp-png .mnode{cursor:default}
 .xp-proc{display:flex;gap:32px;align-items:flex-start}
@@ -1532,11 +1534,14 @@ body.xp-doc{display:block;height:auto;overflow:visible;background:#fff;-webkit-p
 body.xp-doc .pg{box-shadow:none}
 body.xp-doc .pg+.pg{break-before:page}
 .xp-png{background:#fff;position:relative}
-/* ブラウザの印刷（q38）。アプリの画面の代わりに案内の文だけを出す（PDF・PNG はデスクトップ版の「出力」で作る） */
+/* ブラウザの印刷（q38）。アプリの画面の代わりに案内の文だけを出す（PDF・PNG はデスクトップ版の「出力」で作る）。
+   単体で開いた HTML（body.sa-mode）は、ツールバーの「PDF を出力する」で、ブラウザの印刷画面から PDF に保存できる（2026-11-16 の q186 案A）。
+   Ctrl+P はその出力のウィンドウを開くので、この案内文が印刷されるのは、ブラウザのメニューから印刷したときだけ */
 @media print{
   body:not(.xp-doc){display:block;height:auto;overflow:visible;background:#fff}
   body:not(.xp-doc)>*{display:none!important}
   body:not(.xp-doc)::before{content:'この画面は印刷できません。PDF は、デスクトップ版のモックイメージメーカーの「画面設計を出力する」で作ります（HTML を受け取った人は、画面設計を作った人に PDF を頼んでください）。';display:block;padding:24px;font-size:14px;line-height:1.8;color:#1e293b}
+  body.sa-mode:not(.xp-doc)::before{content:'この画面は印刷できません。PDF は、ツールバーの「PDF を出力する」（Ctrl+P）で出力してください。'}
 }
 </style>
 </head>
@@ -1580,7 +1585,8 @@ const APP_SCRIPT = document.currentScript ? document.currentScript.textContent :
 // ── 2. データの形（純関数）────────────────────────────────────────────────────
 // { schemaVersion, settings: { customTargets, mapPos }, systems, designs: [ { id, name, target, look, bandTabs, description,
 //   createdAt, updatedAt, trashedAt, revisions, items, screens: [ { id, name, device, width, height,
-//   showHeader, tablePos, itemView, parts, callouts } ], mapPos, processPos, flowPos } ] }
+//   showHeader, tablePos, itemView, parts, callouts } ], mapPos, processPos, flowPos, flowVertical } ] }
+// flowVertical（画面遷移図を縦向きで描く。縦向きのときだけ true を持つ）は v1.05 段階 B（q185 案C）で足した。データの形の版は上げない
 // look（見た目）・bandTabs（Salesforce の帯のタブ）・itemView（項目の出し方）は第 12 段階（v1.01）で足した。データの形の版は上げない
 // （ないときは標準・ホームと画面設計の名前・入力の形として読む。v1.00 で開いても、知らない項目として残る）。
 // items（データベースの項目の一覧表）と parts の 1 つずつの形は、下の「項目」「部品」に書いた。callouts（吹き出し）は第 3 段階の後半で使う。
@@ -3460,7 +3466,7 @@ function revisionDate(day) {
 
 // 画面設計の中身（前の版に戻す・取り込んで置き換える・中身を比べるところ）。画面設計に中身の項目を足したら、ここに足す
 // （restoreRevision・replaceWithImported・designContent がこれを使う。3 か所に並べていると、足すときに漏れるため。第 7 段階）
-const DESIGN_CONTENT_KEYS = ['name', 'target', 'look', 'bandTabs', 'portal', 'description', 'items', 'screens', 'mapPos', 'processPos', 'flowPos'];
+const DESIGN_CONTENT_KEYS = ['name', 'target', 'look', 'bandTabs', 'portal', 'description', 'items', 'screens', 'mapPos', 'processPos', 'flowPos', 'flowVertical'];
 // 画面設計の中身だけを抜き出す。copy のときは中身を写す
 function designContentOf(d, copy = false) {
   const out = {};
@@ -3669,6 +3675,7 @@ function designDiff(base0, cur0, state) {
   if ((pa.menu || []).join('\n') !== (pb.menu || []).join('\n')) design.push(fromTo('ポータルのメニュー', portalOf(base).menu.join('・'), portalOf(cur).menu.join('・')));
   if ((pa.button || '') !== (pb.button || '')) design.push(fromTo('ポータルの右上のボタン', portalOf(base).button, portalOf(cur).button));
   if (base.description !== cur.description) design.push(fromTo('説明', base.description, cur.description));
+  if (flowVerticalOf(base) !== flowVerticalOf(cur)) design.push(fromTo('画面遷移図の向き', flowVerticalOf(base) ? '縦向き' : '横向き', flowVerticalOf(cur) ? '縦向き' : '横向き')); // v1.05 段階 B
   if (design.length) rows.push({ screen: '画面設計', no: '－', name: '－', k: 'chg', change: '設定変更', text: design.join('\n') });
   // 画面の順番は、両方にある画面どうしの並びで比べる（足した・消した画面は、画面の追加・削除の行に出る）
   const common = (a, b) => a.screens.filter((s) => b.screens.some((x) => x.id === s.id));
@@ -4362,7 +4369,7 @@ function normalizeDesign(src) {
   screens.forEach((s) => s.parts.forEach((p) => {
     if ((p.type === 'button' || p.type === 'link') && isObj(p.props) && p.props.designId === id) p.props.designId = '';
   }));
-  const { portal: portal0, ...rest } = d;
+  const { portal: portal0, flowVertical: vertical0, ...rest } = d;
   const portal = normalizePortal(portal0); // お客さまポータルのヘッダーのサイトの名前・メニュー・右上のボタン（書いたときだけ持つ。第 16 段階）
   return {
     ...rest,
@@ -4372,6 +4379,7 @@ function normalizeDesign(src) {
     look: lookOf(d).id,
     bandTabs: normalizeBandTabs(d.bandTabs),
     ...(portal ? { portal } : {}),
+    ...(vertical0 === true ? { flowVertical: true } : {}), // 画面遷移図を縦向きで描く（v1.05 段階 B・q185 案C。横向きのときは項目を置かない）
     description: str(d.description),
     createdAt,
     updatedAt: str(d.updatedAt) || createdAt,
@@ -6297,6 +6305,17 @@ const actions = {
     if (!d || !Object.keys(d[field] || {}).length) return false;
     return mutateDesign(designId, (dd) => { dd[field] = {}; }, { touch: false });
   },
+  // 画面遷移図の向き（v1.05 段階 B・q185 案C）。縦向きのときだけ flowVertical: true を持つ。向きを変えると、ドラッグで動かした位置（flowPos）は使わず、
+  // 自動の並びに戻す（元に戻すで戻せる）。PDF の図が変わるので、画面設計の更新日時も変える。向きが同じときは何もしない（false）
+  setFlowVertical(designId, vertical) {
+    const d = findDesign(store.state, designId);
+    if (!d || flowVerticalOf(d) === !!vertical) return false;
+    return mutateDesign(designId, (dd) => {
+      if (vertical) dd.flowVertical = true;
+      else delete dd.flowVertical;
+      dd.flowPos = {};
+    });
+  },
   setMapPos(designId, key, pos) { return actions.setViewPos(designId, 'map', key, pos); },
   resetMapPos(designId) { return actions.resetViewPos(designId, 'map'); },
 
@@ -7821,6 +7840,8 @@ const ui = {
   itemId: null, // データベースの項目の一覧表で選んでいる項目の id
   addItemMenu: false, // 「＋ 項目を足す」の種類の小さなメニューを開いているか
   homeMap: false, // 最初の画面で、カードの代わりにつながりの図を出しているか（アプリを閉じるまで覚えておく）
+  homeZoom: 1, // 最初の画面の関連図の倍率（v1.05 段階 B・q171。保存しない）
+  homeFitted: false, // 最初の画面の関連図を、初めて表示したときの倍率（fitHomeMapFirst）で表示したか（q184。アプリを閉じるまで覚える）
   colId: null, // 表の部品の設定の欄で選んでいる列の id
   screenMenu: null, // 左の画面の一覧で「…」のメニューを開いている画面の id
   prevScreenId: null, // 画面を足す・複製する前に開いていた画面の id（元に戻すでその画面が消えたときに戻る先）
@@ -7880,7 +7901,9 @@ function renderHome() {
         <div class="trash" id="home-trash">${renderTrash()}</div>`}
       </section>
     </main>`;
+  if (ui.homeMap) applyMapZoom();
   keep();
+  if (ui.homeMap) fitHomeMapFirst();
   renderAiChrome();
 }
 // 描き直す前のスクロールの位置を控え、描き直した後に戻す関数を返す（同じ id・クラスの要素が描き直した後もあるときだけ戻す）
@@ -7961,7 +7984,8 @@ const mapMarker = (id, col) => `
 function mapEdgesSvg(model, pos, w, h, o = {}) {
   // 関連図と画面遷移図は、直角の線で引く（v1.05）。線と文字が図の枠（w × h）からはみ出すときは、SVG をその分だけ広げる（ドラッグの間）。
   // ステータスの流れ（vertical）と、スイムレーン図の古い描き方の引数（under・lineAttr・extra）を渡したときは、今までの線
-  if (!o.vertical && !o.under && !o.lineAttr && !o.extra) {
+  if (o.vertical) return procEdgesSvg(model, pos, w, h, o); // ステータスの流れ（v1.05 段階 B）
+  if (!o.under && !o.lineAttr && !o.extra) {
     const wire = mapWireRoute(model, mapWires(model, o), pos);
     return mapWireSvg(wire, Math.ceil(Math.max(w, wire.right + 40)), Math.ceil(Math.max(h, wire.bottom + 40)), o);
   }
@@ -8214,6 +8238,73 @@ function mapWireGaps(model, ends) {
   }
   return gaps;
 }
+// 平行に走る 2 本の線の間の下限（v1.05 段階 B。ユーザーの要望 2026-11-13「不用意に線が重ならないような仕組みにしたい」）。
+// 関連図・画面遷移図（横向き・縦向き）で守る。ステータスの流れは、右を回る線を PROC_LANE ずつ離した通り道に引くので、この下限より離れている
+const WIRE_GAP_MIN = 10;
+// 線の道（routes。線の id ごとの { wps }）の中で、ほかの線と平行に近づく所。
+// [{ a, b（線の id）, dir（'h' 横・'v' 縦）, ca, cb（2 本の区間の位置。横なら y、縦なら x）, gap（間）, lap（並んで走る長さ）, sa, sb（2 本の区間の範囲 [始まり, 終わり]） }]。並んで走る長さが 4 以下の所（角で触れるだけの所）は数えない
+function wireOverlaps(routes, min = WIRE_GAP_MIN) {
+  const segs = [];
+  Object.entries(routes).forEach(([id, r]) => (r && r.wps ? r.wps : []).forEach((p, i, wps) => {
+    if (!i) return;
+    const q = wps[i - 1];
+    const dir = Math.abs(p[1] - q[1]) < 0.5 ? 'h' : Math.abs(p[0] - q[0]) < 0.5 ? 'v' : null;
+    if (!dir) return;
+    const [c, k] = dir === 'h' ? [p[1], 0] : [p[0], 1];
+    segs.push({ id, dir, c, lo: Math.min(p[k], q[k]), hi: Math.max(p[k], q[k]) });
+  }));
+  const out = [];
+  segs.forEach((s, i) => segs.slice(i + 1).forEach((t) => {
+    if (s.id === t.id || s.dir !== t.dir) return;
+    const [gap, lap] = [Math.abs(s.c - t.c), Math.min(s.hi, t.hi) - Math.max(s.lo, t.lo)];
+    if (lap > 4 && gap < min) out.push({ a: s.id, b: t.id, dir: s.dir, ca: s.c, cb: t.c, gap, lap, sa: [s.lo, s.hi], sb: [t.lo, t.hi] });
+  }));
+  return out;
+}
+// 線の道 wps が、両端のボックス（from・to）でないボックスの中を通るか
+function wireHitsBox(wps, boxes, from, to) {
+  return boxes.some((b) => b.key !== from && b.key !== to && wps.some((p, i) => {
+    if (!i) return false;
+    const q = wps[i - 1];
+    const [x0, x1, y0, y1] = [Math.min(p[0], q[0]), Math.max(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[1], q[1])];
+    return x0 < b.x + b.w - 2 && x1 > b.x + 2 && y0 < b.y + b.h - 2 && y1 > b.y + 2;
+  }));
+}
+// 線を引き（route(mids)。mids は線ごとの曲がる位置）、2 つのことを直して返す（v1.05 段階 B）。
+// ① 列を飛ばす線に割り振った通り道（skips）で、線がほかのボックスの中を通るときは、その線の割り振りをやめる。
+// ② ほかの線と WIRE_GAP_MIN より近づく所を、曲がる位置 mid（流れと直交する区間の位置。横向きの図は縦の区間の x、縦向きの図は横の区間の y）を動かして直す。
+//    流れと直交する区間どうしが近づくときは、後の線の区間を、前の線の区間から WIRE_GAP_MIN 離した位置へずらす。
+//    流れの向きの区間どうしが並んで走るときは、先に始まる区間の線を、もう 1 本の区間が始まる位置の WIRE_GAP_MIN 手前で曲げる
+//    （例: 列を飛ばす線が、間のボックスの手前まで進んでから曲がり、間のボックスへ入る線と並ぶとき）。
+//    3 回まで繰り返し、近づく所が減らなくなったら・ボックスの中を通る線が増えたらやめる
+function wireRoutesApart(route, wires, mids, skips, boxes, vertical) {
+  let routes = route(mids);
+  const bad = wires.filter((w) => skips.has(w) && routes[w.id] && wireHitsBox(routes[w.id].wps, boxes, w.from, w.to));
+  if (bad.length) {
+    bad.forEach((w) => mids.delete(w));
+    routes = route(mids);
+  }
+  const cross = vertical ? 'h' : 'v';
+  let best = { routes, n: wireOverlaps(routes).length, mids };
+  for (let k = 0; k < 3 && best.n; k++) {
+    const next = new Map(best.mids);
+    wireOverlaps(best.routes).forEach((o) => {
+      if (o.dir === cross) {
+        const w = wires.find((x) => x.id === o.b);
+        if (w) next.set(w, o.ca + Math.sign(o.cb - o.ca || 1) * WIRE_GAP_MIN);
+        return;
+      }
+      const [first, start] = o.sa[0] <= o.sb[0] ? [o.a, o.sb[0]] : [o.b, o.sa[0]];
+      const w = wires.find((x) => x.id === first);
+      if (w) next.set(w, start - WIRE_GAP_MIN);
+    });
+    const r = route(next);
+    const n = wireOverlaps(r).length;
+    if (n >= best.n || wires.some((w) => r[w.id] && wireHitsBox(r[w.id].wps, boxes, w.from, w.to) && !(best.routes[w.id] && wireHitsBox(best.routes[w.id].wps, boxes, w.from, w.to)))) break;
+    best = { routes: r, n, mids: next };
+  }
+  return best.routes;
+}
 // ボックスの位置（覚えた位置と、自動の位置）。線の数でボックスの高さが変わり、高さで自動の位置が変わるので、2 回並べ直して落ち着かせる
 function mapWireLayout(model, saved, wires, baseH) {
   let pos = mapPlace(model, saved, mapLayout(model, baseH), baseH);
@@ -8232,14 +8323,23 @@ function mapWireRoute(model, wires, pos) {
   const boxes = model.nodes.map((n) => ({ key: n.key, x: pos[n.key].x, y: pos[n.key].y, w: MAP_W, h: pos[n.key].h || MAP_H }));
   // 曲がる位置。左右に向かい合う 2 つのボックスの間（間にほかのボックスがない所）は、線ごとに縦の通り道を 1 本ずつ割り振る。
   // 上がる線は上のものほど左、下がる線は上のものほど右を通す（出る所と入る所の横の線が、ほかの線の縦の線と交わらない並び）
+  // 列を飛ばす線（間にほかのボックスがある線）は、左のボックスと、その右の次の列の間に通り道を割り振る（v1.05 段階 B。割り振らないと、
+  // 間のボックスの手前まで横に進んでから曲がり、間のボックスへ入る線と並んで走るため）。右の端は、次の列の左の縁とする
   const groups = new Map();
+  const skips = new Set();
+  const nextX = (x) => Math.min(Infinity, ...boxes.filter((o) => o.x > x + 1).map((o) => o.x));
   wires.forEach((wire) => {
     const [a, b] = [endOf(wire, 'from'), endOf(wire, 'to')];
     if (!['left', 'right'].includes(a.side) || !['left', 'right'].includes(b.side) || a.side === b.side) return;
-    const [l, r] = a.side === 'right' ? [a, b] : [b, a];
-    const [xl, xr] = [l.pt[0], r.pt[0]];
+    let [l, r] = a.side === 'right' ? [a, b] : [b, a];
+    let [xl, xr] = [l.pt[0], r.pt[0]];
     const [y0, y1] = [Math.min(l.pt[1], r.pt[1]) - 8, Math.max(l.pt[1], r.pt[1]) + 8];
-    if (boxes.some((o) => o.key !== wire.from && o.key !== wire.to && o.x < xr && o.x + o.w > xl && o.y < y1 && o.y + o.h > y0)) return;
+    if (boxes.some((o) => o.key !== wire.from && o.key !== wire.to && o.x < xr && o.x + o.w > xl && o.y < y1 && o.y + o.h > y0)) {
+      const xn = nextX(xl);
+      if (!(xn < xr)) return;
+      [xr, r] = [xn, { pt: [xn, r.pt[1]], lines: [] }];
+      skips.add(wire);
+    }
     const k = `${xl}|${xr}`;
     if (!groups.has(k)) groups.set(k, { xl, xr, rows: [] });
     groups.get(k).rows.push({ wire, l, r });
@@ -8255,15 +8355,15 @@ function mapWireRoute(model, wires, pos) {
     const down = bent.filter((r) => r.r.pt[1] > r.l.pt[1]).sort((p, q) => q.l.pt[1] - p.l.pt[1]);
     [...up, ...down].forEach((r, j) => mids.set(r.wire, g.xl + lw + (j + 1) * step));
   });
-  const routes = swimRoutes({
+  const routes = wireRoutesApart((m) => swimRoutes({
     vertical: false, lanes: [],
     w: Math.max(0, ...boxes.map((b) => b.x + b.w)) + 240,
     h: Math.max(0, ...boxes.map((b) => b.y + b.h)) + 240,
     nodes: boxes.map((b) => ({ id: b.key, type: 'rect', x: b.x, y: b.y, w: b.w, h: b.h })),
     edges: wires.map((wire) => ({ id: wire.id, from: wire.from, to: wire.to,
       fromPin: { side: endOf(wire, 'from').side, frac: endOf(wire, 'from').frac }, toPin: { side: endOf(wire, 'to').side, frac: endOf(wire, 'to').frac },
-      ...(mids.has(wire) ? { mid: mids.get(wire) } : {}) })),
-  });
+      ...(m.has(wire) ? { mid: m.get(wire) } : {}) })),
+  }), wires, mids, skips, boxes, false);
   // 端の文字。左右の辺は、ボックスを出てすぐの横の線の上（重なるときは 線の下 → 外へずらした上 → 外へずらした下）。上下の辺は、縦の線の右（重なるときは左）
   const placed = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
   const hit = (a, b) => a.x < b.x + b.w + 2 && b.x < a.x + a.w + 2 && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
@@ -8312,6 +8412,193 @@ function mapWireSvg(wire, w, h, o = {}) {
   return `<svg width="${w}" height="${h}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>${defs}
     </defs>${lines.join('')}${arcs.length ? `<g class="mw-arcs">${arcs.join('')}</g>` : ''}${labels.join('')}</svg>`;
 }
+// ── 画面遷移図の縦向き（v1.05 段階 B。画像 q185 の案C 向き選択）──
+// 画面設計ごとに、横向き（左から右へ列を並べる。mapWireLayout）と縦向き（上から下へ段を並べる）を選ぶ。縦向きを選んだ画面設計は flowVertical: true を持つ。
+// 段と段の中の並びは、横向きの列と列の中の並び（mapLayout）と同じ。下の段へは下の辺から上の辺へ線を引き、線の文字は横向きと同じく、
+// ボタン・リンクがある画面の側の端（q168 案A）に書く。上下の辺に付く文字は横に並べるので、線の多いボックスは横に伸ばす（ボックスごとの幅 w を持つ）
+const FLOWV_GAP_X = 60; // 段の中のボックスの間
+const FLOWV_GAP_Y = 100; // 段の間の下限
+const flowVerticalOf = (d) => !!(d && d.flowVertical === true);
+// 上下の辺に並ぶ端 1 つ分の幅（文字の幅と線の間の余白。文字がない端は 18）と、端の文字の高さ（文字がない端は 0）
+const flowVEndW = (p) => (p.lines.length ? Math.max(...p.lines.map(wireTextW)) + 14 : 18);
+const flowVTextH = (p) => (p.lines.length ? p.lines.length * WIRE_LINE_H + 8 : 0);
+const flowVBox = (pos, k) => ({ x: pos[k].x, y: pos[k].y, w: pos[k].w || MAP_W, h: pos[k].h || MAP_H });
+// 2 つのボックスの、線が出る辺と入る辺。上下に離れていれば下の辺と上の辺、横に並んでいれば左右の辺
+function flowVSides(a, b) {
+  if (b.y >= a.y + a.h) return ['bottom', 'top'];
+  if (b.y + b.h <= a.y) return ['top', 'bottom'];
+  return b.x + b.w / 2 >= a.x + a.w / 2 ? ['right', 'left'] : ['left', 'right'];
+}
+// 線の端の並び（mapWireEnds の縦向き）。上下の辺の端は、相手のボックスの位置の順（左から）に、文字の幅ずつ、辺の真ん中に寄せて並べる。
+// 左右の辺の端は、辺に等間隔で並べる
+function flowVEnds(wires, pos) {
+  const ends = [];
+  wires.forEach((wire) => {
+    const [sa, sb] = flowVSides(flowVBox(pos, wire.from), flowVBox(pos, wire.to));
+    ends.push({ wire, end: 'from', node: wire.from, other: wire.to, side: sa, lines: wire.fwd });
+    ends.push({ wire, end: 'to', node: wire.to, other: wire.from, side: sb, lines: wire.back });
+  });
+  const bySide = new Map();
+  ends.forEach((p) => {
+    const k = `${p.node}|${p.side}`;
+    if (!bySide.has(k)) bySide.set(k, []);
+    bySide.get(k).push(p);
+  });
+  const center = (k) => { const b = flowVBox(pos, k); return [b.x + b.w / 2, b.y + b.h / 2]; };
+  bySide.forEach((list) => {
+    const tb = list[0].side === 'top' || list[0].side === 'bottom';
+    list.sort((p, q) => center(p.other)[tb ? 0 : 1] - center(q.other)[tb ? 0 : 1] || p.wire.i - q.wire.i);
+    const b = flowVBox(pos, list[0].node);
+    if (tb) {
+      let x = (b.w - list.reduce((w, p) => w + flowVEndW(p), 0)) / 2;
+      list.forEach((p) => { p.frac = Math.min(1, Math.max(0, (x + 9) / b.w)); x += flowVEndW(p); });
+    } else list.forEach((p, j) => { p.frac = (j + 0.5) / list.length; });
+    list.forEach((p) => {
+      p.pt = p.side === 'left' ? [b.x, b.y + b.h * p.frac] : p.side === 'right' ? [b.x + b.w, b.y + b.h * p.frac]
+        : p.side === 'top' ? [b.x + b.w * p.frac, b.y] : [b.x + b.w * p.frac, b.y + b.h];
+    });
+  });
+  return { ends, bySide };
+}
+// ボックスの幅。上下の辺に付く端を横に並べられる幅まで伸ばす（MAP_W より狭くはしない）
+function flowVWidths(model, bySide) {
+  return new Map(model.nodes.map((n) => [n.key,
+    Math.max(MAP_W, ...['top', 'bottom'].map((s) => (bySide.get(`${n.key}|${s}`) || []).reduce((w, p) => w + flowVEndW(p), 24)))]));
+}
+// 段（横向きの列）と、段の中の並び（横向きの列の中の、上からの並び）。線のない画面は、いちばん下の段に並べる
+function flowVRows(model) {
+  const auto = mapLayout(model);
+  const rank = mapRanks(model, mapForwardEdges(model));
+  const linked = new Set(model.edges.flatMap((e) => [e.from, e.to]));
+  const byRank = new Map();
+  const lone = [];
+  model.nodes.forEach((n) => {
+    if (!linked.has(n.key)) { lone.push(n.key); return; }
+    const r = rank.get(n.key);
+    if (!byRank.has(r)) byRank.set(r, []);
+    byRank.get(r).push(n.key);
+  });
+  const rows = [...byRank.keys()].sort((a, b) => a - b).map((r) => byRank.get(r).sort((a, b) => auto[a].y - auto[b].y));
+  if (lone.length) rows.push(lone.sort((a, b) => auto[a].y - auto[b].y || auto[a].x - auto[b].x));
+  return rows;
+}
+// 自動の位置（段を上から下へ。段の中は左に寄せる）。段の間は、上の段の下の辺の文字・下の段の上の辺の文字・通り道の数で広げる
+function flowVAuto(rows, wOf, ends) {
+  const rowOf = new Map();
+  rows.forEach((list, r) => list.forEach((k) => rowOf.set(k, r)));
+  const textH = (k, side) => Math.max(0, ...ends.filter((p) => p.node === k && p.side === side).map(flowVTextH));
+  const span = (w) => [Math.min(rowOf.get(w.from), rowOf.get(w.to)), Math.max(rowOf.get(w.from), rowOf.get(w.to))];
+  const wires = [...new Set(ends.map((p) => p.wire))];
+  const pos = {};
+  let y = 40;
+  rows.forEach((list, r) => {
+    let x = 40;
+    list.forEach((k) => {
+      pos[k] = { x, y, w: wOf.get(k), h: MAP_H };
+      x += wOf.get(k) + FLOWV_GAP_X;
+    });
+    if (r === rows.length - 1) return;
+    const adj = wires.filter((w) => { const [a, b] = span(w); return a === r && b === r + 1; }).length;
+    const through = wires.filter((w) => { const [a, b] = span(w); return a <= r && b > r + 1; }).length;
+    const th = Math.max(16, ...list.map((k) => textH(k, 'bottom')));
+    const bh = Math.max(16, ...rows[r + 1].map((k) => textH(k, 'top')));
+    y += MAP_H + Math.max(FLOWV_GAP_Y, th + (adj + through + 2) * WIRE_TRACK + bh);
+  });
+  return pos;
+}
+// 覚えた位置の箱はそこに置き、自動で並べる箱が覚えた箱と重なるときは、重ならない所まで下へずらす（mapPlace の、幅を持つ形）
+function flowVPlace(model, saved, auto) {
+  const pos = {};
+  const placed = [];
+  const hits = (p) => placed.some((q) => p.x < q.x + q.w + 16 && q.x < p.x + p.w + 16 && p.y < q.y + q.h + 16 && q.y < p.y + p.h + 16);
+  model.nodes.filter((n) => saved[n.key]).forEach((n) => {
+    pos[n.key] = { ...auto[n.key], x: saved[n.key].x, y: saved[n.key].y };
+    placed.push(pos[n.key]);
+  });
+  model.nodes.filter((n) => !saved[n.key]).sort((a, b) => auto[a.key].y - auto[b.key].y || auto[a.key].x - auto[b.key].x).forEach((n) => {
+    const p = { ...auto[n.key] };
+    while (hits(p)) p.y += MAP_ROW;
+    pos[n.key] = p;
+    placed.push(p);
+  });
+  return pos;
+}
+// ボックスの位置と幅（mapWireLayout の縦向き）。端の文字でボックスの幅と段の間が変わるので、2 回並べ直して落ち着かせる
+function flowVLayout(model, saved, wires) {
+  const rows = flowVRows(model);
+  let pos = flowVPlace(model, saved, flowVAuto(rows, new Map(model.nodes.map((n) => [n.key, MAP_W])), []));
+  for (let k = 0; k < 2; k++) {
+    const { ends, bySide } = flowVEnds(wires, pos);
+    pos = flowVPlace(model, saved, flowVAuto(rows, flowVWidths(model, bySide), ends));
+  }
+  return pos;
+}
+// 線の道と、端の文字の置き場（mapWireRoute の縦向き。戻り値の形も同じ）
+function flowVRoute(model, wires, pos) {
+  const { ends } = flowVEnds(wires, pos);
+  const endOf = (wire, end) => ends.find((p) => p.wire === wire && p.end === end);
+  const boxes = model.nodes.map((n) => ({ key: n.key, ...flowVBox(pos, n.key) }));
+  // 曲がる位置。上下に向かい合う 2 つのボックスの間（間にほかのボックスがない所）は、線ごとに横の通り道を 1 本ずつ割り振る。
+  // 右へ向かう線は右から出るものほど上、左へ向かう線は左から出るものほど上を通す（出る所と入る所の縦の線が、ほかの線の横の線と交わらない並び）
+  // 段を飛ばす線（間にほかのボックスがある線）は、上のボックスと、その下の次の段の間に通り道を割り振る（横向きの列を飛ばす線と同じ）
+  const groups = new Map();
+  const skips = new Set();
+  const nextY = (y) => Math.min(Infinity, ...boxes.filter((o) => o.y > y + 1).map((o) => o.y));
+  wires.forEach((wire) => {
+    const [a, b] = [endOf(wire, 'from'), endOf(wire, 'to')];
+    if (!['top', 'bottom'].includes(a.side) || !['top', 'bottom'].includes(b.side) || a.side === b.side) return;
+    let [u, l] = a.side === 'bottom' ? [a, b] : [b, a];
+    let [yu, yl] = [u.pt[1], l.pt[1]];
+    const [x0, x1] = [Math.min(u.pt[0], l.pt[0]) - 8, Math.max(u.pt[0], l.pt[0]) + 8];
+    if (boxes.some((o) => o.key !== wire.from && o.key !== wire.to && o.y < yl && o.y + o.h > yu && o.x < x1 && o.x + o.w > x0)) {
+      const yn = nextY(yu);
+      if (!(yn < yl)) return;
+      [yl, l] = [yn, { pt: [l.pt[0], yn], lines: [] }];
+      skips.add(wire);
+    }
+    const k = `${yu}|${yl}`;
+    if (!groups.has(k)) groups.set(k, { yu, yl, rows: [] });
+    groups.get(k).rows.push({ wire, u, l });
+  });
+  const mids = new Map();
+  groups.forEach((g) => {
+    const th = Math.max(16, ...g.rows.map((r) => flowVTextH(r.u)));
+    const bh = Math.max(16, ...g.rows.map((r) => flowVTextH(r.l)));
+    const bent = g.rows.filter((r) => Math.abs(r.u.pt[0] - r.l.pt[0]) >= 1);
+    const step = Math.min(WIRE_TRACK, (g.yl - g.yu - th - bh) / (bent.length + 1));
+    if (step < 4) return; // 間が狭いときは、割り振らずに swimRoutes に任せる
+    const right = bent.filter((r) => r.l.pt[0] > r.u.pt[0]).sort((p, q) => q.u.pt[0] - p.u.pt[0]);
+    const left = bent.filter((r) => r.l.pt[0] < r.u.pt[0]).sort((p, q) => p.u.pt[0] - q.u.pt[0]);
+    [...right, ...left].forEach((r, j) => mids.set(r.wire, g.yu + th + (j + 1) * step));
+  });
+  const routes = wireRoutesApart((m) => swimRoutes({
+    vertical: true, lanes: [],
+    w: Math.max(0, ...boxes.map((b) => b.x + b.w)) + 240,
+    h: Math.max(0, ...boxes.map((b) => b.y + b.h)) + 240,
+    nodes: boxes.map((b) => ({ id: b.key, type: 'rect', x: b.x, y: b.y, w: b.w, h: b.h })),
+    edges: wires.map((wire) => ({ id: wire.id, from: wire.from, to: wire.to,
+      fromPin: { side: endOf(wire, 'from').side, frac: endOf(wire, 'from').frac }, toPin: { side: endOf(wire, 'to').side, frac: endOf(wire, 'to').frac },
+      ...(m.has(wire) ? { mid: m.get(wire) } : {}) })),
+  }), wires, mids, skips, boxes, true);
+  // 端の文字。上下の辺は、縦の線の右（重なるときは左）。左右の辺は、横の線の上（重なるときは下）
+  const placed = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
+  const hit = (a, b) => a.x < b.x + b.w + 2 && b.x < a.x + a.w + 2 && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
+  const labels = [];
+  ends.filter((p) => p.lines.length && routes[p.wire.id]).forEach((p) => {
+    const [tw, th] = [wireEndW(p), p.lines.length * WIRE_LINE_H + 2];
+    const [x, y] = p.pt;
+    const cands = (p.side === 'bottom' ? [[x + 4, y + 4], [x - 4 - tw, y + 4]] : p.side === 'top' ? [[x + 4, y - 4 - th], [x - 4 - tw, y - 4 - th]]
+      : p.side === 'right' ? [[x + 6, y - 3 - th], [x + 6, y + 3]] : [[x - 6 - tw, y - 3 - th], [x - 6 - tw, y + 3]])
+      .map(([cx, cy]) => ({ x: Math.max(2, cx), y: Math.max(2, cy), w: tw, h: th }));
+    const at = cands.find((c) => !placed.some((b) => hit(c, b))) || cands[0];
+    placed.push(at);
+    labels.push({ ...at, wire: p.wire, lines: p.lines });
+  });
+  const pts = Object.values(routes).flatMap((r) => r.wps);
+  return { wires, routes, labels,
+    right: Math.max(0, ...pts.map((q) => q[0]), ...labels.map((l) => l.x + l.w)),
+    bottom: Math.max(0, ...pts.map((q) => q[1]), ...labels.map((l) => l.y + l.h)) };
+}
 // ── ステータスの移り方の図と画面の移り方の図（第 8 段階。画像 q54 の案B・q55 の案A・q58）──
 // どちらも、つながりの図と同じ形のモデル { nodes: [{ key, name, ... }], edges: [{ from, to, kind, labels }] } を作り、
 // 箱の置き方（mapPlace）と線（mapEdgesSvg）は、つながりの図の関数を使い回す。箱の位置は画面設計の processPos・flowPos に覚える
@@ -8340,9 +8627,16 @@ function processModel(d) {
     })),
   };
 }
-// ステータスの移り方の図の自動の位置。ステータスの並びの順に上から下へ（q54 の案B。右の欄のステータスの並びと同じ向き）
-function processLayout(model) {
-  return Object.fromEntries(model.nodes.map((n) => [n.key, { x: PROC_X, y: 40 + n.order * PROC_ROW }]));
+// ステータスの移り方の図の自動の位置。ステータスの並びの順に上から下へ（q54 の案B。右の欄のステータスの並びと同じ向き）。
+// hOf はボックスの高さ、gapOf は下のボックスとの間（v1.05 段階 B。渡さなければ、段の高さ PROC_ROW で並べる）
+function processLayout(model, hOf = () => MAP_H, gapOf = () => PROC_ROW - MAP_H) {
+  const pos = {};
+  let y = 40;
+  [...model.nodes].sort((a, b) => a.order - b.order).forEach((n) => {
+    pos[n.key] = { x: PROC_X, y };
+    y += hOf(n.key) + gapOf(n.key);
+  });
+  return pos;
 }
 // 上下に並ぶ箱の間の線（ステータスの移り方の図）。間にほかの箱がなければ null（ふつうの線）。あれば、両方の箱の右の縁から出て、
 // 間の箱の右を回る（lane 本目は 28 ずつ外を回る。隣でないステータスへの操作）。minX は回る線のいちばん内側の x の下限（まっすぐな線の文字の右）
@@ -8357,6 +8651,171 @@ function procBracket(a, b, others, lane, minX = 0) {
   const s = Math.sign(y2 - y1);
   return { detour: true, mx: xd, my: (y1 + y2) / 2,
     d: `M${f(x1)},${f(y1)} L${f(xd - 12)},${f(y1)} Q${f(xd)},${f(y1)} ${f(xd)},${f(y1 + s * 12)} L${f(xd)},${f(y2 - s * 12)} Q${f(xd)},${f(y2)} ${f(xd - 12)},${f(y2)} L${f(x2)},${f(y2)}` };
+}
+// ── ステータスの流れの線と行き先表示（v1.05 段階 B。画像 q170 の案A 本数・距離基準）──
+// 右を回る線の文字を図の右にまとめて書いていたので、どの文字がどの線のものか分からず、16 字を超える文字は図の右端で切れていた（ユーザーの要望 2026-11-12）。
+// 文字は幅 PROC_TEXT_W で折り返す。右を回る線の文字は、線が出るボックスのすぐ右（線の下）に上から積み、ボックスはその分だけ縦に伸ばす。
+// 右を回る線のうち、1 つのステータスに PROC_TAG_GATHER 本以上集まる線と、間にほかのステータスが PROC_TAG_SKIP 個以上ある線は、線を描かずに、
+// 出る側のボックスの右に「→ 20　見送り」と次のステータスの番号と名前を書く（行き先表示）。行き先表示を受けるボックスの右には、来る元を書く
+const PROC_TEXT_W = 192; // 線の文字の 1 行の幅（超える分は折り返す）
+const PROC_LINE_H = 15; // 線の文字の 1 行の高さ
+const PROC_LANE = 22; // 右を回る線の通り道の間隔
+const PROC_TAG_GATHER = 4; // 1 つのステータスに、右を回る線がこの本数以上集まるときは行き先表示
+const PROC_TAG_SKIP = 5; // 線でつながる 2 つのステータスの間に、ほかのステータスがこの個数以上あるときは行き先表示
+// 文字を幅 max で折り返す。幅の半分より後ろに「（」の前・「、」と空白の後があれば、そこで切る
+function procWrap(s, max = PROC_TEXT_W) {
+  const out = [];
+  let rest = String(s || '');
+  while (rest && wireTextW(rest) > max) {
+    const chars = [...rest];
+    let [w, cut, soft] = [0, 0, 0];
+    for (let k = 0; k < chars.length; k++) {
+      if (w + wireCharW(chars[k]) > max) break;
+      w += wireCharW(chars[k]);
+      cut = k + 1;
+      if (chars[k + 1] === '（' || chars[k] === '、' || chars[k] === ' ') soft = k + 1;
+    }
+    const at = Math.max(1, soft >= cut / 2 ? soft : cut);
+    out.push(chars.slice(0, at).join('').trim());
+    rest = chars.slice(at).join('').trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+// 線の文字の行 [{ s, b（太字） }]。1 行目は操作の名前（操作する人）、2 行目からは条件
+const procLines = (e) => [...procWrap(e.labels[0]).map((s) => ({ s, b: true })), ...e.labels.slice(1).flatMap((c) => procWrap(c).map((s) => ({ s })))];
+const procTextW = (list) => Math.max(0, ...list.map((l) => wireTextW(l.s) + (l.pill ? 12 : 0)));
+// 線の分け方と、ボックスの右に積むもの。pos はボックスの位置 { x, y, h }。戻り値:
+// around（右を回る線と行き先表示。間にほかのボックスがある縦の線）・tags（そのうち行き先表示）・drawn（右を回る線。内側を通る順）・
+// side（ボックスごとの { outs: [{ e, tag, lines, dy }], ins: [{ e, dy }], notes: [{ lines, dy }], need（ボックスの高さ） }）・laneStart（いちばん内側の通り道の x）・right（図の右の端）
+function procPlan(model, pos) {
+  const box = (k) => ({ x: pos[k].x, y: pos[k].y, w: MAP_W, h: pos[k].h || MAP_H });
+  const order = Object.fromEntries(model.nodes.map((n) => [n.key, n.order]));
+  const nameAt = (no) => (model.nodes.find((n) => n.order === no) || {}).name || '';
+  const span = (e) => Math.abs(order[e.to] - order[e.from]);
+  const othersOf = (e) => model.nodes.filter((n) => n.key !== e.from && n.key !== e.to).map((n) => box(n.key));
+  const vertical = (e) => ['t', 'b'].includes(mapSides(box(e.from), box(e.to))[0]);
+  const around = model.edges.filter((e) => vertical(e) && procBracket(box(e.from), box(e.to), othersOf(e), 0));
+  const gather = new Map();
+  around.forEach((e) => gather.set(e.to, (gather.get(e.to) || 0) + 1));
+  const tags = around.filter((e) => gather.get(e.to) >= PROC_TAG_GATHER || span(e) - 1 >= PROC_TAG_SKIP);
+  const drawn = around.filter((e) => !tags.includes(e)).sort((p, q) => span(p) - span(q) || order[p.from] - order[q.from]);
+  const side = Object.fromEntries(model.nodes.map((n) => [n.key, { outs: [], ins: [], notes: [] }]));
+  [...around].sort((p, q) => order[p.to] - order[q.to]).forEach((e) => {
+    const tag = tags.includes(e);
+    const lines = procLines(e);
+    if (tag) lines.push({ s: `→ ${order[e.to] + 1}　${nameAt(order[e.to])}`, pill: true });
+    side[e.from].outs.push({ e, tag, lines });
+    if (!tag) side[e.to].ins.push({ e });
+  });
+  model.nodes.forEach((n) => {
+    const r = side[n.key];
+    // 入ってくる線は、線どうしが交わらない並びにする（上から来る線は内側の線ほど上、下から来る線は内側の線ほど下）
+    r.ins.sort((p, q) => {
+      const [ap, aq] = [order[p.e.from] < n.order, order[q.e.from] < n.order];
+      if (ap !== aq) return ap ? 1 : -1;
+      return ap ? drawn.indexOf(p.e) - drawn.indexOf(q.e) : drawn.indexOf(q.e) - drawn.indexOf(p.e);
+    });
+    // 行き先表示を受けるボックスの右に、来る元を操作の名前ごとに書く
+    const groups = new Map();
+    tags.filter((e) => e.to === n.key).forEach((e) => groups.set(e.labels[0], [...(groups.get(e.labels[0]) || []), order[e.from] + 1]));
+    groups.forEach((list, label) => {
+      list.sort((p, q) => p - q);
+      const seq = list.every((v, k) => !k || v === list[k - 1] + 1);
+      const from = list.length === 1 ? `${list[0]}　${nameAt(list[0] - 1)}` : seq ? `${list[0]}〜${list[list.length - 1]}（${list.length} 個）` : list.join('・');
+      r.notes.push({ lines: procWrap(`← ステータス ${from} から「${label}」`, PROC_TEXT_W + 60).map((s) => ({ s })) });
+    });
+    let at = 12;
+    r.outs.forEach((o) => { o.dy = at; at += 6 + o.lines.length * PROC_LINE_H + 8; });
+    r.ins.forEach((o) => { o.dy = at; at += 14; });
+    if (r.ins.length) at += 4;
+    r.notes.forEach((o) => { o.dy = at; at += o.lines.length * PROC_LINE_H + 6; });
+    r.need = Math.max(MAP_H, at + 4);
+  });
+  const textW = Math.max(0, ...Object.values(side).flatMap((r) => [...r.outs, ...r.notes].map((o) => procTextW(o.lines))));
+  const laneStart = Math.max(0, ...model.nodes.map((n) => pos[n.key].x + MAP_W)) + 14 + textW + 24;
+  return { around, tags, drawn, side, laneStart, right: laneStart + Math.max(0, drawn.length - 1) * PROC_LANE };
+}
+// 隣のステータスとの間の高さ（その間を通るまっすぐな線の文字の行の数で広げる）
+function procGapOf(model) {
+  const order = Object.fromEntries(model.nodes.map((n) => [n.key, n.order]));
+  return (key) => {
+    const rows = model.edges.filter((e) => Math.min(order[e.from], order[e.to]) === order[key] && Math.abs(order[e.to] - order[e.from]) === 1).map((e) => procLines(e).length);
+    return Math.max(PROC_ROW - MAP_H, Math.max(0, ...rows) * PROC_LINE_H + 40);
+  };
+}
+// ステータスの流れのボックスの位置（ボックスの右に積む文字の分だけ縦に伸ばし、段の間を線の文字の分だけ広げる。覚えた位置のボックスはそこに置く）
+function processPositions(model, saved) {
+  const base = mapPlace(model, saved, processLayout(model), () => MAP_H);
+  const plan = procPlan(model, base);
+  const need = (k) => plan.side[k].need;
+  return mapPlace(model, saved, processLayout(model, need, procGapOf(model)), need);
+}
+// ステータスの流れの線と文字の SVG（mapEdgesSvg の o.vertical から呼ぶ）。w・h より右と下へはみ出すときは、SVG をその分だけ広げる
+function procEdgesSvg(model, pos, w, h, o = {}) {
+  const idp = o.idPrefix || 'proc';
+  const styleOf = o.style || mapEdgeStyle;
+  const plan = procPlan(model, pos);
+  const box = (k) => ({ x: pos[k].x, y: pos[k].y, w: MAP_W, h: pos[k].h || MAP_H });
+  const f = (n) => n.toFixed(1);
+  const marks = new Map();
+  const [lines, labels] = [[], []];
+  const line = (d, st) => {
+    marks.set(st.mark, st.col);
+    return `<path d="${d}" fill="none" stroke="${st.col}" stroke-width="${st.w}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''} marker-end="url(#${idp}-arrow-${st.mark})"/>`;
+  };
+  const text = (x, y, list, col) => list.map((l, j) => `<text x="${f(x)}" y="${f(y + 11 + j * PROC_LINE_H)}" font-size="${l.b || l.pill ? 12 : 11}" font-weight="${l.b || l.pill ? 700 : 400}" fill="${l.b || l.pill ? col : '#475569'}">${esc(l.s)}</text>`).join('');
+  const tagged = (x, y, list, col) => `<rect x="${f(x - 4)}" y="${f(y)}" width="${f(procTextW(list) + 8)}" height="${list.length * PROC_LINE_H + 4}" rx="3" fill="#fff" opacity=".92"/>${text(x, y, list, col)}`;
+  // 間にほかのボックスがない線（隣のステータスへの線・ドラッグで横に並べたボックスの間の線）。同じ 2 つのボックスの間に 2 本あるときは、文字を線の外側に書く
+  const rest = model.edges.filter((e) => !plan.around.includes(e));
+  const ports = mapPorts({ ...model, edges: rest }, pos);
+  const pairOf = (e) => [e.from, e.to].sort().join('|');
+  rest.forEach((e) => {
+    const st = styleOf(e);
+    const others = model.nodes.filter((n) => n.key !== e.from && n.key !== e.to).map((n) => box(n.key));
+    const g = mapEdgeGeometry(box(e.from), box(e.to), ports.get(e), others);
+    lines.push(line(g.d, st));
+    const list = procLines(e);
+    if (!list.length) return;
+    const [tw, lh] = [procTextW(list), list.length * PROC_LINE_H + 4];
+    const vert = ['t', 'b'].includes(mapSides(box(e.from), box(e.to))[0]);
+    const same = rest.filter((x) => pairOf(x) === pairOf(e));
+    const left = same.length > 1 && same.indexOf(e) === 0;
+    const x = !vert ? g.mx - tw / 2 : left ? g.mx - 16 - tw : g.mx + 16;
+    labels.push(tagged(x, g.my - lh / 2, list, st.col));
+  });
+  // 右を回る線（内側の通り道から順に）
+  plan.drawn.forEach((e, k) => {
+    const st = styleOf(e);
+    const [a, b] = [box(e.from), box(e.to)];
+    const ys = a.y + plan.side[e.from].outs.find((x) => x.e === e).dy;
+    const ye = b.y + plan.side[e.to].ins.find((x) => x.e === e).dy;
+    const xd = plan.laneStart + k * PROC_LANE;
+    const s = Math.sign(ye - ys) || 1;
+    lines.push(line(`M${f(a.x + a.w)},${f(ys)} L${f(xd - 10)},${f(ys)} Q${f(xd)},${f(ys)} ${f(xd)},${f(ys + s * 10)} L${f(xd)},${f(ye - s * 10)} Q${f(xd)},${f(ye)} ${f(xd - 10)},${f(ye)} L${f(b.x + b.w)},${f(ye)}`, st));
+  });
+  // ボックスの右に積む文字（右を回る線の文字と行き先表示は線の下。行き先表示の次のステータスは枠で囲む）と、来る元
+  model.nodes.forEach((n) => {
+    const b = box(n.key);
+    const r = plan.side[n.key];
+    r.outs.forEach((x) => {
+      const st = styleOf(x.e);
+      marks.set(st.mark, st.col);
+      const top = b.y + x.dy + 4;
+      const body = x.lines.filter((l) => !l.pill);
+      const pill = x.lines.find((l) => l.pill);
+      labels.push(text(b.x + b.w + 14, top, body, st.col));
+      if (!pill) return;
+      const py = top + body.length * PROC_LINE_H + 2;
+      labels.push(`<rect class="proc-tag" x="${f(b.x + b.w + 10)}" y="${f(py)}" width="${f(wireTextW(pill.s) + 12)}" height="${PROC_LINE_H + 2}" rx="8" fill="#fff" stroke="${st.col}" stroke-width="1.2"/>${text(b.x + b.w + 16, py + 1, [pill], st.col)}`);
+    });
+    r.notes.forEach((x) => labels.push(text(b.x + b.w + 14, b.y + x.dy, x.lines, '#475569')));
+  });
+  const defs = [...marks].map(([mk, col]) => mapMarker(`${idp}-arrow-${mk}`, col)).join('');
+  const W = Math.ceil(Math.max(w, plan.right + 40));
+  const H = Math.ceil(Math.max(h, ...model.nodes.map((n) => box(n.key).y + box(n.key).h + 40)));
+  return `<svg width="${W}" height="${H}" font-family="'Segoe UI','Yu Gothic UI','Meiryo',sans-serif" aria-hidden="true"><defs>${defs}
+    </defs>${lines.join('')}${labels.join('')}</svg>`;
 }
 // 移る先の画面設計（画面の移り方の図の、ほかの画面設計の箱）。ごみ箱の画面設計は描かない。単体で開いた HTML では screenPeers から引く
 function flowOwner(state, designId) {
@@ -8419,8 +8878,10 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
   const hOf = () => MAP_H;
   // 画面遷移図は、線が多く付くボックスを線の数に合わせて縦に伸ばし、直角の線で引く（v1.05）
   const wires = view === 'process' ? null : mapWires(model, VIEW_DRAW.flow);
-  const pos = wires ? mapWireLayout(model, saved || {}, wires, hOf) : mapPlace(model, saved || {}, processLayout(model), hOf);
-  const wire = wires ? mapWireRoute(model, wires, pos) : null;
+  const vertical = view === 'flow' && flowVerticalOf(d); // 画面遷移図の縦向き（v1.05 段階 B・q185 案C）
+  const pos = !wires ? processPositions(model, saved || {}) // ステータスの流れは、文字の分だけボックスを伸ばす（v1.05 段階 B）
+    : vertical ? flowVLayout(model, saved || {}, wires) : mapWireLayout(model, saved || {}, wires, hOf);
+  const wire = !wires ? null : vertical ? flowVRoute(model, wires, pos) : mapWireRoute(model, wires, pos);
   const nodes = model.nodes.map((n) => {
     const p = pos[n.key];
     const dev = n.screen && DEVICES[n.screen.device] ? DEVICES[n.screen.device].label : '';
@@ -8430,19 +8891,28 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
     const title = view === 'process' ? 'ドラッグで動かせます'
       : !n.ext ? 'ドラッグで動かせます。押すと、この画面を開きます'
         : findDesign(state, n.designId) ? `ドラッグで動かせます。押すと「${esc(n.ext)}」を開きます` : 'ドラッグで動かせます（この HTML に入っていない画面設計なので、開けません）';
-    return `<div class="mnode${n.ext ? ' ext' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${MAP_W}px;height:${p.h}px" title="${title}">${body}</div>`;
+    return `<div class="mnode${n.ext ? ' ext' : ''}" data-node="${esc(n.key)}" style="left:${p.x}px;top:${p.y}px;width:${p.w || MAP_W}px;height:${p.h}px" title="${title}">${body}</div>`;
   }).join('');
-  // ステータスの移り方の図は、箱の右に矢印の文字と、箱の右を回る線の分の幅を取る
-  const extra = view === 'process' ? 260 + model.edges.length * 28 : 40;
-  const w = Math.ceil(Math.max(view === 'process' ? 600 : 860, wire ? wire.right + 40 : 0, ...Object.values(pos).map((p) => p.x + MAP_W + extra)));
+  // ステータスの流れは、ボックスの右に積む文字と、右を回る線の分の幅を取る（v1.05 段階 B。実際の右の端から決める）
+  const procRight = view === 'process' ? procPlan(model, pos).right + 40 : 0;
+  const w = Math.ceil(Math.max(view === 'process' ? 600 : 860, wire ? wire.right + 40 : 0, procRight, ...Object.values(pos).map((p) => p.x + (p.w || MAP_W) + 40)));
   const h = Math.ceil(Math.max(view === 'process' ? 300 : 420, wire ? wire.bottom + 40 : 0, ...Object.values(pos).map((p) => p.y + p.h + 60)));
   const draw = { ...VIEW_DRAW[view], idPrefix: o.idPrefix || (view === 'process' ? 'proc' : 'flow') };
   const svg = wire ? mapWireSvg(wire, w, h, draw) : mapEdgesSvg(model, pos, w, h, draw);
   return `<div class="map-inner"${o.bare ? '' : ' id="map-inner"'} style="width:${w}px;height:${h}px" data-view="${view}" data-focus="${esc(d.id)}">${svg}${nodes}</div>`;
 }
+// 最初の画面の関連図の上の行。［ボックスを自動で並べ直す］の左に、選択・手のひらツール・拡大・縮小・全体を表示・倍率のボタンを置く（v1.05 段階 B・q171 案A）
 function mapLegendHtml() {
+  const on = (m) => (ui.mode === m ? ' on' : '');
   return `<div class="map-head"><span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>
-    <span class="spacer"></span><button class="btn small" data-action="map-reset" title="ドラッグで動かしたボックスを、自動で並べた位置に戻します">ボックスを自動で並べ直す</button></div>`;
+    <span class="spacer"></span>
+    <span class="mz-group"><button class="btn small${on('select')}" data-action="mode-select" id="home-mode-select" aria-pressed="${ui.mode === 'select'}" title="ボックスを選んで動かすモード（マウスの左右のボタンの同時押しで手のひらツールと切り替え）">➤ 選択</button>
+      <button class="btn small${on('hand')}" data-action="mode-hand" id="home-mode-hand" aria-pressed="${ui.mode === 'hand'}" title="ドラッグで図を動かすモード（ホイールで拡大縮小。Esc で選択に戻る）">✋ 手のひらツール</button></span>
+    <span class="mz-group"><button class="btn small" data-action="zoom-in" title="図を拡大します（Ctrl+＋・Ctrl+ホイール）">＋ 拡大</button>
+      <button class="btn small" data-action="zoom-out" title="図を縮小します（Ctrl+－・Ctrl+ホイール）">－ 縮小</button>
+      <button class="btn small" data-action="zoom-fit" id="home-zoom-fit" title="図全体が収まる倍率で表示します">⊡ 全体を表示</button>
+      <button class="btn small zoom-label" data-action="zoom-reset" id="home-zoom-label" title="表示の倍率を 100% に戻します（Ctrl+0）">${Math.round(ui.homeZoom * 100)}%</button></span>
+    <button class="btn small" data-action="map-reset" title="ドラッグで動かしたボックスを、自動で並べた位置に戻します">ボックスを自動で並べ直す</button></div>`;
 }
 
 // ── スイムレーン図の線（MultipurposeDiagramMaker〔MPD〕v8.33 から写した。2026-10-31・v1.03。要望「接続線の出方やデザインは MPD と同じに」）──
@@ -14667,8 +15137,10 @@ function toolbarHtml() {
   const group = (label, body) => `<div class="rgroup"><div class="gbody">${body}</div><div class="glabel">${label}</div></div>`;
   const addItemBtn = '<button class="bigbtn" data-action="add-item-menu" id="tb-add-item" title="項目一覧に項目を追加します"><span class="ico">＋</span>項目を<br>追加する</button>';
   return [
+    // 単体で開いた HTML の［PDF を出力する］（2026-11-16 の q187 案A。ブラウザの印刷画面で PDF に保存する。q186 案A）
     group('ファイル', (standalone
       ? '<button class="bigbtn" data-action="save-html" title="変更した中身を HTML ファイルに保存します（Ctrl+S）"><span class="ico">💾</span>HTML を<br>保存する</button>'
+        + '<button class="bigbtn" data-action="export" id="tb-pdf" title="この画面設計を PDF に出力します（Ctrl+P）"><span class="ico">⇪</span>PDF を<br>出力する</button>'
       : `<button class="bigbtn" data-action="home" id="tb-home" title="画面設計の一覧へ戻ります"><span class="ico">←</span><span id="tb-home-label">一覧へ戻る</span></button>
       <button class="bigbtn" data-action="export" title="この画面設計を PDF・HTML・PNG に出力します"><span class="ico">⇪</span>画面設計を<br>出力する</button>`)
       // 改訂履歴のボタンと、その下の ▼（改訂する・改訂履歴のメニュー。改訂の機能が増えたら、このメニューに足す。q40c）
@@ -14711,7 +15183,9 @@ function toolbarHtml() {
     group('表示', `<div class="stack">
       <button data-screen-or-diagram class="tbtn" data-action="zoom-in" title="画面や図を拡大します（Ctrl+＋・Ctrl+ホイール）">＋ 拡大</button>
       <button data-screen-or-diagram class="tbtn" data-action="zoom-out" title="画面や図を縮小します（Ctrl+－・Ctrl+ホイール）">－ 縮小</button></div>
-      <button data-screen-or-diagram class="tbtn zoom-label" data-action="zoom-reset" id="zoom-label" title="表示の倍率を 100% に戻します（Ctrl+0）">100%</button>`),
+      <div class="stack">
+      <button data-screen-or-diagram class="tbtn" data-action="zoom-fit" id="tb-zoom-fit" title="画面全体や図全体が収まる倍率で表示します">⊡ 全体を表示</button>
+      <button data-screen-or-diagram class="tbtn zoom-label" data-action="zoom-reset" id="zoom-label" title="表示の倍率を 100% に戻します（Ctrl+0）">100%</button></div>`),
   ].join('');
 }
 
@@ -14801,7 +15275,7 @@ function updateHomeButton() {
   $('#tb-home').dataset.action = back ? 'back-system' : 'home';
   $('#tb-home').title = back ? `${back.name}の画面へ戻ります` : '画面設計の一覧へ戻ります';
 }
-const VIEW_OK_ACTIONS = ['home', 'back-system', 'zoom-in', 'zoom-out', 'zoom-reset', 'mode-select', 'mode-hand', 'prev-screen', 'next-screen'];
+const VIEW_OK_ACTIONS = ['home', 'back-system', 'zoom-in', 'zoom-out', 'zoom-reset', 'zoom-fit', 'mode-select', 'mode-hand', 'prev-screen', 'next-screen'];
 // 画面の移動の欄（v1.04 の q165）。番号と全部の数を書き、最初の画面では ▲、最後の画面では ▼ を押せなくする。画面でないものを開いている間は欄ごと押せない。
 // 番号を打っている間（data-typing）は、打ちかけの番号を消さない
 function updatePager(onScreen) {
@@ -15116,13 +15590,19 @@ const VIEW_NOTES = {
   flow: () => '画面をボックス、ボタン・リンクの移動先を矢印で描きます。画面のボックスを押すと、その画面を開きます。'
     + `ほかの画面設計の画面は灰色の点線のボックスです（${standalone ? 'この HTML に入っていないので開けません' : '押すと、その画面設計を開きます'}）。ボックスをドラッグで動かすと、その位置を覚えます。`,
 };
+// 画面遷移図の上の行の［↔ 横向き］［↕ 縦向き］（v1.05 段階 B・q185 案C）
+function flowOrientHtml(d) {
+  const v = flowVerticalOf(d);
+  return `<span class="mz-group"><button class="btn small${v ? '' : ' on'}" data-action="flow-horizontal" aria-pressed="${!v}" title="画面遷移図を横向き（左から右へ）で描きます。ドラッグで動かしたボックスは、自動で並べた位置に戻します">↔ 横向き</button>
+    <button class="btn small${v ? ' on' : ''}" data-action="flow-vertical" aria-pressed="${v}" title="画面遷移図を縦向き（上から下へ）で描きます。ドラッグで動かしたボックスは、自動で並べた位置に戻します">↕ 縦向き</button></span>`;
+}
 function renderDiagramView(d, view) {
   const el = $('#db-view');
   const keep = el.dataset.view === view && $('#design-map') ? keepScroll(['#db-view', '#design-map']) : () => {};
   el.dataset.view = view;
   el.innerHTML = `<div class="itable wide"><div class="itable-head"><h3>${VIEW_TITLES[view]}（${esc(d.name)}）</h3></div>
     <p class="map-note">${VIEW_NOTES[view]()}</p>
-    <div class="map-head">${VIEW_LEGENDS[view]}<span class="spacer"></span><button class="btn small" data-action="view-reset" data-view="${view}" title="ドラッグで動かしたボックスを、自動で並べた位置に戻します">ボックスを自動で並べ直す</button></div>
+    <div class="map-head">${VIEW_LEGENDS[view]}<span class="spacer"></span>${view === 'flow' ? flowOrientHtml(d) : ''}<button class="btn small" data-action="view-reset" data-view="${view}" title="ドラッグで動かしたボックスを、自動で並べた位置に戻します">ボックスを自動で並べ直す</button></div>
     <div class="map-canvas" id="design-map">${viewHtml(view, store.state, d, d[VIEW_POS[view]] || {})}</div></div>`;
   applyMapZoom();
   keep();
@@ -16878,8 +17358,22 @@ function applyZoom() {
 }
 // ツールバーの倍率の表示。3 つの図を開いている間は、図の倍率（v1.05）
 function updateZoomLabel() {
+  if (ui.view === 'home') { updateHomeMapTools(); return; }
   const el = $('#zoom-label');
   if (el) el.textContent = Math.round((isDiagramPanel() ? ui.mapZoom : ui.zoom) * 100) + '%';
+}
+// 最初の画面の関連図の、倍率の欄・モードのボタン・手のひらツールのカーソル
+function updateHomeMapTools() {
+  const label = $('#home-zoom-label');
+  if (label) label.textContent = Math.round(ui.homeZoom * 100) + '%';
+  [['#home-mode-select', 'select'], ['#home-mode-hand', 'hand']].forEach(([sel, m]) => {
+    const b = $(sel);
+    if (!b) return;
+    b.classList.toggle('on', ui.mode === m);
+    b.setAttribute('aria-pressed', String(ui.mode === m));
+  });
+  const map = $('#home-map');
+  if (map) map.classList.toggle('hand', ui.mode === 'hand');
 }
 
 // ── 3 つの図（関連図・ステータスの流れ・画面遷移図）の手のひらツールと拡大縮小（v1.05。スイムレーン図・編集の画面と同じ操作）──
@@ -16888,8 +17382,17 @@ function updateZoomLabel() {
 function isDiagramPanel() {
   return ui.view === 'editor' && (ui.panel === 'map' || ui.panel === 'process' || ui.panel === 'flow');
 }
+// 最初の画面で関連図を表示しているか（v1.05 段階 B。最初の画面の関連図にも、同じ手のひらツールと拡大縮小を付けた。q171 案A）
+const isHomeMap = () => ui.view === 'home' && ui.homeMap;
+// 拡大縮小と手のひらツールの対象の図。box は図の枠（横に送る）、outer は外側の欄（縦に送る）、key は倍率を持つ ui の項目名
+function mapZoomTarget() {
+  if (isDiagramPanel()) return { box: $('#design-map'), outer: $('#db-view'), key: 'mapZoom' };
+  if (isHomeMap()) return { box: $('#home-map'), outer: $('.home-scroll'), key: 'homeZoom' };
+  return null;
+}
 function applyMapZoom() {
-  const inner = $('#design-map .map-inner');
+  const t = mapZoomTarget();
+  const inner = t && t.box && t.box.querySelector('.map-inner');
   if (!inner) return;
   let box = inner.parentNode;
   if (!box.classList.contains('map-zoom')) {
@@ -16898,7 +17401,7 @@ function applyMapZoom() {
     inner.parentNode.insertBefore(box, inner);
     box.appendChild(inner);
   }
-  const z = ui.mapZoom;
+  const z = ui[t.key];
   Object.assign(inner.style, { transform: z === 1 ? '' : `scale(${z})`, transformOrigin: z === 1 ? '' : '0 0' });
   syncMapZoomBox(inner);
 }
@@ -16906,8 +17409,9 @@ function applyMapZoom() {
 function syncMapZoomBox(inner) {
   const box = inner.parentNode;
   if (!box || !box.classList.contains('map-zoom')) return;
-  box.style.width = Math.round((parseFloat(inner.style.width) || 0) * ui.mapZoom) + 'px';
-  box.style.height = Math.round((parseFloat(inner.style.height) || 0) * ui.mapZoom) + 'px';
+  const z = inner.closest('#home-map') ? ui.homeZoom : ui.mapZoom;
+  box.style.width = Math.round((parseFloat(inner.style.width) || 0) * z) + 'px';
+  box.style.height = Math.round((parseFloat(inner.style.height) || 0) * z) + 'px';
 }
 // els を順にスクロールする（先の要素で送りきれなかった分を、次の要素で送る）
 function scrollChain(els, dx, dy) {
@@ -16922,41 +17426,75 @@ function scrollChain(els, dx, dy) {
 }
 // 窓の中の点（cx, cy）が指している図の位置を動かさずに、倍率を変える
 function zoomMapAt(cx, cy, zoom) {
-  const box = $('#design-map .map-zoom');
-  const before = ui.mapZoom;
+  const t = mapZoomTarget();
+  const box = t && t.box && t.box.querySelector('.map-zoom');
+  const before = t ? ui[t.key] : 1;
   if (!box || zoom === before) return;
   const r0 = box.getBoundingClientRect();
   const [px, py] = [(cx - r0.left) / before, (cy - r0.top) / before];
-  ui.mapZoom = zoom;
+  ui[t.key] = zoom;
   applyMapZoom();
   const r1 = box.getBoundingClientRect();
-  scrollChain([$('#design-map'), $('#db-view')], r1.left + px * zoom - cx, r1.top + py * zoom - cy);
+  scrollChain([t.box, t.outer], r1.left + px * zoom - cx, r1.top + py * zoom - cy);
   updateZoomLabel();
 }
 // ボタン・キー・メニューからの拡大縮小は、図の見えている部分の真ん中を中心にする
 function zoomMapByCommand(cmd) {
-  const [a, b] = [$('#design-map'), $('#db-view')];
-  if (!a || !b) return;
-  const [ra, rb] = [a.getBoundingClientRect(), b.getBoundingClientRect()];
+  const t = mapZoomTarget();
+  if (!t || !t.box || !t.outer) return;
+  const [ra, rb] = [t.box.getBoundingClientRect(), t.outer.getBoundingClientRect()];
   const cx = (Math.max(ra.left, rb.left) + Math.min(ra.right, rb.right)) / 2;
   const cy = (Math.max(ra.top, rb.top) + Math.min(ra.bottom, rb.bottom)) / 2;
-  zoomMapAt(cx, cy, cmd === 'zoomReset' ? 1 : nextZoom(cmd === 'zoomIn' ? 1 : -1, ui.mapZoom));
+  zoomMapAt(cx, cy, cmd === 'zoomReset' ? 1 : nextZoom(cmd === 'zoomIn' ? 1 : -1, ui[t.key]));
+}
+// 全体を表示（v1.05 段階 B・q183 案A）: 図の幅と高さが、真ん中の欄に収まる倍率（ZOOM_STEPS の最初〜100%）にし、図の左上を表示する。
+// 高さは、真ん中の欄の高さから、上下の余白を引いたもの（図の枠の上端を、真ん中の欄の上端に合わせて送るため）
+const MAP_FIT_PAD = 24;
+function fitMapView() {
+  const t = mapZoomTarget();
+  const [a, b] = t ? [t.box, t.outer] : [];
+  const inner = a && a.querySelector('.map-inner');
+  if (!a || !b || !inner) return;
+  const [w, h] = [parseFloat(inner.style.width) || 0, parseFloat(inner.style.height) || 0];
+  ui[t.key] = swimFitZoom(w, a.clientWidth - 2, h, b.clientHeight - MAP_FIT_PAD * 2);
+  applyMapZoom();
+  a.scrollLeft = 0;
+  a.scrollTop = 0;
+  b.scrollTop += a.getBoundingClientRect().top - b.getBoundingClientRect().top - MAP_FIT_PAD / 2;
+  updateZoomLabel();
 }
 // 手のひらツールではホイールだけで、どのモードでも Ctrl＋ホイールで、カーソルの位置を中心に拡大縮小する
 function onMapWheel(ev) {
-  if (!isDiagramPanel() || isDialogOpen()) return;
-  if (!ev.target || !ev.target.closest || !ev.target.closest('#design-map')) return;
+  const t = mapZoomTarget();
+  if (!t || isDialogOpen()) return;
+  if (!ev.target || !ev.target.closest || !t.box || !t.box.contains(ev.target)) return;
   if (ui.mode !== 'hand' && !(ev.ctrlKey || ev.metaKey)) return;
   ev.preventDefault();
-  if (ev.deltaY !== 0) zoomMapAt(ev.clientX, ev.clientY, nextZoom(ev.deltaY < 0 ? 1 : -1, ui.mapZoom));
+  if (ev.deltaY !== 0) zoomMapAt(ev.clientX, ev.clientY, nextZoom(ev.deltaY < 0 ? 1 : -1, ui[t.key]));
+}
+// 最初の画面の関連図を、アプリを起動してから初めて表示したときの倍率（q184 案B。fitSwimlaneFirst と同じ）。図の幅が欄に収まらなければ、
+// 幅を合わせる倍率（50% より小さくしない）。収まれば 100%。欄の幅が分からない（0）ときは、まだ決めない
+function fitHomeMapFirst() {
+  const box = $('#home-map');
+  const inner = box && box.querySelector('.map-inner');
+  if (!inner || ui.homeFitted || !(box.clientWidth > 0)) return;
+  ui.homeFitted = true;
+  const fit = swimFitZoom(parseFloat(inner.style.width) || 0, box.clientWidth - 2);
+  const zoom = fit < 1 ? Math.max(0.5, fit) : 1;
+  if (zoom === ui.homeZoom) return;
+  ui.homeZoom = zoom;
+  applyMapZoom();
+  updateZoomLabel();
 }
 // 手のひらツールの、何もない所のドラッグ（図を動かす）。横は図の枠、縦は真ん中の欄を送る
 function startMapPan(ev) {
-  const box = $('#design-map');
+  const t = mapZoomTarget();
+  const box = t && t.box;
+  if (!box) return;
   if (ev.target === box && box.clientWidth && (ev.offsetX >= box.clientWidth || ev.offsetY >= box.clientHeight)) return; // スクロールバー（大きさが分かるときだけ）
   ev.preventDefault();
   flushSideField();
-  const outer = $('#db-view');
+  const outer = t.outer;
   drag = { kind: 'map-pan', wrap: box, outer, sx: ev.clientX, sy: ev.clientY, at: [box.scrollLeft, box.scrollTop, outer.scrollLeft, outer.scrollTop] };
   box.classList.add('grabbing');
 }
@@ -16974,11 +17512,11 @@ function isMouseChord(e) {
   return (e.button === 2 && !!(e.buttons & 1)) || (e.button === 0 && !!(e.buttons & 2));
 }
 function onEditorChord(e) {
-  if (ui.view !== 'editor' || !isMouseChord(e) || isDialogOpen()) return false;
+  if ((ui.view !== 'editor' && !isHomeMap()) || !isMouseChord(e) || isDialogOpen()) return false;
   const t = e.target && e.target.closest ? e.target : null;
   if (!t || t.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return false;
   const onScreen = ui.panel === 'screen' && t.closest('#canvas-wrap');
-  if (!onScreen && !(isDiagramPanel() && t.closest('#design-map'))) return false;
+  if (!onScreen && !(isDiagramPanel() && t.closest('#design-map')) && !(isHomeMap() && t.closest('#home-map'))) return false;
   if (!cancelEditorDrag()) return false;
   e.preventDefault();
   modeChordSuppress = true;
@@ -16997,6 +17535,7 @@ function cancelEditorDrag() {
   document.body.classList.remove('moving', 'copying', 'map-dragging');
   if (d.kind === 'pan' || d.kind === 'map-pan') { d.wrap.classList.remove('grabbing'); return true; }
   if (d.kind === 'band' && d.el) d.el.remove();
+  if (d.kind === 'map' && ui.view === 'home') { renderHome(); return true; }
   if (d.kind === 'map') {
     const dd = currentDesign();
     if (ui.panel === 'map') renderMapView(dd);
@@ -17070,6 +17609,7 @@ function fitScreenView() {
 
 function setMode(mode) {
   ui.mode = mode;
+  if (ui.view === 'home') { updateHomeMapTools(); return; }
   updateToolbarState();
 }
 
@@ -17671,13 +18211,17 @@ function startMapDrag(ev, el) {
   const inner = el.closest('.map-inner');
   drag = { kind: 'map', el, inner, view: inner.dataset.view || 'map', key: el.dataset.node, sx: ev.clientX, sy: ev.clientY,
     x0: parseFloat(el.style.left) || 0, y0: parseFloat(el.style.top) || 0, moved: false, focus: inner.dataset.focus || null,
-    zoom: inner.closest('#design-map') ? ui.mapZoom : 1 }; // 編集の画面の図は、動いた量を倍率で割る（v1.05）
+    zoom: inner.closest('#design-map') ? ui.mapZoom : inner.closest('#home-map') ? ui.homeZoom : 1 }; // 倍率を掛けた図は、動いた量を倍率で割る（v1.05）
 }
 // ドラッグの間に描き直す線（ほかの箱は今の位置のまま）。矢印の印の id の頭は、図を描いたときと同じにする
 function viewEdgesSvg(view, focus, pos, w, h) {
   if (view === 'map') return mapEdgesSvg(mapModel(store.state, focus), pos, w, h);
   const d = findDesign(store.state, focus);
   const model = view === 'process' ? processModel(d) : flowModel(store.state, d);
+  if (view === 'flow' && flowVerticalOf(d)) { // 画面遷移図の縦向き（q185 案C。ボックスの幅は描いたときのまま）
+    const wire = flowVRoute(model, mapWires(model, VIEW_DRAW.flow), pos);
+    return mapWireSvg(wire, Math.ceil(Math.max(w, wire.right + 40)), Math.ceil(Math.max(h, wire.bottom + 40)), { ...VIEW_DRAW.flow, idPrefix: 'flow' });
+  }
   return mapEdgesSvg(model, pos, w, h, { ...VIEW_DRAW[view], idPrefix: view === 'process' ? 'proc' : 'flow' });
 }
 function dragMap(ev) {
@@ -17692,11 +18236,11 @@ function dragMap(ev) {
   Object.assign(drag.el.style, { left: drag.x + 'px', top: drag.y + 'px' });
   // 図の枠の外へ動かしたときは、枠を広げる（放すまで箱が隠れないように）
   const st = drag.inner.style;
-  st.width = Math.max(parseFloat(st.width), drag.x + MAP_W + 60) + 'px';
+  st.width = Math.max(parseFloat(st.width), drag.x + (parseFloat(drag.el.style.width) || MAP_W) + 60) + 'px';
   st.height = Math.max(parseFloat(st.height), drag.y + (parseFloat(drag.el.style.height) || MAP_H) + 76) + 'px'; // 線の数で伸びたボックスは、その高さで（v1.05）
   // 線も描き直す
   const pos = {};
-  drag.inner.querySelectorAll('.mnode').forEach((n) => { pos[n.dataset.node] = { x: parseFloat(n.style.left) || 0, y: parseFloat(n.style.top) || 0, h: parseFloat(n.style.height) || MAP_H }; });
+  drag.inner.querySelectorAll('.mnode').forEach((n) => { pos[n.dataset.node] = { x: parseFloat(n.style.left) || 0, y: parseFloat(n.style.top) || 0, w: parseFloat(n.style.width) || MAP_W, h: parseFloat(n.style.height) || MAP_H }; });
   const svg = drag.inner.querySelector('svg');
   if (svg) svg.outerHTML = viewEdgesSvg(drag.view, drag.focus, pos, parseFloat(drag.inner.style.width), parseFloat(drag.inner.style.height));
   // 直角の線と端の文字が枠の外へ出たときは、枠も広げる（mapEdgesSvg が SVG を広げている。v1.05）
@@ -17886,7 +18430,8 @@ function nudgePart(dx, dy) {
 
 // ── 8. 出力と取り込み ─────────────────────────────────────────────────────
 // 出力の窓（PDF・HTML・PNG。画像 q33）・印刷用のページ（表紙・つながりの図・項目の一覧表・画面。q34〜q36）・
-// HTML の出力と、単体で開いたとき（q37）・HTML の取り込み（q39）。PDF・PNG のファイルは、デスクトップ版の main（export.js）が作る（q38）
+// HTML の出力と、単体で開いたとき（q37）・HTML の取り込み（q39）。PDF・PNG のファイルは、デスクトップ版の main（export.js）が作る（q38）。
+// 単体で開いた HTML の PDF は、同じ印刷用文書を、ブラウザの印刷画面で PDF に保存してもらう（printDocInBrowser。2026-11-16 の q186 案A）
 const EMBED_ID = 'mim-embedded'; // 出力した HTML に画面設計を埋め込む script の id（ビジネスダイアグラムメーカー・CheckListMaker と別の名前）
 const EMBED_FORMAT = 'mockimagemaker-design';
 const IMPORT_MAX_CHARS = 50 * 1024 * 1024; // 取り込む HTML の大きさの上限
@@ -18303,6 +18848,11 @@ function exportDiff(d, state, revId) {
   if (!isVersionRow(r) || !hasSnapshot(r)) return null;
   return { result: designDiff(designFromSnapshot(d, r), d, state), label: revisionTitle(r), title: `${revisionTitle(r)}（${revisionDay(r)}）` };
 }
+// 単体で開いた HTML の、比べる版の写し（standalone.diffBase。readDiffBase の戻り値）から組む変更マーク（2026-11-16 の q186 の後に Claude が決めた）。形は exportDiff と同じ
+function baseExportDiff(d, state, base) {
+  if (!base || !base.design) return null;
+  return { result: designDiff(base.design, d, state), label: base.title, title: base.day ? `${base.title}（${base.day}）` : base.title };
+}
 // 画面のページの見出しの右に出す、比べた版との違いの数
 function diffSumHtml(df, info) {
   if (!df || !info) return '';
@@ -18336,7 +18886,7 @@ function exportLayout(d, state, opts, exportedAt) {
   const screens = d.screens.map((s, i) => ({ s, i })).filter(({ s }) => !opts.screenIds || opts.screenIds.includes(s.id));
   const withMap = !!opts.map && hasMapLinks(d, state);
   const itemChunks = opts.items ? splitItemRows(itemRowsHtml(d, state), aw, ah, measured) : [];
-  const df = opts.diffRevId ? exportDiff(d, state, opts.diffRevId) : null;
+  const df = opts.diffRevId ? exportDiff(d, state, opts.diffRevId) : opts.diffBase ? baseExportDiff(d, state, opts.diffBase) : null;
   const changesTitle = df ? `${df.title}からの変更点` : '';
   const changeChunks = !df ? [] : df.result.rows.length ? splitItemRows(changeRowsHtml(df.result.rows), aw, ah, measured, printChangeTable) : [[]];
   const proc = opts.process && hasProcessPage(d) ? processPagePlan(d, state, aw, ah, measured, idTag) : null;
@@ -18690,7 +19240,8 @@ const pngDocHtml = (title, body) => '<!DOCTYPE html>\n<html lang="ja">\n<head>\n
 const VIEW_TITLES = { map: '関連図', process: 'ステータスの流れ', flow: '画面遷移図', swimlane: 'スイムレーン図' };
 const VIEW_LEGENDS = {
   map: '<span><i></i>ルックアップ・関連レコード一覧（値が流れる向き）</span><span><i class="d"></i>項目の取り込み</span><span><i class="x"></i>一覧にないデータベース</span>',
-  process: '<span><i></i>先へ進む操作</span><span><i class="b"></i>前へ戻る操作（差し戻しなど）</span>',
+  process: '<span><i></i>先へ進む操作</span><span><i class="b"></i>前へ戻る操作（差し戻しなど）</span>'
+    + '<span><b class="tag">→ 20</b>行き先表示（線を描かずに、次のステータスの番号と名前を書いた操作）</span>', // v1.05 段階 B（q170）
   flow: '<span><i></i>ボタン</span><span><i class="g"></i>リンク</span><span><i class="x"></i>ほかの画面設計の画面</span>',
   swimlane: '<span><i class="s"></i>流れ</span><span><i class="sb"></i>戻る流れ（差し戻しなど）</span>'
     + '<span>工程の形: 角の丸いボックス＝始まり・終わり／ひし形＝判断／左右が二重線＝システムへの入力／下が波＝書類</span>',
@@ -19017,7 +19568,20 @@ function syncSlideOrient(m, paperName, orientName) {
     if (slide && x.value === 'landscape') x.checked = true;
   });
 }
-function exportDialogBody(d, desk, kind, hasMap) {
+// 単体で開いた HTML の出力のウィンドウに添える案内文（2026-11-16 の q186 案A。引継書 7-2: 送信先が「PDF に保存」でないと、横向きのページが横倒しになる）
+const BROWSER_PDF_NOTE = '［PDF を出力…］を押すと、ブラウザの印刷画面が開きます。印刷画面の「送信先」で「PDF に保存」（Edge では「PDF として保存」）を選び、［保存］を押してください。'
+  + '「Microsoft Print to PDF」やプリンターを選ぶと、横向きのページが縦向きの用紙に横倒しで印刷されます。';
+// 単体で開いた HTML の変更マークの欄（HTML に比べる版の写しが入っているときだけ。最初の印は、編集の画面で変更マークを出しているか）
+function baseDiffPick() {
+  const b = standalone && standalone.diffBase;
+  if (!b) return '';
+  return `<div class="xp-sub">変更マーク</div><label class="check xp-diff"><input type="checkbox" data-xdiffbase${ui.diffHidden ? '' : ' checked'}><span>`
+    + `「${esc(b.title)}」（${esc(b.day)}）との違いを変更マークで示す`
+    + '<small class="sub">追加したアイテムに「新」、設定・位置・大きさを変えたアイテムに「変」を付け、削除したアイテムを設定一覧の下に「削除したアイテム」として並べます。'
+    + '表紙の次に、その版からの変更点の一覧のページを入れます。</small></span></label>';
+}
+// pdfOnly: 単体で開いた HTML の、PDF だけの出力のウィンドウ（PDF・HTML・PNG の札を出さない）
+function exportDialogBody(d, desk, kind, hasMap, pdfOnly = false) {
   const o = exportOpts;
   const kinds = EXPORT_KINDS.map(([k, ic, name, note]) => {
     const off = !desk && k !== 'html'; // PDF・PNG はデスクトップ版だけ（q38）
@@ -19038,8 +19602,9 @@ function exportDialogBody(d, desk, kind, hasMap) {
       + `<small class="sub">追加したアイテムに「新」、設定・位置・大きさを変えたアイテムに「変」を付け、削除したアイテムを設定一覧の下に「削除したアイテム」として並べます。${more}</small></span></label>`;
   };
   const slide = o.paper === 'slide';
-  return `<div class="xp-kinds">${kinds}</div>
-    <div class="xp-box" data-xbox="pdf"${kind === 'pdf' ? '' : ' hidden'}>
+  // 単体で開いた HTML（pdfOnly）: PDF の設定だけを出し、ブラウザの印刷画面の案内文を添える。「出力したら PDF を開く」は出さない。
+  // 変更マークは、HTML に比べる版の写し（standalone.diffBase）が入っているときだけ選べる（2026-11-16 の q186 の後に Claude が決めた）
+  const pdfBox = `<div class="xp-box" data-xbox="pdf"${kind === 'pdf' ? '' : ' hidden'}>
       <div class="xp-row">
         <div class="field"><span>用紙</span>${xpSeg('xp-paper', o.paper, Object.entries(PAPERS).map(([k, p]) => [k, p.label]))}</div>
         <div class="field"><span>向き</span>${xpSeg('xp-orient', slide ? 'landscape' : o.orient, [['landscape', '横'], ['portrait', '縦']])}</div>
@@ -19047,9 +19612,13 @@ function exportDialogBody(d, desk, kind, hasMap) {
       <div class="xp-sub">出力するページ</div>
       <div class="xp-pages">${page('cover', '表紙', true, '')}${page('map', '関連図', hasMap, 'ほかの画面設計との関連がないので、出しません')}${page('items', '項目一覧', d.items.length > 0, '項目がないので、出しません')}${page('process', 'ステータスの流れ', hasProcessPage(d), 'ステータスを進める操作がないので、出しません')}${page('flow', '画面遷移図', hasFlowPage(d, store.state), 'ボタン・リンクの移動先がないので、出しません')}${page('settings', SETTINGS_PAGE_LABEL, true, '')}</div>
       ${pick}
-      ${diffPick('pdf')}
-      <label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>出力したら PDF を開く</span></label>
-    </div>
+      ${pdfOnly ? baseDiffPick() : diffPick('pdf')}
+      ${pdfOnly ? `<p class="xp-note xp-print-note">${esc(BROWSER_PDF_NOTE)}</p>`
+    : `<label class="check xp-open"><input type="checkbox" data-xopen${o.openAfter ? ' checked' : ''}><span>出力したら PDF を開く</span></label>`}
+    </div>`;
+  if (pdfOnly) return pdfBox;
+  return `<div class="xp-kinds">${kinds}</div>
+    ${pdfBox}
     <div class="xp-box" data-xbox="html"${kind === 'html' ? '' : ' hidden'}>
       <p class="xp-note">画面設計 1 つ分（画面 ${d.screens.length} つ・項目 ${d.items.length} 個）を、アプリごと 1 つの HTML ファイルにします。<br>
         受け取った人は、ブラウザ（Chrome・Edge など）で開いて、見る・変更する・保存し直すことができます。</p>
@@ -19069,16 +19638,18 @@ function exportDialogBody(d, desk, kind, hasMap) {
 // 出力の窓を開き、選んだ形で出力する。戻り値は出力の結果（キャンセルは null）
 async function openExportDialog(designId) {
   const d = findDesign(store.state, designId);
-  if (!d || standalone) return null;
+  if (!d) return null;
   flushSideField();
+  // 単体で開いた HTML では、PDF だけの出力のウィンドウ（ブラウザの印刷画面で PDF に保存する。2026-11-16 の q186 案A）
+  const pdfOnly = !!standalone;
   const desk = !!window.exportAPI;
-  const kind = desk ? exportOpts.kind : 'html';
+  const kind = pdfOnly ? 'pdf' : desk ? exportOpts.kind : 'html';
   const hasMap = hasMapLinks(d, store.state);
   const r = await showDialog({
-    title: `「${d.name}」を出力する`,
-    okLabel: '画面設計を出力…',
+    title: pdfOnly ? `「${d.name}」を PDF に出力する` : `「${d.name}」を出力する`,
+    okLabel: pdfOnly ? 'PDF を出力…' : '画面設計を出力…',
     width: 640,
-    body: exportDialogBody(d, desk, kind, hasMap),
+    body: exportDialogBody(d, desk, kind, hasMap, pdfOnly),
     init(m) {
       const syncOrient = () => syncSlideOrient(m, 'xp-paper', 'xp-orient');
       m.addEventListener('click', (e) => {
@@ -19095,7 +19666,7 @@ async function openExportDialog(designId) {
       syncOrient();
     },
     collect(m) {
-      const k = m.querySelector('.xp-kind.on').dataset.xkind;
+      const k = pdfOnly ? 'pdf' : m.querySelector('.xp-kind.on').dataset.xkind;
       const box = m.querySelector(`[data-xbox="${k}"]`);
       const screenIds = [...box.querySelectorAll('[data-xscreen]:checked')].map((x) => x.value);
       if (k === 'png' && !screenIds.length) return { error: '出力する画面を 1 つ以上選んでください。' };
@@ -19105,11 +19676,15 @@ async function openExportDialog(designId) {
       const checked = (key) => { const x = box.querySelector(`[data-xpage="${key}"]`); return !!x && !x.disabled && x.checked; };
       if (k === 'png') return { kind: k, screenIds, diffRevId, diffOn, settings: checked('settings') };
       if (k !== 'pdf') return { kind: k, screenIds, diffRevId, diffOn };
+      // 単体で開いた HTML の変更マーク（比べる版の写し）と、「出力したら PDF を開く」がないときの前の設定
+      const xb = box.querySelector('[data-xdiffbase]');
+      const xo = box.querySelector('[data-xopen]');
       const r2 = {
         kind: k, screenIds, paper: (box.querySelector('[name="xp-paper"]:checked') || {}).value || 'A4',
         orient: (box.querySelector('[name="xp-orient"]:checked') || {}).value || 'landscape',
         cover: checked('cover'), map: checked('map'), items: checked('items'), process: checked('process'), flow: checked('flow'), settings: checked('settings'),
-        openAfter: !!box.querySelector('[data-xopen]').checked, diffRevId, diffOn,
+        openAfter: xo ? xo.checked : exportOpts.openAfter, diffRevId, diffOn,
+        ...(xb && xb.checked && standalone ? { diffBase: standalone.diffBase } : {}),
       };
       if (!screenIds.length && !['cover', 'map', 'items', 'process', 'flow'].some((key) => r2[key])) return { error: '出力するページか画面を 1 つ以上選んでください。' };
       return r2;
@@ -19147,7 +19722,7 @@ async function runExport(designId, r) {
     reportExport(res, 'HTML');
     return res;
   }
-  if (!api) return null; // PDF・PNG はデスクトップ版だけ
+  if (!api && r.kind !== 'pdf') return null; // PNG はデスクトップ版だけ
   const what = r.kind === 'pdf' ? 'PDF' : 'PNG';
   const working = `${what} を作っています…`;
   await startWorking(working);
@@ -19155,6 +19730,14 @@ async function runExport(designId, r) {
     const cur = findDesign(store.state, designId) || d; // 描かれるのを待つ間に直っていれば、直した中身で組む
     if (r.kind === 'pdf') {
       const doc = exportDocument(cur, store.state, r);
+      // ブラウザで開いたとき（単体で開いた HTML）は、ブラウザの印刷画面で PDF に保存してもらう（2026-11-16 の q186 案A）。
+      // 印刷画面を開く前に、作っている間のお知らせを消す。保存したかどうかはページから分からないので、うまくいったときはお知らせを出さない
+      if (!api) {
+        endWorking(working);
+        res = await browserPrint(doc.html, safeFileName(cur.name));
+        if (res && !res.ok) toast(`PDF を出力できませんでした（${res.error || 'わからない理由'}）。`);
+        return res;
+      }
       res = await api.savePdf({ name: safeFileName(cur.name) + '.pdf', html: doc.html, pageSize: { width: doc.P.wi, height: doc.P.hi }, open: !!r.openAfter });
     } else {
       res = await api.savePng({ files: exportPngDocs(cur, store.state, r.screenIds, r.diffRevId, r.settings === false ? { table: false } : {}) });
@@ -19165,6 +19748,61 @@ async function runExport(designId, r) {
     endWorking(working);
   }
 }
+
+// ── ブラウザの印刷画面で PDF に保存する（単体で開いた HTML。2026-11-16 の q186 案A）──
+// 印刷用文書（デスクトップ版の PDF と同じ HTML。exportDocument）を見えない iframe に読み込み、iframe の印刷画面を開く。
+// 印刷されるのは iframe の文書だけなので、ページ構成・用紙と向き（@page）・背景の色は、デスクトップ版の PDF と同じになる。
+// name は、送信先「PDF に保存」の既定のファイル名（ブラウザが .pdf を付ける。デスクトップ版の「顧客管理.pdf」と同じ名前にする）。
+// 戻り値 { ok: true }（印刷画面を開いた。保存したかどうかはページから分からない）か { ok: false, error }。
+// iframe は、印刷画面を閉じた後（afterprint）に消す。消えずに残ったものは、次に印刷するときに消す。テストでは setBrowserPrint で差し替える
+const PRINT_FRAME_ID = 'mim-print-frame';
+const PRINT_LOAD_TIMEOUT = 20000;
+async function printDocInBrowser(html, name) {
+  const old = document.getElementById(PRINT_FRAME_ID);
+  if (old) old.remove();
+  const frame = document.createElement('iframe');
+  frame.id = PRINT_FRAME_ID;
+  frame.setAttribute('aria-hidden', 'true');
+  frame.setAttribute('tabindex', '-1');
+  // 文書の script は動かさない（印刷用文書に script はない）。中を読むための allow-same-origin と、印刷画面を開くための allow-modals だけを許す
+  frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
+  frame.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;border:0;visibility:hidden';
+  let timer = null;
+  const loaded = new Promise((resolve, reject) => {
+    frame.addEventListener('load', resolve, { once: true });
+    timer = setTimeout(() => reject(new Error('印刷用の文書を読み込めませんでした')), PRINT_LOAD_TIMEOUT);
+  });
+  frame.srcdoc = html;
+  document.body.appendChild(frame);
+  try {
+    await loaded;
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument;
+    if (!win || !doc) throw new Error('印刷用の文書を開けませんでした');
+    // 字の形（フォント）が整うのを待つ（デスクトップ版の export.js と同じ。整う前に印刷すると、字の幅がずれるため）
+    if (doc.fonts && doc.fonts.ready) await doc.fonts.ready;
+    const pageTitle = document.title;
+    doc.title = name;
+    document.title = name; // ブラウザによっては、ページの題名を既定のファイル名にするため
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      document.title = pageTitle;
+      if (frame.isConnected) frame.remove();
+    };
+    win.addEventListener('afterprint', () => setTimeout(finish, 0), { once: true });
+    win.focus();
+    win.print(); // Chrome・Edge では、印刷画面を閉じるまで戻らない
+    return { ok: true };
+  } catch (e) {
+    if (frame.isConnected) frame.remove();
+    return { ok: false, error: (e && e.message) || String(e) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+let browserPrint = printDocInBrowser;
 
 // ── システムの説明書の窓（第 10 段階の後半。q76・q77・画像 q81_1）──
 // 選んだ設定は、アプリを閉じるまで覚える（保存データには入れない。画面設計の出力の窓の設定 exportOpts とは別）。
@@ -19317,6 +19955,7 @@ function contentWithoutLookDefaults(c) {
   if (out.look === 'standard') delete out.look;
   if (Array.isArray(out.bandTabs) && !out.bandTabs.length) delete out.bandTabs;
   if (out.portal == null) delete out.portal; // v1.01 の第 16 段階で足した欄（書いていないときは持たない）
+  if (out.flowVertical == null) delete out.flowVertical; // v1.05 段階 B で追加した欄（画面遷移図が横向きのときは持たない）
   out.screens.forEach((s) => { if (s.itemView === 'input') delete s.itemView; });
   return out;
 }
@@ -19603,11 +20242,15 @@ function runCommand(cmd, arg) {
       (cmd === 'newDesign' ? newDesignWithDialog(from) : newSystemWithDialog()).catch(reportPageError);
       return true;
     }
-    // 出力と取り込み（第 5 段階）。単体で開いた HTML では、出力の窓と取り込みは出さず、HTML を保存し直すだけ（q37）
+    // 出力と取り込み（第 5 段階）。単体で開いた HTML では、取り込みは出さず、HTML を保存し直すだけ（q37）。
+    // 出力は、PDF だけの出力のウィンドウを開く（2026-11-16 の q186 案A。ブラウザの印刷画面で PDF に保存する）
     // システムの画面では、メニューバーの「出力」の小さなメニュー（説明書（PDF）を出力…・MPD に出力…。第 11 段階。q82）。ブラウザで開いたときは
     // メニューを出さず、説明書の窓の入口で、デスクトップ版で使えることを知らせる（openSystemDocDialog）
     case 'exportDialog':
-      if (standalone) return true;
+      if (standalone) {
+        openExportDialog(standalone.designId).catch(reportPageError);
+        return true;
+      }
       if (ui.view === 'editor') openExportDialog(ui.designId).catch(reportPageError);
       else if (ui.view === 'system' && window.exportAPI) {
         flushSideField(); // メニューの項目へフォーカスが移る前に、打ちかけの文字を保存する
@@ -19625,6 +20268,14 @@ function runCommand(cmd, arg) {
       return true;
   }
   if (ui.view === 'system') return runSystemCommand(cmd);
+  if (isHomeMap()) {
+    switch (cmd) {
+      case 'zoomIn': case 'zoomOut': case 'zoomReset': zoomMapByCommand(cmd); return true;
+      case 'zoomFit': fitMapView(); return true;
+      case 'modeSelect': setMode('select'); return true;
+      case 'modeHand': setMode('hand'); return true;
+    }
+  }
   if (ui.view !== 'editor') return false;
   switch (cmd) {
     case 'openItems': openItemsPanel(); return true;
@@ -19646,6 +20297,7 @@ function runCommand(cmd, arg) {
   if (isDiagramPanel()) {
     switch (cmd) {
       case 'zoomIn': case 'zoomOut': case 'zoomReset': zoomMapByCommand(cmd); return true;
+      case 'zoomFit': fitMapView(); return true;
       case 'modeSelect': setMode('select'); return true;
       case 'modeHand': setMode('hand'); return true;
     }
@@ -19654,6 +20306,7 @@ function runCommand(cmd, arg) {
   if (ui.panel !== 'screen') return false;
   switch (cmd) {
     case 'zoomIn': case 'zoomOut': case 'zoomReset': zoomByCommand(cmd); return true;
+    case 'zoomFit': fitScreenView(); return true;
     case 'modeSelect': setMode('select'); return true;
     case 'modeHand': setMode('hand'); return true;
     case 'copyPart': copyPart(); return true;
@@ -19676,7 +20329,7 @@ function runCommand(cmd, arg) {
 
 // 前の版を見ている間にも使える命令（見る・選ぶ・移る・拡大縮小と、今の中身に戻ってから行う命令）
 const VIEW_OK_COMMANDS = ['undo', 'redo', 'goHome', 'backToSystem', 'importHtml', 'newDesign', 'newSystem', 'addRevision', 'openRevisions', 'openItems', 'openMap', 'openProcess', 'openFlow', 'prevScreen', 'nextScreen', 'gotoScreen',
-  'zoomIn', 'zoomOut', 'zoomReset', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart', 'aiConnect'];
+  'zoomIn', 'zoomOut', 'zoomReset', 'zoomFit', 'modeSelect', 'modeHand', 'deselectPart', 'deselectItem', 'selectAll', 'copyPart', 'aiConnect'];
 
 // 揃える命令（メニューバー・右の欄・アプリのメニュー）と、alignedRects の how
 const ALIGN_COMMANDS = {
@@ -19743,6 +20396,7 @@ function onEditorClick(action, btn) {
     case 'open-flow': openViewPanel('flow'); return true;
     case 'map-reset': actions.resetMapPos(ui.designId); return true;
     case 'view-reset': actions.resetViewPos(ui.designId, btn.dataset.view); return true;
+    case 'flow-horizontal': case 'flow-vertical': actions.setFlowVertical(ui.designId, action === 'flow-vertical'); return true;
     case 'select-screen':
       flushSideField();
       if (btn.dataset.id === ui.screenId && ui.panel === 'screen') return true; // mousedown で切り替えた後の click
@@ -19868,6 +20522,13 @@ function onKeyDown(e) {
     else runCommand('saveHtml');
     return;
   }
+  // 単体で開いた HTML では、Ctrl+P で PDF の出力のウィンドウを開く（ブラウザの印刷は、アプリの画面の代わりに案内文だけを印刷するため止める。2026-11-16 の q186）
+  if (standalone && (e.ctrlKey || e.metaKey) && !e.altKey && String(e.key || '').toLowerCase() === 'p') {
+    e.preventDefault();
+    if (isDialogOpen()) toast('ウィンドウを閉じてから PDF を出力してください。');
+    else runCommand('exportDialog');
+    return;
+  }
   if (isDialogOpen()) return;
   if (e.key === 'Escape' && ui.menuFor) { ui.menuFor = null; refreshCards(); return; }
   if (e.key === 'Escape' && ui.sysMenu) {
@@ -19904,7 +20565,7 @@ function onKeyDown(e) {
   // 開いたメニュー（画面の一覧の「…」・改訂の ▼・メニューバーのたたんだ組など）の中で押した矢印・Delete では、選んだ部品・作業を動かしたり消したりしない
   // （メニューが閉じて部品が動く・消えていた。デバッグとリリースの見直し⑤-6）
   const inMenu = e.target && e.target.closest && e.target.closest('[role="menu"], .fold-pop');
-  if (e.key === 'Escape' && isDiagramPanel() && ui.mode === 'hand' && !inField && !inMenu && !isDialogOpen()) { e.preventDefault(); setMode('select'); return; }
+  if (e.key === 'Escape' && (isDiagramPanel() || isHomeMap()) && ui.mode === 'hand' && !inField && !inMenu && !isDialogOpen()) { e.preventDefault(); setMode('select'); return; }
   if (ui.view === 'editor' && !inField && !inMenu && !e.altKey && !e.isComposing) {
     const partCmd = editorKeyCommand(e);
     if (partCmd) { e.preventDefault(); runCommand(partCmd); return; }
@@ -20117,6 +20778,7 @@ function aiGetDesign(args) {
   return {
     id: d.id, name: d.name, target: targetLabel(d.target), look: lookOf(d).id, ...(lookOf(d).id === 'salesforce' ? { bandTabs: bandTabsOf(d) } : {}),
     description: d.description, updatedAt: d.updatedAt, ...(d.trashedAt ? { trashed: true } : {}),
+    flowOrientation: flowVerticalOf(d) ? 'vertical' : 'horizontal', // 画面遷移図の向き（v1.05 段階 B）
     items: page, itemsTotal: d.items.length, nextCursor,
     ...(d.portal || d.screens.some(isPortalScreen) ? { portal: portalOf(d) } : {}),
     screens: d.screens.map((s) => ({ id: s.id, name: s.name, device: s.device, width: s.width, height: s.height, showHeader: s.showHeader, tablePos: s.tablePos, itemView: s.itemView,
@@ -21250,14 +21912,18 @@ async function aiUpdateDesign(args, ctx) {
     if (args.bandTabs !== undefined) patch.bandTabs = args.bandTabs == null ? [] : aiBandTabs(args.bandTabs);
     if (args.portal !== undefined) patch.portal = aiPortal(args.portal);
     if (args.description !== undefined) patch.description = aiStrVal(args.description == null ? '' : args.description, 'description');
-    if (!Object.keys(patch).length) throw aiBad('変更する欄（name・target・look・bandTabs・portal・description）を 1 つ以上書いてください。');
+    // 画面遷移図の向き（v1.05 段階 B・q185 案C）
+    const orient = args.flowOrientation;
+    if (orient !== undefined && orient !== 'horizontal' && orient !== 'vertical') throw aiBad('flowOrientation は "horizontal"（横向き）か "vertical"（縦向き）です。');
+    if (!Object.keys(patch).length && orient === undefined) throw aiBad('変更する欄（name・target・look・bandTabs・portal・description・flowOrientation）を 1 つ以上書いてください。');
     const from = lookOf(tx.design);
-    actions.updateDesignInfo(tx.design.id, patch);
+    if (Object.keys(patch).length) actions.updateDesignInfo(tx.design.id, patch);
+    if (orient !== undefined && actions.setFlowVertical(tx.design.id, orient === 'vertical')) tx.warnings.push('画面遷移図の向きを変えたので、ドラッグで動かしたボックスの位置は、自動で並べた位置に戻しました。');
     const d = findDesign(store.state, tx.design.id);
     // 見た目を変えて帯の高さが変わったときは、帯の下の部品と吹き出しを上下にずらしたことを知らせる（get_screen で位置を読み直してもらうため）
     const dy = lookOf(d).band - from.band;
     if (dy) tx.warnings.push(`見た目を変えてヘッダーの高さが ${from.band} から ${lookOf(d).band} になったので、ヘッダーのある画面の、ヘッダーの下のアイテムと吹き出しを ${dy} ドットずらしました（お客さまポータルのヘッダーの画面と、小さなウィンドウの画面は、ずらしていません）。`);
-    return { id: d.id, look: d.look, ...(patch.portal ? { portal: portalOf(d) } : {}) };
+    return { id: d.id, look: d.look, flowOrientation: flowVerticalOf(d) ? 'vertical' : 'horizontal', ...(patch.portal ? { portal: portalOf(d) } : {}) };
   });
 }
 // お客さまポータルのヘッダー（update_design の portal。第 16 段階）。書いた欄だけを変える。null はどれも消す（サイトの名前・メニュー・右上のボタンを、書いていないときの値に戻す）
@@ -23762,7 +24428,7 @@ function bindGlobalEvents() {
     const node = e.button === 0 ? e.target.closest('.mnode') : null;
     if (node && !node.closest('[data-view="swimlane"]')) { startMapDrag(e, node); return; }
     // 3 つの図の手のひらツール: 何もない所のドラッグで図を動かす（v1.05）
-    if (e.button === 0 && ui.mode === 'hand' && isDiagramPanel() && e.target.closest('#design-map')) { startMapPan(e); return; }
+    if (e.button === 0 && ui.mode === 'hand' && e.target.closest('#design-map, #home-map') && mapZoomTarget()) { startMapPan(e); return; }
     if (ui.view === 'system') { onSystemMouseDown(e); return; }
     if (ui.view !== 'editor' || e.button !== 0) return;
     // 「…」・「＋ 画面を足す」・「…」のメニューの項目は、押した時点で右の欄を離れない（離れると打ちかけの文字の保存で画面の一覧が描き直され、
@@ -23856,6 +24522,7 @@ async function boot() {
   store = created.store;
   store.blockReason = created.blockReason || null;
   if (embedded) {
+    document.body.classList.add('sa-mode'); // ブラウザのメニューから印刷したときの案内文を、単体で開いた HTML 用にする（@media print）
     if (created.blockReason) showBanner(created.blockReason + (created.failed ? '' : ' この HTML は、新しい版のアプリで開いてください。'));
   } else if (created.blockReason) showBanner(created.blockReason + ' 今のデータを消さないように、保存を止めています。');
   else if (created.notice) showBanner(created.notice);
@@ -23906,7 +24573,7 @@ function exposeForTest() {
     NOTE_STAGES, NOTE_STAGE_NAMES, NOTE_STATES, NOTE_STATE_NAMES, NOTE_TEXT_MAX, normalizeNotes, noteQuestionDecided,
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
-    swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, diagramCrop, VIEW_TITLES, VIEW_LEGENDS, bdmExportPlan,
+    wireOverlaps, WIRE_GAP_MIN, swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, diagramCrop, VIEW_TITLES, VIEW_LEGENDS, bdmExportPlan,
     swimPlusAt, swimSideToward, swimFitZoom, SWIM_NEAR, selectEdge, setSwimMode, setSwimPal,
     SWIM_ORIENTS, SWIM_ORIENT_NAMES, swimOrientOf, SWIM_HEAD_H, setSwimOrientView,
     SWIM_HDR, SWIM_LANE, SWIM_STEP, SWIM_SHAPES, SWIM_W_MAX, swimBoxSize, swimTextW, swimStoredPos, swimDrawing, swimRoutes,
@@ -23920,6 +24587,7 @@ function exposeForTest() {
     WINDOW_POS, windowRect, partBounds, clampGroupMove, HEADER_KINDS, PORTAL_BAND, portalOf, bandHeight, templateUnderId,
     CRM_SAMPLE, buildCrmSample, articlesHeight,
     standaloneInfo: () => standalone, appScript: () => APP_SCRIPT, appStyle: () => APP_STYLE,
+    BROWSER_PDF_NOTE, PRINT_FRAME_ID, printDocInBrowser, setBrowserPrint: (fn) => { browserPrint = fn || printDocInBrowser; },
     setMaterialWaitMs: (ms) => { materialWaitMs = ms; },
     ready: true,
   });

@@ -1026,6 +1026,13 @@ const CHAPTERS = {
     await sleep(400);
     await listTop();
     await shot('sc_flow', { anno: [{ box: { sel: '#screen-list .db-entry', text: '画面遷移図' }, n: 1, pad: 2 }] });
+    // 画面遷移図の縦向き（v1.05 段階 B・q185）。撮った後は横向きに戻す
+    await click('[data-action="flow-vertical"]');
+    await sleep(400);
+    await listTop();
+    await shot('sc_flow_vertical', { anno: [{ box: '.map-head .mz-group', n: 1, pad: 2 }] });
+    await click('[data-action="flow-horizontal"]');
+    await sleep(200);
   },
 
   // 5 章 改訂履歴
@@ -1250,7 +1257,17 @@ const CHAPTERS = {
     await shot('vd_html', { anno: [
       { box: '#sa-bar', n: 1, pad: 0, at: 'b', bdx: -200, bdy: 4 },
       { box: { sel: '#sa-bar button', text: 'HTML を保存する' }, n: 2, pad: 3, at: 'l' },
+      { box: '#tb-pdf', n: 3, pad: 2, at: 'r' }, // 下の辺に置くと、ボタンの文字「出力する」に重なる
     ] });
+    // 単体で開いた HTML の PDF だけの出力のウィンドウ（2026-11-16 の q186 案A。9.2）
+    await click('#tb-pdf');
+    await page.waitForSelector('.modal [data-xbox="pdf"]');
+    await sleep(300);
+    await shot('vd_html_pdf', { clip: '.modal', pad: 12, anno: [
+      { box: '.modal .xp-print-note', n: 1, pad: 3, at: 'l', bdx: -14 }, // 左の辺の上に置くと、2 行目の頭の文字に重なる
+      { box: '.modal [data-dlg="ok"]', n: 2, pad: 3, at: 'l' },
+    ] });
+    await closeDlg();
   },
 };
 

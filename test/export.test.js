@@ -457,7 +457,8 @@ test('単体で開いたとき: その画面設計の編集の画面がすぐ開
   assert.ok($(app, '#sa-bar'), '上の帯');
   assert.match($(app, '#sa-bar').textContent, /「顧客管理」の画面設計です/);
   assert.ok($(app, '#toolbar [data-action="save-html"]'));
-  for (const sel of ['[data-action="home"]', '[data-action="export"]', '[data-action="import-items"]']) assert.equal($(app, sel), null, `${sel} を出さない`);
+  for (const sel of ['[data-action="home"]', '[data-action="import-items"]']) assert.equal($(app, sel), null, `${sel} を出さない`);
+  assert.deepEqual($$(app, '[data-action="export"]').map((b) => b.id), ['tb-pdf'], '出力のボタンは［PDF を出力する］だけ（2026-11-16 の q187 案A）');
   // メニューバーの「揃える」はたたむ。「項目」の組はボタンが「項目を足す」の 1 つだけなので、たたまない（q73・q74）
   assert.ok($(app, '#toolbar .fold-btn[data-fold="align"]'));
   assert.equal($(app, '#toolbar .fold-btn[data-fold="items"]'), null);
@@ -465,13 +466,138 @@ test('単体で開いたとき: その画面設計の編集の画面がすぐ開
   api.runCommand('goHome');
   assert.equal(api.ui.view, 'editor', '一覧へ戻らない');
   api.runCommand('importHtml');
+  await tick();
+  assert.equal($(app, '.modal'), null, '取り込みは開かない');
+  // 出力は、PDF だけの出力のウィンドウを開く（2026-11-16 の q186 案A）
   api.runCommand('exportDialog');
   await tick();
-  assert.equal($(app, '.modal'), null, '出力の窓も取り込みも開かない');
+  assert.equal($(app, '.modal h2').textContent, '「顧客管理」を PDF に出力する');
+  assert.equal($(app, '.modal .xp-kinds'), null, 'PDF・HTML・PNG の札は出さない');
+  click($(app, '.modal [data-dlg="cancel"]'));
+  await tick();
   api.actions.updateDesignInfo(api.currentDesign().id, { description: '直した説明' });
   assert.equal(app.window.localStorage.getItem(STORAGE_KEY), null, 'localStorage に書かない');
   assert.equal(api.isStandaloneDirty(), true);
   assert.match($(app, '#sa-state').textContent, /保存していない変更があります/);
+});
+
+// ── 単体で開いた HTML から PDF を出力する（2026-11-16 の q186 案A・q187 案A。ブラウザの印刷画面で PDF に保存する）──
+// 印刷画面は jsdom では開けないので、印刷の処理（printDocInBrowser）を setBrowserPrint で差し替えて、渡る印刷用文書とファイル名を確かめる。
+// 本物の印刷の処理（見えない iframe）は tools/check-browser-pdf.js（headless の Chrome）で確かめる
+test('単体で開いたとき: ツールバーの［HTML を保存する］の右に［PDF を出力する］があり、押すと PDF だけの出力のウィンドウが開く', async (t) => {
+  const { html } = await exportHtmlText(t);
+  const { app, api } = await bootStandalone(t, html);
+  const pdfBtn = $(app, '#toolbar #tb-pdf');
+  assert.ok(pdfBtn, '［PDF を出力する］がある');
+  assert.equal($(app, '#toolbar [data-action="save-html"]').nextElementSibling, pdfBtn, '［HTML を保存する］の右');
+  assert.equal(pdfBtn.textContent.replace(/\s+/g, ''), '⇪PDFを出力する');
+  assert.equal($(app, '#sa-bar #tb-pdf'), null, '上のバーには置かない（q187 案A）');
+  click(pdfBtn);
+  await tick();
+  const m = $(app, '.modal');
+  assert.ok(m, '出力のウィンドウが開く');
+  assert.equal(m.querySelector('h2').textContent, '「顧客管理」を PDF に出力する');
+  assert.equal(m.querySelector('[data-dlg="ok"]').textContent, 'PDF を出力…');
+  assert.equal(m.querySelector('.xp-kinds'), null, 'PDF・HTML・PNG の札は出さない');
+  assert.deepEqual($$(app, '.modal [data-xbox]').map((b) => [b.dataset.xbox, b.hidden]), [['pdf', false]], 'PDF の設定だけ');
+  assert.equal(m.querySelector('[data-xopen]'), null, '「出力したら PDF を開く」は出さない');
+  assert.equal(m.querySelector('[data-xdiff]'), null, '比べる版の写しがない HTML では、変更マークの欄を出さない');
+  assert.equal(m.querySelector('[data-xdiffbase]'), null);
+  assert.equal(m.querySelector('.xp-print-note').textContent, api.BROWSER_PDF_NOTE);
+  assert.match(api.BROWSER_PDF_NOTE, /「送信先」で「PDF に保存」（Edge では「PDF として保存」）を選び/);
+  assert.deepEqual($$(app, '.modal [data-xscreen]').map((x) => [x.value, x.checked]), [['s1', true], ['s2', true]], '出力する画面はデスクトップ版と同じ欄');
+  assert.ok(m.querySelector('[name="xp-paper"][value="slide"]'), '用紙はデスクトップ版と同じ欄');
+  click(m.querySelector('[data-dlg="cancel"]'));
+});
+
+test('単体で開いたとき: ［PDF を出力…］で、デスクトップ版の PDF と同じ印刷用文書とファイル名を、ブラウザの印刷の処理へ渡す。選んだ用紙は覚える', async (t) => {
+  const { html } = await exportHtmlText(t);
+  const { app, api } = await bootStandalone(t, html);
+  const calls = [];
+  api.setBrowserPrint(async (doc, name) => { calls.push([doc, name]); return { ok: true }; });
+  click($(app, '#tb-pdf'));
+  await tick();
+  const m = $(app, '.modal');
+  click(m.querySelector('[name="xp-paper"][value="A3"]'));
+  click(m.querySelector('[name="xp-orient"][value="portrait"]'));
+  m.querySelector('[data-xscreen][value="s2"]').checked = false;
+  click(m.querySelector('[data-dlg="ok"]'));
+  await waitFor(() => calls.length === 1, { label: '印刷の処理が呼ばれる' });
+  assert.equal($(app, '.modal'), null, 'ウィンドウは閉じる');
+  const [doc, name] = calls[0];
+  assert.equal(name, '顧客管理', '「PDF に保存」の既定のファイル名（デスクトップ版の「顧客管理.pdf」と同じ）');
+  const expected = api.exportDocument(api.currentDesign(), api.store.state,
+    { paper: 'A3', orient: 'portrait', cover: true, map: true, items: true, process: false, flow: false, settings: true, screenIds: ['s1'] });
+  assert.equal(doc, expected.html, 'デスクトップ版の PDF と同じ印刷用文書');
+  assert.match(doc, /@page\{size:297\.000mm 420\.000mm;margin:0\}/, 'A3 縦の用紙');
+  assert.ok(doc.includes('詳細') && !/<h2[^>]*>[^<]*新規登録/.test(doc), '選んだ画面だけ');
+  assert.equal(api.exportOpts.paper, 'A3', '選んだ用紙を覚える');
+  assert.equal(api.exportOpts.orient, 'portrait');
+  assert.equal($(app, '#toast').hidden || !/PDF を作っています/.test($(app, '#toast').textContent), true, '作っている間のお知らせは消す');
+  api.setBrowserPrint(null);
+});
+
+test('単体で開いたとき: 印刷の処理が失敗したら、お知らせで伝える', async (t) => {
+  const { html } = await exportHtmlText(t);
+  const { app, api } = await bootStandalone(t, html);
+  api.setBrowserPrint(async () => ({ ok: false, error: '印刷用の文書を読み込めませんでした' }));
+  click($(app, '#tb-pdf'));
+  await tick();
+  click($(app, '.modal [data-dlg="ok"]'));
+  await waitFor(() => /PDF を出力できませんでした（印刷用の文書を読み込めませんでした）。/.test($(app, '#toast').textContent), { label: '失敗のお知らせ' });
+  api.setBrowserPrint(null);
+});
+
+test('単体で開いたとき: Ctrl+P は、ブラウザの印刷を止めて PDF の出力のウィンドウを開く（ウィンドウを開いている間は止めるだけ）', async (t) => {
+  const { html } = await exportHtmlText(t);
+  const { app } = await bootStandalone(t, html);
+  const press = () => {
+    const ev = new app.window.KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true, cancelable: true });
+    app.document.body.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  };
+  assert.equal(press(), true, 'ブラウザの印刷を止める');
+  await tick();
+  assert.equal($(app, '.modal h2').textContent, '「顧客管理」を PDF に出力する');
+  assert.equal(press(), true);
+  await tick();
+  assert.match($(app, '#toast').textContent, /ウィンドウを閉じてから PDF を出力してください。/);
+  click($(app, '.modal [data-dlg="cancel"]'));
+});
+
+test('アプリとして開いたとき: Ctrl+P は止めない。出力のウィンドウの PDF は、今までどおりデスクトップ版だけ', async (t) => {
+  const { app } = await bootSample(t);
+  const ev = new app.window.KeyboardEvent('keydown', { key: 'p', ctrlKey: true, bubbles: true, cancelable: true });
+  app.document.body.dispatchEvent(ev);
+  assert.equal(ev.defaultPrevented, false);
+  assert.equal($(app, '#tb-pdf'), null);
+});
+
+test('印刷の処理（printDocInBrowser）: 印刷用文書を見えない iframe に読み込み、iframe の印刷画面を開き、閉じた後に iframe を消す', async (t) => {
+  const { html } = await exportHtmlText(t);
+  const { app, api } = await bootStandalone(t, html);
+  const w = app.window;
+  // jsdom の iframe は srcdoc を読み込まないので、読み込みと印刷の印だけを身代わりにする
+  let printed = 0;
+  const proto = w.HTMLIFrameElement.prototype;
+  const desc = Object.getOwnPropertyDescriptor(proto, 'srcdoc');
+  Object.defineProperty(proto, 'srcdoc', { configurable: true, set(v) { this.__srcdoc = v; setTimeout(() => this.dispatchEvent(new w.Event('load')), 0); }, get() { return this.__srcdoc; } });
+  t.after(() => { if (desc) Object.defineProperty(proto, 'srcdoc', desc); else delete proto.srcdoc; });
+  const titleBefore = app.document.title;
+  const printing = api.printDocInBrowser('<!DOCTYPE html><html><head><title>x</title></head><body class="xp-doc"></body></html>', '顧客管理');
+  const frame = app.document.getElementById(api.PRINT_FRAME_ID);
+  assert.ok(frame, '見えない iframe を置く');
+  assert.equal(frame.getAttribute('sandbox'), 'allow-same-origin allow-modals', '文書の script は動かさない');
+  assert.match(frame.style.cssText, /visibility: hidden/);
+  frame.contentWindow.print = () => { printed += 1; };
+  frame.contentWindow.focus = () => {}; // jsdom の iframe には focus がない
+  const res = await printing;
+  assert.deepEqual(plain(res), { ok: true });
+  assert.equal(printed, 1, 'iframe の印刷画面を開く');
+  assert.equal(app.document.title, '顧客管理', '印刷画面を開いている間は、題名をファイル名にする');
+  frame.contentWindow.dispatchEvent(new w.Event('afterprint'));
+  await waitFor(() => !app.document.getElementById(api.PRINT_FRAME_ID), { label: 'iframe を消す' });
+  assert.equal(app.document.title, titleBefore, '題名を戻す');
 });
 
 test('単体で開いたとき: つながった項目は「元なし」にならず直せない。ルックアップ元がないので、元・探す項目は直せない形で出す。図にはほかの画面設計の箱も出る', async (t) => {
@@ -666,10 +792,19 @@ test('取り込み: 構築先の自由な名前は選択肢に足す。最初の
 });
 
 test('ブラウザの印刷では、アプリの画面の代わりに案内の文だけを出す（印刷用の文書は出す）', async (t) => {
-  const { api } = await bootSample(t);
+  const { app, api } = await bootSample(t);
   const css = api.appStyle();
   assert.match(css, /@media print\{[\s\S]*body:not\(\.xp-doc\)>\*\{display:none!important\}[\s\S]*この画面は印刷できません/);
   assert.match(css, /body\.xp-doc \.pg\+\.pg\{break-before:page\}/);
+  // 単体で開いた HTML（body.sa-mode）では、ツールバーの「PDF を出力する」へ案内する（2026-11-16 の q186 案A）
+  assert.match(css, /body\.sa-mode:not\(\.xp-doc\)::before\{content:'この画面は印刷できません。PDF は、ツールバーの「PDF を出力する」（Ctrl\+P）で出力してください。'\}/);
+  assert.equal(app.document.body.classList.contains('sa-mode'), false, 'アプリとして開いたときは付けない');
+});
+
+test('単体で開いた HTML の body には sa-mode を付ける（ブラウザのメニューから印刷したときの案内文を変えるため）', async (t) => {
+  const { html } = await exportHtmlText(t);
+  const { app } = await bootStandalone(t, html);
+  assert.equal(app.document.body.classList.contains('sa-mode'), true);
 });
 
 // ── 見直しで見つかった不具合（2026-10-13）──

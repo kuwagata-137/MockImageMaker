@@ -238,6 +238,9 @@ const SWIM_KINDS = ['start', 'task', 'input', 'decision', 'doc', 'end'];
 const SWIM_ORIENTS = ['horizontal', 'vertical'];
 const swimOrient = opt(z.enum(SWIM_ORIENTS).describe('図の向き: "horizontal"（横向き。レーンを上から下へ並べ、工程を左から右へ進める）・"vertical"（縦向き。レーンを左から右へ並べ、工程を上から下へ進める）。' +
   '省くと今の向きのまま。工程の位置はアプリが決める'));
+// 画面遷移図の向き（update_design の flowOrientation。v1.05 段階 B・q185 案C）
+const flowOrient = opt(z.enum(['horizontal', 'vertical']).describe('画面遷移図の向き: "horizontal"（横向き。つながりの順に左から右へ列を並べる）・"vertical"（縦向き。上から下へ段を並べる）。' +
+  '省くと今の向きのまま。向きを変えると、人がドラッグで動かした画面遷移図のボックスの位置は、自動で並べた位置に戻る'));
 // 作業の指す先の欄。id か名前か、get_system の返事の形（{ id, name }。id を使う）か null（なし）
 const swimRefField = (what) => opt(z.union([z.string(), z.number(), obj({ id: z.string(), name: opt(z.string()) }), z.null()])
   .describe(`${what}（get_system の返事の { id, name } の形も書ける。null はなし）`));
@@ -331,6 +334,7 @@ module.exports = {
   roleOps: opsOf(roleOps), swimSteps: z.array(swimStep).describe('工程の並び（今のスイムレーン図の工程を全部置き換える。空の並びで工程を全部消す）'),
   swimEdges: z.array(swimEdge).describe('矢印の並び（今の矢印を全部置き換える。省くと、今の矢印のうち両端の工程が残っているものを残す。[] で全部消す）'),
   swimOrient,
+  flowOrient,
   materialInputs, noteInputs, promptArgs, DEVICES, LOOKS, ITEM_VIEWS, TABLE_KINDS, FRAME_COLORS, CALLOUT_COLORS, CALLOUT_TIPS, ALIGN_HOW, MAX_SCREEN_HEIGHT, SWIM_KINDS, SWIM_ORIENTS, NOTE_STAGES, NOTE_STATES,
   WINDOW_POS, HEADER_KINDS,
 };

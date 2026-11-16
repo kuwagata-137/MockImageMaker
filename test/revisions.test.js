@@ -555,6 +555,41 @@ test('出力（HTML）: 比べる版の控えだけを入れ、開いたとき�
   click($(sa, '.modal [data-dlg="cancel"]'));
 });
 
+test('単体で開いた HTML の PDF: 比べる版の写しが入っていれば変更マークの欄を出し、印刷用文書に「…からの変更点」のページと札が入る（2026-11-16）', async (t) => {
+  const xapi = fakeExportAPI();
+  const { app, api } = await bootSample(t, { exportAPI: xapi });
+  const { r1 } = makeTwoVersions(api);
+  await exportWith(app, api, 'html', r1);
+  const html = xapi.calls.find((c) => c[0] === 'saveHtml')[1].html;
+  const sa = bootApp({ html, url: 'https://localhost/vendor/customer.html' });
+  const sapi = await sa.api();
+  t.after(() => sa.close());
+  const calls = [];
+  sapi.setBrowserPrint(async (doc, name) => { calls.push([doc, name]); return { ok: true }; });
+  click($(sa, '#tb-pdf'));
+  await tick();
+  const xb = $(sa, '.modal [data-xdiffbase]');
+  assert.ok(xb, '変更マークの欄');
+  assert.equal(xb.checked, true, '編集の画面で変更マークを出しているので、最初から選んである');
+  assert.match(xb.closest('label').textContent, /「第 1 版」（.+）との違いを変更マークで示す/);
+  click($(sa, '.modal [data-dlg="ok"]'));
+  await waitFor(() => calls.length === 1, { label: '印刷の処理が呼ばれる' });
+  const doc = new sa.window.DOMParser().parseFromString(calls[0][0], 'text/html');
+  const pages = [...doc.querySelectorAll('.pg')];
+  assert.match(pages[1].textContent, /第 1 版（.+）からの変更点/, '表紙の次に変更点のページ');
+  const screenPage = pages.find((p) => p.querySelector('.xp-zone'));
+  assert.ok(screenPage.querySelector('.part .df-new'), '追加したアイテムに「新」');
+  assert.match(screenPage.querySelector('.df-sum').textContent, /第 1 版（.+）との違い：新 1・変 3・削除 1/);
+  // 変更マークを外すと、変更点のページも札も入らない
+  click($(sa, '#tb-pdf'));
+  await tick();
+  $(sa, '.modal [data-xdiffbase]').checked = false;
+  click($(sa, '.modal [data-dlg="ok"]'));
+  await waitFor(() => calls.length === 2, { label: '2 回目' });
+  assert.ok(!/からの変更点/.test(calls[1][0]));
+  assert.ok(!/class="df df-new"/.test(calls[1][0]));
+});
+
 test('出力（HTML）: 変更マークを選ばなければ、写しも帯も入らない', async (t) => {
   const xapi = fakeExportAPI();
   const { app, api } = await bootSample(t, { exportAPI: xapi });
