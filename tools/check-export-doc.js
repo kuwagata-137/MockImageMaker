@@ -106,7 +106,8 @@ async function checkSystemDoc({ page, OUT, check, waitFile, enableTestHooks }) {
   await page.click('#sys-menu-root [data-action="sys-export-doc"]');
   await page.waitForSelector('.modal [data-dpage]');
   const shown = await page.evaluate(() => [...document.querySelectorAll('.modal [data-dpage]')].map((x) => `${x.dataset.dpage}:${x.checked ? '入れる' : '外す'}`));
-  check('6. 説明書の窓が開き、最初は 8 つのページを全部入れる', shown.length === 8 && shown.every((s) => s.endsWith('入れる')), shown.join('・'));
+  // v1.04 の q164 で、設定一覧のチェックボックス（settings）を追加した。8 つのページと合わせて 9 つ
+  check('6. 説明書のウィンドウが開き、最初は 8 つのページと設定一覧を全部入れる', shown.length === 9 && shown.every((s) => s.endsWith('入れる')), shown.join('・'));
   const opts = await page.evaluate(() => ({ ...window.__test__.docOpts }));
   await page.click('.modal [data-dlg="ok"]');
   await page.waitForFunction(() => !document.querySelector('.modal'));
