@@ -2,6 +2,7 @@
 // 見本は架空の業務で、AI のツール（テスト用の窓口の aiDispatch）で組み立てる:
 //   顧客管理 … 画面「顧客詳細」から 12 画面へ行き来する（1 つのボックスに線が集まる画面遷移図）
 //   購買申請 … ステータス 20 個。「見送り」に 13 本、「下書き」に差し戻しが 3 本集まる（線の多いステータスの流れ）
+//   購買業務（横向き）・購買業務（縦向き） … 工程 56 個・役割 5 つのスイムレーン図（v1.05 段階 C。PDF で何ページかに分ける図）
 // 試作の線（protoFlow）は、アプリの swimRoutes（スイムレーン図と同じ直角の線）に、出入りの位置（fromPin・toPin）と曲がる位置（mid）を渡して引き、
 // 今の図の SVG と差し替えて撮る（アプリの本体の描き方は変えない）。
 'use strict';
@@ -77,6 +78,26 @@ async function buildDense(page) {
   await call('edit_process', { design: '購買申請', ops });
   await call('layout_screen', { design: '購買申請', screen: '画面 1', layout: { columns: 2, rows: [[{ type: 'steps', span: 2 }], [{ type: 'status' }]] } });
   return page.evaluate(() => Object.fromEntries(window.__test__.store.state.designs.map((d) => [d.name, d.id])));
+}
+
+// 工程 56 個のスイムレーン図のシステム（v1.05 段階 C）。役割 5 つ、工程を順に矢印で接続し、差し戻しの矢印を 3 本追加する。戻り値はシステムの id
+async function buildSwim56(page, name, orientation) {
+  const call = async (tool, args) => {
+    const r = await page.evaluate((t, a) => window.__test__.aiDispatch(t, a, { session: 's-1', client: 'claude-code' }), tool, args);
+    if (!r.ok) throw new Error(`${tool}: ${JSON.stringify(r.error)}`);
+    return r.result;
+  };
+  await call('create_system', { name, description: '購買の申請から支払まで（架空の業務）' });
+  const roles = ['申請者', '課長', '部長', '購買担当', '経理担当'];
+  await call('update_system', { system: name, ops: roles.map((n) => ({ op: 'add', name: n })) });
+  const verbs = ['申請書を書く', '内容を確認する', '承認する', '見積を依頼する', '見積を比べる', '発注する', '納品を確認する', '請求書を受け取る', '支払を申請する', '支払う'];
+  const steps = Array.from({ length: 56 }, (_, i) => ({ key: 's' + i, role: roles[[0, 1, 2, 3, 3, 3, 0, 4, 4, 4][i % 10]],
+    kind: i === 0 ? 'start' : i === 55 ? 'end' : i % 9 === 4 ? 'decision' : 'task', text: `${i + 1}. ${verbs[i % 10]}`, col: i }));
+  const edges = steps.slice(1).map((s, i) => ({ from: 's' + i, to: s.key }));
+  [[12, 10, '差し戻し'], [31, 28, '差し戻し'], [47, 41, '再見積']].forEach(([f, t, label]) => edges.push({ from: 's' + f, to: 's' + t, label }));
+  const y = await call('get_system', { system: name });
+  await call('set_swimlane', { system: name, expect: y.updatedAt, steps, edges, orientation });
+  return page.evaluate((n) => window.__test__.store.state.systems.find((s) => s.name === n).id, name);
 }
 
 // 試作: 開いている画面遷移図を、直角の線で引き直す（ページの中で動く。外の変数は使えない）。
@@ -305,24 +326,39 @@ module.exports = async function shootDense(browser, env) {
   // 282: 今のステータスの流れ（ステータス 20 個）
   await open(ids['購買申請'], 'openProcess');
   await shootMap('282_dense_ステータスの流れ_今の線');
-  // 283・284: PDF（A4 横）の図のページと、縮小率
-  for (const [name, scenes] of [['顧客管理', { 画面遷移図: '283_dense_PDF_画面遷移図（A4横）' }], ['購買申請', { ステータスの流れ: '284_dense_PDF_ステータスの流れ（A4横）' }]]) {
-    const html = await page.evaluate((id) => {
+  // 283・284・294・295: PDF の図のページと、縮小率（用紙ごと）。倍率 60% より小さく縮む図は何ページかに分ける（v1.05 段階 C。q172 案A）ので、
+  // 分けたページ（見出し「（1/n）」）を全部撮る。294・295 はスイムレーン図（工程 56 個。システム設計書の PDF）
+  const swimH = await buildSwim56(page, '購買業務（横向き）', 'horizontal');
+  const swimV = await buildSwim56(page, '購買業務（縦向き）', 'vertical');
+  const PAPERS = [['A4', 'landscape', 'A4横'], ['A4', 'portrait', 'A4縦'], ['A3', 'landscape', 'A3横']];
+  const docs = [
+    ...PAPERS.map(([paper, orient, tag]) => ({ kind: 'design', id: ids['顧客管理'], paper, orient, title: '画面遷移図', scene: `283_dense_PDF_画面遷移図（${tag}）` })),
+    ...PAPERS.map(([paper, orient, tag]) => ({ kind: 'design', id: ids['購買申請'], paper, orient, title: 'ステータスの流れ', scene: `284_dense_PDF_ステータスの流れ（${tag}）` })),
+    ...PAPERS.slice(0, 2).map(([paper, orient, tag]) => ({ kind: 'system', id: swimH, paper, orient, title: 'スイムレーン図', scene: `294_dense_PDF_スイムレーン図_横向き（${tag}）` })),
+    ...PAPERS.slice(0, 2).map(([paper, orient, tag]) => ({ kind: 'system', id: swimV, paper, orient, title: 'スイムレーン図', scene: `295_dense_PDF_スイムレーン図_縦向き（${tag}）` })),
+  ];
+  for (const x of docs) {
+    const html = await page.evaluate((o) => {
       const T = window.__test__;
-      return T.exportDocument(T.store.state.designs.find((x) => x.id === id), T.store.state, { paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, process: true, flow: true }).html;
-    }, ids[name]);
+      if (o.kind === 'system') {
+        const y = T.store.state.systems.find((s) => s.id === o.id);
+        return T.exportSystemDocument(y, T.store.state, { paper: o.paper, orient: o.orient, systemCover: true, swimlane: true, notes: false }).html;
+      }
+      return T.exportDocument(T.store.state.designs.find((d) => d.id === o.id), T.store.state, { paper: o.paper, orient: o.orient, cover: true, map: true, items: true, process: true, flow: true }).html;
+    }, x);
     const doc = await browser.newPage();
-    await doc.setViewport({ width: 1200, height: 1200 });
+    await doc.setViewport({ width: 1700, height: 1200 });
     await doc.setContent(html, { waitUntil: 'load' });
     const info = await doc.$$eval('body > .pg', (els) => els.map((e) => ({
       title: (e.querySelector('.pg-head h2') || e.querySelector('.cv-title')).textContent,
-      zoom: [...e.querySelectorAll('.xp-fit [style*="zoom"]')].map((x) => x.style.zoom).join(','),
+      zoom: [...e.querySelectorAll('.xp-fit [style*="zoom"]')].map((z) => z.style.zoom).join(','),
     })));
-    console.log(`PDF（A4 横・${name}）:`, info.map((p) => p.title + (p.zoom ? `〔倍率 ${p.zoom}〕` : '')).join('・'));
+    console.log(`PDF（${x.scene}）:`, info.filter((p) => p.title.startsWith(x.title)).map((p) => p.title + (p.zoom ? `〔倍率 ${p.zoom}〕` : '')).join('・'));
     const pages = await doc.$$('body > .pg');
     for (const [i, p] of info.entries()) {
-      if (!scenes[p.title]) continue;
-      const file = path.join(OUT, `v${VERSION}_${scenes[p.title]}.png`);
+      if (!p.title.startsWith(x.title) || p.title.endsWith('（続き）')) continue;
+      const part = p.title.match(/（(\d+)\/\d+）$/);
+      const file = path.join(OUT, `v${VERSION}_${x.scene}${part ? '_' + part[1] : ''}.png`);
       await pages[i].screenshot({ path: file });
       console.log('saved', path.relative(ROOT, file));
     }
