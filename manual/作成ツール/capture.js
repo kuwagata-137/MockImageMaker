@@ -597,8 +597,15 @@ async function shootDocPages(html, list) {
   for (const [i, name] of list) {
     const els = await p2.$$('body > *');
     // 'screen' は、画面の入った最後のページ（設定一覧を次のページへ分けた画面では、最後のページが設定一覧になるため。q138）
+    // 縦に長い画面を何ページかに分割したとき（見出しの末尾が「（2/3）」など）は、その画面の最初のページを撮る（v1.05 段階 D）
     let el = typeof i === 'number' ? els[i < 0 ? els.length + i : i] : null;
-    if (i === 'screen') for (const e of els) if (await e.$('.xp-zone')) el = e;
+    if (i === 'screen') {
+      for (const e of els) {
+        if (!(await e.$('.xp-zone'))) continue;
+        const head = await e.$eval('.pg-head h2', (h) => h.textContent).catch(() => '');
+        if (!/（([2-9]|\d{2,})\/\d+）$/.test(head)) el = e;
+      }
+    }
     const out = path.join(OUT, name + '.png');
     await el.screenshot({ path: out });
     const bb = await el.boundingBox();

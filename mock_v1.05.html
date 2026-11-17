@@ -18771,19 +18771,24 @@ function flowFigure(d, state, aw, ah, idTag = '') {
 // diff（{ info: designDiff の screens の 1 つ, label }）を渡すと、部品・吹き出しの札と、一覧表の札・削除した部品を入れる（第 6 段階）
 // table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）。
 // refs は設定一覧の文の置き換え（PDF の画面のページ。q138。PNG・AI は渡さないので全文）。戻り値の ch0 は、表の高さを 0 とみなした高さ（screenSplitPlan が比べる）
-function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true, refs = null } = {}) {
+function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true, refs = null, tile = null } = {}) {
   const Z = CALLOUT_ZONE;
   const zoneW = s.width + Z * 2;
   const zoneH = s.height + Z * 2;
-  const shown = withCallouts ? s.callouts : [];
+  // tile（screenTiles の 1 ページ分に x0・x1 を追加したもの）を渡すと、その高さの範囲だけを切り出し、そのページに描く吹き出しだけを、
+  // 動かした位置で描く（v1.05 段階 D）。戻り値の crop は、切り出した範囲 [x0, y0, x1, y1]（画面のまわりの範囲の座標）
+  const all = withCallouts ? s.callouts : [];
+  const shown = tile ? all.filter((c) => tile.callouts.includes(c.id)).map((c) => (tile.moved[c.id] == null ? c : { ...c, y: tile.moved[c.id] })) : all;
   const rects = [[Z, Z, Z + s.width, Z + s.height], ...shown.map((c) => [Z + c.x, Z + c.y, Z + c.x + c.w, Z + c.y + c.h])];
   const pad = 8;
-  const x0 = Math.max(0, Math.min(...rects.map((r) => r[0])) - pad);
-  const y0 = Math.max(0, Math.min(...rects.map((r) => r[1])) - pad);
-  const x1 = Math.min(zoneW, Math.max(...rects.map((r) => r[2])) + pad);
-  const y1 = Math.min(zoneH, Math.max(...rects.map((r) => r[3])) + pad);
+  const [x0, y0, x1, y1] = tile ? [tile.x0, tile.t0, tile.x1, tile.t1] : [
+    Math.max(0, Math.min(...rects.map((r) => r[0])) - pad),
+    Math.max(0, Math.min(...rects.map((r) => r[1])) - pad),
+    Math.min(zoneW, Math.max(...rects.map((r) => r[2])) + pad),
+    Math.min(zoneH, Math.max(...rects.map((r) => r[3])) + pad),
+  ];
   const [cropW, cropH] = [x1 - x0, y1 - y0];
-  const lines = withCallouts ? calloutLinesSvg(s).replace(' id="co-lines"', '').replace(/co-arrow-/g, `${key}-co-arrow-`) : '';
+  const lines = withCallouts ? calloutLinesSvg(tile ? { ...s, callouts: shown } : s).replace(' id="co-lines"', '').replace(/co-arrow-/g, `${key}-co-arrow-`) : '';
   const info = diff && !diff.info.isNew ? diff.info : null;
   const boxes = shown.map((c) => `<div class="callout cc-${esc(c.color)}" style="left:${Z + c.x}px;top:${Z + c.y}px;width:${c.w}px;height:${c.h}px">${esc(c.text)}${info ? diffBadge(info.callouts[c.id]) : ''}</div>`).join('');
   const zone = `<div class="xp-zone" style="position:absolute;left:0;top:0;width:${cropW}px;height:${cropH}px;overflow:hidden">`
@@ -18805,7 +18810,7 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
   const cw = table ? Math.max(cropW, tx + tw) : cropW;
   const ch = table ? Math.max(cropH, ty + th) : cropH;
   const ch0 = table ? Math.max(cropH, ty) : cropH;
-  return { cw, ch, ch0, html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
+  return { cw, ch, ch0, crop: [x0, y0, x1, y1], html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
 }
 
 // ── PDF の画面のページの設定一覧（q138。仕様_細かい決めごと.md の「設定一覧の載せ方の細かい決めごと」）──
@@ -18834,13 +18839,20 @@ const printDiffFoot = (info, label) => { const h = diffTableFoot(info, label); r
 // 戻り値 { pages（この画面のページ数）, split, counts（設定一覧のページごとの行の数）, cuts（1 行が入らないページか）, footAlone（削除したアイテムの欄を、さらに次のページに置くか） }。
 // 測れないとき・表がないときは分けない。行の数は仮の番号の文（exportSettingRefs の plan なし）で測り、本当の番号の文はこの数で切る
 const SPLIT_KEEP = 0.9;
-function screenSplitPlan(d, s, state, measured, diff, aw, ah, refs) {
-  const one = { pages: 1, split: false };
+function screenSplitPlan(d, s, state, measured, diff, aw, ah, refs, noTable = false) {
+  const one = { pages: 1, split: false, tiles: null };
   if (!measured) return one;
-  const c = screenComposite(d, s, 'probe', measured, diff, { refs });
-  if (Math.min(1, aw / c.cw, ah / c.ch) >= Math.min(1, aw / c.cw, ah / c.ch0) * SPLIT_KEEP) return one;
+  // 縦に長い画面（screenTiles）は、画面を上から何ページかに分割し、設定一覧はいつも画面の後のページに載せる。
+  // 設定一覧を付けない（noTable）ときも、画面は分割する（v1.05 段階 D）。戻り値の tiles は screenTiles の戻り値か null
+  const tiles = screenTiles(s, screenComposite(d, s, 'probe', measured, diff, { table: false }), aw, ah, true);
+  const n = tiles ? tiles.tiles.length : 1;
+  if (noTable) return { pages: n, split: false, tiles };
+  if (!tiles) {
+    const c = screenComposite(d, s, 'probe', measured, diff, { refs });
+    if (Math.min(1, aw / c.cw, ah / c.ch) >= Math.min(1, aw / c.cw, ah / c.ch0) * SPLIT_KEEP) return one;
+  }
   const rows = tableRows(s, d, state, refs);
-  if (!rows.length) return one;
+  if (!rows.length) return { pages: n, split: false, tiles };
   const info = diff && !diff.info.isNew ? diff.info : null;
   const chunks = splitItemRows(partPrintRows(rows, info), aw, ah, true, printPartTable);
   const foot = info ? printDiffFoot(info, diff.label) : '';
@@ -18850,17 +18862,45 @@ function screenSplitPlan(d, s, state, measured, diff, aw, ah, refs) {
     footAlone = probe.getBoundingClientRect().height > ah;
     probe.remove();
   }
-  return { pages: 1 + chunks.length + (footAlone ? 1 : 0), split: true, counts: chunks.map((x) => x.length), cuts: chunks.map((x) => !!x.cut), footAlone };
+  return { pages: n + chunks.length + (footAlone ? 1 : 0), split: true, tiles, counts: chunks.map((x) => x.length), cuts: chunks.map((x) => !!x.cut), footAlone };
+}
+// ── PDF で縦に長い画面を何ページかに分割する（v1.05 段階 D。q174 案A）──
+// comp は表を付けない screenComposite の戻り値（crop は吹き出しまで含めた範囲）、aw × ah は画面に使える大きさ。
+// 1 ページに収めた倍率が min（既定は DIAGRAM_MIN_ZOOM。AI の画像は 1）以上の画面と、幅で縮む画面（高さで決まる倍率のほうが大きい画面）は null（分割しない）。
+// 分割するときは、アイテムのない高さで上から切り（tileSpans。1 ページに入らない高さのアイテム〔グループ枠など〕は数えない）、
+// { k（どのページも同じ倍率）, x0, x1（横の範囲。どのページも同じ）, tiles: [{ t0, t1（高さの範囲）, callouts（そのページに描く吹き出しの id）, moved（動かした吹き出しの y。画面の座標） }] } を返す。
+// 吹き出しは、指しているアイテムの真ん中の高さがあるページに描き、そのページからはみ出す吹き出しは、ページの中へ動かす（q174 で Claude が決めた）
+function screenTiles(s, comp, aw, ah, withCallouts, min = DIAGRAM_MIN_ZOOM) {
+  const Z = CALLOUT_ZONE;
+  const [x0, y0, x1, y1] = comp.crop;
+  const kW = Math.min(1, aw / (x1 - x0));
+  const kH = ah / (y1 - y0);
+  if (Math.min(kW, kH) >= min || kH >= kW) return null;
+  const spans = tileSpans(s.parts.map((p) => [Z + p.y, Z + p.y + p.h]), y0, y1, ah / Math.min(kW, min));
+  if (spans.length < 2) return null;
+  const tiles = spans.map(({ t0, t1 }) => ({ t0, t1, callouts: [], moved: {} }));
+  const at = (y) => tiles.find((t) => y < t.t1) || tiles[tiles.length - 1];
+  if (withCallouts) {
+    s.callouts.forEach((c) => {
+      const p = c.target ? findPart(s, c.target) : null;
+      const t = at(Z + (p ? p.y + p.h / 2 : c.y + c.h / 2));
+      t.callouts.push(c.id);
+      const [top, bottom] = [t.t0 + 4, t.t1 - 4];
+      if (Z + c.y < top || Z + c.y + c.h > bottom) t.moved[c.id] = Math.max(top, Math.min(Z + c.y, bottom - c.h)) - Z;
+    });
+  }
+  return { k: Math.min(kW, ...tiles.map((t) => ah / (t.t1 - t.t0))), x0, x1, tiles };
 }
 // 画面のページの本文。本文に収まるように縮め（拡大しない）、左右・上下の真ん中に置く。測れないときは縮めない。
 // 縮めるのは transform でなく zoom にする（transform だと、縮める前の幅が残り、画面のページが 2 つ以上あると、
 // Electron の印刷が用紙からはみ出しているとみなして全部のページを約 0.67 倍に縮めてしまうため）
 // zoom では 1px の罫線が縮まないので、縮めた表は「測った高さ × 倍率」より高くなる。縮めた後の大きさを測り直し、収まるまで倍率を下げる
-function screenPageBody(comp, aw, ah, measured) {
+function screenPageBody(comp, aw, ah, measured, { k: kFix = null, top = false } = {}) {
+  // k を渡すと、その倍率から縮め、top が true なら上に寄せる（縦に長い画面を分割したページ。どのページも同じ倍率にする。v1.05 段階 D）
   const stage = (k, w, h, top) => `<div class="xp-stage" style="width:${Math.ceil(w)}px;height:${Math.ceil(h)}px;margin-top:${top}px">`
     + `<div style="position:absolute;left:0;top:0;width:${comp.cw}px;height:${comp.ch}px;zoom:${k.toFixed(4)}">${comp.html}</div></div>`;
   if (!measured) return { k: 1, html: stage(1, comp.cw, comp.ch, 0) };
-  let k = Math.min(1, aw / comp.cw, ah / comp.ch);
+  let k = kFix || Math.min(1, aw / comp.cw, ah / comp.ch);
   let [w, h] = [comp.cw * k, comp.ch * k];
   for (let i = 0; i < 5; i++) {
     const probe = measureBox(stage(k, w, h, 0));
@@ -18875,7 +18915,7 @@ function screenPageBody(comp, aw, ah, measured) {
     if (w <= aw + 0.5 && h <= ah + 0.5) break;
     k *= Math.min(aw / w, ah / h) * 0.995;
   }
-  return { k, html: stage(k, w, h, Math.max(0, Math.floor((ah - h) / 2))) };
+  return { k, html: stage(k, w, h, top ? 0 : Math.max(0, Math.floor((ah - h) / 2))) };
 }
 
 // 印刷用の文書（PDF にする HTML）。アプリと同じ style に、用紙の大きさ（@page）を足す
@@ -18940,10 +18980,10 @@ function exportLayout(d, state, opts, exportedAt) {
   // 画面ごとに、設定一覧を次のページへ分けるか（q138）。番号が決まる前に、仮の番号の文で 1 回だけ測る（countOnly でも同じなので、説明書の数がそろう）
   // 設定一覧を付けない（opts.settings が false。v1.04 の q164）ときは、どの画面も画面と吹き出しだけの 1 ページ
   const noTable = opts.settings === false;
+  // 縦に長い画面は何ページかに分割する（設定一覧を付けないときも。v1.05 段階 D）
   const splits = screens.map(({ s }) => {
-    if (noTable) return { pages: 1, split: false };
     const info = df ? df.result.screens[s.id] : null;
-    return screenSplitPlan(d, s, state, measured, info && { info, label: df.label }, aw, ah, exportSettingRefs(d, itemChunks, proc, null));
+    return screenSplitPlan(d, s, state, measured, info && { info, label: df.label }, aw, ah, exportSettingRefs(d, itemChunks, proc, null), noTable);
   });
   // ページ番号は、表紙が何ページになるかで変わる。番号の桁で行の高さは変わらないので、仮の番号で 1 回分けてから決め直す
   const numbering = (coverPages) => {
@@ -19031,14 +19071,18 @@ function exportScreenPages(d, L) {
   return L.plan.screens.flatMap(({ s, i, page, split }) => {
     const info = df ? df.result.screens[s.id] : null;
     const diff = info && { info, label: df.label };
-    const comp = screenComposite(d, s, 'p' + page, measured, diff, L.noTable || split.split ? { table: false } : { refs: L.refs });
-    const body = screenPageBody(comp, aw, ah, measured);
     const name = `${i + 1}　${esc(s.name)}`;
     const left = `${esc(d.name)} ／ ${name}`;
     const under = underScreenOf(d, s); // 小さなウィンドウの画面は、どの画面の上に開くかを書く（第 16 段階）
-    const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${under ? `・「${esc(under.name)}」の上に開く小さなウィンドウ` : ''}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`
-      + (split.split ? '・設定一覧は次のページ' : '');
-    const pages = [pageFrame({ P, title: name, sub, body: body.html, left, right: `${page} / ${grand}`, headExtra: diffSumHtml(df, info) })];
+    // 縦に長い画面は、画面を上から何ページかに分割し、見出しに（1/n）を付け、小見出しに設定一覧のページ番号を書く（v1.05 段階 D）
+    const T = split.tiles;
+    const nt = T ? T.tiles.length : 1;
+    const subOf = (k) => `${DEVICES[s.device].label}・${s.width} × ${s.height}${under ? `・「${esc(under.name)}」の上に開く小さなウィンドウ` : ''}${k < 0.995 ? `・${Math.round(k * 100)}% に縮小` : ''}`
+      + (!split.split ? '' : T ? `・設定一覧（${page + nt} ページ）` : '・設定一覧は次のページ');
+    const frame = (title, body, p) => pageFrame({ P, title, sub: subOf(body.k), body: body.html, left, right: `${p} / ${grand}`, headExtra: diffSumHtml(df, info) });
+    const pages = T ? T.tiles.map((t, j) => frame(`${name}（${j + 1}/${nt}）`, screenPageBody(screenComposite(d, s, 'p' + (page + j), measured, diff,
+      { table: false, tile: { ...t, x0: T.x0, x1: T.x1 } }), aw, ah, measured, { k: T.k, top: true }), page + j))
+      : [frame(name, screenPageBody(screenComposite(d, s, 'p' + page, measured, diff, L.noTable || split.split ? { table: false } : { refs: L.refs }), aw, ah, measured), page)];
     if (!split.split) return pages;
     const mark = info && !info.isNew ? info : null;
     // 行は本当の番号の文で組み、仮の番号の文で測った行の数で切る（exportLayout）
@@ -19050,7 +19094,7 @@ function exportScreenPages(d, L) {
       const last = k === split.counts.length - 1;
       const sub = `番号 ${esc(String(list[from].no))}〜${esc(String(list[from + n - 1].no))}${split.cuts[k] ? '・' + LONG_ROW_NOTE : ''}`;
       pages.push(pageFrame({ P, title: `${name}　設定一覧${k ? '（続き）' : ''}`, sub,
-        body: printPartTable(rows.slice(from, from + n)) + (last && !split.footAlone ? foot : ''), left, right: `${page + 1 + k} / ${grand}` }));
+        body: printPartTable(rows.slice(from, from + n)) + (last && !split.footAlone ? foot : ''), left, right: `${page + nt + k} / ${grand}` }));
       from += n;
     });
     if (split.footAlone) pages.push(pageFrame({ P, title: `${name}　設定一覧（続き）`, sub: '削除したアイテム', body: foot, left, right: `${page + split.pages - 1} / ${grand}` }));
@@ -19286,13 +19330,34 @@ function exportPngDocs(d, state, screenIds = null, diffRevId = null, parts = {})
   return d.screens.map((s, i) => ({ s, i })).filter(({ s }) => !screenIds || screenIds.includes(s.id)).map(({ s, i }) => {
     const info = df ? df.result.screens[s.id] : null;
     const comp = screenComposite(d, s, 'g' + (i + 1), measured, info && { info, label: df.label }, parts);
-    const width = comp.cw + PNG_MARGIN * 2;
-    const height = comp.ch + PNG_MARGIN * 2;
-    const body = `<div class="xp-png" style="width:${width}px;height:${height}px">`
-      + `<div class="xp-stage" style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN}px;width:${comp.cw}px;height:${comp.ch}px">${comp.html}</div></div>`;
-    const html = pngDocHtml(`${d.name} ／ ${s.name}`, body);
+    const { width, height, html } = pngScreenDoc(`${d.name} ／ ${s.name}`, comp);
     return { name: `${safeFileName(d.name)}_${pad2(i + 1)}_${safeFileName(s.name, '画面')}.png`, width, height, html };
   });
+}
+// 画面の PNG にする文書の骨組み（まわりに白の余白）。comp は screenComposite の戻り値。戻り値 { width, height, html }
+function pngScreenDoc(title, comp) {
+  const width = comp.cw + PNG_MARGIN * 2;
+  const height = comp.ch + PNG_MARGIN * 2;
+  const body = `<div class="xp-png" style="width:${width}px;height:${height}px">`
+    + `<div class="xp-stage" style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN}px;width:${comp.cw}px;height:${comp.ch}px">${comp.html}</div></div>`;
+  return { width, height, html: pngDocHtml(title, body) };
+}
+// 画面の画像（AI の get_screen_image）を範囲に分割するか（v1.05 段階 D）。縦に長い画面が、AI の画像の長い辺（AI_IMAGE_SIDE）に縮めずに入らないときだけ、
+// アイテムのない高さで上下の範囲に分割する（screenTiles の戻り値。分割しないときは null）。full は設定一覧と吹き出しも入れる画像か
+function screenImageTiles(d, sc, full) {
+  const side = AI_IMAGE_SIDE - PNG_MARGIN * 2;
+  return screenTiles(sc, screenComposite(d, sc, 'probe', false, null, { table: false, callouts: full }), side, side, full, 1);
+}
+// 画面の画像の文書（AI の get_screen_image）。戻り値 { html, width, height }。範囲に分割する画面は areas（範囲の数）も入れる。
+// area（1 から。上の範囲から数える）を渡すと、その範囲を切り出す（範囲の画像には設定一覧を入れない。戻り値に area も入れる）
+function screenImageDoc(d, state, sc, full, area = null) {
+  const T = screenImageTiles(d, sc, full);
+  if (T && area != null) {
+    const comp = screenComposite(d, sc, 'ga', false, null, { table: false, callouts: full, tile: { ...T.tiles[area - 1], x0: T.x0, x1: T.x1 } });
+    return { ...pngScreenDoc(`${d.name} ／ ${sc.name}（範囲 ${area}/${T.tiles.length}）`, comp), areas: T.tiles.length, area };
+  }
+  const doc = exportPngDocs(d, state, [sc.id], null, { table: full, callouts: full })[0];
+  return T ? { ...doc, areas: T.tiles.length } : doc;
 }
 
 // PNG にする文書の骨組み（アプリと同じ style・白の背景）
@@ -19542,8 +19607,11 @@ function viewImageDoc(d, state, view, area = null) {
   const idp = 'xi-' + view;
   const html = view === 'map' ? mapHtml(state, d.id, d.mapPos || {}, { idPrefix: idp }).replace(' id="map-inner"', '')
     : viewHtml(view, state, d, d[VIEW_POS[view]] || {}, { idPrefix: idp, bare: true });
-  return diagramImageDoc(`${d.name} ／ ${VIEW_TITLES[view]}`, VIEW_LEGENDS[view], html, { boxes: model.nodes.length, arrows: model.edges.length }, 480, { area, idp });
+  return diagramImageDoc(`${d.name} ／ ${VIEW_TITLES[view]}`, VIEW_LEGENDS[view], html, { boxes: model.nodes.length, arrows: model.edges.length }, VIEW_IMAGE_MIN_W[view] || 480, { area, idp });
 }
+// 図の画像の幅の下限（凡例が 1 行に収まる幅）。2026-11-17 に、画面に表示しないブラウザ（headless の Chromium）で測った凡例の幅
+// （関連図 528・ステータスの流れ 688。ステータスの流れは、段階 B〔q170〕で行き先表示の凡例を追加して長くなった）に、フォントの違いの分の余白を加えた値（v1.05 段階 D）
+const VIEW_IMAGE_MIN_W = { map: 560, process: 720 };
 // スイムレーン図の画像の文書（AI の get_view_image。第 9 段階）。題はシステムの名前。戻り値は viewImageDoc と同じ形。
 // 凡例が長い（箱の形の意味まで書く）ので、凡例が 1 行に収まるように、画像の幅を 880 + 余白より狭くしない
 function swimlaneImageDoc(state, sys, area = null) {
@@ -23889,9 +23957,12 @@ async function aiGetScreenImage(args) {
   const d = aiResolveDesign(S, args.design);
   const sc = aiResolveScreen(d, args.screen);
   const full = args.withTable === true;
-  const doc = exportPngDocs(d, S, [sc.id], null, { table: full, callouts: full })[0];
+  // 縦に長い画面は、範囲（area）ごとに読める（v1.05 段階 D）
+  const T = screenImageTiles(d, sc, full);
+  const area = aiViewArea(args, T ? T.tiles.length : undefined, AI_AREA_SCREEN);
+  const doc = screenImageDoc(d, S, sc, full, area);
   return new AiRendered(
-    { design: aiDesignBrief(d), screen: { id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height }, withTable: full },
+    { design: aiDesignBrief(d), screen: { id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height }, withTable: full, ...aiAreaFields(doc, area) },
     { kind: 'image', html: doc.html, width: doc.width, height: doc.height },
   );
 }
@@ -23919,11 +23990,14 @@ async function aiGetViewImage(args) {
   );
 }
 // 図の画像の area（大きい図の範囲の番号。v1.05 段階 C）。areas は範囲の数（図が 1 枚の画像に収まるときは undefined）。省くと null
-function aiViewArea(args, areas) {
+// t は断る文の言葉（図は AI_AREA_VIEW、画面〔get_screen_image。v1.05 段階 D〕は AI_AREA_SCREEN）
+const AI_AREA_VIEW = { one: 'この図は 1 枚の画像に縮めずに収まる', many: 'この図の範囲', order: '左上の範囲から右へ、次に下の段へ数えます' };
+const AI_AREA_SCREEN = { one: 'この画面は範囲に分割しない', many: 'この画面の範囲', order: '上の範囲から数えます' };
+function aiViewArea(args, areas, t = AI_AREA_VIEW) {
   if (args.area == null) return null;
   if (!Number.isInteger(args.area) || args.area < 1) throw aiBad('area（範囲の番号）は 1 以上の整数で書いてください。');
-  if (!areas && args.area !== 1) throw aiBad('この図は 1 枚の画像に縮めずに収まるので、area は 1 だけです（area を省いても同じ画像です）。');
-  if (areas && args.area > areas) throw aiBad(`この図の範囲は ${areas} 個です。area は 1〜${areas} で書いてください（左上の範囲から右へ、次に下の段へ数えます）。`);
+  if (!areas && args.area !== 1) throw aiBad(`${t.one}ので、area は 1 だけです（area を省いても同じ画像です）。`);
+  if (areas && args.area > areas) throw aiBad(`${t.many}は ${areas} 個です。area は 1〜${areas} で書いてください（${t.order}）。`);
   return args.area;
 }
 // 返事に入れる範囲の数と番号（範囲に分けない図で area を省いたときは、何も入れない）
@@ -24857,7 +24931,7 @@ function exposeForTest() {
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
     wireOverlaps, WIRE_GAP_MIN, swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, diagramCrop, VIEW_TITLES, VIEW_LEGENDS, bdmExportPlan,
-    DIAGRAM_MIN_ZOOM, diagramShapes, tileSpans, diagramTiles, tileCrossings, tileMarkLayout, tileFigureHtml,
+    DIAGRAM_MIN_ZOOM, diagramShapes, tileSpans, diagramTiles, tileCrossings, tileMarkLayout, tileFigureHtml, screenTiles, screenComposite, screenImageDoc,
     swimPlusAt, swimSideToward, swimFitZoom, SWIM_NEAR, selectEdge, setSwimMode, setSwimPal,
     SWIM_ORIENTS, SWIM_ORIENT_NAMES, swimOrientOf, SWIM_HEAD_H, setSwimOrientView,
     SWIM_HDR, SWIM_LANE, SWIM_STEP, SWIM_SHAPES, SWIM_W_MAX, swimBoxSize, swimTextW, swimStoredPos, swimDrawing, swimRoutes,

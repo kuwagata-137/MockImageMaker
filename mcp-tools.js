@@ -33,8 +33,15 @@ const TOOLS = [
     '多いときは、アイテム・吹き出し・設定一覧の行の順に分けて返し、nextCursor を付ける（cursor に渡すと続きを読める。全部の数は partsTotal・calloutsTotal・tableTotal）。',
     { design: S.design, screen: S.screen, cursor: S.cursor }),
   read('get_screen_image', '画面の画像',
-    '画面の画像（PNG。長い辺を 1568 ドットまでに縮める）を返す。作った画面の見た目を確かめるときに使う。',
-    { design: S.design, screen: S.screen, withTable: z.boolean().optional().describe('設定一覧と吹き出しも画像に入れる（既定は入れない）') }, { slow: true }),
+    '画面の画像（PNG。長い辺を 1568 ドットまでに縮める）を返す。作った画面の見た目を確かめるときに使う。' +
+    '縮めると文字が読めない縦に長い画面は、返事に areas（範囲の数）が付く。area（1〜areas）を書くと、その範囲を読める大きさで返す' +
+    '（範囲は上から数える。範囲の画像には設定一覧を入れないので、設定一覧は get_screen で読む）。',
+    {
+      design: S.design,
+      screen: S.screen,
+      withTable: z.boolean().optional().describe('設定一覧と吹き出しも画像に入れる（既定は入れない）'),
+      area: z.number().int().min(1).optional().describe('縦に長い画面の範囲の番号（1 から。返事の areas まで）。省くと画面の全体を、長い辺 1568 ドットまでに縮めて返す'),
+    }, { slow: true }),
   read('get_flow', 'ステータスの流れと画面遷移図',
     'ステータスの流れ（ステータスの並びと、ステータスを進める操作。前のステータス・次のステータス・操作できる人・条件）と、' +
     '画面の遷移（ボタン・リンクごとの移動先と、ほかの画面設計から移ってくるもの）を表の形で返す。' +
