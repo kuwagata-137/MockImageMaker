@@ -123,6 +123,29 @@ test('縦向きの記録: flowVertical は true のときだけ残す。改訂�
   assert.ok(h1 > h0 && w1 < w0, `一本道の縦向きは、横向きより縦に長く、幅が狭い（横向き ${w0}×${h0}・縦向き ${w1}×${h1}）`);
 });
 
+test('つながっていない画面（q189 案A）: 横向きは、いちばん右の列のさらに右に、縦向きは段の右に、上から 1 列で並べる', async (t) => {
+  const { app, api, A, ids, box } = await boot(t);
+  // 線のない画面を 2 つ追加する（お知らせ・よくある質問）
+  const lone = ['お知らせ', 'よくある質問'].map((name) => {
+    const id = api.actions.addScreen(A, 'blank', ids[ids.length - 1]);
+    api.actions.updateScreen(A, id, { name });
+    ids.push(id);
+    return ids.length - 1;
+  });
+  const check = (tag) => {
+    const linked = [0, 1, 2, 3].map(box);
+    const [a, b] = lone.map(box);
+    const right = Math.max(...linked.map((r) => r.x + r.w));
+    assert.equal(a.x, b.x, `${tag}: 同じ列`);
+    assert.ok(a.x > right, `${tag}: 線のある画面の右（${a.x} > ${right}）`);
+    assert.equal(a.y, 40, `${tag}: 上の端から`);
+    assert.ok(b.y > a.y + a.h, `${tag}: 上から順に縦に並べる`);
+  };
+  check('横向き');
+  click($(app, '[data-action="flow-vertical"]'));
+  check('縦向き');
+});
+
 test('AI: update_design の flowOrientation で向きを変え、get_design の flowOrientation で読む。知らない値は断る', async (t) => {
   const { sampleState, STORAGE_KEY } = require('./ai-fixtures');
   const app = bootApp({ localStorage: { [STORAGE_KEY]: JSON.stringify(sampleState()) } });

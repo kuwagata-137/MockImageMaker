@@ -4176,9 +4176,9 @@ function mapModel(state, focusId = null) {
   return { nodes: keys.map((k) => nodes.get(k)), edges: list };
 }
 // 自動で並べる位置。矢印の元を左、引く側を右の列にする（列＝元から何段目か）。
-// つながりのない箱は、つながった箱の下に、名前の順に横に並べる（右の端の列に置くと、図が横に長くなるため。Claude が決めた）
+// つながりのないボックスは、loneRight が true（画面遷移図）なら、いちばん右の列のさらに右の列に、上から 1 列で並べる（v1.05 の q189 案A）。false（関連図）なら、つながったボックスの下に横に並べる（関連図を横に広げると、最初の画面で初めて表示した時の倍率が下がるため。Claude が決めた）。つながったボックスが 1 つもないときは、どちらも横に並べる
 // gaps は列の間（列 c と c+1 の間。v1.05。線の数と文字の幅で広げる mapWireGaps の値）。渡さなければ、今までどおり 200
-function mapLayout(model, hOf = () => MAP_H, gaps = []) {
+function mapLayout(model, hOf = () => MAP_H, gaps = [], loneRight = false) {
   const forward = mapForwardEdges(model);
   const rank = mapRanks(model, forward);
   const colX = [40];
@@ -4201,10 +4201,20 @@ function mapLayout(model, hOf = () => MAP_H, gaps = []) {
       y += hOf(n.key) + MAP_ROW - MAP_H; // 箱の間は 48
     });
   });
+  const lone = byName.filter((n) => !linked.has(n.key));
+  if (loneRight && cols.size) {
+    const x = colX[colX.length - 1] + MAP_COL;
+    let y = 40;
+    lone.forEach((n) => {
+      pos[n.key] = { x, y };
+      y += hOf(n.key) + MAP_ROW - MAP_H;
+    });
+    return pos;
+  }
   const bottom = Math.max(0, ...Object.entries(pos).map(([k, p]) => p.y + hOf(k)));
   const top = bottom ? bottom + MAP_ROW - MAP_H + 32 : 40;
   const perRow = Math.max(4, Math.floor((cols.size * MAP_COL - (MAP_COL - MAP_W)) / (MAP_W + 40)));
-  byName.filter((n) => !linked.has(n.key)).forEach((n, i) => {
+  lone.forEach((n, i) => {
     pos[n.key] = { x: 40 + (i % perRow) * (MAP_W + 40), y: top + Math.floor(i / perRow) * MAP_ROW };
   });
   return pos;
@@ -8235,12 +8245,15 @@ function mapWireGaps(model, ends) {
   const rank = mapRanks(model, mapForwardEdges(model));
   const span = (wire) => [Math.min(rank.get(wire.from), rank.get(wire.to)), Math.max(rank.get(wire.from), rank.get(wire.to))];
   const gaps = [];
+  // 列 c と c+1 の間を通る線は、列 c 以前と列 c+1 以後をつなぐ線（2 列以上離れたボックスから来る線を含む）。
+  // 間の左右の端の文字は、その線の、列 c のボックスの右の辺の端と、列 c+1 のボックスの左の辺の端（v1.05。2 列以上離れたボックスから来る線の文字を数えず、
+  // 隣の列から来る線の文字と同じ高さに並んで重なっていた。最初の画面の関連図の「契約番号で引く」と「関連レコード一覧」）
   for (let c = 0; c < Math.max(0, ...rank.values()); c++) {
-    const here = ends.filter((p) => { const [a, b] = span(p.wire); return a === c && b === c + 1; });
-    const through = new Set(ends.filter((p) => { const [a, b] = span(p.wire); return a <= c && b > c + 1; }).map((p) => p.wire)).size;
-    const lw = Math.max(24, ...here.filter((p) => rank.get(p.node) === c).map((p) => wireEndW(p) + 8));
-    const rw = Math.max(24, ...here.filter((p) => rank.get(p.node) === c + 1).map((p) => wireEndW(p) + 8));
-    gaps.push(Math.max(MAP_COL - MAP_W, lw + (here.length / 2 + through + 2) * WIRE_TRACK + rw));
+    const inGap = ends.filter((p) => { const [a, b] = span(p.wire); return a <= c && b >= c + 1; });
+    const wires = new Set(inGap.map((p) => p.wire)).size;
+    const lw = Math.max(24, ...inGap.filter((p) => rank.get(p.node) === c).map((p) => wireEndW(p) + 8));
+    const rw = Math.max(24, ...inGap.filter((p) => rank.get(p.node) === c + 1).map((p) => wireEndW(p) + 8));
+    gaps.push(Math.max(MAP_COL - MAP_W, lw + (wires + 2) * WIRE_TRACK + rw));
   }
   return gaps;
 }
@@ -8312,13 +8325,13 @@ function wireRoutesApart(route, wires, mids, skips, boxes, vertical) {
   return best.routes;
 }
 // ボックスの位置（覚えた位置と、自動の位置）。線の数でボックスの高さが変わり、高さで自動の位置が変わるので、2 回並べ直して落ち着かせる
-function mapWireLayout(model, saved, wires, baseH) {
-  let pos = mapPlace(model, saved, mapLayout(model, baseH), baseH);
+function mapWireLayout(model, saved, wires, baseH, loneRight = false) {
+  let pos = mapPlace(model, saved, mapLayout(model, baseH, [], loneRight), baseH);
   for (let k = 0; k < 2; k++) {
     const { ends, bySide } = mapWireEnds(wires, pos);
     const grown = mapWireHeights(model, bySide, baseH);
     const hOf = (key) => grown.get(key);
-    pos = mapPlace(model, saved, mapLayout(model, hOf, mapWireGaps(model, ends)), hOf);
+    pos = mapPlace(model, saved, mapLayout(model, hOf, mapWireGaps(model, ends), loneRight), hOf);
   }
   return pos;
 }
@@ -8471,7 +8484,7 @@ function flowVWidths(model, bySide) {
   return new Map(model.nodes.map((n) => [n.key,
     Math.max(MAP_W, ...['top', 'bottom'].map((s) => (bySide.get(`${n.key}|${s}`) || []).reduce((w, p) => w + flowVEndW(p), 24)))]));
 }
-// 段（横向きの列）と、段の中の並び（横向きの列の中の、上からの並び）。線のない画面は、いちばん下の段に並べる
+// 段（横向きの列）と、段の中の並び（横向きの列の中の、上からの並び）。戻り値 { rows, lone }。線のない画面（lone）は段に入れず、flowVAuto が段の右に、上から 1 列で並べる（v1.05 の q189 案A）。線のある画面が 1 つもないときは、全部の画面を 1 つの段にする
 function flowVRows(model) {
   const auto = mapLayout(model);
   const rank = mapRanks(model, mapForwardEdges(model));
@@ -8485,11 +8498,11 @@ function flowVRows(model) {
     byRank.get(r).push(n.key);
   });
   const rows = [...byRank.keys()].sort((a, b) => a - b).map((r) => byRank.get(r).sort((a, b) => auto[a].y - auto[b].y));
-  if (lone.length) rows.push(lone.sort((a, b) => auto[a].y - auto[b].y || auto[a].x - auto[b].x));
-  return rows;
+  lone.sort((a, b) => auto[a].y - auto[b].y || auto[a].x - auto[b].x);
+  return rows.length ? { rows, lone } : { rows: lone.length ? [lone] : [], lone: [] };
 }
 // 自動の位置（段を上から下へ。段の中は左に寄せる）。段の間は、上の段の下の辺の文字・下の段の上の辺の文字・通り道の数で広げる
-function flowVAuto(rows, wOf, ends) {
+function flowVAuto(rows, wOf, ends, lone = []) {
   const rowOf = new Map();
   rows.forEach((list, r) => list.forEach((k) => rowOf.set(k, r)));
   const textH = (k, side) => Math.max(0, ...ends.filter((p) => p.node === k && p.side === side).map(flowVTextH));
@@ -8504,12 +8517,17 @@ function flowVAuto(rows, wOf, ends) {
       x += wOf.get(k) + FLOWV_GAP_X;
     });
     if (r === rows.length - 1) return;
-    const adj = wires.filter((w) => { const [a, b] = span(w); return a === r && b === r + 1; }).length;
-    const through = wires.filter((w) => { const [a, b] = span(w); return a <= r && b > r + 1; }).length;
+    // 段 r と r+1 の間を通る線（2 段以上離れたボックスから来る線を含む。v1.05 で横向きの列の間と同じ数え方にした）
+    const inGap = wires.filter((w) => { const [a, b] = span(w); return a <= r && b >= r + 1; }).length;
     const th = Math.max(16, ...list.map((k) => textH(k, 'bottom')));
     const bh = Math.max(16, ...rows[r + 1].map((k) => textH(k, 'top')));
-    y += MAP_H + Math.max(FLOWV_GAP_Y, th + (adj + through + 2) * WIRE_TRACK + bh);
+    y += MAP_H + Math.max(FLOWV_GAP_Y, th + (inGap + 2) * WIRE_TRACK + bh);
   });
+  // 線のない画面は、段の右に、上から 1 列で並べる（v1.05 の q189 案A）
+  if (lone.length) {
+    const x = Math.max(...Object.values(pos).map((p) => p.x + p.w)) + FLOWV_GAP_X * 2;
+    lone.forEach((k, i) => { pos[k] = { x, y: 40 + i * MAP_ROW, w: wOf.get(k), h: MAP_H }; });
+  }
   return pos;
 }
 // 覚えた位置の箱はそこに置き、自動で並べる箱が覚えた箱と重なるときは、重ならない所まで下へずらす（mapPlace の、幅を持つ形）
@@ -8531,11 +8549,11 @@ function flowVPlace(model, saved, auto) {
 }
 // ボックスの位置と幅（mapWireLayout の縦向き）。端の文字でボックスの幅と段の間が変わるので、2 回並べ直して落ち着かせる
 function flowVLayout(model, saved, wires) {
-  const rows = flowVRows(model);
-  let pos = flowVPlace(model, saved, flowVAuto(rows, new Map(model.nodes.map((n) => [n.key, MAP_W])), []));
+  const { rows, lone } = flowVRows(model);
+  let pos = flowVPlace(model, saved, flowVAuto(rows, new Map(model.nodes.map((n) => [n.key, MAP_W])), [], lone));
   for (let k = 0; k < 2; k++) {
     const { ends, bySide } = flowVEnds(wires, pos);
-    pos = flowVPlace(model, saved, flowVAuto(rows, flowVWidths(model, bySide), ends));
+    pos = flowVPlace(model, saved, flowVAuto(rows, flowVWidths(model, bySide), ends, lone));
   }
   return pos;
 }
@@ -8886,7 +8904,7 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
   const wires = view === 'process' ? null : mapWires(model, VIEW_DRAW.flow);
   const vertical = view === 'flow' && flowVerticalOf(d); // 画面遷移図の縦向き（v1.05 段階 B・q185 案C）
   const pos = !wires ? processPositions(model, saved || {}) // ステータスの流れは、文字の分だけボックスを伸ばす（v1.05 段階 B）
-    : vertical ? flowVLayout(model, saved || {}, wires) : mapWireLayout(model, saved || {}, wires, hOf);
+    : vertical ? flowVLayout(model, saved || {}, wires) : mapWireLayout(model, saved || {}, wires, hOf, true); // つながっていない画面は右に 1 列（q189 案A）
   const wire = !wires ? null : vertical ? flowVRoute(model, wires, pos) : mapWireRoute(model, wires, pos);
   const nodes = model.nodes.map((n) => {
     const p = pos[n.key];

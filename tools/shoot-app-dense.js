@@ -4,6 +4,7 @@
 //   購買申請 … ステータス 20 個。「見送り」に 13 本、「下書き」に差し戻しが 3 本集まる（線の多いステータスの流れ）
 //   購買業務（横向き）・購買業務（縦向き） … 工程 56 個・役割 5 つのスイムレーン図（v1.05 段階 C。PDF で何ページかに分ける図）
 //   設備点検記録 … 画面「点検記録の入力」（1280 × 3400）。縦に長い画面（v1.05 段階 D。PDF で何ページかに分割する画面）
+//   申込受付 … 一本道の 4 画面と、線のない画面 2 つ（v1.05 の q189 案A。画面遷移図で、つながっていない画面を右に 1 列で並べる）
 // 試作の線（protoFlow）は、アプリの swimRoutes（スイムレーン図と同じ直角の線）に、出入りの位置（fromPin・toPin）と曲がる位置（mid）を渡して引き、
 // 今の図の SVG と差し替えて撮る（アプリの本体の描き方は変えない）。
 'use strict';
@@ -99,6 +100,24 @@ async function buildSwim56(page, name, orientation) {
   const y = await call('get_system', { system: name });
   await call('set_swimlane', { system: name, expect: y.updatedAt, steps, edges, orientation });
   return page.evaluate((n) => window.__test__.store.state.systems.find((s) => s.name === n).id, name);
+}
+
+// つながっていない画面のある画面設計（v1.05 の q189 案A）。一本道の 4 画面（申込一覧 → 申込登録 → 内容確認 → 完了）と、線のない画面 2 つ（お知らせ・よくある質問）。
+// 戻り値は画面設計の id
+async function buildLone(page) {
+  const call = async (tool, args) => {
+    const r = await page.evaluate((t, a) => window.__test__.aiDispatch(t, a, { session: 's-1', client: 'claude-code' }), tool, args);
+    if (!r.ok) throw new Error(`${tool}: ${JSON.stringify(r.error)}`);
+    return r.result;
+  };
+  await call('create_design', { name: '申込受付', target: 'kintone', description: '申込の受付（架空の業務）' });
+  await call('edit_screen', { design: '申込受付', ops: [{ op: 'update', screen: '画面 1', name: '申込一覧' }] });
+  for (const name of ['申込登録', '内容確認', '完了', 'お知らせ', 'よくある質問']) await call('add_screen', { design: '申込受付', name });
+  const btn = (label, to) => ({ type: 'button', label, style: 'normal', to });
+  for (const [screen, label, to] of [['申込一覧', '申込を登録する', '申込登録'], ['申込登録', '確認へ進む', '内容確認'], ['内容確認', '申し込む', '完了']]) {
+    await call('layout_screen', { design: '申込受付', screen, layout: { columns: 2, rows: [{ align: 'right', parts: [btn(label, to)] }] } });
+  }
+  return page.evaluate(() => window.__test__.store.state.designs.find((d) => d.name === '申込受付').id);
 }
 
 // 縦に長い画面の画面設計（v1.05 段階 D）。画面「点検記録の入力」（1280 × 3400）に、見出しと 2 列のアイテムを並べ、吹き出しを 5 つ追加する。戻り値は画面設計の id
@@ -344,6 +363,13 @@ module.exports = async function shootDense(browser, env) {
   await page.click('#home-zoom-fit');
   await sleep(150);
   await shootWindow('293_dense_最初の画面_関連図_全体を表示（幅1280）');
+  // 326・327: つながっていない画面（q189 案A）。画面遷移図の横向きと縦向きで、線のない画面を右に 1 列で並べる
+  const loneId = await buildLone(page);
+  await open(loneId, 'openFlow');
+  await shootMap('326_dense_画面遷移図_つながっていない画面_横向き');
+  await page.evaluate((i) => window.__test__.actions.setFlowVertical(i, true), loneId);
+  await sleep(150);
+  await shootMap('327_dense_画面遷移図_つながっていない画面_縦向き');
   // 279〜285: 試作の線（質問 q167・q168 の画像の元。本体の線ができた後は、--proto を付けたときだけ撮る）
   for (const [name, opts] of process.argv.includes('--proto') ? [
     ['279_dense_画面遷移図_試作_行きと帰りを別の線', { merge: false, grow: true }],
