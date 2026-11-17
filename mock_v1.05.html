@@ -8548,8 +8548,10 @@ function flowVPlace(model, saved, auto) {
   return pos;
 }
 // ボックスの位置と幅（mapWireLayout の縦向き）。端の文字でボックスの幅と段の間が変わるので、2 回並べ直して落ち着かせる
-function flowVLayout(model, saved, wires) {
-  const { rows, lone } = flowVRows(model);
+function flowVLayout(model, saved, wires, loneBelow = false) {
+  const vr = flowVRows(model);
+  // loneBelow（PDF の flowFigure）は、線のない画面を段の右でなく、いちばん下の段に並べる
+  const [rows, lone] = loneBelow && vr.lone.length ? [[...vr.rows, vr.lone], []] : [vr.rows, vr.lone];
   let pos = flowVPlace(model, saved, flowVAuto(rows, new Map(model.nodes.map((n) => [n.key, MAP_W])), [], lone));
   for (let k = 0; k < 2; k++) {
     const { ends, bySide } = flowVEnds(wires, pos);
@@ -8895,7 +8897,8 @@ function flowModel(state, d) {
   return { nodes: [...nodes.values()], edges: [...edges.values()] };
 }
 // ステータスの移り方の図・画面の移り方の図の HTML（編集の画面・出力・AI の画像で使う）。saved は覚えた箱の位置。
-// o: idPrefix（矢印の印の id の頭。出力では編集の画面と重ならない頭にする）・bare（id="map-inner" を付けない）
+// o: idPrefix（矢印の印の id の頭。出力では編集の画面と重ならない頭にする）・bare（id="map-inner" を付けない）・
+//   loneBelow（画面遷移図で、つながっていない画面を右に 1 列でなく、下に並べる。PDF の flowFigure が、右に並べると分割が必要になる時だけ渡す）
 function viewHtml(view, state, d, saved = {}, o = {}) {
   const model = view === 'process' ? processModel(d) : flowModel(state, d);
   if (!model.nodes.length) return `<p class="map-empty">${view === 'process' ? 'ステータスの項目がまだありません（アイテム一覧から「ステータス表示」か「進捗バー」を置くと作られます）。' : '画面がありません。'}</p>`;
@@ -8904,7 +8907,7 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
   const wires = view === 'process' ? null : mapWires(model, VIEW_DRAW.flow);
   const vertical = view === 'flow' && flowVerticalOf(d); // 画面遷移図の縦向き（v1.05 段階 B・q185 案C）
   const pos = !wires ? processPositions(model, saved || {}) // ステータスの流れは、文字の分だけボックスを伸ばす（v1.05 段階 B）
-    : vertical ? flowVLayout(model, saved || {}, wires) : mapWireLayout(model, saved || {}, wires, hOf, true); // つながっていない画面は右に 1 列（q189 案A）
+    : vertical ? flowVLayout(model, saved || {}, wires, !!o.loneBelow) : mapWireLayout(model, saved || {}, wires, hOf, !o.loneBelow); // つながっていない画面は右に 1 列（q189 案A）
   const wire = !wires ? null : vertical ? flowVRoute(model, wires, pos) : mapWireRoute(model, wires, pos);
   const nodes = model.nodes.map((n) => {
     const p = pos[n.key];
@@ -18778,9 +18781,16 @@ function processSplitPlan(it, html, c, idp, aw, ah, measured) {
   });
   return { pages, rest: used < rows.length ? splitItemRows(rows.slice(used), aw, ah, measured, printActionTable) : [] };
 }
+// PDF の画面遷移図。つながっていない画面を右に 1 列で並べた図（q189 案A）が、倍率 60% より小さく縮んで分割が必要になり、
+// 下に並べれば 1 ページに収まる時は、下に並べた図にする（A4 縦などの幅の狭い用紙で、ほとんど空白のページを増やさないため。
+// q189 で右に並べた理由〔空白を減らす〕に合わせた。2026-11-17 に Claude が決めた）。編集の画面と AI の画像は、右に 1 列のまま
 function flowFigure(d, state, aw, ah, idTag = '') {
   const idp = 'xp-flow' + idTag;
-  return figurePlan(viewHtml('flow', state, d, d.flowPos || {}, { idPrefix: idp, bare: true }), idp, VIEW_LEGENDS.flow, aw, ah - 28);
+  const plan = (o) => figurePlan(viewHtml('flow', state, d, d.flowPos || {}, { idPrefix: idp, bare: true, ...o }), idp, VIEW_LEGENDS.flow, aw, ah - 28);
+  const F = plan({});
+  if (!F.T) return F;
+  const G = plan({ loneBelow: true });
+  return G.T ? F : G;
 }
 
 // 画面と吹き出しと部品の設定の一覧表を 1 つに組む（q36 案A）。編集の画面と同じ並べ方（画面のまわり 240 ドット）を、
