@@ -1031,9 +1031,15 @@ const CHAPTERS = {
     // 画面の移り方
     await run('openFlow');
     await sleep(400);
+    // つながっていない画面（承認）は、図の右に 1 列で並ぶ（v1.05・q189）。図全体が写るように「全体を表示」を押し、図の見出しと凡例が写るように真ん中の欄をいちばん上へ戻す
+    await run('zoomFit');
+    await T(() => { const v = document.querySelector('#db-view'); if (v) v.scrollTop = 0; });
+    await sleep(300);
     await listTop();
     await shot('sc_flow', { anno: [{ box: { sel: '#screen-list .db-entry', text: '画面遷移図' }, n: 1, pad: 2 }] });
-    // 画面遷移図の縦向き（v1.05 段階 B・q185）。撮った後は横向きに戻す
+    // 画面遷移図の縦向き（v1.05 段階 B・q185）。倍率を 100% に戻してから撮り、撮った後は図の向きを横向きに戻す
+    await run('zoomReset');
+    await sleep(200);
     await click('[data-action="flow-vertical"]');
     await sleep(400);
     await listTop();
