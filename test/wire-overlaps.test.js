@@ -116,7 +116,7 @@ test('ステータスの流れ: 線の多い見本で、平行に近づく線が
   assert.deepEqual(plain(T.wireOverlaps(routes)), []);
 });
 
-test('最初の画面の関連図（v1.05 の判断待ちの件）: 2 列以上離れた画面設計から来る線の文字も、列の間の幅に数え、線の文字どうしが重ならない', async (t) => {
+test('最初の画面の関連図（v1.05 の判断待ちの件と q191）: 2 列以上離れた画面設計から来る線の文字も、列の間の幅に数え、線の文字どうしが重ならない。行きと帰りの 2 本の線も重ならない', async (t) => {
   const app = bootApp();
   t.after(() => app.close());
   const T = await app.api();
@@ -158,4 +158,7 @@ test('最初の画面の関連図（v1.05 の判断待ちの件）: 2 列以上�
   };
   const [a, b] = [box('契約管理'), box('請求管理')];
   assert.ok(b.x - (a.x + a.w) > 200, `${b.x - (a.x + a.w)}`);
+  // 顧客管理と請求管理の行きと帰りの 2 本の線（関連レコード一覧・顧客名で引く）が、契約管理と訪問管理の間で同じ高さに重ならない。
+  // 2 本の端が、別々のボックスの辺の同じ高さに決まるので、片方の端を辺に沿ってずらして離す（v1.05 の q191 案A。wirePinsApart）
+  assert.deepEqual(plain(T.wireOverlaps(routesOf(app.document.querySelector('#home-map').innerHTML))), []);
 });

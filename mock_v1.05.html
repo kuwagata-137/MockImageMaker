@@ -8260,6 +8260,8 @@ function mapWireGaps(model, ends) {
 // 平行に走る 2 本の線の間の下限（v1.05 段階 B。ユーザーの要望 2026-11-13「不用意に線が重ならないような仕組みにしたい」）。
 // 関連図・画面遷移図（横向き・縦向き）で守る。ステータスの流れは、右を回る線を PROC_LANE ずつ離した通り道に引くので、この下限より離れている
 const WIRE_GAP_MIN = 10;
+// swimRoutes に渡す線の端（辺と、辺の上の位置 frac）。fr（wirePinsApart がずらした端の位置。キーは「線の id|from か to」）に差し替えがあれば、その位置
+const wirePin = (p, fr) => ({ side: p.side, frac: fr && fr.has(`${p.wire.id}|${p.end}`) ? fr.get(`${p.wire.id}|${p.end}`) : p.frac });
 // 線の道（routes。線の id ごとの { wps }）の中で、ほかの線と平行に近づく所。
 // [{ a, b（線の id）, dir（'h' 横・'v' 縦）, ca, cb（2 本の区間の位置。横なら y、縦なら x）, gap（間）, lap（並んで走る長さ）, sa, sb（2 本の区間の範囲 [始まり, 終わり]） }]。並んで走る長さが 4 以下の所（角で触れるだけの所）は数えない
 function wireOverlaps(routes, min = WIRE_GAP_MIN) {
@@ -8296,7 +8298,8 @@ function wireHitsBox(wps, boxes, from, to) {
 //    流れの向きの区間どうしが並んで走るときは、先に始まる区間の線を、もう 1 本の区間が始まる位置の WIRE_GAP_MIN 手前で曲げる
 //    （例: 列を飛ばす線が、間のボックスの手前まで進んでから曲がり、間のボックスへ入る線と並ぶとき）。
 //    3 回まで繰り返し、近づく所が減らなくなったら・ボックスの中を通る線が増えたらやめる
-function wireRoutesApart(route, wires, mids, skips, boxes, vertical) {
+// ③ ends（線の端の並び）を渡すと、②の後も残る近づく所を、線の端をずらして直す（wirePinsApart。v1.05 の q191）。route は route(mids, fr)（fr は端の位置の差し替え）
+function wireRoutesApart(route, wires, mids, skips, boxes, vertical, ends = null) {
   let routes = route(mids);
   const bad = wires.filter((w) => skips.has(w) && routes[w.id] && wireHitsBox(routes[w.id].wps, boxes, w.from, w.to));
   if (bad.length) {
@@ -8322,6 +8325,60 @@ function wireRoutesApart(route, wires, mids, skips, boxes, vertical) {
     if (n >= best.n || wires.some((w) => r[w.id] && wireHitsBox(r[w.id].wps, boxes, w.from, w.to) && !(best.routes[w.id] && wireHitsBox(best.routes[w.id].wps, boxes, w.from, w.to)))) break;
     best = { routes: r, n, mids: next };
   }
+  return ends ? wirePinsApart(best, route, wires, boxes, vertical, ends) : best.routes;
+}
+// 曲がる位置を動かしても、流れの向きの区間（横向きの図は横の区間、縦向きの図は縦の区間）どうしが WIRE_GAP_MIN より近くで並んで走る時
+// （2 本の線の端が、別々のボックスの辺の、たまたま同じ高さに決まった時など。v1.05 の q191。2026-11-17）は、その区間がつながる線の端を、
+// ボックスの辺に沿って、もう 1 本の区間から WIRE_GAP_MIN 離れた位置へずらす。端につながる区間（線の最初か最後の区間）だけを動かせる。
+// 候補は、後の線の端・前の線の端の順に、離れる向き・逆の向き。辺の端から 4 以内・同じ辺のほかの端から WIRE_GAP_MIN 以内の位置と、
+// 同じ辺のほかの端を飛び越える位置（端の並びの順が変わり、線が交わるため）には置かない。近づく所が減り、ボックスの中を通る線が増えない候補だけを使う（3 回まで）。
+// 動かした端は、ends の frac と pt も直す（端の文字を、ずらした端の位置に置くため）。戻り値は線の道（routes）
+function wirePinsApart(best0, route, wires, boxes, vertical, ends) {
+  const flow = vertical ? 'v' : 'h';
+  const boxOf = new Map(boxes.map((b) => [b.key, b]));
+  const hits = (r) => wires.filter((w) => r[w.id] && wireHitsBox(r[w.id].wps, boxes, w.from, w.to)).length;
+  const keyOf = (p) => `${p.wire.id}|${p.end}`;
+  const lr = (p) => p.side === 'left' || p.side === 'right';
+  const span = (p) => { const b = boxOf.get(p.node); return lr(p) ? [b.y, b.h] : [b.x, b.w]; }; // 端が動く向きの [始まり, 長さ]
+  const posOf = (fr, p) => { const [lo, len] = span(p); return lo + len * (fr.has(keyOf(p)) ? fr.get(keyOf(p)) : p.frac); };
+  let best = { ...best0, fr: new Map(), hit: hits(best0.routes) };
+  for (let k = 0; k < 3 && best.n; k++) {
+    let found = null;
+    for (const o of wireOverlaps(best.routes).filter((x) => x.dir === flow)) {
+      for (const [id, c, other] of [[o.b, o.cb, o.ca], [o.a, o.ca, o.cb]]) {
+        const wps = best.routes[id] && best.routes[id].wps;
+        if (!wps || wps.length < 2) continue;
+        const ax = vertical ? 0 : 1;
+        const on = (i, j) => Math.abs(wps[i][ax] - c) < 0.5 && Math.abs(wps[j][ax] - c) < 0.5;
+        const end = on(0, 1) ? 'from' : on(wps.length - 1, wps.length - 2) ? 'to' : null;
+        const p = end && ends.find((e) => e.wire.id === id && e.end === end);
+        if (!p || lr(p) === vertical || !boxOf.get(p.node)) continue;
+        const [lo, len] = span(p);
+        const now = posOf(best.fr, p);
+        const others = ends.filter((e) => e !== p && e.node === p.node && e.side === p.side).map((e) => posOf(best.fr, e));
+        const dir = Math.sign(c - other) || 1;
+        for (const d of [dir, -dir]) {
+          const at = other + d * WIRE_GAP_MIN;
+          if (at < lo + 4 || at > lo + len - 4 || others.some((v) => Math.abs(v - at) < WIRE_GAP_MIN || (v - now) * (v - at) < 0)) continue;
+          const fr = new Map(best.fr).set(keyOf(p), (at - lo) / len);
+          const routes = route(best.mids, fr);
+          const [n, hit] = [wireOverlaps(routes).length, hits(routes)];
+          if (n < best.n && hit <= best.hit) { found = { routes, n, mids: best.mids, fr, hit }; break; }
+        }
+        if (found) break;
+      }
+      if (found) break;
+    }
+    if (!found) break;
+    best = found;
+  }
+  best.fr.forEach((f, key) => {
+    const p = ends.find((e) => keyOf(e) === key);
+    const b = p && boxOf.get(p.node);
+    if (!b) return;
+    p.frac = f;
+    p.pt = p.side === 'left' ? [b.x, b.y + b.h * f] : p.side === 'right' ? [b.x + b.w, b.y + b.h * f] : p.side === 'top' ? [b.x + b.w * f, b.y] : [b.x + b.w * f, b.y + b.h];
+  });
   return best.routes;
 }
 // ボックスの位置（覚えた位置と、自動の位置）。線の数でボックスの高さが変わり、高さで自動の位置が変わるので、2 回並べ直して落ち着かせる
@@ -8374,15 +8431,15 @@ function mapWireRoute(model, wires, pos) {
     const down = bent.filter((r) => r.r.pt[1] > r.l.pt[1]).sort((p, q) => q.l.pt[1] - p.l.pt[1]);
     [...up, ...down].forEach((r, j) => mids.set(r.wire, g.xl + lw + (j + 1) * step));
   });
-  const routes = wireRoutesApart((m) => swimRoutes({
+  const routes = wireRoutesApart((m, fr) => swimRoutes({
     vertical: false, lanes: [],
     w: Math.max(0, ...boxes.map((b) => b.x + b.w)) + 240,
     h: Math.max(0, ...boxes.map((b) => b.y + b.h)) + 240,
     nodes: boxes.map((b) => ({ id: b.key, type: 'rect', x: b.x, y: b.y, w: b.w, h: b.h })),
     edges: wires.map((wire) => ({ id: wire.id, from: wire.from, to: wire.to,
-      fromPin: { side: endOf(wire, 'from').side, frac: endOf(wire, 'from').frac }, toPin: { side: endOf(wire, 'to').side, frac: endOf(wire, 'to').frac },
+      fromPin: wirePin(endOf(wire, 'from'), fr), toPin: wirePin(endOf(wire, 'to'), fr),
       ...(m.has(wire) ? { mid: m.get(wire) } : {}) })),
-  }), wires, mids, skips, boxes, false);
+  }), wires, mids, skips, boxes, false, ends);
   // 端の文字。左右の辺は、ボックスを出てすぐの横の線の上（重なるときは 線の下 → 外へずらした上 → 外へずらした下）。上下の辺は、縦の線の右（重なるときは左）
   const placed = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
   const hit = (a, b) => a.x < b.x + b.w + 2 && b.x < a.x + a.w + 2 && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
@@ -8597,15 +8654,15 @@ function flowVRoute(model, wires, pos) {
     const left = bent.filter((r) => r.l.pt[0] < r.u.pt[0]).sort((p, q) => p.u.pt[0] - q.u.pt[0]);
     [...right, ...left].forEach((r, j) => mids.set(r.wire, g.yu + th + (j + 1) * step));
   });
-  const routes = wireRoutesApart((m) => swimRoutes({
+  const routes = wireRoutesApart((m, fr) => swimRoutes({
     vertical: true, lanes: [],
     w: Math.max(0, ...boxes.map((b) => b.x + b.w)) + 240,
     h: Math.max(0, ...boxes.map((b) => b.y + b.h)) + 240,
     nodes: boxes.map((b) => ({ id: b.key, type: 'rect', x: b.x, y: b.y, w: b.w, h: b.h })),
     edges: wires.map((wire) => ({ id: wire.id, from: wire.from, to: wire.to,
-      fromPin: { side: endOf(wire, 'from').side, frac: endOf(wire, 'from').frac }, toPin: { side: endOf(wire, 'to').side, frac: endOf(wire, 'to').frac },
+      fromPin: wirePin(endOf(wire, 'from'), fr), toPin: wirePin(endOf(wire, 'to'), fr),
       ...(m.has(wire) ? { mid: m.get(wire) } : {}) })),
-  }), wires, mids, skips, boxes, true);
+  }), wires, mids, skips, boxes, true, ends);
   // 端の文字。上下の辺は、縦の線の右（重なるときは左）。左右の辺は、横の線の上（重なるときは下）
   const placed = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
   const hit = (a, b) => a.x < b.x + b.w + 2 && b.x < a.x + a.w + 2 && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
