@@ -149,6 +149,10 @@ test('システム設計書: 工程 56 個のスイムレーン図は何ペー�
     // 2 ページ目にもレーンの見出し（役割の名前）がある
     const second = new app.window.DOMParser().parseFromString(doc.pages[2], 'text/html');
     assert.deepEqual([...second.querySelectorAll('.swim-lab')].map((e) => e.textContent).filter((v, i, a) => a.indexOf(v) === i).sort(), [...ROLES].sort());
+    // 図の窓（図の枠・図の範囲・レーンの見出し）には contain:strict を付ける。付けないと、Chromium の印刷が最終ページの後に白紙ページを追加する（2026-11-17）
+    const wins = [...second.querySelectorAll('.xp-tile div')].filter((e) => /overflow:hidden/.test(e.getAttribute('style') || ''));
+    assert.equal(wins.length, 3, `${orientation}: 窓 ${wins.length}`);
+    wins.forEach((e) => assert.match(e.getAttribute('style'), /contain:strict/));
     assert.equal(doc.total, pages.length);
   }
 });

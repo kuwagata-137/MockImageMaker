@@ -19583,7 +19583,10 @@ function tileWindows(html, T, idx, idp) {
   const hy = r ? T.headY : 0;
   const hx = q ? T.headX : 0;
   const tagged = (s) => html.split(idp + '-arrow').join(`${idp}-${s}-arrow`);
-  const win = (s, sx, sy, sw, sh, dx, dy) => `<div style="position:absolute;left:${dx}px;top:${dy}px;width:${sw}px;height:${sh}px;overflow:hidden">`
+  // 窓には contain:strict を付ける。付けないと、窓の外へ伸びる中身（2 段目から、レーンの見出しを見せる窓に入れた図全体など）のせいで、
+  // Chromium の印刷（Electron の printToPDF・ブラウザの印刷）が、最終ページの後に白紙ページを追加する
+  // （2026-11-17。縦向きのスイムレーン図〔工程 56 個〕の A4 横で、印刷用文書の 7 ページが PDF では 9 ページになった。tileFigureHtml の窓も同じ）
+  const win = (s, sx, sy, sw, sh, dx, dy) => `<div style="position:absolute;left:${dx}px;top:${dy}px;width:${sw}px;height:${sh}px;overflow:hidden;contain:strict">`
     + `<div style="position:absolute;left:${-sx}px;top:${-sy}px">${tagged(s)}</div></div>`;
   let inner = win(`t${idx + 1}`, Q.d0, R.d0, Q.d1 - Q.d0, R.d1 - R.d0, hx, hy);
   if (hy) inner += win(`t${idx + 1}h`, Q.d0, T.laneTop, Q.d1 - Q.d0, hy, hx, 0);
@@ -19600,7 +19603,7 @@ function tileFigureHtml(html, T, idx, first, idp) {
   const H = box.y + box.h + (w.r + 1 < T.rows.length ? TILE_STRIP_Y : 0);
   const marks = tileMarksHtml(T, w.r, w.q, w.hx, w.hy, box, W, (rr, qq) => first + rr * nc + qq);
   return `<div class="xp-fit"><div class="xp-tile" style="width:${W}px;height:${H}px">`
-    + `<div style="position:absolute;left:${box.x}px;top:${box.y}px;width:${box.w}px;height:${box.h}px;overflow:hidden">`
+    + `<div style="position:absolute;left:${box.x}px;top:${box.y}px;width:${box.w}px;height:${box.h}px;overflow:hidden;contain:strict">`
     + `<div style="width:${w.dw}px;height:${w.dh}px;position:relative;zoom:${k.toFixed(4)}">${w.html}</div></div>${marks}</div></div>`;
 }
 // 図のページの組み方 { html, c, T（分けないときは null）, idp, legend, aw, bh（図に使える大きさ） }。exportLayout がページの数を数え、exportViewPages が描く
