@@ -1520,6 +1520,12 @@ body.file-over .home-scroll{outline:3px dashed #2563eb;outline-offset:-10px;back
 .map-head i.g,.xp-legend i.g{border-top:2.5px dotted #16a34a}
 .map-head b.tag,.xp-legend b.tag{display:inline-block;border:1.2px solid #1d3f6e;border-radius:8px;padding:0 6px;margin-right:5px;color:#1d3f6e;font-size:11px;line-height:15px}
 .xp-fit{display:flex;justify-content:center;align-items:flex-start}
+.xp-tile{position:relative;overflow:hidden}
+.xp-tmark{position:absolute;font-size:11px;line-height:16px;font-weight:700;color:#334155;background:#fff;border:1px solid #64748b;border-radius:9px;padding:0 7px;white-space:nowrap}
+.xp-tmark-at{position:absolute;width:0;height:18px;display:flex;justify-content:center}
+.xp-tmark-at .xp-tmark{position:static}
+.xp-tmark.v{padding:0 5px;line-height:14px;text-align:center;border-radius:6px}
+.xp-tmark small{font-size:10px}
 .xp-fit .mnode,.xp-png .mnode{cursor:default}
 .xp-proc{display:flex;gap:32px;align-items:flex-start}
 .xp-proc-tbl{flex:none}
@@ -4170,9 +4176,9 @@ function mapModel(state, focusId = null) {
   return { nodes: keys.map((k) => nodes.get(k)), edges: list };
 }
 // 自動で並べる位置。矢印の元を左、引く側を右の列にする（列＝元から何段目か）。
-// つながりのない箱は、つながった箱の下に、名前の順に横に並べる（右の端の列に置くと、図が横に長くなるため。Claude が決めた）
+// つながりのないボックスは、loneRight が true（画面遷移図）なら、いちばん右の列のさらに右の列に、上から 1 列で並べる（v1.05 の q189 案A）。false（関連図）なら、つながったボックスの下に横に並べる（関連図を横に広げると、最初の画面で初めて表示した時の倍率が下がるため。Claude が決めた）。つながったボックスが 1 つもないときは、どちらも横に並べる
 // gaps は列の間（列 c と c+1 の間。v1.05。線の数と文字の幅で広げる mapWireGaps の値）。渡さなければ、今までどおり 200
-function mapLayout(model, hOf = () => MAP_H, gaps = []) {
+function mapLayout(model, hOf = () => MAP_H, gaps = [], loneRight = false) {
   const forward = mapForwardEdges(model);
   const rank = mapRanks(model, forward);
   const colX = [40];
@@ -4195,10 +4201,20 @@ function mapLayout(model, hOf = () => MAP_H, gaps = []) {
       y += hOf(n.key) + MAP_ROW - MAP_H; // 箱の間は 48
     });
   });
+  const lone = byName.filter((n) => !linked.has(n.key));
+  if (loneRight && cols.size) {
+    const x = colX[colX.length - 1] + MAP_COL;
+    let y = 40;
+    lone.forEach((n) => {
+      pos[n.key] = { x, y };
+      y += hOf(n.key) + MAP_ROW - MAP_H;
+    });
+    return pos;
+  }
   const bottom = Math.max(0, ...Object.entries(pos).map(([k, p]) => p.y + hOf(k)));
   const top = bottom ? bottom + MAP_ROW - MAP_H + 32 : 40;
   const perRow = Math.max(4, Math.floor((cols.size * MAP_COL - (MAP_COL - MAP_W)) / (MAP_W + 40)));
-  byName.filter((n) => !linked.has(n.key)).forEach((n, i) => {
+  lone.forEach((n, i) => {
     pos[n.key] = { x: 40 + (i % perRow) * (MAP_W + 40), y: top + Math.floor(i / perRow) * MAP_ROW };
   });
   return pos;
@@ -8229,18 +8245,23 @@ function mapWireGaps(model, ends) {
   const rank = mapRanks(model, mapForwardEdges(model));
   const span = (wire) => [Math.min(rank.get(wire.from), rank.get(wire.to)), Math.max(rank.get(wire.from), rank.get(wire.to))];
   const gaps = [];
+  // 列 c と c+1 の間を通る線は、列 c 以前と列 c+1 以後をつなぐ線（2 列以上離れたボックスから来る線を含む）。
+  // 間の左右の端の文字は、その線の、列 c のボックスの右の辺の端と、列 c+1 のボックスの左の辺の端（v1.05。2 列以上離れたボックスから来る線の文字を数えず、
+  // 隣の列から来る線の文字と同じ高さに並んで重なっていた。最初の画面の関連図の「契約番号で引く」と「関連レコード一覧」）
   for (let c = 0; c < Math.max(0, ...rank.values()); c++) {
-    const here = ends.filter((p) => { const [a, b] = span(p.wire); return a === c && b === c + 1; });
-    const through = new Set(ends.filter((p) => { const [a, b] = span(p.wire); return a <= c && b > c + 1; }).map((p) => p.wire)).size;
-    const lw = Math.max(24, ...here.filter((p) => rank.get(p.node) === c).map((p) => wireEndW(p) + 8));
-    const rw = Math.max(24, ...here.filter((p) => rank.get(p.node) === c + 1).map((p) => wireEndW(p) + 8));
-    gaps.push(Math.max(MAP_COL - MAP_W, lw + (here.length / 2 + through + 2) * WIRE_TRACK + rw));
+    const inGap = ends.filter((p) => { const [a, b] = span(p.wire); return a <= c && b >= c + 1; });
+    const wires = new Set(inGap.map((p) => p.wire)).size;
+    const lw = Math.max(24, ...inGap.filter((p) => rank.get(p.node) === c).map((p) => wireEndW(p) + 8));
+    const rw = Math.max(24, ...inGap.filter((p) => rank.get(p.node) === c + 1).map((p) => wireEndW(p) + 8));
+    gaps.push(Math.max(MAP_COL - MAP_W, lw + (wires + 2) * WIRE_TRACK + rw));
   }
   return gaps;
 }
 // 平行に走る 2 本の線の間の下限（v1.05 段階 B。ユーザーの要望 2026-11-13「不用意に線が重ならないような仕組みにしたい」）。
 // 関連図・画面遷移図（横向き・縦向き）で守る。ステータスの流れは、右を回る線を PROC_LANE ずつ離した通り道に引くので、この下限より離れている
 const WIRE_GAP_MIN = 10;
+// swimRoutes に渡す線の端（辺と、辺の上の位置 frac）。fr（wirePinsApart がずらした端の位置。キーは「線の id|from か to」）に差し替えがあれば、その位置
+const wirePin = (p, fr) => ({ side: p.side, frac: fr && fr.has(`${p.wire.id}|${p.end}`) ? fr.get(`${p.wire.id}|${p.end}`) : p.frac });
 // 線の道（routes。線の id ごとの { wps }）の中で、ほかの線と平行に近づく所。
 // [{ a, b（線の id）, dir（'h' 横・'v' 縦）, ca, cb（2 本の区間の位置。横なら y、縦なら x）, gap（間）, lap（並んで走る長さ）, sa, sb（2 本の区間の範囲 [始まり, 終わり]） }]。並んで走る長さが 4 以下の所（角で触れるだけの所）は数えない
 function wireOverlaps(routes, min = WIRE_GAP_MIN) {
@@ -8277,7 +8298,8 @@ function wireHitsBox(wps, boxes, from, to) {
 //    流れの向きの区間どうしが並んで走るときは、先に始まる区間の線を、もう 1 本の区間が始まる位置の WIRE_GAP_MIN 手前で曲げる
 //    （例: 列を飛ばす線が、間のボックスの手前まで進んでから曲がり、間のボックスへ入る線と並ぶとき）。
 //    3 回まで繰り返し、近づく所が減らなくなったら・ボックスの中を通る線が増えたらやめる
-function wireRoutesApart(route, wires, mids, skips, boxes, vertical) {
+// ③ ends（線の端の並び）を渡すと、②の後も残る近づく所を、線の端をずらして直す（wirePinsApart。v1.05 の q191）。route は route(mids, fr)（fr は端の位置の差し替え）
+function wireRoutesApart(route, wires, mids, skips, boxes, vertical, ends = null) {
   let routes = route(mids);
   const bad = wires.filter((w) => skips.has(w) && routes[w.id] && wireHitsBox(routes[w.id].wps, boxes, w.from, w.to));
   if (bad.length) {
@@ -8303,16 +8325,70 @@ function wireRoutesApart(route, wires, mids, skips, boxes, vertical) {
     if (n >= best.n || wires.some((w) => r[w.id] && wireHitsBox(r[w.id].wps, boxes, w.from, w.to) && !(best.routes[w.id] && wireHitsBox(best.routes[w.id].wps, boxes, w.from, w.to)))) break;
     best = { routes: r, n, mids: next };
   }
+  return ends ? wirePinsApart(best, route, wires, boxes, vertical, ends) : best.routes;
+}
+// 曲がる位置を動かしても、流れの向きの区間（横向きの図は横の区間、縦向きの図は縦の区間）どうしが WIRE_GAP_MIN より近くで並んで走る時
+// （2 本の線の端が、別々のボックスの辺の、たまたま同じ高さに決まった時など。v1.05 の q191。2026-11-17）は、その区間がつながる線の端を、
+// ボックスの辺に沿って、もう 1 本の区間から WIRE_GAP_MIN 離れた位置へずらす。端につながる区間（線の最初か最後の区間）だけを動かせる。
+// 候補は、後の線の端・前の線の端の順に、離れる向き・逆の向き。辺の端から 4 以内・同じ辺のほかの端から WIRE_GAP_MIN 以内の位置と、
+// 同じ辺のほかの端を飛び越える位置（端の並びの順が変わり、線が交わるため）には置かない。近づく所が減り、ボックスの中を通る線が増えない候補だけを使う（3 回まで）。
+// 動かした端は、ends の frac と pt も直す（端の文字を、ずらした端の位置に置くため）。戻り値は線の道（routes）
+function wirePinsApart(best0, route, wires, boxes, vertical, ends) {
+  const flow = vertical ? 'v' : 'h';
+  const boxOf = new Map(boxes.map((b) => [b.key, b]));
+  const hits = (r) => wires.filter((w) => r[w.id] && wireHitsBox(r[w.id].wps, boxes, w.from, w.to)).length;
+  const keyOf = (p) => `${p.wire.id}|${p.end}`;
+  const lr = (p) => p.side === 'left' || p.side === 'right';
+  const span = (p) => { const b = boxOf.get(p.node); return lr(p) ? [b.y, b.h] : [b.x, b.w]; }; // 端が動く向きの [始まり, 長さ]
+  const posOf = (fr, p) => { const [lo, len] = span(p); return lo + len * (fr.has(keyOf(p)) ? fr.get(keyOf(p)) : p.frac); };
+  let best = { ...best0, fr: new Map(), hit: hits(best0.routes) };
+  for (let k = 0; k < 3 && best.n; k++) {
+    let found = null;
+    for (const o of wireOverlaps(best.routes).filter((x) => x.dir === flow)) {
+      for (const [id, c, other] of [[o.b, o.cb, o.ca], [o.a, o.ca, o.cb]]) {
+        const wps = best.routes[id] && best.routes[id].wps;
+        if (!wps || wps.length < 2) continue;
+        const ax = vertical ? 0 : 1;
+        const on = (i, j) => Math.abs(wps[i][ax] - c) < 0.5 && Math.abs(wps[j][ax] - c) < 0.5;
+        const end = on(0, 1) ? 'from' : on(wps.length - 1, wps.length - 2) ? 'to' : null;
+        const p = end && ends.find((e) => e.wire.id === id && e.end === end);
+        if (!p || lr(p) === vertical || !boxOf.get(p.node)) continue;
+        const [lo, len] = span(p);
+        const now = posOf(best.fr, p);
+        const others = ends.filter((e) => e !== p && e.node === p.node && e.side === p.side).map((e) => posOf(best.fr, e));
+        const dir = Math.sign(c - other) || 1;
+        for (const d of [dir, -dir]) {
+          const at = other + d * WIRE_GAP_MIN;
+          if (at < lo + 4 || at > lo + len - 4 || others.some((v) => Math.abs(v - at) < WIRE_GAP_MIN || (v - now) * (v - at) < 0)) continue;
+          const fr = new Map(best.fr).set(keyOf(p), (at - lo) / len);
+          const routes = route(best.mids, fr);
+          const [n, hit] = [wireOverlaps(routes).length, hits(routes)];
+          if (n < best.n && hit <= best.hit) { found = { routes, n, mids: best.mids, fr, hit }; break; }
+        }
+        if (found) break;
+      }
+      if (found) break;
+    }
+    if (!found) break;
+    best = found;
+  }
+  best.fr.forEach((f, key) => {
+    const p = ends.find((e) => keyOf(e) === key);
+    const b = p && boxOf.get(p.node);
+    if (!b) return;
+    p.frac = f;
+    p.pt = p.side === 'left' ? [b.x, b.y + b.h * f] : p.side === 'right' ? [b.x + b.w, b.y + b.h * f] : p.side === 'top' ? [b.x + b.w * f, b.y] : [b.x + b.w * f, b.y + b.h];
+  });
   return best.routes;
 }
 // ボックスの位置（覚えた位置と、自動の位置）。線の数でボックスの高さが変わり、高さで自動の位置が変わるので、2 回並べ直して落ち着かせる
-function mapWireLayout(model, saved, wires, baseH) {
-  let pos = mapPlace(model, saved, mapLayout(model, baseH), baseH);
+function mapWireLayout(model, saved, wires, baseH, loneRight = false) {
+  let pos = mapPlace(model, saved, mapLayout(model, baseH, [], loneRight), baseH);
   for (let k = 0; k < 2; k++) {
     const { ends, bySide } = mapWireEnds(wires, pos);
     const grown = mapWireHeights(model, bySide, baseH);
     const hOf = (key) => grown.get(key);
-    pos = mapPlace(model, saved, mapLayout(model, hOf, mapWireGaps(model, ends)), hOf);
+    pos = mapPlace(model, saved, mapLayout(model, hOf, mapWireGaps(model, ends), loneRight), hOf);
   }
   return pos;
 }
@@ -8355,15 +8431,15 @@ function mapWireRoute(model, wires, pos) {
     const down = bent.filter((r) => r.r.pt[1] > r.l.pt[1]).sort((p, q) => q.l.pt[1] - p.l.pt[1]);
     [...up, ...down].forEach((r, j) => mids.set(r.wire, g.xl + lw + (j + 1) * step));
   });
-  const routes = wireRoutesApart((m) => swimRoutes({
+  const routes = wireRoutesApart((m, fr) => swimRoutes({
     vertical: false, lanes: [],
     w: Math.max(0, ...boxes.map((b) => b.x + b.w)) + 240,
     h: Math.max(0, ...boxes.map((b) => b.y + b.h)) + 240,
     nodes: boxes.map((b) => ({ id: b.key, type: 'rect', x: b.x, y: b.y, w: b.w, h: b.h })),
     edges: wires.map((wire) => ({ id: wire.id, from: wire.from, to: wire.to,
-      fromPin: { side: endOf(wire, 'from').side, frac: endOf(wire, 'from').frac }, toPin: { side: endOf(wire, 'to').side, frac: endOf(wire, 'to').frac },
+      fromPin: wirePin(endOf(wire, 'from'), fr), toPin: wirePin(endOf(wire, 'to'), fr),
       ...(m.has(wire) ? { mid: m.get(wire) } : {}) })),
-  }), wires, mids, skips, boxes, false);
+  }), wires, mids, skips, boxes, false, ends);
   // 端の文字。左右の辺は、ボックスを出てすぐの横の線の上（重なるときは 線の下 → 外へずらした上 → 外へずらした下）。上下の辺は、縦の線の右（重なるときは左）
   const placed = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
   const hit = (a, b) => a.x < b.x + b.w + 2 && b.x < a.x + a.w + 2 && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
@@ -8465,7 +8541,7 @@ function flowVWidths(model, bySide) {
   return new Map(model.nodes.map((n) => [n.key,
     Math.max(MAP_W, ...['top', 'bottom'].map((s) => (bySide.get(`${n.key}|${s}`) || []).reduce((w, p) => w + flowVEndW(p), 24)))]));
 }
-// 段（横向きの列）と、段の中の並び（横向きの列の中の、上からの並び）。線のない画面は、いちばん下の段に並べる
+// 段（横向きの列）と、段の中の並び（横向きの列の中の、上からの並び）。戻り値 { rows, lone }。線のない画面（lone）は段に入れず、flowVAuto が段の右に、上から 1 列で並べる（v1.05 の q189 案A）。線のある画面が 1 つもないときは、全部の画面を 1 つの段にする
 function flowVRows(model) {
   const auto = mapLayout(model);
   const rank = mapRanks(model, mapForwardEdges(model));
@@ -8479,11 +8555,11 @@ function flowVRows(model) {
     byRank.get(r).push(n.key);
   });
   const rows = [...byRank.keys()].sort((a, b) => a - b).map((r) => byRank.get(r).sort((a, b) => auto[a].y - auto[b].y));
-  if (lone.length) rows.push(lone.sort((a, b) => auto[a].y - auto[b].y || auto[a].x - auto[b].x));
-  return rows;
+  lone.sort((a, b) => auto[a].y - auto[b].y || auto[a].x - auto[b].x);
+  return rows.length ? { rows, lone } : { rows: lone.length ? [lone] : [], lone: [] };
 }
 // 自動の位置（段を上から下へ。段の中は左に寄せる）。段の間は、上の段の下の辺の文字・下の段の上の辺の文字・通り道の数で広げる
-function flowVAuto(rows, wOf, ends) {
+function flowVAuto(rows, wOf, ends, lone = []) {
   const rowOf = new Map();
   rows.forEach((list, r) => list.forEach((k) => rowOf.set(k, r)));
   const textH = (k, side) => Math.max(0, ...ends.filter((p) => p.node === k && p.side === side).map(flowVTextH));
@@ -8498,12 +8574,17 @@ function flowVAuto(rows, wOf, ends) {
       x += wOf.get(k) + FLOWV_GAP_X;
     });
     if (r === rows.length - 1) return;
-    const adj = wires.filter((w) => { const [a, b] = span(w); return a === r && b === r + 1; }).length;
-    const through = wires.filter((w) => { const [a, b] = span(w); return a <= r && b > r + 1; }).length;
+    // 段 r と r+1 の間を通る線（2 段以上離れたボックスから来る線を含む。v1.05 で横向きの列の間と同じ数え方にした）
+    const inGap = wires.filter((w) => { const [a, b] = span(w); return a <= r && b >= r + 1; }).length;
     const th = Math.max(16, ...list.map((k) => textH(k, 'bottom')));
     const bh = Math.max(16, ...rows[r + 1].map((k) => textH(k, 'top')));
-    y += MAP_H + Math.max(FLOWV_GAP_Y, th + (adj + through + 2) * WIRE_TRACK + bh);
+    y += MAP_H + Math.max(FLOWV_GAP_Y, th + (inGap + 2) * WIRE_TRACK + bh);
   });
+  // 線のない画面は、段の右に、上から 1 列で並べる（v1.05 の q189 案A）
+  if (lone.length) {
+    const x = Math.max(...Object.values(pos).map((p) => p.x + p.w)) + FLOWV_GAP_X * 2;
+    lone.forEach((k, i) => { pos[k] = { x, y: 40 + i * MAP_ROW, w: wOf.get(k), h: MAP_H }; });
+  }
   return pos;
 }
 // 覚えた位置の箱はそこに置き、自動で並べる箱が覚えた箱と重なるときは、重ならない所まで下へずらす（mapPlace の、幅を持つ形）
@@ -8524,12 +8605,14 @@ function flowVPlace(model, saved, auto) {
   return pos;
 }
 // ボックスの位置と幅（mapWireLayout の縦向き）。端の文字でボックスの幅と段の間が変わるので、2 回並べ直して落ち着かせる
-function flowVLayout(model, saved, wires) {
-  const rows = flowVRows(model);
-  let pos = flowVPlace(model, saved, flowVAuto(rows, new Map(model.nodes.map((n) => [n.key, MAP_W])), []));
+function flowVLayout(model, saved, wires, loneBelow = false) {
+  const vr = flowVRows(model);
+  // loneBelow（PDF の flowFigure）は、線のない画面を段の右でなく、いちばん下の段に並べる
+  const [rows, lone] = loneBelow && vr.lone.length ? [[...vr.rows, vr.lone], []] : [vr.rows, vr.lone];
+  let pos = flowVPlace(model, saved, flowVAuto(rows, new Map(model.nodes.map((n) => [n.key, MAP_W])), [], lone));
   for (let k = 0; k < 2; k++) {
     const { ends, bySide } = flowVEnds(wires, pos);
-    pos = flowVPlace(model, saved, flowVAuto(rows, flowVWidths(model, bySide), ends));
+    pos = flowVPlace(model, saved, flowVAuto(rows, flowVWidths(model, bySide), ends, lone));
   }
   return pos;
 }
@@ -8571,15 +8654,15 @@ function flowVRoute(model, wires, pos) {
     const left = bent.filter((r) => r.l.pt[0] < r.u.pt[0]).sort((p, q) => p.u.pt[0] - q.u.pt[0]);
     [...right, ...left].forEach((r, j) => mids.set(r.wire, g.yu + th + (j + 1) * step));
   });
-  const routes = wireRoutesApart((m) => swimRoutes({
+  const routes = wireRoutesApart((m, fr) => swimRoutes({
     vertical: true, lanes: [],
     w: Math.max(0, ...boxes.map((b) => b.x + b.w)) + 240,
     h: Math.max(0, ...boxes.map((b) => b.y + b.h)) + 240,
     nodes: boxes.map((b) => ({ id: b.key, type: 'rect', x: b.x, y: b.y, w: b.w, h: b.h })),
     edges: wires.map((wire) => ({ id: wire.id, from: wire.from, to: wire.to,
-      fromPin: { side: endOf(wire, 'from').side, frac: endOf(wire, 'from').frac }, toPin: { side: endOf(wire, 'to').side, frac: endOf(wire, 'to').frac },
+      fromPin: wirePin(endOf(wire, 'from'), fr), toPin: wirePin(endOf(wire, 'to'), fr),
       ...(m.has(wire) ? { mid: m.get(wire) } : {}) })),
-  }), wires, mids, skips, boxes, true);
+  }), wires, mids, skips, boxes, true, ends);
   // 端の文字。上下の辺は、縦の線の右（重なるときは左）。左右の辺は、横の線の上（重なるときは下）
   const placed = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
   const hit = (a, b) => a.x < b.x + b.w + 2 && b.x < a.x + a.w + 2 && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
@@ -8871,7 +8954,8 @@ function flowModel(state, d) {
   return { nodes: [...nodes.values()], edges: [...edges.values()] };
 }
 // ステータスの移り方の図・画面の移り方の図の HTML（編集の画面・出力・AI の画像で使う）。saved は覚えた箱の位置。
-// o: idPrefix（矢印の印の id の頭。出力では編集の画面と重ならない頭にする）・bare（id="map-inner" を付けない）
+// o: idPrefix（矢印の印の id の頭。出力では編集の画面と重ならない頭にする）・bare（id="map-inner" を付けない）・
+//   loneBelow（画面遷移図で、つながっていない画面を右に 1 列でなく、下に並べる。PDF の flowFigure が、右に並べると分割が必要になる時だけ渡す）
 function viewHtml(view, state, d, saved = {}, o = {}) {
   const model = view === 'process' ? processModel(d) : flowModel(state, d);
   if (!model.nodes.length) return `<p class="map-empty">${view === 'process' ? 'ステータスの項目がまだありません（アイテム一覧から「ステータス表示」か「進捗バー」を置くと作られます）。' : '画面がありません。'}</p>`;
@@ -8880,7 +8964,7 @@ function viewHtml(view, state, d, saved = {}, o = {}) {
   const wires = view === 'process' ? null : mapWires(model, VIEW_DRAW.flow);
   const vertical = view === 'flow' && flowVerticalOf(d); // 画面遷移図の縦向き（v1.05 段階 B・q185 案C）
   const pos = !wires ? processPositions(model, saved || {}) // ステータスの流れは、文字の分だけボックスを伸ばす（v1.05 段階 B）
-    : vertical ? flowVLayout(model, saved || {}, wires) : mapWireLayout(model, saved || {}, wires, hOf);
+    : vertical ? flowVLayout(model, saved || {}, wires, !!o.loneBelow) : mapWireLayout(model, saved || {}, wires, hOf, !o.loneBelow); // つながっていない画面は右に 1 列（q189 案A）
   const wire = !wires ? null : vertical ? flowVRoute(model, wires, pos) : mapWireRoute(model, wires, pos);
   const nodes = model.nodes.map((n) => {
     const p = pos[n.key];
@@ -18497,13 +18581,15 @@ function pageBodySize(P, measured) {
 }
 
 // 表紙（q34 案A）。名前・作る先・出力した日・最終更新・数・説明と、2 列で「画面の一覧」と「改訂履歴」。縦の用紙では上下に積む
+// 図を何ページかに分けたとき（v1.05 段階 C）は、図のページを「7〜9」と範囲で書く（ステータスの流れは、続きの操作一覧のページまで）
+const pageRange = (page, pages) => (pages > 1 ? `${page}〜${page + pages - 1}` : page);
 function coverListRows(plan) {
   const rows = [];
   if (plan.changesPage) rows.push(`<tr class="lead"><td class="nm">${esc(plan.changesTitle)}</td><td class="dev"></td><td class="no">${plan.changesPage}</td></tr>`);
-  if (plan.mapPage) rows.push(`<tr class="lead"><td class="nm">関連図</td><td class="dev"></td><td class="no">${plan.mapPage}</td></tr>`);
+  if (plan.mapPage) rows.push(`<tr class="lead"><td class="nm">関連図</td><td class="dev"></td><td class="no">${pageRange(plan.mapPage, plan.mapPages)}</td></tr>`);
   if (plan.itemsPage) rows.push(`<tr class="lead"><td class="nm">項目一覧</td><td class="dev"></td><td class="no">${plan.itemsPage}</td></tr>`);
-  if (plan.processPage) rows.push(`<tr class="lead"><td class="nm">ステータスの流れ</td><td class="dev"></td><td class="no">${plan.processPage}</td></tr>`);
-  if (plan.flowPage) rows.push(`<tr class="lead"><td class="nm">画面遷移図</td><td class="dev"></td><td class="no">${plan.flowPage}</td></tr>`);
+  if (plan.processPage) rows.push(`<tr class="lead"><td class="nm">ステータスの流れ</td><td class="dev"></td><td class="no">${pageRange(plan.processPage, plan.processFigPages > 1 ? plan.processPages : 1)}</td></tr>`);
+  if (plan.flowPage) rows.push(`<tr class="lead"><td class="nm">画面遷移図</td><td class="dev"></td><td class="no">${pageRange(plan.flowPage, plan.flowPages)}</td></tr>`);
   // 設定一覧を次のページへ分けた画面（q138）は、ページを「7〜9」と範囲で書く
   plan.screens.forEach(({ s, i, page, pages }) => rows.push(`<tr><td class="nm">${i + 1}　${esc(s.name)}</td><td class="dev">${DEVICES[s.device].label}</td><td class="no">${pages > 1 ? `${page}〜${page + pages - 1}` : page}</td></tr>`));
   return rows;
@@ -18663,15 +18749,14 @@ function splitItemRows(rows, aw, ah, measured, tableFn = printItemTable) {
 // つながりの図のページ（q35 案A）。凡例だけ出し（案内の文・並べ直すボタンなし）、箱のある所を切り出して本文に収まるように縮める（拡大しない）
 const hasMapLinks = (d, state) => mapModel(state, d.id).nodes.length > 1;
 // idTag は矢印の印の id の頭に足す字（システムの説明書で、画面設計ごとに変える。第 10 段階の後半）
-function mapPageBody(d, state, aw, ah, idTag = '') {
-  const legend = `<div class="xp-legend">${VIEW_LEGENDS.map}</div>`;
+// 戻り値は図の組み方（figurePlan。v1.05 段階 C）。本文は figureBody で描く
+function mapFigure(d, state, aw, ah, idTag = '') {
   // 矢印の印の id は、編集の画面の図と重ならない名前にする（同じ id があると矢印が消えるため）
-  const html = mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xp-map' + idTag }).replace(' id="map-inner"', '');
+  const idp = 'xp-map' + idTag;
+  const html = mapHtml(state, d.id, d.mapPos || {}, { idPrefix: idp }).replace(' id="map-inner"', '');
   // 切り出す範囲は、ボックスと、線の折れる点と、端の文字の下地まで（v1.05。直角の線は、ボックスのまわり 28 より外を回ることがあるため、
-  // ほかの図と同じ diagramCrop で数える）
-  const c = diagramCrop(html);
-  if (!c) return legend + html;
-  return legend + fitDiagram(html, c, aw, ah - 28); // 28 は凡例の分
+  // ほかの図と同じ diagramCrop で数える）。28 は凡例の分
+  return figurePlan(html, idp, VIEW_LEGENDS.map, aw, ah - 28);
 }
 // 図の HTML の切り出す範囲（c: { x0, y0, cw, ch }）を、aw × ah に収まるように縮めて置く（拡大しない）
 function fitDiagram(html, c, aw, ah) {
@@ -18693,34 +18778,76 @@ function actionRowsHtml(it) {
 }
 // ステータスの移り方のページ。上に凡例、左に図（上から下へ。本文の幅の 45% まで縮める）、右に操作の一覧表。
 // 右に置くと表の幅が PROC_TABLE_MIN より狭くなるとき（縦の用紙）は、図（本文の高さの 6 割まで縮める）の下に、本文の幅いっぱいの表を置く。
-// 表が入りきらないときは、続きのページに表だけを出す。戻り値 { sub, body, rest（続きのページごとの表の行） }
+// 表が入りきらないときは、続きのページに表だけを出す。
+// 図が DIAGRAM_MIN_ZOOM より小さく縮むとき（v1.05 段階 C）は、図を何ページかに分ける（processSplitPlan）。
+// 戻り値 { pages: [{ title, sub, body(first)（first は図の 1 ページ目の番号） }]（図のページ）, rest（続きのページごとの表の行） }
 const PROC_TABLE_MIN = 520;
 function processPagePlan(d, state, aw, ah, measured, idTag = '') {
   const it = d.items.find((x) => x.type === 'status');
-  const html = viewHtml('process', state, d, d.processPos || {}, { idPrefix: 'xp-proc' + idTag, bare: true });
+  const idp = 'xp-proc' + idTag;
+  const html = viewHtml('process', state, d, d.processPos || {}, { idPrefix: idp, bare: true });
   const c = diagramCrop(html);
   const bh = ah - 28; // 凡例の分
   const fw = Math.floor(aw * 0.45);
   const side = c ? Math.floor(aw - c.cw * Math.min(1, fw / c.cw, bh / c.ch) - 32) : aw;
   const stack = !!c && side < PROC_TABLE_MIN;
   const fh = stack ? Math.floor(bh * 0.6) : bh;
+  if (c && Math.min(1, (stack ? aw : fw) / c.cw, fh / c.ch) < DIAGRAM_MIN_ZOOM) return processSplitPlan(it, html, c, idp, aw, ah, measured);
   const fig = c ? fitDiagram(html, c, stack ? aw : fw, fh) : '';
   // 表の 1 ページ目に使える高さ。図の下に置くときは、図の高さと間（16）を引く
   const th = stack ? bh - Math.floor(c.ch * Math.min(1, aw / c.cw, fh / c.ch)) - 16 : bh;
   const rows = actionRowsHtml(it);
   const first = splitItemRows(rows, stack ? aw : side, th, measured, printActionTable)[0] || [];
   const rest = first.length < rows.length ? splitItemRows(rows.slice(first.length), aw, ah, measured, printActionTable) : [];
+  const body = `<div class="xp-legend">${VIEW_LEGENDS.process}</div><div class="xp-proc${stack ? ' stack' : ''}">${fig ? `<div>${fig}</div>` : ''}`
+    + `<div class="xp-proc-tbl"${stack ? '' : ` style="width:${side}px"`}>${printActionTable(first)}</div></div>`;
   return {
-    sub: `ステータス ${it.props.states.length} つ・操作 ${it.props.actions.length} つ${cutNote(first)}`, // 1 行でも入らない行は途中まで（デバッグとリリースの見直し②-2）
-    body: `<div class="xp-legend">${VIEW_LEGENDS.process}</div><div class="xp-proc${stack ? ' stack' : ''}">${fig ? `<div>${fig}</div>` : ''}`
-      + `<div class="xp-proc-tbl"${stack ? '' : ` style="width:${side}px"`}>${printActionTable(first)}</div></div>`,
+    // 1 行でも入らない行は途中まで（デバッグとリリースの見直し②-2）
+    pages: [{ title: 'ステータスの流れ', sub: `ステータス ${it.props.states.length} つ・操作 ${it.props.actions.length} つ${cutNote(first)}`, body: () => body }],
     rest,
   };
 }
-function flowPageBody(d, state, aw, ah, idTag = '') {
-  const html = viewHtml('flow', state, d, d.flowPos || {}, { idPrefix: 'xp-flow' + idTag, bare: true });
-  const c = diagramCrop(html);
-  return `<div class="xp-legend">${VIEW_LEGENDS.flow}</div>${c ? fitDiagram(html, c, aw, ah - 28) : html}`;
+// 図を分けるときのステータスの流れのページ（v1.05 段階 C。q172 案A）。図を下限倍率の幅で置いても右に表の幅（PROC_TABLE_MIN）が残るときは、
+// 分けた図のページの右に操作一覧を続けて載せ、残りの行は続きのページに載せる。残らないとき（縦の用紙）は、図のページには図だけを本文いっぱいに載せ、
+// 操作一覧は続きのページに載せる（Claude が決めた）
+function processSplitPlan(it, html, c, idp, aw, ah, measured) {
+  const bh = ah - 28;
+  const fw = Math.floor(aw * 0.45);
+  const wMin = c.cw * DIAGRAM_MIN_ZOOM;
+  const beside = wMin <= fw && aw - wMin - 32 >= PROC_TABLE_MIN;
+  const F = figurePlan(html, idp, VIEW_LEGENDS.process, beside ? fw : aw, bh);
+  const n = figurePages(F);
+  const rows = actionRowsHtml(it);
+  const head = `ステータス ${it.props.states.length} つ・操作 ${it.props.actions.length} つ${figureZoomNote(F)}`;
+  if (!beside) {
+    return {
+      pages: Array.from({ length: n }, (_, i) => ({ title: figureTitle('ステータスの流れ', F, i), sub: head, body: (first) => figureBody(F, i, first) })),
+      rest: splitItemRows(rows, aw, ah, measured, printActionTable),
+    };
+  }
+  const W = F.T ? Math.ceil((F.T.cols[0].d1 - F.T.cols[0].d0) * F.T.k) : Math.ceil(c.cw * Math.min(1, fw / c.cw, bh / c.ch));
+  const side = Math.floor(aw - W - 32);
+  const chunks = splitItemRows(rows, side, bh, measured, printActionTable);
+  const used = chunks.slice(0, n).reduce((s, x) => s + x.length, 0);
+  const pages = Array.from({ length: n }, (_, i) => {
+    const part = chunks[i] || [];
+    const tbl = part.length ? `<div class="xp-proc-tbl" style="width:${side}px">${printActionTable(part)}</div>` : '';
+    const fig = (first) => figureBody(F, i, first).replace(`<div class="xp-legend">${VIEW_LEGENDS.process}</div>`, '');
+    return { title: figureTitle('ステータスの流れ', F, i), sub: head + cutNote(part),
+      body: (first) => `<div class="xp-legend">${VIEW_LEGENDS.process}</div><div class="xp-proc"><div>${fig(first)}</div>${tbl}</div>` };
+  });
+  return { pages, rest: used < rows.length ? splitItemRows(rows.slice(used), aw, ah, measured, printActionTable) : [] };
+}
+// PDF の画面遷移図。つながっていない画面を右に 1 列で並べた図（q189 案A）が、倍率 60% より小さく縮んで分割が必要になり、
+// 下に並べれば 1 ページに収まる時は、下に並べた図にする（A4 縦などの幅の狭い用紙で、ほとんど空白のページを増やさないため。
+// q189 で右に並べた理由〔空白を減らす〕に合わせた。2026-11-17 に Claude が決めた）。編集の画面と AI の画像は、右に 1 列のまま
+function flowFigure(d, state, aw, ah, idTag = '') {
+  const idp = 'xp-flow' + idTag;
+  const plan = (o) => figurePlan(viewHtml('flow', state, d, d.flowPos || {}, { idPrefix: idp, bare: true, ...o }), idp, VIEW_LEGENDS.flow, aw, ah - 28);
+  const F = plan({});
+  if (!F.T) return F;
+  const G = plan({ loneBelow: true });
+  return G.T ? F : G;
 }
 
 // 画面と吹き出しと部品の設定の一覧表を 1 つに組む（q36 案A）。編集の画面と同じ並べ方（画面のまわり 240 ドット）を、
@@ -18729,19 +18856,24 @@ function flowPageBody(d, state, aw, ah, idTag = '') {
 // diff（{ info: designDiff の screens の 1 つ, label }）を渡すと、部品・吹き出しの札と、一覧表の札・削除した部品を入れる（第 6 段階）
 // table・callouts を false にすると、一覧表・吹き出しを入れない（AI が画面だけを画像で見るとき。第 7 段階）。
 // refs は設定一覧の文の置き換え（PDF の画面のページ。q138。PNG・AI は渡さないので全文）。戻り値の ch0 は、表の高さを 0 とみなした高さ（screenSplitPlan が比べる）
-function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true, refs = null } = {}) {
+function screenComposite(d, s, key, measured, diff = null, { table: withTable = true, callouts: withCallouts = true, refs = null, tile = null } = {}) {
   const Z = CALLOUT_ZONE;
   const zoneW = s.width + Z * 2;
   const zoneH = s.height + Z * 2;
-  const shown = withCallouts ? s.callouts : [];
+  // tile（screenTiles の 1 ページ分に x0・x1 を追加したもの）を渡すと、その高さの範囲だけを切り出し、そのページに描く吹き出しだけを、
+  // 動かした位置で描く（v1.05 段階 D）。戻り値の crop は、切り出した範囲 [x0, y0, x1, y1]（画面のまわりの範囲の座標）
+  const all = withCallouts ? s.callouts : [];
+  const shown = tile ? all.filter((c) => tile.callouts.includes(c.id)).map((c) => (tile.moved[c.id] == null ? c : { ...c, y: tile.moved[c.id] })) : all;
   const rects = [[Z, Z, Z + s.width, Z + s.height], ...shown.map((c) => [Z + c.x, Z + c.y, Z + c.x + c.w, Z + c.y + c.h])];
   const pad = 8;
-  const x0 = Math.max(0, Math.min(...rects.map((r) => r[0])) - pad);
-  const y0 = Math.max(0, Math.min(...rects.map((r) => r[1])) - pad);
-  const x1 = Math.min(zoneW, Math.max(...rects.map((r) => r[2])) + pad);
-  const y1 = Math.min(zoneH, Math.max(...rects.map((r) => r[3])) + pad);
+  const [x0, y0, x1, y1] = tile ? [tile.x0, tile.t0, tile.x1, tile.t1] : [
+    Math.max(0, Math.min(...rects.map((r) => r[0])) - pad),
+    Math.max(0, Math.min(...rects.map((r) => r[1])) - pad),
+    Math.min(zoneW, Math.max(...rects.map((r) => r[2])) + pad),
+    Math.min(zoneH, Math.max(...rects.map((r) => r[3])) + pad),
+  ];
   const [cropW, cropH] = [x1 - x0, y1 - y0];
-  const lines = withCallouts ? calloutLinesSvg(s).replace(' id="co-lines"', '').replace(/co-arrow-/g, `${key}-co-arrow-`) : '';
+  const lines = withCallouts ? calloutLinesSvg(tile ? { ...s, callouts: shown } : s).replace(' id="co-lines"', '').replace(/co-arrow-/g, `${key}-co-arrow-`) : '';
   const info = diff && !diff.info.isNew ? diff.info : null;
   const boxes = shown.map((c) => `<div class="callout cc-${esc(c.color)}" style="left:${Z + c.x}px;top:${Z + c.y}px;width:${c.w}px;height:${c.h}px">${esc(c.text)}${info ? diffBadge(info.callouts[c.id]) : ''}</div>`).join('');
   const zone = `<div class="xp-zone" style="position:absolute;left:0;top:0;width:${cropW}px;height:${cropH}px;overflow:hidden">`
@@ -18763,7 +18895,7 @@ function screenComposite(d, s, key, measured, diff = null, { table: withTable = 
   const cw = table ? Math.max(cropW, tx + tw) : cropW;
   const ch = table ? Math.max(cropH, ty + th) : cropH;
   const ch0 = table ? Math.max(cropH, ty) : cropH;
-  return { cw, ch, ch0, html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
+  return { cw, ch, ch0, crop: [x0, y0, x1, y1], html: zone + (table ? `<div style="position:absolute;left:${tx}px;top:${ty}px">${table}</div>` : '') };
 }
 
 // ── PDF の画面のページの設定一覧（q138。仕様_細かい決めごと.md の「設定一覧の載せ方の細かい決めごと」）──
@@ -18792,13 +18924,20 @@ const printDiffFoot = (info, label) => { const h = diffTableFoot(info, label); r
 // 戻り値 { pages（この画面のページ数）, split, counts（設定一覧のページごとの行の数）, cuts（1 行が入らないページか）, footAlone（削除したアイテムの欄を、さらに次のページに置くか） }。
 // 測れないとき・表がないときは分けない。行の数は仮の番号の文（exportSettingRefs の plan なし）で測り、本当の番号の文はこの数で切る
 const SPLIT_KEEP = 0.9;
-function screenSplitPlan(d, s, state, measured, diff, aw, ah, refs) {
-  const one = { pages: 1, split: false };
+function screenSplitPlan(d, s, state, measured, diff, aw, ah, refs, noTable = false) {
+  const one = { pages: 1, split: false, tiles: null };
   if (!measured) return one;
-  const c = screenComposite(d, s, 'probe', measured, diff, { refs });
-  if (Math.min(1, aw / c.cw, ah / c.ch) >= Math.min(1, aw / c.cw, ah / c.ch0) * SPLIT_KEEP) return one;
+  // 縦に長い画面（screenTiles）は、画面を上から何ページかに分割し、設定一覧はいつも画面の後のページに載せる。
+  // 設定一覧を付けない（noTable）ときも、画面は分割する（v1.05 段階 D）。戻り値の tiles は screenTiles の戻り値か null
+  const tiles = screenTiles(s, screenComposite(d, s, 'probe', measured, diff, { table: false }), aw, ah, true);
+  const n = tiles ? tiles.tiles.length : 1;
+  if (noTable) return { pages: n, split: false, tiles };
+  if (!tiles) {
+    const c = screenComposite(d, s, 'probe', measured, diff, { refs });
+    if (Math.min(1, aw / c.cw, ah / c.ch) >= Math.min(1, aw / c.cw, ah / c.ch0) * SPLIT_KEEP) return one;
+  }
   const rows = tableRows(s, d, state, refs);
-  if (!rows.length) return one;
+  if (!rows.length) return { pages: n, split: false, tiles };
   const info = diff && !diff.info.isNew ? diff.info : null;
   const chunks = splitItemRows(partPrintRows(rows, info), aw, ah, true, printPartTable);
   const foot = info ? printDiffFoot(info, diff.label) : '';
@@ -18808,17 +18947,45 @@ function screenSplitPlan(d, s, state, measured, diff, aw, ah, refs) {
     footAlone = probe.getBoundingClientRect().height > ah;
     probe.remove();
   }
-  return { pages: 1 + chunks.length + (footAlone ? 1 : 0), split: true, counts: chunks.map((x) => x.length), cuts: chunks.map((x) => !!x.cut), footAlone };
+  return { pages: n + chunks.length + (footAlone ? 1 : 0), split: true, tiles, counts: chunks.map((x) => x.length), cuts: chunks.map((x) => !!x.cut), footAlone };
+}
+// ── PDF で縦に長い画面を何ページかに分割する（v1.05 段階 D。q174 案A）──
+// comp は表を付けない screenComposite の戻り値（crop は吹き出しまで含めた範囲）、aw × ah は画面に使える大きさ。
+// 1 ページに収めた倍率が min（既定は DIAGRAM_MIN_ZOOM。AI の画像は 1）以上の画面と、幅で縮む画面（高さで決まる倍率のほうが大きい画面）は null（分割しない）。
+// 分割するときは、アイテムのない高さで上から切り（tileSpans。1 ページに入らない高さのアイテム〔グループ枠など〕は数えない）、
+// { k（どのページも同じ倍率）, x0, x1（横の範囲。どのページも同じ）, tiles: [{ t0, t1（高さの範囲）, callouts（そのページに描く吹き出しの id）, moved（動かした吹き出しの y。画面の座標） }] } を返す。
+// 吹き出しは、指しているアイテムの真ん中の高さがあるページに描き、そのページからはみ出す吹き出しは、ページの中へ動かす（q174 で Claude が決めた）
+function screenTiles(s, comp, aw, ah, withCallouts, min = DIAGRAM_MIN_ZOOM) {
+  const Z = CALLOUT_ZONE;
+  const [x0, y0, x1, y1] = comp.crop;
+  const kW = Math.min(1, aw / (x1 - x0));
+  const kH = ah / (y1 - y0);
+  if (Math.min(kW, kH) >= min || kH >= kW) return null;
+  const spans = tileSpans(s.parts.map((p) => [Z + p.y, Z + p.y + p.h]), y0, y1, ah / Math.min(kW, min));
+  if (spans.length < 2) return null;
+  const tiles = spans.map(({ t0, t1 }) => ({ t0, t1, callouts: [], moved: {} }));
+  const at = (y) => tiles.find((t) => y < t.t1) || tiles[tiles.length - 1];
+  if (withCallouts) {
+    s.callouts.forEach((c) => {
+      const p = c.target ? findPart(s, c.target) : null;
+      const t = at(Z + (p ? p.y + p.h / 2 : c.y + c.h / 2));
+      t.callouts.push(c.id);
+      const [top, bottom] = [t.t0 + 4, t.t1 - 4];
+      if (Z + c.y < top || Z + c.y + c.h > bottom) t.moved[c.id] = Math.max(top, Math.min(Z + c.y, bottom - c.h)) - Z;
+    });
+  }
+  return { k: Math.min(kW, ...tiles.map((t) => ah / (t.t1 - t.t0))), x0, x1, tiles };
 }
 // 画面のページの本文。本文に収まるように縮め（拡大しない）、左右・上下の真ん中に置く。測れないときは縮めない。
 // 縮めるのは transform でなく zoom にする（transform だと、縮める前の幅が残り、画面のページが 2 つ以上あると、
 // Electron の印刷が用紙からはみ出しているとみなして全部のページを約 0.67 倍に縮めてしまうため）
 // zoom では 1px の罫線が縮まないので、縮めた表は「測った高さ × 倍率」より高くなる。縮めた後の大きさを測り直し、収まるまで倍率を下げる
-function screenPageBody(comp, aw, ah, measured) {
+function screenPageBody(comp, aw, ah, measured, { k: kFix = null, top = false } = {}) {
+  // k を渡すと、その倍率から縮め、top が true なら上に寄せる（縦に長い画面を分割したページ。どのページも同じ倍率にする。v1.05 段階 D）
   const stage = (k, w, h, top) => `<div class="xp-stage" style="width:${Math.ceil(w)}px;height:${Math.ceil(h)}px;margin-top:${top}px">`
     + `<div style="position:absolute;left:0;top:0;width:${comp.cw}px;height:${comp.ch}px;zoom:${k.toFixed(4)}">${comp.html}</div></div>`;
   if (!measured) return { k: 1, html: stage(1, comp.cw, comp.ch, 0) };
-  let k = Math.min(1, aw / comp.cw, ah / comp.ch);
+  let k = kFix || Math.min(1, aw / comp.cw, ah / comp.ch);
   let [w, h] = [comp.cw * k, comp.ch * k];
   for (let i = 0; i < 5; i++) {
     const probe = measureBox(stage(k, w, h, 0));
@@ -18833,7 +19000,7 @@ function screenPageBody(comp, aw, ah, measured) {
     if (w <= aw + 0.5 && h <= ah + 0.5) break;
     k *= Math.min(aw / w, ah / h) * 0.995;
   }
-  return { k, html: stage(k, w, h, Math.max(0, Math.floor((ah - h) / 2))) };
+  return { k, html: stage(k, w, h, top ? 0 : Math.max(0, Math.floor((ah - h) / 2))) };
 }
 
 // 印刷用の文書（PDF にする HTML）。アプリと同じ style に、用紙の大きさ（@page）を足す
@@ -18891,28 +19058,36 @@ function exportLayout(d, state, opts, exportedAt) {
   const changeChunks = !df ? [] : df.result.rows.length ? splitItemRows(changeRowsHtml(df.result.rows), aw, ah, measured, printChangeTable) : [[]];
   const proc = opts.process && hasProcessPage(d) ? processPagePlan(d, state, aw, ah, measured, idTag) : null;
   const withFlow = !!opts.flow && hasFlowPage(d, state);
+  // 関連図と画面遷移図の組み方（読めない大きさまで縮む図は、何ページかに分ける。v1.05 段階 C）
+  const mapF = withMap ? mapFigure(d, state, aw, ah, idTag) : null;
+  const flowF = withFlow ? flowFigure(d, state, aw, ah, idTag) : null;
   const base = (opts.pageStart || 1) - 1;
   // 画面ごとに、設定一覧を次のページへ分けるか（q138）。番号が決まる前に、仮の番号の文で 1 回だけ測る（countOnly でも同じなので、説明書の数がそろう）
   // 設定一覧を付けない（opts.settings が false。v1.04 の q164）ときは、どの画面も画面と吹き出しだけの 1 ページ
   const noTable = opts.settings === false;
+  // 縦に長い画面は何ページかに分割する（設定一覧を付けないときも。v1.05 段階 D）
   const splits = screens.map(({ s }) => {
-    if (noTable) return { pages: 1, split: false };
     const info = df ? df.result.screens[s.id] : null;
-    return screenSplitPlan(d, s, state, measured, info && { info, label: df.label }, aw, ah, exportSettingRefs(d, itemChunks, proc, null));
+    return screenSplitPlan(d, s, state, measured, info && { info, label: df.label }, aw, ah, exportSettingRefs(d, itemChunks, proc, null), noTable);
   });
   // ページ番号は、表紙が何ページになるかで変わる。番号の桁で行の高さは変わらないので、仮の番号で 1 回分けてから決め直す
   const numbering = (coverPages) => {
     let n = base + coverPages;
     const changesPage = changeChunks.length ? n + 1 : 0;
     n += changeChunks.length;
-    const mapPage = withMap ? ++n : 0;
+    const mapPage = withMap ? n + 1 : 0;
+    n += figurePages(mapF);
     const itemsPage = itemChunks.length ? n + 1 : 0;
     n += itemChunks.length;
     const processPage = proc ? n + 1 : 0;
-    n += proc ? 1 + proc.rest.length : 0;
-    const flowPage = withFlow ? ++n : 0;
+    const processFigPages = proc ? proc.pages.length : 0;
+    const processPages = proc ? processFigPages + proc.rest.length : 0;
+    n += processPages;
+    const flowPage = withFlow ? n + 1 : 0;
+    n += figurePages(flowF);
     const shots = screens.map((x, k) => { const page = n + 1; n += splits[k].pages; return { ...x, page, pages: splits[k].pages, split: splits[k] }; });
-    return { changesPage, changesTitle, mapPage, itemsPage, processPage, flowPage, screens: shots, total: n - base };
+    return { changesPage, changesTitle, mapPage, mapPages: figurePages(mapF), itemsPage, processPage, processFigPages, processPages, flowPage, flowPages: figurePages(flowF),
+      screens: shots, total: n - base };
   };
   let coverChunks = [];
   // 表紙の説明が、決めた高さに入りきるか（入りきらなければ、省略したと書く）
@@ -18930,7 +19105,7 @@ function exportLayout(d, state, opts, exportedAt) {
       coverChunks = splitCoverRows(coverHtml, P, coverListRows(plan), measured, ah);
     }
   }
-  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, plan, coverChunks, revChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag, noTable,
+  return { P, measured, aw, ah, df, itemChunks, changeChunks, proc, withMap, withFlow, mapF, flowF, plan, coverChunks, revChunks, descCut, base, grand: opts.grandTotal || plan.total, idTag, noTable,
     refs: exportSettingRefs(d, itemChunks, proc, plan) };
 }
 // 表紙と「画面の一覧（続き）」「改訂履歴（続き）」のページ
@@ -18943,7 +19118,7 @@ function exportCoverPages(d, L, exportedAt) {
 }
 // 変更内容・つながりの図・項目の一覧表・ステータスの移り方・画面の移り方のページ
 function exportViewPages(d, state, L) {
-  const { P, aw, ah, df, plan, proc, grand } = L;
+  const { P, df, plan, proc, grand } = L;
   const left = (t) => `${esc(d.name)} ／ ${t}`;
   const pages = [];
   L.changeChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: esc(plan.changesTitle) + (k ? '（続き）' : ''),
@@ -18951,20 +19126,26 @@ function exportViewPages(d, state, L) {
     body: rows.length ? printChangeTable(rows) : `<p class="cg-none">${esc(df.label)}から変わった所はありません。</p>`,
     left: left('変更点'), right: `${plan.changesPage + k} / ${grand}` })));
   if (L.withMap) {
-    pages.push(pageFrame({ P, title: '関連図', sub: `「${esc(d.name)}」と、直接関連する画面設計`, body: mapPageBody(d, state, aw, ah, L.idTag),
-      left: left('関連図'), right: `${plan.mapPage} / ${grand}` }));
+    const F = L.mapF;
+    for (let i = 0; i < plan.mapPages; i++) {
+      pages.push(pageFrame({ P, title: figureTitle('関連図', F, i), sub: `「${esc(d.name)}」と、直接関連する画面設計${figureZoomNote(F)}`, body: figureBody(F, i, plan.mapPage),
+        left: left('関連図'), right: `${plan.mapPage + i} / ${grand}` }));
+    }
   }
   L.itemChunks.forEach((rows, k) => pages.push(pageFrame({ P, title: `項目一覧${k ? '（続き）' : ''}`,
     sub: `項目 ${d.items.length} 個${cutNote(rows)}`,
     body: printItemTable(rows), left: left('項目一覧'), right: `${plan.itemsPage + k} / ${grand}` })));
   if (proc) {
-    pages.push(pageFrame({ P, title: 'ステータスの流れ', sub: proc.sub, body: proc.body, left: left('ステータスの流れ'), right: `${plan.processPage} / ${grand}` }));
+    proc.pages.forEach((x, i) => pages.push(pageFrame({ P, title: x.title, sub: x.sub, body: x.body(plan.processPage), left: left('ステータスの流れ'), right: `${plan.processPage + i} / ${grand}` })));
     proc.rest.forEach((rows, k) => pages.push(pageFrame({ P, title: 'ステータスの流れ（続き）', sub: '操作一覧' + cutNote(rows), body: printActionTable(rows),
-      left: left('ステータスの流れ'), right: `${plan.processPage + 1 + k} / ${grand}` })));
+      left: left('ステータスの流れ'), right: `${plan.processPage + proc.pages.length + k} / ${grand}` })));
   }
   if (L.withFlow) {
-    pages.push(pageFrame({ P, title: '画面遷移図', sub: `画面 ${d.screens.length} つ・${flowEntryNote(state, d)}`, body: flowPageBody(d, state, aw, ah, L.idTag),
-      left: left('画面遷移図'), right: `${plan.flowPage} / ${grand}` }));
+    const F = L.flowF;
+    for (let i = 0; i < plan.flowPages; i++) {
+      pages.push(pageFrame({ P, title: figureTitle('画面遷移図', F, i), sub: `画面 ${d.screens.length} つ・${flowEntryNote(state, d)}${figureZoomNote(F)}`, body: figureBody(F, i, plan.flowPage),
+        left: left('画面遷移図'), right: `${plan.flowPage + i} / ${grand}` }));
+    }
   }
   return pages;
 }
@@ -18975,14 +19156,18 @@ function exportScreenPages(d, L) {
   return L.plan.screens.flatMap(({ s, i, page, split }) => {
     const info = df ? df.result.screens[s.id] : null;
     const diff = info && { info, label: df.label };
-    const comp = screenComposite(d, s, 'p' + page, measured, diff, L.noTable || split.split ? { table: false } : { refs: L.refs });
-    const body = screenPageBody(comp, aw, ah, measured);
     const name = `${i + 1}　${esc(s.name)}`;
     const left = `${esc(d.name)} ／ ${name}`;
     const under = underScreenOf(d, s); // 小さなウィンドウの画面は、どの画面の上に開くかを書く（第 16 段階）
-    const sub = `${DEVICES[s.device].label}・${s.width} × ${s.height}${under ? `・「${esc(under.name)}」の上に開く小さなウィンドウ` : ''}${body.k < 0.995 ? `・${Math.round(body.k * 100)}% に縮小` : ''}`
-      + (split.split ? '・設定一覧は次のページ' : '');
-    const pages = [pageFrame({ P, title: name, sub, body: body.html, left, right: `${page} / ${grand}`, headExtra: diffSumHtml(df, info) })];
+    // 縦に長い画面は、画面を上から何ページかに分割し、見出しに（1/n）を付け、小見出しに設定一覧のページ番号を書く（v1.05 段階 D）
+    const T = split.tiles;
+    const nt = T ? T.tiles.length : 1;
+    const subOf = (k) => `${DEVICES[s.device].label}・${s.width} × ${s.height}${under ? `・「${esc(under.name)}」の上に開く小さなウィンドウ` : ''}${k < 0.995 ? `・${Math.round(k * 100)}% に縮小` : ''}`
+      + (!split.split ? '' : T ? `・設定一覧（${page + nt} ページ）` : '・設定一覧は次のページ');
+    const frame = (title, body, p) => pageFrame({ P, title, sub: subOf(body.k), body: body.html, left, right: `${p} / ${grand}`, headExtra: diffSumHtml(df, info) });
+    const pages = T ? T.tiles.map((t, j) => frame(`${name}（${j + 1}/${nt}）`, screenPageBody(screenComposite(d, s, 'p' + (page + j), measured, diff,
+      { table: false, tile: { ...t, x0: T.x0, x1: T.x1 } }), aw, ah, measured, { k: T.k, top: true }), page + j))
+      : [frame(name, screenPageBody(screenComposite(d, s, 'p' + page, measured, diff, L.noTable || split.split ? { table: false } : { refs: L.refs }), aw, ah, measured), page)];
     if (!split.split) return pages;
     const mark = info && !info.isNew ? info : null;
     // 行は本当の番号の文で組み、仮の番号の文で測った行の数で切る（exportLayout）
@@ -18994,7 +19179,7 @@ function exportScreenPages(d, L) {
       const last = k === split.counts.length - 1;
       const sub = `番号 ${esc(String(list[from].no))}〜${esc(String(list[from + n - 1].no))}${split.cuts[k] ? '・' + LONG_ROW_NOTE : ''}`;
       pages.push(pageFrame({ P, title: `${name}　設定一覧${k ? '（続き）' : ''}`, sub,
-        body: printPartTable(rows.slice(from, from + n)) + (last && !split.footAlone ? foot : ''), left, right: `${page + 1 + k} / ${grand}` }));
+        body: printPartTable(rows.slice(from, from + n)) + (last && !split.footAlone ? foot : ''), left, right: `${page + nt + k} / ${grand}` }));
       from += n;
     });
     if (split.footAlone) pages.push(pageFrame({ P, title: `${name}　設定一覧（続き）`, sub: '削除したアイテム', body: foot, left, right: `${page + split.pages - 1} / ${grand}` }));
@@ -19023,7 +19208,7 @@ function systemDocCan(y, state) {
 // システムの表紙の「画面設計の一覧」の行。plan { swimlanePage, notesPage, designs: [{ d, firstPage, pages, others（ほかのシステムの名前） }] }
 function systemCoverRows(plan) {
   const lead = (name, page) => `<tr class="lead"><td class="nm">${name}</td><td class="dev"></td><td class="no">${page}</td></tr>`;
-  const rows = plan.swimlanePage ? [lead('スイムレーン図', plan.swimlanePage)] : [];
+  const rows = plan.swimlanePage ? [lead('スイムレーン図', pageRange(plan.swimlanePage, plan.swimlanePages))] : [];
   plan.designs.forEach((r) => rows.push(`<tr><td class="nm">${esc(r.d.name)}${r.others.length ? systemShareTag(r.others) : ''}</td>`
     + `<td class="dev">${targetChip(r.d.target)}</td><td class="no">${r.pages ? r.firstPage : ''}</td></tr>`));
   if (!plan.designs.length) rows.push('<tr><td class="empty" colspan="3">（画面設計は入っていません）</td></tr>');
@@ -19069,20 +19254,23 @@ function systemCoverHtml(y, state, P, rows, total, exportedAt, { descCut = false
 }
 const systemCoverContHtml = (y, P, rows, page, total) => pageFrame({ P, title: '画面設計の一覧（続き）', body: systemListTable(rows),
   left: `${esc(y.name)} ／ 画面設計の一覧（続き）`, right: `${page} / ${total}` });
-// スイムレーン図のページ（画像 q81_3）。上に凡例（測れるときは凡例の高さを測って引く）、図は本文に収まるように縮める（拡大しない）
-function swimlanePageHtml(y, state, P, L, page, total) {
-  const legend = `<div class="xp-legend">${VIEW_LEGENDS.swimlane}</div>`;
+// スイムレーン図の図の組み方（画像 q81_3）。上に凡例（測れるときは凡例の高さを測って引く）、図は本文に収まるように縮める（拡大しない）。
+// 読めない大きさまで縮む図は、何ページかに分ける（v1.05 段階 C）
+function swimFigure(y, state, L) {
   let lh = 28;
   if (L.measured) {
-    const probe = measureBox(legend, L.aw);
+    const probe = measureBox(`<div class="xp-legend">${VIEW_LEGENDS.swimlane}</div>`, L.aw);
     lh = Math.ceil(probe.firstElementChild.getBoundingClientRect().height) + 8; // 8 は凡例の下の空き
     probe.remove();
   }
-  const html = swimlaneHtml(state, y, { idPrefix: 'xp-swim', bare: true });
-  const c = diagramCrop(html);
+  return figurePlan(swimlaneHtml(state, y, { idPrefix: 'xp-swim', bare: true }), 'xp-swim', VIEW_LEGENDS.swimlane, L.aw, L.ah - lh);
+}
+// スイムレーン図のページ（分けた図は何ページか）。page は図の 1 ページ目の番号
+function swimlanePagesHtml(y, P, F, page, total) {
   const from = swimOrientOf(y) === 'vertical' ? '上' : '左'; // 縦向きの図は上から（v1.03・q141）
-  return pageFrame({ P, title: 'スイムレーン図', sub: `役割ごとのレーンに、工程を${from}から順に並べた業務の流れ`, body: legend + (c ? fitDiagram(html, c, L.aw, L.ah - lh) : html),
-    left: `${esc(y.name)} ／ スイムレーン図`, right: `${page} / ${total}` });
+  return Array.from({ length: figurePages(F) }, (_, i) => pageFrame({ P, title: figureTitle('スイムレーン図', F, i),
+    sub: `役割ごとのレーンに、工程を${from}から順に並べた業務の流れ${figureZoomNote(F)}`, body: figureBody(F, i, page),
+    left: `${esc(y.name)} ／ スイムレーン図`, right: `${page + i} / ${total}` }));
 }
 
 // 設計ノートのページ（画像 q80_3）。「決めたことと理由」の表と、「まだ決まっていないこと」の表（答えのない行 → 答えのある行を灰色で）
@@ -19178,10 +19366,11 @@ function exportSystemDocument(y, state, opts, exportedAt = nowIso()) {
   const per = { paper: opts.paper, orient: opts.orient, cover: !!opts.cover, map: !!opts.map, items: !!opts.items, process: !!opts.process, flow: !!opts.flow, settings: opts.settings !== false };
   const notes = included.notes ? noteDocSections(y) : { sub: '', sections: [] };
   const notePages = splitNoteSections(notes.sections, aw, ah, measured);
-  const plan = systemDocPlan(y, state, P, { included, per, notePages: notePages.length, measured, ah, exportedAt });
+  const swimF = included.swimlane ? swimFigure(y, state, { aw, ah, measured }) : null;
+  const plan = systemDocPlan(y, state, P, { included, per, notePages: notePages.length, swimPages: figurePages(swimF), measured, ah, exportedAt });
   const pages = plan.coverChunks.map((rows, k) => (k === 0 ? systemCoverHtml(y, state, P, rows, plan.total, exportedAt, { descCut: plan.descCut, roleMax: plan.roleMax })
     : systemCoverContHtml(y, P, rows, k + 1, plan.total)));
-  if (included.swimlane) pages.push(swimlanePageHtml(y, state, P, { aw, ah, measured }, plan.swimlanePage, plan.total));
+  if (included.swimlane) pages.push(...swimlanePagesHtml(y, P, swimF, plan.swimlanePage, plan.total));
   const designs = plan.designs.map((r, k) => {
     const doc = exportDocument(r.d, state, { ...per, pageStart: r.firstPage, grandTotal: plan.total, idTag: '-d' + (k + 1) }, exportedAt);
     pages.push(...doc.pages);
@@ -19192,15 +19381,18 @@ function exportSystemDocument(y, state, opts, exportedAt = nowIso()) {
 }
 // 説明書のページの並べ方。画面設計ごとのページの数を数え（countOnly）、表紙を分けてから番号を決め直す（exportLayout と同じ 2 回の形）。
 // 戻り値 { swimlanePage, designs: [{ d, firstPage, pages, others }], notesPage, total, coverChunks, descCut, roleMax（表紙に入る役割の数。null は全部） }
-function systemDocPlan(y, state, P, { included, per, notePages, measured, ah, exportedAt }) {
+function systemDocPlan(y, state, P, { included, per, notePages, swimPages = 1, measured, ah, exportedAt }) {
   const dl = designsOfSystem(state, y).map((d) => ({ d, pages: exportDocument(d, state, { ...per, countOnly: true }).total,
     others: systemsOf(state, d.id).filter((x) => x.id !== y.id).map((x) => x.name) }));
+  // スイムレーン図は、読めない大きさまで縮むときは何ページかに分ける（swimPages。v1.05 段階 C）
   const numbering = (coverPages) => {
     let n = coverPages;
-    const swimlanePage = included.swimlane ? ++n : 0;
+    const swimlanePage = included.swimlane ? n + 1 : 0;
+    const swimlanePages = included.swimlane ? swimPages : 0;
+    n += swimlanePages;
     const designs = dl.map((r) => { const firstPage = n + 1; n += r.pages; return { ...r, firstPage }; });
     const notesPage = notePages ? n + 1 : 0;
-    return { swimlanePage, designs, notesPage, total: n + notePages };
+    return { swimlanePage, swimlanePages, designs, notesPage, total: n + notePages };
   };
   let plan = numbering(included.systemCover ? 1 : 0);
   if (!included.systemCover) return { ...plan, coverChunks: [], descCut: false, roleMax: null };
@@ -19223,13 +19415,34 @@ function exportPngDocs(d, state, screenIds = null, diffRevId = null, parts = {})
   return d.screens.map((s, i) => ({ s, i })).filter(({ s }) => !screenIds || screenIds.includes(s.id)).map(({ s, i }) => {
     const info = df ? df.result.screens[s.id] : null;
     const comp = screenComposite(d, s, 'g' + (i + 1), measured, info && { info, label: df.label }, parts);
-    const width = comp.cw + PNG_MARGIN * 2;
-    const height = comp.ch + PNG_MARGIN * 2;
-    const body = `<div class="xp-png" style="width:${width}px;height:${height}px">`
-      + `<div class="xp-stage" style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN}px;width:${comp.cw}px;height:${comp.ch}px">${comp.html}</div></div>`;
-    const html = pngDocHtml(`${d.name} ／ ${s.name}`, body);
+    const { width, height, html } = pngScreenDoc(`${d.name} ／ ${s.name}`, comp);
     return { name: `${safeFileName(d.name)}_${pad2(i + 1)}_${safeFileName(s.name, '画面')}.png`, width, height, html };
   });
+}
+// 画面の PNG にする文書の骨組み（まわりに白の余白）。comp は screenComposite の戻り値。戻り値 { width, height, html }
+function pngScreenDoc(title, comp) {
+  const width = comp.cw + PNG_MARGIN * 2;
+  const height = comp.ch + PNG_MARGIN * 2;
+  const body = `<div class="xp-png" style="width:${width}px;height:${height}px">`
+    + `<div class="xp-stage" style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN}px;width:${comp.cw}px;height:${comp.ch}px">${comp.html}</div></div>`;
+  return { width, height, html: pngDocHtml(title, body) };
+}
+// 画面の画像（AI の get_screen_image）を範囲に分割するか（v1.05 段階 D）。縦に長い画面が、AI の画像の長い辺（AI_IMAGE_SIDE）に縮めずに入らないときだけ、
+// アイテムのない高さで上下の範囲に分割する（screenTiles の戻り値。分割しないときは null）。full は設定一覧と吹き出しも入れる画像か
+function screenImageTiles(d, sc, full) {
+  const side = AI_IMAGE_SIDE - PNG_MARGIN * 2;
+  return screenTiles(sc, screenComposite(d, sc, 'probe', false, null, { table: false, callouts: full }), side, side, full, 1);
+}
+// 画面の画像の文書（AI の get_screen_image）。戻り値 { html, width, height }。範囲に分割する画面は areas（範囲の数）も入れる。
+// area（1 から。上の範囲から数える）を渡すと、その範囲を切り出す（範囲の画像には設定一覧を入れない。戻り値に area も入れる）
+function screenImageDoc(d, state, sc, full, area = null) {
+  const T = screenImageTiles(d, sc, full);
+  if (T && area != null) {
+    const comp = screenComposite(d, sc, 'ga', false, null, { table: false, callouts: full, tile: { ...T.tiles[area - 1], x0: T.x0, x1: T.x1 } });
+    return { ...pngScreenDoc(`${d.name} ／ ${sc.name}（範囲 ${area}/${T.tiles.length}）`, comp), areas: T.tiles.length, area };
+  }
+  const doc = exportPngDocs(d, state, [sc.id], null, { table: full, callouts: full })[0];
+  return T ? { ...doc, areas: T.tiles.length } : doc;
 }
 
 // PNG にする文書の骨組み（アプリと同じ style・白の背景）
@@ -19275,33 +19488,247 @@ function diagramCrop(html) {
   const [x1, y1] = [Math.min(mw, Math.max(...xs) + pad), Math.min(mh, Math.max(...ys) + pad)];
   return { x0, y0, cw: Math.ceil(x1 - x0), ch: Math.ceil(y1 - y0) };
 }
-// 図の画像の文書（AI の get_view_image。ページの枠なし・縮めない・上に凡例・まわりに白の余白）。view は 'map'・'process'・'flow'。
-// 戻り値 { html, width, height, boxes（箱の数）, arrows（矢印の数）}
-function viewImageDoc(d, state, view) {
-  const model = view === 'map' ? mapModel(state, d.id) : view === 'process' ? processModel(d) : flowModel(state, d);
-  const html = view === 'map' ? mapHtml(state, d.id, d.mapPos || {}, { idPrefix: 'xi-map' }).replace(' id="map-inner"', '')
-    : viewHtml(view, state, d, d[VIEW_POS[view]] || {}, { idPrefix: 'xi-' + view, bare: true });
-  return diagramImageDoc(`${d.name} ／ ${VIEW_TITLES[view]}`, VIEW_LEGENDS[view], html, { boxes: model.nodes.length, arrows: model.edges.length });
+// ── PDF で大きい図を何ページかに分ける（v1.05 段階 C。q172 案A・q190 案A。「仕様_細かい決めごと.md」の「PDF で図と画面を分ける決定事項」）──
+// 図を 1 ページに収めると倍率が DIAGRAM_MIN_ZOOM（60%）より小さくなる時だけ、ボックスの間で切って何ページかに分け、どのページも同じ倍率（下限倍率以上）で載せる。
+// 高さが入らない図は上下に、幅が入らない図は左右に、両方とも入らない図は上下と左右に分ける（ページは左上から右へ、次に下の段へ並べる）。
+// 切れ目を通る線はページ端まで描き、端に、線が続くページ番号を書く（「▼ 4 ページへ」「▼ 3 ページから」）。編集の画面の図は分けない
+const DIAGRAM_MIN_ZOOM = 0.6;
+const TILE_BAND = 30; // 次のページの端に見せる、切れ目の手前（線だけが通る所）の幅の上限（図の単位）
+const TILE_GAP_AT = 32; // 切れ目を置く所。上（左）のボックスの端から、ボックスの間の半分までの所で、この幅まで
+// ページ端の印は、図に重ならないように、図の外側の帯に置く（上下の帯の高さと、左右の帯の幅。左右の印は 2 行にして幅を狭くする。Claude が決めた）
+const TILE_STRIP_Y = 20;
+const TILE_STRIP_X = 70;
+// 図の HTML から、分ける位置と、切れ目を通る線を決めるのに使う物を読む（DOM で測らずに文字から読むので、jsdom でも同じ結果になる）。
+// 戻り値 { boxes（ボックス）, labels（線の文字の下地・行き先表示の枠・グループ枠）: [{ x, y, w, h }], paths（線の折れ点）: [[[x, y], …], …],
+//   lanes（スイムレーン図のレーンの見出し { vertical, hdr, list: [{ x, y, w, h }] }。ほかの図は null） }
+function diagramShapes(html) {
+  const num = (s, k) => { const m = s.match(new RegExp(`(?:^|\\s)${k}="(-?[\\d.]+)"`)); return m ? Number(m[1]) : NaN; };
+  const boxes = [...html.matchAll(/class="mnode[^"]*"[^>]*style="left:(-?[\d.]+)px;top:(-?[\d.]+)px;width:([\d.]+)px;height:([\d.]+)px/g)]
+    .map((m) => { const [x, y, w, h] = m.slice(1, 5).map(Number); return { x, y, w, h }; });
+  const swim = html.includes('class="map-inner swim-inner');
+  // スイムレーン図の帯（class なし）とレーンの見出しの帯は図の端から端まであるので数えない（数えるのは矢印の文字・グループ枠・グループの点線）
+  const labels = [...html.matchAll(/<rect\b([^>]*)>/g)].map((m) => ({ cls: (m[1].match(/class="([^"]*)"/) || [])[1] || '', x: num(m[1], 'x'), y: num(m[1], 'y'), w: num(m[1], 'width'), h: num(m[1], 'height') }))
+    .filter((r) => [r.x, r.y, r.w, r.h].every(Number.isFinite) && (!swim || /^sw-(lab|fr-line|grp)\b/.test(r.cls)))
+    .map(({ x, y, w, h }) => ({ x, y, w, h }));
+  const pts = (s) => { const n = (s.match(/-?[\d.]+/g) || []).map(Number); const out = []; for (let i = 0; i + 1 < n.length; i += 2) out.push([n[i], n[i + 1]]); return out; };
+  // 線は、折れ線の点（data-wps）か、矢印の付いた道（ステータスの流れ）の数を 2 つずつ点にする
+  const paths = [...[...html.matchAll(/data-wps="([^"]+)"/g)].map((m) => pts(m[1])), ...[...html.matchAll(/<path d="([^"]+)"[^>]*marker-end=/g)].map((m) => pts(m[1]))]
+    .filter((p) => p.length > 1);
+  let lanes = null;
+  if (swim) {
+    const list = [...html.matchAll(/class="swim-lab"[^>]*style="([^"]*)"/g)].map((m) => {
+      const g = (k) => { const x = m[1].match(new RegExp(`(?:^|;)${k}:(-?[\\d.]+)px`)); return x ? Number(x[1]) : 0; };
+      return { x: g('left'), y: g('top'), w: g('width'), h: g('height') };
+    });
+    const vertical = html.includes('class="map-inner swim-inner down');
+    if (list.length) lanes = { vertical, hdr: vertical ? list[0].h : list[0].w, list };
+  }
+  return { boxes, labels, paths, lanes };
 }
+// 範囲 [始め, 終わり] の並びを、重なる・接するものをまとめて、始めの順に並べる
+const mergeSpans = (list) => [...list].sort((p, q) => p[0] - q[0]).reduce((out, v) => {
+  const last = out[out.length - 1];
+  if (last && v[0] <= last[1] + 1) last[1] = Math.max(last[1], v[1]);
+  else out.push([v[0], v[1]]);
+  return out;
+}, []);
+// 1 つの向き（上下か左右）の分け方。occ はボックスなどがある範囲 [始め, 終わり] の並び、[a, b] は図の範囲、lim は 1 ページに入る長さ（図の単位）、
+// head は 2 ページ目から繰り返す見出しの長さ、fixed は切れ目にしてよい所の並び（スイムレーン図のレーンの境目。あるときは occ を使わない）、
+// avoid は線の折れ点の位置（切れ目が、線の横〔縦〕に走る所と重ならないように、4 ずらす）。
+// 切れ目は、ボックスの間の、手前のボックスから TILE_GAP_AT までの所に置き、次のページは、切れ目の手前の線だけが通る所（TILE_BAND まで）から描く。
+// 入る切れ目がないときだけ、ボックスの途中で切る。戻り値 [{ t0, t1（このページが担当する範囲）, d0, d1（描く範囲。d0 は手前の線だけが通る所を含む） }]
+function tileSpans(occ, a, b, lim, head = 0, fixed = null, avoid = []) {
+  const clear = (c) => !avoid.some((v) => Math.abs(v - c) < 2);
+  const cands = fixed ? [...fixed].sort((p, q) => p - q).filter((c) => c > a && c < b).map((c) => ({ c, band: 0 }))
+    : mergeSpans(occ.filter(([s, e]) => e - s < lim * 0.9)).flatMap((v, i, all) => {
+      const next = all[i + 1];
+      if (!next || next[0] - v[1] < 4) return [];
+      const at = v[1] + Math.min(TILE_GAP_AT, (next[0] - v[1]) / 2);
+      const c = clear(at) ? at : [at + 4, at - 4, at + 8, at - 8].find((x) => x > v[1] + 2 && x < next[0] - 2 && clear(x)) || at;
+      return [{ c, band: Math.max(0, Math.min(TILE_BAND, c - v[1] - 2)) }];
+    });
+  const spans = [];
+  let t0 = a;
+  let band = 0;
+  for (;;) {
+    const extra = band + (spans.length ? head : 0);
+    if (b - t0 + extra <= lim) break;
+    const room = lim - extra;
+    const ok = cands.filter((x) => x.c > t0 + 8 && x.c - t0 <= room);
+    const pick = ok.length ? ok[ok.length - 1] : { c: t0 + Math.max(room, 40), band: 0 };
+    spans.push({ t0, t1: pick.c, d0: t0 - band, d1: pick.c });
+    [t0, band] = [pick.c, pick.band];
+  }
+  spans.push({ t0, t1: b, d0: t0 - band, d1: b });
+  return spans;
+}
+// 図を何ページかに分けるか。c は diagramCrop の範囲、aw × ah は図に使える大きさ。1 ページに収めた倍率が min（既定は DIAGRAM_MIN_ZOOM）以上なら null（分けない）。
+// strips が false なら、ページ端の印の帯の分を引かない（AI の画像の範囲。印を描かないため）。
+// 分けるときは { k（どのページも同じ倍率）, rows（上下の並び）, cols（左右の並び。どちらも tileSpans の戻り値）, n（ページ数）,
+//   headY・headX（2 段目・2 列目から繰り返すスイムレーン図の見出しの長さ）, laneTop・laneLeft（見出しの位置）, paths（線の折れ点） }
+function diagramTiles(html, c, aw, ah, { min = DIAGRAM_MIN_ZOOM, strips = true } = {}) {
+  if (!c || Math.min(1, aw / c.cw, ah / c.ch) >= min) return null;
+  const sh = diagramShapes(html);
+  const occ = [...sh.boxes, ...sh.labels];
+  const L = sh.lanes;
+  const headY = L && L.vertical ? L.hdr : 0; // 縦向きのスイムレーン図は上の見出しの行を、横向きは左の見出しの列を、2 ページ目から繰り返す
+  const headX = L && !L.vertical ? L.hdr : 0;
+  // レーンを横切る向きは、レーンの境目で切る
+  const bounds = (key, len) => L.list.map((l) => l[key] + l[len]).slice(0, -1);
+  // 下限倍率で入らない向きだけを分ける。分ける向きは、両側の印の帯の分を引いた大きさに収める
+  const [splitX, splitY] = [c.cw * min > aw, c.ch * min > ah];
+  const [iw, ih] = [aw - (splitX && strips ? TILE_STRIP_X * 2 : 0), ah - (splitY && strips ? TILE_STRIP_Y * 2 : 0)];
+  const [limW, limH] = [iw / min, ih / min];
+  const whole = (a, len) => [{ t0: a, t1: a + len, d0: a, d1: a + len }];
+  const along = (i) => sh.paths.flatMap((p) => p.map((q) => q[i]));
+  const rows = splitY ? tileSpans(occ.map((r) => [r.y, r.y + r.h]), c.y0, c.y0 + c.ch, limH, headY, L && !L.vertical ? bounds('y', 'h') : null, along(1)) : whole(c.y0, c.ch);
+  const cols = splitX ? tileSpans(occ.map((r) => [r.x, r.x + r.w]), c.x0, c.x0 + c.cw, limW, headX, L && L.vertical ? bounds('x', 'w') : null, along(0)) : whole(c.x0, c.cw);
+  const dw = Math.max(...cols.map((q, i) => q.d1 - q.d0 + (i ? headX : 0)));
+  const dh = Math.max(...rows.map((r, i) => r.d1 - r.d0 + (i ? headY : 0)));
+  return { k: Math.min(1, iw / dw, ih / dh), rows, cols, n: rows.length * cols.length, headY, headX,
+    laneTop: L ? Math.min(...L.list.map((l) => l.y)) : 0, laneLeft: L ? Math.min(...L.list.map((l) => l.x)) : 0, paths: sh.paths };
+}
+// 切れ目（横の線 y = at か、縦の線 x = at）を通る線の位置。[lo, hi] の中だけ。線の端が切れ目の上にあるときも通る線として数える
+// （手前から切れ目に着く線を数え、切れ目から先へ離れる線は数えない）。戻り値 [{ v（切れ目に沿った位置）, fwd（下・右へ向かう線か） }]
+function tileCrossings(paths, axis, at, lo, hi) {
+  const [i, j] = axis === 'y' ? [1, 0] : [0, 1];
+  return paths.flatMap((p) => p.slice(1).map((b, k) => [p[k], b]).filter(([a, b]) => (a[i] < at && b[i] >= at) || (a[i] >= at && b[i] < at))
+    .map(([a, b]) => ({ v: a[j] + ((at - a[i]) * (b[j] - a[j])) / (b[i] - a[i]), fwd: b[i] > a[i] })))
+    .filter((x) => x.v >= lo && x.v <= hi);
+}
+// 印の幅の見込み（字の数から。印を並べる時に重ならないようにするため。少し広めに見込む）
+const tileMarkW = (s) => [...s].reduce((w, ch) => w + (/[\x20-\x7e]/.test(ch) ? 7 : 12), 0) + 18;
+const TILE_MARK_H = 18;
+// 1 つの端の印を並べる。list は [{ pos（端に沿った位置）, text }]、[lo, hi] は印を置ける範囲、size は印の長さ（端に沿った向き）。
+// 同じ文で近い印は 1 つにまとめ、残りは前の印の後ろに 4 空けて並べ、はみ出す分は手前へ戻す
+function tileMarkLayout(list, lo, hi, size) {
+  const groups = [];
+  [...list].sort((p, q) => p.pos - q.pos).forEach((m) => {
+    const g = groups.find((x) => x.text === m.text && m.pos - x.last < size(m.text));
+    if (g) { g.sum += m.pos; g.n += 1; g.last = m.pos; } else groups.push({ text: m.text, sum: m.pos, n: 1, last: m.pos });
+  });
+  const out = groups.map((g) => ({ text: g.text, pos: g.sum / g.n, s: size(g.text) })).sort((p, q) => p.pos - q.pos);
+  let end = lo;
+  out.forEach((m) => { m.pos = Math.max(m.pos, end + m.s / 2); end = m.pos + m.s / 2 + 4; });
+  let lim = hi;
+  for (let k = out.length - 1; k >= 0; k--) { out[k].pos = Math.min(out[k].pos, lim - out[k].s / 2); lim = out[k].pos - out[k].s / 2 - 4; }
+  out.forEach((m) => { m.pos = Math.max(m.pos, lo + m.s / 2); });
+  return out;
+}
+// 分けた図の 1 ページの端の印（切れ目を通る線ごとに「▼ 4 ページへ」など）。図に重ならないように、図の窓の外側の帯に置く。
+// r・q はページの段と列、hx・hy は繰り返す見出しの大きさ（図の単位）、box は図の窓の位置と大きさ { x, y, w, h }（ページの図の中の位置）、W は図の幅、
+// page(段, 列) はそのページの番号。左右の端の印は 2 行（「▶ 4」と「ページへ」）にして、帯の幅に収める
+const TILE_MARK_V = 30;
+function tileMarksHtml(T, r, q, hx, hy, box, W, page) {
+  const R = T.rows[r];
+  const Q = T.cols[q];
+  const k = T.k;
+  const sx = (x) => box.x + (hx + x - Q.d0) * k;
+  const sy = (y) => box.y + (hy + y - R.d0) * k;
+  const out = [];
+  const across = (list, top) => tileMarkLayout(list, box.x + hx * k + 2, box.x + box.w - 2, tileMarkW)
+    .forEach((m) => out.push(`<div class="xp-tmark-at" style="left:${m.pos.toFixed(1)}px;top:${top.toFixed(1)}px"><span class="xp-tmark">${m.text}</span></div>`));
+  const along = (list, side) => tileMarkLayout(list, box.y + hy * k + 2, box.y + box.h - 2, () => TILE_MARK_V + 2).forEach((m) => {
+    const [a, b] = m.text.split('|');
+    const at = side === 'left' ? `right:${(W - box.x + 2).toFixed(1)}px` : `left:${(box.x + box.w + 2).toFixed(1)}px`;
+    out.push(`<span class="xp-tmark v" style="${at};top:${(m.pos - TILE_MARK_V / 2).toFixed(1)}px">${a}<br><small>${b}</small></span>`);
+  });
+  const p = (dr, dq) => page(r + dr, q + dq);
+  if (r + 1 < T.rows.length) across(tileCrossings(T.paths, 'y', R.d1, Q.d0, Q.d1).map((c) => ({ pos: sx(c.v), text: c.fwd ? `▼ ${p(1, 0)} ページへ` : `▲ ${p(1, 0)} ページから` })), box.y + box.h + 1);
+  if (r > 0) across(tileCrossings(T.paths, 'y', R.d0, Q.d0, Q.d1).map((c) => ({ pos: sx(c.v), text: c.fwd ? `▼ ${p(-1, 0)} ページから` : `▲ ${p(-1, 0)} ページへ` })), box.y - TILE_MARK_H - 1);
+  if (q + 1 < T.cols.length) along(tileCrossings(T.paths, 'x', Q.d1, R.d0, R.d1).map((c) => ({ pos: sy(c.v), text: c.fwd ? `▶ ${p(0, 1)}|ページへ` : `◀ ${p(0, 1)}|ページから` })), 'right');
+  if (q > 0) along(tileCrossings(T.paths, 'x', Q.d0, R.d0, R.d1).map((c) => ({ pos: sy(c.v), text: c.fwd ? `▶ ${p(0, -1)}|ページから` : `◀ ${p(0, -1)}|ページへ` })), 'left');
+  return out.join('');
+}
+// 分けた図の idx 番目（0 から）のページの、図の窓（縮める前。html・dw × dh・段 r と列 q・繰り返す見出しの大きさ hx・hy）。
+// 2 段目・2 列目から、スイムレーン図の見出しを上（左）に添える。idp は矢印の印の id の頭（ページごとに変える。同じ文書に同じ id を置かないため）
+function tileWindows(html, T, idx, idp) {
+  const nc = T.cols.length;
+  const [r, q] = [Math.floor(idx / nc), idx % nc];
+  const R = T.rows[r];
+  const Q = T.cols[q];
+  const hy = r ? T.headY : 0;
+  const hx = q ? T.headX : 0;
+  const tagged = (s) => html.split(idp + '-arrow').join(`${idp}-${s}-arrow`);
+  // 窓には contain:strict を付ける。付けないと、窓の外へ伸びる中身（2 段目から、レーンの見出しを見せる窓に入れた図全体など）のせいで、
+  // Chromium の印刷（Electron の printToPDF・ブラウザの印刷）が、最終ページの後に白紙ページを追加する
+  // （2026-11-17。縦向きのスイムレーン図〔工程 56 個〕の A4 横で、印刷用文書の 7 ページが PDF では 9 ページになった。tileFigureHtml の窓も同じ）
+  const win = (s, sx, sy, sw, sh, dx, dy) => `<div style="position:absolute;left:${dx}px;top:${dy}px;width:${sw}px;height:${sh}px;overflow:hidden;contain:strict">`
+    + `<div style="position:absolute;left:${-sx}px;top:${-sy}px">${tagged(s)}</div></div>`;
+  let inner = win(`t${idx + 1}`, Q.d0, R.d0, Q.d1 - Q.d0, R.d1 - R.d0, hx, hy);
+  if (hy) inner += win(`t${idx + 1}h`, Q.d0, T.laneTop, Q.d1 - Q.d0, hy, hx, 0);
+  if (hx) inner += win(`t${idx + 1}h`, T.laneLeft, R.d0, hx, R.d1 - R.d0, 0, hy);
+  return { html: inner, r, q, hx, hy, dw: Q.d1 - Q.d0 + hx, dh: R.d1 - R.d0 + hy };
+}
+// 分けた図の idx 番目（0 から）のページの図。first は図の 1 ページ目の番号。印の帯は、切れ目のある側にだけ置く
+function tileFigureHtml(html, T, idx, first, idp) {
+  const w = tileWindows(html, T, idx, idp);
+  const nc = T.cols.length;
+  const k = T.k;
+  const box = { x: w.q ? TILE_STRIP_X : 0, y: w.r ? TILE_STRIP_Y : 0, w: Math.ceil(w.dw * k), h: Math.ceil(w.dh * k) };
+  const W = box.x + box.w + (w.q + 1 < nc ? TILE_STRIP_X : 0);
+  const H = box.y + box.h + (w.r + 1 < T.rows.length ? TILE_STRIP_Y : 0);
+  const marks = tileMarksHtml(T, w.r, w.q, w.hx, w.hy, box, W, (rr, qq) => first + rr * nc + qq);
+  return `<div class="xp-fit"><div class="xp-tile" style="width:${W}px;height:${H}px">`
+    + `<div style="position:absolute;left:${box.x}px;top:${box.y}px;width:${box.w}px;height:${box.h}px;overflow:hidden;contain:strict">`
+    + `<div style="width:${w.dw}px;height:${w.dh}px;position:relative;zoom:${k.toFixed(4)}">${w.html}</div></div>${marks}</div></div>`;
+}
+// 図のページの組み方 { html, c, T（分けないときは null）, idp, legend, aw, bh（図に使える大きさ） }。exportLayout がページの数を数え、exportViewPages が描く
+function figurePlan(html, idp, legend, aw, bh) {
+  const c = diagramCrop(html);
+  return { html, c, T: diagramTiles(html, c, aw, bh), idp, legend, aw, bh };
+}
+const figurePages = (F) => (F ? (F.T ? F.T.n : 1) : 0);
+// 図のページの本文（凡例と図）。分けた図は idx 番目のページ（first は図の 1 ページ目の番号）
+function figureBody(F, idx = 0, first = 0) {
+  const legend = `<div class="xp-legend">${F.legend}</div>`;
+  if (!F.c) return legend + F.html;
+  return legend + (F.T ? tileFigureHtml(F.html, F.T, idx, first, F.idp) : fitDiagram(F.html, F.c, F.aw, F.bh));
+}
+// 分けた図のページの見出しと小見出しに追加する字（「（2/4）」「・61% に縮小」）。分けないときは追加しない
+const figureTitle = (title, F, idx) => (F.T ? `${title}（${idx + 1}/${F.T.n}）` : title);
+const figureZoomNote = (F) => (F.T ? `・${Math.round(F.T.k * 100)}% に縮小` : '');
+// 図の画像の文書（AI の get_view_image。ページの枠なし・縮めない・上に凡例・まわりに白の余白）。view は 'map'・'process'・'flow'。
+// 戻り値 { html, width, height, boxes（箱の数）, arrows（矢印の数）, areas・area（diagramImageDoc） }。area は範囲の番号（1 から。省くと図の全体）
+function viewImageDoc(d, state, view, area = null) {
+  const model = view === 'map' ? mapModel(state, d.id) : view === 'process' ? processModel(d) : flowModel(state, d);
+  const idp = 'xi-' + view;
+  const html = view === 'map' ? mapHtml(state, d.id, d.mapPos || {}, { idPrefix: idp }).replace(' id="map-inner"', '')
+    : viewHtml(view, state, d, d[VIEW_POS[view]] || {}, { idPrefix: idp, bare: true });
+  return diagramImageDoc(`${d.name} ／ ${VIEW_TITLES[view]}`, VIEW_LEGENDS[view], html, { boxes: model.nodes.length, arrows: model.edges.length }, VIEW_IMAGE_MIN_W[view] || 480, { area, idp });
+}
+// 図の画像の幅の下限（凡例が 1 行に収まる幅）。2026-11-17 に、画面に表示しないブラウザ（headless の Chromium）で測った凡例の幅
+// （関連図 528・ステータスの流れ 688。ステータスの流れは、段階 B〔q170〕で行き先表示の凡例を追加して長くなった）に、フォントの違いの分の余白を加えた値（v1.05 段階 D）
+const VIEW_IMAGE_MIN_W = { map: 560, process: 720 };
 // スイムレーン図の画像の文書（AI の get_view_image。第 9 段階）。題はシステムの名前。戻り値は viewImageDoc と同じ形。
 // 凡例が長い（箱の形の意味まで書く）ので、凡例が 1 行に収まるように、画像の幅を 880 + 余白より狭くしない
-function swimlaneImageDoc(state, sys) {
+function swimlaneImageDoc(state, sys, area = null) {
   const model = swimlaneModel(state, sys);
   const html = swimlaneHtml(state, sys, { idPrefix: 'xi-swim', bare: true });
-  return diagramImageDoc(`${sys.name} ／ ${VIEW_TITLES.swimlane}`, VIEW_LEGENDS.swimlane, html, { boxes: model.nodes.length, arrows: model.edges.length }, 880);
+  return diagramImageDoc(`${sys.name} ／ ${VIEW_TITLES.swimlane}`, VIEW_LEGENDS.swimlane, html, { boxes: model.nodes.length, arrows: model.edges.length }, 880, { area, idp: 'xi-swim' });
 }
 // 図の画像の文書の骨組み（ページの枠なし・縮めない・上に凡例・まわりに白の余白）。図の HTML の箱のある所（diagramCrop）を切り出す。
 // 箱がなければ（案内の文だけのとき）480 × 120 を切り出す。minW は図の部分の幅の下限。counts（{ boxes, arrows }）は戻り値にそのまま入れる
-function diagramImageDoc(title, legend, html, counts, minW = 480) {
-  const c = diagramCrop(html) || { x0: 0, y0: 0, cw: 480, ch: 120 };
+// 図が、AI の画像の長い辺（AI_IMAGE_SIDE）に縮めずに入らないときは、入る大きさの範囲に分け、戻り値に areas（範囲の数）を入れる（v1.05 段階 C）。
+// area（1 から。範囲は左上から右へ、次に下の段へ数える）を渡すと、その範囲を原寸で切り出す（戻り値に area も入れる）。idp は矢印の印の id の頭
+const AI_IMAGE_SIDE = 1566; // AI の画像の長い辺（automation-render.js の IMAGE_MAX_SIDE と同じ）
+function diagramImageDoc(title, legend, html, counts, minW = 480, { area = null, idp = '' } = {}) {
+  const found = diagramCrop(html);
+  const c = found || { x0: 0, y0: 0, cw: 480, ch: 120 };
   const LEGEND_H = 28;
-  const width = Math.max(c.cw, minW) + PNG_MARGIN * 2;
-  const height = c.ch + LEGEND_H + PNG_MARGIN * 2;
-  const body = `<div class="xp-png" style="width:${width}px;height:${height}px">`
+  const T = diagramTiles(html, found, AI_IMAGE_SIDE - PNG_MARGIN * 2, AI_IMAGE_SIDE - PNG_MARGIN * 2 - LEGEND_H, { min: 1, strips: false });
+  const more = T ? { areas: T.n } : {};
+  const frame = (w, h, inner) => `<div class="xp-png" style="width:${Math.max(w, minW) + PNG_MARGIN * 2}px;height:${h + LEGEND_H + PNG_MARGIN * 2}px">`
     + `<div class="xp-legend" style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN}px">${legend}</div>`
-    + `<div style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN + LEGEND_H}px;width:${c.cw}px;height:${c.ch}px;overflow:hidden">`
-    + `<div style="position:absolute;left:${-c.x0}px;top:${-c.y0}px">${html}</div></div></div>`;
-  return { html: pngDocHtml(title, body), width, height, ...counts };
+    + `<div style="position:absolute;left:${PNG_MARGIN}px;top:${PNG_MARGIN + LEGEND_H}px;width:${w}px;height:${h}px;overflow:hidden">${inner}</div></div>`;
+  if (T && area != null) {
+    const w = tileWindows(html, T, area - 1, idp);
+    const [dw, dh] = [Math.ceil(w.dw), Math.ceil(w.dh)];
+    return { html: pngDocHtml(`${title}（範囲 ${area}/${T.n}）`, frame(dw, dh, `<div style="position:relative;width:${dw}px;height:${dh}px">${w.html}</div>`)),
+      width: Math.max(dw, minW) + PNG_MARGIN * 2, height: dh + LEGEND_H + PNG_MARGIN * 2, ...counts, ...more, area };
+  }
+  const body = frame(c.cw, c.ch, `<div style="position:absolute;left:${-c.x0}px;top:${-c.y0}px">${html}</div>`);
+  return { html: pngDocHtml(title, body), width: Math.max(c.cw, minW) + PNG_MARGIN * 2, height: c.ch + LEGEND_H + PNG_MARGIN * 2, ...counts, ...more };
 }
 
 // ── 出力する HTML（単体で開いて編集できる HTML。q37）──
@@ -23618,9 +24045,12 @@ async function aiGetScreenImage(args) {
   const d = aiResolveDesign(S, args.design);
   const sc = aiResolveScreen(d, args.screen);
   const full = args.withTable === true;
-  const doc = exportPngDocs(d, S, [sc.id], null, { table: full, callouts: full })[0];
+  // 縦に長い画面は、範囲（area）ごとに読める（v1.05 段階 D）
+  const T = screenImageTiles(d, sc, full);
+  const area = aiViewArea(args, T ? T.tiles.length : undefined, AI_AREA_SCREEN);
+  const doc = screenImageDoc(d, S, sc, full, area);
   return new AiRendered(
-    { design: aiDesignBrief(d), screen: { id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height }, withTable: full },
+    { design: aiDesignBrief(d), screen: { id: sc.id, name: sc.name, device: sc.device, width: sc.width, height: sc.height }, withTable: full, ...aiAreaFields(doc, area) },
     { kind: 'image', html: doc.html, width: doc.width, height: doc.height },
   );
 }
@@ -23640,21 +24070,36 @@ async function aiGetViewImage(args) {
   const view = AI_VIEWS[key];
   if (view === 'map' && d.trashedAt) throw new AiRefusal('trashed', `「${d.name}」はごみ箱にあるので、関連図には出ません（ステータスの流れと画面遷移図は描けます）。`);
   if (view === 'process' && !aiStatusItem(d)) throw aiBad(`「${d.name}」にはステータスの項目がないので、ステータスの流れの図はありません（edit_process の set_states でステータスを書くと描けます）。`);
-  const doc = viewImageDoc(d, S, view);
+  const area = aiViewArea(args, viewImageDoc(d, S, view).areas);
+  const doc = viewImageDoc(d, S, view, area);
   return new AiRendered(
-    { design: aiDesignBrief(d), view: key, boxes: doc.boxes, arrows: doc.arrows },
+    { design: aiDesignBrief(d), view: key, boxes: doc.boxes, arrows: doc.arrows, ...aiAreaFields(doc, area) },
     { kind: 'image', html: doc.html, width: doc.width, height: doc.height },
   );
 }
+// 図の画像の area（大きい図の範囲の番号。v1.05 段階 C）。areas は範囲の数（図が 1 枚の画像に収まるときは undefined）。省くと null
+// t は断る文の言葉（図は AI_AREA_VIEW、画面〔get_screen_image。v1.05 段階 D〕は AI_AREA_SCREEN）
+const AI_AREA_VIEW = { one: 'この図は 1 枚の画像に縮めずに収まる', many: 'この図の範囲', order: '左上の範囲から右へ、次に下の段へ数えます' };
+const AI_AREA_SCREEN = { one: 'この画面は範囲に分割しない', many: 'この画面の範囲', order: '上の範囲から数えます' };
+function aiViewArea(args, areas, t = AI_AREA_VIEW) {
+  if (args.area == null) return null;
+  if (!Number.isInteger(args.area) || args.area < 1) throw aiBad('area（範囲の番号）は 1 以上の整数で書いてください。');
+  if (!areas && args.area !== 1) throw aiBad(`${t.one}ので、area は 1 だけです（area を省いても同じ画像です）。`);
+  if (areas && args.area > areas) throw aiBad(`${t.many}は ${areas} 個です。area は 1〜${areas} で書いてください（${t.order}）。`);
+  return args.area;
+}
+// 返事に入れる範囲の数と番号（範囲に分けない図で area を省いたときは、何も入れない）
+const aiAreaFields = (doc, area) => (area == null ? (doc.areas ? { areas: doc.areas } : {}) : { areas: doc.areas || 1, area });
 // スイムレーン図の画像（第 9 段階）。ごみ箱のシステムも描ける
 function aiSwimlaneImage(S, args) {
   if (args.system == null || args.design != null) {
     throw aiBad('view "swimlane"（スイムレーン図）はシステムの図なので、system（システムの id か名前）を書き、design は書かないでください。');
   }
   const y = aiResolveSystem(S, args.system);
-  const doc = swimlaneImageDoc(S, y);
+  const area = aiViewArea(args, swimlaneImageDoc(S, y).areas);
+  const doc = swimlaneImageDoc(S, y, area);
   return new AiRendered(
-    { system: aiSystemBrief(y), view: 'swimlane', boxes: doc.boxes, arrows: doc.arrows },
+    { system: aiSystemBrief(y), view: 'swimlane', boxes: doc.boxes, arrows: doc.arrows, ...aiAreaFields(doc, area) },
     { kind: 'image', html: doc.html, width: doc.width, height: doc.height },
   );
 }
@@ -24574,6 +25019,7 @@ function exposeForTest() {
     trashedSystems, homeGroups, LONE_GROUP, openSystem, renderSystem,
     openSystemPanel, selectStep, freeRoleName, editorBackSystem, systemRevisionTitle, SYS_PANELS,
     wireOverlaps, WIRE_GAP_MIN, swimlaneModel, swimlaneLayout, swimlaneHtml, swimlaneImageDoc, swimAutoCols, SWIM_LABEL_W, diagramCrop, VIEW_TITLES, VIEW_LEGENDS, bdmExportPlan,
+    DIAGRAM_MIN_ZOOM, diagramShapes, tileSpans, diagramTiles, tileCrossings, tileMarkLayout, tileFigureHtml, screenTiles, screenComposite, screenImageDoc,
     swimPlusAt, swimSideToward, swimFitZoom, SWIM_NEAR, selectEdge, setSwimMode, setSwimPal,
     SWIM_ORIENTS, SWIM_ORIENT_NAMES, swimOrientOf, SWIM_HEAD_H, setSwimOrientView,
     SWIM_HDR, SWIM_LANE, SWIM_STEP, SWIM_SHAPES, SWIM_W_MAX, swimBoxSize, swimTextW, swimStoredPos, swimDrawing, swimRoutes,

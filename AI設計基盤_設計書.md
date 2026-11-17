@@ -639,7 +639,7 @@ props: {
 | `list_designs` | 画面設計の一覧 | `query`・`trashed`（ごみ箱のものも出すか） | id・名前・作る先・画面と項目の数・最新の版・更新の印 |
 | `get_design` | 画面設計の中身の要約 | `design` | 名前・作る先・説明・項目の一覧（設定の文つき）・画面の一覧（id・名前・機器・大きさ・部品の数）・改訂履歴の行（写しは除く）・ルックアップと取り込みのつながり・更新の印 |
 | `get_screen` | 画面 1 つの中身 | `design`・`screen` | 部品（id・赤い番号・種類・項目名・位置と大きさ・設定の文・移る先）・吹き出し・部品の設定の一覧表の文 |
-| `get_screen_image` | 画面の画像 | `design`・`screen`・`withTable`（一覧表も写すか） | PNG（長い辺を 1568 ドットまでに縮める） |
+| `get_screen_image` | 画面の画像 | `design`・`screen`・`withTable`（一覧表も写すか） | PNG（長い辺を 1568 ドットまでに縮める）。v1.05 で `area`（縦に長い画面の範囲の番号）を追加した。縦に長い画面は返事に `areas`（範囲の数）を付け、`area` を書くと、その範囲を読める大きさで返す（設定一覧は入れない） |
 | `get_catalog` | 部品のカタログ | — | 部品の種類（type・名前・最初の大きさ・設定の欄と値の形）・ひな形・機器・並べ方の書き方 |
 | `create_design` | 画面設計を作る | `name`・`target`・`description` | id |
 | `update_design` | 名前・作る先・説明を直す | `design`・`expect`・直す欄 | 更新の印 |
@@ -659,7 +659,7 @@ props: {
 |---|---|---|---|
 | `edit_process` | ステータスと操作を足す・直す・消す・並べ替える | `design`・`expect`・`ops`（`set_states`・`add_state`・`rename_state`・`move_state`・`delete_state`・`add_action`・`update_action`・`move_action`・`delete_action`） | 変えたステータスと操作 |
 | `get_flow` | ステータスの移り方と画面の移り方を表で読む | `design`・`cursor` | ステータス・操作・画面ごとの移る先（移る先のないボタンは `to: null`）・ほかの画面設計から移ってくるもの（約 24,000 字で `cursor` に分ける） |
-| `get_view_image` | 図の画像 | `design`・`view`（`map` つながりの図・`process`・`screenflow`） | PNG（長い辺を 1568 ドットまでに縮める） |
+| `get_view_image` | 図の画像 | `design`・`view`（`map` つながりの図・`process`・`screenflow`） | PNG（長い辺を 1568 ドットまでに縮める）。v1.05 で `area`（大きい図の範囲の番号）を追加した。縮めると文字が読めない大きい図は返事に `areas` を付け、`area` を書くと、その範囲を原寸で返す |
 
 - ステータスと操作は id か名前で指す（2 つ以上に当たるときは `ambiguous` と候補を返す）。ステータスの項目がないときは、`set_states`・`add_state` だけが作る。
   取り込んだステータスの項目は直せない（`linked`）。`edit_items` でステータスの `actions` を渡すと、`edit_process` を使うように断る。

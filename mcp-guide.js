@@ -77,6 +77,7 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
    人が「よい」と答えてから done にし、次の段階へ進む（人が答える前に done にしない）。画面の作り方は 1 と同じ。
 3. 今ある画面設計を変更する: get_design・get_screen で中身と updatedAt を読む → edit_* に expect を付けて変更する → 区切りで add_revision（改訂する）。
 4. 読んで答える: list_designs・get_design・get_screen・get_screen_image・get_flow・get_view_image で読んで答える。
+   get_view_image と get_screen_image の返事に areas（範囲の数）が付いた図と画面は、縮めた画像では文字が読めないので、area（1〜areas）を書いて範囲ごとに読む。
 5. 業務のまとまり（システム）を作る: create_system → update_system の ops の add で役割（レーン）を追加する → 画面設計をシステムに追加する（今あるものは add_to_system、
    新しく作るものは create_design の system）→ set_swimlane で工程と矢印を書く（工程の ref で、その工程で使う画面設計・画面・ステータスを指す）→
    get_view_image（view "swimlane"）で見て確かめる。今あるシステムを変更するときは、get_system で中身と updatedAt を読んでから、expect を付けて変更する。

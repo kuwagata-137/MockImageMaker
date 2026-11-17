@@ -95,7 +95,8 @@ test('画面遷移図（横向き・縦向き）: 見本の 2 つの画面設計
   const routes = routesOf(T.viewHtml('flow', T.store.state, T.store.state.designs.find((x) => x.id === d.id), {}, { bare: true }));
   const link = routes[`${key('顧客一覧')}|${key('顧客詳細')}|link`].wps;
   const button = routes[`${key('顧客一覧')}|${key('顧客登録')}|button`].wps;
-  assert.equal(Math.round((button[1][0] - link[1][0]) * 10) / 10, 10);
+  // 2026-11-17 に、列の間を通る線の数え方を直した（2 列以上離れた画面から来る線も数える）ので、リンクの線にも通り道（14 おき）が割り振られ、14 手前で曲がる
+  assert.ok(button[1][0] - link[1][0] >= 10, `${button[1][0] - link[1][0]}`);
 });
 
 test('ステータスの流れ: 線の多い見本で、平行に近づく線がない（右を回る線は 22 ずつ離した通り道）', async (t) => {
@@ -113,4 +114,51 @@ test('ステータスの流れ: 線の多い見本で、平行に近づく線が
   const routes = procRoutesOf(T.viewHtml('process', T.store.state, d));
   assert.ok(Object.keys(routes).length >= 12);
   assert.deepEqual(plain(T.wireOverlaps(routes)), []);
+});
+
+test('最初の画面の関連図（v1.05 の判断待ちの件と q191）: 2 列以上離れた画面設計から来る線の文字も、列の間の幅に数え、線の文字どうしが重ならない。行きと帰りの 2 本の線も重ならない', async (t) => {
+  const app = bootApp();
+  t.after(() => app.close());
+  const T = await app.api();
+  const call = async (tool, args) => {
+    const r = plain(await T.aiDispatch(tool, args, { session: 's-1', client: 'claude-code' }));
+    if (!r.ok) throw new Error(`${tool}: ${JSON.stringify(r.error)}`);
+    return r.result;
+  };
+  // 顧客管理を 3 つの画面設計がルックアップで引き、請求管理は契約管理も引く。顧客管理は、契約管理と請求管理を関連レコード一覧で並べる
+  await call('create_design', { name: '顧客管理', target: 'kintone' });
+  await call('edit_items', { design: '顧客管理', ops: [{ op: 'add', name: '顧客名', type: 'text1' }, { op: 'add', name: '電話番号', type: 'text1' }] });
+  const lookup = (design, key, copies = []) => ({ design, key, copies: copies.map((c) => ({ from: c, to: c, create: true })) });
+  for (const [name, extra] of [['契約管理', []], ['訪問管理', []],
+    ['請求管理', [{ op: 'add', name: '契約番号', type: 'text1' }, { op: 'lookup', item: '契約番号', lookup: lookup('契約管理', '契約番号') }]]]) {
+    await call('create_design', { name, target: 'kintone' });
+    await call('edit_items', { design: name, ops: [
+      ...(name === '契約管理' ? [{ op: 'add', name: '契約番号', type: 'text1' }] : []),
+      { op: 'add', name: '顧客名', type: 'text1' }, { op: 'lookup', item: '顧客名', lookup: lookup('顧客管理', '顧客名', ['電話番号']) }, ...extra,
+    ] });
+  }
+  const related = (db) => ({ type: 'table', tableKind: 'related', label: db, span: 4, props: { db, columns: ['契約番号'] } });
+  await call('layout_screen', { design: '顧客管理', screen: '画面 1', layout: { columns: 4, rows: [
+    [{ item: '顧客名', span: 2 }, { item: '電話番号', span: 2 }], [related('契約管理')], [related('請求管理')]] } });
+  T.goHome();
+  app.document.querySelector('[data-action="home-map"]').dispatchEvent(new app.window.MouseEvent('click', { bubbles: true }));
+  // 線の文字の白い下地（rect）どうしが重ならない
+  const rects = [...app.document.querySelectorAll('#home-map svg rect[rx="3"]')].map((r) => ['x', 'y', 'width', 'height'].map((k) => parseFloat(r.getAttribute(k))));
+  assert.ok(rects.length >= 6, String(rects.length));
+  const hits = [];
+  rects.forEach((a, i) => rects.slice(i + 1).forEach((b) => {
+    if (a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3]) hits.push([a, b]);
+  }));
+  assert.deepEqual(hits, []);
+  // 契約管理（2 列目）と請求管理（3 列目）の間は、隣の列の線の文字「契約番号で引く」と、2 列離れた線の文字「関連レコード一覧」が並ぶ幅（今までの 200 より広い）
+  const box = (name) => {
+    const id = T.store.state.designs.find((d) => d.name === name).id;
+    const el = app.document.querySelector(`#home-map .mnode[data-node="d:${id}"]`);
+    return { x: parseFloat(el.style.left), w: parseFloat(el.style.width) };
+  };
+  const [a, b] = [box('契約管理'), box('請求管理')];
+  assert.ok(b.x - (a.x + a.w) > 200, `${b.x - (a.x + a.w)}`);
+  // 顧客管理と請求管理の行きと帰りの 2 本の線（関連レコード一覧・顧客名で引く）が、契約管理と訪問管理の間で同じ高さに重ならない。
+  // 2 本の端が、別々のボックスの辺の同じ高さに決まるので、片方の端を辺に沿ってずらして離す（v1.05 の q191 案A。wirePinsApart）
+  assert.deepEqual(plain(T.wireOverlaps(routesOf(app.document.querySelector('#home-map').innerHTML))), []);
 });

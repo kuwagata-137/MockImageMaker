@@ -2,6 +2,9 @@
 // 見本は架空の業務で、AI のツール（テスト用の窓口の aiDispatch）で組み立てる:
 //   顧客管理 … 画面「顧客詳細」から 12 画面へ行き来する（1 つのボックスに線が集まる画面遷移図）
 //   購買申請 … ステータス 20 個。「見送り」に 13 本、「下書き」に差し戻しが 3 本集まる（線の多いステータスの流れ）
+//   購買業務（横向き）・購買業務（縦向き） … 工程 56 個・役割 5 つのスイムレーン図（v1.05 段階 C。PDF で何ページかに分ける図）
+//   設備点検記録 … 画面「点検記録の入力」（1280 × 3400）。縦に長い画面（v1.05 段階 D。PDF で何ページかに分割する画面）
+//   申込受付 … 一本道の 4 画面と、線のない画面 2 つ（v1.05 の q189 案A。画面遷移図で、つながっていない画面を右に 1 列で並べる）
 // 試作の線（protoFlow）は、アプリの swimRoutes（スイムレーン図と同じ直角の線）に、出入りの位置（fromPin・toPin）と曲がる位置（mid）を渡して引き、
 // 今の図の SVG と差し替えて撮る（アプリの本体の描き方は変えない）。
 'use strict';
@@ -77,6 +80,75 @@ async function buildDense(page) {
   await call('edit_process', { design: '購買申請', ops });
   await call('layout_screen', { design: '購買申請', screen: '画面 1', layout: { columns: 2, rows: [[{ type: 'steps', span: 2 }], [{ type: 'status' }]] } });
   return page.evaluate(() => Object.fromEntries(window.__test__.store.state.designs.map((d) => [d.name, d.id])));
+}
+
+// 工程 56 個のスイムレーン図のシステム（v1.05 段階 C）。役割 5 つ、工程を順に矢印で接続し、差し戻しの矢印を 3 本追加する。戻り値はシステムの id
+async function buildSwim56(page, name, orientation) {
+  const call = async (tool, args) => {
+    const r = await page.evaluate((t, a) => window.__test__.aiDispatch(t, a, { session: 's-1', client: 'claude-code' }), tool, args);
+    if (!r.ok) throw new Error(`${tool}: ${JSON.stringify(r.error)}`);
+    return r.result;
+  };
+  await call('create_system', { name, description: '購買の申請から支払まで（架空の業務）' });
+  const roles = ['申請者', '課長', '部長', '購買担当', '経理担当'];
+  await call('update_system', { system: name, ops: roles.map((n) => ({ op: 'add', name: n })) });
+  const verbs = ['申請書を書く', '内容を確認する', '承認する', '見積を依頼する', '見積を比べる', '発注する', '納品を確認する', '請求書を受け取る', '支払を申請する', '支払う'];
+  const steps = Array.from({ length: 56 }, (_, i) => ({ key: 's' + i, role: roles[[0, 1, 2, 3, 3, 3, 0, 4, 4, 4][i % 10]],
+    kind: i === 0 ? 'start' : i === 55 ? 'end' : i % 9 === 4 ? 'decision' : 'task', text: `${i + 1}. ${verbs[i % 10]}`, col: i }));
+  const edges = steps.slice(1).map((s, i) => ({ from: 's' + i, to: s.key }));
+  [[12, 10, '差し戻し'], [31, 28, '差し戻し'], [47, 41, '再見積']].forEach(([f, t, label]) => edges.push({ from: 's' + f, to: 's' + t, label }));
+  const y = await call('get_system', { system: name });
+  await call('set_swimlane', { system: name, expect: y.updatedAt, steps, edges, orientation });
+  return page.evaluate((n) => window.__test__.store.state.systems.find((s) => s.name === n).id, name);
+}
+
+// つながっていない画面のある画面設計（v1.05 の q189 案A）。一本道の 4 画面（申込一覧 → 申込登録 → 内容確認 → 完了）と、線のない画面 2 つ（お知らせ・よくある質問）。
+// 戻り値は画面設計の id
+async function buildLone(page) {
+  const call = async (tool, args) => {
+    const r = await page.evaluate((t, a) => window.__test__.aiDispatch(t, a, { session: 's-1', client: 'claude-code' }), tool, args);
+    if (!r.ok) throw new Error(`${tool}: ${JSON.stringify(r.error)}`);
+    return r.result;
+  };
+  await call('create_design', { name: '申込受付', target: 'kintone', description: '申込の受付（架空の業務）' });
+  await call('edit_screen', { design: '申込受付', ops: [{ op: 'update', screen: '画面 1', name: '申込一覧' }] });
+  for (const name of ['申込登録', '内容確認', '完了', 'お知らせ', 'よくある質問']) await call('add_screen', { design: '申込受付', name });
+  const btn = (label, to) => ({ type: 'button', label, style: 'normal', to });
+  for (const [screen, label, to] of [['申込一覧', '申込を登録する', '申込登録'], ['申込登録', '確認へ進む', '内容確認'], ['内容確認', '申し込む', '完了']]) {
+    await call('layout_screen', { design: '申込受付', screen, layout: { columns: 2, rows: [{ align: 'right', parts: [btn(label, to)] }] } });
+  }
+  return page.evaluate(() => window.__test__.store.state.designs.find((d) => d.name === '申込受付').id);
+}
+
+// 縦に長い画面の画面設計（v1.05 段階 D）。画面「点検記録の入力」（1280 × 3400）に、見出しと 2 列のアイテムを並べ、吹き出しを 5 つ追加する。戻り値は画面設計の id
+async function buildTall(page) {
+  const call = async (tool, args) => {
+    const r = await page.evaluate((t, a) => window.__test__.aiDispatch(t, a, { session: 's-1', client: 'claude-code' }), tool, args);
+    if (!r.ok) throw new Error(`${tool}: ${JSON.stringify(r.error)}`);
+    return r.result;
+  };
+  await call('create_design', { name: '設備点検記録', target: 'kintone', description: '設備の月次点検の記録（架空の業務）' });
+  await call('edit_screen', { design: '設備点検記録', ops: [{ op: 'update', screen: '画面 1', name: '点検記録の入力', height: 3400 }] });
+  const AREAS = ['受電設備', '空調設備', '給排水設備', '消防設備', '昇降機', '照明設備', '非常用発電機', '防犯設備'];
+  const rows = [[{ type: 'heading', label: '点検の基本情報', span: 2 }],
+    [{ type: 'date', label: '点検日' }, { type: 'text1', label: '点検者' }],
+    [{ type: 'dropdown', label: '建物' }, { type: 'text1', label: '天候' }]];
+  for (const a of AREAS) {
+    rows.push([{ type: 'heading', label: a, span: 2 }]);
+    rows.push([{ type: 'radio', label: `${a}の外観` }, { type: 'radio', label: `${a}の動作` }]);
+    rows.push([{ type: 'text1', label: `${a}の測定値` }, { type: 'text2', label: `${a}の所見` }]);
+  }
+  rows.push({ align: 'right', parts: [{ type: 'button', label: '点検記録を保存する', style: 'primary', to: null }] });
+  await call('layout_screen', { design: '設備点検記録', screen: '点検記録の入力', layout: { columns: 2, rows } });
+  const scr = await call('get_screen', { design: '設備点検記録', screen: '点検記録の入力' });
+  const parts = scr.parts || (scr.screen && scr.screen.parts) || [];
+  const partOf = (label) => parts.find((p) => (p.label || (p.props && p.props.label) || p.name) === label);
+  const NOTES = [['点検者', '点検者は、ログインした人の名前が入る。'], ['空調設備の測定値', '吹出口の温度を、℃ で入力する。'],
+    ['消防設備の所見', '不具合があれば、場所と状態を書く。'], ['非常用発電機の動作', '月に 1 回、試運転して確認する。'], ['防犯設備の所見', '防犯カメラの録画も確認する。']];
+  const ops = NOTES.map(([label, text]) => ({ op: 'add', text, target: (partOf(label) || {}).id })).filter((o) => o.target);
+  if (ops.length < NOTES.length) throw new Error('吹き出しの指す先のアイテムが見つからない');
+  await call('edit_callouts', { design: '設備点検記録', screen: '点検記録の入力', ops });
+  return page.evaluate(() => window.__test__.store.state.designs.find((d) => d.name === '設備点検記録').id);
 }
 
 // 試作: 開いている画面遷移図を、直角の線で引き直す（ページの中で動く。外の変数は使えない）。
@@ -291,6 +363,13 @@ module.exports = async function shootDense(browser, env) {
   await page.click('#home-zoom-fit');
   await sleep(150);
   await shootWindow('293_dense_最初の画面_関連図_全体を表示（幅1280）');
+  // 326・327: つながっていない画面（q189 案A）。画面遷移図の横向きと縦向きで、線のない画面を右に 1 列で並べる
+  const loneId = await buildLone(page);
+  await open(loneId, 'openFlow');
+  await shootMap('326_dense_画面遷移図_つながっていない画面_横向き');
+  await page.evaluate((i) => window.__test__.actions.setFlowVertical(i, true), loneId);
+  await sleep(150);
+  await shootMap('327_dense_画面遷移図_つながっていない画面_縦向き');
   // 279〜285: 試作の線（質問 q167・q168 の画像の元。本体の線ができた後は、--proto を付けたときだけ撮る）
   for (const [name, opts] of process.argv.includes('--proto') ? [
     ['279_dense_画面遷移図_試作_行きと帰りを別の線', { merge: false, grow: true }],
@@ -305,28 +384,69 @@ module.exports = async function shootDense(browser, env) {
   // 282: 今のステータスの流れ（ステータス 20 個）
   await open(ids['購買申請'], 'openProcess');
   await shootMap('282_dense_ステータスの流れ_今の線');
-  // 283・284: PDF（A4 横）の図のページと、縮小率
-  for (const [name, scenes] of [['顧客管理', { 画面遷移図: '283_dense_PDF_画面遷移図（A4横）' }], ['購買申請', { ステータスの流れ: '284_dense_PDF_ステータスの流れ（A4横）' }]]) {
-    const html = await page.evaluate((id) => {
+  // 283・284・294・295: PDF の図のページと、縮小率（用紙ごと）。倍率 60% より小さく縮む図は何ページかに分ける（v1.05 段階 C。q172 案A）ので、
+  // 分けたページ（見出し「（1/n）」）を全部撮る。294・295 はスイムレーン図（工程 56 個。システム設計書の PDF）
+  const swimH = await buildSwim56(page, '購買業務（横向き）', 'horizontal');
+  const swimV = await buildSwim56(page, '購買業務（縦向き）', 'vertical');
+  // 320: 縦に長い画面（設備点検記録）の画面のページ。倍率 60% より小さく縮む画面は、上から何ページかに分割する（v1.05 段階 D。q174 案A）
+  const tallId = await buildTall(page);
+  const PAPERS = [['A4', 'landscape', 'A4横'], ['A4', 'portrait', 'A4縦'], ['A3', 'landscape', 'A3横']];
+  const docs = [
+    ...PAPERS.map(([paper, orient, tag]) => ({ kind: 'design', id: ids['顧客管理'], paper, orient, title: '画面遷移図', scene: `283_dense_PDF_画面遷移図（${tag}）` })),
+    ...PAPERS.map(([paper, orient, tag]) => ({ kind: 'design', id: ids['購買申請'], paper, orient, title: 'ステータスの流れ', scene: `284_dense_PDF_ステータスの流れ（${tag}）` })),
+    ...PAPERS.slice(0, 2).map(([paper, orient, tag]) => ({ kind: 'system', id: swimH, paper, orient, title: 'スイムレーン図', scene: `294_dense_PDF_スイムレーン図_横向き（${tag}）` })),
+    ...PAPERS.slice(0, 2).map(([paper, orient, tag]) => ({ kind: 'system', id: swimV, paper, orient, title: 'スイムレーン図', scene: `295_dense_PDF_スイムレーン図_縦向き（${tag}）` })),
+    ...PAPERS.map(([paper, orient, tag]) => ({ kind: 'design', id: tallId, paper, orient, title: '1　点検記録の入力', scene: `320_dense_PDF_縦に長い画面（${tag}）` })),
+  ];
+  for (const x of docs) {
+    const html = await page.evaluate((o) => {
       const T = window.__test__;
-      return T.exportDocument(T.store.state.designs.find((x) => x.id === id), T.store.state, { paper: 'A4', orient: 'landscape', cover: true, map: true, items: true, process: true, flow: true }).html;
-    }, ids[name]);
+      if (o.kind === 'system') {
+        const y = T.store.state.systems.find((s) => s.id === o.id);
+        return T.exportSystemDocument(y, T.store.state, { paper: o.paper, orient: o.orient, systemCover: true, swimlane: true, notes: false }).html;
+      }
+      return T.exportDocument(T.store.state.designs.find((d) => d.id === o.id), T.store.state, { paper: o.paper, orient: o.orient, cover: true, map: true, items: true, process: true, flow: true }).html;
+    }, x);
     const doc = await browser.newPage();
-    await doc.setViewport({ width: 1200, height: 1200 });
+    await doc.setViewport({ width: 1700, height: 1200 });
     await doc.setContent(html, { waitUntil: 'load' });
     const info = await doc.$$eval('body > .pg', (els) => els.map((e) => ({
       title: (e.querySelector('.pg-head h2') || e.querySelector('.cv-title')).textContent,
-      zoom: [...e.querySelectorAll('.xp-fit [style*="zoom"]')].map((x) => x.style.zoom).join(','),
+      zoom: [...e.querySelectorAll('.xp-fit [style*="zoom"], .xp-stage > [style*="zoom"]')].map((z) => z.style.zoom).join(','),
     })));
-    console.log(`PDF（A4 横・${name}）:`, info.map((p) => p.title + (p.zoom ? `〔倍率 ${p.zoom}〕` : '')).join('・'));
+    console.log(`PDF（${x.scene}）:`, info.filter((p) => p.title.startsWith(x.title)).map((p) => p.title + (p.zoom ? `〔倍率 ${p.zoom}〕` : '')).join('・'));
     const pages = await doc.$$('body > .pg');
     for (const [i, p] of info.entries()) {
-      if (!scenes[p.title]) continue;
-      const file = path.join(OUT, `v${VERSION}_${scenes[p.title]}.png`);
+      if (!p.title.startsWith(x.title) || p.title.endsWith('（続き）')) continue;
+      const part = p.title.match(/（(\d+)\/\d+）$/);
+      const file = path.join(OUT, `v${VERSION}_${x.scene}${part ? '_' + part[1] : ''}.png`);
       await pages[i].screenshot({ path: file });
       console.log('saved', path.relative(ROOT, file));
     }
     await doc.close();
+  }
+  // 321〜323: AI の画像の範囲（get_screen_image・get_view_image の area。v1.05 段階 C・D）。範囲 1・2 の画像を、AI が受け取る大きさのまま撮る
+  const aiShots = [
+    ['get_screen_image', { design: '設備点検記録', screen: '点検記録の入力', withTable: true }, '321_dense_AI_縦に長い画面'],
+    ['get_view_image', { design: '購買申請', view: 'process' }, '322_dense_AI_ステータスの流れ'],
+    ['get_view_image', { system: '購買業務（横向き）', view: 'swimlane' }, '323_dense_AI_スイムレーン図'],
+  ];
+  const ai = (tool, args) => page.evaluate((t, a) => window.__test__.aiDispatch(t, a, { session: 's-1', client: 'claude-code' }), tool, args);
+  for (const [tool, args, scene] of aiShots) {
+    const whole = await ai(tool, args);
+    if (!whole.ok) throw new Error(`${tool}: ${JSON.stringify(whole.error)}`);
+    const n = whole.result.areas || 0;
+    console.log(`AI（${scene}）: 範囲 ${n} 個・全体の画像 ${whole.render.width} × ${whole.render.height}`);
+    for (let a = 1; a <= Math.min(n, 2); a++) {
+      const r = await ai(tool, { ...args, area: a });
+      const doc = await browser.newPage();
+      await doc.setViewport({ width: r.render.width, height: r.render.height });
+      await doc.setContent(r.render.html, { waitUntil: 'load' });
+      const file = path.join(OUT, `v${VERSION}_${scene}_範囲${a}.png`);
+      await doc.screenshot({ path: file });
+      console.log('saved', path.relative(ROOT, file), `${r.render.width}×${r.render.height}`);
+      await doc.close();
+    }
   }
   await page.close();
 };

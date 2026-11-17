@@ -33,8 +33,15 @@ const TOOLS = [
     '多いときは、アイテム・吹き出し・設定一覧の行の順に分けて返し、nextCursor を付ける（cursor に渡すと続きを読める。全部の数は partsTotal・calloutsTotal・tableTotal）。',
     { design: S.design, screen: S.screen, cursor: S.cursor }),
   read('get_screen_image', '画面の画像',
-    '画面の画像（PNG。長い辺を 1568 ドットまでに縮める）を返す。作った画面の見た目を確かめるときに使う。',
-    { design: S.design, screen: S.screen, withTable: z.boolean().optional().describe('設定一覧と吹き出しも画像に入れる（既定は入れない）') }, { slow: true }),
+    '画面の画像（PNG。長い辺を 1568 ドットまでに縮める）を返す。作った画面の見た目を確かめるときに使う。' +
+    '縮めると文字が読めない縦に長い画面は、返事に areas（範囲の数）が付く。area（1〜areas）を書くと、その範囲を読める大きさで返す' +
+    '（範囲は上から数える。範囲の画像には設定一覧を入れないので、設定一覧は get_screen で読む）。',
+    {
+      design: S.design,
+      screen: S.screen,
+      withTable: z.boolean().optional().describe('設定一覧と吹き出しも画像に入れる（既定は入れない）'),
+      area: z.number().int().min(1).optional().describe('縦に長い画面の範囲の番号（1 から。返事の areas まで）。省くと画面の全体を、長い辺 1568 ドットまでに縮めて返す'),
+    }, { slow: true }),
   read('get_flow', 'ステータスの流れと画面遷移図',
     'ステータスの流れ（ステータスの並びと、ステータスを進める操作。前のステータス・次のステータス・操作できる人・条件）と、' +
     '画面の遷移（ボタン・リンクごとの移動先と、ほかの画面設計から移ってくるもの）を表の形で返す。' +
@@ -43,11 +50,13 @@ const TOOLS = [
   read('get_view_image', '図の画像',
     '図の画像（PNG。長い辺を 1568 ドットまでに縮める）を返す。view: "map"（関連図。ルックアップと取り込みで関連する画面設計）・' +
     '"process"（ステータスの流れ）・"screenflow"（画面遷移図）・"swimlane"（システムのスイムレーン図）。作った流れや画面の移動を見て確かめるときに使う。' +
-    '"swimlane" はシステムの図なので system を書き、ほかの図は画面設計の図なので design を書く。',
+    '"swimlane" はシステムの図なので system を書き、ほかの図は画面設計の図なので design を書く。' +
+    '縮めると文字が読めない大きい図は、返事に areas（範囲の数）が付く。area（1〜areas）を書くと、その範囲を縮めずに返す（範囲は左上から右へ、次に下の段へ数える）。',
     {
       design: S.design.optional().describe('画面設計の id か名前（view が "map"・"process"・"screenflow" のとき）'),
       system: S.system.optional().describe('システムの id か名前（view が "swimlane" のとき）'),
       view: z.enum(['map', 'process', 'screenflow', 'swimlane']).describe('図の種類'),
+      area: z.number().int().min(1).optional().describe('大きい図の範囲の番号（1 から。返事の areas まで）。省くと図の全体を、長い辺 1568 ドットまでに縮めて返す'),
     }, { slow: true }),
   read('get_catalog', 'アイテムのカタログ',
     'アイテムの種類（type・名前・最初の大きさ・設定の欄と値の形）・項目の種類・ひな形・機器・構築先・吹き出しの色・並べ方の数・kintone の種類（kintoneTypes）を返す。',

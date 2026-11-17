@@ -123,6 +123,69 @@ test('縦向きの記録: flowVertical は true のときだけ残す。改訂�
   assert.ok(h1 > h0 && w1 < w0, `一本道の縦向きは、横向きより縦に長く、幅が狭い（横向き ${w0}×${h0}・縦向き ${w1}×${h1}）`);
 });
 
+test('つながっていない画面（q189 案A）: 横向きは、いちばん右の列のさらに右に、縦向きは段の右に、上から 1 列で並べる', async (t) => {
+  const { app, api, A, ids, box } = await boot(t);
+  // 線のない画面を 2 つ追加する（お知らせ・よくある質問）
+  const lone = ['お知らせ', 'よくある質問'].map((name) => {
+    const id = api.actions.addScreen(A, 'blank', ids[ids.length - 1]);
+    api.actions.updateScreen(A, id, { name });
+    ids.push(id);
+    return ids.length - 1;
+  });
+  const check = (tag) => {
+    const linked = [0, 1, 2, 3].map(box);
+    const [a, b] = lone.map(box);
+    const right = Math.max(...linked.map((r) => r.x + r.w));
+    assert.equal(a.x, b.x, `${tag}: 同じ列`);
+    assert.ok(a.x > right, `${tag}: 線のある画面の右（${a.x} > ${right}）`);
+    assert.equal(a.y, 40, `${tag}: 上の端から`);
+    assert.ok(b.y > a.y + a.h, `${tag}: 上から順に縦に並べる`);
+  };
+  check('横向き');
+  click($(app, '[data-action="flow-vertical"]'));
+  check('縦向き');
+});
+
+test('PDF の画面遷移図: つながっていない画面を右に並べると分割が必要になり、下に並べれば 1 ページに収まる時（A4 縦）は、下に並べる。A4 横は右に 1 列のまま', async (t) => {
+  const app = bootApp();
+  const api = await app.api();
+  t.after(() => app.close());
+  // 申込受付: 申込一覧 → 申込登録 → 完了（一本道）と、線のない画面「お知らせ」
+  const A = api.actions.createDesign('申込受付', 'kintone');
+  const d = () => api.store.state.designs.find((x) => x.id === A);
+  const ids = [d().screens[0].id];
+  api.actions.updateScreen(A, ids[0], { name: '申込一覧' });
+  ['申込登録', '完了', 'お知らせ'].forEach((name) => {
+    const id = api.actions.addScreen(A, 'blank', ids[ids.length - 1]);
+    api.actions.updateScreen(A, id, { name });
+    ids.push(id);
+  });
+  const btn = (from, to, label) => {
+    const p = api.actions.addPart(A, ids[from], 'button', { x: 40, y: 120 });
+    api.actions.updatePart(A, ids[from], p, { label, props: { to: 'screen', screenId: ids[to] } });
+  };
+  btn(0, 1, '申込を登録する');
+  btn(1, 2, '申し込む');
+  // 前提: 右に 1 列で並べた図は、A4 縦（測れない時の本文の幅 713）では倍率 60% より小さく縮む
+  const right = api.viewHtml('flow', api.store.state, d(), d().flowPos, { bare: true });
+  assert.ok(api.diagramCrop(right).cw * api.DIAGRAM_MIN_ZOOM > 713, `右に 1 列の図の幅 ${api.diagramCrop(right).cw}`);
+  const flow = (orient) => {
+    const doc = api.exportDocument(d(), api.store.state, { paper: 'A4', orient, cover: false, map: false, items: false, process: false, flow: true, settings: false });
+    const pages = doc.pages.map((h) => new app.window.DOMParser().parseFromString(h, 'text/html')).filter((p) => p.querySelector('.pg-head h2').textContent.startsWith('画面遷移図'));
+    const box = (i) => {
+      const n = pages[0].querySelector(`.mnode[data-node="s:${ids[i]}"]`);
+      return { x: parseFloat(n.style.left), y: parseFloat(n.style.top), w: parseFloat(n.style.width), h: parseFloat(n.style.height) };
+    };
+    return { n: pages.length, linked: [0, 1, 2].map(box), lone: box(3) };
+  };
+  const p = flow('portrait');
+  assert.equal(p.n, 1, 'A4 縦: 画面遷移図は 1 ページ');
+  assert.ok(p.lone.y > Math.max(...p.linked.map((r) => r.y + r.h)), 'A4 縦: つながっていない画面は、線のある画面の下');
+  const l = flow('landscape');
+  assert.equal(l.n, 1, 'A4 横: 画面遷移図は 1 ページ');
+  assert.ok(l.lone.x > Math.max(...l.linked.map((r) => r.x + r.w)), 'A4 横: つながっていない画面は、右に 1 列（q189 案A）');
+});
+
 test('AI: update_design の flowOrientation で向きを変え、get_design の flowOrientation で読む。知らない値は断る', async (t) => {
   const { sampleState, STORAGE_KEY } = require('./ai-fixtures');
   const app = bootApp({ localStorage: { [STORAGE_KEY]: JSON.stringify(sampleState()) } });
