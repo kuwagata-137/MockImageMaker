@@ -1696,6 +1696,11 @@ test('見た目・グループ・グループ枠の出し先（段階 D・q161�
   assert.match(html, new RegExp(`<rect class="sw-grp" data-group="${g}"[^>]*stroke-dasharray="5,4"`), 'グループの点線の外枠');
   assert.match(html, /<g class="sw-frame" data-frame="f[^"]*"><rect class="sw-fr-line" x="10" y="10" width="300" height="120"/, 'グループ枠');
   assert.match(html, />申請と承認<\/text>/);
+  // 見出し文字（v1.06・q194 案B）: 枠の g の外の .sw-fr-label に、見出しの帯の色の縁取りつきで描き、矢印と矢印の文字より後ろ（上）に置く
+  assert.match(html, /<g class="sw-fr-label" data-frame="f[^"]*"><text x="20" y="28" font-size="13" font-weight="700" fill="#334155" stroke="#e2e8f0" stroke-width="5" stroke-linejoin="round" paint-order="stroke">申請と承認<\/text><\/g>/);
+  assert.ok(!/<g class="sw-frame"[^>]*>(?:(?!<\/g>).)*<text/.test(html), '枠の g の中には文字を描かない');
+  assert.ok(html.indexOf('class="sw-fr-label"') > html.lastIndexOf('class="sw-line'), '矢印より後ろ');
+  assert.ok(html.indexOf('class="sw-fr-label"') > html.lastIndexOf('class="sw-lab"'), '矢印の文字より後ろ');
   // MPD への出力（bdmExportPlan）には、色・点線・文字の大きさと揃え・矢印の点線・レーンの色を渡し、グループとグループ枠は渡さない
   const plan = api.bdmExportPlan(S().systems[0], null).plan;
   const lookOf = (id) => JSON.parse(JSON.stringify(plan.steps.find((w) => w.key === id).look || {}));
@@ -1707,7 +1712,7 @@ test('見た目・グループ・グループ枠の出し先（段階 D・q161�
   assert.equal(plan.laneColors[1], null);
   assert.ok(!/groupId|frames|申請と承認/.test(JSON.stringify(plan)), 'グループとグループ枠は渡さない');
   api.actions.setSwimOrient('y-trip', 'vertical');
-  assert.ok(!api.swimlaneHtml(S(), S().systems[0]).includes('sw-frame'), 'ほかの向きでは枠を描かない');
+  assert.ok(!/sw-frame|sw-fr-label/.test(api.swimlaneHtml(S(), S().systems[0])), 'ほかの向きでは枠も見出し文字も描かない');
 });
 
 test('ツールバーのたたんだ組（段階 D・q162 案A）: 「編集」「グループ」は 1 つのボタン。押すと組のボタンを縦に出し、中のボタン・Esc で閉じる。グループ枠を描いている間は、たたんだボタンも青', async (t) => {
@@ -1892,7 +1897,7 @@ test('グループ枠（段階 D・q159 案B）: 「グループ枠」のモー�
   const fid = sys().swimlane.frames[0].id;
   assert.equal(api.ui.frameSel, fid);
   assert.equal($$('#swim-frs .sw-frs').length, 8);
-  assert.match($('#sys-swim .sw-frame').textContent, /グループ/);
+  assert.match($('#sys-swim .sw-fr-label').textContent, /グループ/, '見出し文字は .sw-fr-label（v1.06）');
   // 見出しのドラッグで動かす
   const head = () => $('#sys-swim .sw-frame .sw-fr-head');
   fire(head(), 'mousedown', cp(320, 30));
@@ -1913,6 +1918,7 @@ test('グループ枠（段階 D・q159 案B）: 「グループ枠」のモー�
   ed.value = '申請と承認';
   key(env.app, ed, { key: 'Enter' });
   assert.equal(sys().swimlane.frames[0].text, '申請と承認');
+  assert.equal($('#sys-swim .sw-fr-label').textContent, '申請と…', '幅 80 の枠なので、はみ出す分は「…」');
   // Delete で消す・元に戻す
   click(head());
   key(env.app, env.app.document.body, { key: 'Delete' });
@@ -1922,6 +1928,7 @@ test('グループ枠（段階 D・q159 案B）: 「グループ枠」のモー�
   // 縦向きでは描かない
   click($('#sys-orient-v'));
   assert.equal($('#sys-swim .sw-frame'), null);
+  assert.equal($('#sys-swim .sw-fr-label'), null);
 });
 
 test('右のパネルの見た目（段階 D・q160 案A）: 工程の色見本・ほかの色・標準の色・文字の大きさ（A˄・A˅・欄）・文字の揃え・枠の点線。いくつか選ぶとまとめて変える。矢印の「線を点線にする」。役割の画面のレーンの色', async (t) => {
