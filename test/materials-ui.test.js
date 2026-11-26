@@ -820,3 +820,19 @@ test('読む: 画像は画像の見出しの行の後に置く（Excel のシー
   assert.deepEqual([...box.children].map((e) => e.className), ['rd-pg', 'rd-pre', 'rd-pg', 'rd-img']);
   assert.equal(box.querySelector('img').previousElementSibling.textContent, '── 画像 ──');
 });
+
+test('読む: 文字のあるページのページ画像（見出し「── N ページの画像 ──」。v1.06）も、見出しの行の後に置く', async (t) => {
+  const { $, btn, materials } = await boot(t);
+  materials.set('read', async () => ({ ok: true, result: {
+    notice: NOTICE, part: { from: 1, to: 3, total: 3 },
+    text: [NOTICE, '── 1 ページ ──', '出張申請書（架空）', '── 1 ページの画像 ──', '── 2 ページ ──', '第 2 条 旅費は実費を支払う。'].join('\n'),
+    images: [{ page: 1, width: 10, height: 10, data: 'iVBORw0KGgo=' }], nextCursor: null,
+  } }));
+  click(btn('sys-mat-read', 'm-pdf'));
+  await waitFor(() => $('.modal'), { label: '読むの窓' });
+  const box = $('.modal .rd-text');
+  assert.deepEqual([...box.children].map((e) => e.className), ['rd-pg', 'rd-pre', 'rd-pg', 'rd-img', 'rd-pg', 'rd-pre']);
+  const img = box.querySelector('img');
+  assert.equal(img.previousElementSibling.textContent, '── 1 ページの画像 ──');
+  assert.equal(img.alt, '1 ページの画像');
+});

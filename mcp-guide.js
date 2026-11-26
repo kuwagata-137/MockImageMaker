@@ -57,7 +57,8 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
 - 共通の画面設計: 2 つ以上のシステムに入っている 1 つの画面設計（例: 社員マスタ）。データは 1 件で、どのシステムから変更しても同じものが変わる（add_to_system の mode "same"）。
   別のものとして使うときは mode "copy" で複製して追加する。
 - 資料・資料の一覧: 資料は、人がアプリでシステムに追加した業務の資料のファイル（様式・規程・業務の流れの図など。文字・画像・PDF・Word・Excel・MPD）。資料の一覧は、システムごとに追加された資料のまとまり。
-  list_materials で資料の一覧を読み、read_material で資料の中身を読む（AI は資料を追加する・消すことはできない）。MPD は、MultipurposeDiagramMaker（旧名 ビジネスダイアグラムメーカー・BDM）で保存した業務の流れの図の HTML（資料の種類 kind は bdm。ツールの名前の bdm も MPD のこと）。
+  list_materials で資料の一覧を読み、read_material で資料の中身を読む（AI は資料を追加する・消すことはできない）。PDF は、文字が少ないページと画像が大きいページのページ画像も返る。
+  図形と矢印で描いた流れ図のように、文字だけでは分からないページは、read_material の pages にページ番号を書くと、そのページのページ画像を読める。MPD は、MultipurposeDiagramMaker（旧名 ビジネスダイアグラムメーカー・BDM）で保存した業務の流れの図の HTML（資料の種類 kind は bdm。ツールの名前の bdm も MPD のこと）。
   スイムレーン図は export_bdm で MPD に出力できる（資料の MPD を元にして別のファイルに書く。元のファイルは書き換えない）。
 - 設計ノート: システムごとの、資料からシステムを作るときの記録。5 つの段階（read・flow・items・screens・docs）の進捗・読み取ったこと・決めたことと理由・
   まだ決まっていないこと・メモを持つ。get_notes で読み、update_notes・set_stage で書く（進め方は read_guide の "stages"）。
@@ -115,6 +116,7 @@ const OVERVIEW = `# モックイメージメーカーの使い方（AI 向け）
 - ambiguous: 名前が 2 つ以上に当たった（candidates の id で指す）。not_found: 見つからない。bad_request: 書き方の誤り（返事の文のとおりに書き直す）。same_name: 同じ名前がある（allowSameName）。linked: 取り込んだ項目は変更できない。
 - 資料（read_material・swimlane_from_bdm・export_bdm）: old_format: 古い形（.doc・.xls）のファイル（人に新しい形で保存し直してから、もう一度追加してもらう）。unsupported: 読めない種類のファイル・図。
   file_missing: 資料のファイルが見つからない。unavailable: 資料を読む機能を使えない（デスクトップ版のアプリでないときなど）。bad_cursor: cursor が前の返事の nextCursor でない。
+  bad_pages: pages の書き方の誤り（1〜3 個のページ番号・PDF のページ数まで・cursor と一緒に使わない）。
   read_failed: ファイルが壊れている・パスワードで守られている（人にもう一度追加してもらう）。not_file・bad_name: 資料のファイルがふつうのファイルでない・ファイルの名前の形が正しくない（AI はふつう出会わない。出会ったら人に知らせる）。
 - 文は日本語で、人がすることも書いてあります。人に伝えるときは、その文をそのまま伝えてください。`;
 

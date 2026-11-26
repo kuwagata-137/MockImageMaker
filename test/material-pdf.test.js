@@ -29,16 +29,24 @@ function captureConsole(run) {
   );
 }
 
-const TRIP_PDF = () => samples.makePdf(['Business trip request', { image: samples.solidPng(60, 80, '#cc3333') }, null, 'Second text page']);
+// 1 ページは文字が 51 字以上（空白と改行を除いて 63 字）・2 ページは画像だけ・3 ページは白紙・4 ページは文字が 50 字以下
+const LONG_TEXT = 'Business trip request form\nThe applicant writes the destination and dates';
+const TRIP_PDF = () => samples.makePdf([LONG_TEXT, { image: samples.solidPng(60, 80, '#cc3333') }, null, 'Second text page']);
 
-test('loadPdfBlocks — ページごとの塊（文字のページは見出しつきの文・文字のないページは画像の塊）', async (t) => {
+test('loadPdfBlocks — ページごとの塊（文字のページは見出しと文字の塊・文字のないページは画像の塊・文字が 50 字以下のページは文字とページ画像の塊）', async (t) => {
   const { blocks, dispose } = await loadPdfBlocks(await TRIP_PDF(), {});
   t.after(() => dispose());
 
   await t.test('文字のページは「── N ページ ──」の見出しと文字', () => {
-    assert.equal(blocks.length, 4);
-    assert.equal(blocks[0].text, '── 1 ページ ──\nBusiness trip request');
+    assert.equal(blocks.length, 5);
+    assert.equal(blocks[0].text, '── 1 ページ ──\nBusiness trip request form\nThe applicant writes the destination and dates');
     assert.equal(blocks[3].text, '── 4 ページ ──\nSecond text page');
+  });
+
+  await t.test('文字が 50 字以下のページは、文字の塊の後にページ画像の塊（見出し「── N ページの画像 ──」）も置く（v1.06）', () => {
+    assert.equal(blocks[4].image.page, 4);
+    assert.equal(blocks[4].image.caption, '── 4 ページの画像 ──');
+    assert.equal(typeof blocks[4].image.render, 'function');
   });
 
   await t.test('画像だけのページ・白紙のページは画像の塊（まだ描いていない）', () => {
@@ -46,7 +54,7 @@ test('loadPdfBlocks — ページごとの塊（文字のページは見出し�
       assert.equal(blocks[index].text, undefined);
       assert.equal(blocks[index].image.page, page);
       assert.equal(typeof blocks[index].image.render, 'function');
-      assert.match(blocks[index].image.caption, new RegExp(`${page} ページ`));
+      assert.equal(blocks[index].image.caption, `── ${page} ページ（文字がないので画像で渡します）──`);
     }
   });
 
@@ -70,14 +78,14 @@ test('loadPdfBlocks — ページごとの塊（文字のページは見出し�
   });
 });
 
-test('reader の pdf — 文字は text へ・画像のページは images へ（返すときに描く）', async () => {
+test('reader の pdf — 文字は text へ・画像のページとページ画像は images へ（返すときに描く）', async () => {
   const file = samples.writeSample(dir, 'trip.pdf', await TRIP_PDF());
   const reader = createMaterialReader();
   const result = await reader.read({ path: file, kind: 'pdf', name: 'trip.pdf', cursor: null });
-  assert.ok(result.text.startsWith(`${NOTICE}\n── 1 ページ ──\nBusiness trip request\n`));
-  assert.match(result.text, /── 4 ページ ──\nSecond text page/);
-  assert.deepEqual(result.images.map((i) => i.page), [2, 3]);
-  assert.deepEqual(result.part, { from: 1, to: 4, total: 4 });
+  assert.ok(result.text.startsWith(`${NOTICE}\n── 1 ページ ──\nBusiness trip request form\nThe applicant writes the destination and dates\n`));
+  assert.match(result.text, /── 4 ページ ──\nSecond text page\n── 4 ページの画像 ──$/);
+  assert.deepEqual(result.images.map((i) => i.page), [2, 3, 4]);
+  assert.deepEqual(result.part, { from: 1, to: 5, total: 5 });
   assert.equal(result.nextCursor, null);
   for (const image of result.images) {
     assert.deepEqual(pngSize(image.png), { width: image.width, height: image.height });
@@ -143,6 +151,7 @@ test('dispose の後に画像の塊を描こうとすると read_failed（落ち
   await assert.rejects(blocks[0].image.render(), (err) => err instanceof MaterialError && err.code === 'read_failed' && /PDF/.test(err.message));
 });
 
+// 1 ページの文字は 50 字以下なので、1 ページのページ画像と、2 ページ（白紙）の画像が返る
 test('reader の控え — 4 つ目の PDF を読むと最初の PDF は閉じられ、もう一度読めば開き直して読める', async () => {
   const files = [];
   for (let i = 0; i < 4; i += 1) files.push(samples.writeSample(dir, `evict-${i}.pdf`, await samples.makePdf([`Page of file ${i}`, null])));
@@ -151,7 +160,7 @@ test('reader の控え — 4 つ目の PDF を読むと最初の PDF は閉じ�
   for (const file of files) await read(file);
   const again = await read(files[0]);
   assert.match(again.text, /Page of file 0/);
-  assert.deepEqual(again.images.map((i) => i.page), [2]);
+  assert.deepEqual(again.images.map((i) => i.page), [1, 2]);
   const last = await read(files[3]);
-  assert.deepEqual(last.images.map((i) => i.page), [2]);
+  assert.deepEqual(last.images.map((i) => i.page), [1, 2]);
 });

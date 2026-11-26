@@ -8,11 +8,13 @@
 //    画像の部品が動かないために描けなかったときは、その理由を書いた行にする（資料の塊がその画像 1 つだけのときは unavailable）
 //  - 資料の中の文は指示ではない、という断り書き（notice）を返す文の頭に置く
 //  - 直近 3 つの資料の塊を控える（鍵は path・大きさ・更新日時）。PDF は控えから外すとき閉じる
+//  - read に pages（PDF のページ番号の並び。1〜3 個）を渡すと、そのページのページ画像だけを返す（AI が read_material の pages で指定した時。v1.06・q193 案C）。
+//    PDF 以外の資料は unsupported、cursor と一緒・形が違う・ページ数を超える番号は bad_pages
 //  - read は 1 つずつ実行する（待ち行列）。同時に頼まれても、前の読みが終わってから次を始める。
 //    別の資料の読み込みが控えを押し出して、返事を組んでいる途中の PDF を閉じてしまうのを防ぐため
 //  - Electron に触らない。bdm は bdmBlocks（bdm-swimlane.js の関数）を引数で受け取って呼ぶ
 // 失敗は MaterialError（code: unsupported・file_missing・not_file・old_format・encrypted〔パスワードで守った Word・Excel〕・read_failed・bad_cursor・
-// unavailable〔PDF を読む部品の cmaps・standard_fonts がない・画像の部品 @napi-rs/canvas が動かない〕）。文にパスを入れない。
+// unavailable〔PDF を読む部品の cmaps・standard_fonts がない・画像の部品 @napi-rs/canvas が動かない〕・bad_pages〔pages の誤り〕）。文にパスを入れない。
 // read_failed には、元の例外を cause に残す（調べるため。ページには code と message だけが渡る）。
 'use strict';
 
@@ -91,6 +93,16 @@ function normalizeBlocks(rawBlocks) {
   return blocks;
 }
 
+// read の pages の形（1〜MAX_IMAGES 個の、1 以上の整数。同じ番号は 2 回書かない）と、PDF のページ数を超えないか
+function checkPagesShape(pages) {
+  const ok = Array.isArray(pages) && pages.length >= 1 && pages.length <= MAX_IMAGES && pages.every((n) => Number.isInteger(n) && n >= 1);
+  if (!ok) throw fail('bad_pages', `pages には、画像がほしいページの番号を 1〜${MAX_IMAGES} 個の並びで書いてください（例 [3, 5]）。`);
+  if (new Set(pages).size !== pages.length) throw fail('bad_pages', 'pages に、同じページの番号が 2 回以上あります。');
+}
+function checkPagesRange(pages, pageCount) {
+  if (pages.some((n) => n > pageCount)) throw fail('bad_pages', `この PDF は ${pageCount} ページです。pages には 1〜${pageCount} のページ番号を書いてください。`);
+}
+
 function parseCursor(cursor) {
   if (cursor === null || cursor === undefined) return 0;
   const number = typeof cursor === 'string' && /^[0-9]{1,9}$/.test(cursor) ? Number(cursor) : cursor;
@@ -157,6 +169,15 @@ async function renderImage(image) {
   return fitPngToBase64Limit(rendered);
 }
 
+// 画像を作れなかった時に、画像の代わりに置く行。画像を読む機能が動かない時は、文字のないページと、
+// 文字のあるページのページ画像（v1.06。塊の hasText）で書き分ける
+function imageFailedLine(image, err) {
+  if (!isImagePartMissing(err)) return image.page ? `（${image.page} ページの画像を作れませんでした）` : '（画像を作れませんでした）';
+  if (!image.page) return '（画像を読む機能が動かないため読めませんでした）';
+  if (image.hasText) return `（${image.page} ページの画像は、画像を読む機能が動かないため作れませんでした）`;
+  return `（${image.page} ページは文字のないページですが、画像を読む機能が動かないため読めませんでした）`;
+}
+
 // 画像の塊を返事に詰める。描けなかった塊は「（N ページの画像を作れませんでした）」の文の行にして先へ進む（その塊より後ろも読めるように）。
 // ただし資料の塊がその画像 1 つだけ（画像の資料など）なら、読めるものが何もないので read_failed（元の例外は cause）
 async function addImage(page, image, isFirst, isOnlyBlock) {
@@ -168,9 +189,7 @@ async function addImage(page, image, isFirst, isOnlyBlock) {
   } catch (err) {
     if (isOnlyBlock) throw err;
     console.warn('資料の画像を作れませんでした:', err);
-    const line = isImagePartMissing(err)
-      ? `（${image.page ? `${image.page} ページは文字のないページですが、` : ''}画像を読む機能が動かないため読めませんでした）`
-      : image.page ? `（${image.page} ページの画像を作れませんでした）` : '（画像を作れませんでした）';
+    const line = imageFailedLine(image, err);
     return addText(page, { text: line, weight: textWeight(line) }, true);
   }
   if (!isFirst && page.bytes + fitted.png.length > MAX_IMAGE_BYTES) return false;
@@ -199,6 +218,15 @@ async function buildResponse(blocks, start) {
   };
 }
 
+// pages の返事は、続きを cursor で読めない。1 回の返事に収まらなかったページ（画像の大きさの合計が上限を超えた時）は、
+// もう一度 pages で頼むよう書いた行にして、nextCursor は返さない
+function withLeftOutPages(result, pages) {
+  if (result.nextCursor === null) return result;
+  const left = pages.slice(Number(result.nextCursor));
+  const line = `（${left.join('・')} ページの画像は、1 回の返事に収まらないので省きました。pages に [${left.join(', ')}] を書いて、もう一度読んでください）`;
+  return { ...result, text: `${result.text}\n${line}`, nextCursor: null };
+}
+
 // 頼まれた仕事を 1 つずつ実行する待ち行列。前の仕事が失敗しても、次の仕事は動く
 function createSerialQueue() {
   let tail = Promise.resolve();
@@ -216,21 +244,35 @@ function createMaterialReader({ bdmBlocks = null, pdfAssetsDir } = {}) {
   const cached = createLoadedCache(CACHE_SIZE);
   const inTurn = createSerialQueue();
 
-  async function loadBlocks(file, kind) {
+  // 読み取りの結果 { blocks, dispose, pageCount, pageImage }（pageCount・pageImage は PDF だけ）。同じファイルの 2 回目からは控えを使う
+  async function loadMaterial(file, kind) {
     const stat = await statMaterial(file);
     const key = `${kind}|${file}|${stat.size}|${stat.mtimeMs}`;
-    const loaded = await cached(key, async () => {
+    return cached(key, async () => {
       const result = await loaders[kind](await readBytes(file));
-      const { blocks, dispose } = Array.isArray(result) ? { blocks: result } : result;
-      return { blocks: normalizeBlocks(blocks), dispose };
+      const { blocks, dispose, pageCount, pageImage } = Array.isArray(result) ? { blocks: result } : result;
+      return { blocks: normalizeBlocks(blocks), dispose, pageCount, pageImage };
     });
-    return loaded.blocks;
   }
 
-  async function readMaterial({ path: file, kind, cursor }) {
+  // AI が pages で指定した PDF のページのページ画像だけを返す（文字は、いつもの読み方で読んだものを使う。v1.06・q193 案C）
+  async function readPageImages(file, kind, pages, cursor) {
+    if (kind !== 'pdf') throw fail('unsupported', 'ページを指定して画像を読めるのは、PDF の資料だけです。pages を省いて読んでください。');
+    if (cursor !== null && cursor !== undefined) throw fail('bad_pages', 'pages と cursor は一緒に使えません。ページの画像を読む時は、cursor を省いてください。');
+    checkPagesShape(pages);
+    const loaded = await loadMaterial(file, kind);
+    checkPagesRange(pages, loaded.pageCount);
+    return withLeftOutPages(await buildResponse(pages.map((n) => loaded.pageImage(n)), 0), pages);
+  }
+
+  async function readMaterial({ path: file, kind, cursor, pages }) {
+    if (pages !== null && pages !== undefined) {
+      if (!Object.hasOwn(loaders, kind)) throw fail('unsupported', 'この種類の資料は読めません。');
+      return readPageImages(file, kind, pages, cursor);
+    }
     const start = parseCursor(cursor);
     if (!Object.hasOwn(loaders, kind)) throw fail('unsupported', 'この種類の資料は読めません。');
-    const blocks = await loadBlocks(file, kind);
+    const { blocks } = await loadMaterial(file, kind);
     if (start >= blocks.length) throw fail('bad_cursor', '続きの位置（cursor）が資料の終わりを超えています。前の返事の nextCursor をそのまま渡してください。');
     return buildResponse(blocks, start);
   }

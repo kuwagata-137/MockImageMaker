@@ -410,6 +410,19 @@ test('finishRead — AI の read_material の仕上げ。内容と、画像の b
   assert.deepEqual(reader.calls, [{ path: env.materials.files.pathOf(SYS, 'm-abc.pdf'), kind: 'pdf', name: '旅費規程.pdf', cursor: '1' }]);
 });
 
+test('finishRead — render の pages（v1.06。AI が read_material で指定した PDF のページ）を、読む部品にそのまま渡す。pages のない頼みには付けない', async (t) => {
+  const reader = fakeReader(READ_RESULT());
+  const env = setup(t, { reader });
+  const render = { kind: 'material', systemId: SYS, file: 'm-abc.pdf', materialKind: 'pdf', name: '旅費規程.pdf', cursor: null, pages: [3, 5] };
+  assert.equal((await env.materials.finishRead(render)).ok, true);
+  assert.equal((await env.ipc('materials:read', { systemId: SYS, file: 'm-abc.pdf', kind: 'pdf', name: '旅費規程.pdf', cursor: null })).ok, true);
+  const filePath = env.materials.files.pathOf(SYS, 'm-abc.pdf');
+  assert.deepEqual(reader.calls, [
+    { path: filePath, kind: 'pdf', name: '旅費規程.pdf', cursor: null, pages: [3, 5] },
+    { path: filePath, kind: 'pdf', name: '旅費規程.pdf', cursor: null },
+  ]);
+});
+
 test('finishRead — 失敗は { ok: false, error: { code, message } }（MaterialError はそのまま、ほかは read_failed。パスを出さない）', async (t) => {
   const bad = setup(t, { reader: fakeReader(READ_RESULT()) });
   const badName = await bad.materials.finishRead({ kind: 'material', systemId: SYS, file: '../x', materialKind: 'pdf', name: 'x.pdf', cursor: null });

@@ -13087,9 +13087,9 @@ function fillMaterialReader(modal, r) {
   const p = isObj(r.part) ? r.part : {};
   $('.rd-foot', modal).textContent = p.total ? `${p.from === p.to ? p.from : `${p.from}〜${p.to}`} / ${p.total} の部分` : '';
 }
-// 画像の見出しの行（material-reader.js の「── 画像 ──」・material-pdf.js の「── 3 ページ（文字がないので画像で渡します）──」）。
-// Excel のシートの見出し「── シート「画像一覧」──」のように、「画像」の字があるだけの見出しは当たらない
-const MATERIAL_IMAGE_CAPTION = /^── (?:画像 |\d+ ページ（文字がないので画像で渡します）)──$/;
+// 画像の見出しの行（material-reader.js の「── 画像 ──」・material-pdf.js の「── 3 ページ（文字がないので画像で渡します）──」と、
+// 文字に加えて渡すページ画像の「── 3 ページの画像 ──」〔v1.06〕）。Excel のシートの見出し「── シート「画像一覧」──」のように、「画像」の字があるだけの見出しは当たらない
+const MATERIAL_IMAGE_CAPTION = /^── (?:画像 |\d+ ページ（文字がないので画像で渡します）|\d+ ページの画像 )──$/;
 // 読むの窓の文と画像。文の頭の断り書き（黄色の帯と同じ 1 行）は外す。「── 1 ページ ──」のような見出しの行は灰色の太字、ほかの行は改行を保って出す。
 // 画像は、画像の見出しの行（MATERIAL_IMAGE_CAPTION）の後に順に置き、見出しが足りないときは残りを後ろに並べる
 function materialReadBodyHtml(r) {
@@ -23817,7 +23817,18 @@ function aiMaterialCursor(cursor) {
   if (typeof cursor === 'string' && /^[0-9]+$/.test(cursor)) return cursor;
   throw new AiRefusal('bad_cursor', 'cursor には、前の返事の nextCursor（数字の文字）をそのまま書いてください。省くと最初から読みます。');
 }
-// 資料の中身を読む。ごみ箱のシステムの資料も読める。中身は main が読んで、返事の notice・part・text・images・nextCursor に入れる
+// read_material の pages（v1.06・q193 案C）: PDF の資料だけ。1〜3 個の、1 以上の整数（同じ番号は 2 回書かない）。cursor と一緒には使えない。
+// PDF のページ数を超えないかは、資料の窓口（material-reader.js）が確かめる
+function aiMaterialPages(pages, cursor, m) {
+  if (pages == null) return null;
+  if (m.kind !== 'pdf') throw new AiRefusal('unsupported', `ページを指定して画像を読めるのは、PDF の資料だけです（「${m.name}」の種類: ${MATERIAL_KIND_NAMES[m.kind]}）。pages を省いて読んでください。`);
+  if (cursor != null) throw new AiRefusal('bad_pages', 'pages と cursor は一緒に使えません。ページの画像を読む時は、cursor を省いてください。');
+  const ok = Array.isArray(pages) && pages.length >= 1 && pages.length <= 3 && pages.every((n) => Number.isInteger(n) && n >= 1) && new Set(pages).size === pages.length;
+  if (!ok) throw new AiRefusal('bad_pages', 'pages には、画像がほしいページの番号を 1〜3 個の並びで書いてください（例 [3, 5]。同じ番号は 2 回書かない）。');
+  return pages.slice();
+}
+// 資料の中身を読む。ごみ箱のシステムの資料も読める。中身は main が読んで、返事の notice・part・text・images・nextCursor に入れる。
+// pages があれば、その PDF のページのページ画像だけを返す（v1.06）
 function aiReadMaterial(args) {
   const y = aiResolveSystem(aiState(), args.system);
   const m = aiResolveMaterial(y, args.material);
@@ -23826,9 +23837,10 @@ function aiReadMaterial(args) {
   if (m.kind === 'other') throw new AiRefusal('unsupported', `「${m.name}」は中身を読めない種類のファイルです（読めるのは 文字・画像・PDF・Word・Excel・MPD）。`);
   aiCheckMaterialFile(m);
   const cursor = aiMaterialCursor(args.cursor);
+  const pages = aiMaterialPages(args.pages, cursor, m);
   return new AiRendered(
     { system: { id: y.id, name: y.name }, material: { id: m.id, name: m.name, kind: m.kind, kindName: MATERIAL_KIND_NAMES[m.kind], size: m.size } },
-    { kind: 'material', systemId: y.id, file: m.file, materialKind: m.kind, name: m.name, cursor },
+    { kind: 'material', systemId: y.id, file: m.file, materialKind: m.kind, name: m.name, cursor, ...(pages ? { pages } : {}) },
   );
 }
 // BDM の HTML の資料からスイムレーン図を作る（設計書の 11 章）。案（plan）は資料の窓口が main で作る（ファイルを読むので、aiWrite の前に待つ）。

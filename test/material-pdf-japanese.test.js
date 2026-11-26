@@ -19,18 +19,19 @@ test.after(() => samples.removeSampleDir(dir));
 test('日本語の PDF（字体を埋め込まない CID 字体・cMap を使う）から日本語の文字が取れる', async (t) => {
   const bytes = makeJapanesePdf('出張申請');
 
-  await t.test('loadPdfBlocks: 既定の場所の cMap で「出張申請」が取れる（画像の塊にならない）', async () => {
+  await t.test('loadPdfBlocks: 既定の場所の cMap で「出張申請」が取れる（文字のないページの画像の塊にならない）', async () => {
     const { blocks, dispose } = await loadPdfBlocks(bytes, {});
     t.after(() => dispose());
-    assert.equal(blocks.length, 1);
     assert.equal(blocks[0].text, '── 1 ページ ──\n出張申請');
+    // 文字が 50 字以下なので、ページ画像の塊も付く（v1.06）。見出しは「文字がないので…」でなく「── 1 ページの画像 ──」
+    assert.deepEqual(blocks.slice(1).map((b) => b.image.caption), ['── 1 ページの画像 ──']);
   });
 
-  await t.test('reader: text に日本語の文字が入り、画像は 0 枚', async () => {
+  await t.test('reader: text に日本語の文字が入り、文字の後にページ画像が 1 枚付く', async () => {
     const file = samples.writeSample(dir, 'japanese.pdf', bytes);
     const result = await createMaterialReader().read({ path: file, kind: 'pdf', name: 'j.pdf', cursor: null });
-    assert.ok(result.text.endsWith('── 1 ページ ──\n出張申請'), result.text);
-    assert.deepEqual(result.images, []);
+    assert.ok(result.text.endsWith('── 1 ページ ──\n出張申請\n── 1 ページの画像 ──'), result.text);
+    assert.deepEqual(result.images.map((i) => i.page), [1]);
   });
 });
 
@@ -97,6 +98,7 @@ test('游ゴシック・メイリオの PDF のように、ToUnicode が「日�
   await t.test('reader の text も通常の漢字', async () => {
     const file = samples.writeSample(dir, 'kangxi.pdf', bytes);
     const result = await createMaterialReader().read({ path: file, kind: 'pdf', name: 'k.pdf', cursor: null });
-    assert.ok(result.text.endsWith('日本目的'), result.text);
+    assert.ok(result.text.includes('── 1 ページ ──\n日本目的\n'), result.text);
+    assert.equal(result.text.includes(KANGXI_SUN) || result.text.includes(KANGXI_EYE), false);
   });
 });

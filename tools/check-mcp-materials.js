@@ -4,7 +4,8 @@
 //  1. 道具は 36 個（第 10 段階で設計ノートの 3 個と説明書の 1 個、第 11 段階で export_bdm、第 13 段階で get_kintone_app が増えた）で、list_materials・read_material・swimlane_from_bdm がある
 //  2. list_materials は資料を 8 つ返し、保存したファイルの名前（file）と場所は返さない。古い形の行だけ oldFormat
 //  3. read_material: Excel は断り書き notice が先頭で、番地と値が読める ／ PDF は日本語の文字が読め、文字のない 3 ページ目は画像（長い辺 1568 以下）で渡る ／
-//     Word の見出しと表・BDM の図のレーン・Shift_JIS の日本語の文字が読める ／ 古い形は old_format で断る ／ cursor が範囲の外なら bad_cursor（見本は 1 回で全部読めるので、nextCursor は null）
+//     Word の見出しと表・BDM の図のレーン・Shift_JIS の日本語の文字が読める ／ 古い形は old_format で断る ／ cursor が範囲の外なら bad_cursor（見本は 1 回で全部読めるので、nextCursor は null）／
+//     pages（v1.06）で PDF の 1・3 ページのページ画像だけが返る。PDF 以外は unsupported、cursor と一緒・ページ数を超える番号は bad_pages、4 ページ以上は入力の形の誤りで断る
 //  4. swimlane_from_bdm: 今の図に作業があるので replace なしでは断られ、replace: true で入る（役割は使い回し、足りない役割を足す）。
 //     designs.json に残り（作業の src に資料の id）、直す前の状態の行が残る
 //  5. get_system は資料の一覧と、置き換えたスイムレーン図を返す
@@ -99,6 +100,29 @@ async function checkListAndRead(client, env, rows) {
   check('D. read_material（古い形の Excel）は old_format で断る', old.isError && old.code === 'old_format', old.isError ? `${old.code}: ${old.text.split('\n')[0]}` : '断られなかった');
   const bad = await callRaw(client, 'read_material', { system: SYSTEM_ID, material: rowOf(rows, SAMPLE_FILES.word).id, cursor: '99' });
   check('D. read_material の cursor が範囲の外なら bad_cursor で断る（文にファイルの場所は入らない）', bad.isError && bad.code === 'bad_cursor' && !/[A-Za-z]:\\|\.devdata/.test(bad.text), bad.isError ? bad.code : '断られなかった');
+  await checkPages(client, env, rows);
+}
+
+// read_material の pages（v1.06・q193 案C）。見本の PDF の 1 ページは文字のあるページ、3 ページは文字のないページ
+async function checkPages(client, env, rows) {
+  const pdfId = rowOf(rows, SAMPLE_FILES.pdf).id;
+  const r = await callRaw(client, 'read_material', { system: SYSTEM_ID, material: pdfId, pages: [1, 3] });
+  const j = r.json || {};
+  env.check('D. read_material の pages（v1.06）: PDF の 1・3 ページのページ画像だけが返る（文字は返さない。見出しは「── 1 ページの画像 ──」と「── 3 ページ（文字がないので画像で渡します）──」）',
+    !r.isError && r.images.length === 2 && r.images.every((i) => i.png) && JSON.stringify((j.images || []).map((i) => i.page)) === '[1,3]'
+      && j.text === `${NOTICE}\n── 1 ページの画像 ──\n── 3 ページ（文字がないので画像で渡します）──` && r.types.join() === 'text,image,image',
+    r.isError ? r.text : `画像 ${r.images.map((i) => `${i.width}×${i.height}`).join('・')} ／ ${r.types.join(',')}`);
+  // 4 ページ以上は、入口の入力の形（最大 3 個）で断る。断り方は返事の isError か、呼び出しの失敗
+  const tooMany = callRaw(client, 'read_material', { system: SYSTEM_ID, material: pdfId, pages: [1, 2, 3, 4] }).catch((e) => ({ isError: true, code: null, text: String(e.message || e) }));
+  const ngs = await Promise.all([
+    callRaw(client, 'read_material', { system: SYSTEM_ID, material: rowOf(rows, SAMPLE_FILES.word).id, pages: [1] }),
+    callRaw(client, 'read_material', { system: SYSTEM_ID, material: pdfId, pages: [1], cursor: '1' }),
+    callRaw(client, 'read_material', { system: SYSTEM_ID, material: pdfId, pages: [4] }),
+    tooMany,
+  ]);
+  env.check('D. read_material の pages: PDF 以外は unsupported、cursor と一緒・ページ数を超える番号は bad_pages、4 ページ以上は入力の形の誤りで断る',
+    ngs.every((x) => x.isError) && ngs.slice(0, 3).map((x) => x.code).join() === 'unsupported,bad_pages,bad_pages',
+    ngs.map((x) => (x.isError ? `${x.code}: ${x.text.split('\n')[0].slice(0, 60)}` : '断られなかった')).join(' ／ '));
 }
 
 async function checkSwimlaneFromBdm(client, env, rows) {

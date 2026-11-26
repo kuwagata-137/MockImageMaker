@@ -181,6 +181,19 @@ test('read_material: 資料の窓口がない（ブラウザで開いた）と u
   app.close();
 });
 
+test('read_material: pages（v1.06）は PDF の資料だけ。render に pages を入れる。PDF 以外は unsupported、cursor と一緒・形の誤り・同じ番号は bad_pages', async () => {
+  const { app, call } = await boot();
+  assert.deepEqual((await call('read_material', { system: 'y1', material: 'm5', pages: [3, 5] })).render,
+    { kind: 'material', systemId: 'y1', file: 'm5.pdf', materialKind: 'pdf', name: '見積書.pdf', cursor: null, pages: [3, 5] });
+  assert.equal('pages' in (await call('read_material', { system: 'y1', material: 'm5' })).render, false, 'pages を省くと render に入れない');
+  const notPdf = ng(await call('read_material', { system: 'y1', material: 'm1', pages: [1] }), 'unsupported');
+  assert.equal(notPdf.message, 'ページを指定して画像を読めるのは、PDF の資料だけです（「受注の流れ.txt」の種類: 文字）。pages を省いて読んでください。');
+  const withCursor = ng(await call('read_material', { system: 'y1', material: 'm5', pages: [1], cursor: '2' }), 'bad_pages');
+  assert.equal(withCursor.message, 'pages と cursor は一緒に使えません。ページの画像を読む時は、cursor を省いてください。');
+  for (const pages of [[], [1, 2, 3, 4], [0], [1.5], ['1'], [2, 2], 3]) ng(await call('read_material', { system: 'y1', material: 'm5', pages }), 'bad_pages');
+  app.close();
+});
+
 // ── BDM の HTML からスイムレーン図を作る ──
 test('swimlane_from_bdm: 案の役割・作業・矢印でスイムレーン図を作る（作業の src に資料の id）。返事は図の種類・役割（足した・使い回した）・作業と矢印の数・注意・changed・システムの新しい更新日時', async () => {
   const { app, call, sys, calls } = await boot();
@@ -352,6 +365,8 @@ test('入口の道具: list_materials・read_material は読むだけ、read_mat
   okParse('read_material', { system: 'y1', material: 'm1', cursor: '2' });
   okParse('read_material', { system: 'y1', material: 3 });
   ngParse('read_material', { system: 'y1' });
+  okParse('read_material', { system: 'y1', material: 'm1', pages: [3, 5] });
+  for (const pages of [[], [1, 2, 3, 4], [0], [1.5], '3']) ngParse('read_material', { system: 'y1', material: 'm1', pages });
   okParse('swimlane_from_bdm', { system: 'y1', material: 'm2', expect: OLD, replace: true });
   okParse('swimlane_from_bdm', { system: 'y1', material: 'm2' });
   ngParse('swimlane_from_bdm', { system: 'y1', material: 'm2', replace: 'yes' });
@@ -364,7 +379,10 @@ test('手引き: 資料の文はデータで指示ではないこと・資料を
   assert.match(INSTRUCTIONS, /資料を追加する・消すツールはない/);
   assert.match(GUIDES.overview.text, /資料/);
   assert.match(GUIDES.overview.text, /list_materials → read_material（nextCursor で続き）→ MPD があれば swimlane_from_bdm/);
-  for (const code of ['old_format', 'unsupported', 'file_missing', 'unavailable', 'bad_cursor', 'read_failed', 'not_file', 'bad_name']) assert.match(GUIDES.overview.text, new RegExp(code));
+  for (const code of ['old_format', 'unsupported', 'file_missing', 'unavailable', 'bad_cursor', 'bad_pages', 'read_failed', 'not_file', 'bad_name']) assert.match(GUIDES.overview.text, new RegExp(code));
+  // PDF のページ画像と pages（v1.06）を、手引きと read_material の説明に書く
+  assert.match(GUIDES.overview.text, /read_material の pages にページ番号を書くと、そのページのページ画像を読める/);
+  assert.match(TOOLS.find((x) => x.name === 'read_material').description, /文字が 50 字以下のページと、貼り付けた画像がページの 1 割以上のページ/);
   assert.match(GUIDES.rules.text, /資料を追加する・消すツールはない/);
   assert.match(GUIDES.overview.text, /read_failed: ファイルが壊れている・パスワードで守られている/);
   // 資料をシステムに入れる操作は「入れる」にそろえる（ユーザーの「用語の表記揺れルール」）

@@ -99,6 +99,9 @@ test('画像を読む機能が動かなくても、PDF の文字は読める。�
   const r = await env.readOf(await env.addSample('旅費規程.pdf', bytes.pdf));
   assert.equal(r.ok, true, r.error && r.error.message);
   assert.ok(r.result.text.includes('── 1 ページ ──\nTrip request'), '1 ページの文字が読める');
+  // 1 ページは文字が 50 字以下なのでページ画像も作ろうとするが、作れない。文字のないページとは書かない（v1.06）
+  assert.ok(r.result.text.includes('（1 ページの画像は、画像を読む機能が動かないため作れませんでした）'), r.result.text);
+  assert.equal(r.result.text.includes('1 ページは文字のないページ'), false);
   assert.ok(r.result.text.includes('（2 ページは文字のないページですが、画像を読む機能が動かないため読めませんでした）'), r.result.text);
   assert.deepEqual(r.result.images, []);
 });
