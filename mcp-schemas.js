@@ -282,7 +282,11 @@ const swimEdge = obj({
 // 入力の形の欄（mcp-tools.js の read・write が obj で包み、知らない欄を断る）。ファイルの場所を受け取る欄は作らない（設計書の 1-4）
 const materialInputs = {
   list: { system: S.system, cursor: S.cursor },
-  read: { system: S.system, material: S.material, cursor: S.cursor },
+  read: {
+    system: S.system, material: S.material, cursor: S.cursor,
+    pages: opt(z.array(z.number().int().min(1)).min(1).max(3).describe('PDF の資料で、ページ画像がほしいページの番号（1〜3 個。例 [3, 5]）。指定したページのページ画像だけを返す（文字は返さない）。'
+      + '文字を読んで、図・表・様式のページだと分かった時に使う。cursor と一緒には使えない')),
+  },
   swimlaneFromBdm: {
     system: S.system, material: S.material, expect: S.expect,
     replace: opt(z.boolean().describe('今のスイムレーン図に工程があるとき、置き換えてよいか。人に確かめてから true を書く（省くと、今の図に工程があれば断る）')),

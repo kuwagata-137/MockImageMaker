@@ -2,6 +2,9 @@
 // 役割:
 //  - ページごとに、文字のあるページは「── 3 ページ ──」の見出しと文字の塊 { text }、
 //    文字のないページ（白紙・スキャンなどの画像だけのページ）は画像の塊 { image: { page, caption, render } } にする
+//  - 文字のあるページでも、文字が FEW_TEXT_CHARS 字以下のページと、貼り付けた画像が占める広さがページの IMAGE_RATIO_MIN 以上のページは、
+//    文字の塊の後に、ページ画像の塊（見出し「── 3 ページの画像 ──」）も置く（v1.06・q193 案C）。図形と矢印で描いた図は、画像に数えない
+//  - 戻り値の pageImage(n) は、指定したページのページ画像の塊を作る（AI が read_material の pages で指定したページ。v1.06・q193 案C）
 //  - 画像の塊は、返すときに render() で初めて @napi-rs/canvas に描く（長い辺 1566 に合う倍率）。ここでは描かない。
 //    画像の部品も、そのときに初めて読む（material-image.js の loadCanvas。文字のページだけの PDF は、画像の部品が動かなくても読める）
 //  - pdfjs-dist（legacy の ESM）を await import で読む。字体・cMap・wasm はパッケージの中のフォルダを指し、ネットに行かない。
@@ -117,35 +120,98 @@ async function renderPage(pdf, pageNumber) {
   }
 }
 
-function imageBlock(pdf, pageNumber) {
-  return {
-    image: {
-      page: pageNumber,
-      caption: `── ${pageNumber} ページ（文字がないので画像で渡します）──`,
-      render: () => renderPage(pdf, pageNumber),
-    },
-  };
+// ページ画像の塊。見出しは、文字のないページなら「── 3 ページ（文字がないので画像で渡します）──」（今までの見出し）、
+// 文字のあるページなら「── 3 ページの画像 ──」（v1.06）。アプリの「読む」のウィンドウは、どちらも画像の見出しとして扱う。
+// hasText は、読む部品（material-reader.js）が画像を作れなかった時の行を書き分けるのに使う
+function imageBlock(pdf, pageNumber, hasText) {
+  const caption = hasText ? `── ${pageNumber} ページの画像 ──` : `── ${pageNumber} ページ（文字がないので画像で渡します）──`;
+  return { image: { page: pageNumber, caption, hasText, render: () => renderPage(pdf, pageNumber) } };
 }
 
-// PDF のバイト列 → { blocks, dispose }。dispose() は開いた PDF を閉じる（控えから外すとき。閉じた後は画像の塊を描けない）。
+// 文字のあるページでも、ページ画像も渡すかの決まり（v1.06・q193 案C）。文字の数は、空白と改行を除いた字の数
+const FEW_TEXT_CHARS = 50;
+const IMAGE_RATIO_MIN = 0.1;
+const countChars = (text) => [...text.replace(/\s+/g, '')].length;
+
+// 変換行列の掛け算（pdfjs の [a, b, c, d, e, f] の並び。m に n を掛ける順序は、pdfjs の transform と同じ）
+function multiply(m, n) {
+  return [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3],
+    m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+}
+
+// 画像 1 つが占める広さ。画像は、単位正方形を変換行列 ctm で写した所に描かれるので、4 つの角を囲む四角の広さを求める（ページの外にはみ出した分は数えない）
+function imageArea(ctm, [x0, y0, x1, y1]) {
+  const corners = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y]) => [ctm[0] * x + ctm[2] * y + ctm[4], ctm[1] * x + ctm[3] * y + ctm[5]]);
+  const xs = corners.map(([x]) => Math.min(Math.max(x, x0), x1));
+  const ys = corners.map(([, y]) => Math.min(Math.max(y, y0), y1));
+  return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
+}
+
+// ページの広さに対して、貼り付けた画像（写真・スキャン・画面のコピー）が占める広さの割合（0〜1）。pdfjs の命令の並び（getOperatorList）をたどり、
+// 画像を描く命令ごとの広さを合計する（重なった画像は重ねて数え、1 を上限にする）。命令の並びを作れないページは 0
+async function pageImageRatio(page, OPS) {
+  try {
+    const [x0, y0, x1, y1] = page.view;
+    const pageArea = (x1 - x0) * (y1 - y0);
+    if (!(pageArea > 0)) return 0;
+    const imageOps = new Set([OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject, OPS.paintImageXObjectRepeat].filter((op) => op != null));
+    const { fnArray, argsArray } = await page.getOperatorList();
+    const stack = [];
+    let ctm = [1, 0, 0, 1, 0, 0];
+    let area = 0;
+    for (let i = 0; i < fnArray.length; i += 1) {
+      const fn = fnArray[i];
+      const args = argsArray[i];
+      if (fn === OPS.save) stack.push(ctm);
+      else if (fn === OPS.restore) ctm = stack.pop() || ctm;
+      else if (fn === OPS.transform) ctm = multiply(ctm, args);
+      else if (fn === OPS.paintFormXObjectBegin) {
+        stack.push(ctm);
+        if (args && args[0] && args[0].length === 6) ctm = multiply(ctm, Array.from(args[0]));
+      } else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() || ctm;
+      else if (imageOps.has(fn)) area += imageArea(ctm, page.view);
+    }
+    return Math.min(1, area / pageArea);
+  } catch (_) {
+    return 0;
+  }
+}
+
+// 文字のあるページで、ページ画像も渡すか。文字の数を先に見て、画像の広さは、文字が多いページの時だけ測る
+async function needsPageImage(page, text, OPS) {
+  if (countChars(text) <= FEW_TEXT_CHARS) return true;
+  return (await pageImageRatio(page, OPS)) >= IMAGE_RATIO_MIN;
+}
+
+// PDF のバイト列 → { blocks, dispose, pageCount, pageImage }。dispose() は開いた PDF を閉じる（控えから外すとき。閉じた後は画像の塊を描けない）。
+// pageCount は PDF のページ数。pageImage(n) は n ページのページ画像の塊（AI が read_material の pages で指定したページ）
 async function loadPdfBlocks(bytes, { assetsDir } = {}) {
   const dir = assetsDir || defaultPdfAssetsDir();
   await assertAssetsAvailable(dir);
+  const { OPS } = await loadPdfjs();
   const { pdf, task } = await openDocument(bytes, dir);
   const dispose = () => task.destroy().catch(() => {});
   try {
     const blocks = [];
+    const textPages = new Set();
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
       const page = await pdf.getPage(pageNumber);
       const text = await pageText(page);
+      const also = text !== '' && await needsPageImage(page, text, OPS);
       page.cleanup();
-      blocks.push(text ? { text: `── ${pageNumber} ページ ──\n${text}` } : imageBlock(pdf, pageNumber));
+      if (!text) {
+        blocks.push(imageBlock(pdf, pageNumber, false));
+        continue;
+      }
+      textPages.add(pageNumber);
+      blocks.push({ text: `── ${pageNumber} ページ ──\n${text}` });
+      if (also) blocks.push(imageBlock(pdf, pageNumber, true));
     }
-    return { blocks, dispose };
+    return { blocks, dispose, pageCount: pdf.numPages, pageImage: (n) => imageBlock(pdf, n, textPages.has(n)) };
   } catch (err) {
     await dispose();
     throw readFailed(err);
   }
 }
 
-module.exports = { loadPdfBlocks, defaultPdfAssetsDir };
+module.exports = { loadPdfBlocks, defaultPdfAssetsDir, pageImageRatio, FEW_TEXT_CHARS, IMAGE_RATIO_MIN };

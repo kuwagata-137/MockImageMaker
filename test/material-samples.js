@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { createCanvas, ImageData } = require('@napi-rs/canvas');
-const { PDFDocument, StandardFonts } = require('pdf-lib');
+const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const { Document, Packer, Paragraph, HeadingLevel, Table, TableRow, TableCell, TextRun, ImageRun } = require('docx');
 const ExcelJS = require('exceljs');
 
@@ -84,17 +84,20 @@ function fakePng(width, height, size) {
   return Buffer.concat([head, Buffer.alloc(Math.max(0, size - head.length), 7)]);
 }
 
-// ── PDF（pages: 'text'・{ image: PNG のバイト }・null〔白紙〕の並び）──
+// ── PDF（pages: 'text'・{ image: PNG のバイト }・null〔白紙〕の並び。300×400 のページ）──
+// { text, image, box, shapes } は、文字・画像（box の位置と大きさ。省くとページ全体）・図形の四角（shapes の並び）を 1 ページに置く（v1.06）
 async function makePdf(pages) {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   for (const spec of pages) {
     const page = doc.addPage([300, 400]);
-    if (typeof spec === 'string') page.drawText(spec, { x: 20, y: 200, size: 14, font });
+    const text = typeof spec === 'string' ? spec : spec && spec.text;
+    if (text) page.drawText(text, { x: 20, y: 200, size: 14, font });
     if (spec && spec.image) {
       const image = await doc.embedPng(spec.image);
-      page.drawImage(image, { x: 0, y: 0, width: 300, height: 400 });
+      page.drawImage(image, spec.box || { x: 0, y: 0, width: 300, height: 400 });
     }
+    for (const shape of (spec && spec.shapes) || []) page.drawRectangle({ ...shape, borderColor: rgb(0.2, 0.2, 0.2), borderWidth: 2 });
   }
   return Buffer.from(await doc.save());
 }

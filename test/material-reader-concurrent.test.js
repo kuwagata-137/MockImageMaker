@@ -22,7 +22,8 @@ test.after(() => samples.removeSampleDir(dir));
 const readOf = (reader, file, kind) => reader.read({ path: file, kind, name: 'x', cursor: null });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// 文字のページと、文字のないページ（白紙 → 画像の塊）を 1 枚ずつ持つ PDF を作って、ファイルにする
+// 文字のページと、文字のないページ（白紙 → 画像の塊）を 1 枚ずつ持つ PDF を作って、ファイルにする。
+// 1 ページの文字は 50 字以下なので、返事の画像は、1 ページのページ画像と 2 ページの画像の 2 枚（v1.06）
 async function writeTripPdf(name) {
   return samples.writeSample(dir, name, await samples.makePdf([`Page of ${name}`, null]));
 }
@@ -45,9 +46,9 @@ test('同時に読む — 控えの数（3）より多い資料を Promise.all �
     ]);
     const [a, memoResult, flowResult, pictureResult, b] = results;
     assert.match(a.text, /Page of concurrent-a\.pdf/);
-    assert.deepEqual(a.images.map((i) => i.page), [2]);
+    assert.deepEqual(a.images.map((i) => i.page), [1, 2]);
     assert.match(b.text, /Page of concurrent-b\.pdf/);
-    assert.deepEqual(b.images.map((i) => i.page), [2]);
+    assert.deepEqual(b.images.map((i) => i.page), [1, 2]);
     assert.equal(memoResult.text, `${NOTICE}\n出張メモ`);
     assert.equal(flowResult.text, `${NOTICE}\n流れ`);
     assert.equal(pictureResult.images.length, 1);
@@ -57,7 +58,7 @@ test('同時に読む — 控えの数（3）より多い資料を Promise.all �
     const memos = [];
     for (let i = 0; i < 6; i += 1) memos.push(samples.writeSample(dir, `concurrent-many-${i}.txt`, samples.utf8Bytes(`メモ ${i}`)));
     const [pdf, ...others] = await Promise.all([readOf(reader, pdfA, 'pdf'), ...memos.map((file) => readOf(reader, file, 'text'))]);
-    assert.deepEqual(pdf.images.map((i) => i.page), [2]);
+    assert.deepEqual(pdf.images.map((i) => i.page), [1, 2]);
     assert.deepEqual(others.map((r) => r.text), memos.map((_, i) => `${NOTICE}\nメモ ${i}`));
   });
 });

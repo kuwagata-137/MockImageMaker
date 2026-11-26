@@ -1583,7 +1583,7 @@ body.xp-doc .pg+.pg{break-before:page}
 // =============================================================================
 
 // ── 1. 版 ─────────────────────────────────────────────────────────────────────
-const APP_VERSION = '1.05';
+const APP_VERSION = '1.06';
 // 出力する HTML（単体で開いて編集できる HTML）の材料にする、このアプリの script の文字。
 // document.currentScript は script を実行している間しか取れないので、いちばん初めに取っておく（style の文字は起動のときに取る）
 const APP_SCRIPT = document.currentScript ? document.currentScript.textContent : '';
@@ -10690,10 +10690,11 @@ function swimSvg(D, o = {}, ends = []) {
   });
   const defs = swimMarker(`${idp}-arrow`, SWIM_LINE) + swimMarker(`${idp}-arrow-b`, SWIM_BACK) + (o.edit ? swimMarker('swim-arrow-s', '#2563eb', 0.75) : '');
   return `<svg class="swim-svg" width="${w}" height="${h}" font-family="${SWIM_FONT.replace(/"/g, '')}" aria-hidden="true"><defs>${defs}</defs>${bands}`
-    + `<g class="sw-grid" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="2,6" opacity=".22">${grid.join('')}</g>${swimFramesSvg(D.frames || [], !!o.edit)}${swimGroupsSvg(model, L)}${lines.join('')}${arcs.join('')}${labels.join('')}${tools.join('')}</svg>`;
+    + `<g class="sw-grid" stroke="#94a3b8" stroke-width=".5" stroke-dasharray="2,6" opacity=".22">${grid.join('')}</g>${swimFramesSvg(D.frames || [], !!o.edit)}${swimGroupsSvg(model, L)}${lines.join('')}${arcs.join('')}${labels.join('')}${swimFrameLabelsSvg(D.frames || [])}${tools.join('')}</svg>`;
 }
 // グループ枠（v1.03 段階 D・q159 案B。MPD の group_box の四角い枠を、白基調に合わせた色で描く: 枠 #64748b・見出しの帯 #e2e8f0・字 13 の太字）。
-// 線と箱の下に描く。見出しの帯と枠の線は押せる（.sw-fr-hit。システムの画面で選ぶ・動かす・名前を変える）
+// 枠の線と見出しの帯は、矢印と工程の下に描く。見出しの帯と枠の線は押せる（.sw-fr-hit。システムの画面で選ぶ・動かす・名前を変える）。
+// 見出し文字は swimFrameLabelsSvg で、矢印の文字の後に描く（v1.06・q194 案B）
 const SWIM_FRAME_HEAD = 26;
 function swimFramesSvg(frames, edit = false) {
   return frames.map(({ frame: f, rect: r }) => {
@@ -10701,9 +10702,16 @@ function swimFramesSvg(frames, edit = false) {
     const hh = Math.min(SWIM_FRAME_HEAD, h);
     const head = `M${x} ${y + hh} V${y + 8} Q${x} ${y} ${x + 8} ${y} H${x + w - 8} Q${x + w} ${y} ${x + w} ${y + 8} V${y + hh} Z`;
     return `<g class="sw-frame" data-frame="${esc(f.id)}"><rect class="sw-fr-line" x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="none" stroke="#64748b" stroke-width="1.5"/>`
-      + `<path class="sw-fr-head" d="${head}" fill="#e2e8f0"/><text x="${x + 10}" y="${y + Math.min(18, hh - 4)}" font-size="13" font-weight="700" fill="#334155">${esc(swimEllipsis(f.text || 'グループ', w - 20, 13))}</text>`
-      + `${edit ? `<rect class="sw-fr-hit" x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/>` : ''}</g>`;
+      + `<path class="sw-fr-head" d="${head}" fill="#e2e8f0"/>${edit ? `<rect class="sw-fr-hit" x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/>` : ''}</g>`;
   }).join('');
+}
+// グループ枠の見出し文字（v1.06・q194 案B）。見出しの帯を通る矢印に隠れないよう、矢印と矢印の文字の後に描き、文字のまわりを帯の色 #e2e8f0 で縁取る
+// （太さ 5。paint-order で縁取りを文字の下に描く）。帯は今までどおり矢印の下。文字は押せない（SVG の中は押せない設定）ので、
+// 文字の所を押すと、今までどおり下の見出しの帯（.sw-fr-head）が受けて、グループ枠を選ぶ
+function swimFrameLabelsSvg(frames) {
+  return frames.map(({ frame: f, rect: { x, y, w, h } }) => `<g class="sw-fr-label" data-frame="${esc(f.id)}">`
+    + `<text x="${x + 10}" y="${y + Math.min(18, Math.min(SWIM_FRAME_HEAD, h) - 4)}" font-size="13" font-weight="700" fill="#334155"`
+    + ` stroke="#e2e8f0" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${esc(swimEllipsis(f.text || 'グループ', w - 20, 13))}</text></g>`).join('');
 }
 // 文字を幅 maxW に収まるように切る（はみ出す分は「…」）
 function swimEllipsis(text, maxW, fs) {
@@ -13087,9 +13095,9 @@ function fillMaterialReader(modal, r) {
   const p = isObj(r.part) ? r.part : {};
   $('.rd-foot', modal).textContent = p.total ? `${p.from === p.to ? p.from : `${p.from}〜${p.to}`} / ${p.total} の部分` : '';
 }
-// 画像の見出しの行（material-reader.js の「── 画像 ──」・material-pdf.js の「── 3 ページ（文字がないので画像で渡します）──」）。
-// Excel のシートの見出し「── シート「画像一覧」──」のように、「画像」の字があるだけの見出しは当たらない
-const MATERIAL_IMAGE_CAPTION = /^── (?:画像 |\d+ ページ（文字がないので画像で渡します）)──$/;
+// 画像の見出しの行（material-reader.js の「── 画像 ──」・material-pdf.js の「── 3 ページ（文字がないので画像で渡します）──」と、
+// 文字に加えて渡すページ画像の「── 3 ページの画像 ──」〔v1.06〕）。Excel のシートの見出し「── シート「画像一覧」──」のように、「画像」の字があるだけの見出しは当たらない
+const MATERIAL_IMAGE_CAPTION = /^── (?:画像 |\d+ ページ（文字がないので画像で渡します）|\d+ ページの画像 )──$/;
 // 読むの窓の文と画像。文の頭の断り書き（黄色の帯と同じ 1 行）は外す。「── 1 ページ ──」のような見出しの行は灰色の太字、ほかの行は改行を保って出す。
 // 画像は、画像の見出しの行（MATERIAL_IMAGE_CAPTION）の後に順に置き、見出しが足りないときは残りを後ろに並べる
 function materialReadBodyHtml(r) {
@@ -23817,7 +23825,18 @@ function aiMaterialCursor(cursor) {
   if (typeof cursor === 'string' && /^[0-9]+$/.test(cursor)) return cursor;
   throw new AiRefusal('bad_cursor', 'cursor には、前の返事の nextCursor（数字の文字）をそのまま書いてください。省くと最初から読みます。');
 }
-// 資料の中身を読む。ごみ箱のシステムの資料も読める。中身は main が読んで、返事の notice・part・text・images・nextCursor に入れる
+// read_material の pages（v1.06・q193 案C）: PDF の資料だけ。1〜3 個の、1 以上の整数（同じ番号は 2 回書かない）。cursor と一緒には使えない。
+// PDF のページ数を超えないかは、資料の窓口（material-reader.js）が確かめる
+function aiMaterialPages(pages, cursor, m) {
+  if (pages == null) return null;
+  if (m.kind !== 'pdf') throw new AiRefusal('unsupported', `ページを指定して画像を読めるのは、PDF の資料だけです（「${m.name}」の種類: ${MATERIAL_KIND_NAMES[m.kind]}）。pages を省いて読んでください。`);
+  if (cursor != null) throw new AiRefusal('bad_pages', 'pages と cursor は一緒に使えません。ページの画像を読む時は、cursor を省いてください。');
+  const ok = Array.isArray(pages) && pages.length >= 1 && pages.length <= 3 && pages.every((n) => Number.isInteger(n) && n >= 1) && new Set(pages).size === pages.length;
+  if (!ok) throw new AiRefusal('bad_pages', 'pages には、画像がほしいページの番号を 1〜3 個の並びで書いてください（例 [3, 5]。同じ番号は 2 回書かない）。');
+  return pages.slice();
+}
+// 資料の中身を読む。ごみ箱のシステムの資料も読める。中身は main が読んで、返事の notice・part・text・images・nextCursor に入れる。
+// pages があれば、その PDF のページのページ画像だけを返す（v1.06）
 function aiReadMaterial(args) {
   const y = aiResolveSystem(aiState(), args.system);
   const m = aiResolveMaterial(y, args.material);
@@ -23826,9 +23845,10 @@ function aiReadMaterial(args) {
   if (m.kind === 'other') throw new AiRefusal('unsupported', `「${m.name}」は中身を読めない種類のファイルです（読めるのは 文字・画像・PDF・Word・Excel・MPD）。`);
   aiCheckMaterialFile(m);
   const cursor = aiMaterialCursor(args.cursor);
+  const pages = aiMaterialPages(args.pages, cursor, m);
   return new AiRendered(
     { system: { id: y.id, name: y.name }, material: { id: m.id, name: m.name, kind: m.kind, kindName: MATERIAL_KIND_NAMES[m.kind], size: m.size } },
-    { kind: 'material', systemId: y.id, file: m.file, materialKind: m.kind, name: m.name, cursor },
+    { kind: 'material', systemId: y.id, file: m.file, materialKind: m.kind, name: m.name, cursor, ...(pages ? { pages } : {}) },
   );
 }
 // BDM の HTML の資料からスイムレーン図を作る（設計書の 11 章）。案（plan）は資料の窓口が main で作る（ファイルを読むので、aiWrite の前に待つ）。

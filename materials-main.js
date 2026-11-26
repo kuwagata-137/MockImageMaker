@@ -146,10 +146,11 @@ function initMaterials({ app, ipcMain, storage, headless = false, reader = null,
     return { ok: true, ...(await files.addFromPaths(systemId, paths)) };
   }
 
-  async function readMaterial({ systemId, file, kind, name, cursor }) {
+  // pages は AI が read_material で指定した PDF のページ番号（v1.06。人の「読む」のウィンドウは渡さない）
+  async function readMaterial({ systemId, file, kind, name, cursor, pages }) {
     if (!reader) throw new MaterialError('unavailable', UNAVAILABLE_MESSAGE);
     const filePath = files.pathOf(systemId, file);
-    return plainResult(await reader.read({ path: filePath, kind, name, cursor: cursor == null ? null : cursor }));
+    return plainResult(await reader.read({ path: filePath, kind, name, cursor: cursor == null ? null : cursor, ...(pages == null ? {} : { pages }) }));
   }
 
   ipcMain.handle('materials:pick', (e, req) => guarded(FAILED.add, () => pick(e, req)));
@@ -171,7 +172,7 @@ function initMaterials({ app, ipcMain, storage, headless = false, reader = null,
   function finishRead(render) {
     const req = render || {};
     return guarded(FAILED.read, async () => {
-      const r = await readMaterial({ systemId: req.systemId, file: req.file, kind: req.materialKind, name: req.name, cursor: req.cursor });
+      const r = await readMaterial({ systemId: req.systemId, file: req.file, kind: req.materialKind, name: req.name, cursor: req.cursor, pages: req.pages });
       const images = r.images.map(({ page, width, height }) => ({ page, width, height }));
       return { ok: true, content: { notice: r.notice, part: r.part, text: r.text, images, nextCursor: r.nextCursor }, images: r.images.map((img) => img.data) };
     });
